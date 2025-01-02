@@ -36,6 +36,7 @@ class Indica(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.conversations = Conversations()
         self.config = bot.config
         self.lock = asyncio.Lock()
 #        self.hybrid = self.bot.get_cog('Hybrid')
@@ -146,7 +147,7 @@ class Indica(commands.Cog):
 #                if self.bot.user in message.raw_mentions and not isinstance(message.type, MessageType.reply):
  #                   self.conversations.clear()
                 if self.bot.user in message.mentions:
-                    async for response in self.bot.conversations.create_https_completion(
+                    async for response in self.conversations.create_https_completion(
                         completions=self.config['openai_chat_n'],
                         custom_id=message.author.id,
                         input_array=array,
@@ -166,7 +167,7 @@ class Indica(commands.Cog):
 #                # Chat Moderation
                 if self.config['openai_chat_moderation']:
                     role = message.guild.get_role(1308689505158565918)
-                    async for moderation in self.bot.conversations.create_https_completion(
+                    async for moderation in self.conversations.create_https_completion(
                         completions=OPENAI_CHAT_MODERATION_N,
                         custom_id=message.author.id,
                         input_array=array,

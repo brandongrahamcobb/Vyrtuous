@@ -31,7 +31,7 @@ class Lucy(commands.Bot):
         self,
         *args,
         initial_extensions: List[str],
-        db_pool: asyncpg.Pool,
+#        db_pool: asyncpg.Pool,
         testing_guild_id: Optional[int] = None,
         conversations: Conversations = None,
         **kwargs
@@ -39,7 +39,7 @@ class Lucy(commands.Bot):
         logger.info('Initializing Lucy bot...')
         try:
             super().__init__(*args, **kwargs)
-            self.db_pool = db_pool
+ #           self.db_pool = db_pool
             self.testing_guild_id = testing_guild_id
             self.initial_extensions = initial_extensions
             self.conversations = conversations
