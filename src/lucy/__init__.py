@@ -14,25 +14,21 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-#import sys
-#import os
-#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from datetime import datetime, timedelta
 from quart import Quart, Response, redirect, request, session
-from utils.config import Config
-from utils.create_https_completion import Conversations
-from utils.discord import Lucy
-from utils.increment_version import increment_version
-from utils.setup_logging import setup_logging
-from utils.twitch import app, Vyrtuous
+from lucy.utils.config import Config
+from lucy.utils.create_https_completion import Conversations
+from lucy.utils.discord_utils import Lucy
+from lucy.utils.increment_version import increment_version
+from lucy.utils.setup_logging import setup_logging
+from lucy.utils.twitch import app, startup
+from lucy.utils.helpers import *
 
 import aiohttp
 import asyncio
 import asyncpg
 import discord
 import os
-import lucy.utils.helpers as helpers
 import yaml
 
 async def main():
@@ -43,25 +39,23 @@ async def main():
         user='postgres',
         command_timeout=30
     ) as pool:
-        setup_logging(config, helpers.PATH_LOG)
+        setup_logging(config, PATH_LOG)
         tasks = []
         async with Lucy(
             command_prefix=config['discord_command_prefix'],
             db_pool=pool,
-            initial_extensions=['bot.cogs.hybrid', 'bot.cogs.indica', 'bot.cogs.sativa'],
+            initial_extensions=['lucy.cogs.hybrid', 'lucy.cogs.indica', 'lucy.cogs.sativa'],
             intents=discord.Intents.all(),
             testing_guild_id=config['discord_testing_guild_id'],
             conversations=conversations
         ) as bot:
             bot.config = config
-            increment_version(config, helpers.PATH_CONFIG_YAML)
-            with open('token.txt') as f:
-                user_access_token = f.read().strip()
-                twitch = Vyrtuous(bot, user_access_token)
-                tasks.append(asyncio.create_task(twitch.start()))
+            increment_version(config, PATH_CONFIG_YAML)
+            tasks.append(asyncio.create_task(startup()))
             tasks.append(asyncio.create_task(app.run_task(port=5000)))
             tasks.append(asyncio.create_task(bot.start(config['discord_token'])))
             await asyncio.gather(*tasks)
 
-if __name__ == '__main__':
+def run():
+    import asyncio
     asyncio.run(main())

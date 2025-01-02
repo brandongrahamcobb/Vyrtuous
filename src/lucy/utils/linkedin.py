@@ -19,9 +19,9 @@
 
 from collections import defaultdict
 from PIL import Image
-from utils.create_https_completion import create_https_completion
-from utils.load_yaml import load_yaml
-from utils.setup_logging import logger
+from .create_https_completion import create_https_completion
+from .load_yaml import load_yaml
+from .setup_logging import logger
 
 import asyncio
 import io
@@ -29,7 +29,7 @@ import requests
 import shlex
 import time
 import traceback
-import utils.helpers as helpers
+from .helpers import *
 import yaml
 
 
@@ -104,6 +104,6 @@ class LinkedInBot:
 
 
 if __name__ == "__main__":
-    CONFIG_PATH = helpers.PATH_CONFIG_YAML
+    CONFIG_PATH = PATH_CONFIG_YAML
     bot = LinkedInBot(CONFIG_PATH)
     asyncio.run(bot.main())

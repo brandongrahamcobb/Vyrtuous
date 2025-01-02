@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
-from utils.setup_logging import logger
+from .setup_logging import logger
 
 from io import BytesIO
 

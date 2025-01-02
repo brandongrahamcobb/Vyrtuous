@@ -19,9 +19,9 @@ from rdkit.Chem import rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 rdDepictor.SetPreferCoordGen(True)
 
-from utils.add_watermark import add_watermark
-from utils.get_molecule_name import get_molecule_name
-from utils.setup_logging import logger
+from .add_watermark import add_watermark
+from .get_molecule_name import get_molecule_name
+from .setup_logging import logger
 
 def draw_watermarked_molecule(molecule) -> BytesIO:
     try:

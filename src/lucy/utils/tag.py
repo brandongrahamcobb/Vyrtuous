@@ -16,7 +16,7 @@
 '''
 
 from typing import Optional, List, Dict
-from utils.setup_logging import logger
+from .setup_logging import logger
 
 class TagManager:
     def __init__(self, db_pool):

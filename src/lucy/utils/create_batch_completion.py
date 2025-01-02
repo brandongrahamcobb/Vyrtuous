@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from openai import AsyncOpenAI
-from utils.setup_logging import logger
+from .setup_logging import logger
 
 import load_yaml
 import openai

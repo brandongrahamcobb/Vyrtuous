@@ -19,22 +19,22 @@
 from collections import defaultdict
 from datetime import datetime
 from openai import AsyncOpenAI
-from utils.load_yaml import load_yaml
-from utils.setup_logging import logger
+from .load_yaml import load_yaml
+from .setup_logging import logger
 
 import aiohttp
 import datetime
 import json
 import openai
 import traceback
-import utils.helpers as helpers
+from .helpers import *
 
 class Conversations:
     def __init__(self):
         self.conversations = defaultdict(list)
 
     def trim_conversation_history(self, model, custom_id):
-        max_context_length = helpers.OPENAI_MODEL_CONTEXT_LIMITS.get(model, 4096)
+        max_context_length = OPENAI_MODEL_CONTEXT_LIMITS.get(model, 4096)
         total_tokens = sum(len(msg['content']) for msg in self.conversations[custom_id])
         while total_tokens > max_context_length:
             removed_message = self.conversations[custom_id].pop(0)
@@ -59,7 +59,7 @@ class Conversations:
     ):
         try:
             logger.info('Loading configuration file.')
-            config = load_yaml(helpers.PATH_CONFIG_YAML)
+            config = load_yaml(PATH_CONFIG_YAML)
             api_key = config['api_keys']['api_key_1']['api_key']
             logger.info('API key loaded successfully.')
             ai_client = AsyncOpenAI(api_key=api_key)
@@ -102,7 +102,7 @@ class Conversations:
             async with aiohttp.ClientSession() as session:
                 try:
                     logger.info('Sending request to OpenAI chat endpoint.')
-                    async with session.post(url=helpers.OPENAI_ENDPOINT_URLS['chat'], headers=headers, json=request_data) as response:
+                    async with session.post(url=OPENAI_ENDPOINT_URLS['chat'], headers=headers, json=request_data) as response:
                         logger.info(f'Received response with status: {response.status}.')
                         full_response = ''
                         if stream:
@@ -133,7 +133,7 @@ class Conversations:
                         if add_completion_to_history:
                             self.conversations[custom_id].append({'role': 'assistant', 'content': full_response})
                             logger.info(f'Added assistant response to conversation history for user: {custom_id}.')
-                        for chunk in self.split_long_response(full_response, helpers.DISCORD_CHARACTER_LIMIT):
+                        for chunk in self.split_long_response(full_response, DISCORD_CHARACTER_LIMIT):
                             yield chunk
                 except Exception as e:
                     logger.error('Error during OpenAI request.', exc_info=True)

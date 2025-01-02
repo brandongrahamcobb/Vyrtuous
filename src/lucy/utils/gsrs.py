@@ -20,8 +20,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from utils.add_watermark import add_watermark
-from utils.setup_logging import logger
+from .add_watermark import add_watermark
+from .setup_logging import logger
 from webdriver_manager.chrome import ChromeDriverManager
 
 import math

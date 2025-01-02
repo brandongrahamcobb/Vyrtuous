@@ -17,7 +17,7 @@
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import math
-from utils.setup_logging import logger
+from .setup_logging import logger
 
 def add_watermark(image: BytesIO, watermark_text: str = 'Discord') -> BytesIO:
     logger.info('Starting the watermarking process.')

@@ -1,7 +1,7 @@
 
 
 from collections import defaultdict
-from utils.setup_logging import logger
+from .setup_logging import logger
 
 import json
 import numpy as np

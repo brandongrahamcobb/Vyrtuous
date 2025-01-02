@@ -25,7 +25,7 @@ import utils.helpers as helpers
 async def create_moderation(input_text):
     try:
         logger.info('Starting moderation process...')
-        config = load_yaml(helpers.PATH_CONFIG_YAML)
+        config = load_yaml(PATH_CONFIG_YAML)
         logger.debug('Configuration loaded successfully.')
 
         api_key = config['api_keys']['api_key_1']

@@ -16,7 +16,7 @@
 '''
 
 from os.path import dirname, abspath, expanduser, join
-from utils.setup_logging import logger
+from .setup_logging import logger
 
 # Base and Home Paths
 DIR_BASE = dirname(abspath(__file__))
@@ -43,7 +43,7 @@ PATH_CREATE_COMPLETION = join(DIR_BASE, 'create_completion.py')
 PATH_CREATE_HTTPS_COMPLETION = join(DIR_BASE, 'create_https_completion.py')
 PATH_CREATE_HTTPS_MODERATION = join(DIR_BASE, 'create_https_moderation.py')
 PATH_CREATE_MODERATION = join(DIR_BASE, 'create_moderation.py')
-PATH_DISCORD = join(DIR_BASE, 'discord.py')
+PATH_DISCORD_UTILS = join(DIR_BASE, 'discord_utils.py')
 PATH_DRAW_FINGERPRINT = join(DIR_BASE, 'draw_fingerprint.py')
 PATH_DRAW_WATERMARKED_MOLECULE = join(DIR_BASE, 'draw_watermarked_molecule.py')
 PATH_FINE_TUNING = join(DIR_BASE, 'fine_tuning.py')
@@ -55,15 +55,15 @@ PATH_GET_SCRIPTURE = join(DIR_BASE, 'get_scripture.py')
 PATH_GOOGLE = join(DIR_BASE, 'google.py')
 PATH_GSRS = join(DIR_BASE, 'gsrs.py')
 PATH_HELPERS = join(DIR_BASE, 'helpers.py')
-PATH_HYBRID = join(DIR_BASE, '..', 'bot', 'cogs', 'hybrid.py')
+PATH_HYBRID = join(DIR_BASE, '..', 'cogs', 'hybrid.py')
 PATH_INCREMENT_VERSION = join(DIR_BASE, 'increment_version.py')
-PATH_INDICA = join(DIR_BASE, '..', 'bot', 'cogs', 'indica.py')
+PATH_INDICA = join(DIR_BASE, '..', 'cogs', 'indica.py')
 PATH_LINKEDIN = join(DIR_BASE, 'linkedin.py')
 PATH_LOAD_CONTENTS = join(DIR_BASE, 'load_contents.py')
 PATH_LOAD_YAML = join(DIR_BASE, 'load_yaml.py')
 PATH_NLP_UTILS = join(DIR_BASE, 'nlp_utils.py')
 PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'prompt_for_values.py')
-PATH_SATIVA = join(DIR_BASE, '..', 'bot', 'cogs', 'sativa.py')
+PATH_SATIVA = join(DIR_BASE, '..', 'cogs', 'sativa.py')
 PATH_SCRIPT = join(DIR_BASE, 'script.py')
 PATH_SETUP_LOGGING = join(DIR_BASE, 'setup_logging.py')
 PATH_TAG = join(DIR_BASE, 'tag.py')
@@ -74,9 +74,9 @@ PATH_UNIQUE_PAIRS = join(DIR_BASE, 'unique_pairs.py')
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
-    'bot.cogs.hybrid',
-    'bot.cogs.indica',
-    'bot.cogs.sativa',
+    'cogs.hybrid',
+    'cogs.indica',
+    'cogs.sativa',
 ]
 DISCORD_COMMAND_PREFIX = '!'
 DISCORD_INTENTS = 'discord.Intents.all()'

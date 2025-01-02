@@ -19,21 +19,21 @@
 from collections import defaultdict
 from datetime import datetime
 from openai import AsyncOpenAI
-from utils.load_yaml import load_yaml
-from utils.nlp_utils import NLPUtils
-from utils.setup_logging import logger
+from .load_yaml import load_yaml
+from .nlp_utils import NLPUtils
+from .setup_logging import logger
 
 import aiohttp
 import json
 import openai
 import traceback
-import utils.helpers as helpers
+from .helpers import *
 
 async def create_https_moderation(custom_id, input_array, model):
     try:
         logger.info('Loading configuration file.')
         # Load the configuration file
-        config = load_yaml(helpers.PATH_CONFIG_YAML)
+        config = load_yaml(PATH_CONFIG_YAML)
         api_key = config['api_keys']['api_key_1']['api_key']
         logger.info('API key loaded successfully.')
 
@@ -53,7 +53,7 @@ async def create_https_moderation(custom_id, input_array, model):
         async with aiohttp.ClientSession() as session:
             try:
                 logger.info('Sending request to OpenAI moderation endpoint.')
-                async with session.post(url=helpers.OPENAI_ENDPOINT_URLS['moderations'], headers=headers, json=request_data) as moderation_object:
+                async with session.post(url=OPENAI_ENDPOINT_URLS['moderations'], headers=headers, json=request_data) as moderation_object:
                     logger.info(f'Received response with status: {moderation_object.status}')
 
                     if moderation_object.status == 200:

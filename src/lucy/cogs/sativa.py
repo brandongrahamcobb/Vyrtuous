@@ -17,7 +17,7 @@
 from discord.ext import commands, tasks
 from typing import Literal, Optional
 
-import utils.helpers as helpers
+from lucy.utils.helpers import *
 import discord
 
 def is_owner():

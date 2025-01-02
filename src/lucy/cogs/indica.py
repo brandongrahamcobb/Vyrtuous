@@ -17,11 +17,11 @@
 from collections import defaultdict
 from discord.ext import commands, tasks
 from os.path import abspath, dirname, exists, expanduser, join
-from utils.create_https_completion import Conversations
-from utils.create_https_moderation import create_https_moderation
-from utils.create_moderation import create_moderation
-from utils.nlp_utils import NLPUtils
-from utils.load_contents import load_contents
+from lucy.utils.create_https_completion import Conversations
+from lucy.utils.create_https_moderation import create_https_moderation
+from lucy.utils.create_moderation import create_moderation
+from lucy.utils.nlp_utils import NLPUtils
+from lucy.utils.load_contents import load_contents
 
 import asyncio
 import datetime
@@ -30,7 +30,7 @@ import json
 import os
 import subprocess
 import traceback
-import utils.helpers as helpers
+from lucy.utils.helpers import *
 
 class Indica(commands.Cog):
 
@@ -40,39 +40,39 @@ class Indica(commands.Cog):
         self.lock = asyncio.Lock()
 #        self.hybrid = self.bot.get_cog('Hybrid')
  #       self.sativa = self.bot.get_cog('Sativa')
-        self.hybrid = load_contents(helpers.PATH_HYBRID)
-        self.indica = load_contents(helpers.PATH_INDICA)
-        self.sativa = load_contents(helpers.PATH_SATIVA)
-        self.add_watermark = load_contents(helpers.PATH_ADD_WATERMARK)
-        self.adjust_hue_and_saturation = load_contents(helpers.PATH_ADJUST_HUE_AND_SATURATION)
-        self.arpp = load_contents(helpers.PATH_ARPP)
-        self.benchmark = load_contents(helpers.PATH_BENCHMARK)
-        self.clear_screen = load_contents(helpers.PATH_CLEAR_SCREEN)
-        self.combine = load_contents(helpers.PATH_COMBINE)
-        self.create_batch_completion = load_contents(helpers.PATH_CREATE_BATCH_COMPLETION)
-        self.create_https_completion = load_contents(helpers.PATH_CREATE_HTTPS_COMPLETION)
-        self.create_moderation = load_contents(helpers.PATH_CREATE_MODERATION)
-        self.discord = load_contents(helpers.PATH_DISCORD)
-        self.draw_fingerprint = load_contents(helpers.PATH_DRAW_FINGERPRINT)
-        self.draw_watermarked_molecule = load_contents(helpers.PATH_DRAW_WATERMARKED_MOLECULE)
-        self.fine_tuning = load_contents(helpers.PATH_FINE_TUNING)
-        self.format_error_check = load_contents(helpers.PATH_FORMAT_ERROR_CHECK)
-        self.get_molecule_name = load_contents(helpers.PATH_GET_MOLECULE_NAME)
-        self.get_mol = load_contents(helpers.PATH_GET_MOL)
-        self.get_proximity = load_contents(helpers.PATH_GET_PROXIMITY)
-        self.google = load_contents(helpers.PATH_GOOGLE)
-        self.gsrs = load_contents(helpers.PATH_GSRS)
-        self.helpers = load_contents(helpers.PATH_HELPERS)
-        self.increment_version = load_contents(helpers.PATH_INCREMENT_VERSION)
-        self.load_contents = load_contents(helpers.PATH_LOAD_CONTENTS)
-        self.load_yaml = load_contents(helpers.PATH_LOAD_YAML)
-        self.prompt_for_values = load_contents(helpers.PATH_PROMPT_FOR_VALUES)
-        self.script = load_contents(helpers.PATH_SCRIPT)
-        self.setup_logging = load_contents(helpers.PATH_SETUP_LOGGING)
-        self.tag = load_contents(helpers.PATH_TAG)
-        self.unique_pairs = load_contents(helpers.PATH_UNIQUE_PAIRS)
+        self.hybrid = load_contents(PATH_HYBRID)
+        self.indica = load_contents(PATH_INDICA)
+        self.sativa = load_contents(PATH_SATIVA)
+        self.add_watermark = load_contents(PATH_ADD_WATERMARK)
+        self.adjust_hue_and_saturation = load_contents(PATH_ADJUST_HUE_AND_SATURATION)
+        self.arpp = load_contents(PATH_ARPP)
+        self.benchmark = load_contents(PATH_BENCHMARK)
+        self.clear_screen = load_contents(PATH_CLEAR_SCREEN)
+        self.combine = load_contents(PATH_COMBINE)
+        self.create_batch_completion = load_contents(PATH_CREATE_BATCH_COMPLETION)
+        self.create_https_completion = load_contents(PATH_CREATE_HTTPS_COMPLETION)
+        self.create_moderation = load_contents(PATH_CREATE_MODERATION)
+        self.discord = load_contents(PATH_DISCORD_UTILS)
+        self.draw_fingerprint = load_contents(PATH_DRAW_FINGERPRINT)
+        self.draw_watermarked_molecule = load_contents(PATH_DRAW_WATERMARKED_MOLECULE)
+        self.fine_tuning = load_contents(PATH_FINE_TUNING)
+        self.format_error_check = load_contents(PATH_FORMAT_ERROR_CHECK)
+        self.get_molecule_name = load_contents(PATH_GET_MOLECULE_NAME)
+        self.get_mol = load_contents(PATH_GET_MOL)
+        self.get_proximity = load_contents(PATH_GET_PROXIMITY)
+        self.google = load_contents(PATH_GOOGLE)
+        self.gsrs = load_contents(PATH_GSRS)
+        self.helpers = load_contents(PATH_HELPERS)
+        self.increment_version = load_contents(PATH_INCREMENT_VERSION)
+        self.load_contents = load_contents(PATH_LOAD_CONTENTS)
+        self.load_yaml = load_contents(PATH_LOAD_YAML)
+        self.prompt_for_values = load_contents(PATH_PROMPT_FOR_VALUES)
+        self.script = load_contents(PATH_SCRIPT)
+        self.setup_logging = load_contents(PATH_SETUP_LOGGING)
+        self.tag = load_contents(PATH_TAG)
+        self.unique_pairs = load_contents(PATH_UNIQUE_PAIRS)
         self.sum_of_paths = f'''
-            {self.adjust_hue_and_saturation} and {self.arpp} and {self.benchmark} and {self.bot} and {self.clear_screen} and {self.combine} and {self.create_batch_completion} and and {self.create_https_completion} and {self.create_moderation} and {self.discord} and {self.draw_fingerprint} and {self.draw_watermarked_molecule} and {self.fine_tuning} and {self.format_error_check} and {self.get_molecule_name} and {self.get_mol} and {self.get_proximity} and {self.google} and {self.gsrs} and {self.helpers} and {self.hybrid} and {self.increment_version} and {self.indica} and {self.load_contents} and {self.load_yaml} and {self.sativa} and {self.setup_logging} and {self.tag} and {self.unique_pairs}
+            {self.adjust_hue_and_saturation} and {self.arpp} and {self.benchmark} and {self.clear_screen} and {self.combine} and {self.create_batch_completion} and and {self.create_https_completion} and {self.create_moderation} and {self.discord} and {self.draw_fingerprint} and {self.draw_watermarked_molecule} and {self.fine_tuning} and {self.format_error_check} and {self.get_molecule_name} and {self.get_mol} and {self.get_proximity} and {self.google} and {self.gsrs} and {self.helpers} and {self.hybrid} and {self.increment_version} and {self.indica} and {self.load_contents} and {self.load_yaml} and {self.sativa} and {self.setup_logging} and {self.tag} and {self.unique_pairs}
         '''
         self.sys_input = f'''
             Your utilities are {self.sum_of_paths}.
@@ -111,21 +111,21 @@ class Indica(commands.Cog):
                                 'url': attachment.url
                             }
                         }
-                    elif attachment.content_type and attachment.content_type.startswith('text/')
+                        array.append(input_image_dict)
+                    elif attachment.content_type and attachment.content_type.startswith('text/'):
                     # Read the content of the text file
-                    try:
-                        file_content = await attachment.read()  # Read the file content
-                        text_content = file_content.decode('utf-8')  # Decode bytes to string
-                        input_text_dict = {
-                            'type': 'text',
-                            'text': text_content  # Add the text content to the array
-                        }
-                        array.append(input_text_dict)
-                    except Exception as e:
-                        logger.error(f'Error reading text attachment {attachment.filename}: {e}')
-                        await message.channel.send(f"Could not read the content of the text file: {attachment.filename}")
-                    array.append(input_image_dict)
-                async for moderation in create_https_moderation(message.author.id, array, model=helpers.OPENAI_MODERATION_MODEL):
+                        try:
+                            file_content = await attachment.read()  # Read the file content
+                            text_content = file_content.decode('utf-8')  # Decode bytes to string
+                            input_text_dict = {
+                                'type': 'text',
+                                'text': text_content  # Add the text content to the array
+                            }
+                            array.append(input_text_dict)
+                        except Exception as e:
+                            logger.error(f'Error reading text attachment {attachment.filename}: {e}')
+                            await message.channel.send(f"Could not read the content of the text file: {attachment.filename}")
+                async for moderation in create_https_moderation(message.author.id, array, model=OPENAI_MODERATION_MODEL):
                     results = moderation.get('results', [])
                     if results and results[0].get('flagged', False):
                         await message.delete()
@@ -167,20 +167,20 @@ class Indica(commands.Cog):
                 if self.config['openai_chat_moderation']:
                     role = message.guild.get_role(1308689505158565918)
                     async for moderation in self.bot.conversations.create_https_completion(
-                        completions=helpers.OPENAI_CHAT_MODERATION_N,
+                        completions=OPENAI_CHAT_MODERATION_N,
                         custom_id=message.author.id,
                         input_array=array,
-                        max_tokens=helpers.OPENAI_CHAT_MODERATION_MAX_TOKENS,
-                        model=helpers.OPENAI_CHAT_MODERATION_MODEL,
-                        response_format=helpers.OPENAI_CHAT_MODERATION_RESPONSE_FORMAT,
-                        stop=helpers.OPENAI_CHAT_MODERATION_STOP,
-                        store=helpers.OPENAI_CHAT_MODERATION_STORE,
-                        stream=helpers.OPENAI_CHAT_MODERATION_STREAM,
-                        sys_input=helpers.OPENAI_CHAT_MODERATION_SYS_INPUT,
-                        temperature=helpers.OPENAI_CHAT_MODERATION_TEMPERATURE,
-                        top_p=helpers.OPENAI_CHAT_MODERATION_TOP_P,
-                        use_history=helpers.OPENAI_CHAT_MODERATION_USE_HISTORY,
-                        add_completion_to_history=helpers.OPENAI_CHAT_MODERATION_ADD_COMPLETION_TO_HISTORY
+                        max_tokens=OPENAI_CHAT_MODERATION_MAX_TOKENS,
+                        model=OPENAI_CHAT_MODERATION_MODEL,
+                        response_format=OPENAI_CHAT_MODERATION_RESPONSE_FORMAT,
+                        stop=OPENAI_CHAT_MODERATION_STOP,
+                        store=OPENAI_CHAT_MODERATION_STORE,
+                        stream=OPENAI_CHAT_MODERATION_STREAM,
+                        sys_input=OPENAI_CHAT_MODERATION_SYS_INPUT,
+                        temperature=OPENAI_CHAT_MODERATION_TEMPERATURE,
+                        top_p=OPENAI_CHAT_MODERATION_TOP_P,
+                        use_history=OPENAI_CHAT_MODERATION_USE_HISTORY,
+                        add_completion_to_history=OPENAI_CHAT_MODERATION_ADD_COMPLETION_TO_HISTORY
                     ):
                         full_response = json.loads(moderation)
                         results = full_response.get('results', [])

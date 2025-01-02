@@ -1,4 +1,4 @@
-''' hybrid.py The purpose of this program is to be an extension to a Discord bot to provide the command functionality from cd ../../.
+''' hybrid.py The purpose of this program is to be an extension to a Discord bot to provide the command functionality from cd ..lucy./..lucy./.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -20,19 +20,19 @@ from discord.ext import commands
 from PIL import Image
 from random import randint
 from typing import Optional
-from utils.frames import extract_random_frames
-from utils.add_watermark import add_watermark
-from utils.average_score import average_score
-from utils.combine import combine
-from utils.create_completion import create_completion
-from utils.draw_fingerprint import draw_fingerprint
-from utils.draw_watermarked_molecule import draw_watermarked_molecule
-from utils.get_mol import get_mol
-from utils.google import google
-from utils.gsrs import gsrs
-from utils.script import script
-from utils.unique_pairs import unique_pairs
-from utils.tag import TagManager
+from ..utils.frames import extract_random_frames
+from ..utils.add_watermark import add_watermark
+from ..utils.average_score import average_score
+from ..utils.combine import combine
+from ..utils.create_completion import create_completion
+from ..utils.draw_fingerprint import draw_fingerprint
+from ..utils.draw_watermarked_molecule import draw_watermarked_molecule
+from ..utils.get_mol import get_mol
+from ..utils.google import google
+from ..utils.gsrs import gsrs
+from ..utils.script import script
+from ..utils.unique_pairs import unique_pairs
+from ..utils.tag import TagManager
 #import aiomysql
 import asyncio
 import discord
@@ -42,7 +42,7 @@ import json
 import os
 import shlex
 import traceback
-import utils.helpers as helpers
+from ..utils.helpers import *
 
 class Hybrid(commands.Cog):
     def __init__(self, bot):
@@ -118,7 +118,7 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name="training", description="Get, add, update, or remove a tag.")
     async def training(self, ctx: commands.Context):
-        file = discord.File(helpers.PATH_TRAINING)
+        file = discord.File(PATH_TRAINING)
         await ctx.send(file=file)
 
     @commands.hybrid_command(name="tag", description="Manage your tags: add, update, remove, or list.")

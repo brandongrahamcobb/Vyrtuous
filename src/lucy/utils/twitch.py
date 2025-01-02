@@ -14,8 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-# twitch.py
-
 import aiohttp
 from quart import Quart, request, session, redirect
 from datetime import datetime, timedelta
@@ -23,22 +21,16 @@ import os
 import yaml
 
 # Import your logging utility
-# e.g., from utils.setup_logging import setup_logging
-# and initialize the logger for this file (using __name__ helps identify the source)
-# logger = setup_logging(__name__)
+from .create_https_moderation import create_https_moderation
+from .load_yaml import load_yaml
+from .setup_logging import logger
+from .helpers import *
 
-# If your utils.setup_logging directly provides a logger, you might do:
-from utils.create_https_moderation import create_https_moderation
-from utils.create_https_moderation import create_https_moderation
-from utils.load_yaml import load_yaml
-from utils.setup_logging import logger
-import utils.helpers as helpers
-
-# Load your configuration YAML or however you handle config
-CONFIG = load_yaml(helpers.PATH_CONFIG_YAML)
+# Load your configuration YAML
+CONFIG = load_yaml(PATH_CONFIG_YAML)
 
 app = Quart(__name__)
-app.secret_key = CONFIG['twitch_token']
+app.secret_key = os.urandom(24)  # Use a secure random key
 
 # Twitch OAuth constants
 CLIENT_ID = 'l4dmn34apx38yj70jcwchqihuaieby'
@@ -46,67 +38,19 @@ CLIENT_SECRET = '1dzuy41ztp2ybfcqwouy2pz9zxte0v'
 REDIRECT_URI = 'http://localhost:5000/callback'
 TOKEN_URL = 'https://id.twitch.tv/oauth2/token'
 API_URL = 'https://api.twitch.tv/helix/'
-AUTH_URL = 'https://id.twitch.tv/oauth2/authorize'
 SCOPES = ['chat:read', 'chat:edit']
 
-@app.route("/authorize")
-async def authorize():
+# In-memory token storage (consider using persistent storage)
+oauth_data = {
+    "user_access_token": None,
+    "refresh_token": None,
+    "expires_at": None,
+}
+
+async def exchange_token(code):
     """
-    Build the Twitch OAuth authorization URL and redirect the user.
+    Exchange the authorization code for an access token.
     """
-    logger.info("Starting the authorization flow...")
-
-    # Generate a random state token to mitigate CSRF
-    state = os.urandom(16).hex()
-    session["oauth_state"] = state
-
-    # Build the Twitch OAuth authorization URL
-    params = {
-        "client_id": CLIENT_ID,
-        "redirect_uri": REDIRECT_URI,
-        "response_type": "code",
-        "scope": " ".join(SCOPES),  # or use '+'. e.g.: "chat:read+chat:edit"
-        "state": state
-    }
-
-    # Construct the full URL
-    url = (
-        f"{AUTH_URL}"
-        f"?client_id={params['client_id']}"
-        f"&redirect_uri={params['redirect_uri']}"
-        f"&response_type={params['response_type']}"
-        f"&scope={params['scope'].replace(' ', '+')}"
-        f"&state={params['state']}"
-    )
-
-    logger.debug(f"OAuth URL constructed: {url}")
-
-    # Redirect user to Twitch for authentication
-    return redirect(url)
-
-
-@app.route("/callback", methods=['GET'])
-async def oauth_callback():
-    """
-    Handles the redirect from Twitch, with 'code' in query parameters.
-    Exchanges the code for an access token that belongs to the user.
-    """
-    logger.info("Received Twitch OAuth callback.")
-
-    # Check for state mismatch (basic security check)
-    if request.args.get("state") != session.get("oauth_state"):
-        logger.warning("Invalid state token: possible CSRF detected.")
-        return "Invalid state token", 400
-
-    # Get the 'code' from the query parameters
-    code = request.args.get("code")
-    if not code:
-        logger.error("Missing authorization code in callback.")
-        return "Missing authorization code", 400
-
-    logger.debug(f"Authorization code received: {code}")
-
-    # Exchange the authorization code for a user access token
     data = {
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
@@ -121,66 +65,146 @@ async def oauth_callback():
 
     if "access_token" not in token_data:
         logger.error(f"Token exchange failed: {token_data}")
-        return f"Token exchange failed: {token_data}", 400
+        return None
 
-    # At this point, we have a user-based token
-    user_access_token = token_data["access_token"]
-    refresh_token = token_data.get("refresh_token")
-    expires_in = token_data["expires_in"]
-
-    # Store tokens in session (or DB, as needed)
-    session["user_access_token"] = user_access_token
-    session["refresh_token"] = refresh_token
-    expiration_time = datetime.utcnow() + timedelta(seconds=expires_in)
-    session["expires_at"] = expiration_time.isoformat()
+    # Update in-memory token storage
+    oauth_data["user_access_token"] = token_data["access_token"]
+    oauth_data["refresh_token"] = token_data.get("refresh_token")
+    oauth_data["expires_at"] = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
 
     logger.info("Successfully exchanged authorization code for an access token.")
+    return token_data
 
-    # (Optional) Get the user’s Twitch info to confirm identity
+async def refresh_token():
+    """
+    Refresh the OAuth token if expired.
+    """
+    if not oauth_data["refresh_token"]:
+        logger.error("No refresh token available.")
+        return None
+
+    data = {
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "refresh_token": oauth_data["refresh_token"],
+        "grant_type": "refresh_token",
+    }
+
     async with aiohttp.ClientSession() as http_session:
-        headers = {
-            "Client-ID": CLIENT_ID,
-            "Authorization": f"Bearer {user_access_token}"
-        }
-        async with http_session.get("https://api.twitch.tv/helix/users", headers=headers) as user_resp:
-            user_data = await user_resp.json()
+        async with http_session.post(TOKEN_URL, data=data) as resp:
+            token_data = await resp.json()
 
-    if not user_data.get("data"):
-        logger.error("Could not fetch user data from Twitch.")
-        return "Could not fetch user data", 400
+    if "access_token" not in token_data:
+        logger.error(f"Token refresh failed: {token_data}")
+        return None
 
-    user = user_data["data"][0]
-    user_id = user["id"]
-    user_login = user["login"]
-    display_name = user["display_name"]
+    # Update in-memory token storage
+    oauth_data["user_access_token"] = token_data["access_token"]
+    oauth_data["refresh_token"] = token_data.get("refresh_token")
+    oauth_data["expires_at"] = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
 
-    logger.info(
-        f"Got user token for {display_name} (ID {user_id}). "
-        f"Expires in {expires_in} seconds."
+    logger.info("Token refreshed successfully.")
+    return token_data
+
+async def ensure_token():
+    """
+    Ensure a valid token is available (exchange or refresh as needed).
+    """
+    if oauth_data["user_access_token"] and datetime.utcnow() < oauth_data["expires_at"]:
+        logger.debug(f"Valid token found: {oauth_data['user_access_token']}")
+        return oauth_data["user_access_token"]
+
+    # If no token or expired token, initiate refresh or authorization
+    if oauth_data["refresh_token"]:
+        logger.debug("Attempting to refresh token...")
+        refreshed_token = await refresh_token()
+        if refreshed_token:
+            return oauth_data["user_access_token"]
+        else:
+            logger.error("Token refresh failed.")
+            return None
+
+    logger.error("No valid token available; authorization is required.")
+    return None
+
+@app.route("/authorize")
+async def authorize():
+    """
+    Build the Twitch OAuth authorization URL and automatically fetch the token.
+    """
+    logger.info("Starting the automated authorization flow...")
+
+    # Construct the authorization URL
+    auth_url = (
+        f"https://id.twitch.tv/oauth2/authorize"
+        f"?client_id={CLIENT_ID}"
+        f"&redirect_uri={REDIRECT_URI}"
+        f"&response_type=code"
+        f"&scope={' '.join(SCOPES)}"
     )
+    logger.debug(f"Redirecting to Twitch OAuth URL: {auth_url}")
+    return redirect(auth_url)
 
-    # (Optional) Store user info in session
-    session["user_id"] = user_id
-    session["user_login"] = user_login
-    session["display_name"] = display_name
+@app.route("/callback")
+async def oauth_callback():
+    """
+    Handles the redirect from Twitch and exchanges the authorization code for an access token.
+    """
+    code = request.args.get("code")
+    if not code:
+        logger.error("Missing authorization code in callback.")
+        return "Missing authorization code", 400
 
-    # Here, you can redirect them to a "success" page, or run your bot, etc.
-    with open("token.txt", "w") as f:
-        f.write(user_access_token)
+    logger.debug(f"Authorization code received: {code}")
+    token_data = await exchange_token(code)
+    if not token_data:
+        return "Token exchange failed", 400
 
-    return f"Success! Token acquired. You are {display_name}."
+    # Optionally, you can initialize the Twitch bot here or signal that the token is ready
+    return "Token exchange complete! You can now start using the bot."
 
+# Example endpoint to demonstrate token usage
+@app.route("/validate_token")
+async def validate_token():
+    """
+    Validate and return the current access token.
+    """
+    token = await ensure_token()
+    if not token:
+        return "No valid token available. Reauthorization required.", 401
+
+    return f"Access Token: {token}"
+
+# Initialize the Twitch bot after ensuring the token is available
+@app.before_serving
+async def startup():
+    """
+    Handle startup tasks, such as initializing the Twitch bot.
+    """
+    # Optionally, you can check if a token exists and is valid
+    token = await ensure_token()
+    if not token:
+        logger.warning("No valid token available on startup. Please authorize the application.")
+        return
+
+    # Initialize your Twitch bot here with the valid token
+    # Example:
+    twitch_bot = Vyrtuous(bot, token)
+    await twitch_bot.start()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
 
 # ---------------------------------------------------------
 # BOT CODE
 # ---------------------------------------------------------
 from discord.ext import commands as discord_commands
 from twitchio.ext import commands as twitch_commands
-from utils.create_https_completion import Conversations
+from .create_https_completion import Conversations
 import json
 
 class Vyrtuous(twitch_commands.Bot):
-    def __init__(self, bot: discord_commands.Bot, access_token: str):
+    def __init__(self, bot: discord_commands.Bot, access_token):
         super().__init__(
             token=access_token,
             client_id=CLIENT_ID,
@@ -238,27 +262,27 @@ class Vyrtuous(twitch_commands.Bot):
 #        channel = await self.bot.fetch_channel(1315735859848544378)
  #       await channel.send(message.content)
 
-        async for moderation in create_https_moderation(message.author.id, array, model=helpers.OPENAI_MODERATION_MODEL):
+        async for moderation in create_https_moderation(message.author.id, array, model=OPENAI_MODERATION_MODEL):
             results = moderation.get('results', [])
             if results and results[0].get('flagged', False):
                 await message.delete()
 
         if self.config['openai_chat_moderation']:
             async for moderation in self.conversations.create_https_completion(
-                completions=helpers.OPENAI_CHAT_MODERATION_N,
+                completions=OPENAI_CHAT_MODERATION_N,
                 custom_id=message.author.id,
                 input_array=array,
-                max_tokens=helpers.OPENAI_CHAT_MODERATION_MAX_TOKENS,
-                model=helpers.OPENAI_CHAT_MODERATION_MODEL,
-                response_format=helpers.OPENAI_CHAT_MODERATION_RESPONSE_FORMAT,
-                stop=helpers.OPENAI_CHAT_MODERATION_STOP,
-                store=helpers.OPENAI_CHAT_MODERATION_STORE,
-                stream=helpers.OPENAI_CHAT_MODERATION_STREAM,
-                sys_input=helpers.OPENAI_CHAT_MODERATION_SYS_INPUT,
-                temperature=helpers.OPENAI_CHAT_MODERATION_TEMPERATURE,
-                top_p=helpers.OPENAI_CHAT_MODERATION_TOP_P,
-                use_history=helpers.OPENAI_CHAT_MODERATION_USE_HISTORY,
-                add_completion_to_history=helpers.OPENAI_CHAT_MODERATION_ADD_COMPLETION_TO_HISTORY
+                max_tokens=OPENAI_CHAT_MODERATION_MAX_TOKENS,
+                model=OPENAI_CHAT_MODERATION_MODEL,
+                response_format=OPENAI_CHAT_MODERATION_RESPONSE_FORMAT,
+                stop=OPENAI_CHAT_MODERATION_STOP,
+                store=OPENAI_CHAT_MODERATION_STORE,
+                stream=OPENAI_CHAT_MODERATION_STREAM,
+                sys_input=OPENAI_CHAT_MODERATION_SYS_INPUT,
+                temperature=OPENAI_CHAT_MODERATION_TEMPERATURE,
+                top_p=OPENAI_CHAT_MODERATION_TOP_P,
+                use_history=OPENAI_CHAT_MODERATION_USE_HISTORY,
+                add_completion_to_history=OPENAI_CHAT_MODERATION_ADD_COMPLETION_TO_HISTORY
              ):
                 full_response = json.loads(moderation)
                 results = full_response.get('results', [])
