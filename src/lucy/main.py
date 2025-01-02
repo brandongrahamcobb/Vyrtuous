@@ -87,6 +87,8 @@ async def main():
    #     command_timeout=30
     #) as db_pool:
     app_task = asyncio.create_task(app.run_task(host="0.0.0.0", port=5000))
+    print('(You have 30 seconds to authenticate')
+    await asyncio.sleep(30)
     discord_task = asyncio.create_task(discord_init())
  #   linkedin_task = asyncio.create_task(linkedin_init()),
     twitch_task = asyncio.create_task(twitch_init())

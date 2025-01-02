@@ -189,7 +189,7 @@ async def startup():
 
     # Initialize your Twitch bot here with the valid token
     # Example:
-    twitch_bot = Vyrtuous(bot, token)
+    twitch_bot = Vyrtuous(token)
     await twitch_bot.start()
 
 if __name__ == "__main__":
@@ -204,7 +204,7 @@ from .create_https_completion import Conversations
 import json
 
 class Vyrtuous(twitch_commands.Bot):
-    def __init__(self, bot: discord_commands.Bot, access_token):
+    def __init__(self, access_token):
         super().__init__(
             token=access_token,
             client_id=CLIENT_ID,
@@ -212,7 +212,6 @@ class Vyrtuous(twitch_commands.Bot):
             prefix="!",
             initial_channels=['spawdspawd']
         )
-        self.bot = bot
         self.conversations = Conversations()
         self.config = CONFIG
 
