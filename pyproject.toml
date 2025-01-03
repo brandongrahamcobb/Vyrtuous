@@ -44,4 +44,4 @@ requires = ["poetry-core", "setuptools"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-mycli = "lucy.main:run"
+lucy = "lucy.main:run"
