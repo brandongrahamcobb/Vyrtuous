@@ -95,9 +95,10 @@ class Indica(commands.Cog):
         array = await self.handler.process_array(message.content, message.attachments)
 
         # Chat
-        if self.config['openai_chat_completion']:
-           async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):
-               await message.reply(chat_completion)
+        if self.bot.user in message.mentions:
+            if self.config['openai_chat_completion']:
+               async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):
+                   await message.reply(chat_completion)
 
         # Moderate Text and Images
         if self.config['openai_chat_moderation']:
