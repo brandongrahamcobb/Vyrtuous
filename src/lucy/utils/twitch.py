@@ -258,8 +258,8 @@ class Vyrtuous(twitch_commands.Bot):
         ):
             await message.channel.send(response)
             logger.debug(f"Sent message: {response}")
-#        channel = await self.bot.fetch_channel(1315735859848544378)
- #       await channel.send(message.content)
+        channel = await self.bot.fetch_channel(1315735859848544378)
+        await channel.send(message.content)
 
         async for moderation in create_https_moderation(message.author.id, array, model=OPENAI_MODERATION_MODEL):
             results = moderation.get('results', [])
