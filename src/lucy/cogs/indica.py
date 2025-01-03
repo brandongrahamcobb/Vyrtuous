@@ -37,6 +37,7 @@ class Indica(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.config = bot.config
         self.conversations = Conversations()
 #        self.hybrid = self.bot.get_cog('Hybrid')
  #       self.sativa = self.bot.get_cog('Sativa')
@@ -62,6 +63,7 @@ class Indica(commands.Cog):
         self.get_proximity = load_contents(PATH_GET_PROXIMITY)
         self.google = load_contents(PATH_GOOGLE)
         self.gsrs = load_contents(PATH_GSRS)
+        self.handler = Message(self.config, self.conversations)
         self.helpers = load_contents(PATH_HELPERS)
         self.increment_version = load_contents(PATH_INCREMENT_VERSION)
         self.load_contents = load_contents(PATH_LOAD_CONTENTS)
@@ -88,12 +90,14 @@ class Indica(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         logger.info(f"Received message: {message.content}")
+        if message.author == self.bot.user:
+            return
         array = await self.handler.process_array(message.content, message.attachments)
 
         # Chat
         if self.config['openai_chat_completion']:
-           async for chat_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
-               await message.reply(response)
+           async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):
+               await message.reply(chat_completion)
 
         # Moderate Text and Images
         if self.config['openai_chat_moderation']:

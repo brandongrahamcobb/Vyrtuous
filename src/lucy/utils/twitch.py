@@ -198,7 +198,8 @@ class Vyrtuous(twitch_commands.Bot):
         )
         self.conversations = Conversations()
         self.config = config
-        self.handler = Message(self.config, self.conversations, lock)
+        self.lock = lock
+        self.handler = Message(self.config, self.conversations)
 
     async def event_ready(self):
         logger.info(f"Bot is ready! Logged in as Lucy_")

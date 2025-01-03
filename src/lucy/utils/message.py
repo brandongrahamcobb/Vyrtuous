@@ -4,13 +4,13 @@ from .helpers import *
 from .setup_logging import logger
 
 class Message:
-    def __init__(self, config, conversations, lock):
+    def __init__(self, config, conversations):
         self.config = config
         self.conversations = conversations
-        self.lock = lock
 
-    async def generate_chat_completion(self, custom_id, array, model=OPENAI_MODERATION_MODEL):
-        async for chat_response in self.conversations.create_https_completion(
+    async def generate_chat_completion(self, custom_id, array):
+        async for chat_completion in self.conversations.create_https_completion(
+            custom_id=custom_id,
             completions=self.config['openai_chat_n'],
             input_array=array,
             max_tokens=self.config['openai_chat_max_tokens'],
@@ -25,7 +25,7 @@ class Message:
             use_history=self.config['openai_chat_use_history'],
             add_completion_to_history=self.config['openai_chat_add_completion_to_history']
         ):
-            yield chat_response
+            yield chat_completion
 
     async def generate_moderation_completion(self, custom_id, array):
         async for moderation_completion in self.conversations.create_https_completion(
@@ -72,6 +72,6 @@ class Message:
     async def process_text_message(self, content):
         return [{
             'type': 'text',
-            'text': content.replace(f'<@{self.bot.user.id}>', '')
+            'text': content.replace(f'<@1318597210119864385>', '')
         }]
 

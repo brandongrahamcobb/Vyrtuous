@@ -63,7 +63,8 @@ class Config:
                 config['openai_chat_max_tokens'] = prompt_for_values('What is the max tokens per OpenAI chat completion?', config.get('openai_chat_max_tokens', OPENAI_CHAT_MAX_TOKENS))
                 config['openai_chat_model'] = prompt_for_values("Which chat model would you like to use for OpenAI's ChatGPT?", config.get('openai_chat_model', OPENAI_CHAT_MODEL))
                 config['openai_chat_moderation_model'] = prompt_for_values('Which OpenAI completions model would you like to use for moderation?', config.get('openai_chat_moderation_model', OPENAI_CHAT_MODERATION_MODEL))
-                config['openai_chat_moderation'] = prompt_for_values('Enable or disable OpenAI text moderation (True/False)?', config.get('openai_moderation_text', OPENAI_CHAT_MODERATION))
+                config['openai_chat_completion'] = prompt_for_values('Enable or disable OpenAI text completions (True/False)?', config.get('openai_chat_completion', OPENAI_CHAT_COMPLETION))
+                config['openai_chat_moderation'] = prompt_for_values('Enable or disable OpenAI text moderation (True/False)?', config.get('openai_chat_moderation', OPENAI_CHAT_MODERATION))
                 config['openai_chat_store'] = prompt_for_values('Store OpenAI completions (True/False)?', config.get('openai_chat_store', OPENAI_CHAT_STORE))
                 config['openai_chat_stream'] = prompt_for_values('Enable or disable OpenAI completions streaming (True/False)?', config.get('openai_chat_stream', OPENAI_CHAT_STREAM))
                 config['openai_chat_stop'] = prompt_for_values('What might be the OpenAI stop criteria for completions?', config.get('openai_chat_stop', OPENAI_CHAT_STOP))
@@ -105,6 +106,7 @@ class Config:
                     'openai_chat_max_tokens': prompt_for_values('Max tokens per OpenAI chat completion?', OPENAI_CHAT_MAX_TOKENS),
                     'openai_chat_moderation_model': prompt_for_values('Chat model for moderation?', OPENAI_CHAT_MODERATION_MODEL),
                     'openai_chat_model': prompt_for_values('Chat model for OpenAI ChatGPT?', OPENAI_CHAT_MODEL),
+                    'openai_chat_completion': prompt_for_values('Enable or disable OpenAI text completions (True/False)?', OPENAI_CHAT_COMPLETION),
                     'openai_chat_moderation': prompt_for_values('Enable or disable OpenAI text moderation (True/False)?', OPENAI_CHAT_MODERATION),
                     'openai_chat_store': prompt_for_values('Store OpenAI completions (True/False)?', OPENAI_CHAT_STORE),
                     'openai_chat_stream': prompt_for_values('Enable or disable OpenAI completions streaming (True/False)?', OPENAI_CHAT_STREAM),

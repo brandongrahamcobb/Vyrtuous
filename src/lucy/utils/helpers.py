@@ -89,6 +89,7 @@ LOGGING_LEVEL = 'INFO'
 
 # OpenAI Chat
 OPENAI_CHAT_ADD_COMPLETION_TO_HISTORY = True
+OPENAI_CHAT_COMPLETION = True
 OPENAI_CHAT_HEADERS = {
     'Content-Type': 'application/json',
     'OpenAI-Organization': 'org-3LYwtg7DSFJ7RLn9bfk4hATf',
