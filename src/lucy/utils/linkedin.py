@@ -19,7 +19,7 @@
 
 from collections import defaultdict
 from PIL import Image
-from .create_https_completion import create_https_completion
+from .create_https_completion import Conversations
 from .load_yaml import load_yaml
 from .setup_logging import logger
 
@@ -33,9 +33,9 @@ from .helpers import *
 import yaml
 
 
-class LinkedInBot:
-    def __init__(self, config_path, conversation_log="training.jsonl"):
-        self.config = load_yaml(config_path)
+class LinkedIn:
+    def __init__(self, config):
+        self.config = config
         self.access_token = self.config['api_keys'].get('api_key_2').get('api_key')
         self.base_url = "https://api.linkedin.com/v2"
         self.headers = {
@@ -43,7 +43,7 @@ class LinkedInBot:
             "Content-Type": "application/json"
         }
         self.conversations = defaultdict(list)
-        self.conversation_log = conversation_log
+        #self.conversation_log = conversation_log
         self.profile_urn = self.get_profile_urn()
 
     def get_authorization_url(self):
@@ -105,5 +105,5 @@ class LinkedInBot:
 
 if __name__ == "__main__":
     CONFIG_PATH = PATH_CONFIG_YAML
-    bot = LinkedInBot(CONFIG_PATH)
+    bot = LinkedIn(CONFIG_PATH)
     asyncio.run(bot.main())
