@@ -17,12 +17,14 @@
 
 from lucy.utils.config import Config
 from lucy.utils.discord_utils import Lucy
+from lucy.utils.helpers import *
 from lucy.utils.increment_version import increment_version
 from lucy.utils.linkedin import LinkedIn
 from lucy.utils.setup_logging import setup_logging
-from lucy.utils.twitch import app, startup
-from lucy.utils.helpers import *
+from lucy.utils.twitch import app, ensure_token, Vyrtuous
 from pathlib import Path
+
+from lucy.utils.create_https_completion import Conversations
 
 import aiohttp
 import asyncio
@@ -32,20 +34,29 @@ import os
 import sys
 import yaml
 
+package_root = Path(__file__).resolve().parent
+sys.path.insert(0, str(package_root))
+
 config = Config().get_config()
+conversations = Conversations()
 
 start_discord_event = asyncio.Event()
 start_linkedin_event = asyncio.Event()
 start_twitch_event = asyncio.Event()
 
-async def discord_init(db_pool):
+async def discord_init(db_pool, lock):
     discord_bot = Lucy(
+        config=config,
         command_prefix=config['discord_command_prefix'],
         db_pool=db_pool,
         initial_extensions=config['discord_cogs'],
         intents=discord.Intents.all(),
         testing_guild_id=config['discord_testing_guild_id'],
+        conversations=conversations,
+        lock=lock
     )
+    discord_bot.config = config
+    discord_bot.db_pool = db_pool
     return discord_bot
 
 async def database_init():
@@ -56,16 +67,26 @@ async def database_init():
     )
     return db_pool
 
-async def linkedin_init():
-    linkedin_bot = LinkedIn(config)
+async def linkedin_init(db_pool):
+    linkedin_bot = LinkedIn(config, db_pool)
+    linkedin_bot.config = config
+    linkedin_bot.db_pool = db_pool
     return linkedin_bot
 
-async def twitch_init():
-    token = await startup()
+async def twitch_init(db_pool, lock):
+    token = await ensure_token()
     if not token:
         logger.warning('No valid token available on startup. Please authorize the application.')
         return
-    twitch_bot = Vyrtuous(bot, token)
+    twitch_bot = Vyrtuous(
+        config=config,
+        db_pool=db_pool,
+        conversations=conversations,
+        token=token,
+        lock=lock
+    )
+    twitch_bot.config = config
+    twitch_bot.db_pool = db_pool
     return twitch_bot
 
 def trigger_discord_start():
@@ -83,19 +104,21 @@ def trigger_twitch_start():
 async def main():
     increment_version()
     setup_logging(config, PATH_LOG)
+
+    lock = asyncio.Lock()
     db_pool = await database_init()
     app_task = asyncio.create_task(app.run_task(host="0.0.0.0", port=5000))
 
     print('(You have 30 seconds to authenticate')
     await asyncio.sleep(30)
 
-    discord_bot = await discord_init(db_pool)
-    linkedin_bot = await linkedin_init()
-    twitch_bot = await twitch_init()
+    discord_bot = await discord_init(db_pool, lock)
+    linkedin_bot = await linkedin_init(db_pool)
+    twitch_bot = await twitch_init(db_pool, lock)
 
 
     discord_task = asyncio.create_task(discord_bot.start(config['discord_token']))
-    linkedin_task = asyncio.create_task(linkedin_bot.start())
+    linkedin_task = asyncio.create_task(linkedin_bot.main())
     twitch_task = asyncio.create_task(twitch_bot.start())
     await asyncio.gather(app_task, discord_task, twitch_task)
 

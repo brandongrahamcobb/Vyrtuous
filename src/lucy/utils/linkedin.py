@@ -34,8 +34,9 @@ import yaml
 
 
 class LinkedIn:
-    def __init__(self, config):
+    def __init__(self, config, db_pool):
         self.config = config
+        self.db_pool = db_pool
         self.access_token = self.config['api_keys'].get('api_key_2').get('api_key')
         self.base_url = "https://api.linkedin.com/v2"
         self.headers = {

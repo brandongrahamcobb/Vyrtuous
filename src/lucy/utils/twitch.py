@@ -27,8 +27,6 @@ from .setup_logging import logger
 from .helpers import *
 
 # Load your configuration YAML
-CONFIG = load_yaml(PATH_CONFIG_YAML)
-
 app = Quart(__name__)
 app.secret_key = os.urandom(24)  # Use a secure random key
 
@@ -176,21 +174,6 @@ async def validate_token():
     return f"Access Token: {token}"
 
 # Initialize the Twitch bot after ensuring the token is available
-@app.before_serving
-async def startup():
-    """
-    Handle startup tasks, such as initializing the Twitch bot.
-    """
-    # Optionally, you can check if a token exists and is valid
-    token = await ensure_token()
-    if not token:
-        logger.warning("No valid token available on startup. Please authorize the application.")
-        return
-
-    # Initialize your Twitch bot here with the valid token
-    # Example:
-    twitch_bot = Vyrtuous(token)
-    await twitch_bot.start()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
@@ -201,95 +184,45 @@ if __name__ == "__main__":
 from discord.ext import commands as discord_commands
 from twitchio.ext import commands as twitch_commands
 from .create_https_completion import Conversations
+from .message import Message
 import json
 
 class Vyrtuous(twitch_commands.Bot):
-    def __init__(self, access_token):
+    def __init__(self, config, conversations, db_pool, lock, token):
         super().__init__(
-            token=access_token,
+            token=token,
             client_id=CLIENT_ID,
             nick='Lucy_',
             prefix="!",
             initial_channels=['spawdspawd']
         )
         self.conversations = Conversations()
-        self.config = CONFIG
+        self.config = config
+        self.handler = Message(self.config, self.conversations, lock)
 
     async def event_ready(self):
-        logger.info("Hello World!")
         logger.info(f"Bot is ready! Logged in as Lucy_")
         logger.info(f"Connected to channel: spawdspawd")
 
     async def event_message(self, message):
-        """Handle every message in the Twitch chat."""
-        # You might log incoming messages at info or debug level
         logger.info(f"Received message: {message.content}")
+        array = await self.handler.process_array(message.content, message.attachments)
 
-        if message.author.name.lower() == 'Lucy_':
-            # Ignore the bot's own messages
-            return
+        # Chat
+        if self.config['openai_chat_completion']:
+           async for chat_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
+               await message.reply(response)
 
-        logger.info(f"Message from {message.author.name}: {message.content}")
-
-        # Prepare OpenAI API request
-        array = []
-        input_text_dict = {
-            'type': 'text',
-            'text': message.content
-        }
-        array.append(input_text_dict)
-
-        # Make your OpenAI API call here. This is hypothetical code.
-        async for response in self.conversations.create_https_completion(
-            completions=self.config['openai_chat_n'],
-            custom_id=message.author.id,
-            input_array=array,
-            max_tokens=self.config['openai_chat_max_tokens'],
-            model=self.config['openai_chat_model'],
-            response_format=self.config['openai_chat_response_format'],
-            stop=self.config['openai_chat_stop'],
-            store=self.config['openai_chat_store'],
-            stream=self.config['openai_chat_stream'],
-            sys_input=self.config['openai_chat_sys_input'],
-            temperature=self.config['openai_chat_temperature'],
-            top_p=self.config['openai_chat_top_p'],
-            use_history=self.config['openai_chat_use_history'],
-            add_completion_to_history=self.config['openai_chat_add_completion_to_history']
-        ):
-            await message.channel.send(response)
-            logger.debug(f"Sent message: {response}")
-        channel = await self.bot.fetch_channel(1315735859848544378)
-        await channel.send(message.content)
-
-        async for moderation in create_https_moderation(message.author.id, array, model=OPENAI_MODERATION_MODEL):
-            results = moderation.get('results', [])
-            if results and results[0].get('flagged', False):
-                await message.delete()
-
+        # Moderate Text and Images
         if self.config['openai_chat_moderation']:
-            async for moderation in self.conversations.create_https_completion(
-                completions=OPENAI_CHAT_MODERATION_N,
-                custom_id=message.author.id,
-                input_array=array,
-                max_tokens=OPENAI_CHAT_MODERATION_MAX_TOKENS,
-                model=OPENAI_CHAT_MODERATION_MODEL,
-                response_format=OPENAI_CHAT_MODERATION_RESPONSE_FORMAT,
-                stop=OPENAI_CHAT_MODERATION_STOP,
-                store=OPENAI_CHAT_MODERATION_STORE,
-                stream=OPENAI_CHAT_MODERATION_STREAM,
-                sys_input=OPENAI_CHAT_MODERATION_SYS_INPUT,
-                temperature=OPENAI_CHAT_MODERATION_TEMPERATURE,
-                top_p=OPENAI_CHAT_MODERATION_TOP_P,
-                use_history=OPENAI_CHAT_MODERATION_USE_HISTORY,
-                add_completion_to_history=OPENAI_CHAT_MODERATION_ADD_COMPLETION_TO_HISTORY
-             ):
-                full_response = json.loads(moderation)
+            async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
+                full_response = json.loads(moderation_completion)
                 results = full_response.get('results', [])
                 flagged = results[0].get('flagged', False)
                 carnism_flagged = results[0]['categories'].get('carnism', False)
                 carnism_score = results[0]['category_scores'].get('carnism', 0)
                 total_carnism_score = sum(arg['category_scores'].get('carnism', 0) for arg in results)
-                if carnism_flagged or flagged:  # If carnism is flagged
+                if carnism_flagged or flagged:
                     if not self.config['discord_role_pass']:
                         await message.delete()
-                    NLPUtils.append_to_other_jsonl('training.jsonl', carnism_score, message.content, message.author.id) #results[0].get('flagged', False), message.content)
+                    NLPUtils.append_to_other_jsonl('training.jsonl', carnism_score, message.content, message.author.id)

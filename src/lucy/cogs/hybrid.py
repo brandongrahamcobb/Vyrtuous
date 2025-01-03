@@ -47,10 +47,9 @@ from ..utils.helpers import *
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = bot.config
         self.indica = self.bot.get_cog('Indica')
         self.sativa = self.bot.get_cog('Sativa')
-        self.tag_manager = TagManager(bot.db_pool)
+        self.tag_manager = TagManager(self.bot.db_pool)
         #self.translator = Translator()
         #self.user_translation_preferences = {}
 
