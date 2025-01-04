@@ -16,6 +16,7 @@
 '''
 
 from lucy.utils.config import Config
+from lucy.utils.create_https_completion import Conversations
 from lucy.utils.discord_utils import Lucy
 from lucy.utils.helpers import *
 from lucy.utils.increment_version import increment_version
@@ -23,8 +24,6 @@ from lucy.utils.linkedin import LinkedIn
 from lucy.utils.setup_logging import setup_logging
 from lucy.utils.twitch import app, ensure_token, Vyrtuous
 from pathlib import Path
-
-from lucy.utils.create_https_completion import Conversations
 
 import aiohttp
 import asyncio
@@ -90,15 +89,15 @@ async def twitch_init(db_pool, lock):
     return twitch_bot
 
 def trigger_discord_start():
-    print("Triggering Discord bot start...")
+    logger.info("Triggering Discord bot start...")
     start_discord_event.set()  # Signal to start Discord bot
 
 def trigger_linkedin_start():
-    print("Triggering LinkedIn bot start...")
+    logger.info("Triggering LinkedIn bot start...")
     start_linkedin_event.set()  # Signal to start LinkedIn bot
 
 def trigger_twitch_start():
-    print("Triggering Twitch bot start...")
+    logger.info("Triggering Twitch bot start...")
     start_twitch_event.set()  # Signal to start Twitch bot
 
 async def main():

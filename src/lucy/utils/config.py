@@ -55,7 +55,7 @@ class Config:
                 config['discord_command_prefix'] = prompt_for_values('Discord command prefix?', config.get('discord_command_prefix', DISCORD_COMMAND_PREFIX))
                 config['discord_moderation_warning'] = prompt_for_values('What should be sent to users if their message was moderated?', config.get('discord_moderation_warning', DISCORD_MODERATION_WARNING))
                 config['discord_owner_id'] = prompt_for_values('Discord Owner ID?', config.get('discord_owner_id', DISCORD_OWNER_ID))
-                config['discord_role_pass'] = prompt_for_values('Should vegans not be moderated?', config.get('discord_role_pass', DISCORD_ROLE_PASS))
+                config['discord_role_pass'] = prompt_for_values('What is the role ID you\'d like unfiltered?', config.get('discord_role_pass', DISCORD_ROLE_PASS))
                 config['discord_testing_guild_id'] = prompt_for_values('What is the Discord testing guild ID?', config.get('discord_testing_guild_id', DISCORD_TESTING_GUILD_ID))
                 config['discord_token'] = prompt_for_values('What is the Discord token?', config.get('discord_token', ''))
                 config['logging_level'] = prompt_for_values('What is the logging level (DEBUG, INFO, etc.)?', config.get('logging_level', LOGGING_LEVEL))
@@ -98,7 +98,7 @@ class Config:
                     'discord_command_prefix': prompt_for_values('Discord command prefix?', DISCORD_COMMAND_PREFIX),
                     'discord_moderation_warning': prompt_for_values('Message for moderated users?', DISCORD_MODERATION_WARNING),
                     'discord_owner_id': prompt_for_values('Discord Owner ID?', DISCORD_OWNER_ID),
-                    'discord_role_pass': prompt_for_values('Should vegans not be moderated?', DISCORD_ROLE_PASS),
+                    'discord_role_pass': prompt_for_values('What is the role ID you\'d like unfiltered?', DISCORD_ROLE_PASS),
                     'discord_testing_guild_id': prompt_for_values('Discord testing guild ID?', DISCORD_TESTING_GUILD_ID),
                     'discord_token': prompt_for_values('Discord token?', ''),
                     'logging_level': prompt_for_values('Logging level (DEBUG, INFO, etc.)?', LOGGING_LEVEL),

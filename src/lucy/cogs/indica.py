@@ -104,13 +104,17 @@ class Indica(commands.Cog):
         if self.config['openai_chat_moderation']:
             async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
                 full_response = json.loads(moderation_completion)
+#                results = full_response['results']
                 results = full_response.get('results', [])
+#                flagged = results[0]['flagged']
                 flagged = results[0].get('flagged', False)
                 carnism_flagged = results[0]['categories'].get('carnism', False)
                 carnism_score = results[0]['category_scores'].get('carnism', 0)
                 total_carnism_score = sum(arg['category_scores'].get('carnism', 0) for arg in results)
                 if carnism_flagged or flagged:
-                    if not self.config['discord_role_pass']:
+                    guild = await self.bot.fetch_guild(self.config['discord_testing_guild_id'])
+                    role = guild.get_role(self.config['discord_role_pass'])
+                    if not role in message.author.roles:
                         await message.delete()
                     NLPUtils.append_to_other_jsonl('training.jsonl', carnism_score, message.content, message.author.id)
 
