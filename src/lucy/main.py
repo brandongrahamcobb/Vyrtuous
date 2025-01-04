@@ -48,8 +48,8 @@ async def discord_init(db_pool, lock):
         config=config,
         command_prefix=config['discord_command_prefix'],
         db_pool=db_pool,
-        initial_extensions=config['discord_cogs'],
-        intents=discord.Intents.all(),
+        initial_extensions=DISCORD_COGS,
+        intents=DISCORD_INTENTS,
         testing_guild_id=config['discord_testing_guild_id'],
         conversations=conversations,
         lock=lock

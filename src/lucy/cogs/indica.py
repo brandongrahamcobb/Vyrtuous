@@ -116,7 +116,7 @@ class Indica(commands.Cog):
                     role = guild.get_role(self.config['discord_role_pass'])
                     if not role in message.author.roles:
                         await message.delete()
-                    NLPUtils.append_to_other_jsonl('training.jsonl', carnism_score, message.content, message.author.id)
+                    NLPUtils.append_to_other_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Indica(bot))

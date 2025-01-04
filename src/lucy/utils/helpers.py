@@ -15,74 +15,75 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
+import discord
 from os.path import dirname, abspath, expanduser, join
 from .setup_logging import logger
 
 # Base and Home Paths
-DIR_BASE = dirname(abspath(__file__))
+DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
+
 PATH_HOME = expanduser('~')
 
 # Config and Preferences
-PATH_CONFIG_YAML = join(PATH_HOME, '.config', 'spawd', 'config.yaml')
-PATH_CONFIG_JSON = join(PATH_HOME, '.config', 'spawd', 'config.json')
+PATH_CONFIG_YAML = join(DIR_BASE, 'lucy', '.config', 'config.yaml')
 
 # Logs
-PATH_LOG = join(PATH_HOME, '.log', 'spawd', 'discord.log')
+PATH_LOG = join(DIR_BASE, 'lucy', '.log', 'discord.log')
 
 # Script Paths
-PATH_ADD_WATERMARK = join(DIR_BASE, 'add_watermark.py')
-PATH_ADJUST_HUE_AND_SATURATION = join(DIR_BASE, 'adjust_hue_and_saturation.py')
-PATH_ARPP = join(DIR_BASE, 'api_request_parallel_processor.py')
-PATH_BENCHMARK = join(DIR_BASE, 'benchmark.py')
-PATH_CLEAR_SCREEN = join(DIR_BASE, 'clear_screen.py')
-PATH_COMBINE = join(DIR_BASE, 'combine.py')
-PATH_CONFIG = join(DIR_BASE, 'config.py')
-PATH_CREATE_BATCH_COMPLETION = join(DIR_BASE, 'create_batch_completion.py')
-PATH_CREATE_COMPLETION_DEPRECATED = join(DIR_BASE, 'create_completion_deprecated.py')
-PATH_CREATE_COMPLETION = join(DIR_BASE, 'create_completion.py')
-PATH_CREATE_HTTPS_COMPLETION = join(DIR_BASE, 'create_https_completion.py')
-PATH_CREATE_HTTPS_MODERATION = join(DIR_BASE, 'create_https_moderation.py')
-PATH_CREATE_MODERATION = join(DIR_BASE, 'create_moderation.py')
-PATH_DISCORD_UTILS = join(DIR_BASE, 'discord_utils.py')
-PATH_DRAW_FINGERPRINT = join(DIR_BASE, 'draw_fingerprint.py')
-PATH_DRAW_WATERMARKED_MOLECULE = join(DIR_BASE, 'draw_watermarked_molecule.py')
-PATH_FINE_TUNING = join(DIR_BASE, 'fine_tuning.py')
-PATH_FORMAT_ERROR_CHECK = join(DIR_BASE, 'format_error_check.py')
-PATH_GET_MOLECULE_NAME = join(DIR_BASE, 'get_molecule_name.py')
-PATH_GET_MOL = join(DIR_BASE, 'get_mol.py')
-PATH_GET_PROXIMITY = join(DIR_BASE, 'get_proximity.py')
-PATH_GET_SCRIPTURE = join(DIR_BASE, 'get_scripture.py')
-PATH_GOOGLE = join(DIR_BASE, 'google.py')
-PATH_GSRS = join(DIR_BASE, 'gsrs.py')
-PATH_HELPERS = join(DIR_BASE, 'helpers.py')
-PATH_HYBRID = join(DIR_BASE, '..', 'cogs', 'hybrid.py')
-PATH_INCREMENT_VERSION = join(DIR_BASE, 'increment_version.py')
-PATH_INDICA = join(DIR_BASE, '..', 'cogs', 'indica.py')
-PATH_LINKEDIN = join(DIR_BASE, 'linkedin.py')
-PATH_LOAD_CONTENTS = join(DIR_BASE, 'load_contents.py')
-PATH_LOAD_YAML = join(DIR_BASE, 'load_yaml.py')
-PATH_NLP_UTILS = join(DIR_BASE, 'nlp_utils.py')
-PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'prompt_for_values.py')
-PATH_SATIVA = join(DIR_BASE, '..', 'cogs', 'sativa.py')
-PATH_SCRIPT = join(DIR_BASE, 'script.py')
-PATH_SETUP_LOGGING = join(DIR_BASE, 'setup_logging.py')
-PATH_TAG = join(DIR_BASE, 'tag.py')
-PATH_TRAINING = join(DIR_BASE, '..', 'training.jsonl')
-PATH_UNIQUE_PAIRS = join(DIR_BASE, 'unique_pairs.py')
+PATH_ADD_WATERMARK = join(DIR_BASE, 'lucy', 'utils', 'add_watermark.py')
+PATH_ADJUST_HUE_AND_SATURATION = join(DIR_BASE, 'lucy', 'utils', 'adjust_hue_and_saturation.py')
+PATH_ARPP = join(DIR_BASE, 'lucy', 'utils', 'api_request_parallel_processor.py')
+PATH_BENCHMARK = join(DIR_BASE, 'lucy', 'utils', 'benchmark.py')
+PATH_CLEAR_SCREEN = join(DIR_BASE, 'lucy', 'utils', 'clear_screen.py')
+PATH_COMBINE = join(DIR_BASE, 'lucy', 'utils', 'combine.py')
+PATH_CONFIG = join(DIR_BASE, 'lucy', 'utils', 'config.py')
+PATH_CREATE_BATCH_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_batch_completion.py')
+PATH_CREATE_COMPLETION_DEPRECATED = join(DIR_BASE, 'lucy', 'utils', 'create_completion_deprecated.py')
+PATH_CREATE_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_completion.py')
+PATH_CREATE_HTTPS_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_https_completion.py')
+PATH_CREATE_HTTPS_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_https_moderation.py')
+PATH_CREATE_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_moderation.py')
+PATH_DISCORD_UTILS = join(DIR_BASE, 'lucy', 'utils', 'discord_utils.py')
+PATH_DRAW_FINGERPRINT = join(DIR_BASE, 'lucy', 'utils', 'draw_fingerprint.py')
+PATH_DRAW_WATERMARKED_MOLECULE = join(DIR_BASE, 'lucy', 'utils', 'draw_watermarked_molecule.py')
+PATH_FINE_TUNING = join(DIR_BASE, 'lucy', 'utils', 'fine_tuning.py')
+PATH_FORMAT_ERROR_CHECK = join(DIR_BASE, 'lucy', 'utils', 'format_error_check.py')
+PATH_GET_MOLECULE_NAME = join(DIR_BASE, 'lucy', 'utils', 'get_molecule_name.py')
+PATH_GET_MOL = join(DIR_BASE, 'lucy', 'utils', 'get_mol.py')
+PATH_GET_PROXIMITY = join(DIR_BASE, 'lucy', 'utils', 'get_proximity.py')
+PATH_GET_SCRIPTURE = join(DIR_BASE, 'lucy', 'utils', 'get_scripture.py')
+PATH_GOOGLE = join(DIR_BASE, 'lucy', 'utils', 'google.py')
+PATH_GSRS = join(DIR_BASE, 'lucy', 'utils', 'gsrs.py')
+PATH_HELPERS = join(DIR_BASE, 'lucy', 'utils', 'helpers.py')
+PATH_HYBRID = join(DIR_BASE, 'lucy', 'cogs', 'hybrid.py')
+PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'increment_version.py')
+PATH_INDICA = join(DIR_BASE, 'lucy', 'cogs', 'indica.py')
+PATH_LINKEDIN = join(DIR_BASE, 'lucy', 'utils', 'linkedin.py')
+PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'load_contents.py')
+PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'load_yaml.py')
+PATH_NLP_UTILS = join(DIR_BASE, 'lucy', 'utils', 'nlp_utils.py')
+PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'lucy', 'utils', 'prompt_for_values.py')
+PATH_SATIVA = join(DIR_BASE, 'lucy', 'cogs', 'sativa.py')
+PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'script.py')
+PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'setup_logging.py')
+PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'tag.py')
+PATH_TRAINING = join(DIR_BASE, 'lucy', 'training.jsonl')
+PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'unique_pairs.py')
 
 # Discord
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
-    'cogs.hybrid',
-    'cogs.indica',
-    'cogs.sativa',
+    'lucy.cogs.hybrid',
+    'lucy.cogs.indica',
+    'lucy.cogs.sativa',
 ]
 DISCORD_COMMAND_PREFIX = '!'
-DISCORD_INTENTS = 'discord.Intents.all()'
+DISCORD_INTENTS = discord.Intents.all()
 DISCORD_MODERATION_WARNING = 'You have been warned.'
 DISCORD_OWNER_ID = 154749533429956608
-DISCORD_ROLE_PASS = True
+DISCORD_ROLE_PASS = 1308689505158565918
 DISCORD_TESTING_GUILD_ID = 1300517536001036348
 
 LOGGING_LEVEL = 'INFO'
@@ -302,8 +303,6 @@ OPENAI_ENDPOINT_URLS = {
 
 OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
 OPENAI_MODERATION_IMAGE = True
-
-OPENAI_TRAINING_FILE = join(PATH_HOME, 'Downloads', 'training_temp.jsonl')
 
 # Scripture Headers
 SCRIPTURE_HEADERS = {
