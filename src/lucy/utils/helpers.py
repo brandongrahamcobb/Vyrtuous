@@ -20,56 +20,53 @@ from os.path import dirname, abspath, expanduser, join
 from .setup_logging import logger
 
 # Base and Home Paths
-DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
-
-PATH_HOME = expanduser('~')
-
-# Config and Preferences
-PATH_CONFIG_YAML = join(DIR_BASE, 'lucy', '.config', 'config.yaml')
-
-# Logs
-PATH_LOG = join(DIR_BASE, 'lucy', '.log', 'discord.log')
+#DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
 
 # Script Paths
-PATH_ADD_WATERMARK = join(DIR_BASE, 'lucy', 'utils', 'add_watermark.py')
-PATH_ADJUST_HUE_AND_SATURATION = join(DIR_BASE, 'lucy', 'utils', 'adjust_hue_and_saturation.py')
-PATH_ARPP = join(DIR_BASE, 'lucy', 'utils', 'api_request_parallel_processor.py')
-PATH_BENCHMARK = join(DIR_BASE, 'lucy', 'utils', 'benchmark.py')
-PATH_CLEAR_SCREEN = join(DIR_BASE, 'lucy', 'utils', 'clear_screen.py')
-PATH_COMBINE = join(DIR_BASE, 'lucy', 'utils', 'combine.py')
-PATH_CONFIG = join(DIR_BASE, 'lucy', 'utils', 'config.py')
-PATH_CREATE_BATCH_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_batch_completion.py')
-PATH_CREATE_COMPLETION_DEPRECATED = join(DIR_BASE, 'lucy', 'utils', 'create_completion_deprecated.py')
-PATH_CREATE_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_completion.py')
-PATH_CREATE_HTTPS_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_https_completion.py')
-PATH_CREATE_HTTPS_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_https_moderation.py')
-PATH_CREATE_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_moderation.py')
-PATH_DISCORD_UTILS = join(DIR_BASE, 'lucy', 'utils', 'discord_utils.py')
-PATH_DRAW_FINGERPRINT = join(DIR_BASE, 'lucy', 'utils', 'draw_fingerprint.py')
-PATH_DRAW_WATERMARKED_MOLECULE = join(DIR_BASE, 'lucy', 'utils', 'draw_watermarked_molecule.py')
-PATH_FINE_TUNING = join(DIR_BASE, 'lucy', 'utils', 'fine_tuning.py')
-PATH_FORMAT_ERROR_CHECK = join(DIR_BASE, 'lucy', 'utils', 'format_error_check.py')
-PATH_GET_MOLECULE_NAME = join(DIR_BASE, 'lucy', 'utils', 'get_molecule_name.py')
-PATH_GET_MOL = join(DIR_BASE, 'lucy', 'utils', 'get_mol.py')
-PATH_GET_PROXIMITY = join(DIR_BASE, 'lucy', 'utils', 'get_proximity.py')
-PATH_GET_SCRIPTURE = join(DIR_BASE, 'lucy', 'utils', 'get_scripture.py')
-PATH_GOOGLE = join(DIR_BASE, 'lucy', 'utils', 'google.py')
-PATH_GSRS = join(DIR_BASE, 'lucy', 'utils', 'gsrs.py')
-PATH_HELPERS = join(DIR_BASE, 'lucy', 'utils', 'helpers.py')
-PATH_HYBRID = join(DIR_BASE, 'lucy', 'cogs', 'hybrid.py')
-PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'increment_version.py')
-PATH_INDICA = join(DIR_BASE, 'lucy', 'cogs', 'indica.py')
-PATH_LINKEDIN = join(DIR_BASE, 'lucy', 'utils', 'linkedin.py')
-PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'load_contents.py')
-PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'load_yaml.py')
-PATH_NLP_UTILS = join(DIR_BASE, 'lucy', 'utils', 'nlp_utils.py')
-PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'lucy', 'utils', 'prompt_for_values.py')
-PATH_SATIVA = join(DIR_BASE, 'lucy', 'cogs', 'sativa.py')
-PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'script.py')
-PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'setup_logging.py')
-PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'tag.py')
-PATH_TRAINING = join(DIR_BASE, 'lucy', 'training.jsonl')
-PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'unique_pairs.py')
+PATH_ADD_WATERMARK = join('lucy', 'utils', 'add_watermark.py')
+PATH_ADJUST_HUE_AND_SATURATION = join('lucy', 'utils', 'adjust_hue_and_saturation.py')
+PATH_ARPP = join('lucy', 'utils', 'api_request_parallel_processor.py')
+PATH_BENCHMARK = join('lucy', 'utils', 'benchmark.py')
+PATH_CLEAR_SCREEN = join('lucy', 'utils', 'clear_screen.py')
+PATH_COMBINE = join('lucy', 'utils', 'combine.py')
+PATH_CONFIG = join('lucy', 'utils', 'config.py')
+PATH_CREATE_BATCH_COMPLETION = join('lucy', 'utils', 'create_batch_completion.py')
+PATH_CREATE_COMPLETION_DEPRECATED = join('lucy', 'utils', 'create_completion_deprecated.py')
+PATH_CREATE_COMPLETION = join('lucy', 'utils', 'create_completion.py')
+PATH_CREATE_HTTPS_COMPLETION = join('lucy', 'utils', 'create_https_completion.py')
+PATH_CREATE_HTTPS_MODERATION = join('lucy', 'utils', 'create_https_moderation.py')
+PATH_CREATE_MODERATION = join('lucy', 'utils', 'create_moderation.py')
+PATH_CONFIG_YAML = join('lucy', '.config', 'config.yaml')
+PATH_DISCORD_UTILS = join('lucy', 'utils', 'discord_utils.py')
+PATH_DRAW_FINGERPRINT = join('lucy', 'utils', 'draw_fingerprint.py')
+PATH_DRAW_WATERMARKED_MOLECULE = join('lucy', 'utils', 'draw_watermarked_molecule.py')
+PATH_FINE_TUNING = join('lucy', 'utils', 'fine_tuning.py')
+PATH_FORMAT_ERROR_CHECK = join('lucy', 'utils', 'format_error_check.py')
+PATH_GET_MOLECULE_NAME = join('lucy', 'utils', 'get_molecule_name.py')
+PATH_GET_MOL = join('lucy', 'utils', 'get_mol.py')
+PATH_GET_PROXIMITY = join('lucy', 'utils', 'get_proximity.py')
+PATH_GET_SCRIPTURE = join('lucy', 'utils', 'get_scripture.py')
+PATH_GOOGLE = join('lucy', 'utils', 'google.py')
+PATH_GSRS = join('lucy', 'utils', 'gsrs.py')
+PATH_HELPERS = join('lucy', 'utils', 'helpers.py')
+PATH_HYBRID = join('lucy', 'cogs', 'hybrid.py')
+PATH_INCREMENT_VERSION = join('lucy', 'utils', 'increment_version.py')
+PATH_INDICA = join('lucy', 'cogs', 'indica.py')
+PATH_LINKEDIN = join('lucy', 'utils', 'linkedin.py')
+PATH_LOAD_CONTENTS = join('lucy', 'utils', 'load_contents.py')
+PATH_LOAD_YAML = join('lucy', 'utils', 'load_yaml.py')
+PATH_LOG = join('lucy', '.log', 'discord.log')
+PATH_NLP_UTILS = join('lucy', 'utils', 'nlp_utils.py')
+PATH_PROMPT_FOR_VALUES = join('lucy', 'utils', 'prompt_for_values.py')
+PATH_SATIVA = join('lucy', 'cogs', 'sativa.py')
+PATH_SCRIPT = join('lucy', 'utils', 'script.py')
+PATH_SETUP_LOGGING = join('lucy', 'utils', 'setup_logging.py')
+PATH_TAG = join('lucy', 'utils', 'tag.py')
+PATH_TRAINING = join('lucy', 'training.jsonl')
+PATH_UNIQUE_PAIRS = join('lucy', 'utils', 'unique_pairs.py')
+
+# MySQL
+DATABASE_URL = ''
 
 # Discord
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
@@ -263,7 +260,18 @@ OPENAI_CHAT_TOP_P = 1
 OPENAI_CHAT_TEMPERATURE = 0.7
 OPENAI_CHAT_USE_HISTORY = True
 OPENAI_CHAT_USER = 'Brandon Graham Cobb'
-
+OPENAI_ENDPOINT_URLS = {
+    'audio': 'https://api.openai.com/v1/audio/speech',
+    'batch': 'https://api.openai.com/v1/audio/batches',
+    'chat': 'https://api.openai.com/v1/chat/completions',
+    'embeddings': 'https://api.openai.com/v1/embeddings',
+    'files': 'https://api.openai.com/v1/files',
+    'fine-tuning': 'https://api.openai.com/v1/fine_tuning/jobs',
+    'images': 'https://api.openai.com/v1/images/generations',
+    'models': 'https://api.openai.com/v1/models',
+    'moderations': 'https://api.openai.com/v1/moderations',
+    'uploads': 'https://api.openai.com/v1/uploads',
+}
 OPENAI_FINE_TUNING_RESPONSE_FORMAT = {
   "type": "json_schema",
   "json_schema": {
@@ -286,21 +294,6 @@ OPENAI_FINE_TUNING_RESPONSE_FORMAT = {
     }
   }
 }
-
-# OpenAI
-OPENAI_ENDPOINT_URLS = {
-    'audio': 'https://api.openai.com/v1/audio/speech',
-    'batch': 'https://api.openai.com/v1/audio/batches',
-    'chat': 'https://api.openai.com/v1/chat/completions',
-    'embeddings': 'https://api.openai.com/v1/embeddings',
-    'files': 'https://api.openai.com/v1/files',
-    'fine-tuning': 'https://api.openai.com/v1/fine_tuning/jobs',
-    'images': 'https://api.openai.com/v1/images/generations',
-    'models': 'https://api.openai.com/v1/models',
-    'moderations': 'https://api.openai.com/v1/moderations',
-    'uploads': 'https://api.openai.com/v1/uploads',
-}
-
 OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
 OPENAI_MODERATION_IMAGE = True
 
@@ -309,8 +302,6 @@ SCRIPTURE_HEADERS = {
     'User-Agent': 'brandongrahamcobb@icloud.com',
     'api-key': '2eb327f99245cd3d68da55370656d6e2'
 }
-# MySQL
-DATABASE_URL = ''
 
 USER_AGENT = 'https://github.com/brandongrahamcobb/py.git'
 VERSION = '1.0.0'
