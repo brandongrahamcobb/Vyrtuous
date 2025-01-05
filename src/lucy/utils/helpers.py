@@ -350,5 +350,5 @@ SCRIPTURE_HEADERS = {
     'api-key': '2eb327f99245cd3d68da55370656d6e2'
 }
 
-USER_AGENT = 'https://github.com/brandongrahamcobb/py.git'
+USER_AGENT = 'https://github.com/brandongrahamcobb/lucy.git'
 VERSION = '1.0.0'

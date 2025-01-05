@@ -93,35 +93,39 @@ class Indica(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         logger.info(f"Received message: {message.content}")
-        if message.author == self.bot.user:
-            return
-        if message.attachments:
-            array = await self.handler.process_array(message.content, message.attachments)
-        else:
-            array = await self.handler.process_array(message.content, None)
-        # Chat
-        if self.bot.user in message.mentions:
-            if self.config['openai_chat_completion']:
-               async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=self.sys_input):
-                   await message.reply(chat_completion)
+        try:
+            if message.author == self.bot.user:
+                return
+            if message.attachments:
+                array = await self.handler.process_array(message.content, message.attachments)
+            else:
+                array = await self.handler.process_array(message.content, None)
+            # Chat
+            if self.bot.user in message.mentions:
+                if self.config['openai_chat_completion']:
+                    async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=self.sys_input):
+                        await message.reply(chat_completion)
 
-        # Moderate Text and Images
-        if self.config['openai_chat_moderation']:
-            async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
-                full_response = json.loads(moderation_completion)
+            # Moderate Text and Images
+            if self.config['openai_chat_moderation']:
+                async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
+                    full_response = json.loads(moderation_completion)
 #                results = full_response['results']
-                results = full_response.get('results', [])
+                    results = full_response.get('results', [])
 #                flagged = results[0]['flagged']
-                flagged = results[0].get('flagged', False)
-                carnism_flagged = results[0]['categories'].get('carnism', False)
-                carnism_score = results[0]['category_scores'].get('carnism', 0)
-                total_carnism_score = sum(arg['category_scores'].get('carnism', 0) for arg in results)
-                if carnism_flagged or flagged:
-                    guild = await self.bot.fetch_guild(self.config['discord_testing_guild_id'])
-                    role = guild.get_role(self.config['discord_role_pass'])
-                    if not role in message.author.roles:
-                        await message.delete()
-                    NLPUtils.append_to_other_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
+                    flagged = results[0].get('flagged', False)
+                    carnism_flagged = results[0]['categories'].get('carnism', False)
+                    carnism_score = results[0]['category_scores'].get('carnism', 0)
+                    total_carnism_score = sum(arg['category_scores'].get('carnism', 0) for arg in results)
+                    if carnism_flagged or flagged:
+                        guild = await self.bot.fetch_guild(self.config['discord_testing_guild_id'])
+                        role = guild.get_role(self.config['discord_role_pass'])
+                        if not role in message.author.roles:
+                            await message.delete()
+                        NLPUtils.append_to_other_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            await message.reply(e)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Indica(bot))

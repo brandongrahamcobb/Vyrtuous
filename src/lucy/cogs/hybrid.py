@@ -271,7 +271,8 @@ class Hybrid(commands.Cog):
             else:
                 await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
         except Exception as e:
-            print(f'An error occurred: {traceback.format_exc()}')
+            logger.error(traceback.format_exc())
+            await ctx.reply(e)
 
     @commands.hybrid_command(hidden=True)
     async def reload(self, ctx: commands.Context, *, module: str):
