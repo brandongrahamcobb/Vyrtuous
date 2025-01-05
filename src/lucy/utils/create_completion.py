@@ -30,7 +30,7 @@ async def create_completion(input_array):
         response = await ai_client.chat.completions.create(
             model='gpt-4o-mini',
             messages=input_array,
-            response_format=OPENAI_CHAT_RESPONSE_FORMAT
+            response_format=OPENAI_CHAT_COLORIZE_RESPONSE_FORMAT
         )
         yield response.choices[0].message.content
     except Exception as e:
