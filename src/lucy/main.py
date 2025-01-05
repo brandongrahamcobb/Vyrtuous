@@ -14,7 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-
 from lucy.utils.config import Config
 from lucy.utils.create_https_completion import Conversations
 from lucy.utils.discord_utils import Lucy
@@ -32,6 +31,7 @@ import discord
 import os
 import sys
 import yaml
+import uuid
 
 package_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(package_root))
@@ -41,6 +41,7 @@ conversations = Conversations()
 
 start_discord_event = asyncio.Event()
 start_linkedin_event = asyncio.Event()
+start_repl_event = asyncio.Event()
 start_twitch_event = asyncio.Event()
 
 async def discord_init(db_pool, lock):
@@ -88,17 +89,32 @@ async def twitch_init(db_pool, lock):
     twitch_bot.db_pool = db_pool
     return twitch_bot
 
+async def repl_init():
+    print("REPL initialized. Type 'exit' to quit.")
+    while True:
+        message = await asyncio.get_event_loop().run_in_executor(None, input, 'You: ')
+        if message.strip().lower() == 'exit':
+            print("Exiting REPL.")
+            break
+
+        # Simulate REPL interaction
+        print(f"AI: Echoing back your message - {message}\n")
+
 def trigger_discord_start():
     logger.info("Triggering Discord bot start...")
-    start_discord_event.set()  # Signal to start Discord bot
+    start_discord_event.set()
 
 def trigger_linkedin_start():
     logger.info("Triggering LinkedIn bot start...")
-    start_linkedin_event.set()  # Signal to start LinkedIn bot
+    start_linkedin_event.set()
 
 def trigger_twitch_start():
     logger.info("Triggering Twitch bot start...")
-    start_twitch_event.set()  # Signal to start Twitch bot
+    start_twitch_event.set()
+
+def trigger_repl_start():
+    logger.info("Triggering REPL start...")
+    start_repl_event.set()
 
 async def main():
     increment_version()
@@ -108,22 +124,27 @@ async def main():
     db_pool = await database_init()
     app_task = asyncio.create_task(app.run_task(host="0.0.0.0", port=5000))
 
-    print('(You have 30 seconds to authenticate')
+    print('(You have 30 seconds to authenticate)')
     await asyncio.sleep(30)
 
     discord_bot = await discord_init(db_pool, lock)
     linkedin_bot = await linkedin_init(db_pool)
     twitch_bot = await twitch_init(db_pool, lock)
 
-
+    # Start tasks
     discord_task = asyncio.create_task(discord_bot.start(config['discord_token']))
     linkedin_task = asyncio.create_task(linkedin_bot.main())
     twitch_task = asyncio.create_task(twitch_bot.start())
-    await asyncio.gather(app_task, discord_task, twitch_task)
+
+    # REPL Start Event Handling
+    async def repl_task():
+        await start_repl_event.wait()  # Wait for REPL start signal
+        await repl_init()
+
+    repl_task_instance = asyncio.create_task(repl_task())
+    await asyncio.gather(app_task, discord_task, linkedin_task, twitch_task, repl_task_instance)
 
 def run():
-    import asyncio
-
     asyncio.run(main())
 
 if __name__ == '__main__':
@@ -132,10 +153,11 @@ if __name__ == '__main__':
     discord_trigger_thread = threading.Thread(target=trigger_discord_start)
     linkedin_trigger_thread = threading.Thread(target=trigger_linkedin_start)
     twitch_trigger_thread = threading.Thread(target=trigger_twitch_start)
+    repl_trigger_thread = threading.Thread(target=trigger_repl_start)
 
     discord_trigger_thread.start()
     linkedin_trigger_thread.start()
     twitch_trigger_thread.start()
+    repl_trigger_thread.start()
 
     run()
-

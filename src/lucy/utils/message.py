@@ -8,22 +8,66 @@ class Message:
         self.config = config
         self.conversations = conversations
 
-    async def generate_chat_completion(self, custom_id, array):
+    async def generate_chat_completion(
+        self,
+        custom_id,
+        array,
+        *,
+        completions: int = Ellipsis,  # Use Ellipsis as a sentinel
+        max_tokens: int = Ellipsis,
+        model: str = Ellipsis,
+        response_format: str = Ellipsis,
+        stop: str = Ellipsis,
+        store: bool = Ellipsis,
+        stream: bool = Ellipsis,
+        sys_input: str = Ellipsis,
+        temperature: float = Ellipsis,
+        top_p: int = Ellipsis,
+        use_history: bool = Ellipsis,
+        add_completion_to_history: bool = Ellipsis
+    ):
+        # Handle defaults, keeping None if explicitly set
+        if completions is Ellipsis:
+            completions = OPENAI_CHAT_N
+        if max_tokens is Ellipsis:
+            max_tokens = self.config['openai_chat_max_tokens']
+        if model is Ellipsis:
+            model = self.config['openai_chat_model']
+        if response_format is Ellipsis:
+            response_format = OPENAI_CHAT_RESPONSE_FORMAT
+        if stop is Ellipsis:
+            stop = self.config['openai_chat_stop']
+        if store is Ellipsis:
+            store = self.config['openai_chat_store']
+        if stream is Ellipsis:
+            stream = self.config['openai_chat_stream']
+        if sys_input is Ellipsis:
+            sys_input = self.config['openai_chat_sys_input']
+        if temperature is Ellipsis:
+            temperature = self.config['openai_chat_temperature']
+        if top_p is Ellipsis:
+            top_p = self.config['openai_chat_top_p']
+        if use_history is Ellipsis:
+            use_history = self.config['openai_chat_use_history']
+        if add_completion_to_history is Ellipsis:
+            add_completion_to_history = self.config['openai_chat_add_completion_to_history']
+
+        # Continue with the main logic
         async for chat_completion in self.conversations.create_https_completion(
             custom_id=custom_id,
-            completions=self.config['openai_chat_n'],
+            completions=completions,
             input_array=array,
-            max_tokens=self.config['openai_chat_max_tokens'],
-            model=self.config['openai_chat_model'],
-            response_format=self.config['openai_chat_response_format'],
-            stop=self.config['openai_chat_stop'],
-            store=self.config['openai_chat_store'],
-            stream=self.config['openai_chat_stream'],
-            sys_input=self.config['openai_chat_sys_input'],
-            temperature=self.config['openai_chat_temperature'],
-            top_p=self.config['openai_chat_top_p'],
-            use_history=self.config['openai_chat_use_history'],
-            add_completion_to_history=self.config['openai_chat_add_completion_to_history']
+            max_tokens=max_tokens,
+            model=model,
+            response_format=response_format,
+            stop=stop,
+            store=store,
+            stream=stream,
+            sys_input=sys_input,
+            temperature=temperature,
+            top_p=top_p,
+            use_history=use_history,
+            add_completion_to_history=add_completion_to_history
         ):
             yield chat_completion
 
@@ -49,7 +93,8 @@ class Message:
 
     async def process_array(self, content, attachments):
         array = await self.process_text_message(content)
-        array.extend(await self.process_attachments(attachments))
+        if attachments:
+             array.extend(await self.process_attachments(attachments))
         return array
 
     async def process_attachments(self, attachments):

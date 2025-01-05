@@ -18,57 +18,103 @@
 import discord
 from os.path import dirname, abspath, expanduser, join
 from .setup_logging import logger
-
+from .load_contents import load_contents
 # Base and Home Paths
-#DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
+DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
 
 # Script Paths
-PATH_ADD_WATERMARK = join('lucy', 'utils', 'add_watermark.py')
-PATH_ADJUST_HUE_AND_SATURATION = join('lucy', 'utils', 'adjust_hue_and_saturation.py')
-PATH_ARPP = join('lucy', 'utils', 'api_request_parallel_processor.py')
-PATH_BENCHMARK = join('lucy', 'utils', 'benchmark.py')
-PATH_CLEAR_SCREEN = join('lucy', 'utils', 'clear_screen.py')
-PATH_COMBINE = join('lucy', 'utils', 'combine.py')
-PATH_CONFIG = join('lucy', 'utils', 'config.py')
-PATH_CREATE_BATCH_COMPLETION = join('lucy', 'utils', 'create_batch_completion.py')
-PATH_CREATE_COMPLETION_DEPRECATED = join('lucy', 'utils', 'create_completion_deprecated.py')
-PATH_CREATE_COMPLETION = join('lucy', 'utils', 'create_completion.py')
-PATH_CREATE_HTTPS_COMPLETION = join('lucy', 'utils', 'create_https_completion.py')
-PATH_CREATE_HTTPS_MODERATION = join('lucy', 'utils', 'create_https_moderation.py')
-PATH_CREATE_MODERATION = join('lucy', 'utils', 'create_moderation.py')
-PATH_CONFIG_YAML = join('lucy', '.config', 'config.yaml')
-PATH_DISCORD_UTILS = join('lucy', 'utils', 'discord_utils.py')
-PATH_DRAW_FINGERPRINT = join('lucy', 'utils', 'draw_fingerprint.py')
-PATH_DRAW_WATERMARKED_MOLECULE = join('lucy', 'utils', 'draw_watermarked_molecule.py')
-PATH_FINE_TUNING = join('lucy', 'utils', 'fine_tuning.py')
-PATH_FORMAT_ERROR_CHECK = join('lucy', 'utils', 'format_error_check.py')
-PATH_GET_MOLECULE_NAME = join('lucy', 'utils', 'get_molecule_name.py')
-PATH_GET_MOL = join('lucy', 'utils', 'get_mol.py')
-PATH_GET_PROXIMITY = join('lucy', 'utils', 'get_proximity.py')
-PATH_GET_SCRIPTURE = join('lucy', 'utils', 'get_scripture.py')
-PATH_GOOGLE = join('lucy', 'utils', 'google.py')
-PATH_GSRS = join('lucy', 'utils', 'gsrs.py')
-PATH_HELPERS = join('lucy', 'utils', 'helpers.py')
-PATH_HYBRID = join('lucy', 'cogs', 'hybrid.py')
-PATH_INCREMENT_VERSION = join('lucy', 'utils', 'increment_version.py')
-PATH_INDICA = join('lucy', 'cogs', 'indica.py')
-PATH_LINKEDIN = join('lucy', 'utils', 'linkedin.py')
-PATH_LOAD_CONTENTS = join('lucy', 'utils', 'load_contents.py')
-PATH_LOAD_YAML = join('lucy', 'utils', 'load_yaml.py')
-PATH_LOG = join('lucy', '.log', 'discord.log')
-PATH_NLP_UTILS = join('lucy', 'utils', 'nlp_utils.py')
-PATH_PROMPT_FOR_VALUES = join('lucy', 'utils', 'prompt_for_values.py')
-PATH_SATIVA = join('lucy', 'cogs', 'sativa.py')
-PATH_SCRIPT = join('lucy', 'utils', 'script.py')
-PATH_SETUP_LOGGING = join('lucy', 'utils', 'setup_logging.py')
-PATH_TAG = join('lucy', 'utils', 'tag.py')
-PATH_TRAINING = join('lucy', 'training.jsonl')
-PATH_UNIQUE_PAIRS = join('lucy', 'utils', 'unique_pairs.py')
+PATH_ADD_WATERMARK = join(DIR_BASE, 'lucy', 'utils', 'add_watermark.py')
+PATH_ADJUST_HUE_AND_SATURATION = join(DIR_BASE, 'lucy', 'utils', 'adjust_hue_and_saturation.py')
+PATH_ARPP = join(DIR_BASE, 'lucy', 'utils', 'api_request_parallel_processor.py')
+PATH_BENCHMARK = join(DIR_BASE, 'lucy', 'utils', 'benchmark.py')
+PATH_CLEAR_SCREEN = join(DIR_BASE, 'lucy', 'utils', 'clear_screen.py')
+PATH_COMBINE = join(DIR_BASE, 'lucy', 'utils', 'combine.py')
+PATH_CONFIG = join(DIR_BASE, 'lucy', 'utils', 'config.py')
+PATH_CREATE_BATCH_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_batch_completion.py')
+PATH_CREATE_COMPLETION_DEPRECATED = join(DIR_BASE, 'lucy', 'utils', 'create_completion_deprecated.py')
+PATH_CREATE_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_completion.py')
+PATH_CREATE_HTTPS_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_https_completion.py')
+PATH_CREATE_HTTPS_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_https_moderation.py')
+PATH_CREATE_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_moderation.py')
+PATH_CONFIG_YAML = join(DIR_BASE, 'lucy', '.config', 'config.yaml')
+PATH_DISCORD_UTILS = join(DIR_BASE, 'lucy', 'utils', 'discord_utils.py')
+PATH_DRAW_FINGERPRINT = join(DIR_BASE, 'lucy', 'utils', 'draw_fingerprint.py')
+PATH_DRAW_WATERMARKED_MOLECULE = join(DIR_BASE, 'lucy', 'utils', 'draw_watermarked_molecule.py')
+PATH_FINE_TUNING = join(DIR_BASE, 'lucy', 'utils', 'fine_tuning.py')
+PATH_FORMAT_ERROR_CHECK = join(DIR_BASE, 'lucy', 'utils', 'format_error_check.py')
+PATH_GET_MOLECULE_NAME = join(DIR_BASE, 'lucy', 'utils', 'get_molecule_name.py')
+PATH_GET_MOL = join(DIR_BASE, 'lucy', 'utils', 'get_mol.py')
+PATH_GET_PROXIMITY = join(DIR_BASE, 'lucy', 'utils', 'get_proximity.py')
+PATH_GET_SCRIPTURE = join(DIR_BASE, 'lucy', 'utils', 'get_scripture.py')
+PATH_GOOGLE = join(DIR_BASE, 'lucy', 'utils', 'google.py')
+PATH_GSRS = join(DIR_BASE, 'lucy', 'utils', 'gsrs.py')
+PATH_HELPERS = join(DIR_BASE, 'lucy', 'utils', 'helpers.py')
+PATH_HYBRID = join(DIR_BASE, 'lucy', 'cogs', 'hybrid.py')
+PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'increment_version.py')
+PATH_INDICA = join(DIR_BASE, 'lucy', 'cogs', 'indica.py')
+PATH_LINKEDIN = join(DIR_BASE, 'lucy', 'utils', 'linkedin.py')
+PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'load_contents.py')
+PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'load_yaml.py')
+PATH_LOG = join(DIR_BASE, 'lucy', '.log', 'discord.log')
+PATH_MAIN = join(DIR_BASE, 'lucy', 'main.py')
+PATH_NLP_UTILS = join(DIR_BASE, 'lucy', 'utils', 'nlp_utils.py')
+PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'lucy', 'utils', 'prompt_for_values.py')
+PATH_SATIVA = join(DIR_BASE, 'lucy', 'cogs', 'sativa.py')
+PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'script.py')
+PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'setup_logging.py')
+PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'tag.py')
+PATH_TRAINING = join(DIR_BASE, 'lucy', 'training.jsonl')
+PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'unique_pairs.py')
 
+# Main
+CONTENT_MAIN = load_contents(PATH_MAIN)
+
+# Utilities
+CONTENTS_ADD_WATERMARK = load_contents(PATH_ADD_WATERMARK)
+CONTENTS_ADJUST_HUE_AND_SATURATION = load_contents(PATH_ADJUST_HUE_AND_SATURATION)
+CONTENTS_ARPP = load_contents(PATH_ARPP)
+CONTENTS_BENCHMARK = load_contents(PATH_BENCHMARK)
+CONTENTS_CLEAR_SCREEN = load_contents(PATH_CLEAR_SCREEN)
+CONTENTS_COMBINED = load_contents(PATH_COMBINE)
+CONTENTS_CREATE_BATCH_COMPLETION = load_contents(PATH_CREATE_BATCH_COMPLETION)
+CONTENTS_CREATE_HTTPS_COMPLETION = load_contents(PATH_CREATE_HTTPS_COMPLETION)
+CONTENTS_CREATE_MODERATION = load_contents(PATH_CREATE_MODERATION)
+CONTENTS_DISCORD = load_contents(PATH_DISCORD_UTILS)
+CONTENTS_DRAW_FINGERPRINT = load_contents(PATH_DRAW_FINGERPRINT)
+CONTENTS_DRAW_WATERMARKED_MOLECULE = load_contents(PATH_DRAW_WATERMARKED_MOLECULE)
+CONTENTS_FINE_TUNING = load_contents(PATH_FINE_TUNING)
+CONTENTS_FORMAT_ERROR_CHECK = load_contents(PATH_FORMAT_ERROR_CHECK)
+CONTENTS_GET_MOLECULE_NAME = load_contents(PATH_GET_MOLECULE_NAME)
+CONTENTS_GET_MOL = load_contents(PATH_GET_MOL)
+CONTENTS_GET_PROXIMITY = load_contents(PATH_GET_PROXIMITY)
+CONTENTS_GOOGLE = load_contents(PATH_GOOGLE)
+CONTENTS_GSRS = load_contents(PATH_GSRS)
+CONTENTS_HELPERS = load_contents(PATH_HELPERS)
+CONTENTS_INCREMENT_VERSION = load_contents(PATH_INCREMENT_VERSION)
+CONTENTS_LOAD_CONTENTS= load_contents(PATH_LOAD_CONTENTS)
+CONTENTS_LOAD_YAML = load_contents(PATH_LOAD_YAML)
+CONTENTS_PROMPT_FOR_VALUES = load_contents(PATH_PROMPT_FOR_VALUES)
+CONTENTS_SCRIPT = load_contents(PATH_SCRIPT)
+CONTENTS_SETUP_LOGGING = load_contents(PATH_SETUP_LOGGING)
+CONTENTS_TAG = load_contents(PATH_TAG)
+CONTENTS_UNIQUE_PAIRS = load_contents(PATH_UNIQUE_PAIRS)
+SUM_OF_UTILITIES = f'''
+    {CONTENTS_ADD_WATERMARK} and {CONTENTS_ADJUST_HUE_AND_SATURATION} and {CONTENTS_ARPP} and {CONTENTS_BENCHMARK} and {CONTENTS_CLEAR_SCREEN} and {CONTENTS_COMBINED}
+    {CONTENTS_CREATE_BATCH_COMPLETION} and {CONTENTS_CREATE_HTTPS_COMPLETION} and {CONTENTS_CREATE_MODERATION} and {CONTENTS_DISCORD} and {CONTENTS_DRAW_FINGERPRINT}
+    {CONTENTS_DRAW_WATERMARKED_MOLECULE} and {CONTENTS_FINE_TUNING} and {CONTENTS_FORMAT_ERROR_CHECK}
+    {CONTENTS_GET_MOLECULE_NAME} and {CONTENTS_GET_MOL} and {CONTENTS_GET_PROXIMITY} and {CONTENTS_GOOGLE} and {CONTENTS_GSRS} and {CONTENTS_HELPERS} and {CONTENTS_INCREMENT_VERSION}
+    {CONTENTS_LOAD_CONTENTS} and {CONTENTS_LOAD_YAML} and {CONTENTS_PROMPT_FOR_VALUES} and {CONTENTS_SCRIPT} and {CONTENTS_SETUP_LOGGING} and {CONTENTS_TAG} and {CONTENTS_UNIQUE_PAIRS}
+'''
 # MySQL
 DATABASE_URL = ''
 
 # Discord
+CONTENTS_HYBRID = load_contents(PATH_HYBRID)
+CONTENTS_INDICA = load_contents(PATH_INDICA)
+CONTENTS_SATIVA = load_contents(PATH_SATIVA)
+SUM_OF_COGS = f'''
+    {CONTENTS_HYBRID} and {CONTENTS_INDICA} and {CONTENTS_SATIVA}
+'''
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
@@ -221,7 +267,8 @@ OPENAI_CHAT_MODERATION_TEMPERATURE = 1.0
 OPENAI_CHAT_MODERATION_TOP_P = 1.0
 OPENAI_CHAT_MODEL = 'gpt-4o-mini'
 OPENAI_CHAT_N = 1
-OPENAI_CHAT_RESPONSE_FORMAT = {
+OPENAI_CHAT_RESPONSE_FORMAT = None
+OPENAI_CHAT_COLORIZE_RESPONSE_FORMAT = {
 'type': 'json_schema',
 'json_schema': {
     "name": "colorize",

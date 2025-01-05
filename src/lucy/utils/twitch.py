@@ -207,7 +207,7 @@ class Vyrtuous(twitch_commands.Bot):
 
     async def event_message(self, message):
         logger.info(f"Received message: {message.content}")
-        array = await self.handler.process_array(message.content, message.attachments)
+        array = await self.handler.process_array(message.content)
 
         # Chat
         if self.config['openai_chat_completion']:
