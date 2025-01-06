@@ -224,6 +224,5 @@ class Vyrtuous(twitch_commands.Bot):
                 carnism_score = results[0]['category_scores'].get('carnism', 0)
                 total_carnism_score = sum(arg['category_scores'].get('carnism', 0) for arg in results)
                 if carnism_flagged or flagged:
-                    if not self.config['discord_role_pass']:
-                        await message.delete()
+                    await message.delete()
                     NLPUtils.append_to_other_jsonl('training.jsonl', carnism_score, message.content, message.author.id)

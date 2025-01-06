@@ -15,9 +15,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands, tasks
+from lucy.utils.helpers import *
 from typing import Literal, Optional
 
-from lucy.utils.helpers import *
+import asyncio
 import discord
 
 def is_owner():
@@ -60,21 +61,34 @@ class Sativa(commands.Cog):
 
 
     @commands.command(name='wipe', hidden=True)
-    @is_owner()
-    async def wipe(self, ctx, option=None, limit: int = 100):
+    async def wipe(self, ctx, option: str = None, limit: int = 100):
         if limit <= 0 or limit > 100:
-            await ctx.send('Please provide a limit between 1 and 100.')
-            return
+            return await ctx.send('Limit must be between 1 and 100.')
+        check_function = None
         if option == 'bot':
-            def is_bot_message(message):
-                return message.author == self.bot.user
-            deleted = await self.purge_messages(ctx, limit, is_bot_message)
-            await ctx.send(f'Deleted {deleted} bot messages.')
+            check_function = lambda m: m.author == self.bot.user
         elif option == 'all':
-            deleted = await ctx.channel.purge(limit=limit)
-            await ctx.send(f'Deleted all messages.')
+            check_function = lambda m: True  # Allow all messages to be deleted
+        elif option == 'user':
+            user = ctx.message.mentions[0] if ctx.message.mentions else None
+            if user:
+                check_function = lambda m: m.author == user
+            else:
+                return await ctx.send('Please mention a user.')
+        elif option == 'commands':
+            check_function = lambda m: m.content.startswith(ctx.prefix)
+        elif option == 'text':
+            await ctx.send('Provide text to delete messages containing it.')
+            msg_text = await self.bot.wait_for('message', check=lambda m: m.author == ctx.author)
+            check_function = lambda m: msg_text.content in m.content
         else:
-            await ctx.send('Invalid option. Use `bot`, `all`, `user`, or `commands`.')
+            return await ctx.send('Invalid option.')
+        total_deleted = 0
+        while total_deleted < limit:
+            deleted = await ctx.channel.purge(limit=min(limit - total_deleted, 10), check=check_function)
+            total_deleted += len(deleted)
+            await asyncio.sleep(1)
+        await ctx.send(f'Deleted {total_deleted} messages.')
 
 async def setup(bot: commands.bot):
     await bot.add_cog(Sativa(bot))
