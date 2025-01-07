@@ -26,17 +26,18 @@ DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
 PATH_ADD_WATERMARK = join(DIR_BASE, 'lucy', 'utils', 'add_watermark.py')
 PATH_ADJUST_HUE_AND_SATURATION = join(DIR_BASE, 'lucy', 'utils', 'adjust_hue_and_saturation.py')
 PATH_ARPP = join(DIR_BASE, 'lucy', 'utils', 'api_request_parallel_processor.py')
+PATH_AVERAGE_SCORE = join(DIR_BASE, 'lucy', 'utils', 'average_score.py')
 PATH_BENCHMARK = join(DIR_BASE, 'lucy', 'utils', 'benchmark.py')
 PATH_CLEAR_SCREEN = join(DIR_BASE, 'lucy', 'utils', 'clear_screen.py')
 PATH_COMBINE = join(DIR_BASE, 'lucy', 'utils', 'combine.py')
 PATH_CONFIG = join(DIR_BASE, 'lucy', 'utils', 'config.py')
 PATH_CREATE_BATCH_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_batch_completion.py')
-PATH_CREATE_COMPLETION_DEPRECATED = join(DIR_BASE, 'lucy', 'utils', 'create_completion_deprecated.py')
 PATH_CREATE_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_completion.py')
 PATH_CREATE_HTTPS_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_https_completion.py')
 PATH_CREATE_HTTPS_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_https_moderation.py')
 PATH_CREATE_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_moderation.py')
 PATH_CONFIG_YAML = join(DIR_BASE, 'lucy', '.config', 'config.yaml')
+PATH_DISCORD_BOT = join(DIR_BASE, 'lucy', 'utils', 'discord_bot.py')
 PATH_DISCORD_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'discord_oauth.py')
 PATH_DRAW_FINGERPRINT = join(DIR_BASE, 'lucy', 'utils', 'draw_fingerprint.py')
 PATH_DRAW_WATERMARKED_MOLECULE = join(DIR_BASE, 'lucy', 'utils', 'draw_watermarked_molecule.py')
@@ -52,7 +53,8 @@ PATH_HELPERS = join(DIR_BASE, 'lucy', 'utils', 'helpers.py')
 PATH_HYBRID = join(DIR_BASE, 'lucy', 'cogs', 'hybrid.py')
 PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'increment_version.py')
 PATH_INDICA = join(DIR_BASE, 'lucy', 'cogs', 'indica.py')
-PATH_LINKEDIN = join(DIR_BASE, 'lucy', 'utils', 'linkedin.py')
+PATH_LINKEDIN_BOT = join(DIR_BASE, 'lucy', 'utils', 'linkedin_bot.py')
+PATH_LINKEDIN_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'linkedin_oauth.py')
 PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'load_contents.py')
 PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'load_yaml.py')
 PATH_LOG = join(DIR_BASE, 'lucy', '.log', 'discord.log')
@@ -64,21 +66,25 @@ PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'script.py')
 PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'setup_logging.py')
 PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'tag.py')
 PATH_TRAINING = join(DIR_BASE, 'lucy', 'training.jsonl')
+PATH_TWITCH_BOT = join(DIR_BASE, 'lucy', 'utils', 'twitch_bot.py')
+PATH_TWITCH_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'twitch_oauth.py')
 PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'unique_pairs.py')
 
 # Main
-CONTENT_MAIN = load_contents(PATH_MAIN)
+CONTENTS_MAIN = load_contents(PATH_MAIN)
 
 # Utilities
 CONTENTS_ADD_WATERMARK = load_contents(PATH_ADD_WATERMARK)
 CONTENTS_ADJUST_HUE_AND_SATURATION = load_contents(PATH_ADJUST_HUE_AND_SATURATION)
 CONTENTS_ARPP = load_contents(PATH_ARPP)
+CONTENTS_AVERAGE_SCORE = load_contents(PATH_AVERAGE_SCORE)
 CONTENTS_BENCHMARK = load_contents(PATH_BENCHMARK)
 CONTENTS_CLEAR_SCREEN = load_contents(PATH_CLEAR_SCREEN)
 CONTENTS_COMBINED = load_contents(PATH_COMBINE)
 CONTENTS_CREATE_BATCH_COMPLETION = load_contents(PATH_CREATE_BATCH_COMPLETION)
 CONTENTS_CREATE_HTTPS_COMPLETION = load_contents(PATH_CREATE_HTTPS_COMPLETION)
 CONTENTS_CREATE_MODERATION = load_contents(PATH_CREATE_MODERATION)
+CONTENTS_DISCORD_BOT = load_contents(PATH_DISCORD_BOT)
 CONTENTS_DISCORD_OAUTH = load_contents(PATH_DISCORD_OAUTH)
 CONTENTS_DRAW_FINGERPRINT = load_contents(PATH_DRAW_FINGERPRINT)
 CONTENTS_DRAW_WATERMARKED_MOLECULE = load_contents(PATH_DRAW_WATERMARKED_MOLECULE)
@@ -91,19 +97,24 @@ CONTENTS_GOOGLE = load_contents(PATH_GOOGLE)
 CONTENTS_GSRS = load_contents(PATH_GSRS)
 CONTENTS_HELPERS = load_contents(PATH_HELPERS)
 CONTENTS_INCREMENT_VERSION = load_contents(PATH_INCREMENT_VERSION)
+CONTENTS_LINKEDIN_BOT = load_contents(PATH_LINKEDIN_BOT)
+CONTENTS_LINKEDIN_OAUTH = load_contents(PATH_LINKEDIN_OAUTH)
 CONTENTS_LOAD_CONTENTS= load_contents(PATH_LOAD_CONTENTS)
 CONTENTS_LOAD_YAML = load_contents(PATH_LOAD_YAML)
 CONTENTS_PROMPT_FOR_VALUES = load_contents(PATH_PROMPT_FOR_VALUES)
 CONTENTS_SCRIPT = load_contents(PATH_SCRIPT)
 CONTENTS_SETUP_LOGGING = load_contents(PATH_SETUP_LOGGING)
 CONTENTS_TAG = load_contents(PATH_TAG)
+CONTENTS_TWITCH_BOT = load_contents(PATH_TWITCH_BOT)
+CONTENTS_TWITCH_OAUTH = load_contents(PATH_TWITCH_OAUTH)
 CONTENTS_UNIQUE_PAIRS = load_contents(PATH_UNIQUE_PAIRS)
 SUM_OF_UTILITIES = f'''
-    {CONTENTS_ADD_WATERMARK} and {CONTENTS_ADJUST_HUE_AND_SATURATION} and {CONTENTS_ARPP} and {CONTENTS_BENCHMARK} and {CONTENTS_CLEAR_SCREEN} and {CONTENTS_COMBINED}
-    {CONTENTS_CREATE_BATCH_COMPLETION} and {CONTENTS_CREATE_HTTPS_COMPLETION} and {CONTENTS_CREATE_MODERATION} and {CONTENTS_DISCORD_OAUTH} and {CONTENTS_DRAW_FINGERPRINT}
-    {CONTENTS_DRAW_WATERMARKED_MOLECULE} and {CONTENTS_FINE_TUNING} and {CONTENTS_FORMAT_ERROR_CHECK}
-    {CONTENTS_GET_MOLECULE_NAME} and {CONTENTS_GET_MOL} and {CONTENTS_GET_PROXIMITY} and {CONTENTS_GOOGLE} and {CONTENTS_GSRS} and {CONTENTS_HELPERS} and {CONTENTS_INCREMENT_VERSION}
-    {CONTENTS_LOAD_CONTENTS} and {CONTENTS_LOAD_YAML} and {CONTENTS_PROMPT_FOR_VALUES} and {CONTENTS_SCRIPT} and {CONTENTS_SETUP_LOGGING} and {CONTENTS_TAG} and {CONTENTS_UNIQUE_PAIRS}
+    {CONTENTS_ADD_WATERMARK} and {CONTENTS_ADJUST_HUE_AND_SATURATION} and {CONTENTS_ARPP} and {CONTENTS_BENCHMARK} and {CONTENTS_CLEAR_SCREEN} and {CONTENTS_COMBINED} \n
+    {CONTENTS_CREATE_BATCH_COMPLETION} and {CONTENTS_CREATE_HTTPS_COMPLETION} and {CONTENTS_CREATE_MODERATION} and {CONTENTS_DISCORD_BOT} and {CONTENTS_DISCORD_OAUTH} \n
+    {CONTENTS_DRAW_FINGERPRINT} and {CONTENTS_DRAW_WATERMARKED_MOLECULE} and {CONTENTS_FINE_TUNING} and {CONTENTS_FORMAT_ERROR_CHECK} \n
+    {CONTENTS_GET_MOLECULE_NAME} and {CONTENTS_GET_MOL} and {CONTENTS_GET_PROXIMITY} and {CONTENTS_GOOGLE} and {CONTENTS_GSRS} and {CONTENTS_HELPERS} and {CONTENTS_INCREMENT_VERSION} \n
+    {CONTENTS_LINKEDIN_BOT} and {CONTENTS_LINKEDIN_OAUTH} and {CONTENTS_LOAD_CONTENTS} and {CONTENTS_LOAD_YAML} and {CONTENTS_PROMPT_FOR_VALUES}
+    {CONTENTS_SCRIPT} and {CONTENTS_SETUP_LOGGING} and {CONTENTS_TAG} and {CONTENTS_TWITCH_BOT} {CONTENTS_TWITCH_OAUTH} {CONTENTS_UNIQUE_PAIRS} \n
 '''
 # MySQL
 DATABASE_URL = ''
@@ -302,7 +313,7 @@ OPENAI_CHAT_MODERATION_ADD_COMPLETION_TO_HISTORY = False
 OPENAI_CHAT_STOP = ''
 OPENAI_CHAT_STORE = False
 OPENAI_CHAT_STREAM = False
-OPENAI_CHAT_SYS_INPUT = ''
+OPENAI_CHAT_SYS_INPUT = f'Your main.py is {CONTENTS_MAIN}. Your cogs are {SUM_OF_COGS}. Your utilities {SUM_OF_UTILITIES}'
 OPENAI_CHAT_TOP_P = 1
 OPENAI_CHAT_TEMPERATURE = 0.7
 OPENAI_CHAT_USE_HISTORY = True

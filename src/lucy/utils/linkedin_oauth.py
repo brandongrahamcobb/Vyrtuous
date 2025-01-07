@@ -47,7 +47,7 @@ class LinkedInOAuth:
             f"?response_type=code"
             f"&client_id={self.client_id}"
             f"&redirect_uri={self.redirect_uri}"
-            f"&scope={' '.join(SCOPES)}"
+            f"&scope={'%20'.join(SCOPES)}"
         )
 
     async def exchange_token(self, code):

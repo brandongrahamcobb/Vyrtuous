@@ -15,7 +15,7 @@ class TwitchBot(commands.Bot):
             client_id=config['api_keys']['Twitch']['client_id'],
             nick='Lucy_',
             prefix="!",
-            initial_channels=config.get('twitch_initial_channels', ['spawdspawd'])
+            initial_channels=['spawdspawd']
         )
         self.conversations = conversations
         self.config = config

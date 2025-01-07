@@ -25,7 +25,7 @@ class TwitchOAuth:
             f"?client_id={self.client_id}"
             f"&redirect_uri={self.redirect_uri}"
             f"&response_type=code"
-            f"&scope={' '.join(self.config.get('scopes', ['chat:read', 'chat:edit']))}"
+            f"&scope={'%20'.join(self.config.get('scopes', ['chat:read', 'chat:edit']))}"
         )
 
     async def exchange_token(self, code):
