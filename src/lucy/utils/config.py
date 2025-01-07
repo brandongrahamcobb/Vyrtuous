@@ -174,7 +174,6 @@ class Config:
             'discord_token': ('What is the Discord token?', ''),
             'logging_level': ('What is the logging level (DEBUG, INFO, etc.)?', LOGGING_LEVEL),
             'openai_chat_add_completion_to_history': ('Should completions be added to conversations?', OPENAI_CHAT_ADD_COMPLETION_TO_HISTORY),
-            'openai_chat_max_tokens': ('What is the max tokens per OpenAI chat completion?', OPENAI_CHAT_MAX_TOKENS),
             'openai_chat_model': ("Which chat model would you like to use for OpenAI's ChatGPT?", OPENAI_CHAT_MODEL),
             'openai_chat_moderation_model': ('Which OpenAI completions model would you like to use for moderation?', OPENAI_CHAT_MODERATION_MODEL),
             'openai_chat_completion': ('Enable or disable OpenAI text completions (True/False)?', OPENAI_CHAT_COMPLETION),

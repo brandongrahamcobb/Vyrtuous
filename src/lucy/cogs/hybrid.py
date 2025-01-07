@@ -1,4 +1,4 @@
-''' hybrid.py The purpose of this program is to be an extension to a Discord bot to provide the command functionality from cd ..lucy./..lucy./.
+''' hybrid.py The purpose of this program is to be an extension to a Discord bot to provide the command functionality from cd lucy.lucy./lucy.lucy./.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -20,19 +20,21 @@ from discord.ext import commands, tasks
 from PIL import Image
 from random import randint
 from typing import Optional
-from ..utils.frames import extract_random_frames
-from ..utils.add_watermark import add_watermark
-from ..utils.average_score import average_score
-from ..utils.combine import combine
-from ..utils.create_completion import create_completion
-from ..utils.draw_fingerprint import draw_fingerprint
-from ..utils.draw_watermarked_molecule import draw_watermarked_molecule
-from ..utils.get_mol import get_mol
-from ..utils.google import google
-from ..utils.gsrs import gsrs
-from ..utils.script import script
-from ..utils.unique_pairs import unique_pairs
-from ..utils.tag import TagManager
+from lucy.utils.frames import extract_random_frames
+from lucy.utils.add_watermark import add_watermark
+from lucy.utils.average_score import average_score
+from lucy.utils.backup import perform_backup, setup_backup_directory
+from lucy.utils.combine import combine
+from lucy.utils.create_completion import create_completion
+from lucy.utils.draw_fingerprint import draw_fingerprint
+from lucy.utils.draw_watermarked_molecule import draw_watermarked_molecule
+from lucy.utils.get_mol import get_mol
+from lucy.utils.google import google
+from lucy.utils.gsrs import gsrs
+from lucy.utils.helpers import *
+from lucy.utils.script import script
+from lucy.utils.unique_pairs import unique_pairs
+from lucy.utils.tag import TagManager
 #import aiomysql
 import asyncio
 import discord
@@ -42,7 +44,6 @@ import json
 import os
 import shlex
 import traceback
-from ..utils.helpers import *
 import random
 
 def at_home():
@@ -58,6 +59,22 @@ class Hybrid(commands.Cog):
         self.sativa = self.bot.get_cog('Sativa')
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
+
+    @commands.command(name="backup")
+    @at_home()
+    async def backup(self, ctx: commands.Context):
+        try:
+            backup_dir = setup_backup_directory("./backups")
+            backup_file = perform_backup(
+                db_user="postgres",
+                db_name="lucy",
+                db_host="localhost",
+                backup_dir=backup_dir
+            )
+            await ctx.send(f"Backup completed successfully: `{backup_file}`")
+        except Exception as e:
+            logger.error(f"Error during manual backup: {e}")
+            await ctx.send("An error occurred while performing the backup.")
 
     @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
     @at_home()

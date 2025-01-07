@@ -16,13 +16,14 @@
 '''
 from collections import defaultdict
 from discord.ext import commands, tasks
-from os.path import abspath, dirname, exists, expanduser, join
+from lucy.utils.backup import perform_backup, setup_backup_directory
 from lucy.utils.create_https_completion import Conversations
 from lucy.utils.create_https_moderation import create_https_moderation
 from lucy.utils.create_moderation import create_moderation
 from lucy.utils.nlp_utils import NLPUtils
 from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
+from os.path import abspath, dirname, exists, expanduser, join
 
 import asyncio
 import datetime
@@ -47,6 +48,34 @@ class Indica(commands.Cog):
         self.conversations = Conversations()
         self.handler = Message(self.config, self.conversations)
 
+    def cog_unload(self):
+        """Stop the backup task when the Cog is unloaded."""
+        self.backup_task.cancel()
+
+    @tasks.loop(hours=24)  # Adjust the interval as needed
+    async def backup_task(self):
+        """Periodic task to back up the database."""
+        try:
+            # Ensure the backup directory exists
+            backup_dir = setup_backup_directory("./backups")
+
+            # Perform the database backup
+            backup_file = perform_backup(
+                db_user="postgres",
+                db_name="lucy",
+                db_host="localhost",
+                backup_dir=backup_dir
+            )
+
+            logger.info(f"Backup completed successfully: {backup_file}")
+        except Exception as e:
+            logger.error(f"Error during database backup: {e}")
+
+    @backup_task.before_loop
+    async def before_backup(self):
+        """Wait until the bot is ready before starting the task."""
+        await self.bot.wait_until_ready()
+
     @commands.Cog.listener()
     @at_home()
     async def on_message_edit(self, before, after):
@@ -70,8 +99,9 @@ class Indica(commands.Cog):
             if message.guild.id == 1300517536001036348:
                 if self.bot.user in message.mentions:
                     if self.config['openai_chat_completion']:
-                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
+                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT, model='o1-mini'):
                             await message.reply(chat_completion)
+                            print(chat_completion)
 
             # Moderate Text and Images
             if self.config['openai_chat_moderation']:

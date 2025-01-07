@@ -151,36 +151,15 @@ OPENAI_CHAT_HEADERS = {
     'User-Agent': 'brandongrahamcobb@icloud.com',
     'OpenAI-Project': 'proj_u5htBCWX0LSHxkw45po1Vfz9',
 }
-OPENAI_CHAT_MODEL_OUTPUT_LIMITS = {
-    'gpt-3.5-turbo': 4096,
-    'gpt-4': 8192,
-    'gpt-4-32k': 32768,
-    'gpt-4o': 4096,         # Initially capped at 4,096; updated to 16,384 in later versions
-    'gpt-4o-mini': 16384,
-    'gpt-4-turbo': 4096,
-    'o1-preview': 32768,
-    'o1-mini': 65536,
-}
-OPENAI_MODEL_CONTEXT_LIMITS = {
-    'gpt-3.5-turbo': 4096,
-    'gpt-4': 8192,
-    'gpt-4-32k': 32768,
-    'gpt-4o': 128000,
-    'gpt-4o-mini': 128000,
-    'gpt-4-turbo': 128000,
-    'o1-preview': 128000,
-    'o1-mini': 128000,
-}
 OPENAI_CHAT_MODELS = {
     'current': ['chatgpt-4o-mini-latest', 'o1-preview', 'o1-mini'],
     'deprecated': ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-32k', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'chatgpt-4o-latest'],
 }
 
 #OpenAI Moderations
-OPENAI_CHAT_MAX_TOKENS = 2000
 OPENAI_CHAT_MODERATION = True
+OPENAI_CHAT_MODERATION_MAX_TOKENS = 32000
 OPENAI_CHAT_MODERATION_N = 1
-OPENAI_CHAT_MODERATION_MAX_TOKENS = 2000
 OPENAI_CHAT_MODERATION_MODEL = 'gpt-4o-mini'
 OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
 'type': 'json_schema',
@@ -276,6 +255,7 @@ OPENAI_CHAT_MODERATION_STREAM = False
 OPENAI_CHAT_MODERATION_SYS_INPUT = 'You are a JSON moderation assistant.'
 OPENAI_CHAT_MODERATION_TEMPERATURE = 1.0
 OPENAI_CHAT_MODERATION_TOP_P = 1.0
+OPENAI_CHAT_MODERATION_USE_HISTORY = False
 OPENAI_CHAT_MODEL = 'gpt-4o-mini'
 OPENAI_CHAT_N = 1
 OPENAI_CHAT_RESPONSE_FORMAT = None
@@ -351,6 +331,26 @@ OPENAI_FINE_TUNING_RESPONSE_FORMAT = {
       "required": ["id", "results"]
     }
   }
+}
+OPENAI_MODEL_CONTEXT_LIMITS = {
+    'gpt-3.5-turbo': 4096,
+    'gpt-4': 8192,
+    'gpt-4-32k': 32768,
+    'gpt-4o': 128000,
+    'gpt-4o-mini': 128000,
+    'gpt-4-turbo': 128000,
+    'o1-preview': 128000,
+    'o1-mini': 128000,
+}
+OPENAI_MODEL_OUTPUT_LIMITS = {
+    'gpt-3.5-turbo': 4096,
+    'gpt-4': 8192,
+    'gpt-4-32k': 32768,
+    'gpt-4o': 4096,         # Initially capped at 4,096; updated to 16,384 in later versions
+    'gpt-4o-mini': 16384,
+    'gpt-4-turbo': 4096,
+    'o1-preview': 32768,
+    'o1-mini': 65536,
 }
 OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
 OPENAI_MODERATION_IMAGE = True
