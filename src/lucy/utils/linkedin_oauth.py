@@ -42,12 +42,28 @@ class LinkedInOAuth:
         self.redirect_uri = self.config['api_keys']['LinkedIn']['redirect_uri']
 
     def get_authorization_url(self):
+        scopes = [
+            "openid",  # OpenID scope
+            "profile",  # Use your name and photo
+            "r_ads_reporting",  # Retrieve reporting for your advertising accounts
+            "r_organization_social",  # Retrieve your organization's posts, comments, reactions, and other engagement data
+            "rw_organization_admin",  # Manage your organization's pages and retrieve reporting data
+            "w_member_social",  # Create, modify, and delete posts, comments, and reactions on your behalf
+            "r_ads",  # Retrieve your advertising accounts
+            "w_organization_social",  # Create, modify, and delete posts, comments, and reactions on your organization's behalf
+            "rw_ads",  # Manage your advertising accounts
+            "r_basicprofile",  # Use your basic profile including your name, photo, headline, and public profile URL
+            "r_organization_admin",  # Retrieve your organization's pages and their reporting data
+            "email",  # Use the primary email address associated with your LinkedIn account
+            "r_1st_connections_size"  # Retrieve the number of 1st-degree connections within your network
+        ]
+        scope_str = "%20".join(scopes)
         return (
-            f"{AUTH_URL_BASE}"
+            f"https://www.linkedin.com/oauth/v2/authorization"
             f"?response_type=code"
             f"&client_id={self.client_id}"
             f"&redirect_uri={self.redirect_uri}"
-            f"&scope={'%20'.join(SCOPES)}"
+            f"&scope={scope_str}"
         )
 
     async def exchange_token(self, code):

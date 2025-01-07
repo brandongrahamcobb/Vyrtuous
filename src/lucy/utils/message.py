@@ -91,7 +91,7 @@ class Message:
             yield moderation_completion
 
 
-    async def process_array(self, content, attachments):
+    async def process_array(self, content, *, attachments = None):
         array = await self.process_text_message(content)
         if attachments:
              array.extend(await self.process_attachments(attachments))

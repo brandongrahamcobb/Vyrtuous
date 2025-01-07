@@ -18,37 +18,6 @@ class LinkedInBot:
         logger.info("LinkedIn Bot is ready!")
         logger.info("Listening for LinkedIn messages and events...")
 
-    async def fetch_messages(self):
-        """Fetch unread messages from LinkedIn Messaging API."""
-        url = f"{self.base_url}/messages?q=recent"
-        headers = {
-            "Authorization": f"Bearer {self.oauth_token}",
-            "Content-Type": "application/json",
-            "X-Restli-Protocol-Version": "2.0.0",
-        }
-
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers) as response:
-                if response.status == 200:
-                    messages = await response.json()
-                    logger.info("Fetched LinkedIn messages successfully.")
-                    return messages
-                else:
-                    logger.error(f"Failed to fetch LinkedIn messages. Status: {response.status}, Response: {await response.text()}")
-                    return None
-
-    async def process_messages(self, messages):
-        """Process each incoming message and generate a response."""
-        for message in messages.get("elements", []):
-            sender_id = message["from"]["id"]
-            content = message["text"]["text"]
-
-            logger.info(f"Received message from {sender_id}: {content}")
-
-            # Generate a response using Conversations or OpenAI integration
-            async for response in self.conversations.generate_completion(prompt=content):
-                await self.reply_to_message(sender_id, response)
-
     async def reply_to_message(self, recipient_id, message):
         """Send a reply to a LinkedIn message."""
         url = f"{self.base_url}/messages"

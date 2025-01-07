@@ -55,9 +55,9 @@ class Indica(commands.Cog):
             if message.author == self.bot.user:
                 return
             if message.attachments:
-                array = await self.handler.process_array(message.content, message.attachments)
+                array = await self.handler.process_array(message.content, attachments=message.attachments)
             else:
-                array = await self.handler.process_array(message.content, None)
+                array = await self.handler.process_array(message.content)
             # Chat
             if self.bot.user in message.mentions:
                 if self.config['openai_chat_completion']:
