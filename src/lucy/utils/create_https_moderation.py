@@ -34,7 +34,7 @@ async def create_https_moderation(custom_id, input_array, model):
         logger.info('Loading configuration file.')
         # Load the configuration file
         config = load_yaml(PATH_CONFIG_YAML)
-        api_key = config['api_keys']['api_key_1']['api_key']
+        api_key = config['api_keys']['OpenAI']['api_key']
         logger.info('API key loaded successfully.')
 
         # Set up the OpenAI client

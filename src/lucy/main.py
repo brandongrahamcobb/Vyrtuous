@@ -16,148 +16,116 @@
 '''
 from lucy.utils.config import Config
 from lucy.utils.create_https_completion import Conversations
-from lucy.utils.discord_utils import Lucy
+from lucy.utils.discord_bot import DiscordBot
+from lucy.utils.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
+from lucy.utils.linkedin_bot import LinkedInBot
+from lucy.utils.linkedin_oauth import linkedin_app, LinkedInOAuth, setup_linkedin_routes
+from lucy.utils.twitch_bot import TwitchBot
+from lucy.utils.twitch_oauth import twitch_app, TwitchOAuth, setup_twitch_routes
 from lucy.utils.helpers import *
 from lucy.utils.increment_version import increment_version
-from lucy.utils.linkedin import LinkedIn
 from lucy.utils.setup_logging import setup_logging
-from lucy.utils.twitch import app, ensure_token, Vyrtuous
 from pathlib import Path
 
-import aiohttp
 import asyncio
 import asyncpg
-import discord
-import os
+import logging
 import sys
-import yaml
-import uuid
 
-package_root = Path(__file__).resolve().parent
-sys.path.insert(0, str(package_root))
+global logger
 
-config = Config().get_config()
-conversations = Conversations()
-
-start_discord_event = asyncio.Event()
-start_linkedin_event = asyncio.Event()
-start_repl_event = asyncio.Event()
-start_twitch_event = asyncio.Event()
-
-async def discord_init(db_pool, lock):
-    discord_bot = Lucy(
-        config=config,
-        command_prefix=config['discord_command_prefix'],
-        db_pool=db_pool,
-        initial_extensions=DISCORD_COGS,
-        intents=DISCORD_INTENTS,
-        testing_guild_id=config['discord_testing_guild_id'],
-        conversations=conversations,
-        lock=lock
-    )
-    discord_bot.config = config
-    discord_bot.db_pool = db_pool
-    return discord_bot
+PACKAGE_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(PACKAGE_ROOT))
 
 async def database_init():
-    db_pool = await asyncpg.create_pool(
-        database='lucy',
-        user='postgres',
-        command_timeout=30
-    )
-    return db_pool
+    return await asyncpg.create_pool(database='lucy', user='postgres', command_timeout=30)
 
-async def linkedin_init(db_pool):
-    linkedin_bot = LinkedIn(config, db_pool)
-    linkedin_bot.config = config
-    linkedin_bot.db_pool = db_pool
-    return linkedin_bot
-
-async def twitch_init(db_pool, lock):
-    token = await ensure_token()
-    if not token:
-        logger.warning('No valid token available on startup. Please authorize the application.')
-        return
-    twitch_bot = Vyrtuous(
-        config=config,
-        db_pool=db_pool,
-        conversations=conversations,
-        token=token,
-        lock=lock
-    )
-    twitch_bot.config = config
-    twitch_bot.db_pool = db_pool
-    return twitch_bot
-
-async def repl_init():
-    print("REPL initialized. Type 'exit' to quit.")
-    while True:
-        message = await asyncio.get_event_loop().run_in_executor(None, input, 'You: ')
-        if message.strip().lower() == 'exit':
-            print("Exiting REPL.")
-            break
-
-        # Simulate REPL interaction
-        print(f"AI: Echoing back your message - {message}\n")
-
-def trigger_discord_start():
-    logger.info("Triggering Discord bot start...")
-    start_discord_event.set()
-
-def trigger_linkedin_start():
-    logger.info("Triggering LinkedIn bot start...")
-    start_linkedin_event.set()
-
-def trigger_twitch_start():
-    logger.info("Triggering Twitch bot start...")
-    start_twitch_event.set()
-
-def trigger_repl_start():
-    logger.info("Triggering REPL start...")
-    start_repl_event.set()
+async def start_bot(bot, name):
+    try:
+        if isinstance(bot, DiscordBot):
+            await bot.start(bot.api_key)
+        elif isinstance(bot, LinkedInBot):
+            await bot.run()
+        elif isinstance(bot, TwitchBot):
+            await bot.start()
+    except Exception as e:
+        logger.error(f"Error running {name}: {e}")
 
 async def main():
+    # Initialize configuration and logging
+    config = Config().get_config()
     increment_version()
     setup_logging(config, PATH_LOG)
 
-    lock = asyncio.Lock()
+    # Initialize database pool
     db_pool = await database_init()
-    app_task = asyncio.create_task(app.run_task(host="0.0.0.0", port=5000))
 
-    print('(You have 30 seconds to authenticate)')
-    await asyncio.sleep(30)
+    # Shared resources
+    conversations = Conversations()
+    lock = asyncio.Lock()
 
-    discord_bot = await discord_init(db_pool, lock)
-    linkedin_bot = await linkedin_init(db_pool)
-    twitch_bot = await twitch_init(db_pool, lock)
+    # Initialize OAuth handlers
+    discord_oauth = DiscordOAuth(config)
+    setup_discord_routes(discord_app, discord_oauth)
+    linkedin_oauth = LinkedInOAuth(config)
+    setup_linkedin_routes(linkedin_app, linkedin_oauth)
+    twitch_oauth = TwitchOAuth(config)
+    setup_twitch_routes(twitch_app, twitch_oauth)
 
-    # Start tasks
-    discord_task = asyncio.create_task(discord_bot.start(config['discord_token']))
-    linkedin_task = asyncio.create_task(linkedin_bot.main())
-    twitch_task = asyncio.create_task(twitch_bot.start())
+    # Start OAuth apps
+    discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=5000))
+    linkedin_quart = asyncio.create_task(linkedin_app.run_task(host="0.0.0.0", port=5001))
+    twitch_quart = asyncio.create_task(twitch_app.run_task(host="0.0.0.0", port=5002))
 
-    # REPL Start Event Handling
-    async def repl_task():
-        await start_repl_event.wait()  # Wait for REPL start signal
-        await repl_init()
+    # Authenticate users
+    print("Please authenticate Discord by visiting the following URL:")
+    print(discord_oauth.get_authorization_url())
+    print("Please authenticate LinkedIn by visiting the following URL:")
+    print(linkedin_oauth.get_authorization_url())
+    print("Please authenticate Twitch by visiting the following URL:")
+    print(twitch_oauth.get_authorization_url())
+    await asyncio.sleep(60)
 
-    repl_task_instance = asyncio.create_task(repl_task())
-    await asyncio.gather(app_task, discord_task, linkedin_task, twitch_task, repl_task_instance)
+    # Initialize bots
+    discord_bot = DiscordBot(
+        config=config,
+        db_pool=db_pool,
+        conversations=conversations,
+        lock=lock,
+        oauth_token=discord_oauth.access_token,
+    )
+    linkedin_bot = LinkedInBot(
+        config=config,
+        db_pool=db_pool,
+        conversations=conversations,
+        lock=lock,
+        oauth_token=linkedin_oauth.access_token,
+    )
+    twitch_bot = TwitchBot(
+        config=config,
+        db_pool=db_pool,
+        conversations=conversations,
+        lock=lock,
+        oauth_token=twitch_oauth.access_token,
+    )
+
+    # Run all bots
+    tasks = [
+        asyncio.create_task(start_bot(discord_bot, "DiscordBot")),
+        asyncio.create_task(start_bot(linkedin_bot, "LinkedInBot")),
+        asyncio.create_task(start_bot(twitch_bot, "TwitchBot")),
+        discord_quart,
+        linkedin_quart,
+        twitch_quart,
+    ]
+
+    await asyncio.gather(*tasks)
 
 def run():
     asyncio.run(main())
 
 if __name__ == '__main__':
-    import threading
-
-    discord_trigger_thread = threading.Thread(target=trigger_discord_start)
-    linkedin_trigger_thread = threading.Thread(target=trigger_linkedin_start)
-    twitch_trigger_thread = threading.Thread(target=trigger_twitch_start)
-    repl_trigger_thread = threading.Thread(target=trigger_repl_start)
-
-    discord_trigger_thread.start()
-    linkedin_trigger_thread.start()
-    twitch_trigger_thread.start()
-    repl_trigger_thread.start()
-
-    run()
+    try:
+        run()
+    except KeyboardInterrupt:
+        logger.info("Shutting down bots and server...")

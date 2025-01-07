@@ -28,7 +28,7 @@ async def create_moderation(input_text):
         config = load_yaml(PATH_CONFIG_YAML)
         logger.debug('Configuration loaded successfully.')
 
-        api_key = config['api_keys']['api_key_1']
+        api_key = config['api_keys']['OpenAI']['api_key']
         logger.debug('API key retrieved successfully.')
 
         ai_client = AsyncOpenAI(api_key=api_key)

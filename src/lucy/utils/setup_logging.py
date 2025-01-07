@@ -37,3 +37,4 @@ def setup_logging(config: Dict[str, Any], path_log) -> None:
     file_handler.setFormatter(formatter)
     logger.setLevel(logging_level)
     logger.addHandler(file_handler)
+    return logger

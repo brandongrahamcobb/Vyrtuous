@@ -39,49 +39,7 @@ class Indica(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.conversations = Conversations()
-#        self.hybrid = self.bot.get_cog('Hybrid')
- #       self.sativa = self.bot.get_cog('Sativa')
-        self.hybrid = load_contents(PATH_HYBRID)
-        self.indica = load_contents(PATH_INDICA)
-        self.sativa = load_contents(PATH_SATIVA)
-        self.add_watermark = load_contents(PATH_ADD_WATERMARK)
-        self.adjust_hue_and_saturation = load_contents(PATH_ADJUST_HUE_AND_SATURATION)
-        self.arpp = load_contents(PATH_ARPP)
-        self.benchmark = load_contents(PATH_BENCHMARK)
-        self.clear_screen = load_contents(PATH_CLEAR_SCREEN)
-        self.combine = load_contents(PATH_COMBINE)
-        self.create_batch_completion = load_contents(PATH_CREATE_BATCH_COMPLETION)
-        self.create_https_completion = load_contents(PATH_CREATE_HTTPS_COMPLETION)
-        self.create_moderation = load_contents(PATH_CREATE_MODERATION)
-        self.discord = load_contents(PATH_DISCORD_UTILS)
-        self.draw_fingerprint = load_contents(PATH_DRAW_FINGERPRINT)
-        self.draw_watermarked_molecule = load_contents(PATH_DRAW_WATERMARKED_MOLECULE)
-        self.fine_tuning = load_contents(PATH_FINE_TUNING)
-        self.format_error_check = load_contents(PATH_FORMAT_ERROR_CHECK)
-        self.get_molecule_name = load_contents(PATH_GET_MOLECULE_NAME)
-        self.get_mol = load_contents(PATH_GET_MOL)
-        self.get_proximity = load_contents(PATH_GET_PROXIMITY)
-        self.google = load_contents(PATH_GOOGLE)
-        self.gsrs = load_contents(PATH_GSRS)
         self.handler = Message(self.config, self.conversations)
-        self.helpers = load_contents(PATH_HELPERS)
-        self.increment_version = load_contents(PATH_INCREMENT_VERSION)
-        self.load_contents = load_contents(PATH_LOAD_CONTENTS)
-        self.load_yaml = load_contents(PATH_LOAD_YAML)
-        self.main = load_contents(PATH_MAIN)
-        self.prompt_for_values = load_contents(PATH_PROMPT_FOR_VALUES)
-        self.script = load_contents(PATH_SCRIPT)
-        self.setup_logging = load_contents(PATH_SETUP_LOGGING)
-        self.tag = load_contents(PATH_TAG)
-        self.unique_pairs = load_contents(PATH_UNIQUE_PAIRS)
-        self.sum_of_paths = f'''
-            {self.adjust_hue_and_saturation} and {self.arpp} and {self.benchmark} and {self.clear_screen} and {self.combine} and {self.create_batch_completion} and and {self.create_https_completion} and {self.create_moderation} and {self.discord} and {self.draw_fingerprint} and {self.draw_watermarked_molecule} and {self.fine_tuning} and {self.format_error_check} and {self.get_molecule_name} and {self.get_mol} and {self.get_proximity} and {self.google} and {self.gsrs} and {self.helpers} and {self.increment_version} and {self.load_contents} and {self.load_yaml} and {self.setup_logging} and {self.tag} and {self.unique_pairs}
-        '''
-        self.sys_input = f'''
-            You main is {self.main}
-            Your cogs are {self.hybrid} and {self.indica} and {self.sativa}.
-            Your utilities are {self.sum_of_paths}.
-        '''
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -103,7 +61,7 @@ class Indica(commands.Cog):
             # Chat
             if self.bot.user in message.mentions:
                 if self.config['openai_chat_completion']:
-                    async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=self.sys_input):
+                    async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
                         await message.reply(chat_completion)
 
             # Moderate Text and Images
