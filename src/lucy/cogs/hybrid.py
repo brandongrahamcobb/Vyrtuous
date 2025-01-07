@@ -16,7 +16,7 @@
 '''
 from discord.utils import get
 from discord import Embed
-from discord.ext import commands
+from discord.ext import commands, tasks
 from PIL import Image
 from random import randint
 from typing import Optional
@@ -43,6 +43,12 @@ import os
 import shlex
 import traceback
 from ..utils.helpers import *
+import random
+
+def at_home():
+    async def predicate(ctx):
+        return ctx.guild is not None and ctx.guild.id == 1300517536001036348
+    return commands.check(predicate)
 
 class Hybrid(commands.Cog):
     def __init__(self, bot):
@@ -51,10 +57,10 @@ class Hybrid(commands.Cog):
         self.indica = self.bot.get_cog('Indica')
         self.sativa = self.bot.get_cog('Sativa')
         self.tag_manager = TagManager(self.bot.db_pool)
-        #self.translator = Translator()
-        #self.user_translation_preferences = {}
+        self.messages = []
 
     @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
+    @at_home()
     async def colorize(self, ctx: commands.Context, r: Optional[str] = commands.parameter(default='149', description='Anything between 0 and 255.'), g: int = commands.parameter(default='165', description='Anything betwen 0 and 255.'), b: int = commands.parameter(default='165', description='Anything between 0 and 255.')):
         if not r.isnumeric():
             input_text_dict = {
@@ -88,6 +94,7 @@ class Hybrid(commands.Cog):
         await ctx.author.add_roles(newrole)
         await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
 
+    @at_home()
     def get_language_code(self, language_name):
         language_name = language_name.lower()
         for lang_code, lang_name in LANGUAGES.items():
@@ -116,75 +123,133 @@ class Hybrid(commands.Cog):
 #        else:
 #            await ctx.send(f'{ctx.author.mention}, please specify 'on' or 'off'.')
 
-    @commands.hybrid_command(name='training', description='Get, add, update, or remove a tag.')
-    async def training(self, ctx: commands.Context):
-        file = discord.File(PATH_TRAINING)
-        await ctx.send(file=file)
+    @commands.hybrid_command(
+        name='tag',
+        description='Manage or retrieve tags. Sub-actions: add, update, remove, list, loop.'
+    )
+    async def tag_command(
+        self,
+        ctx: commands.Context,
+        action: str = commands.parameter(
+            default=None,
+            description='Action: add, update, remove, list, or the name of a tag.'
+        ),
+        name: Optional[str] = commands.parameter(
+            default=None,
+            description='Name of the tag.'
+        ),
+        content: Optional[str] = commands.parameter(
+            default=None,
+            description='Content for the tag.'
+        )
+    ):
+        attachment_url = ctx.message.attachments[0].url if ctx.message.attachments else None
+        action = action.lower() if action else None
 
-    @commands.hybrid_command(name='tag', description='Manage your tags: add, update, remove, or list.')
-    async def tag(self, ctx: commands.Context, action: str = commands.parameter(default=None, description='Action to perform: add, update, remove, list, or tag name.'), name: Optional[str] = commands.parameter(default=None, description='Name of the tag.'), content: Optional[str] = commands.parameter(default=None, description='Content or updated content for the tag.')):
-        if ctx.message.attachments:
-            attachment_url = ctx.message.attachments[0].url
-        else:
-            attachment_url = None
-        action = action.lower()
-        if action == 'add':
+        if action == "add":
             if not name:
-                await ctx.send('Please provide a name for the tag.')
+                await ctx.send("Usage: `!tag add <name> \"content\"`")
                 return
             try:
-                await self.tag_manager.add_tag(name, ctx.guild.id, ctx.author.id, content, attachment_url)
-                await ctx.send(f'Tag `{name}` added successfully.')
+                await self.tag_manager.add_tag(
+                    name=name,
+                    location_id=ctx.guild.id,
+                    owner_id=ctx.author.id,
+                    content=content,
+                    attachment_url=attachment_url
+                )
+                await ctx.send(f"Tag `{name}` added successfully.")
             except Exception as e:
-                logger.info(f'Error adding tag: {e}')
-                await ctx.send('An error occurred while adding the tag. Please try again.')
-        elif action == 'update':
+                logger.error(f"Error adding tag: {e}")
+                await ctx.send("An error occurred while adding the tag.")
+
+        elif action == "update":
             if not name or not content:
-                await ctx.send('Please provide both the name and updated content for the tag.')
+                await ctx.send("Usage: `!tag update <name> \"new content\"`")
                 return
             try:
-                result = await self.tag_manager.update_tag(name, ctx.guild.id, ctx.author.id, content, attachment_url)
+                result = await self.tag_manager.update_tag(
+                    name=name,
+                    location_id=ctx.guild.id,
+                    owner_id=ctx.author.id,
+                    content=content,
+                    attachment_url=attachment_url
+                )
                 if result > 0:
-                    await ctx.send(f'Tag `{name}` updated successfully.')
+                    await ctx.send(f"Tag `{name}` updated.")
                 else:
-                    await ctx.send(f'Tag `{name}` not found or you do not own this tag.')
+                    await ctx.send(f"Tag `{name}` not found or you do not own it.")
             except Exception as e:
-                logger.info(f'Error updating tag: {e}')
-                await ctx.send('An error occurred while updating the tag. Please try again.')
-        elif action == 'remove':
+                logger.error(f"Error updating tag: {e}")
+                await ctx.send("An error occurred while updating the tag.")
+
+        elif action == "remove":
             if not name:
-                await ctx.send('Please provide the name of the tag to remove.')
+                await ctx.send("Usage: `!tag remove <name>`")
                 return
             try:
-                result = await self.tag_manager.delete_tag(name, ctx.guild.id, ctx.author.id)
+                result = await self.tag_manager.delete_tag(
+                    name=name,
+                    location_id=ctx.guild.id,
+                    owner_id=ctx.author.id
+                )
                 if result > 0:
-                    await ctx.send(f'Tag `{name}` removed successfully.')
+                    await ctx.send(f"Tag `{name}` removed.")
                 else:
-                    await ctx.send(f'Tag `{name}` not found or you do not own this tag.')
+                    await ctx.send(f"Tag `{name}` not found or you do not own it.")
             except Exception as e:
-                logger.info(f'Error removing tag: {e}')
-                await ctx.send('An error occurred while removing the tag. Please try again.')
-        elif action == 'list':
+                logger.error(f"Error removing tag: {e}")
+                await ctx.send("An error occurred while removing the tag.")
+
+        elif action == "list":
             try:
                 tags = await self.tag_manager.list_tags(ctx.guild.id, ctx.author.id)
                 if not tags:
-                    await ctx.send('You have no tags.')
+                    await ctx.send("You have no tags.")
                 else:
-                    tag_list = '\n'.join(f'{tag['name']}: {tag['content'] if tag['content'] else tag['attachment_url']}' for tag in tags)
-                    await ctx.send(f'Your tags:\n{tag_list}')
+                    tag_list = "\n".join(
+                        f"**{t['name']}**: {t['content'] or t['attachment_url']}" for t in tags
+                    )
+                    await ctx.send(f"Your tags:\n{tag_list}")
             except Exception as e:
-                logger.info(f'Error listing tags: {e}')
-                await ctx.send('An error occurred while listing your tags. Please try again.')
+                logger.error(f"Error listing tags: {e}")
+                await ctx.send("An error occurred while listing your tags.")
+
         else:
             try:
-                tag = await self.tag_manager.get_tag(ctx.guild.id, action)
-                response_content = tag['attachment_url'] if tag['attachment_url'] else tag['content']
-                await ctx.send(response_content)
+                tag = await self.tag_manager.get_tag(location_id=ctx.guild.id, name=action)
+                tag_content = tag.get('content')
+                tag_attachment_url = tag.get('attachment_url')
+
+                if tag_content and tag_attachment_url:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(tag_attachment_url) as response:
+                            if response.status == 200:
+                                file_bytes = await response.read()
+                                filename = tag_attachment_url.split("/")[-1]
+                                await ctx.send(
+                                    content=tag_content,
+                                    file=discord.File(io.BytesIO(file_bytes), filename=filename)
+                                )
+                            else:
+                                await ctx.send(tag_content)
+                elif tag_content:
+                    await ctx.send(tag_content)
+                elif tag_attachment_url:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(tag_attachment_url) as response:
+                            if response.status == 200:
+                                file_bytes = await response.read()
+                                filename = tag_attachment_url.split("/")[-1]
+                                await ctx.send(file=discord.File(io.BytesIO(file_bytes), filename=filename))
+                            else:
+                                await ctx.send("Failed to retrieve the attachment.")
             except Exception as e:
-                logger.info(f'Error retrieving tag: {e}')
-                await ctx.send('An error occurred while retrieving the tag. Please ensure the name is correct.')
+                logger.error(f"Error retrieving tag: {e}")
+                await ctx.send(f"Tag `{action}` not found.")
 
     @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>')
+    @at_home()
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
          try:
              await ctx.send(script(version, reference))
@@ -192,6 +257,7 @@ class Hybrid(commands.Cog):
              print(traceback.format_exc())
 
     @commands.command(name='load', hidden=True)
+    @at_home()
     async def load(self, ctx: commands.Context, *, module: str):
         try:
             await ctx.bot.load_extension(module)
@@ -202,6 +268,7 @@ class Hybrid(commands.Cog):
 
 
     @commands.hybrid_command(name='draw', description='Usage: !draw glow <molecule> or !draw gsrs <molecule> or !draw shadow <molecule>.')
+    @at_home()
     async def molecule(self, ctx: commands.Context, option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
         try:
             if ctx.interaction:
@@ -275,6 +342,7 @@ class Hybrid(commands.Cog):
             await ctx.reply(e)
 
     @commands.hybrid_command(hidden=True)
+    @at_home()
     async def reload(self, ctx: commands.Context, *, module: str):
         try:
             if ctx.interaction:
@@ -286,6 +354,7 @@ class Hybrid(commands.Cog):
             await ctx.send('\N{OK HAND SIGN}')
 
     @commands.hybrid_command(name='search', description='Usage: !search <query>. Search Google.')
+    @at_home()
     async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
@@ -296,6 +365,7 @@ class Hybrid(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='frame', description='')
+    @at_home()
     async def frame(self, ctx: commands.Context):
         video_path = 'frogs.mov'
         output_dir = 'frames'

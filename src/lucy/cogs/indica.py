@@ -29,9 +29,15 @@ import datetime
 import discord
 import json
 import os
+import random
 import subprocess
 import traceback
 from lucy.utils.helpers import *
+
+def at_home():
+    async def predicate(ctx):
+        return ctx.guild is not None and ctx.guild.id == 1300517536001036348
+    return commands.check(predicate)
 
 class Indica(commands.Cog):
 
@@ -42,7 +48,9 @@ class Indica(commands.Cog):
         self.handler = Message(self.config, self.conversations)
 
     @commands.Cog.listener()
+    @at_home()
     async def on_message_edit(self, before, after):
+
         if before.content != after.content:
             ctx = await self.bot.get_context(after)
             if ctx.command:
@@ -52,34 +60,34 @@ class Indica(commands.Cog):
     async def on_message(self, message):
         logger.info(f"Received message: {message.content}")
         try:
-            if message.author == self.bot.user:
+            if message.author.bot:
                 return
             if message.attachments:
                 array = await self.handler.process_array(message.content, attachments=message.attachments)
             else:
                 array = await self.handler.process_array(message.content)
             # Chat
-            if self.bot.user in message.mentions:
-                if self.config['openai_chat_completion']:
-                    async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
-                        await message.reply(chat_completion)
+            if message.guild.id == 1300517536001036348:
+                if self.bot.user in message.mentions:
+                    if self.config['openai_chat_completion']:
+                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
+                            await message.reply(chat_completion)
 
             # Moderate Text and Images
             if self.config['openai_chat_moderation']:
                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
                     full_response = json.loads(moderation_completion)
-#                results = full_response['results']
                     results = full_response.get('results', [])
-#                flagged = results[0]['flagged']
                     flagged = results[0].get('flagged', False)
                     carnism_flagged = results[0]['categories'].get('carnism', False)
                     carnism_score = results[0]['category_scores'].get('carnism', 0)
                     total_carnism_score = sum(arg['category_scores'].get('carnism', 0) for arg in results)
                     if carnism_flagged or flagged:
-                        guild = await self.bot.fetch_guild(self.config['discord_testing_guild_id'])
-                        role = guild.get_role(self.config['discord_role_pass'])
-                        if not role in message.author.roles:
-                            await message.delete()
+                        if message.guild.id == 1300517536001036348:
+                            guild = await self.bot.fetch_guild(self.config['discord_testing_guild_id'])
+                            role = guild.get_role(self.config['discord_role_pass'])
+                            if not role in message.author.roles and flagged:
+                                await message.delete()
                         NLPUtils.append_to_other_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
         except Exception as e:
             logger.error(traceback.format_exc())

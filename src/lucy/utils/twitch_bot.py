@@ -1,12 +1,13 @@
 # bots/twitch_bot.py
+from lucy.utils.create_https_completion import Conversations
+from lucy.utils.message import Message
+from lucy.utils.nlp_utils import NLPUtils
+from lucy.utils.setup_logging import logger
+from twitchio.ext import commands
 
 import logging
-from twitchio.ext import commands
-from .create_https_completion import Conversations
-from .message import Message
 import json
 
-from .setup_logging import logger
 
 class TwitchBot(commands.Bot):
     def __init__(self, config, db_pool, conversations, lock, oauth_token):

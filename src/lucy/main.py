@@ -84,7 +84,7 @@ async def main():
     print(linkedin_oauth.get_authorization_url())
     print("Please authenticate Twitch by visiting the following URL:")
     print(twitch_oauth.get_authorization_url())
-    await asyncio.sleep(60)
+    await asyncio.sleep(20)
 
     # Initialize bots
     discord_bot = DiscordBot(
