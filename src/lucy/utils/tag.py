@@ -78,6 +78,44 @@ class TagManager:
             logger.error(f"Failed to fetch tag: {e}")
             raise
 
+    async def rename_tag(self, old_name: str, new_name: str, location_id: int, owner_id: int) -> int:
+        """
+        Rename an existing tag from old_name to new_name.
+        Returns the number of rows updated (0 if none).
+        Raises ValueError if the new_name already exists or an error occurs.
+        """
+        # 1) Check if a tag with new_name already exists in this location for the same owner
+        query_check = """
+            SELECT 1 
+            FROM tags
+            WHERE lower(name) = lower($1) 
+              AND location_id = $2
+              AND owner_id = $3
+        """
+        
+        # 2) Rename query
+        query_rename = """
+            UPDATE tags
+            SET name = $1
+            WHERE lower(name) = lower($2)
+              AND location_id = $3
+              AND owner_id = $4
+        """
+        try:
+            async with self.pool.acquire() as conn:
+                # Check for duplicate
+                existing = await conn.fetchval(query_check, new_name, location_id, owner_id)
+                if existing:
+                    raise ValueError(f"A tag named '{new_name}' already exists for you in this location.")
+                
+                # Perform the rename
+                result = await conn.execute(query_rename, new_name, old_name, location_id, owner_id)
+                row_count = int(result.split()[-1])  # e.g. 'UPDATE 1' → 1
+                return row_count
+        except Exception as e:
+            logger.error(f"Failed to rename tag: {e}")
+            raise
+
     async def update_tag(
         self,
         name: str,

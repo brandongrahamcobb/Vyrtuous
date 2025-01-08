@@ -62,80 +62,6 @@ class Hybrid(commands.Cog):
         self.sativa = self.bot.get_cog('Sativa')
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
-        self.loop_task = None
-        self.daily_loop.start()  # Start the daily check loop when cog is loaded
-        self.channel_guild_map: Dict[int, int] = {
-            798967615636504657: 730907954345279591,
-            730907954877956179: 730907954345279591,
-        }
-        self.guild_loops_index = defaultdict(int)
-
-    def cog_unload(self):
-        self.daily_loop.cancel()
-
-    @tasks.loop(minutes=1)
-    async def daily_loop(self):
-        """
-        Checks every minute if it's 10:00 PM EST.
-        If it is, picks the "next" loop tag for each channel in each guild, in order.
-        """
-        await self.bot.wait_until_ready()
-
-        # Current time in EST
-        est_tz = pytz.timezone('US/Eastern')
-        now_est = datetime.datetime.now(est_tz)
-
-        # If it's 10:00 PM (22:00) local EST time, do our sends
-        if now_est.hour == 22 and now_est.minute == 0:
-            # Group channels by guild
-            guild_channels_map = {}
-            for channel_id, guild_id in self.channel_guild_map.items():
-                guild_channels_map.setdefault(guild_id, []).append(channel_id)
-
-            # For each guild, fetch the list of loop tags.
-            for guild_id, channel_ids in guild_channels_map.items():
-                loop_tags = await self.tag_manager.list_tags(
-                    location_id=guild_id,
-                    tag_type='loop'
-                )
-
-                # Filter out any tags that have neither content nor an attachment
-                loop_tags = [
-                    t for t in loop_tags
-                    if t.get('content') or t.get('attachment_url')
-                ]
-
-                if not loop_tags:
-                    # If no loop tags, let each channel know or just skip
-                    for cid in channel_ids:
-                        channel = self.bot.get_channel(cid)
-                        if channel:
-                            await channel.send("No loop tags found for this guild.")
-                    # Move on to the next guild
-                    continue
-
-                # Grab the current index for this guild
-                current_index = self.guild_loops_index[guild_id]
-
-                # For each channel (in order), pick the next tag
-                for cid in channel_ids:
-                    channel = self.bot.get_channel(cid)
-                    if channel:
-                        tag = loop_tags[current_index % len(loop_tags)]
-                        msg = tag['content'] or tag['attachment_url']
-                        if msg:
-                            await channel.send(msg)
-                        # Move to the next index for *each channel*
-                        current_index += 1
-
-                # After we've used a few tags for these channels,
-                # update the guild's index
-                self.guild_loops_index[guild_id] = current_index
-
-    @daily_loop.before_loop
-    async def before_daily_loop(self):
-        """Just an optional hook before the loop starts."""
-        print("Daily loop is waiting until bot is ready...")
 
     @commands.hybrid_command(
         name='tag',
@@ -149,26 +75,13 @@ class Hybrid(commands.Cog):
         content: Optional[str] = commands.parameter(default=None, description='Content for the tag (if applicable).'),
         tag_type: Optional[str] = commands.parameter(default=None, description='Optional tag type: default or loop.')
     ):
-        """
-        Examples:
-        !tag add greet "Hello, world!"
-        !tag update greet "Hello again!"
-        !tag remove greet
-        !tag list
-        !tag list loop
-        !tag loop on #some-channel
-        !tag loop off
-        !tag greet
-        """
-        # If there's an attachment, store the first attachment's URL
         attachment_url = ctx.message.attachments[0].url if ctx.message.attachments else None
         action = action.lower() if action else None
-
         # --- ADD TAG ---
-        if action == "add":
+        if action == 'add':
             resolved_tag_type = 'loop' if (tag_type and tag_type.lower() == 'loop') else 'default'
             if not name:
-                return await ctx.send("Usage: `!tag add <name> \"content\" [loop]`")
+                return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag add <name> \"content\" [loop]`')
             try:
                 await self.tag_manager.add_tag(
                     name=name,
@@ -178,22 +91,42 @@ class Hybrid(commands.Cog):
                     attachment_url=attachment_url,
                     tag_type=resolved_tag_type
                 )
-                await ctx.send(f"Tag `{name}` (type: {resolved_tag_type}) added successfully.")
+                await ctx.send(f'Tag \"{name}\" (type: {resolved_tag_type}) added successfully.')
             except ValueError as ve:
                 await ctx.send(str(ve))
             except Exception as e:
-                logger.error(f"Error adding tag: {e}")
-                await ctx.send("An error occurred while adding the tag.")
-
+                logger.error(f'Error adding tag: {e}')
+                await ctx.send('An error occurred while adding the tag.')
+        # --- RENAME TAG ---
+        elif action == "rename":
+            if not name or not content:
+                return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag rename <old_name> <new_name>`')
+            old_name = name
+            new_name = content
+            try:
+                row_count = await self.tag_manager.rename_tag(
+                    old_name=old_name,
+                    new_name=new_name,
+                    location_id=ctx.guild.id,
+                    owner_id=ctx.author.id
+                )
+                if row_count > 0:
+                    await ctx.send(f'Tag \"{old_name}\" renamed to \"{new_name}\".')
+                else:
+                    await ctx.send(f'Tag \"{old_name}\" not found or you do not own it.')
+            except ValueError as ve:
+                # e.g. a duplicate name
+                await ctx.send(str(ve))
+            except Exception as e:
+                logger.error(f'Error renaming tag: {e}')
+                await ctx.send('An error occurred while renaming the tag.')
         # --- UPDATE TAG ---
-        elif action == "update":
+        elif action == 'update':
             if not name:
-                return await ctx.send("Usage: `!tag update <name> \"new content\" [loop|default]`")
+                return await ctx.send(f'Usage: {self.bot.command_prefix}tag update <name> \"new content\" [loop|default]`')
             resolved_tag_type = (
                 tag_type.lower() if tag_type and tag_type.lower() in ('default', 'loop') else None
             )
-
-            # Build a dict of fields to update
             updates = {}
             if content is not None:
                 updates['content'] = content
@@ -201,7 +134,6 @@ class Hybrid(commands.Cog):
                 updates['attachment_url'] = attachment_url
             if resolved_tag_type is not None:
                 updates['tag_type'] = resolved_tag_type
-
             try:
                 result = await self.tag_manager.update_tag(
                     name=name,
@@ -210,17 +142,16 @@ class Hybrid(commands.Cog):
                     updates=updates
                 )
                 if result > 0:
-                    await ctx.send(f"Tag `{name}` updated.")
+                    await ctx.send(f'Tag \"{name}\" updated.')
                 else:
-                    await ctx.send(f"Tag `{name}` not found or you do not own it.")
+                    await ctx.send(f'Tag \"{name}\" not found or you do not own it.')
             except Exception as e:
-                logger.error(f"Error updating tag: {e}")
-                await ctx.send("An error occurred while updating the tag.")
-
+                logger.error(f'Error updating tag: {e}')
+                await ctx.send('An error occurred while updating the tag.')
         # --- REMOVE TAG ---
-        elif action == "remove":
+        elif action == 'remove':
             if not name:
-                return await ctx.send("Usage: `!tag remove <name>`")
+                return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag remove <name>`')
             try:
                 result = await self.tag_manager.delete_tag(
                     name=name,
@@ -228,18 +159,14 @@ class Hybrid(commands.Cog):
                     owner_id=ctx.author.id
                 )
                 if result > 0:
-                    await ctx.send(f"Tag `{name}` removed.")
+                    await ctx.send(f'Tag \"{name}\" removed.')
                 else:
-                    await ctx.send(f"Tag `{name}` not found or you do not own it.")
+                    await ctx.send(f'Tag \"{name}\" not found or you do not own it.')
             except Exception as e:
-                logger.error(f"Error removing tag: {e}")
-                await ctx.send("An error occurred while removing the tag.")
-
+                logger.error(f'Error removing tag: {e}')
+                await ctx.send('An error occurred while removing the tag.')
         # --- LIST TAGS ---
-        elif action == "list":
-            # If user typed `!tag list loop`, filter by loop
-            # If user typed `!tag list default`, filter by default
-            # Otherwise, list them all
+        elif action == 'list':
             filter_tag_type = name.lower() if name and name.lower() in ('loop', 'default') else None
             try:
                 tags = await self.tag_manager.list_tags(
@@ -248,59 +175,54 @@ class Hybrid(commands.Cog):
                     tag_type=filter_tag_type
                 )
                 if not tags:
-                    await ctx.send("No tags found.")
+                    await ctx.send('No tags found.')
                 else:
-                    tag_list = "\n".join(
-                        f"**{t['name']}** (type: {t['tag_type']}): {t['content'] or t['attachment_url']}"
-                        for t in tags
-                    )
-                    await ctx.send(f"Tags:\n{tag_list}")
+                    # Change here: only join the tag's name (plus type if desired)
+                    # For name ONLY:
+                    tag_list = '\n'.join(f'**{t["name"]}**' for t in tags)
+                    
+                    # Or, if you still want to display the tag type:
+                    # tag_list = '\n'.join(
+                    #     f'**{t["name"]}** (type: {t["tag_type"]})'
+                    #     for t in tags
+                    # )
+        
+                    await ctx.send(f'Tags:\n{tag_list}')
             except Exception as e:
-                logger.error(f"Error listing tags: {e}")
-                await ctx.send("An error occurred while listing your tags.")
-
-        # --- LOOP TAGS (on/off) ---
-        elif action == "loop":
+                logger.error(f'Error listing tags: {e}')
+                await ctx.send('An error occurred while listing your tags.')
+        elif action == 'loop':
             if not name:
-                return await ctx.send("Usage: `!tag loop on <#channel>` or `!tag loop off`")
-
-            if name.lower() == "on":
-                # If user typed: !tag loop on #channel
-                # content might contain "<#1234567890>"
-                # fallback to current channel if user didn't mention any
+                return await ctx.send('Usage: \"{self.bot.command_prefix}tag loop on <#channel>` or \"{self.bot.command_prefix}tag loop off`')
+            if name.lower() == 'on':
                 channel = ctx.channel
-                if content and content.startswith("<#") and content.endswith(">"):
-                    channel_id = int(content.strip("<#>"))
+                if content and content.startswith('<#') and content.endswith('>'):
+                    channel_id = int(content.strip('<#>'))
                     maybe_chan = self.bot.get_channel(channel_id)
                     if maybe_chan is not None:
                         channel = maybe_chan
-
                 try:
                     await self.tag_manager.set_loop_config(ctx.guild.id, channel.id, True)
                     self.start_loop_task(channel)
-                    await ctx.send(f"Looping enabled in {channel.mention}.")
+                    await ctx.send(f'Looping enabled in {channel.mention}.')
                 except Exception as e:
-                    logger.error(f"Error enabling loop: {e}")
-                    await ctx.send("Could not enable loop.")
-
-            elif name.lower() == "off":
+                    logger.error(f'Error enabling loop: {e}')
+                    await ctx.send('Could not enable loop.')
+            elif name.lower() == 'off':
                 try:
                     await self.tag_manager.set_loop_config(ctx.guild.id, None, False)
                     self.stop_loop_task()
-                    await ctx.send("Looping disabled.")
+                    await ctx.send('Looping disabled.')
                 except Exception as e:
-                    logger.error(f"Error disabling loop: {e}")
-                    await ctx.send("Could not disable loop.")
-
+                    logger.error(f'Error disabling loop: {e}')
+                    await ctx.send('Could not disable loop.')
         # --- FETCH A TAG BY NAME ---
         else:
-            # If user does something like !tag greet
-            # action is actually the tag name, so we fetch it.
             try:
                 tag = await self.tag_manager.get_tag(ctx.guild.id, action)
                 if tag:
-                    content_value = tag.get("content")
-                    attachment_url_value = tag.get("attachment_url")
+                    content_value = tag.get('content')
+                    attachment_url_value = tag.get('attachment_url')
                     if content_value and attachment_url_value:
                         await ctx.send(content_value)
                         await ctx.send(attachment_url_value)
@@ -309,49 +231,36 @@ class Hybrid(commands.Cog):
                     elif attachment_url_value:
                         await ctx.send(attachment_url_value)
                     else:
-                        await ctx.send(f"Tag `{action}` has no content.")
+                        await ctx.send(f'Tag \"{action}\" has no content.')
                 else:
-                    await ctx.send(f"Tag `{action}` not found.")
+                    await ctx.send(f'Tag \"{action}\" not found.')
             except Exception as e:
-                logger.error(f"Error fetching tag '{action}': {e}")
-                await ctx.send(f"An error occurred while fetching tag `{action}`.")
+                logger.error(f'Error fetching tag \"{action}\": {e}')
+                await ctx.send(f'An error occurred while fetching tag \"{action}\".')
 
     def start_loop_task(self, channel: discord.TextChannel):
-        """
-        Start a background task that periodically sends random "loop" tags.
-        """
         if self.loop_task is None or self.loop_task.done():
             self.loop_task = asyncio.create_task(self.loop_tags(channel))
 
     def stop_loop_task(self):
-        """
-        Stop the background loop (if any).
-        """
         if self.loop_task and not self.loop_task.done():
             self.loop_task.cancel()
             self.loop_task = None
 
     async def loop_tags(self, channel: discord.TextChannel):
-        """
-        Periodically picks random 'loop' tags from the DB for this guild and sends them.
-        """
         while True:
             try:
-                # Only loop tags of type 'loop' for the guild
                 loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
                 if loop_tags:
                     random_tag = choice(loop_tags)
                     message_text = random_tag['content'] or random_tag['attachment_url'] or ''
                     if message_text:
                         await channel.send(message_text)
-
-                # Sleep 5 minutes between looped messages
                 await asyncio.sleep(300)
             except asyncio.CancelledError:
-                # Task canceled externally (stop_loop_task called)
                 break
             except Exception as e:
-                logger.error(f"Error during loop_tags: {e}")
+                logger.error(f'Error during loop_tags: {e}')
 
     @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>', hidden=True)
     @at_home()
@@ -464,7 +373,7 @@ class Hybrid(commands.Cog):
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
         results = google(query)
-        embed = discord.Embed(title=f'Search Results for `{query}`', color=discord.Color.blue())
+        embed = discord.Embed(title=f'Search Results for \"{query}\"', color=discord.Color.blue())
         for result in results:
             embed.add_field(name=result['title'], value=result['link'], inline=False)
         await ctx.send(embed=embed)
