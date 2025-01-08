@@ -129,6 +129,7 @@ class Conversations:
                         else:
                             logger.info('Processing non-streaming response.')
                             full_response_json = await response.json()
+                            logger.info(full_response_json)
                             full_response = full_response_json['choices'][0]['message']['content']
                         if add_completion_to_history:
                             self.conversations[custom_id].append({'role': 'assistant', 'content': full_response})

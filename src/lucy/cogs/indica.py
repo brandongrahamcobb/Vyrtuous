@@ -99,7 +99,7 @@ class Indica(commands.Cog):
             if message.guild.id == 1300517536001036348:
                 if self.bot.user in message.mentions:
                     if self.config['openai_chat_completion']:
-                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT, model='o1-mini'):
+                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):
                             await message.reply(chat_completion)
                             print(chat_completion)
 

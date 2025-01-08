@@ -1,4 +1,5 @@
 import json
+import tiktoken
 
 from .helpers import *
 from .setup_logging import logger
@@ -30,7 +31,11 @@ class Message:
         if completions is Ellipsis:
             completions = OPENAI_CHAT_N
         if max_tokens is Ellipsis:
-            max_tokens = (OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
+    #        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
+            encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
+            total_input_tokens = sum([len(encoder.encode(message['text'])) for message in array])
+            available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - total_input_tokens
+            max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
         if model is Ellipsis:
             model = self.config['openai_chat_model']
         if response_format is Ellipsis:
@@ -52,6 +57,12 @@ class Message:
         if add_completion_to_history is Ellipsis:
             add_completion_to_history = self.config['openai_chat_add_completion_to_history']
 
+        total_tokens = sum([len(message['text'].split()) for message in array])
+        while total_tokens + max_tokens > OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']]:
+            removed_message = array.pop(0)
+            total_tokens -= len(removed_message['text'].split())
+
+
         # Continue with the main logic
         async for chat_completion in self.conversations.create_https_completion(
             custom_id=custom_id,
@@ -72,11 +83,17 @@ class Message:
             yield chat_completion
 
     async def generate_moderation_completion(self, custom_id, array):
+#        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
+        encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
+        total_input_tokens = sum([len(encoder.encode(message['text'])) for message in array])
+        available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[OPENAI_CHAT_MODERATION_MODEL] - total_input_tokens
+        max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
+
         async for moderation_completion in self.conversations.create_https_completion(
             completions=OPENAI_CHAT_MODERATION_N,
             custom_id=custom_id,
             input_array=array,
-            max_tokens=(OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_moderation_model']] - OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_moderation_model']]),
+            max_tokens=max_tokens,
             model=OPENAI_CHAT_MODERATION_MODEL,
             response_format=OPENAI_CHAT_MODERATION_RESPONSE_FORMAT,
             stop=OPENAI_CHAT_MODERATION_STOP,
