@@ -70,9 +70,9 @@ class Indica(commands.Cog):
         self.guild_loops_index = defaultdict(int)
 
     @classmethod
-    def at_home(self):
+    def at_home(cls):
         async def predicate(ctx):
-            return ctx.guild is not None and ctx.guild.id == self.bot.testing_guild_id
+            return ctx.guild is not None and ctx.guild.id == cls.bot.testing_guild_id
         return commands.check(predicate)
 
     @tasks.loop(minutes=1)
@@ -129,9 +129,7 @@ class Indica(commands.Cog):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
-    @commands.check(at_home)
     async def on_message_edit(self, before, after):
-
         if before.content != after.content:
             ctx = await self.bot.get_context(after)
             if ctx.command:
@@ -147,13 +145,15 @@ class Indica(commands.Cog):
                 array = await self.handler.process_array(message.content, attachments=message.attachments)
             else:
                 array = await self.handler.process_array(message.content)
-
-            # Chat
-            if message.guild.id == self.config['discord_testing_guild_id']:
-                if self.bot.user in message.mentions:
-                    if self.config['openai_chat_completion']:
-                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
-                            await message.reply(chat_completion)
+            async def ai_message():
+                if self.config['openai_chat_completion']:
+                    async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
+                        await message.reply(chat_completion)
+            if isinstance(message.channel, discord.DMChannel):
+                await ai_message()
+            elif self.bot.user in message.mentions:
+                if message.guild.id == self.config['discord_testing_guild_id']:
+                    await ai_message()
 
             # Moderate Text and Images
             if self.config['openai_chat_moderation']:
@@ -164,6 +164,7 @@ class Indica(commands.Cog):
                         if results:
                             flagged = results[0].get('flagged', False)
                             if flagged:
+                                    
                                 guilds = [await self.bot.fetch_guild(self.config['discord_testing_guild_id']), await self.bot.fetch_guild(730907954345279591)]
                                 vegan_roles = [guilds[0].get_role(self.config['discord_role_pass']), guilds[1].get_role(788114978020392982)]
                                 if vegan_roles[0] in message.author.roles and flagged:

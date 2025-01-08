@@ -66,6 +66,22 @@ class Hybrid(commands.Cog):
         return commands.check(predicate)
 
 
+    @commands.hybrid_command(name='backup')
+    @commands.check(at_home)
+    async def backup_task(self, ctx: commands.Context):
+        try:
+            backup_dir = setup_backup_directory('./backups')
+            backup_file = perform_backup(
+                db_user='postgres',
+                db_name='lucy',
+                db_host='localhost',
+                backup_dir=backup_dir
+            )
+
+            logger.info(f'Backup completed successfully: {backup_file}')
+        except Exception as e:
+            logger.error(f'Error during database backup: {e}')
+
     @commands.hybrid_command(
         name='tag',
         description='Manage or retrieve tags. Sub-actions: add, update, remove, list, loop.'
