@@ -30,7 +30,7 @@ class Message:
         if completions is Ellipsis:
             completions = OPENAI_CHAT_N
         if max_tokens is Ellipsis:
-            max_tokens = OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']]
+            max_tokens = (OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
         if model is Ellipsis:
             model = self.config['openai_chat_model']
         if response_format is Ellipsis:
@@ -76,7 +76,7 @@ class Message:
             completions=OPENAI_CHAT_MODERATION_N,
             custom_id=custom_id,
             input_array=array,
-            max_tokens=OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_moderation_model']] - OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_moderation_model']],
+            max_tokens=)OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_moderation_model']] - OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_moderation_model']]),
             model=OPENAI_CHAT_MODERATION_MODEL,
             response_format=OPENAI_CHAT_MODERATION_RESPONSE_FORMAT,
             stop=OPENAI_CHAT_MODERATION_STOP,
