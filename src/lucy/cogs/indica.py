@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from collections import defaultdict
-from discord.ext import commands, tasks
+from discord.ext import commands, menus, tasks
 from lucy.utils.backup import perform_backup, setup_backup_directory
 from lucy.utils.create_https_completion import Conversations
 from lucy.utils.create_https_moderation import create_https_moderation
@@ -23,6 +23,7 @@ from lucy.utils.create_moderation import create_moderation
 from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
 from lucy.utils.nlp_utils import NLPUtils
+from lucy.utils.paginator import Paginator
 from lucy.utils.tag import TagManager
 from os.path import abspath, dirname, exists, expanduser, join
 
@@ -37,10 +38,21 @@ import subprocess
 import traceback
 from lucy.utils.helpers import *
 
-def at_home():
-    async def predicate(ctx):
-        return ctx.guild is not None and ctx.guild.id == 1300517536001036348
-    return commands.check(predicate)
+
+class TagMenu(menus.ListPageSource):
+    def __init__(self, tags):
+        super().__init__(tags, per_page=1)  # One tag per page
+
+    async def format_page(self, menu, tag):
+        content = tag.get('content', '')
+        attachment_url = tag.get('attachment_url', '')
+        description = content or attachment_url or 'No content available.'
+        embed = discord.Embed(
+            title=f'Loop Tag: {tag['name']}',
+            description=description,
+            color=discord.Color.blurple()
+        )
+        return embed
 
 class Indica(commands.Cog):
 
@@ -50,16 +62,18 @@ class Indica(commands.Cog):
         self.conversations = Conversations()
         self.handler = Message(self.config, self.conversations)
         self.tag_manager = TagManager(self.bot.db_pool)
-        self.loop_task = None
-        self.daily_loop.start()  # Start the daily check loop when cog is loaded
+        self.daily_loop.start()
         self.channel_guild_map: Dict[int, int] = {
             798967615636504657: 730907954345279591,
             730907954877956179: 730907954345279591,
         }
         self.guild_loops_index = defaultdict(int)
 
-    def cog_unload(self):
-        self.daily_loop.cancel()
+    @classmethod
+    def at_home(self):
+        async def predicate(ctx):
+            return ctx.guild is not None and ctx.guild.id == self.bot.testing_guild_id
+        return commands.check(predicate)
 
     @tasks.loop(minutes=1)
     async def daily_loop(self):
@@ -90,37 +104,32 @@ class Indica(commands.Cog):
                     channel = self.bot.get_channel(cid)
                     if channel:
                         tag = loop_tags[current_index % len(loop_tags)]
-                        msg = tag['content'] or tag['attachment_url']
+                        msg = tag.get('content') or tag.get('attachment_url')
                         if msg:
                             await channel.send(msg)
-                        current_index += 1
-                self.guild_loops_index[guild_id] = current_index
-
-    @daily_loop.before_loop
-    async def before_daily_loop(self):
-        print('Daily loop is waiting until bot is ready...')
+                self.guild_loops_index[guild_id] = (current_index + 1) % len(loop_tags)
 
     @tasks.loop(hours=24)  # Adjust the interval as needed
     async def backup_task(self):
         try:
-            backup_dir = setup_backup_directory("./backups")
+            backup_dir = setup_backup_directory('./backups')
             backup_file = perform_backup(
-                db_user="postgres",
-                db_name="lucy",
-                db_host="localhost",
+                db_user='postgres',
+                db_name='lucy',
+                db_host='localhost',
                 backup_dir=backup_dir
             )
 
-            logger.info(f"Backup completed successfully: {backup_file}")
+            logger.info(f'Backup completed successfully: {backup_file}')
         except Exception as e:
-            logger.error(f"Error during database backup: {e}")
+            logger.error(f'Error during database backup: {e}')
 
     @backup_task.before_loop
     async def before_backup(self):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
-    @at_home()
+    @commands.check(at_home)
     async def on_message_edit(self, before, after):
 
         if before.content != after.content:
@@ -130,7 +139,7 @@ class Indica(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        logger.info(f"Received message: {message.content}")
+        logger.info(f'Received message: {message.content}')
         try:
             if message.author.bot:
                 return
@@ -138,42 +147,39 @@ class Indica(commands.Cog):
                 array = await self.handler.process_array(message.content, attachments=message.attachments)
             else:
                 array = await self.handler.process_array(message.content)
-            
+
             # Chat
-            if message.guild.id == 1300517536001036348:
+            if message.guild.id == self.config['discord_testing_guild_id']:
                 if self.bot.user in message.mentions:
                     if self.config['openai_chat_completion']:
                         async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
                             await message.reply(chat_completion)
-    
+
             # Moderate Text and Images
             if self.config['openai_chat_moderation']:
                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
                     try:
                         full_response = json.loads(moderation_completion)
                         results = full_response.get('results', [])
-    
-                        if results:  # Check if results list is not empty
+                        if results:
                             flagged = results[0].get('flagged', False)
+                            if flagged:
+                                guilds = [await self.bot.fetch_guild(self.config['discord_testing_guild_id']), await self.bot.fetch_guild(730907954345279591)]
+                                vegan_roles = [guilds[0].get_role(self.config['discord_role_pass']), guilds[1].get_role(788114978020392982)]
+                                if vegan_roles[0] in message.author.roles and flagged:
+                                    await message.delete()
                             carnism_flagged = results[0]['categories'].get('carnism', False)
-                            carnism_score = results[0]['category_scores'].get('carnism', 0)
-                            total_carnism_score = sum(arg['category_scores'].get('carnism', 0) for arg in results)
-    
-                            if carnism_flagged or flagged:
-                                if message.guild.id == 1300517536001036348:
-                                    guild = await self.bot.fetch_guild(self.config['discord_testing_guild_id'])
-                                    role = guild.get_role(self.config['discord_role_pass'])
-                                    if not role in message.author.roles and flagged:
-                                        await message.delete()
-                                NLPUtils.append_to_other_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
+                            if carnism_flagged:
+                                carnism_score = results[0]['category_scores'].get('carnism', 0)
+                                NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                         else:
-                            logger.info("No moderation results returned.")
+                            logger.info('No moderation results returned.')
                     except Exception as e:
-                        logger.error(f"Error processing moderation response: {e}")
-                        await message.reply("An error occurred while processing moderation.")
+                        logger.error(f'Error processing moderation response: {e}')
+                        await message.reply('An error occurred while processing moderation.')
         except Exception as e:
             logger.error(traceback.format_exc())
             await message.reply(e)
-    
+
 async def setup(bot: commands.Bot):
     await bot.add_cog(Indica(bot))

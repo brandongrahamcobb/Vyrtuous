@@ -26,19 +26,22 @@ def is_owner():
         return ctx.guild is not None and ctx.guild.owner_id == ctx.author.id
     return commands.check(predicate)
 
-def at_home():
-    async def predicate(ctx):
-        return ctx.guild is not None and ctx.guild.id == 1300517536001036348
-    return commands.check(predicate)
 
 class Sativa(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
 
+    @staticmethod
+    def at_home(bot):
+        async def predicate(ctx):
+            # Ensure the bot instance and the guild's ID are accessible
+            return ctx.guild is not None and ctx.guild.id == bot.config.get("discord_testing_guild_id")
+        return commands.check(predicate)
+
     @commands.command(name='sync', hidden=True)
     @is_owner()
-    @at_home()
+    @commands.check(at_home)
     async def sync(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None) -> None:
         if not guilds:
             if spec == '~':
@@ -69,7 +72,7 @@ class Sativa(commands.Cog):
 
     @commands.command(name='wipe', hidden=True)
     @is_owner()
-    @at_home()
+    @commands.check(at_home)
     async def wipe(self, ctx, option: str = None, limit: int = 100):
         if limit <= 0 or limit > 100:
             return await ctx.send('Limit must be between 1 and 100.')

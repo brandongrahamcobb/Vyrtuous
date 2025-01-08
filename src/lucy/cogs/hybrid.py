@@ -49,11 +49,6 @@ import pytz
 import shlex
 import traceback
 
-def at_home():
-    async def predicate(ctx):
-        return ctx.guild is not None and ctx.guild.id == 1300517536001036348
-    return commands.check(predicate)
-
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -63,10 +58,19 @@ class Hybrid(commands.Cog):
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
 
+    @staticmethod
+    def at_home(bot):
+        async def predicate(ctx):
+            # Ensure the bot instance and the guild's ID are accessible
+            return ctx.guild is not None and ctx.guild.id == bot.config.get("discord_testing_guild_id")
+        return commands.check(predicate)
+
+
     @commands.hybrid_command(
         name='tag',
         description='Manage or retrieve tags. Sub-actions: add, update, remove, list, loop.'
     )
+    @commands.check(at_home)
     async def tag_command(
         self,
         ctx: commands.Context,
@@ -263,7 +267,7 @@ class Hybrid(commands.Cog):
                 logger.error(f'Error during loop_tags: {e}')
 
     @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>', hidden=True)
-    @at_home()
+    @commands.check(at_home)
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
          try:
              await ctx.send(script(version, reference))
@@ -271,7 +275,7 @@ class Hybrid(commands.Cog):
              print(traceback.format_exc())
 
     @commands.command(name='load', hidden=True)
-    @at_home()
+    @commands.check(at_home)
     async def load(self, ctx: commands.Context, *, module: str):
         try:
             await ctx.bot.load_extension(module)
@@ -282,7 +286,7 @@ class Hybrid(commands.Cog):
 
 
     @commands.hybrid_command(name='draw', description='Usage: !draw glow <molecule> or !draw gsrs <molecule> or !draw shadow <molecule>.')
-    @at_home()
+    @commands.check(at_home)
     async def molecule(self, ctx: commands.Context, option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
         try:
             if ctx.interaction:
@@ -356,7 +360,7 @@ class Hybrid(commands.Cog):
             await ctx.reply(e)
 
     @commands.hybrid_command(hidden=True)
-    @at_home()
+    @commands.check(at_home)
     async def reload(self, ctx: commands.Context, *, module: str):
         try:
             if ctx.interaction:
@@ -368,7 +372,7 @@ class Hybrid(commands.Cog):
             await ctx.send('\N{OK HAND SIGN}')
 
     @commands.hybrid_command(name='search', description='Usage: !search <query>. Search Google.', hidden=True)
-    @at_home()
+    @commands.check(at_home)
     async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
@@ -379,7 +383,7 @@ class Hybrid(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='frame', description='', hidden=True)
-    @at_home()
+    @commands.check(at_home)
     async def frame(self, ctx: commands.Context):
         video_path = 'frogs.mov'
         output_dir = 'frames'

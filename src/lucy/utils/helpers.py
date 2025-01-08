@@ -15,12 +15,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-import discord
 from os.path import dirname, abspath, expanduser, join
 from .setup_logging import logger
 from .load_contents import load_contents
+
+import discord
+
 # Base and Home Paths
 DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
+DIR_HOME = expanduser('~')
 
 # Script Paths
 PATH_ADD_WATERMARK = join(DIR_BASE, 'lucy', 'utils', 'add_watermark.py')
@@ -65,7 +68,7 @@ PATH_SATIVA = join(DIR_BASE, 'lucy', 'cogs', 'sativa.py')
 PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'script.py')
 PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'setup_logging.py')
 PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'tag.py')
-PATH_TRAINING = join(DIR_BASE, 'lucy', 'training.jsonl')
+PATH_TRAINING = join(DIR_HOME, 'training.jsonl')
 PATH_TWITCH_BOT = join(DIR_BASE, 'lucy', 'utils', 'twitch_bot.py')
 PATH_TWITCH_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'twitch_oauth.py')
 PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'unique_pairs.py')
