@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "lucy"
-version = "7.3.1"
+version = "7.5.3"
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
@@ -48,6 +48,7 @@ tiktoken = "^0.8.0"
 discord-py = "^2.4.0"
 toml = "^0.10.2"
 audioop-lts = "^0.2.1"
+pytz = "^2024.2"
 
 [tool.poetry.scripts]
 lucy = "lucy.main:run"

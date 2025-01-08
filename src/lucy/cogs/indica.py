@@ -99,9 +99,8 @@ class Indica(commands.Cog):
             if message.guild.id == 1300517536001036348:
                 if self.bot.user in message.mentions:
                     if self.config['openai_chat_completion']:
-                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):
+                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
                             await message.reply(chat_completion)
-                            print(chat_completion)
 
             # Moderate Text and Images
             if self.config['openai_chat_moderation']:

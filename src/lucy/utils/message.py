@@ -33,7 +33,9 @@ class Message:
         if max_tokens is Ellipsis:
     #        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
             encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
-            total_input_tokens = sum([len(encoder.encode(message['text'])) for message in array])
+            total_input_tokens = sum(
+                [len(encoder.encode(message['text'])) for message in array if 'text' in message and message['text']]
+            )
             available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - total_input_tokens
             max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
         if model is Ellipsis:
@@ -85,7 +87,10 @@ class Message:
     async def generate_moderation_completion(self, custom_id, array):
 #        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
         encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
-        total_input_tokens = sum([len(encoder.encode(message['text'])) for message in array])
+        total_input_tokens = sum(
+            [len(encoder.encode(message['text'])) for message in array if 'text' in message and message['text']]
+        )
+
         available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[OPENAI_CHAT_MODERATION_MODEL] - total_input_tokens
         max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
 

@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from collections import defaultdict
 from discord.utils import get
 from discord import Embed
 from discord.ext import commands, tasks
@@ -35,16 +36,18 @@ from lucy.utils.helpers import *
 from lucy.utils.script import script
 from lucy.utils.unique_pairs import unique_pairs
 from lucy.utils.tag import TagManager
+from random import choice
 #import aiomysql
 import asyncio
+import datetime
 import discord
 #from googletrans import Translator, LANGUAGES
 import io
 import json
 import os
+import pytz
 import shlex
 import traceback
-import random
 
 def at_home():
     async def predicate(ctx):
@@ -59,86 +62,80 @@ class Hybrid(commands.Cog):
         self.sativa = self.bot.get_cog('Sativa')
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
+        self.loop_task = None
+        self.daily_loop.start()  # Start the daily check loop when cog is loaded
+        self.channel_guild_map: Dict[int, int] = {
+            798967615636504657: 730907954345279591,
+            730907954877956179: 730907954345279591,
+        }
+        self.guild_loops_index = defaultdict(int)
 
-    @commands.command(name="backup")
-    @at_home()
-    async def backup(self, ctx: commands.Context):
-        try:
-            backup_dir = setup_backup_directory("./backups")
-            backup_file = perform_backup(
-                db_user="postgres",
-                db_name="lucy",
-                db_host="localhost",
-                backup_dir=backup_dir
-            )
-            await ctx.send(f"Backup completed successfully: `{backup_file}`")
-        except Exception as e:
-            logger.error(f"Error during manual backup: {e}")
-            await ctx.send("An error occurred while performing the backup.")
+    def cog_unload(self):
+        self.daily_loop.cancel()
 
-    @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
-    @at_home()
-    async def colorize(self, ctx: commands.Context, r: Optional[str] = commands.parameter(default='149', description='Anything between 0 and 255.'), g: int = commands.parameter(default='165', description='Anything betwen 0 and 255.'), b: int = commands.parameter(default='165', description='Anything between 0 and 255.')):
-        if not r.isnumeric():
-            input_text_dict = {
-                'type': 'text',
-                'text': r
-            }
-            array = [
-                {
-                    'role': 'user',
-                    'content': json.dumps(input_text_dict)
-                }
-            ]
-            async for completion in create_completion(array):
-                color_values = json.loads(completion)
-                r = color_values['r']
-                g = color_values['g']
-                b = color_values['b']
-        guildroles = await ctx.guild.fetch_roles()
-        position = len(guildroles) - 12
-        for arg in ctx.author.roles:
-            if arg.name.isnumeric():
-                await ctx.author.remove_roles(arg)
-        for arg in guildroles:
-            if arg.name.lower() == f'{r}{g}{b}':
-                await ctx.author.add_roles(arg)
-                await arg.edit(position=position)
-                await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
-                return
-        newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
-        await newrole.edit(position=position)
-        await ctx.author.add_roles(newrole)
-        await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
+    @tasks.loop(minutes=1)
+    async def daily_loop(self):
+        """
+        Checks every minute if it's 10:00 PM EST.
+        If it is, picks the "next" loop tag for each channel in each guild, in order.
+        """
+        await self.bot.wait_until_ready()
 
-    @at_home()
-    def get_language_code(self, language_name):
-        language_name = language_name.lower()
-        for lang_code, lang_name in LANGUAGES.items():
-            if lang_name.lower() == language_name:
-                return lang_code
-        return None
+        # Current time in EST
+        est_tz = pytz.timezone('US/Eastern')
+        now_est = datetime.datetime.now(est_tz)
 
-#    @commands.command()
-#    async def languages(self, ctx):
-#        supported_languages = ', '.join(LANGUAGES.values())
-#        await ctx.send(f'Supported languages are:\n{supported_languages}')
-#
-#    @commands.command()
-#    async def translate(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
-#        if toggle.lower() == 'on':
-#            target_lang_code = self.get_language_code(target_lang)
-#            source_lang_code = self.get_language_code(source_lang)
-#            if target_lang_code is None or source_lang_code is None:
-#                await ctx.send(f'{ctx.author.mention}, please specify valid language names.')
-#                return
-#            self.user_translation_preferences[ctx.author.id] = (target_lang_code, source_lang_code)
-#            await ctx.send(f'{ctx.author.mention}, translation enabled from {source_lang} to {target_lang}.')
-#        elif toggle.lower() == 'off':
-#            self.user_translation_preferences[ctx.author.id] = None
-#            await ctx.send(f'{ctx.author.mention}, translation disabled.')
-#        else:
-#            await ctx.send(f'{ctx.author.mention}, please specify 'on' or 'off'.')
+        # If it's 10:00 PM (22:00) local EST time, do our sends
+        if now_est.hour == 22 and now_est.minute == 0:
+            # Group channels by guild
+            guild_channels_map = {}
+            for channel_id, guild_id in self.channel_guild_map.items():
+                guild_channels_map.setdefault(guild_id, []).append(channel_id)
+
+            # For each guild, fetch the list of loop tags.
+            for guild_id, channel_ids in guild_channels_map.items():
+                loop_tags = await self.tag_manager.list_tags(
+                    location_id=guild_id,
+                    tag_type='loop'
+                )
+
+                # Filter out any tags that have neither content nor an attachment
+                loop_tags = [
+                    t for t in loop_tags
+                    if t.get('content') or t.get('attachment_url')
+                ]
+
+                if not loop_tags:
+                    # If no loop tags, let each channel know or just skip
+                    for cid in channel_ids:
+                        channel = self.bot.get_channel(cid)
+                        if channel:
+                            await channel.send("No loop tags found for this guild.")
+                    # Move on to the next guild
+                    continue
+
+                # Grab the current index for this guild
+                current_index = self.guild_loops_index[guild_id]
+
+                # For each channel (in order), pick the next tag
+                for cid in channel_ids:
+                    channel = self.bot.get_channel(cid)
+                    if channel:
+                        tag = loop_tags[current_index % len(loop_tags)]
+                        msg = tag['content'] or tag['attachment_url']
+                        if msg:
+                            await channel.send(msg)
+                        # Move to the next index for *each channel*
+                        current_index += 1
+
+                # After we've used a few tags for these channels,
+                # update the guild's index
+                self.guild_loops_index[guild_id] = current_index
+
+    @daily_loop.before_loop
+    async def before_daily_loop(self):
+        """Just an optional hook before the loop starts."""
+        print("Daily loop is waiting until bot is ready...")
 
     @commands.hybrid_command(
         name='tag',
@@ -147,50 +144,70 @@ class Hybrid(commands.Cog):
     async def tag_command(
         self,
         ctx: commands.Context,
-        action: str = commands.parameter(
-            default=None,
-            description='Action: add, update, remove, list, or the name of a tag.'
-        ),
-        name: Optional[str] = commands.parameter(
-            default=None,
-            description='Name of the tag.'
-        ),
-        content: Optional[str] = commands.parameter(
-            default=None,
-            description='Content for the tag.'
-        )
+        action: str = commands.parameter(default=None, description='Action: add, update, remove, list, loop.'),
+        name: Optional[str] = commands.parameter(default=None, description='Name of the tag.'),
+        content: Optional[str] = commands.parameter(default=None, description='Content for the tag (if applicable).'),
+        tag_type: Optional[str] = commands.parameter(default=None, description='Optional tag type: default or loop.')
     ):
+        """
+        Examples:
+        !tag add greet "Hello, world!"
+        !tag update greet "Hello again!"
+        !tag remove greet
+        !tag list
+        !tag list loop
+        !tag loop on #some-channel
+        !tag loop off
+        !tag greet
+        """
+        # If there's an attachment, store the first attachment's URL
         attachment_url = ctx.message.attachments[0].url if ctx.message.attachments else None
         action = action.lower() if action else None
 
+        # --- ADD TAG ---
         if action == "add":
+            resolved_tag_type = 'loop' if (tag_type and tag_type.lower() == 'loop') else 'default'
             if not name:
-                await ctx.send("Usage: `!tag add <name> \"content\"`")
-                return
+                return await ctx.send("Usage: `!tag add <name> \"content\" [loop]`")
             try:
                 await self.tag_manager.add_tag(
                     name=name,
                     location_id=ctx.guild.id,
                     owner_id=ctx.author.id,
                     content=content,
-                    attachment_url=attachment_url
+                    attachment_url=attachment_url,
+                    tag_type=resolved_tag_type
                 )
-                await ctx.send(f"Tag `{name}` added successfully.")
+                await ctx.send(f"Tag `{name}` (type: {resolved_tag_type}) added successfully.")
+            except ValueError as ve:
+                await ctx.send(str(ve))
             except Exception as e:
                 logger.error(f"Error adding tag: {e}")
                 await ctx.send("An error occurred while adding the tag.")
 
+        # --- UPDATE TAG ---
         elif action == "update":
-            if not name or not content:
-                await ctx.send("Usage: `!tag update <name> \"new content\"`")
-                return
+            if not name:
+                return await ctx.send("Usage: `!tag update <name> \"new content\" [loop|default]`")
+            resolved_tag_type = (
+                tag_type.lower() if tag_type and tag_type.lower() in ('default', 'loop') else None
+            )
+
+            # Build a dict of fields to update
+            updates = {}
+            if content is not None:
+                updates['content'] = content
+            if attachment_url is not None:
+                updates['attachment_url'] = attachment_url
+            if resolved_tag_type is not None:
+                updates['tag_type'] = resolved_tag_type
+
             try:
                 result = await self.tag_manager.update_tag(
                     name=name,
                     location_id=ctx.guild.id,
                     owner_id=ctx.author.id,
-                    content=content,
-                    attachment_url=attachment_url
+                    updates=updates
                 )
                 if result > 0:
                     await ctx.send(f"Tag `{name}` updated.")
@@ -200,10 +217,10 @@ class Hybrid(commands.Cog):
                 logger.error(f"Error updating tag: {e}")
                 await ctx.send("An error occurred while updating the tag.")
 
+        # --- REMOVE TAG ---
         elif action == "remove":
             if not name:
-                await ctx.send("Usage: `!tag remove <name>`")
-                return
+                return await ctx.send("Usage: `!tag remove <name>`")
             try:
                 result = await self.tag_manager.delete_tag(
                     name=name,
@@ -218,54 +235,125 @@ class Hybrid(commands.Cog):
                 logger.error(f"Error removing tag: {e}")
                 await ctx.send("An error occurred while removing the tag.")
 
+        # --- LIST TAGS ---
         elif action == "list":
+            # If user typed `!tag list loop`, filter by loop
+            # If user typed `!tag list default`, filter by default
+            # Otherwise, list them all
+            filter_tag_type = name.lower() if name and name.lower() in ('loop', 'default') else None
             try:
-                tags = await self.tag_manager.list_tags(ctx.guild.id, ctx.author.id)
+                tags = await self.tag_manager.list_tags(
+                    location_id=ctx.guild.id,
+                    owner_id=ctx.author.id,
+                    tag_type=filter_tag_type
+                )
                 if not tags:
-                    await ctx.send("You have no tags.")
+                    await ctx.send("No tags found.")
                 else:
                     tag_list = "\n".join(
-                        f"**{t['name']}**: {t['content'] or t['attachment_url']}" for t in tags
+                        f"**{t['name']}** (type: {t['tag_type']}): {t['content'] or t['attachment_url']}"
+                        for t in tags
                     )
-                    await ctx.send(f"Your tags:\n{tag_list}")
+                    await ctx.send(f"Tags:\n{tag_list}")
             except Exception as e:
                 logger.error(f"Error listing tags: {e}")
                 await ctx.send("An error occurred while listing your tags.")
 
+        # --- LOOP TAGS (on/off) ---
+        elif action == "loop":
+            if not name:
+                return await ctx.send("Usage: `!tag loop on <#channel>` or `!tag loop off`")
+
+            if name.lower() == "on":
+                # If user typed: !tag loop on #channel
+                # content might contain "<#1234567890>"
+                # fallback to current channel if user didn't mention any
+                channel = ctx.channel
+                if content and content.startswith("<#") and content.endswith(">"):
+                    channel_id = int(content.strip("<#>"))
+                    maybe_chan = self.bot.get_channel(channel_id)
+                    if maybe_chan is not None:
+                        channel = maybe_chan
+
+                try:
+                    await self.tag_manager.set_loop_config(ctx.guild.id, channel.id, True)
+                    self.start_loop_task(channel)
+                    await ctx.send(f"Looping enabled in {channel.mention}.")
+                except Exception as e:
+                    logger.error(f"Error enabling loop: {e}")
+                    await ctx.send("Could not enable loop.")
+
+            elif name.lower() == "off":
+                try:
+                    await self.tag_manager.set_loop_config(ctx.guild.id, None, False)
+                    self.stop_loop_task()
+                    await ctx.send("Looping disabled.")
+                except Exception as e:
+                    logger.error(f"Error disabling loop: {e}")
+                    await ctx.send("Could not disable loop.")
+
+        # --- FETCH A TAG BY NAME ---
         else:
+            # If user does something like !tag greet
+            # action is actually the tag name, so we fetch it.
             try:
-                tag = await self.tag_manager.get_tag(location_id=ctx.guild.id, name=action)
-                tag_content = tag.get('content')
-                tag_attachment_url = tag.get('attachment_url')
-
-                if tag_content and tag_attachment_url:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(tag_attachment_url) as response:
-                            if response.status == 200:
-                                file_bytes = await response.read()
-                                filename = tag_attachment_url.split("/")[-1]
-                                await ctx.send(
-                                    content=tag_content,
-                                    file=discord.File(io.BytesIO(file_bytes), filename=filename)
-                                )
-                            else:
-                                await ctx.send(tag_content)
-                elif tag_content:
-                    await ctx.send(tag_content)
-                elif tag_attachment_url:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(tag_attachment_url) as response:
-                            if response.status == 200:
-                                file_bytes = await response.read()
-                                filename = tag_attachment_url.split("/")[-1]
-                                await ctx.send(file=discord.File(io.BytesIO(file_bytes), filename=filename))
-                            else:
-                                await ctx.send("Failed to retrieve the attachment.")
+                tag = await self.tag_manager.get_tag(ctx.guild.id, action)
+                if tag:
+                    content_value = tag.get("content")
+                    attachment_url_value = tag.get("attachment_url")
+                    if content_value and attachment_url_value:
+                        await ctx.send(content_value)
+                        await ctx.send(attachment_url_value)
+                    elif content_value:
+                        await ctx.send(content_value)
+                    elif attachment_url_value:
+                        await ctx.send(attachment_url_value)
+                    else:
+                        await ctx.send(f"Tag `{action}` has no content.")
+                else:
+                    await ctx.send(f"Tag `{action}` not found.")
             except Exception as e:
-                logger.error(f"Error retrieving tag: {e}")
-                await ctx.send(f"Tag `{action}` not found.")
+                logger.error(f"Error fetching tag '{action}': {e}")
+                await ctx.send(f"An error occurred while fetching tag `{action}`.")
 
-    @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>')
+    def start_loop_task(self, channel: discord.TextChannel):
+        """
+        Start a background task that periodically sends random "loop" tags.
+        """
+        if self.loop_task is None or self.loop_task.done():
+            self.loop_task = asyncio.create_task(self.loop_tags(channel))
+
+    def stop_loop_task(self):
+        """
+        Stop the background loop (if any).
+        """
+        if self.loop_task and not self.loop_task.done():
+            self.loop_task.cancel()
+            self.loop_task = None
+
+    async def loop_tags(self, channel: discord.TextChannel):
+        """
+        Periodically picks random 'loop' tags from the DB for this guild and sends them.
+        """
+        while True:
+            try:
+                # Only loop tags of type 'loop' for the guild
+                loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
+                if loop_tags:
+                    random_tag = choice(loop_tags)
+                    message_text = random_tag['content'] or random_tag['attachment_url'] or ''
+                    if message_text:
+                        await channel.send(message_text)
+
+                # Sleep 5 minutes between looped messages
+                await asyncio.sleep(300)
+            except asyncio.CancelledError:
+                # Task canceled externally (stop_loop_task called)
+                break
+            except Exception as e:
+                logger.error(f"Error during loop_tags: {e}")
+
+    @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>', hidden=True)
     @at_home()
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
          try:
@@ -370,7 +458,7 @@ class Hybrid(commands.Cog):
         else:
             await ctx.send('\N{OK HAND SIGN}')
 
-    @commands.hybrid_command(name='search', description='Usage: !search <query>. Search Google.')
+    @commands.hybrid_command(name='search', description='Usage: !search <query>. Search Google.', hidden=True)
     @at_home()
     async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
         if ctx.interaction:
@@ -381,7 +469,7 @@ class Hybrid(commands.Cog):
             embed.add_field(name=result['title'], value=result['link'], inline=False)
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name='frame', description='')
+    @commands.hybrid_command(name='frame', description='', hidden=True)
     @at_home()
     async def frame(self, ctx: commands.Context):
         video_path = 'frogs.mov'

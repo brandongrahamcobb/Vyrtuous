@@ -14,246 +14,184 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+# tag.py
 from typing import Optional, List, Dict
-from .setup_logging import logger
+from .setup_logging import logger  # Or use `import logging` and `logging.getLogger(__name__)`
 
 class TagManager:
     def __init__(self, db_pool):
+        """
+        :param db_pool: An asyncpg connection pool or similar.
+        """
         self.pool = db_pool
 
-    # -------------------------------------------------------------------------
-    # 1) Add a tag (defaults to tag_type='default')
-    #    If you want a looping-type tag, call with tag_type='loop'
-    # -------------------------------------------------------------------------
     async def add_tag(
-        self,
-        name: str,
-        location_id: int,
-        owner_id: int,
-        content: Optional[str] = None,
-        attachment_url: Optional[str] = None,
-        tag_type: str = 'default'  # can be 'default' or 'loop'
+        self, 
+        name: str, 
+        location_id: int, 
+        owner_id: int, 
+        content: Optional[str] = None, 
+        attachment_url: Optional[str] = None, 
+        tag_type: str = 'default'
     ):
-        if not name or not location_id or not owner_id:
-            raise ValueError("Name, location_id, and owner_id are required fields.")
-
-        # We only allow 'default' or 'loop'
-        if tag_type not in ('default', 'loop'):
-            raise ValueError("Invalid tag_type. Must be 'default' or 'loop'.")
-
-        query = """
+        """
+        Inserts a new tag if it doesn't already exist in this location_id.
+        """
+        query_check = """
+            SELECT 1 
+            FROM tags 
+            WHERE name = $1 AND location_id = $2 AND owner_id = $3
+        """
+        query_insert = """
             INSERT INTO tags (name, location_id, content, attachment_url, owner_id, tag_type)
             VALUES ($1, $2, $3, $4, $5, $6)
         """
         try:
             async with self.pool.acquire() as conn:
-                await conn.execute(
-                    query,
-                    name,
-                    location_id,
-                    content,
-                    attachment_url,
-                    owner_id,
-                    tag_type
-                )
+                # Check for duplicate tag
+                existing_tag = await conn.fetchval(query_check, name, location_id, owner_id)
+                if existing_tag:
+                    raise ValueError(f"A tag with the name '{name}' already exists for you in this location.")
+
+                # Insert the tag
+                await conn.execute(query_insert, name, location_id, content, attachment_url, owner_id, tag_type)
+
         except Exception as e:
             logger.error(f"Failed to add tag: {e}")
-            raise RuntimeError(
-                "An error occurred while adding the tag. Ensure all fields are correct and try again."
-            )
+            raise
 
-    # -------------------------------------------------------------------------
-    # 2) Retrieve a tag by name & location
-    #    Optionally filter by tag_type (i.e. 'default' or 'loop')
-    # -------------------------------------------------------------------------
-    async def get_tag(
-        self,
-        location_id: int,
-        name: str,
-        tag_type: Optional[str] = None
-    ) -> Dict:
-        if not location_id or not name:
-            raise ValueError("Location ID and tag name are required fields.")
-
-        # If a tag_type is given, include it in WHERE
-        if tag_type:
-            query = """
-                SELECT * FROM tags
-                WHERE location_id = $1
-                  AND LOWER(name) = $2
-                  AND tag_type = $3
-            """
-        else:
-            query = """
-                SELECT * FROM tags
-                WHERE location_id = $1
-                  AND LOWER(name) = $2
-            """
+    async def get_tag(self, location_id: int, name: str):
+        """
+        Returns a tag dict {name, content, attachment_url, tag_type} or None.
+        """
+        query = """
+            SELECT name, content, attachment_url, tag_type
+            FROM tags
+            WHERE location_id = $1 
+              AND LOWER(name) = LOWER($2)
+        """
         try:
             async with self.pool.acquire() as conn:
-                if tag_type:
-                    tag = await conn.fetchrow(query, location_id, name.lower(), tag_type)
-                else:
-                    tag = await conn.fetchrow(query, location_id, name.lower())
-                
-                if tag:
-                    return dict(tag)
-                raise RuntimeError(f'Tag "{name}" not found.')
+                row = await conn.fetchrow(query, location_id, name)
+                return dict(row) if row else None
         except Exception as e:
-            logger.error(f"Failed to retrieve tag: {e}")
-            raise RuntimeError(
-                "An error occurred while retrieving the tag. Please check the location ID and name."
-            )
+            logger.error(f"Failed to fetch tag: {e}")
+            raise
 
-    # -------------------------------------------------------------------------
-    # 3) Update a tag (identified by name, location, owner)
-    #    Note: Does not allow changing tag_type in this example.
-    # -------------------------------------------------------------------------
     async def update_tag(
         self,
         name: str,
         location_id: int,
         owner_id: int,
-        content: Optional[str] = None,
-        attachment_url: Optional[str] = None
+        updates: dict
     ) -> int:
-        if not name or not location_id or not owner_id:
-            raise ValueError("Name, location_id, and owner_id are required fields.")
-
-        query = """
-            UPDATE tags
-               SET content = $1,
-                   attachment_url = $2
-             WHERE name = $3
-               AND location_id = $4
-               AND owner_id = $5
         """
+        Updates fields in a tag. Returns the number of rows updated (0 if not found).
+        `updates` can contain keys in [content, attachment_url, tag_type].
+        """
+        fields_to_update = []
+        params = []
+        i = 1
+
+        for field, value in updates.items():
+            fields_to_update.append(f"{field} = ${i}")
+            params.append(value)
+            i += 1
+
+        query = f"""
+            UPDATE tags
+            SET {', '.join(fields_to_update)}
+            WHERE name = ${i}
+              AND location_id = ${i+1}
+              AND owner_id = ${i+2}
+        """
+        params.extend([name, location_id, owner_id])
+
         try:
             async with self.pool.acquire() as conn:
-                result = await conn.execute(query, content, attachment_url, name, location_id, owner_id)
-                return int(result.split(" ")[-1])  # number of rows updated
+                result = await conn.execute(query, *params)
+                # result is something like 'UPDATE <count>', so we can parse rowcount
+                row_count = int(result.split()[-1])
+                return row_count
         except Exception as e:
             logger.error(f"Failed to update tag: {e}")
-            raise RuntimeError(
-                "An error occurred while updating the tag. Please ensure the inputs are valid."
-            )
+            raise RuntimeError("An error occurred while updating the tag.")
 
-    # -------------------------------------------------------------------------
-    # 4) Delete a tag
-    # -------------------------------------------------------------------------
-    async def delete_tag(
-        self,
-        name: str,
-        location_id: int,
-        owner_id: int
-    ) -> int:
-        if not name or not location_id or not owner_id:
-            raise ValueError("Name, location_id, and owner_id are required fields.")
-
+    async def delete_tag(self, name: str, location_id: int, owner_id: int) -> int:
+        """
+        Deletes the tag from the DB. Returns the number of rows deleted (0 if none).
+        """
         query = """
-            DELETE FROM tags
-             WHERE name = $1
-               AND location_id = $2
-               AND owner_id = $3
+            DELETE FROM tags 
+            WHERE name = $1 
+              AND location_id = $2 
+              AND owner_id = $3
         """
         try:
             async with self.pool.acquire() as conn:
                 result = await conn.execute(query, name, location_id, owner_id)
-                return int(result.split(" ")[-1])  # number of rows deleted
+                row_count = int(result.split()[-1])
+                return row_count
         except Exception as e:
             logger.error(f"Failed to delete tag: {e}")
-            raise RuntimeError(
-                "An error occurred while deleting the tag. Please verify the inputs and try again."
-            )
+            raise
 
-    # -------------------------------------------------------------------------
-    # 5) List tags in a given guild/location
-    #    Optionally filter by owner, and/or by tag_type = 'default' or 'loop'
-    # -------------------------------------------------------------------------
-    async def list_tags(
-        self,
-        location_id: int,
-        owner_id: Optional[int] = None,
-        tag_type: Optional[str] = None
-    ) -> List[Dict]:
-        if not location_id:
-            raise ValueError("Location ID is a required field.")
-
-        # Base query
-        query = """SELECT name, content, attachment_url, tag_type FROM tags WHERE location_id = $1"""
+    async def list_tags(self, location_id: int, owner_id: Optional[int] = None, tag_type: Optional[str] = None) -> List[dict]:
+        """
+        Returns a list of dicts for tags that match the filters.
+        If `owner_id` is provided, returns only that owner's tags.
+        If `tag_type` is provided, filters by 'default' or 'loop'.
+        """
+        query = "SELECT name, content, attachment_url, tag_type FROM tags WHERE location_id = $1"
         params = [location_id]
+        idx = 2
 
-        # Filter by owner if specified
         if owner_id is not None:
-            query += " AND owner_id = $2"
+            query += f" AND owner_id = ${idx}"
             params.append(owner_id)
+            idx += 1
 
-        # Filter by tag_type if specified
         if tag_type is not None:
-            if tag_type not in ('default', 'loop'):
-                raise ValueError("Invalid tag_type. Must be 'default' or 'loop'.")
-            if owner_id is not None:
-                query += " AND tag_type = $3"
-            else:
-                query += " AND tag_type = $2"
+            query += f" AND tag_type = ${idx}"
             params.append(tag_type)
+            idx += 1
 
         try:
             async with self.pool.acquire() as conn:
                 rows = await conn.fetch(query, *params)
-            return [dict(r) for r in rows]
+                return [dict(row) for row in rows]
         except Exception as e:
             logger.error(f"Failed to list tags: {e}")
-            raise RuntimeError(
-                "An error occurred while retrieving the tag list. Please check the inputs."
-            )
+            raise
 
-    # =========================================================================
-    # 6) Loop configuration methods:
-    #    - set_loop_config: upsert channel + enabled status in loop_configs
-    #    - get_loop_config: retrieve loop config for a guild
-    # =========================================================================
-    async def set_loop_config(self, guild_id: int, channel_id: int, enabled: bool):
+    async def set_loop_config(self, guild_id: int, channel_id: Optional[int], enabled: bool):
         """
-        Upsert a row in the loop_configs table. If the guild row doesn't exist, create it;
-        otherwise update it.
+        Inserts or updates a record for loop-config in the loop_configs table.
         """
-        if not guild_id or not channel_id:
-            raise ValueError("Guild ID and channel ID are required.")
-
         query = """
             INSERT INTO loop_configs (guild_id, channel_id, enabled)
             VALUES ($1, $2, $3)
             ON CONFLICT (guild_id)
-            DO UPDATE SET channel_id = EXCLUDED.channel_id,
-                          enabled = EXCLUDED.enabled
+            DO UPDATE SET 
+                channel_id = EXCLUDED.channel_id,
+                enabled = EXCLUDED.enabled
         """
         try:
             async with self.pool.acquire() as conn:
                 await conn.execute(query, guild_id, channel_id, enabled)
         except Exception as e:
             logger.error(f"Failed to set loop config: {e}")
-            raise RuntimeError(
-                "An error occurred while configuring the loop. Please check the inputs."
-            )
+            raise
 
-    async def get_loop_config(self, guild_id: int) -> Optional[Dict]:
+    async def get_loop_config(self, guild_id: int) -> Optional[dict]:
         """
-        Return a dict like { 'guild_id': <>, 'channel_id': <>, 'enabled': <> }
-        if found, otherwise None.
+        Returns a dict {guild_id, channel_id, enabled} or None if not set.
         """
-        if not guild_id:
-            raise ValueError("Guild ID is required.")
-
-        query = "SELECT * FROM loop_configs WHERE guild_id = $1"
+        query = "SELECT guild_id, channel_id, enabled FROM loop_configs WHERE guild_id = $1"
         try:
             async with self.pool.acquire() as conn:
                 row = await conn.fetchrow(query, guild_id)
-                if row:
-                    return dict(row)
-                return None
+                return dict(row) if row else None
         except Exception as e:
             logger.error(f"Failed to get loop config: {e}")
-            raise RuntimeError(
-                "An error occurred while retrieving the loop config."
-            )
+            raise
