@@ -49,6 +49,7 @@ discord-py = "^2.4.0"
 toml = "^0.10.2"
 audioop-lts = "^0.2.1"
 pytz = "^2024.2"
+discord-ext-menus = "^1.1"
 
 [tool.poetry.scripts]
 lucy = "lucy.main:run"
