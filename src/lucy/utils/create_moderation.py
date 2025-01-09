@@ -15,14 +15,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from openai import AsyncOpenAI
+from utils.helpers import *
 from utils.load_yaml import load_yaml
 from utils.setup_logging import logger
 
+import json
 import openai
 import traceback
-import utils.helpers as helpers
 
-async def create_moderation(input_text):
+async def create_moderation(input_array):
     try:
         logger.info('Starting moderation process...')
         config = load_yaml(PATH_CONFIG_YAML)
@@ -36,13 +37,11 @@ async def create_moderation(input_text):
 
         response = await ai_client.moderations.create(
             model='omni-moderation-latest',
-            input=input_text,
+            input=input_array,
         )
         logger.info('Moderation API call completed.')
-
-        moderation_response = await response.json()
-        logger.debug(f'Moderation response: {moderation_response}')
-
+        moderation_response = response.json()
+        logger.info(f'Moderation Response: {moderation_response}')
         yield moderation_response
 
     except Exception as e:
