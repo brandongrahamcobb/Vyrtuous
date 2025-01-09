@@ -159,7 +159,6 @@ class Indica(commands.Cog):
             # Moderate Text and Images
             if self.config['openai_chat_moderation']:
                 async for moderation_completion in create_moderation(input_array=array):
-#                async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
                     try:
                         full_response = json.loads(moderation_completion)
                         results = full_response.get('results', [])
@@ -171,10 +170,12 @@ class Indica(commands.Cog):
                                 vegan_roles = [guilds[0].get_role(self.config['discord_role_pass']), guilds[1].get_role(788114978020392982)]
                                 if vegan_roles[0] in message.author.roles and flagged:
                                     await message.delete()
-                            carnism_flagged = results[0]['categories'].get('carnism', False)
-                            if carnism_flagged:
-                                carnism_score = results[0]['category_scores'].get('carnism', 0)
-                                NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
+                            else:
+                                async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
+                                    carnism_flagged = results[0]['categories'].get('carnism', False)
+                                    if carnism_flagged:
+                                        carnism_score = results[0]['category_scores'].get('carnism', 0)
+                                        NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                         else:
                             logger.info('No moderation results returned.')
                     except Exception as e:
