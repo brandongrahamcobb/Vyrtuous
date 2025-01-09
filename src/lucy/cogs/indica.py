@@ -147,7 +147,7 @@ class Indica(commands.Cog):
                 array = await self.handler.process_array(message.content)
             async def ai_message():
                 if self.config['openai_chat_completion']:
-                    async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT):
+                    async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array): #, sys_input=OPENAI_CHAT_SYS_INPUT):
                         await message.reply(chat_completion)
             if isinstance(message.channel, discord.DMChannel):
                 await ai_message()

@@ -15,7 +15,7 @@ class Message:
         custom_id,
         array,
         *,
-        completions: int = Ellipsis,  # Use Ellipsis as a sentinel
+        completions: int = Ellipsis,
         max_tokens: int = Ellipsis,
         model: str = Ellipsis,
         response_format: str = Ellipsis,
@@ -28,17 +28,18 @@ class Message:
         use_history: bool = Ellipsis,
         add_completion_to_history: bool = Ellipsis
     ):
-        # Handle defaults, keeping None if explicitly set
         if completions is Ellipsis:
             completions = OPENAI_CHAT_N
-        if max_tokens is Ellipsis:
-    #        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
-            encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
-            total_input_tokens = sum(
-                [len(encoder.encode(message.get('text', ''))) for message in array]  # Use .get() to avoid KeyError
-            )
-            available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - total_input_tokens
-            max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
+        encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
+        total_input_tokens = sum(
+            [len(encoder.encode(message.get('text', ''))) for message in array if 'text' in message]
+        )
+        for message in array:
+            if 'text' not in message:
+                logger.warning(f'Missing "text" in message: {message}')
+        available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - total_input_tokens
+        max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
+        total_tokens = sum([len(message.get('text', '').split()) for message in array if 'text' in message])
         if model is Ellipsis:
             model = self.config['openai_chat_model']
         if response_format is Ellipsis:
@@ -59,14 +60,10 @@ class Message:
             use_history = self.config['openai_chat_use_history']
         if add_completion_to_history is Ellipsis:
             add_completion_to_history = self.config['openai_chat_add_completion_to_history']
-
-        total_tokens = sum([len(message['text'].split()) for message in array])
         while total_tokens + max_tokens > OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']]:
             removed_message = array.pop(0)
-            total_tokens -= len(removed_message['text'].split())
+            total_tokens -= len(removed_message.get('text', '').split())
 
-
-        # Continue with the main logic
         async for chat_completion in self.conversations.create_https_completion(
             custom_id=custom_id,
             completions=completions,
@@ -89,8 +86,11 @@ class Message:
 #        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
         encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
         total_input_tokens = sum(
-            [len(encoder.encode(message.get('text', ''))) for message in array]  # Use .get() to avoid KeyError
+            [len(encoder.encode(message.get('text', ''))) for message in array if 'text' in message]  # Use .get() to avoid KeyError
         )
+        for message in array:
+            if 'text' not in message and message.get('type') == 'text':
+               logger.warning(f'Missing "text" in message: {message}')
         available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[OPENAI_CHAT_MODERATION_MODEL] - total_input_tokens
         max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
         async for moderation_completion in self.conversations.create_https_completion(
@@ -117,6 +117,7 @@ class Message:
         if attachments:
              array.extend(await self.process_attachments(attachments))
         return array
+
 
     async def process_attachments(self, attachments):
         array = []
