@@ -152,7 +152,7 @@ class Indica(commands.Cog):
             if isinstance(message.channel, discord.DMChannel):
                 await ai_message()
             elif self.bot.user in message.mentions:
-                if message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117:
+                if (message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117):
                     await ai_message()
 
             # Moderate Text and Images
