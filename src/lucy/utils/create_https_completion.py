@@ -65,7 +65,15 @@ class Conversations:
             ai_client = AsyncOpenAI(api_key=api_key)
             headers = {'Authorization': f'Bearer {api_key}'}
             logger.info('Headers prepared for the request.')
-            messages = [{'role': 'user', 'content': input_array}]
+            messages = []
+            for message in input_array:
+                if 'text' in message and message['text']:
+                    messages.append({'role': 'user', 'content': message['text']})
+                elif 'files' in message:
+                    for file in message['files']:
+                        file_content = await self.process_file(file)
+                        messages.append({'role': 'user', 'content': file_content})
+#            messages = [{'role': 'user', 'content': input_array}]
             if use_history and custom_id in self.conversations:
                 messages = self.conversations[custom_id] + messages
                 logger.info(f'Conversation history included for user: {custom_id}.')

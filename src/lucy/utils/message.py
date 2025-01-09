@@ -1,3 +1,4 @@
+
 import json
 import tiktoken
 
@@ -34,7 +35,7 @@ class Message:
     #        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
             encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
             total_input_tokens = sum(
-                [len(encoder.encode(message['text'])) for message in array if 'text' in message and message['text']]
+                [len(encoder.encode(message.get('text', ''))) for message in array]  # Use .get() to avoid KeyError
             )
             available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - total_input_tokens
             max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
@@ -88,12 +89,10 @@ class Message:
 #        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
         encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
         total_input_tokens = sum(
-            [len(encoder.encode(message['text'])) for message in array if 'text' in message and message['text']]
+            [len(encoder.encode(message.get('text', ''))) for message in array]  # Use .get() to avoid KeyError
         )
-
         available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[OPENAI_CHAT_MODERATION_MODEL] - total_input_tokens
         max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
-
         async for moderation_completion in self.conversations.create_https_completion(
             completions=OPENAI_CHAT_MODERATION_N,
             custom_id=custom_id,
