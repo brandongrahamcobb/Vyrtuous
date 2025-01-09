@@ -57,6 +57,7 @@ class Hybrid(commands.Cog):
         self.sativa = self.bot.get_cog('Sativa')
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
+        self.loop_task: Optional[str] = None
 
     @staticmethod
     def at_home(bot):
