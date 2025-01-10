@@ -149,8 +149,6 @@ class Indica(commands.Cog):
                 array, image_exceeded = await self.handler.process_array(message.content)
 #            if isinstance(message.channel, discord.DMChannel):
  #               await ai_message()
-            if image_exceeded:
-                await message.channel.send(f"{message.author.mention}, you can only send one image per message. Additional images have been ignored.")
             if self.config['openai_chat_moderation']:
                 async for moderation_completion in create_moderation(input_array=array):
                     try:
