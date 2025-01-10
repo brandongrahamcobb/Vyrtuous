@@ -37,7 +37,6 @@ import subprocess
 import traceback
 from lucy.utils.helpers import *
 
-
 class TagMenu(menus.ListPageSource):
     def __init__(self, tags):
         super().__init__(tags, per_page=1)  # One tag per page
@@ -65,6 +64,7 @@ class Indica(commands.Cog):
         self.channel_guild_map: Dict[int, int] = {
             798967615636504657: 730907954345279591,
             730907954877956179: 730907954345279591,
+            1315735859848544378: 1300517536001036348,
         }
         self.guild_loops_index = defaultdict(int)
 
@@ -129,6 +129,7 @@ class Indica(commands.Cog):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
+    @commands.check(at_home)
     async def on_message_edit(self, before, after):
         if before.content != after.content:
             ctx = await self.bot.get_context(after)
@@ -136,6 +137,7 @@ class Indica(commands.Cog):
                 await self.bot.invoke(ctx)
 
     @commands.Cog.listener()
+    @commands.check(at_home)
     async def on_message(self, message):
         logger.info(f'Received message: {message.content}')
         try:

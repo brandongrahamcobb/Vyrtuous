@@ -246,7 +246,6 @@ class Hybrid(commands.Cog):
         name='tag',
         description='Manage or retrieve tags. Sub-actions: add, update, remove, list, loop.'
     )
-    @commands.check(at_home)
     @commands.has_permissions(manage_messages=True)
     async def tag_command(
         self,

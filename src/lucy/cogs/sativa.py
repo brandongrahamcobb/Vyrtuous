@@ -22,12 +22,6 @@ from typing import Literal, Optional
 import asyncio
 import discord
 
-def is_owner():
-    async def predicate(ctx):
-        return ctx.guild is not None and ctx.guild.owner_id == ctx.author.id
-    return commands.check(predicate)
-
-
 class Sativa(commands.Cog):
 
     def __init__(self, bot):
@@ -36,12 +30,17 @@ class Sativa(commands.Cog):
     @staticmethod
     def at_home(bot):
         async def predicate(ctx):
-            # Ensure the bot instance and the guild's ID are accessible
             return ctx.guild is not None and ctx.guild.id == bot.config.get("discord_testing_guild_id")
         return commands.check(predicate)
 
+    @staticmethod
+    def is_owner(bot):
+        async def predicate(ctx):
+            return ctx.guild is not None and (ctx.guild.owner_id == ctx.author.id or ctx.guild.owner_id == bot.config['discord_owner_id'])
+        return commands.check(predicate)
+
     @commands.hybrid_command(name='backup', hidden=True)
-    @is_owner()
+    @commands.check(is_owner)
     async def backup_task(self, ctx: commands.Context):
         try:
             backup_dir = setup_backup_directory('./backups')
@@ -81,8 +80,7 @@ class Sativa(commands.Cog):
             await ctx.send('\N{OK HAND SIGN}')
 
     @commands.command(name='sync', hidden=True)
-    @is_owner()
-    @commands.check(at_home)
+    @commands.check(is_owner)
     async def sync(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None) -> None:
         if not guilds:
             if spec == '~':
@@ -112,12 +110,10 @@ class Sativa(commands.Cog):
 
 
     @commands.command(name='wipe', hidden=True)
-    @is_owner()
-    @commands.check(at_home)
+    @commands.check(is_owner)
     async def wipe(self, ctx, option: str = None, limit: int = 100):
         if limit <= 0 or limit > 100:
             return await ctx.send('Limit must be between 1 and 100.')
-        
         check_function = None
         if option == 'bot':
             check_function = lambda m: m.author == self.bot.user
@@ -140,7 +136,6 @@ class Sativa(commands.Cog):
                 return await ctx.send('You took too long to provide text. Cancelling operation.')
         else:
             return await ctx.send('Invalid option.')
-        
         total_deleted = 0
         while total_deleted < limit:
             # Purge messages in smaller chunks to avoid hitting rate limits
@@ -149,7 +144,6 @@ class Sativa(commands.Cog):
                 break
             total_deleted += len(deleted)
             await asyncio.sleep(1)
-        
         if total_deleted > 0:
             await ctx.send(f'Deleted {total_deleted} messages.')
         else:
