@@ -447,7 +447,7 @@ class Hybrid(commands.Cog):
             logger.error(f'Error during tag fetching: {e}')
 
     @commands.command(name='wipe')
-    @commands.has_permissions(manage_mesages=True)
+    @commands.has_permissions(manage_messages=True)
     async def wipe(self, ctx, option: str = None, limit: int = 100):
         if limit <= 0 or limit > 100:
             return await ctx.send('Limit must be between 1 and 100.')
