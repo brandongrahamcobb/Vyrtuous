@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "lucy"
-version = "8.2.8"
+version = "8.3.0"
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
@@ -24,12 +24,6 @@ from = "src/lucy"
 [[tool.poetry.packages]]
 include = "utils"
 from = "src/lucy"
-
-[[tool.poetry.packages]]
-include = "chromedriver"
-
-[[tool.poetry.packages]]
-include = "Roboto-Regular.ttf"
 
 [tool.poetry.dependencies]
 python = "~3.13.1"
