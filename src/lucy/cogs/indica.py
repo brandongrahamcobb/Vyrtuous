@@ -165,7 +165,7 @@ class Indica(commands.Cog):
                         if (message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117):
                             async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array): #, sys_input=OPENAI_CHAT_SYS_INPUT):
                                 if len(chat_completion) > 2000:
-                                    with open(PATH_COMPLETION, "w" as file:
+                                    with open(PATH_COMPLETION, "w") as file:
                                         file.write(chat_completion)
                                     with open(PATH_COMPLETION, "rb") as file:
                                         await message.reply('Your response exceeded {self.config['discord_character_limit']} characters:', file=discord.File(file, PATH_COMPLETION))
