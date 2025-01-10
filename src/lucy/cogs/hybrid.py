@@ -33,6 +33,7 @@ from lucy.utils.get_mol import get_mol
 from lucy.utils.google import google
 from lucy.utils.gsrs import gsrs
 from lucy.utils.helpers import *
+from lucy.utils.paginator import Paginator
 from lucy.utils.script import script
 from lucy.utils.unique_pairs import unique_pairs
 from lucy.utils.tag import TagManager
@@ -48,6 +49,21 @@ import os
 import pytz
 import shlex
 import traceback
+
+class TagMenu(menus.ListPageSource):
+    def __init__(self, tags):
+        super().__init__(tags, per_page=1)  # One tag per page
+
+    async def format_page(self, menu, tag):
+        content = tag.get('content', '')
+        attachment_url = tag.get('attachment_url', '')
+        description = content or attachment_url or 'No content available.'
+        embed = discord.Embed(
+            title=f'Loop Tag: {tag['name']}',
+            description=description,
+            color=discord.Color.blurple()
+        )
+        return embed
 
 class Hybrid(commands.Cog):
     def __init__(self, bot):
@@ -67,7 +83,30 @@ class Hybrid(commands.Cog):
         return commands.check(predicate)
 
 
-    @commands.hybrid_command(name='backup')
+    @commands.has_permissiosn(manage_roles=True)
+    @commands.hybrid_command(name='tags', description='Display loop tags for the current location.', hidden=True)
+    async def tags(self, ctx: commands.Context):
+    async def loop_tags(self, ctx):
+        try:
+            location_id = ctx.guild.id
+            tags = await self.tag_manager.list_tags(location_id, tag_type='loop')
+            if not tags:
+                await ctx.send("No loop tags found.")
+                return
+            embeds = []
+            for tag in tags:
+                embed = discord.Embed(
+                    title=f'Loop Tag: {tag["name"]}',
+                    description=tag.get('content', tag.get('attachment_url', 'No content available.')),
+                    color=discord.Color.blurple()
+                )
+                embeds.append(embed)
+            paginator = Paginator(self.bot, ctx, embeds)
+            await paginator.start()
+        except Exception as e:
+            logger.error(f'Error during tag fetching: {e}')
+
+    @commands.hybrid_command(name='backup', hidden=True)
     @commands.check(at_home)
     async def backup_task(self, ctx: commands.Context):
         try:
@@ -283,6 +322,41 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 logger.error(f'Error during loop_tags: {e}')
 
+    @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
+    @commands.check(at_home)
+    async def colorize(self, ctx: commands.Context, r: Optional[str] = commands.parameter(default='149', description='Anything between 0 and 255.'), g: int = commands.parameter(default='165', description='Anything betwen 0 and 255.'), b: int = commands.parameter(default='165', description='Anything between 0 and 255.')):
+        if not r.isnumeric():
+            input_text_dict = {
+                'type': 'text',
+                'text': r
+            }
+            array = [
+                {
+                    'role': 'user',
+                    'content': json.dumps(input_text_dict)
+                }
+            ]
+            async for completion in create_completion(array):
+                color_values = json.loads(completion)
+                r = color_values['r']
+                g = color_values['g']
+                b = color_values['b']
+        guildroles = await ctx.guild.fetch_roles()
+        position = len(guildroles) - 12
+        for arg in ctx.author.roles:
+            if arg.name.isnumeric():
+                await ctx.author.remove_roles(arg)
+        for arg in guildroles:
+            if arg.name.lower() == f'{r}{g}{b}':
+                await ctx.author.add_roles(arg)
+                await arg.edit(position=position)
+                await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
+                return
+        newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
+        await newrole.edit(position=position)
+        await ctx.author.add_roles(newrole)
+        await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
+
     @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>', hidden=True)
     @commands.check(at_home)
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
@@ -290,6 +364,34 @@ class Hybrid(commands.Cog):
              await ctx.send(script(version, reference))
          except Exception as e:
              print(traceback.format_exc())
+
+    def get_language_code(self, language_name):
+        language_name = language_name.lower()
+        for lang_code, lang_name in LANGUAGES.items():
+            if lang_name.lower() == language_name:
+                return lang_code
+        return None
+
+#    @commands.command()
+#    async def languages(self, ctx):
+#        supported_languages = ', '.join(LANGUAGES.values())
+#        await ctx.send(f'Supported languages are:\n{supported_languages}')
+#
+#    @commands.command()
+#    async def translate(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
+#        if toggle.lower() == 'on':
+#            target_lang_code = self.get_language_code(target_lang)
+#            source_lang_code = self.get_language_code(source_lang)
+#            if target_lang_code is None or source_lang_code is None:
+#                await ctx.send(f'{ctx.author.mention}, please specify valid language names.')
+#                return
+#            self.user_translation_preferences[ctx.author.id] = (target_lang_code, source_lang_code)
+#            await ctx.send(f'{ctx.author.mention}, translation enabled from {source_lang} to {target_lang}.')
+#        elif toggle.lower() == 'off':
+#            self.user_translation_preferences[ctx.author.id] = None
+#            await ctx.send(f'{ctx.author.mention}, translation disabled.')
+#        else:
+#            await ctx.send(f'{ctx.author.mention}, please specify 'on' or 'off'.')
 
     @commands.command(name='load', hidden=True)
     @commands.check(at_home)

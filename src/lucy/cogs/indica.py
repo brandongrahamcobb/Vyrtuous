@@ -23,7 +23,6 @@ from lucy.utils.create_moderation import create_moderation
 from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
 from lucy.utils.nlp_utils import NLPUtils
-from lucy.utils.paginator import Paginator
 from lucy.utils.tag import TagManager
 from os.path import abspath, dirname, exists, expanduser, join
 
@@ -165,7 +164,6 @@ class Indica(commands.Cog):
                         if results:
                             flagged = results[0].get('flagged', False)
                             if flagged:
-                                    
                                 guilds = [await self.bot.fetch_guild(self.config['discord_testing_guild_id']), await self.bot.fetch_guild(730907954345279591)]
                                 vegan_roles = [guilds[0].get_role(self.config['discord_role_pass']), guilds[1].get_role(788114978020392982)]
                                 if vegan_roles[0] in message.author.roles and flagged:
