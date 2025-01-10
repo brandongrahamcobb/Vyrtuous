@@ -446,6 +446,47 @@ class Hybrid(commands.Cog):
         except Exception as e:
             logger.error(f'Error during tag fetching: {e}')
 
+    @commands.command(name='wipe')
+    @commands.has_permissions(manage_mesages=True)
+    async def wipe(self, ctx, option: str = None, limit: int = 100):
+        if limit <= 0 or limit > 100:
+            return await ctx.send('Limit must be between 1 and 100.')
+        check_function = None
+        if option == 'bot':
+            check_function = lambda m: m.author == self.bot.user
+        elif option == 'all':
+            check_function = lambda m: True  # Allow all messages to be deleted
+        elif option == 'user':
+            user = ctx.message.mentions[0] if ctx.message.mentions else None
+            if user:
+                check_function = lambda m: m.author == user
+            else:
+                return await ctx.send('Please mention a user.')
+        elif option == 'commands':
+            check_function = lambda m: m.content.startswith(ctx.prefix)
+        elif option == 'text':
+            await ctx.send('Provide text to delete messages containing it.')
+            try:
+                msg_text = await self.bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
+                check_function = lambda m: msg_text.content in m.content
+            except asyncio.TimeoutError:
+                return await ctx.send('You took too long to provide text. Cancelling operation.')
+        else:
+            return await ctx.send('Invalid option.')
+        total_deleted = 0
+        while total_deleted < limit:
+            # Purge messages in smaller chunks to avoid hitting rate limits
+            deleted = await ctx.channel.purge(limit=min(limit - total_deleted, 10), check=check_function)
+            if not deleted:  # Exit loop if no messages were deleted
+                break
+            total_deleted += len(deleted)
+            await asyncio.sleep(1)
+        if total_deleted > 0:
+            await ctx.send(f'Deleted {total_deleted} messages.')
+        else:
+            await ctx.send('No messages matched the criteria.')
+
+
 #    async def translate(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
 #        if toggle.lower() == 'on':
 #            target_lang_code = self.get_language_code(target_lang)
