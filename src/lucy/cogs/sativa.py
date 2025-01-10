@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands, tasks
+from lucy.utils.backup import perform_backup, setup_backup_directory
 from lucy.utils.helpers import *
 from typing import Literal, Optional
 
@@ -38,6 +39,46 @@ class Sativa(commands.Cog):
             # Ensure the bot instance and the guild's ID are accessible
             return ctx.guild is not None and ctx.guild.id == bot.config.get("discord_testing_guild_id")
         return commands.check(predicate)
+
+    @commands.hybrid_command(name='backup', hidden=True)
+    @is_owner()
+    async def backup_task(self, ctx: commands.Context):
+        try:
+            backup_dir = setup_backup_directory('./backups')
+            backup_file = perform_backup(
+                db_user='postgres',
+                db_name='lucy',
+                db_host='localhost',
+                backup_dir=backup_dir
+            )
+
+            logger.info(f'Backup completed successfully: {backup_file}')
+        except Exception as e:
+            logger.error(f'Error during database backup: {e}')
+
+
+    @commands.hybrid_command(name='load', hidden=True)
+    @commands.check(at_home)
+    async def load(self, ctx: commands.Context, *, module: str):
+        try:
+            await ctx.bot.load_extension(module)
+        except commands.ExtensionError as e:
+            await ctx.send(f'{e.__class__.__name__}: {e}')
+        else:
+            await ctx.send('\N{OK HAND SIGN}')
+
+
+    @commands.hybrid_command(name='reload', hidden=True)
+    @commands.check(at_home)
+    async def reload(self, ctx: commands.Context, *, module: str):
+        try:
+            if ctx.interaction:
+                await ctx.interaction.response.defer(ephemeral=True)
+            await ctx.bot.reload_extension(module)
+        except commands.ExtensionError as e:
+            await ctx.send(f'{e.__class__.__name__}: {e}')
+        else:
+            await ctx.send('\N{OK HAND SIGN}')
 
     @commands.command(name='sync', hidden=True)
     @is_owner()

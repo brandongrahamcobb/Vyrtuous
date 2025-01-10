@@ -24,7 +24,6 @@ from typing import Optional
 from lucy.utils.frames import extract_random_frames
 from lucy.utils.add_watermark import add_watermark
 from lucy.utils.average_score import average_score
-from lucy.utils.backup import perform_backup, setup_backup_directory
 from lucy.utils.combine import combine
 from lucy.utils.create_completion import create_completion
 from lucy.utils.draw_fingerprint import draw_fingerprint
@@ -50,21 +49,6 @@ import pytz
 import shlex
 import traceback
 
-class TagMenu(menus.ListPageSource):
-    def __init__(self, tags):
-        super().__init__(tags, per_page=1)  # One tag per page
-
-    async def format_page(self, menu, tag):
-        content = tag.get('content', '')
-        attachment_url = tag.get('attachment_url', '')
-        description = content or attachment_url or 'No content available.'
-        embed = discord.Embed(
-            title=f'Loop Tag: {tag['name']}',
-            description=description,
-            color=discord.Color.blurple()
-        )
-        return embed
-
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -83,49 +67,187 @@ class Hybrid(commands.Cog):
         return commands.check(predicate)
 
 
-    @commands.has_permissiosn(manage_roles=True)
-    @commands.hybrid_command(name='tags', description='Display loop tags for the current location.', hidden=True)
-    async def tags(self, ctx: commands.Context):
-        try:
-            location_id = ctx.guild.id
-            tags = await self.tag_manager.list_tags(location_id, tag_type='loop')
-            if not tags:
-                await ctx.send("No loop tags found.")
-                return
-            embeds = []
-            for tag in tags:
-                embed = discord.Embed(
-                    title=f'Loop Tag: {tag["name"]}',
-                    description=tag.get('content', tag.get('attachment_url', 'No content available.')),
-                    color=discord.Color.blurple()
-                )
-                embeds.append(embed)
-            paginator = Paginator(self.bot, ctx, embeds)
-            await paginator.start()
-        except Exception as e:
-            logger.error(f'Error during tag fetching: {e}')
+    def get_language_code(self, language_name):
+        language_name = language_name.lower()
+        for lang_code, lang_name in LANGUAGES.items():
+            if lang_name.lower() == language_name:
+                return lang_code
+        return None
 
-    @commands.hybrid_command(name='backup', hidden=True)
+    async def loop_tags(self, channel: discord.TextChannel):
+        while True:
+            try:
+                loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
+                if loop_tags:
+                    random_tag = choice(loop_tags)
+                    message_text = random_tag['content'] or random_tag['attachment_url'] or ''
+                    if message_text:
+                        await channel.send(message_text)
+                await asyncio.sleep(300)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f'Error during loop_tags: {e}')
+
+    def start_loop_task(self, channel: discord.TextChannel):
+        if self.loop_task is None or self.loop_task.done():
+            self.loop_task = asyncio.create_task(self.loop_tags(channel))
+
+    def stop_loop_task(self):
+        if self.loop_task and not self.loop_task.done():
+            self.loop_task.cancel()
+            self.loop_task = None
+
+    @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
+    @commands.has_permissions(manage_messages=True)
     @commands.check(at_home)
-    async def backup_task(self, ctx: commands.Context):
-        try:
-            backup_dir = setup_backup_directory('./backups')
-            backup_file = perform_backup(
-                db_user='postgres',
-                db_name='lucy',
-                db_host='localhost',
-                backup_dir=backup_dir
-            )
+    async def colorize(self, ctx: commands.Context, r: Optional[str] = commands.parameter(default='149', description='Anything between 0 and 255.'), g: int = commands.parameter(default='165', description='Anything betwen 0 and 255.'), b: int = commands.parameter(default='165', description='Anything between 0 and 255.')):
+        if not r.isnumeric():
+            input_text_dict = {
+                'type': 'text',
+                'text': r
+            }
+            array = [
+                {
+                    'role': 'user',
+                    'content': json.dumps(input_text_dict)
+                }
+            ]
+            async for completion in create_completion(array):
+                color_values = json.loads(completion)
+                r = color_values['r']
+                g = color_values['g']
+                b = color_values['b']
+        guildroles = await ctx.guild.fetch_roles()
+        position = len(guildroles) - 12
+        for arg in ctx.author.roles:
+            if arg.name.isnumeric():
+                await ctx.author.remove_roles(arg)
+        for arg in guildroles:
+            if arg.name.lower() == f'{r}{g}{b}':
+                await ctx.author.add_roles(arg)
+                await arg.edit(position=position)
+                await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
+                return
+        newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
+        await newrole.edit(position=position)
+        await ctx.author.add_roles(newrole)
+        await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
 
-            logger.info(f'Backup completed successfully: {backup_file}')
+    @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
+    @commands.has_permissions(manage_messages=True)
+    @commands.check(at_home)
+    async def frame(self, ctx: commands.Context):
+        video_path = 'frogs.mov'
+        output_dir = 'frames'
+        frames = extract_random_frames(video_path, output_dir)
+        for frame in frames:
+            await ctx.send(file=discord.File(frame))
+
+#    @commands.command()
+#    async def languages(self, ctx):
+#        supported_languages = ', '.join(LANGUAGES.values())
+#        await ctx.send(f'Supported languages are:\n{supported_languages}')
+#
+    @commands.hybrid_command(name='draw', description='Usage: !draw glow <molecule> or !draw gsrs <molecule> or !draw shadow <molecule>.')
+    @commands.check(at_home)
+    async def draw(self, ctx: commands.Context, option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
+        try:
+            if ctx.interaction:
+                await ctx.interaction.response.defer(ephemeral=True)
+            if option == 'compare':
+                if not molecules:
+                    await ctx.send('No molecules provided.')
+                    return
+                args = shlex.split(molecules)
+                pairs = unique_pairs(args)
+                if not pairs:
+                    embed = discord.Embed(description='No valid pairs found.')
+                    await ctx.send(embed=embed)
+                    return
+                for pair in pairs:
+                    mol = get_mol(pair[0])
+                    refmol = get_mol(pair[1])
+                    if mol is None or refmol is None:
+                        embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
+                        await ctx.send(embed=embed)
+                        continue
+                    fingerprints = [
+                        draw_fingerprint([mol, refmol]),
+                        draw_fingerprint([refmol, mol])
+                    ]
+                    combined_image = combine(fingerprints, reversed(pair))
+                    await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
+            elif option == 'glow':
+                if not molecules:
+                    await ctx.send('No molecules provided.')
+                    return
+                args = shlex.split(molecules)
+                fingerprints = []
+                names = []
+                molecule = get_mol(args[0])
+                for _ in range(quantity.default):
+                    names.append(args[0])
+                    fingerprints.append(draw_fingerprint([molecule, molecule]))
+                combined_image = combine(fingerprints, names)
+                await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
+            elif option == 'gsrs':
+                if not molecules:
+                    await ctx.send('No molecules provided.')
+                    return
+                args = shlex.split(molecules)
+                for molecule_name in args:
+                    if molecule_name is None:
+                        await ctx.send(f'{molecule_name} is an unknown molecule.')
+                        continue
+                    watermarked_image = gsrs(molecule_name)
+                    with io.BytesIO() as image_binary:
+                        watermarked_image.save(image_binary, format='PNG')
+                        image_binary.seek(0)
+                        await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
+            elif option == 'shadow':
+                if not molecules:
+                    await ctx.send('No molecules provided.')
+                    return
+                args = shlex.split(molecules)
+                mol = get_mol(args[0])
+                if mol is None:
+                    embed = discord.Embed(description='Invalid molecule name or structure.')
+                    await ctx.send(embed=embed)
+                    return
+                image = draw_watermarked_molecule(mol)
+                await ctx.send(file=discord.File(image, f'{args[0]}.png'))
+            else:
+                await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
         except Exception as e:
-            logger.error(f'Error during database backup: {e}')
+            logger.error(traceback.format_exc())
+            await ctx.reply(e)
+
+    @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>', hidden=True)
+    @commands.check(at_home)
+    async def script(self, ctx: commands.Context, version: str, *, reference: str):
+         try:
+             await ctx.send(script(version, reference))
+         except Exception as e:
+             print(traceback.format_exc())
+
+    @commands.hybrid_command(name='search', description='Usage: !search <query>. Search Google.')
+    @commands.check(at_home)
+    async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+        results = google(query)
+        embed = discord.Embed(title=f'Search Results for \"{query}\"', color=discord.Color.blue())
+        for result in results:
+            embed.add_field(name=result['title'], value=result['link'], inline=False)
+        await ctx.send(embed=embed)
 
     @commands.hybrid_command(
         name='tag',
         description='Manage or retrieve tags. Sub-actions: add, update, remove, list, loop.'
     )
     @commands.check(at_home)
+    @commands.has_permissions(manage_messages=True)
     async def tag_command(
         self,
         ctx: commands.Context,
@@ -297,86 +419,28 @@ class Hybrid(commands.Cog):
                 logger.error(f'Error fetching tag \"{action}\": {e}')
                 await ctx.send(f'An error occurred while fetching tag \"{action}\".')
 
-    def start_loop_task(self, channel: discord.TextChannel):
-        if self.loop_task is None or self.loop_task.done():
-            self.loop_task = asyncio.create_task(self.loop_tags(channel))
-
-    def stop_loop_task(self):
-        if self.loop_task and not self.loop_task.done():
-            self.loop_task.cancel()
-            self.loop_task = None
-
-    async def loop_tags(self, channel: discord.TextChannel):
-        while True:
-            try:
-                loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
-                if loop_tags:
-                    random_tag = choice(loop_tags)
-                    message_text = random_tag['content'] or random_tag['attachment_url'] or ''
-                    if message_text:
-                        await channel.send(message_text)
-                await asyncio.sleep(300)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f'Error during loop_tags: {e}')
-
-    @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
+    @commands.hybrid_command(name='tags', description='Display loop tags for the current location.', hidden=True)
     @commands.check(at_home)
-    async def colorize(self, ctx: commands.Context, r: Optional[str] = commands.parameter(default='149', description='Anything between 0 and 255.'), g: int = commands.parameter(default='165', description='Anything betwen 0 and 255.'), b: int = commands.parameter(default='165', description='Anything between 0 and 255.')):
-        if not r.isnumeric():
-            input_text_dict = {
-                'type': 'text',
-                'text': r
-            }
-            array = [
-                {
-                    'role': 'user',
-                    'content': json.dumps(input_text_dict)
-                }
-            ]
-            async for completion in create_completion(array):
-                color_values = json.loads(completion)
-                r = color_values['r']
-                g = color_values['g']
-                b = color_values['b']
-        guildroles = await ctx.guild.fetch_roles()
-        position = len(guildroles) - 12
-        for arg in ctx.author.roles:
-            if arg.name.isnumeric():
-                await ctx.author.remove_roles(arg)
-        for arg in guildroles:
-            if arg.name.lower() == f'{r}{g}{b}':
-                await ctx.author.add_roles(arg)
-                await arg.edit(position=position)
-                await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
+    async def tags(self, ctx: commands.Context):
+        try:
+            location_id = ctx.guild.id
+            tags = await self.tag_manager.list_tags(location_id, tag_type='loop')
+            if not tags:
+                await ctx.send("No loop tags found.")
                 return
-        newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
-        await newrole.edit(position=position)
-        await ctx.author.add_roles(newrole)
-        await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
+            embeds = []
+            for tag in tags:
+                embed = discord.Embed(
+                    title=f'Loop Tag: {tag["name"]}',
+                    description=tag.get('content', tag.get('attachment_url', 'No content available.')),
+                    color=discord.Color.blurple()
+                )
+                embeds.append(embed)
+            paginator = Paginator(self.bot, ctx, embeds)
+            await paginator.start()
+        except Exception as e:
+            logger.error(f'Error during tag fetching: {e}')
 
-    @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>', hidden=True)
-    @commands.check(at_home)
-    async def script(self, ctx: commands.Context, version: str, *, reference: str):
-         try:
-             await ctx.send(script(version, reference))
-         except Exception as e:
-             print(traceback.format_exc())
-
-    def get_language_code(self, language_name):
-        language_name = language_name.lower()
-        for lang_code, lang_name in LANGUAGES.items():
-            if lang_name.lower() == language_name:
-                return lang_code
-        return None
-
-#    @commands.command()
-#    async def languages(self, ctx):
-#        supported_languages = ', '.join(LANGUAGES.values())
-#        await ctx.send(f'Supported languages are:\n{supported_languages}')
-#
-#    @commands.command()
 #    async def translate(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
 #        if toggle.lower() == 'on':
 #            target_lang_code = self.get_language_code(target_lang)
@@ -391,123 +455,6 @@ class Hybrid(commands.Cog):
 #            await ctx.send(f'{ctx.author.mention}, translation disabled.')
 #        else:
 #            await ctx.send(f'{ctx.author.mention}, please specify 'on' or 'off'.')
-
-    @commands.command(name='load', hidden=True)
-    @commands.check(at_home)
-    async def load(self, ctx: commands.Context, *, module: str):
-        try:
-            await ctx.bot.load_extension(module)
-        except commands.ExtensionError as e:
-            await ctx.send(f'{e.__class__.__name__}: {e}')
-        else:
-            await ctx.send('\N{OK HAND SIGN}')
-
-
-    @commands.hybrid_command(name='draw', description='Usage: !draw glow <molecule> or !draw gsrs <molecule> or !draw shadow <molecule>.')
-    @commands.check(at_home)
-    async def molecule(self, ctx: commands.Context, option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
-        try:
-            if ctx.interaction:
-                await ctx.interaction.response.defer(ephemeral=True)
-            if option == 'compare':
-                if not molecules:
-                    await ctx.send('No molecules provided.')
-                    return
-                args = shlex.split(molecules)
-                pairs = unique_pairs(args)
-                if not pairs:
-                    embed = discord.Embed(description='No valid pairs found.')
-                    await ctx.send(embed=embed)
-                    return
-                for pair in pairs:
-                    mol = get_mol(pair[0])
-                    refmol = get_mol(pair[1])
-                    if mol is None or refmol is None:
-                        embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
-                        await ctx.send(embed=embed)
-                        continue
-                    fingerprints = [
-                        draw_fingerprint([mol, refmol]),
-                        draw_fingerprint([refmol, mol])
-                    ]
-                    combined_image = combine(fingerprints, reversed(pair))
-                    await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
-            elif option == 'glow':
-                if not molecules:
-                    await ctx.send('No molecules provided.')
-                    return
-                args = shlex.split(molecules)
-                fingerprints = []
-                names = []
-                molecule = get_mol(args[0])
-                for _ in range(quantity.default):
-                    names.append(args[0])
-                    fingerprints.append(draw_fingerprint([molecule, molecule]))
-                combined_image = combine(fingerprints, names)
-                await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
-            elif option == 'gsrs':
-                if not molecules:
-                    await ctx.send('No molecules provided.')
-                    return
-                args = shlex.split(molecules)
-                for molecule_name in args:
-                    if molecule_name is None:
-                        await ctx.send(f'{molecule_name} is an unknown molecule.')
-                        continue
-                    watermarked_image = gsrs(molecule_name)
-                    with io.BytesIO() as image_binary:
-                        watermarked_image.save(image_binary, format='PNG')
-                        image_binary.seek(0)
-                        await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
-            elif option == 'shadow':
-                if not molecules:
-                    await ctx.send('No molecules provided.')
-                    return
-                args = shlex.split(molecules)
-                mol = get_mol(args[0])
-                if mol is None:
-                    embed = discord.Embed(description='Invalid molecule name or structure.')
-                    await ctx.send(embed=embed)
-                    return
-                image = draw_watermarked_molecule(mol)
-                await ctx.send(file=discord.File(image, f'{args[0]}.png'))
-            else:
-                await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
-        except Exception as e:
-            logger.error(traceback.format_exc())
-            await ctx.reply(e)
-
-    @commands.hybrid_command(hidden=True)
-    @commands.check(at_home)
-    async def reload(self, ctx: commands.Context, *, module: str):
-        try:
-            if ctx.interaction:
-                await ctx.interaction.response.defer(ephemeral=True)
-            await ctx.bot.reload_extension(module)
-        except commands.ExtensionError as e:
-            await ctx.send(f'{e.__class__.__name__}: {e}')
-        else:
-            await ctx.send('\N{OK HAND SIGN}')
-
-    @commands.hybrid_command(name='search', description='Usage: !search <query>. Search Google.', hidden=True)
-    @commands.check(at_home)
-    async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
-        if ctx.interaction:
-            await ctx.interaction.response.defer(ephemeral=True)
-        results = google(query)
-        embed = discord.Embed(title=f'Search Results for \"{query}\"', color=discord.Color.blue())
-        for result in results:
-            embed.add_field(name=result['title'], value=result['link'], inline=False)
-        await ctx.send(embed=embed)
-
-    @commands.hybrid_command(name='frame', description='', hidden=True)
-    @commands.check(at_home)
-    async def frame(self, ctx: commands.Context):
-        video_path = 'frogs.mov'
-        output_dir = 'frames'
-        frames = extract_random_frames(video_path, output_dir)
-        for frame in frames:
-            await ctx.send(file=discord.File(frame))
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Hybrid(bot))
