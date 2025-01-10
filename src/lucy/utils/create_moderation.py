@@ -35,14 +35,15 @@ async def create_moderation(input_array):
         ai_client = AsyncOpenAI(api_key=api_key)
         logger.info('AI client initialized.')
 
-        response = await ai_client.moderations.create(
-            model='omni-moderation-latest',
-            input=input_array,
-        )
-        logger.info('Moderation API call completed.')
-        moderation_response = response.json()
-        logger.info(f'Moderation Response: {moderation_response}')
-        yield moderation_response
+        for item in input_array:
+            response = await ai_client.moderations.create(
+                model='omni-moderation-latest',
+                input=input_array,
+            )
+            logger.info('Moderation API call completed.')
+            moderation_response = response.json()
+            logger.info(f'Moderation Response: {moderation_response}')
+            yield moderation_response
 
     except Exception as e:
         error_details = traceback.format_exc()

@@ -134,6 +134,8 @@ class Message:
                     array.append({'type': 'text', 'text': text_content})
                 except Exception as e:
                     logger.error(f"Error reading attachment {attachment.filename}: {e}")
+            if self.config['openai_chat_model'] in OPENAI_CHAT_MODELS.get('current', ['o1-mini' , 'o1-preview']:
+                return array
         return array
 
     async def process_text_message(self, content):
