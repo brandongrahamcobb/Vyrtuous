@@ -60,6 +60,87 @@ class TagManager:
             logger.error(f"Failed to add tag: {e}")
             raise
 
+    async def borrow_tag(
+        self,
+        tag_name: str,
+        location_id: int,
+        borrower_id: int,
+        owner_id: Optional[int] = None
+    ):
+        """
+        Allows a user to borrow a tag from another user.
+        Creates a copy of the tag under the borrower's ownership.
+
+        :param tag_name: The name of the tag to borrow.
+        :param location_id: The guild ID where the tag exists.
+        :param borrower_id: The ID of the user borrowing the tag.
+        :param owner_id: (Optional) The ID of the user who owns the tag.
+        :raises ValueError: If the tag doesn't exist, is already borrowed, or other constraints.
+        """
+        query_fetch = """
+            SELECT content, attachment_url, tag_type, owner_id
+            FROM tags
+            WHERE LOWER(name) = LOWER($1) AND location_id = $2
+        """
+        if owner_id:
+            query_fetch += " AND owner_id = $3"
+            params_fetch = (tag_name, location_id, owner_id)
+        else:
+            # If no owner specified, fetch any one matching tag
+            query_fetch += " LIMIT 1"
+            params_fetch = (tag_name, location_id)
+
+        query_insert = """
+            INSERT INTO tags (name, location_id, content, attachment_url, owner_id, tag_type)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        """
+        query_check_borrower = """
+            SELECT 1 
+            FROM tags 
+            WHERE LOWER(name) = LOWER($1) AND location_id = $2 AND owner_id = $3
+        """
+
+        try:
+            async with self.pool.acquire() as conn:
+                # Check if borrower already has the tag
+                existing = await conn.fetchval(
+                    query_check_borrower, tag_name, location_id, borrower_id
+                )
+                if existing:
+                    raise ValueError(
+                        f"You already have a tag named '{tag_name}' in this server."
+                    )
+
+                # Fetch the original tag
+                tag = await conn.fetchrow(*([query_fetch] + list(params_fetch)))
+                if not tag:
+                    if owner_id:
+                        raise ValueError(
+                            f"Tag '{tag_name}' does not exist for the specified user."
+                        )
+                    else:
+                        raise ValueError(
+                            f"Tag '{tag_name}' does not exist in this server."
+                        )
+
+                # Insert the borrowed tag under the borrower
+                await conn.execute(
+                    query_insert,
+                    tag_name,
+                    location_id,
+                    tag["content"],
+                    tag["attachment_url"],
+                    borrower_id,
+                    tag["tag_type"],
+                )
+
+        except ValueError as ve:
+            logger.warning(f"Borrowing failed: {ve}")
+            raise ve
+        except Exception as e:
+            logger.error(f"Failed to borrow tag: {e}")
+            raise RuntimeError("An error occurred while borrowing the tag.")
+
     async def get_tag(self, location_id: int, name: str):
         """
         Returns a tag dict {name, content, attachment_url, tag_type} or None.
