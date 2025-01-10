@@ -86,7 +86,6 @@ class Hybrid(commands.Cog):
     @commands.has_permissiosn(manage_roles=True)
     @commands.hybrid_command(name='tags', description='Display loop tags for the current location.', hidden=True)
     async def tags(self, ctx: commands.Context):
-    async def loop_tags(self, ctx):
         try:
             location_id = ctx.guild.id
             tags = await self.tag_manager.list_tags(location_id, tag_type='loop')
