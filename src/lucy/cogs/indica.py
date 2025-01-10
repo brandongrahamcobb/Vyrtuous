@@ -168,7 +168,7 @@ class Indica(commands.Cog):
                                     with open(PATH_COMPLETION, "w") as file:
                                         file.write(chat_completion)
                                     with open(PATH_COMPLETION, "rb") as file:
-                                        await message.reply('Your response exceeded {self.config['discord_character_limit']} characters:', file=discord.File(file, PATH_COMPLETION))
+                                        await message.reply(f'Your response exceeded {self.config['discord_character_limit']} characters:', file=discord.File(file))
                                 else:
                                     await message.reply(chat_completion)
 
