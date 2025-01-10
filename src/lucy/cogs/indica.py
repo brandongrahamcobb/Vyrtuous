@@ -137,7 +137,6 @@ class Indica(commands.Cog):
                 await self.bot.invoke(ctx)
 
     @commands.Cog.listener()
-    @commands.check(at_home)
     async def on_message(self, message):
         logger.info(f'Received message: {message.content}')
         try:

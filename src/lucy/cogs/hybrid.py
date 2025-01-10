@@ -66,7 +66,6 @@ class Hybrid(commands.Cog):
             return ctx.guild is not None and ctx.guild.id == bot.config.get("discord_testing_guild_id")
         return commands.check(predicate)
 
-
     def get_language_code(self, language_name):
         language_name = language_name.lower()
         for lang_code, lang_name in LANGUAGES.items():
