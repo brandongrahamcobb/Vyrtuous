@@ -1,8 +1,8 @@
 -- SQL File to Set Up Tag System Database
 
 -- Drop existing tables if they exist
---DROP TABLE IF EXISTS tags;
---DROP TABLE IF EXISTS loop_configs;
+-- DROP TABLE IF EXISTS tags;
+-- DROP TABLE IF EXISTS loop_configs;
 
 -- Create the tags table
 -- CREATE TABLE tags (
@@ -14,9 +14,8 @@
 --    owner_id BIGINT NOT NULL,
 --    tag_type VARCHAR(10) NOT NULL CHECK (tag_type IN ('default', 'loop')),
 --    UNIQUE (name, location_id, owner_id)
---
+-- );
 
--- Create the loop_configs table
 CREATE TABLE tags (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -28,6 +27,7 @@ CREATE TABLE tags (
     UNIQUE (LOWER(name), location_id, owner_id)
 );
 
+-- Create the loop_configs table
 CREATE TABLE loop_configs (
     guild_id BIGINT PRIMARY KEY,
     channel_id BIGINT NOT NULL,
