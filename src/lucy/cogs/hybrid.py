@@ -102,51 +102,6 @@ class Hybrid(commands.Cog):
             self.loop_task.cancel()
             self.loop_task = None
 
-        if action == "borrow":
-            """
-            Usage:
-                !tag borrow <tag_name>
-                Optionally, specify the original owner: !tag borrow <tag_name> @UserName
-            """
-            if not name:
-                return await ctx.send(
-                    f"Usage: `{self.bot.command_prefix}tag borrow <tag_name> [@owner]`"
-                )
-
-            # Extract mentioned user if provided
-            mentioned_users = ctx.message.mentions
-            if mentioned_users:
-                owner = mentioned_users[0]
-                owner_id = owner.id
-            else:
-                owner = None
-                owner_id = None
-
-            try:
-                await self.tag_manager.borrow_tag(
-                    tag_name=name,
-                    location_id=ctx.guild.id,
-                    borrower_id=ctx.author.id,
-                    owner_id=owner_id,
-                )
-                if owner:
-                    owner_display = owner.display_name
-                    await ctx.send(
-                        f'You have successfully borrowed the tag "{name}" from {owner_display}.'
-                    )
-                else:
-                    await ctx.send(
-                        f'You have successfully borrowed the tag "{name}".'
-                    )
-            except ValueError as ve:
-                await ctx.send(str(ve))
-            except RuntimeError as re:
-                await ctx.send(str(re))
-            except Exception as e:
-                logger.error(f"Unexpected error during tag borrowing: {e}")
-                await ctx.send(
-                    "An unexpected error occurred while borrowing the tag."
-                )
     @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
     @commands.has_permissions(manage_roles=True)
     @commands.check(at_home)
