@@ -66,9 +66,9 @@ class Hybrid(commands.Cog):
         return commands.check(predicate)
 
     @staticmethod
-    def developer_mode(bot):
+    def release_mode(bot):
         async def predicate(ctx):
-            return (ctx.guild.id is bot.config.get('discord_testing_guide_id') and bot.config.get('discord_developer_mode'))
+            return (ctx.guild.id is bot.config.get('discord_testing_guide_id') and bot.config.get('discord_release_mode'))
         return commands.check(predicate)
 
     def get_language_code(self, language_name):
@@ -103,9 +103,9 @@ class Hybrid(commands.Cog):
             self.loop_task = None
 
     @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
-    @commands.has_permissions(manage_messages=True)
+    @commands.has_permissions(manage_roles=True)
     @commands.check(at_home)
-    @commands.check(developer_mode)
+    @commands.check(release_mode)
     async def colorize(self, ctx: commands.Context, r: Optional[str] = commands.parameter(default='149', description='Anything between 0 and 255.'), g: int = commands.parameter(default='165', description='Anything betwen 0 and 255.'), b: int = commands.parameter(default='165', description='Anything between 0 and 255.')):
         if not r.isnumeric():
             input_text_dict = {
@@ -139,25 +139,9 @@ class Hybrid(commands.Cog):
         await ctx.author.add_roles(newrole)
         await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
 
-    @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
-    @commands.has_permissions(manage_messages=True)
-    @commands.check(at_home)
-    @commands.check(developer_mode)
-    async def frame(self, ctx: commands.Context):
-        video_path = 'frogs.mov'
-        output_dir = 'frames'
-        frames = extract_random_frames(video_path, output_dir)
-        for frame in frames:
-            await ctx.send(file=discord.File(frame))
-
-#    @commands.command()
-#    async def languages(self, ctx):
-#        supported_languages = ', '.join(LANGUAGES.values())
-#        await ctx.send(f'Supported languages are:\n{supported_languages}')
-#
     @commands.hybrid_command(name='draw', description='Usage: !draw glow <molecule> or !draw gsrs <molecule> or !draw shadow <molecule>.')
     @commands.check(at_home)
-    @commands.check(developer_mode)
+    @commands.check(release_mode)
     async def draw(self, ctx: commands.Context, option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
         try:
             if ctx.interaction:
@@ -230,9 +214,24 @@ class Hybrid(commands.Cog):
             logger.error(traceback.format_exc())
             await ctx.reply(e)
 
+    @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
+    @commands.check(at_home)
+    @commands.check(release_mode)
+    async def frame(self, ctx: commands.Context):
+        video_path = 'frogs.mov'
+        output_dir = 'frames'
+        frames = extract_random_frames(video_path, output_dir)
+        for frame in frames:
+            await ctx.send(file=discord.File(frame))
+
+#    @commands.command()
+#    async def languages(self, ctx):
+#        supported_languages = ', '.join(LANGUAGES.values())
+#        await ctx.send(f'Supported languages are:\n{supported_languages}')
+#
     @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>', hidden=True)
     @commands.check(at_home)
-    @commands.check(developer_mode)
+    @commands.check(release_mode)
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
          try:
              await ctx.send(script(version, reference))
@@ -240,8 +239,8 @@ class Hybrid(commands.Cog):
              print(traceback.format_exc())
 
     @commands.hybrid_command(name='search', description='Usage: !search <query>. Search Google.')
-    @commands.check(developer_mode)
     @commands.check(at_home)
+    @commands.check(release_mode)
     async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
@@ -251,11 +250,9 @@ class Hybrid(commands.Cog):
             embed.add_field(name=result['title'], value=result['link'], inline=False)
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(
-        name='tag',
-        description='Manage or retrieve tags. Sub-actions: add, update, remove, list, loop.'
-    )
-    @commands.has_permissions(manage_messages=True)
+    @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, update, remove, list, loop.')
+    @commands.check(at_home)
+    @commands.check(release_mode)
     async def tag_command(
         self,
         ctx: commands.Context,
@@ -427,7 +424,7 @@ class Hybrid(commands.Cog):
                 logger.error(f'Error fetching tag \"{action}\": {e}')
                 await ctx.send(f'An error occurred while fetching tag \"{action}\".')
 
-    @commands.hybrid_command(name='tags', description='Display loop tags for the current location.', hidden=True)
+    @commands.hybrid_command(name='tags', description='Display loop tags for the current location.')
     @commands.check(at_home)
     async def tags(self, ctx: commands.Context):
         try:

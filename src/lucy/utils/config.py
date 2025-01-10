@@ -167,9 +167,9 @@ class Config:
         config_fields = {
             'discord_character_limit': ('Discord character limit?', DISCORD_CHARACTER_LIMIT),
             'discord_command_prefix': ('Discord command prefix?', DISCORD_COMMAND_PREFIX),
-            'discord_developer_mode': ('Discord developer mode?', DISCORD_DEVELOPER_MODE),
             'discord_moderation_warning': ('What should be sent to users if their message was moderated?', DISCORD_MODERATION_WARNING),
             'discord_owner_id': ('Discord Owner ID?', DISCORD_OWNER_ID),
+            'discord_release_mode': ('Discord release mode?', DISCORD_RELEASE_MODE),
             'discord_role_pass': ('What is the role ID you\'d like unfiltered?', DISCORD_ROLE_PASS),
             'discord_testing_guild_id': ('What is the Discord testing guild ID?', DISCORD_TESTING_GUILD_ID),
             'discord_token': ('What is the Discord token?', ''),
