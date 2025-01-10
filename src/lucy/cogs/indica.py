@@ -150,11 +150,22 @@ class Indica(commands.Cog):
                 if self.config['openai_chat_completion']:
                     async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array): #, sys_input=OPENAI_CHAT_SYS_INPUT):
                         await message.reply(chat_completion)
-            if isinstance(message.channel, discord.DMChannel):
-                await ai_message()
+#            if isinstance(message.channel, discord.DMChannel):
+ #               await ai_message()
             elif self.bot.user in message.mentions:
-                if (message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117):
-                    await ai_message()
+                guilds = [
+                    await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
+                    await self.bot.fetch_guild(730907954345279591)
+                ]
+
+               # Get roles by name
+                vegan_roles = [
+                    get(guilds[0].roles, name="Vegan"),
+                    get(guilds[1].roles, name="Vegan")
+                ]
+                if (vegan_roles[0] in message.author.roles or vegan_roles[1] in message.author.roles):
+                    if (message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117):
+                        await ai_message()
 
             # Moderate Text and Images
             if self.config['openai_chat_moderation']:
