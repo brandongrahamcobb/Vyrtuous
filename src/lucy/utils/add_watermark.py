@@ -18,6 +18,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 import math
 from .setup_logging import logger
+from utils.helpers import *
 
 def add_watermark(image: BytesIO, watermark_text: str = 'Discord') -> BytesIO:
     logger.info('Starting the watermarking process.')
@@ -36,7 +37,7 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Discord') -> BytesIO:
         logger.info(f'Calculated initial font size: {font_size}.')
 
         try:
-            font = ImageFont.truetype('Roboto-Regular.ttf', font_size)
+            font = ImageFont.truetype(PATH_FONT, font_size)
             logger.info('Loaded Roboto-Regular.ttf font.')
         except IOError:
             logger.warning('Roboto-Regular.ttf not found. Falling back to default font.')

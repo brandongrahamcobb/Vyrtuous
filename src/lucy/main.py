@@ -1,4 +1,4 @@
-''' __init__.py  The purpose of this program is to provide the advanced_startup.py logic provided by Rapptz; from cd ../.
+''' main.py  The purpose of this program is to be the primary executable for Vyrtuous.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify

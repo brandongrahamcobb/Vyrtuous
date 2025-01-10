@@ -45,6 +45,7 @@ PATH_DISCORD_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'discord_oauth.py')
 PATH_DRAW_FINGERPRINT = join(DIR_BASE, 'lucy', 'utils', 'draw_fingerprint.py')
 PATH_DRAW_WATERMARKED_MOLECULE = join(DIR_BASE, 'lucy', 'utils', 'draw_watermarked_molecule.py')
 PATH_FINE_TUNING = join(DIR_BASE, 'lucy', 'utils', 'fine_tuning.py')
+PATH_FONT = join(DIR_BASE, 'lucy', 'Roboto-Regular.ttf')
 PATH_FORMAT_ERROR_CHECK = join(DIR_BASE, 'lucy', 'utils', 'format_error_check.py')
 PATH_GET_MOLECULE_NAME = join(DIR_BASE, 'lucy', 'utils', 'get_molecule_name.py')
 PATH_GET_MOL = join(DIR_BASE, 'lucy', 'utils', 'get_mol.py')
@@ -137,6 +138,7 @@ DISCORD_COGS = [
     'lucy.cogs.sativa',
 ]
 DISCORD_COMMAND_PREFIX = '!'
+DISCORD_DEVELOPER_MODE = False
 DISCORD_INTENTS = discord.Intents.all()
 DISCORD_MODERATION_WARNING = 'You have been warned.'
 DISCORD_OWNER_ID = 154749533429956608
