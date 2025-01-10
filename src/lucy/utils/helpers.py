@@ -352,7 +352,7 @@ OPENAI_MODEL_OUTPUT_LIMITS = {
     'gpt-4o-mini': 16384,
     'gpt-4-turbo': 4096,
     'o1-preview': 32768,
-    'o1-mini': 65536,
+    'o1-mini': 16384,
 }
 OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
 OPENAI_MODERATION_IMAGE = True
