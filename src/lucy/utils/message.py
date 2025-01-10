@@ -112,21 +112,29 @@ class Message:
             yield moderation_completion
 
 
-    async def process_array(self, content, *, attachments = None):
+    async def process_array(self, content, *, attachments=None):
         array = await self.process_text_message(content)
+        image_exceeded = False
         if attachments:
-             array.extend(await self.process_attachments(attachments))
-        return array
-
+            processed_array, image_exceeded = await self.process_attachments(attachments)
+            array.extend(processed_array)
+        return array, image_exceeded
 
     async def process_attachments(self, attachments):
         array = []
+        image_count = 0  # Counter to track the number of images processed
+        image_exceeded = False  # Flag to indicate if image limit was exceeded
         for attachment in attachments:
             if attachment.content_type and attachment.content_type.startswith('image/'):
-                array.append({
-                    'type': 'image_url',
-                    'image_url': {'url': attachment.url}
-                })
+                if image_count < 1:
+                    array.append({
+                        'type': 'image_url',
+                        'image_url': {'url': attachment.url}
+                    })
+                    image_count += 1
+                else:
+                    image_exceeded = True
+                    logger.warning(f"Multiple images detected in message. Only the first image will be processed. Ignored image: {attachment.url}")
             elif attachment.content_type and attachment.content_type.startswith('text/'):
                 try:
                     file_content = await attachment.read()
@@ -134,9 +142,12 @@ class Message:
                     array.append({'type': 'text', 'text': text_content})
                 except Exception as e:
                     logger.error(f"Error reading attachment {attachment.filename}: {e}")
-            if self.config['openai_chat_model'] in OPENAI_CHAT_MODELS.get('current', ['o1-mini' , 'o1-preview']:
-                return array
-        return array
+        
+        # Early return based on openai_chat_model configuration
+        if self.config['openai_chat_model'] in OPENAI_CHAT_MODELS.get('current', ['o1-mini', 'o1-preview']):
+            return array, image_exceeded
+    
+        return array, image_exceeded
 
     async def process_text_message(self, content):
         return [{

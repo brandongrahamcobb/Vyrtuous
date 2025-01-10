@@ -144,35 +144,13 @@ class Indica(commands.Cog):
             if message.author.bot:
                 return
             if message.attachments:
-                array = await self.handler.process_array(message.content, attachments=message.attachments)
+                array, image_exceeded = await self.handler.process_array(message.content, attachments=message.attachments)
             else:
-                array = await self.handler.process_array(message.content)
+                array, image_exceeded = await self.handler.process_array(message.content)
 #            if isinstance(message.channel, discord.DMChannel):
  #               await ai_message()
-            if self.config['openai_chat_completion']:
-                if self.bot.user in message.mentions:
-                    guilds = [
-                        await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
-                        await self.bot.fetch_guild(730907954345279591)
-                    ]
-
-               # Get roles by name
-                    vegan_roles = [
-                        get(guilds[0].roles, name="Vegan"),
-                        get(guilds[1].roles, name="Vegan")
-                    ]
-                    if (vegan_roles[0] in message.author.roles or vegan_roles[1] in message.author.roles):
-                        if (message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117):
-                            async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array): #, sys_input=OPENAI_CHAT_SYS_INPUT):
-                                if len(chat_completion) > 2000:
-                                    with open(PATH_COMPLETION, "w") as file:
-                                        file.write(chat_completion)
-                                    with open(PATH_COMPLETION, "rb") as file:
-                                        await message.reply(f'Your response exceeded {self.config['discord_character_limit']} characters:', file=discord.File(file))
-                                else:
-                                    await message.reply(chat_completion)
-
-            # Moderate Text and Images
+            if image_exceeded:
+                await message.channel.send(f"{message.author.mention}, you can only send one image per message. Additional images have been ignored.")
             if self.config['openai_chat_moderation']:
                 async for moderation_completion in create_moderation(input_array=array):
                     try:
@@ -181,12 +159,18 @@ class Indica(commands.Cog):
                         if results:
                             flagged = results[0].get('flagged', False)
                             if flagged:
-                                guilds = [await self.bot.fetch_guild(self.config['discord_testing_guild_id']), await self.bot.fetch_guild(730907954345279591)]
-                                vegan_roles = [guilds[0].get_role(self.config['discord_role_pass']), guilds[1].get_role(788114978020392982)]
+                                guilds = [
+                                    await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
+                                    await self.bot.fetch_guild(730907954345279591)
+                                ]
+                                vegan_roles = [
+                                    guilds[0].get_role(self.config['discord_role_pass']),
+                                    guilds[1].get_role(788114978020392982)
+                                ]
                                 if vegan_roles[0] in message.author.roles and flagged:
                                     await message.delete()
                             else:
-                                async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
+                                async for moderation_response in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
                                     carnism_flagged = results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
                                         carnism_score = results[0]['category_scores'].get('carnism', 0)
@@ -196,6 +180,26 @@ class Indica(commands.Cog):
                     except Exception as e:
                         logger.error(f'Error processing moderation response: {e}')
                         await message.reply('An error occurred while processing moderation.')
+            if self.config['openai_chat_completion']:
+                if self.bot.user in message.mentions:
+                    guilds = [
+                        await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
+                        await self.bot.fetch_guild(730907954345279591)
+                    ]
+                    vegan_roles = [
+                        get(guilds[0].roles, name="Vegan"),
+                        get(guilds[1].roles, name="Vegan")
+                    ]
+                    if (vegan_roles[0] in message.author.roles or vegan_roles[1] in message.author.roles):
+                        if (message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117):
+                            async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):  # , sys_input=OPENAI_CHAT_SYS_INPUT):
+                                if len(chat_completion) > 2000:
+                                    with open(PATH_COMPLETION, "w") as file:
+                                        file.write(chat_completion)
+                                    with open(PATH_COMPLETION, "rb") as file:
+                                        await message.reply(f'Your response exceeded {self.config["discord_character_limit"]} characters:', file=discord.File(file))
+                                else:
+                                    await message.reply(chat_completion)
         except Exception as e:
             logger.error(traceback.format_exc())
             await message.reply(e)
