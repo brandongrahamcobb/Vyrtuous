@@ -16,6 +16,7 @@
 '''
 from collections import defaultdict
 from discord.ext import commands, menus, tasks
+from discord.utils import get
 from lucy.utils.backup import perform_backup, setup_backup_directory
 from lucy.utils.create_https_completion import Conversations
 from lucy.utils.create_https_moderation import create_https_moderation
