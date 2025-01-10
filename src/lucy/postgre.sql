@@ -1,4 +1,11 @@
--- 1. Create the 'tags' table
+-- Drop existing tables if needed (Ensure you have backups if necessary)
+-- Uncomment the following lines if you need to reset the tables
+-- DROP TABLE IF EXISTS borrowed_tags CASCADE;
+-- DROP TABLE IF EXISTS tags CASCADE;
+-- DROP TABLE IF EXISTS loop_configs CASCADE;
+-- DROP TABLE IF EXISTS users CASCADE;
+
+-- 1. Create the 'tags' table without the UNIQUE constraint
 CREATE TABLE IF NOT EXISTS tags (
     tag_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -7,9 +14,12 @@ CREATE TABLE IF NOT EXISTS tags (
     content TEXT,
     attachment_url TEXT,
     tag_type VARCHAR(50) DEFAULT 'default',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (LOWER(name), location_id, owner_id)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 1.a. Create a unique index for LOWER(name), location_id, owner_id
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tags_lower_name_location_owner 
+ON tags (LOWER(name), location_id, owner_id);
 
 -- 2. Create the 'loop_configs' table
 CREATE TABLE IF NOT EXISTS loop_configs (
@@ -26,13 +36,18 @@ CREATE TABLE IF NOT EXISTS borrowed_tags (
     original_tag_id INT NOT NULL,      -- References the original tag
     borrowed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     returned_at TIMESTAMP WITH TIME ZONE,
-    FOREIGN KEY (original_tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE,
-    UNIQUE (borrower_id, original_tag_id, returned_at)
+    FOREIGN KEY (original_tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
 );
 
--- 4. Assuming a 'users' table exists, if not, create it accordingly
+-- 3.a. Create a partial unique index to ensure one active borrow per user per tag
+CREATE UNIQUE INDEX IF NOT EXISTS idx_borrowed_tags_unique_active 
+ON borrowed_tags (borrower_id, original_tag_id) 
+WHERE returned_at IS NULL;
+
+-- 4. Create the 'users' table
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
     username VARCHAR(255) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
