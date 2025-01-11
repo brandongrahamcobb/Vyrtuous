@@ -188,7 +188,7 @@ class Message:
             'text': content.replace(f'<@1318597210119864385>', '')
         }]
 
-    def validate_array(array):
+    def validate_array(self, array):
         """
         Validate the array before sending it to the endpoint.
         """
