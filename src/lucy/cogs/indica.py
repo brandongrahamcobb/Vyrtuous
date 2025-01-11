@@ -34,6 +34,7 @@ import json
 import os
 import pytz
 import random
+import shutil
 import subprocess
 import traceback
 from lucy.utils.helpers import *
@@ -145,7 +146,7 @@ class Indica(commands.Cog):
                 return
     
             # Process message content and attachments
-            array, image_exceeded = await self.handler.process_array(
+            array = await self.handler.process_array(
                 message.content, attachments=message.attachments
             )
     
@@ -155,81 +156,43 @@ class Indica(commands.Cog):
                 await message.reply("Your message must include text or valid attachments.")
                 return
     
-            # Fetch guilds and roles
-            guilds = [
-                await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
-                await self.bot.fetch_guild(730907954345279591)
-            ]
-            vegan_roles = [
-                get(guilds[0].roles, name="Vegan"),
-                get(guilds[1].roles, name="Vegan")
-            ]
-    
-            if message.guild:
-                # Public message logic
-                member_roles = [role.name for role in message.guild.get_member(message.author.id).roles]
-    
+            # Handle moderation and chat completion
+            for item in array:
+                # Moderation
                 if self.config['openai_chat_moderation']:
-                    for item in array:
-                        async for moderation_completion in create_moderation(input_array=[item]):
-                            try:
-                                full_response = json.loads(moderation_completion)
-                                results = full_response.get('results', [])
-                                if results and results[0].get('flagged', False) and vegan_roles[0] in member_roles:
-                                    await message.delete()
-                                    return
-                            except Exception as e:
-                                logger.error(f'Error processing moderation response: {e}')
-                                await message.reply('An error occurred during moderation.')
+                    async for moderation_completion in create_moderation(input_array=[item]):
+                        try:
+                            full_response = json.loads(moderation_completion)
+                            results = full_response.get('results', [])
+                            if results and results[0].get('flagged', False):
+                                await message.reply(
+                                    f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
+                                )
+                                return
+                        except Exception as e:
+                            logger.error(f'Error processing moderation response: {e}')
+                            await message.reply('An error occurred during moderation.')
     
+                # Chat completion
                 if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
-                    current_model = self.config['openai_chat_model']
-                    if current_model in ["o1-mini", "o1-preview", "omni-latest-moderation"] and image_exceeded:
-                        for item in array:
-                            async for chat_completion in self.handler.generate_chat_completion(
-                                custom_id=message.author.id, array=[item]
-                            ):
-                                await message.reply(chat_completion)
-                    else:
-                        async for chat_completion in self.handler.generate_chat_completion(
-                            custom_id=message.author.id, array=array
-                        ):
-                            await message.reply(chat_completion)
+                    async for chat_completion in self.handler.generate_chat_completion(
+                        custom_id=message.author.id, array=[item]
+                    ):
+                        await message.reply(chat_completion)
     
-            else:
-                # Private message logic
-                user_in_guild = any(
-                    await guild.fetch_member(message.author.id) for guild in guilds if guild
-                )
-                if user_in_guild:
-                    for item in array:
-                        if self.config['openai_chat_moderation']:
-                            async for moderation_completion in create_moderation(input_array=[item]):
-                                try:
-                                    full_response = json.loads(moderation_completion)
-                                    results = full_response.get('results', [])
-                                    if results and results[0].get('flagged', False):
-                                        await message.reply('Your message was flagged for moderation.')
-                                        return
-                                except Exception as e:
-                                    logger.error(f'Error processing private moderation: {e}')
-    
-                        current_model = self.config['openai_chat_model']
-                        if current_model in ["o1-mini", "o1-preview", "omni-latest-moderation"] and image_exceeded:
-                            async for chat_completion in self.handler.generate_chat_completion(
-                                custom_id=message.author.id, array=[item]
-                            ):
-                                await message.reply(chat_completion)
-                        else:
-                            async for chat_completion in self.handler.generate_chat_completion(
-                                custom_id=message.author.id, array=array
-                            ):
-                                await message.reply(chat_completion)
-                else:
-                    logger.info(f'Ignoring DM from user not in specified guilds: {message.author.id}')
         except Exception as e:
             logger.error(traceback.format_exc())
             await message.reply(f'An error occurred: {e}')
+    
+        finally:
+            # Cleanup temp directory
+            try:
+                shutil.rmtree(DIR_TEMP)
+                os.makedirs(DIR_TEMP, exist_ok=True)
+                logger.info("Temporary files cleaned up successfully.")
+            except Exception as cleanup_error:
+                logger.error(f"Error cleaning up temporary files: {cleanup_error}")
+
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Indica(bot))

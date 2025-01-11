@@ -118,74 +118,64 @@ class Message:
     async def process_array(self, content, *, attachments=None):
         array = []
     
-        # Add content to the array if it exists
+        # Add text content if present
         if content.strip():
             array = await self.process_text_message(content)
     
         # Process attachments if present
         if attachments:
-            async for processed_attachment, _ in self.process_attachments(attachments):
-                # Validate the processed attachments
-                if processed_attachment.get('type') == 'text' and not processed_attachment.get('text', '').strip():
-                    logger.warning(f"Skipping empty text attachment: {processed_attachment}")
-                    continue
-                if processed_attachment.get('type') == 'image_base64' and not processed_attachment.get('image_data', '').strip():
-                    logger.error(f"Invalid image_base64 data: {processed_attachment}")
-                    continue
-    
-                array.append(processed_attachment)
+            processed_attachments = await self.process_attachments(attachments)
+            array.extend(processed_attachments)
     
         # Log a warning if the array is empty
         if not array:
             logger.warning("Generated 'array' is empty. No valid text or attachments found.")
     
-        return array, bool(attachments and len(attachments) > 1)
+        return array
 
     async def process_attachments(self, attachments):
         """
         Processes attachments:
-        - Saves images as temporary files and converts them to Base64.
-        - Processes text attachments.
+        - Saves files in DIR_TEMP/temp/.
+        - Converts files to Base64 or raw text for further processing.
         """
-        image_count = 0
-        image_exceeded = False
+        processed_attachments = []
+    
         for attachment in attachments:
-            processed_attachment = {}
-            if attachment.content_type and attachment.content_type.startswith('image/'):
-                file_path = os.path.join(DIR_TEMP, attachment.filename)
-                try:
-                    async with aiofiles.open(file_path, 'wb') as f:
-                        await f.write(await attachment.read())
+            file_path = os.path.join(DIR_TEMP, attachment.filename)
+            try:
+                # Save the file locally
+                async with aiofiles.open(file_path, 'wb') as f:
+                    await f.write(await attachment.read())
+    
+                if attachment.content_type.startswith('image/'):
+                    # Convert image to Base64
                     async with aiofiles.open(file_path, 'rb') as f:
                         image_base64 = base64.b64encode(await f.read()).decode('utf-8')
-                    processed_attachment = {
+                    processed_attachments.append({
                         'type': 'image_base64',
                         'image_data': image_base64,
                         'filename': attachment.filename
-                    }
-                except Exception as e:
-                    logger.error(f"Error processing image attachment {attachment.filename}: {e}")
-                    continue
-                finally:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
-                image_count += 1
-            elif attachment.content_type and attachment.content_type.startswith('text/'):
-                try:
-                    file_content = await attachment.read()
-                    text_content = file_content.decode('utf-8')
-                    processed_attachment = {
+                    })
+    
+                elif attachment.content_type.startswith('text/'):
+                    # Read text content
+                    async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
+                        text_content = await f.read()
+                    processed_attachments.append({
                         'type': 'text',
-                        'text': text_content
-                    }
-                except Exception as e:
-                    logger.error(f"Error reading text attachment {attachment.filename}: {e}")
-                    continue  # Skip this attachment on error
-            else:
-                logger.info(f"Skipping unsupported attachment type: {attachment.content_type}")
+                        'text': text_content,
+                        'filename': attachment.filename
+                    })
+    
+                else:
+                    logger.info(f"Skipping unsupported attachment type: {attachment.content_type}")
+    
+            except Exception as e:
+                logger.error(f"Error processing file {attachment.filename}: {e}")
                 continue
-            image_exceeded = image_count > 1
-            yield processed_attachment, image_exceeded
+    
+        return processed_attachments
 
     async def process_text_message(self, content):
         return [{
