@@ -146,7 +146,7 @@ class Hybrid(commands.Cog):
     @commands.hybrid_command(name='d', description=f'Usage: ld 2 <molecule> <molecule> or ld glow <molecule> or ld gsrs <molecule> or ld shadow <molecule>.')
     @commands.check(at_home)
     @commands.check(release_mode)
-    async def d(self, ctx: commands.Context, option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
+    async def d(self, ctx: commands.Context, option: Optional[str] = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
         try:
             if ctx.interaction:
                 await ctx.interaction.response.defer(ephemeral=True)
