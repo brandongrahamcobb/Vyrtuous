@@ -49,18 +49,6 @@ import pytz
 import shlex
 import traceback
 
-def at_home(bot):
-    async def predicate(ctx):
-        return ctx.guild is not None and ctx.guild.id == ctx.bot.config['discord_testing_guild_id']
-    return commands.check(predicate)
-
-def release_mode(bot):
-    async def predicate(ctx):
-        logger.info(f"Checking user ID: {ctx.author.id}")
-        logger.info(f"Release mode setting: {ctx.bot.config['discord_release_mode']}")
-        return ctx.author.id == 154749533429956608 or ctx.bot.config['discord_release_mode'] or isinstance(ctx.message.channel, discord.DMChannel)
-    return commands.check(predicate)
-
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -71,12 +59,31 @@ class Hybrid(commands.Cog):
         self.messages = []
         self.loop_task: Optional[str] = None
 
+    def at_home(self):
+        async def predicate(ctx):
+            return ctx.guild is not None and ctx.guild.id == self.bot.config['discord_testing_guild_id']
+        return commands.check(predicate)
+
     def get_language_code(self, language_name):
         language_name = language_name.lower()
         for lang_code, lang_name in LANGUAGES.items():
             if lang_name.lower() == language_name:
                 return lang_code
         return None
+
+    async def is_vegan(self, user: discord.User):
+        guilds = [
+            await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
+            await self.bot.fetch_guild(730907954345279591)
+        ]
+        for guild in guilds:
+            vegan_role = get(guild.roles, name="Vegan")
+            if vegan_role in user.roles:
+                return True
+        return False
+
+    async def is_vegan_check(self, ctx):
+        return await self.is_vegan(ctx.author)
 
     async def loop_tags(self, channel: discord.TextChannel):
         while True:
@@ -102,10 +109,17 @@ class Hybrid(commands.Cog):
             self.loop_task.cancel()
             self.loop_task = None
 
+    def release_mode(self):
+        async def predicate(ctx):
+            logger.info(f"Checking user ID: {ctx.author.id}")
+            logger.info(f"Release mode setting: {self.bot.config['discord_release_mode']}")
+            return ctx.author.id == 154749533429956608 or self.bot.config['discord_release_mode'] or isinstance(ctx.message.channel, discord.DMChannel)
+        return commands.check(predicate)
+
     @commands.hybrid_command(name='colorize', description=f'Usage: between `lcolorize 0 0 0` and `lcolorize 255 255 255` or `l colorize <color>`')
-    @commands.has_permissions(manage_roles=True)
-    @commands.check(at_home)
-    @commands.check(release_mode)
+    @commands.has_permissions(manage_roles=True) # Do you have manage_roles permissions?
+    @commands.check(at_home) # Are you at home?
+    @commands.check(release_mode) # Should the release be public or private?
     async def colorize(self, ctx: commands.Context, r: str = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.'), *, g: str = commands.parameter(default='147', description='Anything betwen 0 and 255.'), b: str = commands.parameter(default='165', description='Anything between 0 and 255.')):
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
@@ -145,8 +159,8 @@ class Hybrid(commands.Cog):
         await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
 
     @commands.hybrid_command(name='d', description=f'Usage: ld 2 <mol> <mol> or ld glow <mol> or ld gsrs <mol> or ld shadow <mole>.')
-    @commands.check(at_home)
-    @commands.check(release_mode)
+    @commands.check(at_home) # Are you at home?
+    @commands.check(release_mode) # Should the release be public or private?
     async def d(
         self,
         ctx: commands.Context,
@@ -227,8 +241,8 @@ class Hybrid(commands.Cog):
             await ctx.reply(e)
 
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
-    @commands.check(at_home)
-    @commands.check(release_mode)
+    @commands.check(at_home) # Are you at home?
+    @commands.check(release_mode) # Should the release be public or private?
     async def frame(self, ctx: commands.Context):
         video_path = 'frogs.mov'
         output_dir = 'frames'
@@ -242,8 +256,8 @@ class Hybrid(commands.Cog):
 #        await ctx.send(f'Supported languages are:\n{supported_languages}')
 #
     @commands.command(name='script', description=f'Usage: lscript <NIV/ESV/Quran> <Book>.<Chapter>.<Verse>')
-    @commands.check(at_home)
-    @commands.check(release_mode)
+    @commands.check(at_home) # Are you at home?
+    @commands.check(release_mode) # Should the release be public or private?
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
          try:
              await ctx.send(script(version, reference))
@@ -251,8 +265,8 @@ class Hybrid(commands.Cog):
              print(traceback.format_exc())
 
     @commands.hybrid_command(name='search', description=f'Usage: lsearch <query>. Search Google.')
-    @commands.check(at_home)
-    @commands.check(release_mode)
+    @commands.check(at_home) # Are you at home?
+    @commands.check(release_mode) # Should the release be public or private?
     async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
@@ -263,8 +277,7 @@ class Hybrid(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')
-    @commands.check(at_home)
-    @commands.check(release_mode)
+    @commands.check(release_mode) # Should the release be public or private?
     async def tag_command(
         self,
         ctx: commands.Context,
@@ -481,8 +494,7 @@ class Hybrid(commands.Cog):
                 await ctx.send(f'An error occurred while fetching tag \"{action}\".')
 
     @commands.hybrid_command(name='tags', description='Display loop tags for the current location.')
-    @commands.check(at_home)
-    @commands.check(release_mode)
+    @commands.check(release_mode) # Should the release be public or private?
     async def tags(self, ctx: commands.Context):
         try:
             location_id = ctx.guild.id
@@ -504,8 +516,8 @@ class Hybrid(commands.Cog):
             logger.error(f'Error during tag fetching: {e}')
 
     @commands.command(name='wipe', description=f'Usage: lwipe <all|bot|commands|text|user>')
-    @commands.check(release_mode)
     @commands.has_permissions(manage_messages=True)
+    @commands.check(release_mode) # Should the release be public or private?
     async def wipe(self, ctx, option: str = None, limit: int = 100):
         if limit <= 0 or limit > 100:
             return await ctx.send('Limit must be between 1 and 100.')

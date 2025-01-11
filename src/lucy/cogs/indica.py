@@ -39,18 +39,6 @@ import subprocess
 import traceback
 from lucy.utils.helpers import *
 
-def at_home():
-    async def predicate(ctx):
-        return ctx.guild is not None and ctx.guild.id == ctx.bot.config['discord_testing_guild_id']
-    return commands.check(predicate)
-
-def release_mode():
-    async def predicate(ctx):
-        logger.info(f"Checking user ID: {ctx.author.id}")
-        logger.info(f"Release mode setting: {ctx.bot.config['discord_release_mode']}")
-        return ctx.author.id == 154749533429956608 or ctx.bot.config['discord_release_mode'] or isinstance(ctx.message.channel, discord.DMChannel)
-    return commands.check(predicate)
-
 class TagMenu(menus.ListPageSource):
     def __init__(self, tags):
         super().__init__(tags, per_page=1)  # One tag per page
@@ -81,6 +69,19 @@ class Indica(commands.Cog):
             1315735859848544378: 1300517536001036348,
         }
         self.guild_loops_index = defaultdict(int)
+
+
+    def at_home(self):
+        async def predicate(ctx):
+            return ctx.guild is not None and ctx.guild.id == self.bot.config['discord_testing_guild_id']
+        return commands.check(predicate)
+
+    def release_mode(self):
+        async def predicate(ctx):
+            logger.info(f"Checking user ID: {ctx.author.id}")
+            logger.info(f"Release mode setting: {self.bot.config['discord_release_mode']}")
+            return ctx.author.id == 154749533429956608 or self.bot.config['discord_release_mode'] or isinstance(ctx.message.channel, discord.DMChannel)
+        return commands.check(predicate)
 
     async def is_vegan(self, user: discord.User):
         guilds = [
@@ -169,7 +170,7 @@ class Indica(commands.Cog):
             )
             if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-                if not at_home():
+                if not self.at_home().predicate(ctx):
                     await message.reply("Your message must include text or valid attachments.")
                 return
             logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
@@ -181,7 +182,7 @@ class Indica(commands.Cog):
                             full_response = json.loads(moderation_completion)
                             results = full_response.get('results', [])
                             if results and results[0].get('flagged', False):
-                                if at_home():
+                                if self.at_home().predicate(ctx):
                                     await message.reply(
                                         f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                     )
@@ -192,7 +193,7 @@ class Indica(commands.Cog):
                                     carnism_flagged = results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
                                         carnism_score = results[0]['category_scores'].get('carnism', 0)
-                                        if at_home():
+                                        if self.at_home().predicate(ctx):
                                             await message.reply(
                                                 f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                             )
@@ -201,10 +202,10 @@ class Indica(commands.Cog):
                                         return
                         except Exception as e:
                             logger.error(traceback.format_exc())
-                            if at_home():
+                            if self.at_home().predicate(ctx):
                                 await message.reply(f'An error occurred: {e}')
                 # Chat completion
-                if await self.is_vegan(message.author):
+                if await self.is_vegan(message.author) and message.guild.id is not 730907954345279591:
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item]
@@ -212,7 +213,7 @@ class Indica(commands.Cog):
                             await message.reply(chat_completion)
         except Exception as e:
             logger.error(traceback.format_exc())
-            if not at_home():
+            if not self.at_home().predicate(ctx):
                 await message.reply(f'An error occurred: {e}')
         finally:
             try:
