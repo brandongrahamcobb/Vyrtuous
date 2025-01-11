@@ -161,7 +161,7 @@ class Indica(commands.Cog):
             # Validate the array
             if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-                if not release_mode():
+                if not self.release_mode:
                     await message.reply("Your message must include text or valid attachments.")
                 return
     
@@ -177,7 +177,7 @@ class Indica(commands.Cog):
                             full_response = json.loads(moderation_completion)
                             results = full_response.get('results', [])
                             if results and results[0].get('flagged', False):
-                                if at_home():
+                                if self.at_home():
                                     await message.reply(
                                         f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                     )
@@ -188,7 +188,7 @@ class Indica(commands.Cog):
                                     carnism_flagged = results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
                                         carnism_score = results[0]['category_scores'].get('carnism', 0)
-                                        if at_home():
+                                        if self.at_home():
                                             await message.reply(
                                                 f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                             )
@@ -197,11 +197,11 @@ class Indica(commands.Cog):
                                         return
                         except Exception as e:
                             logger.error(traceback.format_exc())
-                            if at_home():
+                            if self.at_home():
                                 await message.reply(f'An error occurred: {e}')
     
                 # Chat completion
-                if at_home():
+                if self.at_home():
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item]
@@ -210,7 +210,7 @@ class Indica(commands.Cog):
     
         except Exception as e:
             logger.error(traceback.format_exc())
-            if not at_home():
+            if not self.at_home():
                 await message.reply(f'An error occurred: {e}')
     
         finally:
