@@ -165,6 +165,7 @@ class Indica(commands.Cog):
         try:
             if message.author.bot:
                 return
+            ctx = await self.bot.get_context(message)
             array = await self.handler.process_array(
                 message.content, attachments=message.attachments
             )
