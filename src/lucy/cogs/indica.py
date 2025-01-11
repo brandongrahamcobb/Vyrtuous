@@ -152,23 +152,15 @@ class Indica(commands.Cog):
         try:
             if message.author.bot:
                 return
-    
-            # Process message content and attachments
             array = await self.handler.process_array(
                 message.content, attachments=message.attachments
             )
-    
-            # Validate the array
             if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
                 if not self.release_mode:
                     await message.reply("Your message must include text or valid attachments.")
                 return
-    
-            # Log the array for debugging
             logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
-    
-            # Handle moderation and chat completion
             for item in array:
                 # Moderation
                 if self.config['openai_chat_moderation']:
@@ -199,7 +191,6 @@ class Indica(commands.Cog):
                             logger.error(traceback.format_exc())
                             if self.at_home():
                                 await message.reply(f'An error occurred: {e}')
-    
                 # Chat completion
                 if self.at_home():
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
@@ -207,22 +198,17 @@ class Indica(commands.Cog):
                             custom_id=message.author.id, array=[item]
                         ):
                             await message.reply(chat_completion)
-    
         except Exception as e:
             logger.error(traceback.format_exc())
             if not self.at_home():
                 await message.reply(f'An error occurred: {e}')
-    
         finally:
-            # Cleanup temp directory
             try:
                 shutil.rmtree(DIR_TEMP)
                 os.makedirs(DIR_TEMP, exist_ok=True)
                 logger.info("Temporary files cleaned up successfully.")
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up temporary files: {cleanup_error}")
-
-
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Indica(bot))

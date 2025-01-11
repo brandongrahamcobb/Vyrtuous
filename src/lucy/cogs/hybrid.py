@@ -59,14 +59,14 @@ class Hybrid(commands.Cog):
         self.messages = []
         self.loop_task: Optional[str] = None
 
-    @staticmethod
-    def at_home():
+    @classmethod
+    def at_home(cls):
         async def predicate(ctx):
             return ctx.guild is not None and ctx.guild.id == ctx.bot.testing_guild_id
         return commands.check(predicate)
 
-    @staticmethod
-    def release_mode():
+    @classmethod
+    def release_mode(cls):
         async def predicate(ctx):
             logger.info(f"Checking user ID: {ctx.author.id}")
             logger.info(f"Release mode setting: {ctx.bot.config.get('discord_release_mode')}")
