@@ -44,19 +44,6 @@ def at_home():
         return ctx.guild is not None and ctx.guild.id == ctx.bot.config['discord_testing_guild_id']
     return commands.check(predicate)
 
-async def is_vegan(user: discord.User):
-    async def predicate(ctx):
-        guilds = [
-            await ctx.bot.fetch_guild(self.config['discord_testing_guild_id']),
-            await ctx.bot.fetch_guild(730907954345279591)
-        ]
-        for guild in guilds:
-            vegan_role = get(guild.roles, 'Vegan')
-            if vegan_role in user.roles:
-                return True
-        return False
-    return commands.check(predicate)
-
 def release_mode():
     async def predicate(ctx):
         logger.info(f"Checking user ID: {ctx.author.id}")
@@ -217,7 +204,7 @@ class Indica(commands.Cog):
                             if at_home():
                                 await message.reply(f'An error occurred: {e}')
                 # Chat completion
-                if is_vegan(message.author):
+                if await is_vegan(message.author):
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item]
