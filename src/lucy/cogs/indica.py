@@ -76,6 +76,12 @@ class Indica(commands.Cog):
             return ctx.guild is not None and ctx.guild.id == cls.bot.testing_guild_id
         return commands.check(predicate)
 
+    @staticmethod
+    def release_mode(bot):
+        async def predicate(ctx):
+            return ctx.author.id == 154749533429956608 or bot.config.get('discord_release_mode')
+        return commands.check(predicate)
+
     @tasks.loop(minutes=1)
     async def daily_loop(self):
         await self.bot.wait_until_ready()
@@ -131,7 +137,7 @@ class Indica(commands.Cog):
         await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
-    @commands.check(at_home)
+    @commands.check(release_mode)
     async def on_message_edit(self, before, after):
         if before.content != after.content:
             ctx = await self.bot.get_context(after)
@@ -139,6 +145,7 @@ class Indica(commands.Cog):
                 await self.bot.invoke(ctx)
 
     @commands.Cog.listener()
+    @commands.check(release_mode)
     async def on_message(self, message):
         logger.info(f'Received message: {message.content}')
         try:

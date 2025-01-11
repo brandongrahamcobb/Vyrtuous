@@ -68,7 +68,7 @@ class Hybrid(commands.Cog):
     @staticmethod
     def release_mode(bot):
         async def predicate(ctx):
-            return (ctx.guild.id is bot.config.get('discord_testing_guide_id') and bot.config.get('discord_release_mode'))
+            return ctx.author.id == 154749533429956608 or bot.config.get('discord_release_mode')
         return commands.check(predicate)
 
     def get_language_code(self, language_name):
@@ -470,6 +470,7 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='tags', description='Display loop tags for the current location.')
     @commands.check(at_home)
+    @commands.check(release_mode)
     async def tags(self, ctx: commands.Context):
         try:
             location_id = ctx.guild.id
@@ -491,6 +492,7 @@ class Hybrid(commands.Cog):
             logger.error(f'Error during tag fetching: {e}')
 
     @commands.command(name='wipe')
+    @commands.check(release_mode)
     @commands.has_permissions(manage_messages=True)
     async def wipe(self, ctx, option: str = None, limit: int = 100):
         if limit <= 0 or limit > 100:

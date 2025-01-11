@@ -24,7 +24,7 @@ import discord
 # Base and Home Paths
 DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
 DIR_HOME = expanduser('~')
-DIR_TEMP = join(DIR_BASE, 'temp')
+DIR_TEMP = join(DIR_BASE, 'lucy', 'temp')
 
 # Script Paths
 PATH_ADD_WATERMARK = join(DIR_BASE, 'lucy', 'utils', 'add_watermark.py')
