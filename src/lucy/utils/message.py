@@ -117,7 +117,7 @@ class Message:
         image_exceeded = False
         if attachments:
             processed_array, image_exceeded = await self.process_attachments(attachments)
-                array.extend(processed_array)
+            array.extend(processed_array)
         return array, image_exceeded
 
     async def process_attachments(self, attachments):
