@@ -116,9 +116,14 @@ class Message:
         array = await self.process_text_message(content)
         image_exceeded = False
         if attachments:
-            processed_array, image_exceeded = await self.process_attachments(attachments)
+            processed_array = []
+            async for processed_attachment, exceeded in self.process_attachments(attachments):
+               processed_array.append(processed_attachment)
+               image_exceeded = image_exceeded or exceeded  # Update the flag if exceeded
+
             array.extend(processed_array)
         return array, image_exceeded
+
 
     async def process_attachments(self, attachments):
         """
