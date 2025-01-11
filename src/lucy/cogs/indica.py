@@ -143,12 +143,14 @@ class Indica(commands.Cog):
         try:
             if message.author.bot:
                 return
+    
+            # Process the message content and attachments
             if message.attachments:
                 array, image_exceeded = await self.handler.process_array(message.content, attachments=message.attachments)
             else:
                 array, image_exceeded = await self.handler.process_array(message.content)
-#            if isinstance(message.channel, discord.DMChannel):
- #               await ai_message()
+    
+            # Fetch guilds and roles
             guilds = [
                 await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
                 await self.bot.fetch_guild(730907954345279591)
@@ -157,42 +159,71 @@ class Indica(commands.Cog):
                 get(guilds[0].roles, name="Vegan"),
                 get(guilds[1].roles, name="Vegan")
             ]
-            if self.config['openai_chat_moderation']:
-                async for moderation_completion in create_moderation(input_array=array):
-                    try:
-                        full_response = json.loads(moderation_completion)
-                        results = full_response.get('results', [])
-                        if results:
-                            flagged = results[0].get('flagged', False)
-                            if flagged:
-                                if vegan_roles[0] in message.member.roles and flagged:
+    
+            # Check if the message is in a guild or DM
+            if message.guild:
+                # Public message logic
+                member_roles = [role.name for role in message.guild.get_member(message.author.id).roles]
+                flagged = False
+    
+                # Moderation logic
+                if self.config['openai_chat_moderation']:
+                    async for moderation_completion in create_moderation(input_array=array):
+                        try:
+                            full_response = json.loads(moderation_completion)
+                            results = full_response.get('results', [])
+                            if results:
+                                flagged = results[0].get('flagged', False)
+                                if flagged and vegan_roles[0] in member_roles:
                                     await message.delete()
+                        except Exception as e:
+                            logger.error(f'Error processing moderation response: {e}')
+                            await message.reply('An error occurred during moderation.')
+    
+                # Chat completion logic for public messages
+                if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
+                    if any(role in member_roles for role in vegan_roles[:2]):
+                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):
+                            if len(chat_completion) > 2000:
+                                with open(PATH_COMPLETION, "w") as file:
+                                    file.write(chat_completion)
+                                with open(PATH_COMPLETION, "rb") as file:
+                                    await message.reply(
+                                        f'Your response exceeded {self.config["discord_character_limit"]} characters:',
+                                        file=discord.File(file)
+                                    )
                             else:
-                                async for moderation_response in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
-                                    carnism_flagged = results[0]['categories'].get('carnism', False)
-                                    if carnism_flagged:
-                                        carnism_score = results[0]['category_scores'].get('carnism', 0)
-                                        NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
-                        else:
-                            logger.info('No moderation results returned.')
-                    except Exception as e:
-                        logger.error(f'Error processing moderation response: {e}')
-                        await message.reply('An error occurred while processing moderation.')
-            if self.config['openai_chat_completion']:
-                if self.bot.user in message.mentions:
-                    if (vegan_roles[0] in message.member.roles or vegan_roles[1] in message.member.roles):
-                        if (message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117):
-                            async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):  # , sys_input=OPENAI_CHAT_SYS_INPUT):
-                                if len(chat_completion) > 2000:
-                                    with open(PATH_COMPLETION, "w") as file:
-                                        file.write(chat_completion)
-                                    with open(PATH_COMPLETION, "rb") as file:
-                                        await message.reply(f'Your response exceeded {self.config["discord_character_limit"]} characters:', file=discord.File(file))
-                                else:
-                                    await message.reply(chat_completion)
+                                await message.reply(chat_completion)
+    
+            else:
+                # Private message logic
+                # Check if the user is in one of the specified guilds
+                user_in_guild = any(
+                    guild.get_member(message.author.id) for guild in guilds
+                )
+                if user_in_guild:
+                    if self.config['openai_chat_moderation']:
+                        # Handle moderation for private messages
+                        async for moderation_completion in create_moderation(input_array=array):
+                            try:
+                                full_response = json.loads(moderation_completion)
+                                results = full_response.get('results', [])
+                                if results:
+                                    flagged = results[0].get('flagged', False)
+                                    if flagged:
+                                        await message.reply('Your message was flagged for moderation.')
+                            except Exception as e:
+                                logger.error(f'Error processing private moderation: {e}')
+                    if self.config['openai_chat_completion']:
+                        # Handle chat completions for private messages
+                        async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):
+                            await message.reply(chat_completion)
+                else:
+                    # Ignore DM if the user is not in any specified guilds
+                    logger.info(f'Ignoring DM from user not in specified guilds: {message.author.id}')
         except Exception as e:
             logger.error(traceback.format_exc())
-            await message.reply(e)
+            await message.reply(f'An error occurred: {e}')
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Indica(bot))
