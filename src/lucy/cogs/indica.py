@@ -158,7 +158,7 @@ class Indica(commands.Cog):
             )
     
             # Validate the array
-            if not array or not self.handler.validate_array(array):
+            if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
                 await message.reply("Your message must include text or valid attachments.")
                 return
@@ -202,6 +202,7 @@ class Indica(commands.Cog):
                 logger.info("Temporary files cleaned up successfully.")
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up temporary files: {cleanup_error}")
+
 
 
 async def setup(bot: commands.Bot):

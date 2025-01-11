@@ -140,7 +140,7 @@ class Message:
         """
         Processes attachments:
         - Saves files in DIR_TEMP/temp/.
-        - Converts files to Base64 with MIME type for further processing.
+        - Converts files to Base64 with the appropriate MIME type for further processing.
         """
         processed_attachments = []
     
@@ -155,11 +155,12 @@ class Message:
                     # Convert image to Base64 with MIME type
                     async with aiofiles.open(file_path, 'rb') as f:
                         image_base64 = base64.b64encode(await f.read()).decode('utf-8')
+                    mime_type = attachment.content_type
                     processed_attachments.append({
-                        'type': 'image_base64',
-                        'image_data': image_base64,
-                        'filename': attachment.filename,
-                        'content_type': attachment.content_type
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{image_base64}"
+                        }
                     })
     
                 elif attachment.content_type.startswith('text/'):
@@ -167,9 +168,8 @@ class Message:
                     async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
                         text_content = await f.read()
                     processed_attachments.append({
-                        'type': 'text',
-                        'text': text_content,
-                        'filename': attachment.filename
+                        "type": "text",
+                        "text": text_content
                     })
     
                 else:
@@ -180,7 +180,6 @@ class Message:
                 continue
     
         return processed_attachments
-    
 
     async def process_text_message(self, content):
         return [{
