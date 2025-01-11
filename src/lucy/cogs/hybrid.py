@@ -49,6 +49,18 @@ import pytz
 import shlex
 import traceback
 
+def at_home(bot):
+    async def predicate(ctx):
+        return ctx.guild is not None and ctx.guild.id == ctx.bot.config['discord_testing_guild_id']
+    return commands.check(predicate)
+
+def release_mode(bot):
+    async def predicate(ctx):
+        logger.info(f"Checking user ID: {ctx.author.id}")
+        logger.info(f"Release mode setting: {ctx.bot.config['discord_release_mode']}")
+        return ctx.author.id == 154749533429956608 or ctx.bot.config['discord_release_mode'] or isinstance(ctx.message.channel, discord.DMChannel)
+    return commands.check(predicate)
+
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -58,20 +70,6 @@ class Hybrid(commands.Cog):
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
         self.loop_task: Optional[str] = None
-
-    @classmethod
-    def at_home(cls):
-        async def predicate(ctx):
-            return ctx.guild is not None and ctx.guild.id == ctx.bot.testing_guild_id
-        return commands.check(predicate)
-
-    @classmethod
-    def release_mode(cls):
-        async def predicate(ctx):
-            logger.info(f"Checking user ID: {ctx.author.id}")
-            logger.info(f"Release mode setting: {ctx.bot.config.get('discord_release_mode')}")
-            return ctx.author.id == 154749533429956608 or ctx.bot.config.get('discord_release_mode') or isinstance(ctx.message.channel, discord.DMChannel)
-        return commands.check(predicate)
 
     def get_language_code(self, language_name):
         language_name = language_name.lower()
