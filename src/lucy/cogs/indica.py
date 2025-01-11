@@ -70,7 +70,7 @@ class Indica(commands.Cog):
         }
         self.guild_loops_index = defaultdict(int)
 
-    @classmethod
+    @staticmethod
     def at_home():
         async def predicate(ctx):
             return ctx.guild is not None and ctx.guild.id == ctx.bot.testing_guild_id

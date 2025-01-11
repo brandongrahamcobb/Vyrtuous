@@ -60,9 +60,9 @@ class Hybrid(commands.Cog):
         self.loop_task: Optional[str] = None
 
     @staticmethod
-    def at_home(bot):
+    def at_home():
         async def predicate(ctx):
-            return ctx.guild is not None and ctx.guild.id == bot.config.get("discord_testing_guild_id")
+            return ctx.guild is not None and ctx.guild.id == ctx.bot.testing_guild_id
         return commands.check(predicate)
 
     @staticmethod
@@ -70,7 +70,7 @@ class Hybrid(commands.Cog):
         async def predicate(ctx):
             logger.info(f"Checking user ID: {ctx.author.id}")
             logger.info(f"Release mode setting: {ctx.bot.config.get('discord_release_mode')}")
-            return ctx.author.id == 154749533429956608 or ctx.bot.config.get('discord_release_mode')
+            return ctx.author.id == 154749533429956608 or ctx.bot.config.get('discord_release_mode') or isinstance(ctx.message.channel, discord.DMChannel)
         return commands.check(predicate)
 
     def get_language_code(self, language_name):
