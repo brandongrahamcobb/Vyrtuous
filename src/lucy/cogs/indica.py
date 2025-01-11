@@ -165,7 +165,7 @@ class Indica(commands.Cog):
                                     guilds[0].get_role(self.config['discord_role_pass']),
                                     guilds[1].get_role(788114978020392982)
                                 ]
-                                if vegan_roles[0] in message.author.roles and flagged:
+                                if vegan_roles[0] in message.member.roles and flagged:
                                     await message.delete()
                             else:
                                 async for moderation_response in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
