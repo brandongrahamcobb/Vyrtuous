@@ -79,6 +79,8 @@ class Indica(commands.Cog):
     @staticmethod
     def release_mode():
         async def predicate(ctx):
+            logger.info(f"Checking user ID: {ctx.author.id}")
+            logger.info(f"Release mode setting: {ctx.bot.config.get('discord_release_mode')}")
             return ctx.author.id == 154749533429956608 or ctx.bot.config.get('discord_release_mode')
         return commands.check(predicate)
 
@@ -179,8 +181,20 @@ class Indica(commands.Cog):
                                     await message.reply(
                                         f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                     )
+                                    await message.delete()
                                     return
-                        except Exception as e:
+                            else:
+                                async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
+                                    carnism_flagged = results[0]['categories'].get('carnism', False)
+                                    if carnism_flagged:
+                                        carnism_score = results[0]['category_scores'].get('carnism', 0)
+                                        if not self.release_mode():
+                                            await message.reply(
+                                                f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
+                                            )
+                                            await message.delete()
+                                        NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
+                                        return
                             logger.error(f'Error processing moderation response: {e}')
                             if not self.release_mode():
                                 await message.reply('An error occurred during moderation.')
