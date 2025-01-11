@@ -140,7 +140,7 @@ class Message:
         """
         Processes attachments:
         - Saves files in DIR_TEMP/temp/.
-        - Converts files to Base64 or raw text for further processing.
+        - Converts files to Base64 with MIME type for further processing.
         """
         processed_attachments = []
     
@@ -152,13 +152,14 @@ class Message:
                     await f.write(await attachment.read())
     
                 if attachment.content_type.startswith('image/'):
-                    # Convert image to Base64
+                    # Convert image to Base64 with MIME type
                     async with aiofiles.open(file_path, 'rb') as f:
                         image_base64 = base64.b64encode(await f.read()).decode('utf-8')
                     processed_attachments.append({
                         'type': 'image_base64',
                         'image_data': image_base64,
-                        'filename': attachment.filename
+                        'filename': attachment.filename,
+                        'content_type': attachment.content_type
                     })
     
                 elif attachment.content_type.startswith('text/'):
@@ -179,6 +180,7 @@ class Message:
                 continue
     
         return processed_attachments
+    
 
     async def process_text_message(self, content):
         return [{
@@ -186,3 +188,18 @@ class Message:
             'text': content.replace(f'<@1318597210119864385>', '')
         }]
 
+    def validate_array(array):
+        """
+        Validate the array before sending it to the endpoint.
+        """
+        valid = True
+        for item in array:
+            if item.get('type') == 'image_base64':
+                if not item.get('image_data') or not item.get('content_type'):
+                    logger.error(f"Invalid Base64 image data: {item}")
+                    valid = False
+            elif item.get('type') == 'text':
+                if not item.get('text', '').strip():
+                    logger.error(f"Invalid text content: {item}")
+                    valid = False
+        return valid

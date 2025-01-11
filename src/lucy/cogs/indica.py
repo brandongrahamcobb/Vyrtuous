@@ -157,11 +157,14 @@ class Indica(commands.Cog):
                 message.content, attachments=message.attachments
             )
     
-            # Validate that the array is not empty
-            if not array:
+            # Validate the array
+            if not array or not self.handler.validate_array(array):
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
                 await message.reply("Your message must include text or valid attachments.")
                 return
+    
+            # Log the array for debugging
+            logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
     
             # Handle moderation and chat completion
             for item in array:
