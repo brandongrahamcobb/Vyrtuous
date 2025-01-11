@@ -55,6 +55,7 @@ async def is_vegan(user: discord.User):
             if vegan_role in user.roles:
                 return True
         return False
+    return commands.check(predicate)
 
 def release_mode():
     async def predicate(ctx):
