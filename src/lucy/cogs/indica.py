@@ -216,7 +216,7 @@ class Indica(commands.Cog):
                             if at_home():
                                 await message.reply(f'An error occurred: {e}')
                 # Chat completion
-                if is_vegan(ctx.author):
+                if is_vegan(message.author):
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item]
