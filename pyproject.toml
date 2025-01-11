@@ -5,7 +5,11 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "lucy"
+<<<<<<< HEAD
 version = "9.5.1"
+=======
+version = "8.7.0"
+>>>>>>> f442ff2 (93rd commit)
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
