@@ -116,19 +116,30 @@ class Message:
 
 
     async def process_array(self, content, *, attachments=None):
-        # Handle cases where message content is empty
         array = []
+    
+        # Add content to the array if it exists
         if content.strip():
             array = await self.process_text_message(content)
-        image_exceeded = False
+    
+        # Process attachments if present
         if attachments:
-            async for processed_attachment, exceeded in self.process_attachments(attachments):
+            async for processed_attachment, _ in self.process_attachments(attachments):
+                # Validate the processed attachments
+                if processed_attachment.get('type') == 'text' and not processed_attachment.get('text', '').strip():
+                    logger.warning(f"Skipping empty text attachment: {processed_attachment}")
+                    continue
+                if processed_attachment.get('type') == 'image_base64' and not processed_attachment.get('image_data', '').strip():
+                    logger.error(f"Invalid image_base64 data: {processed_attachment}")
+                    continue
+    
                 array.append(processed_attachment)
-                image_exceeded = image_exceeded or exceeded
+    
+        # Log a warning if the array is empty
         if not array:
-            logger.warning("No text or valid attachments to process.")
-        return array, image_exceeded
-
+            logger.warning("Generated 'array' is empty. No valid text or attachments found.")
+    
+        return array, bool(attachments and len(attachments) > 1)
 
     async def process_attachments(self, attachments):
         """

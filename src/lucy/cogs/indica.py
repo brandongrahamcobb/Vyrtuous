@@ -143,19 +143,18 @@ class Indica(commands.Cog):
         try:
             if message.author.bot:
                 return
-            # Check if the message has no content but includes attachments
-            if not message.content.strip() and not message.attachments:
-                await message.reply("Your message does not contain any text or attachments to process.")
-                return
+    
             # Process message content and attachments
             array, image_exceeded = await self.handler.process_array(
                 message.content, attachments=message.attachments
             )
-            # Validate that we have valid data to process
+    
+            # Validate that the array is not empty
             if not array:
-                logger.error("Generated 'array' is empty.")
-                await message.reply("Your message could not be processed. Please include text or valid attachments.")
+                logger.error("Invalid 'messages': The array is empty or improperly formatted.")
+                await message.reply("Your message must include text or valid attachments.")
                 return
+    
             # Fetch guilds and roles
             guilds = [
                 await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
@@ -165,10 +164,11 @@ class Indica(commands.Cog):
                 get(guilds[0].roles, name="Vegan"),
                 get(guilds[1].roles, name="Vegan")
             ]
-            # Check if the message is in a guild or DM
+    
             if message.guild:
                 # Public message logic
                 member_roles = [role.name for role in message.guild.get_member(message.author.id).roles]
+    
                 if self.config['openai_chat_moderation']:
                     for item in array:
                         async for moderation_completion in create_moderation(input_array=[item]):
@@ -181,7 +181,7 @@ class Indica(commands.Cog):
                             except Exception as e:
                                 logger.error(f'Error processing moderation response: {e}')
                                 await message.reply('An error occurred during moderation.')
-                # Chat completion logic for public messages
+    
                 if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                     current_model = self.config['openai_chat_model']
                     if current_model in ["o1-mini", "o1-preview", "omni-latest-moderation"] and image_exceeded:
@@ -195,6 +195,7 @@ class Indica(commands.Cog):
                             custom_id=message.author.id, array=array
                         ):
                             await message.reply(chat_completion)
+    
             else:
                 # Private message logic
                 user_in_guild = any(
@@ -212,6 +213,7 @@ class Indica(commands.Cog):
                                         return
                                 except Exception as e:
                                     logger.error(f'Error processing private moderation: {e}')
+    
                         current_model = self.config['openai_chat_model']
                         if current_model in ["o1-mini", "o1-preview", "omni-latest-moderation"] and image_exceeded:
                             async for chat_completion in self.handler.generate_chat_completion(
