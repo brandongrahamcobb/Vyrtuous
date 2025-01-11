@@ -70,7 +70,6 @@ class Indica(commands.Cog):
         }
         self.guild_loops_index = defaultdict(int)
 
-
     def at_home(self):
         async def predicate(ctx):
             return ctx.guild is not None and ctx.guild.id == self.bot.config['discord_testing_guild_id']
@@ -171,7 +170,7 @@ class Indica(commands.Cog):
             )
             if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-                if not self.at_home().predicate(ctx):
+                if await self.at_home().predicate(ctx):
                     await message.reply("Your message must include text or valid attachments.")
                 return
             logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
@@ -183,7 +182,7 @@ class Indica(commands.Cog):
                             full_response = json.loads(moderation_completion)
                             results = full_response.get('results', [])
                             if results and results[0].get('flagged', False):
-                                if self.at_home().predicate(ctx):
+                                if await self.at_home().predicate(ctx):
                                     await message.reply(
                                         f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                     )
@@ -194,7 +193,7 @@ class Indica(commands.Cog):
                                     carnism_flagged = results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
                                         carnism_score = results[0]['category_scores'].get('carnism', 0)
-                                        if self.at_home().predicate(ctx):
+                                        if await self.at_home().predicate(ctx):
                                             await message.reply(
                                                 f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                             )
@@ -203,7 +202,7 @@ class Indica(commands.Cog):
                                         return
                         except Exception as e:
                             logger.error(traceback.format_exc())
-                            if self.at_home().predicate(ctx):
+                            if await self.at_home().predicate(ctx):
                                 await message.reply(f'An error occurred: {e}')
                 # Chat completion
                 if await self.is_vegan(message.author) and message.guild.id is not 730907954345279591:
@@ -214,7 +213,7 @@ class Indica(commands.Cog):
                             await message.reply(chat_completion)
         except Exception as e:
             logger.error(traceback.format_exc())
-            if not self.at_home().predicate(ctx):
+            if await self.at_home().predicate(ctx):
                 await message.reply(f'An error occurred: {e}')
         finally:
             try:
