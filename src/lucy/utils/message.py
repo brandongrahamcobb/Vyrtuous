@@ -116,13 +116,19 @@ class Message:
 
 
     async def process_array(self, content, *, attachments=None):
-        array = await self.process_text_message(content)
+        # Handle cases where message content is empty
+        array = []
+        if content.strip():
+            array = await self.process_text_message(content)
         image_exceeded = False
         if attachments:
             async for processed_attachment, exceeded in self.process_attachments(attachments):
                 array.append(processed_attachment)
                 image_exceeded = image_exceeded or exceeded
+        if not array:
+            logger.warning("No text or valid attachments to process.")
         return array, image_exceeded
+
 
     async def process_attachments(self, attachments):
         """
