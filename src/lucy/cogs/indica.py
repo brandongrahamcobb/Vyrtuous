@@ -71,9 +71,9 @@ class Indica(commands.Cog):
         self.guild_loops_index = defaultdict(int)
 
     @classmethod
-    def at_home(cls):
+    def at_home():
         async def predicate(ctx):
-            return ctx.guild is not None and ctx.guild.id == cls.bot.testing_guild_id
+            return ctx.guild is not None and ctx.guild.id == ctx.bot.testing_guild_id
         return commands.check(predicate)
 
     @staticmethod
@@ -81,7 +81,7 @@ class Indica(commands.Cog):
         async def predicate(ctx):
             logger.info(f"Checking user ID: {ctx.author.id}")
             logger.info(f"Release mode setting: {ctx.bot.config.get('discord_release_mode')}")
-            return ctx.author.id == 154749533429956608 or ctx.bot.config.get('discord_release_mode')
+            return ctx.author.id == 154749533429956608 or ctx.bot.config.get('discord_release_mode') or isinstance(ctx.message.channel, discord.DMChannel)
         return commands.check(predicate)
 
     @tasks.loop(minutes=1)
@@ -177,7 +177,7 @@ class Indica(commands.Cog):
                             full_response = json.loads(moderation_completion)
                             results = full_response.get('results', [])
                             if results and results[0].get('flagged', False):
-                                if not self.release_mode():
+                                if self.at_home():
                                     await message.reply(
                                         f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                     )
@@ -188,7 +188,7 @@ class Indica(commands.Cog):
                                     carnism_flagged = results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
                                         carnism_score = results[0]['category_scores'].get('carnism', 0)
-                                        if not self.release_mode():
+                                        if self.at_home():
                                             await message.reply(
                                                 f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                             )
@@ -197,19 +197,20 @@ class Indica(commands.Cog):
                                         return
                         except Exception as e:
                             logger.error(traceback.format_exc())
-                            if not self.release_mode():
+                            if self.at_home():
                                 await message.reply(f'An error occurred: {e}')
     
                 # Chat completion
-                if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
-                    async for chat_completion in self.handler.generate_chat_completion(
-                        custom_id=message.author.id, array=[item]
-                    ):
-                        await message.reply(chat_completion)
+                if self.at_home():
+                    if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
+                        async for chat_completion in self.handler.generate_chat_completion(
+                            custom_id=message.author.id, array=[item]
+                        ):
+                            await message.reply(chat_completion)
     
         except Exception as e:
             logger.error(traceback.format_exc())
-            if not self.release_mode():
+            if not self.at_home():
                 await message.reply(f'An error occurred: {e}')
     
         finally:
