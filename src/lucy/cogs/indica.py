@@ -198,6 +198,10 @@ class Indica(commands.Cog):
                             logger.error(f'Error processing moderation response: {e}')
                             if not self.release_mode():
                                 await message.reply('An error occurred during moderation.')
+                        except Exception as e:
+                            logger.error(traceback.format_exc())
+                            if not self.release_mode():
+                                await message.reply(f'An error occurred: {e}')
     
                 # Chat completion
                 if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
