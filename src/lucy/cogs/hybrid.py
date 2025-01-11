@@ -104,7 +104,7 @@ class Hybrid(commands.Cog):
             self.loop_task.cancel()
             self.loop_task = None
 
-    @commands.hybrid_command(name='colorize', description=f'Change your role color using RGB values. Usage: between `lcolorize 0 0 0` and `lcolorize 255 255 255` or `l colorize <color>`')
+    @commands.hybrid_command(name='colorize', description=f'Usage: between `lcolorize 0 0 0` and `lcolorize 255 255 255` or `l colorize <color>`')
     @commands.has_permissions(manage_roles=True)
     @commands.check(at_home)
     @commands.check(release_mode)
@@ -146,7 +146,7 @@ class Hybrid(commands.Cog):
         await ctx.author.add_roles(newrole)
         await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
 
-    @commands.hybrid_command(name='d', description=f'Usage: ld 2 <molecule> <molecule> or ld glow <molecule> or ld gsrs <molecule> or ld shadow <molecule>.')
+    @commands.hybrid_command(name='d', description=f'Usage: ld 2 <mol> <mol> or ld glow <mol> or ld gsrs <mol> or ld shadow <mole>.')
     @commands.check(at_home)
     @commands.check(release_mode)
     async def d(
