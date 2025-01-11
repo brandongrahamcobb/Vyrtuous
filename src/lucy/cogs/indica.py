@@ -77,9 +77,9 @@ class Indica(commands.Cog):
         return commands.check(predicate)
 
     @staticmethod
-    def release_mode(bot):
+    def release_mode():
         async def predicate(ctx):
-            return ctx.author.id == 154749533429956608 or bot.config.get('discord_release_mode')
+            return ctx.author.id == 154749533429956608 or ctx.bot.config.get('discord_release_mode')
         return commands.check(predicate)
 
     @tasks.loop(minutes=1)
@@ -145,7 +145,6 @@ class Indica(commands.Cog):
                 await self.bot.invoke(ctx)
 
     @commands.Cog.listener()
-    @commands.check(release_mode)
     async def on_message(self, message):
         logger.info(f'Received message: {message.content}')
         try:
@@ -160,7 +159,8 @@ class Indica(commands.Cog):
             # Validate the array
             if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-                await message.reply("Your message must include text or valid attachments.")
+                if not self.release_mode():
+                    await message.reply("Your message must include text or valid attachments.")
                 return
     
             # Log the array for debugging
@@ -175,13 +175,15 @@ class Indica(commands.Cog):
                             full_response = json.loads(moderation_completion)
                             results = full_response.get('results', [])
                             if results and results[0].get('flagged', False):
-                                await message.reply(
-                                    f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
-                                )
-                                return
+                                if not self.release_mode():
+                                    await message.reply(
+                                        f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
+                                    )
+                                    return
                         except Exception as e:
                             logger.error(f'Error processing moderation response: {e}')
-                            await message.reply('An error occurred during moderation.')
+                            if not self.release_mode():
+                                await message.reply('An error occurred during moderation.')
     
                 # Chat completion
                 if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
@@ -192,7 +194,8 @@ class Indica(commands.Cog):
     
         except Exception as e:
             logger.error(traceback.format_exc())
-            await message.reply(f'An error occurred: {e}')
+            if not self.release_mode():
+                await message.reply(f'An error occurred: {e}')
     
         finally:
             # Cleanup temp directory

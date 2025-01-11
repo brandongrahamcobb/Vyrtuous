@@ -66,9 +66,11 @@ class Hybrid(commands.Cog):
         return commands.check(predicate)
 
     @staticmethod
-    def release_mode(bot):
+    def release_mode():
+        logger.info(f"Checking user ID: {ctx.author.id}")
+        logger.info(f"Release mode setting: {ctx.bot.config.get('discord_release_mode')}")
         async def predicate(ctx):
-            return ctx.author.id == 154749533429956608 or bot.config.get('discord_release_mode')
+            return ctx.author.id == 154749533429956608 or ctx.bot.config.get('discord_release_mode')
         return commands.check(predicate)
 
     def get_language_code(self, language_name):
@@ -102,10 +104,10 @@ class Hybrid(commands.Cog):
             self.loop_task.cancel()
             self.loop_task = None
 
-    @commands.command(description='Change your role color using RGB values. Usage: between `!colorize 0 0 0` and `!colorize 255 255 255`')
+    @commands.command(name='colorize', description=f'Change your role color using RGB values. Usage: between `lcolorize 0 0 0` and `lcolorize 255 255 255` or `l colorize <color>`')
     @commands.has_permissions(manage_roles=True)
     @commands.check(at_home)
-    @commands.check(release_mode)
+    @release_mode()
     async def colorize(self, ctx: commands.Context, r: Optional[str] = commands.parameter(default='149', description='Anything between 0 and 255.'), g: int = commands.parameter(default='165', description='Anything betwen 0 and 255.'), b: int = commands.parameter(default='165', description='Anything between 0 and 255.')):
         if not r.isnumeric():
             input_text_dict = {
@@ -139,14 +141,14 @@ class Hybrid(commands.Cog):
         await ctx.author.add_roles(newrole)
         await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
 
-    @commands.hybrid_command(name='draw', description='Usage: !draw glow <molecule> or !draw gsrs <molecule> or !draw shadow <molecule>.')
+    @commands.hybrid_command(name='d', description=f'Usage: ld 2 <molecule> <molecule> or ld glow <molecule> or ld gsrs <molecule> or ld shadow <molecule>.')
     @commands.check(at_home)
-    @commands.check(release_mode)
-    async def draw(self, ctx: commands.Context, option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
+    @release_mode()
+    async def d(self, ctx: commands.Context, option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'), *, molecules: str = commands.parameter(default=None, description='Any molecule'), quantity: int = commands.parameter(default=1, description='Quantity of glows')):
         try:
             if ctx.interaction:
                 await ctx.interaction.response.defer(ephemeral=True)
-            if option == 'compare':
+            if option == '2':
                 if not molecules:
                     await ctx.send('No molecules provided.')
                     return
@@ -216,7 +218,7 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
     @commands.check(at_home)
-    @commands.check(release_mode)
+    @release_mode()
     async def frame(self, ctx: commands.Context):
         video_path = 'frogs.mov'
         output_dir = 'frames'
@@ -229,18 +231,18 @@ class Hybrid(commands.Cog):
 #        supported_languages = ', '.join(LANGUAGES.values())
 #        await ctx.send(f'Supported languages are:\n{supported_languages}')
 #
-    @commands.command(name='script', description='Usage !script <NIV/ESV> <Book>.<Chapter>.<Verse>', hidden=True)
+    @commands.command(name='script', description=f'Usage: lscript <NIV/ESV/Quran> <Book>.<Chapter>.<Verse>')
     @commands.check(at_home)
-    @commands.check(release_mode)
+    @release_mode()
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
          try:
              await ctx.send(script(version, reference))
          except Exception as e:
              print(traceback.format_exc())
 
-    @commands.hybrid_command(name='search', description='Usage: !search <query>. Search Google.')
+    @commands.hybrid_command(name='search', description=f'Usage: lsearch <query>. Search Google.')
     @commands.check(at_home)
-    @commands.check(release_mode)
+    @release_mode()
     async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
@@ -250,9 +252,9 @@ class Hybrid(commands.Cog):
             embed.add_field(name=result['title'], value=result['link'], inline=False)
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, update, remove, list, loop.')
+    @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')
     @commands.check(at_home)
-    @commands.check(release_mode)
+    @release_mode()
     async def tag_command(
         self,
         ctx: commands.Context,
@@ -470,7 +472,7 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='tags', description='Display loop tags for the current location.')
     @commands.check(at_home)
-    @commands.check(release_mode)
+    @release_mode()
     async def tags(self, ctx: commands.Context):
         try:
             location_id = ctx.guild.id
@@ -491,8 +493,8 @@ class Hybrid(commands.Cog):
         except Exception as e:
             logger.error(f'Error during tag fetching: {e}')
 
-    @commands.command(name='wipe')
-    @commands.check(release_mode)
+    @commands.command(name='wipe', description=f'Usage: lwipe <all|bot|commands|text|user>')
+    @release_mode()
     @commands.has_permissions(manage_messages=True)
     async def wipe(self, ctx, option: str = None, limit: int = 100):
         if limit <= 0 or limit > 100:
@@ -531,7 +533,6 @@ class Hybrid(commands.Cog):
             await ctx.send(f'Deleted {total_deleted} messages.')
         else:
             await ctx.send('No messages matched the criteria.')
-
 
 #    async def translate(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
 #        if toggle.lower() == 'on':
