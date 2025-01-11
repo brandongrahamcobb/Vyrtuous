@@ -149,6 +149,14 @@ class Indica(commands.Cog):
                 array, image_exceeded = await self.handler.process_array(message.content)
 #            if isinstance(message.channel, discord.DMChannel):
  #               await ai_message()
+            guilds = [
+                await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
+                await self.bot.fetch_guild(730907954345279591)
+            ]
+            vegan_roles = [
+                get(guilds[0].roles, name="Vegan"),
+                get(guilds[1].roles, name="Vegan")
+            ]
             if self.config['openai_chat_moderation']:
                 async for moderation_completion in create_moderation(input_array=array):
                     try:
@@ -157,14 +165,6 @@ class Indica(commands.Cog):
                         if results:
                             flagged = results[0].get('flagged', False)
                             if flagged:
-                                guilds = [
-                                    await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
-                                    await self.bot.fetch_guild(730907954345279591)
-                                ]
-                                vegan_roles = [
-                                    guilds[0].get_role(self.config['discord_role_pass']),
-                                    guilds[1].get_role(788114978020392982)
-                                ]
                                 if vegan_roles[0] in message.member.roles and flagged:
                                     await message.delete()
                             else:
@@ -180,15 +180,7 @@ class Indica(commands.Cog):
                         await message.reply('An error occurred while processing moderation.')
             if self.config['openai_chat_completion']:
                 if self.bot.user in message.mentions:
-                    guilds = [
-                        await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
-                        await self.bot.fetch_guild(730907954345279591)
-                    ]
-                    vegan_roles = [
-                        get(guilds[0].roles, name="Vegan"),
-                        get(guilds[1].roles, name="Vegan")
-                    ]
-                    if (vegan_roles[0] in message.author.roles or vegan_roles[1] in message.author.roles):
+                    if (vegan_roles[0] in message.member.roles or vegan_roles[1] in message.member.roles):
                         if (message.guild.id == self.config['discord_testing_guild_id'] or message.channel.id == 985926652041261117):
                             async for chat_completion in self.handler.generate_chat_completion(custom_id=message.author.id, array=array):  # , sys_input=OPENAI_CHAT_SYS_INPUT):
                                 if len(chat_completion) > 2000:
