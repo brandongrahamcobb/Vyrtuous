@@ -1,6 +1,9 @@
 
+import aiofiles
+import base64
 import json
 import tiktoken
+import os
 
 from .helpers import *
 from .setup_logging import logger
@@ -116,89 +119,56 @@ class Message:
         array = await self.process_text_message(content)
         image_exceeded = False
         if attachments:
-            processed_array = []
             async for processed_attachment, exceeded in self.process_attachments(attachments):
-               processed_array.append(processed_attachment)
-               image_exceeded = image_exceeded or exceeded  # Update the flag if exceeded
-
-            array.extend(processed_array)
+                array.append(processed_attachment)
+                image_exceeded = image_exceeded or exceeded
         return array, image_exceeded
-
 
     async def process_attachments(self, attachments):
         """
-        Processes attachments by:
-        - Keeping the text content for the first attachment.
-        - For subsequent image attachments, dropping the text content.
-        - Yielding each attachment one by one.
-        
-        Yields:
-            tuple: (processed_attachment, image_exceeded_flag)
+        Processes attachments:
+        - Saves images as temporary files and converts them to Base64.
+        - Processes text attachments.
         """
-        image_count = 0  # Counter to track the number of images processed
-        image_exceeded = False  # Flag to indicate if image limit was exceeded
-        first_attachment = True  # Flag to check if processing the first attachment
-
+        image_count = 0
+        image_exceeded = False
         for attachment in attachments:
             processed_attachment = {}
-
             if attachment.content_type and attachment.content_type.startswith('image/'):
-                image = {
-                    'type': 'image_url',
-                    'image_url': {'url': attachment.url}
-                }
-
-                if first_attachment:
-                    # Keep any text associated with the first image if applicable
-                    processed_attachment = image
-                    # If there's associated text, include it
-                    # Assuming attachment has 'description' or similar field
-                    # Modify as per your actual data structure
-                    if hasattr(attachment, 'description') and attachment.description:
-                        processed_attachment['text'] = attachment.description
-                    image_count += 1
-                    first_attachment = False
-                else:
-                    # Subsequent images: Append without text
-                    processed_attachment = image
-                    image_count += 1
-
-            elif attachment.content_type and attachment.content_type.startswith('text/'):
-                if first_attachment:
-                    try:
-                        file_content = await attachment.read()
-                        text_content = file_content.decode('utf-8')
-                        processed_attachment = {
-                            'type': 'text',
-                            'text': text_content
-                        }
-                        first_attachment = False
-                    except Exception as e:
-                        logger.error(f"Error reading attachment {attachment.filename}: {e}")
-                        continue  # Skip this attachment on error
-                else:
-                    # For subsequent text attachments, decide whether to include or skip
-                    # Here, we'll skip additional text attachments
-                    logger.info(f"Skipping additional text attachment: {attachment.filename}")
+                file_path = os.path.join(DIR_TEMP, attachment.filename)
+                try:
+                    async with aiofiles.open(file_path, 'wb') as f:
+                        await f.write(await attachment.read())
+                    async with aiofiles.open(file_path, 'rb') as f:
+                        image_base64 = base64.b64encode(await f.read()).decode('utf-8')
+                    processed_attachment = {
+                        'type': 'image_base64',
+                        'image_data': image_base64,
+                        'filename': attachment.filename
+                    }
+                except Exception as e:
+                    logger.error(f"Error processing image attachment {attachment.filename}: {e}")
                     continue
+                finally:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                image_count += 1
+            elif attachment.content_type and attachment.content_type.startswith('text/'):
+                try:
+                    file_content = await attachment.read()
+                    text_content = file_content.decode('utf-8')
+                    processed_attachment = {
+                        'type': 'text',
+                        'text': text_content
+                    }
+                except Exception as e:
+                    logger.error(f"Error reading text attachment {attachment.filename}: {e}")
+                    continue  # Skip this attachment on error
             else:
-                # Handle other types of attachments if necessary
                 logger.info(f"Skipping unsupported attachment type: {attachment.content_type}")
                 continue
-
-            # Check if image limit is exceeded (example: more than 5 images)
-            MAX_IMAGES = 5  # Define as per your requirements
-            if image_count > MAX_IMAGES:
-                image_exceeded = True
-                logger.warning(f'More than {MAX_IMAGES} images detected in message.')
-
-            # Yield the processed attachment and the image_exceeded flag
-            if self.config.get('openai_chat_model') in OPENAI_CHAT_MODELS.get('current', ['o1-mini', 'o1-preview']):
-                yield processed_attachment, image_exceeded
-
-        # After processing all attachments, you can perform any final actions if needed
-        # For example, notifying if image limit was exceeded
-        # This part depends on how you intend to use the yielded data
+            image_exceeded = image_count > 1
+            yield processed_attachment, image_exceeded
 
     async def process_text_message(self, content):
         return [{
