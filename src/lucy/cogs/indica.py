@@ -195,9 +195,6 @@ class Indica(commands.Cog):
                                             await message.delete()
                                         NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                                         return
-                            logger.error(f'Error processing moderation response: {e}')
-                            if not self.release_mode():
-                                await message.reply('An error occurred during moderation.')
                         except Exception as e:
                             logger.error(traceback.format_exc())
                             if not self.release_mode():
