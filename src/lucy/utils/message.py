@@ -4,9 +4,12 @@ import base64
 import json
 import tiktoken
 import os
+import shutil
 
 from .helpers import *
 from .setup_logging import logger
+
+os.makedirs(DIR_TEMP, exist_ok=True)
 
 class Message:
     def __init__(self, config, conversations):
