@@ -108,7 +108,7 @@ class Hybrid(commands.Cog):
     @commands.has_permissions(manage_roles=True)
     @commands.check(at_home)
     @commands.check(release_mode)
-    async def colorize(self, ctx: commands.Context, r: Optional[str] = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.'), *, g: int = commands.parameter(default='', description='Anything betwen 0 and 255.'), b: int = commands.parameter(default='165', description='Anything between 0 and 255.')):
+    async def colorize(self, ctx: commands.Context, r: str = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.'), *, g: str = commands.parameter(default='147', description='Anything betwen 0 and 255.'), b: str = commands.parameter(default='165', description='Anything between 0 and 255.')):
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
         if not r.isnumeric():
@@ -127,6 +127,9 @@ class Hybrid(commands.Cog):
                 r = color_values['r']
                 g = color_values['g']
                 b = color_values['b']
+        r = int(r)
+        g = int(g)
+        b = int(b)
         guildroles = await ctx.guild.fetch_roles()
         position = len(guildroles) - 12
         for arg in ctx.author.roles:
