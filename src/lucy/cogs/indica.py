@@ -44,6 +44,18 @@ def at_home():
         return ctx.guild is not None and ctx.guild.id == ctx.bot.config['discord_testing_guild_id']
     return commands.check(predicate)
 
+async def is_vegan(user: discord.User):
+    async def predicate(ctx):
+        guilds = [
+            await ctx.bot.fetch_guild(self.config['discord_testing_guild_id']),
+            await ctx.bot.fetch_guild(730907954345279591)
+        ]
+        for guild in guilds:
+            vegan_role = get(guild.roles, 'Vegan')
+            if vegan_role in user.roles:
+                return True
+        return False
+
 def release_mode():
     async def predicate(ctx):
         logger.info(f"Checking user ID: {ctx.author.id}")
@@ -81,6 +93,20 @@ class Indica(commands.Cog):
             1315735859848544378: 1300517536001036348,
         }
         self.guild_loops_index = defaultdict(int)
+
+    async def is_vegan(self, user: discord.User):
+        guilds = [
+            await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
+            await self.bot.fetch_guild(730907954345279591)
+        ]
+        for guild in guilds:
+            vegan_role = get(guild.roles, name="Vegan")
+            if vegan_role in user.roles:
+                return True
+        return False
+
+    async def is_vegan_check(self, ctx):
+        return await self.is_vegan(ctx.author)
 
     @tasks.loop(minutes=1)
     async def daily_loop(self):
@@ -190,7 +216,7 @@ class Indica(commands.Cog):
                             if at_home():
                                 await message.reply(f'An error occurred: {e}')
                 # Chat completion
-                if at_home():
+                if is_vegan(ctx.author):
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item]
