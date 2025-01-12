@@ -137,6 +137,7 @@ DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
     'lucy.cogs.hybrid',
     'lucy.cogs.indica',
+    'lucy.cogs.ruderalis',
     'lucy.cogs.sativa',
 ]
 DISCORD_COMMAND_PREFIX = '!'
