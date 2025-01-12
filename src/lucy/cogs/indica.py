@@ -39,21 +39,6 @@ import subprocess
 import traceback
 from lucy.utils.helpers import *
 
-class TagMenu(menus.ListPageSource):
-    def __init__(self, tags):
-        super().__init__(tags, per_page=1)  # One tag per page
-
-    async def format_page(self, menu, tag):
-        content = tag.get('content', '')
-        attachment_url = tag.get('attachment_url', '')
-        description = content or attachment_url or 'No content available.'
-        embed = discord.Embed(
-            title=f'Loop Tag: {tag['name']}',
-            description=description,
-            color=discord.Color.blurple()
-        )
-        return embed
-
 class Indica(commands.Cog):
 
     def __init__(self, bot):
@@ -75,6 +60,22 @@ class Indica(commands.Cog):
             return ctx.guild is not None and ctx.guild.id == self.bot.config['discord_testing_guild_id']
         return commands.check(predicate)
 
+    async def is_vegan(self, user: discord.User):
+        async def predicate(ctx):
+            guilds = [
+                await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
+                await self.bot.fetch_guild(730907954345279591)
+            ]
+            for guild in guilds:
+                vegan_role = get(guild.roles, name="Vegan")
+                if vegan_role in user.roles:
+                    return True
+            return False
+        return commands.check(predicate)
+
+    async def is_vegan_check(self, ctx):
+        return await self.is_vegan(ctx.author)
+
     def release_mode(self):
         async def predicate(ctx):
             logger.info(f"Checking user ID: {ctx.author.id}")
@@ -82,19 +83,6 @@ class Indica(commands.Cog):
             return ctx.author.id == 154749533429956608 or self.bot.config['discord_release_mode'] or isinstance(ctx.message.channel, discord.DMChannel)
         return commands.check(predicate)
 
-    async def is_vegan(self, user: discord.User):
-        guilds = [
-            await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
-            await self.bot.fetch_guild(730907954345279591)
-        ]
-        for guild in guilds:
-            vegan_role = get(guild.roles, name="Vegan")
-            if vegan_role in user.roles:
-                return True
-        return False
-
-    async def is_vegan_check(self, ctx):
-        return await self.is_vegan(ctx.author)
 
     @tasks.loop(minutes=1)
     async def daily_loop(self):
@@ -183,7 +171,7 @@ class Indica(commands.Cog):
                             results = full_response.get('results', [])
                             if results and results[0].get('flagged', False):
                                 if await self.at_home().predicate(ctx):
-                                    if not await self.is_vegan(message.author):
+                                    if not await self.is_vegan(message.author).predicate(ctx):
                                         await message.reply(
                                             f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                         )
@@ -197,7 +185,7 @@ class Indica(commands.Cog):
                                     if carnism_flagged:
                                         carnism_score = carnism_results[0]['category_scores'].get('carnism', 0)
                                         if await self.at_home().predicate(ctx):
-                                            if not await self.is_vegan(message.author):
+                                            if not await self.is_vegan(message.author).predicate(ctx):
                                                 await message.reply(
                                                     f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                                 )
@@ -209,7 +197,7 @@ class Indica(commands.Cog):
                             if await self.at_home().predicate(ctx):
                                 await message.reply(f'An error occurred: {e}')
                 # Chat completion
-                if await self.is_vegan(message.author) and message.guild.id != 730907954345279591:
+                if await self.is_vegan(message.author).predicate(ctx) and message.guild.id != 730907954345279591:
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item]
