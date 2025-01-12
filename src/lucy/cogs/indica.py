@@ -191,9 +191,7 @@ class Indica(commands.Cog):
                                     return
                             else:
                                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
-                                    full_response = json.loads(moderation_completion)
-                                    results = full_response.get('results', [])
-                                    print(results)
+                                    results = moderation_completione.get('results', [])
                                     carnism_flagged = results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
                                         carnism_score = results[0]['category_scores'].get('carnism', 0)
@@ -220,7 +218,7 @@ class Indica(commands.Cog):
                                 for index, chunk in enumerate(chunks):
                                     with open(f'chunk_{index + 1}.txt', 'w') as f:
                                         f.write(chunk)
-                                await message.send(file=discord.File(f'chunk_{index + 1}.txt'))
+                                await message.reply(file=discord.File(f'chunk_{index + 1}.txt'))
                                 os.remove(f'chunk_{index + 1}.txt')
                             else:
                                 await message.reply(chat_completion)
