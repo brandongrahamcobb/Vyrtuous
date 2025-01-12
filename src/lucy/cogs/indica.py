@@ -218,7 +218,7 @@ class Indica(commands.Cog):
                                 chunks = [text[i:i + 2000] for i in range(0, len(text), 2000)]
                                 for index, chunk in enumerate(chunks):
                                     with open(f'chunk_{index + 1}.txt', 'w') as f:
-                                    f.write(chunk)
+                                        f.write(chunk)
                                 await ctx.send(file=discord.File(f'chunk_{index + 1}.txt'))
                                 os.remove(f'chunk_{index + 1}.txt')
                             else:
