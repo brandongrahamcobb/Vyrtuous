@@ -183,11 +183,11 @@ class Indica(commands.Cog):
                             results = full_response.get('results', [])
                             if results and results[0].get('flagged', False):
                                 if await self.at_home().predicate(ctx):
-                                    await message.reply(
-                                        f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
-                                    )
                                     if not await self.is_vegan(message.author):
-                                         await message.delete()
+                                        await message.reply(
+                                            f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
+                                        )
+                                        await message.delete()
                                     return
                             else:
                                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
@@ -197,10 +197,10 @@ class Indica(commands.Cog):
                                     if carnism_flagged:
                                         carnism_score = results[0]['category_scores'].get('carnism', 0)
                                         if await self.at_home().predicate(ctx):
-                                            await message.reply(
-                                                f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
-                                            )
                                             if not await self.is_vegan(message.author):
+                                                await message.reply(
+                                                    f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
+                                                )
                                                 await message.delete()
                                         NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                                         return
