@@ -171,24 +171,23 @@ class Indica(commands.Cog):
                                         await self.handle_moderation(message)
                                         NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                                         return
+                                    if await self.predicator.is_vegan_user(message.author) and message.guild.id != 730907954345279591:
+                                        if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
+                                            async for chat_completion in self.handler.generate_chat_completion(
+                                                custom_id=message.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
+                                            ):
+                                                if len(chat_completion) > 2000:
+                                                    unique_filename = f'temp_{uuid.uuid4()}.txt'
+                                                    with open(unique_filename, 'w') as f:
+                                                        f.write(chat_completion)
+                                                    await message.reply(file=discord.File(f'temp.txt'))
+                                                    os.remove(f'temp.txt')
+                                                else:
+                                                    await message.reply(chat_completion)
                         except Exception as e:
                             logger.error(traceback.format_exc())
                             if await self.predicator.is_at_home_func(messagee.guild.id):
                                 await message.reply(f'An error occurred: {e}')
-                # Chat completion
-                if await self.predicator.is_vegan_user(message.author) and message.guild.id != 730907954345279591:
-                    if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
-                        async for chat_completion in self.handler.generate_chat_completion(
-                            custom_id=message.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
-                        ):
-                            if len(chat_completion) > 2000:
-                                unique_filename = f'temp_{uuid.uuid4()}.txt'
-                                with open(unique_filename, 'w') as f:
-                                    f.write(chat_completion)
-                                await message.reply(file=discord.File(f'temp.txt'))
-                                os.remove(f'temp.txt')
-                            else:
-                                await message.reply(chat_completion)
         except Exception as e:
             logger.error(traceback.format_exc())
             if await self.predicator.is_at_home_func(message.guild.id):
