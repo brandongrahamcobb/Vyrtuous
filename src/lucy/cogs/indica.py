@@ -191,10 +191,11 @@ class Indica(commands.Cog):
                                     return
                             else:
                                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
-                                    results = moderation_completion.get('results', [])
-                                    carnism_flagged = results[0]['categories'].get('carnism', False)
+                                    chat_moderation = json.loads(moderation_completion)
+                                    carnism_results = chat_moderation.get('results', [])
+                                    carnism_flagged = carnism_results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
-                                        carnism_score = results[0]['category_scores'].get('carnism', 0)
+                                        carnism_score = carnism_results[0]['category_scores'].get('carnism', 0)
                                         if await self.at_home().predicate(ctx):
                                             if not await self.is_vegan(message.author):
                                                 await message.reply(
