@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from lucy.utils.add_watermark import add_watermark
+from lucy.utils.helpers import *
 from lucy.utils.setup_logging import logger
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
