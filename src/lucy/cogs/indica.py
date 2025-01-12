@@ -186,7 +186,7 @@ class Indica(commands.Cog):
                                     await message.reply(
                                         f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                     )
-                                    if not self.is_vegan(message.author):
+                                    if not await self.is_vegan(message.author):
                                          await message.delete()
                                     return
                             else:
@@ -200,7 +200,7 @@ class Indica(commands.Cog):
                                             await message.reply(
                                                 f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                             )
-                                            if not self.is_vegan(message.author):
+                                            if not await self.is_vegan(message.author):
                                                 await message.delete()
                                         NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                                         return
