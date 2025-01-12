@@ -214,7 +214,15 @@ class Indica(commands.Cog):
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item]
                         ):
-                            await message.reply(chat_completion)
+                            if len(chat_completion) > 2000:
+                                chunks = [text[i:i + 2000] for i in range(0, len(text), 2000)]
+                                for index, chunk in enumerate(chunks):
+                                    with open(f'chunk_{index + 1}.txt', 'w') as f:
+                                    f.write(chunk)
+                                await ctx.send(file=discord.File(f'chunk_{index + 1}.txt'))
+                                os.remove(f'chunk_{index + 1}.txt')
+                            else:
+                                await message.reply(chat_completion)
         except Exception as e:
             logger.error(traceback.format_exc())
             if await self.at_home().predicate(ctx):
