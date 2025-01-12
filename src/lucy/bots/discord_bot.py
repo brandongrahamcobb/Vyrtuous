@@ -26,7 +26,7 @@ from typing import List, Optional
 
 
 class DiscordBot(commands.Bot):
-    def __init__(self, *, config, db_pool: asyncpg.Pool, conversations, lock, oauth_token,**kwargs):
+    def __init__(self, *, config, db_pool: asyncpg.Pool, conversations, lock, oauth_token, **kwargs):
         logger.info('Initializing Lucy Discord bot...')
         try:
             intents = discord.Intents.all()

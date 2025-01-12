@@ -43,6 +43,7 @@ class Indica(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.conversations = bot.conversations
+        self.db_pool = bot.db_pool
         self.handler = Message(self.config, self.conversations)
         self.predicator = Predicator(self.bot)
 
@@ -53,6 +54,30 @@ class Indica(commands.Cog):
             ctx = await self.bot.get_context(after)
             if ctx.command:
                 await self.bot.invoke(ctx)
+
+    async def handle_moderation(self, message: discord.Message):
+        if lambda ctx: self.predicator.at_home():
+            if not (lambda ctx: self.predicator.is_vegan(message.author)):
+                user_id = message.author.id
+                async with self.db_pool.acquire() as connection:
+                    async with connection.transaction():
+                        row = await connection.fetchrow("SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id)
+                        if row:
+                            flagged_count = row['flagged_count'] + 1
+                            await connection.execute("UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2", flagged_count, user_id)
+                        else:
+                            flagged_count = 1
+                            await connection.execute("INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)", user_id, flagged_count)
+                if flagged_count == 1:
+                    await message.reply("Warning: Your message has been flagged.")
+                elif flagged_count in [2, 3, 4]:
+                    await message.delete()
+                    if flagged_count == 4:
+                        await message.author.send("Warning: Your message has been flagged again.")
+                elif flagged_count == 5:
+                    await message.delete()
+                    await message.author.send("You have been timed out for 30 seconds due to repeated violations.")
+                    await message.author.timeout(duration=30)  # Timeout for 30 seconds
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -78,13 +103,8 @@ class Indica(commands.Cog):
                             full_response = json.loads(moderation_completion)
                             results = full_response.get('results', [])
                             if results and results[0].get('flagged', False):
-                                if (lambda ctx: self.predicator.at_home()):
-                                    if not await self.is_vegan(message.author).predicate(ctx):
-                                        await message.reply(
-                                            f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
-                                        )
-                                        await message.delete()
-                                    return
+                                await self.handle_moderation(message)
+                                return
                             else:
                                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
                                     chat_moderation = json.loads(moderation_completion)
@@ -92,12 +112,7 @@ class Indica(commands.Cog):
                                     carnism_flagged = carnism_results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
                                         carnism_score = carnism_results[0]['category_scores'].get('carnism', 0)
-                                        if lambda ctx: self.predicator.at_home():
-                                            if not (lambda ctx: self.predicator.is_vegan(message.author)):
-                                                await message.reply(
-                                                    f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
-                                                )
-                                                await message.delete()
+                                        await self.handle_moderation(message)
                                         NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                                         return
                         except Exception as e:
