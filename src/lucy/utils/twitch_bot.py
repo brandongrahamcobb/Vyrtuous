@@ -29,30 +29,54 @@ class TwitchBot(commands.Bot):
         logger.info(f"Connected to channels: {', '.join(self.initial_channels)}")
 
     async def event_message(self, message):
-        if message.echo:
-            return
-        logger.info(f"Received Twitch message: {message.content}")
-        array = await self.handler.process_array(message.content)
-
-        # Chat Completion
-        if self.config.get('openai_chat_completion', False):
-            async for response in self.handler.generate_moderation_completion(
-                custom_id=message.author.id, array=array
-            ):
-                await message.reply(response)
-
-        # Moderate Text and Images
-        if self.config.get('openai_chat_moderation', False):
-            async for moderation_completion in self.handler.generate_moderation_completion(
-                custom_id=message.author.id, array=array
-            ):
-                full_response = json.loads(moderation_completion)
-                results = full_response.get('results', [])
-                flagged = results[0].get('flagged', False)
-                carnism_flagged = results[0]['categories'].get('carnism', False)
-                carnism_score = results[0]['category_scores'].get('carnism', 0)
-                total_carnism_score = sum(arg['category_scores'].get('carnism', 0) for arg in results)
-                if carnism_flagged or flagged:
-                    await message.delete()
-                    # Assuming NLPUtils is defined elsewhere
-                    NLPUtils.append_to_other_jsonl('training.jsonl', carnism_score, message.content, message.author.id)
+        logger.info(f'Received message: {message.content}')
+        try:
+            if message.author.bot:
+                return
+            array = await self.handler.process_array(
+                message.content, attachments=message.attachments
+            )
+            if not array:
+                logger.error("Invalid 'messages': The array is empty or improperly formatted.")
+                await message.send("Your message must include text or valid attachments.")
+                return
+            logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
+            for item in array:
+                # Moderation
+                if self.config['openai_chat_moderation']:
+                    async for moderation_completion in create_moderation(input_array=[item]):
+                        try:
+                            full_response = json.loads(moderation_completion)
+                            results = full_response.get('results', [])
+                            if results and results[0].get('flagged', False):
+                                await message.send(
+                                    f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
+                                )
+                                await message.delete()
+                            else:
+                                async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
+                                    full_response = json.loads(moderation_completion)
+                                    results = full_response.get('results', [])
+                                    carnism_flagged = results[0]['categories'].get('carnism', False)
+                                    if carnism_flagged:
+                                        carnism_score = results[0]['category_scores'].get('carnism', 0)
+                                        await message.send(
+                                            f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
+                                        )
+                                        await message.delete()
+                                        NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
+                                        return
+                        except Exception as e:
+                            logger.error(traceback.format_exc())
+                            if await self.at_home().predicate(ctx):
+                                await message.reply(f'An error occurred: {e}')
+                # Chat completion
+                if await self.is_donor(message.author):
+                    if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
+                        async for chat_completion in self.handler.generate_chat_completion(
+                            custom_id=message.author.id, array=[item]
+                        ):
+                            await message.send(chat_completion)
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            await message.send(f'An error occurred: {e}')
