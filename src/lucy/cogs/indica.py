@@ -102,7 +102,7 @@ class Indica(commands.Cog):
         est_tz = pytz.timezone('US/Eastern')
         now_est = datetime.datetime.now(est_tz)
         print(now_est)
-        if now_est.hour == 22 and now_est.minute == 0:
+        if now_est.hour == 10 and now_est.minute == 0:
             guild_channels_map = {}
             for channel_id, guild_id in self.channel_guild_map.items():
                 guild_channels_map.setdefault(guild_id, []).append(channel_id)
