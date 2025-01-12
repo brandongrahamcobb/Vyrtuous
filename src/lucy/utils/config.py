@@ -1,4 +1,4 @@
-''' config.py  The purpose of this program is to provide my primary configuaration script from cd ../.
+''' config.py  The purpose of this program is to provide my primary configuaration script.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,39 +14,33 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from lucy.utils.load_yaml import load_yaml
+from lucy.utils.helpers import *
+from lucy.utils.prompt_for_values import prompt_for_values
+from lucy.utils.setup_logging import logger
 from os import makedirs
-from os.path import isfile, dirname
-from typing import Dict, Any
-from .load_yaml import load_yaml
-from .setup_logging import logger
-from .prompt_for_values import prompt_for_values
-from .helpers import *
+from os.path import dirname, isfile
+from typing import Any, Dict
+
 import yaml
 
 class Config:
-    _config = None  # Class variable to hold the config
+
+    _config = None
 
     @classmethod
     def get_config(cls) -> Dict[str, Any]:
         logger.info('Attempting to load configuration.')
-
         if cls._config is None:
             if isfile(PATH_CONFIG_YAML):
                 logger.info(f'Config file found at {PATH_CONFIG_YAML}. Loading configuration.')
                 config = load_yaml(PATH_CONFIG_YAML)
                 if input('Do you want to change any settings? (yes/no): ').strip().lower() in ['yes', 'y']:
-                    # Ensure 'api_keys' exists
                     config['api_keys'] = config.get('api_keys', {})
                     logger.info('API keys initialized.')
-
-                    # Modify existing API keys or add new ones
                     cls._modify_api_keys(config)
-
-                    # Prompt for additional configuration values
                     logger.info('Prompting for other configuration values.')
                     config = cls._prompt_additional_config(config)
-
-                    # Save updated config
                     with open(PATH_CONFIG_YAML, 'w') as file:
                         yaml.dump(config, file)
                         logger.info(f'Configuration updated and saved to {PATH_CONFIG_YAML}.')
@@ -58,44 +52,31 @@ class Config:
                 config = {
                     'api_keys': {}
                 }
-
-                # Create new API keys
                 cls._create_api_keys(config)
-
-                # Prompt for additional configuration values
                 logger.info('Prompting for other configuration values.')
                 config = cls._prompt_additional_config(config, creating=True)
-
-                # Save new config
                 with open(PATH_CONFIG_YAML, 'w') as file:
                     yaml.dump(config, file)
                     logger.info(f'Configuration saved to {PATH_CONFIG_YAML}.')
-
             cls._config = config
             logger.info('Configuration successfully loaded.')
         else:
             logger.info('Configuration already loaded, returning cached version.')
-
         return cls._config
 
     @staticmethod
     def _create_api_keys(config: Dict[str, Any]):
-        """
-        Prompts the user to create new API keys with unique names.
-        """
         try:
             num_keys = int(prompt_for_values('How many API keys do you want to set up? (1-20)', '1'))
             num_keys = min(max(num_keys, 1), 20)  # Ensure between 1 and 20
         except ValueError:
             logger.warning('Invalid number entered. Defaulting to 1 API key.')
             num_keys = 1
-
         for i in range(1, num_keys + 1):
             key_name = prompt_for_values(f'Enter a unique name for API key #{i}', f'api_key_{i}')
             while key_name in config['api_keys']:
                 logger.warning(f'API key name "{key_name}" already exists. Please choose a different name.')
                 key_name = prompt_for_values(f'Enter a unique name for API key #{i}', f'api_key_{i}')
-
             logger.info(f'Configuring API key "{key_name}".')
             config['api_keys'][key_name] = {
                 'api_key': prompt_for_values(f'Enter API key for "{key_name}"', ''),
@@ -106,13 +87,8 @@ class Config:
 
     @staticmethod
     def _modify_api_keys(config: Dict[str, Any]):
-        """
-        Allows the user to modify existing API keys or add new ones.
-        """
         existing_keys = list(config['api_keys'].keys())
         logger.info(f'You have {len(existing_keys)} existing API key(s).')
-
-        # Option to modify existing keys
         for key_name in existing_keys:
             if input(f'Do you want to modify the API key "{key_name}"? (yes/no): ').strip().lower() in ['yes', 'y']:
                 logger.info(f'Modifying API key "{key_name}".')
@@ -132,8 +108,6 @@ class Config:
                     f'Enter redirect URI for "{key_name}"',
                     config['api_keys'][key_name].get('redirect_uri', '')
                 )
-
-        # Option to add new API keys
         if len(config['api_keys']) < 20:
             add_more = input('Do you want to add more API keys? (yes/no): ').strip().lower()
             if add_more in ['yes', 'y']:
@@ -144,13 +118,11 @@ class Config:
                 except ValueError:
                     logger.warning(f'Invalid number entered. Defaulting to 1 API key.')
                     num_new = 1
-
                 for i in range(1, num_new + 1):
                     key_name = prompt_for_values(f'Enter a unique name for new API key #{i}', f'api_key_{len(config["api_keys"]) + 1}')
                     while key_name in config['api_keys']:
                         logger.warning(f'API key name "{key_name}" already exists. Please choose a different name.')
                         key_name = prompt_for_values(f'Enter a unique name for new API key #{i}', f'api_key_{len(config["api_keys"]) + 1}')
-
                     logger.info(f'Configuring new API key "{key_name}".')
                     config['api_keys'][key_name] = {
                         'api_key': prompt_for_values(f'Enter API key for "{key_name}"', ''),
@@ -161,9 +133,6 @@ class Config:
 
     @staticmethod
     def _prompt_additional_config(config: Dict[str, Any], creating: bool = False) -> Dict[str, Any]:
-        """
-        Prompts the user for additional configuration values.
-        """
         config_fields = {
             'discord_character_limit': ('Discord character limit?', DISCORD_CHARACTER_LIMIT),
             'discord_command_prefix': ('Discord command prefix?', DISCORD_COMMAND_PREFIX),
@@ -197,8 +166,6 @@ class Config:
             'user_agent': ('What should be the User-Agent header?', USER_AGENT),
             'version': ('Would you like to override the bot version?', VERSION),
         }
-
         for key, (prompt_text, default_value) in config_fields.items():
             config[key] = prompt_for_values(prompt_text, config.get(key, default_value))
-
         return config

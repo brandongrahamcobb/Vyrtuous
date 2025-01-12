@@ -14,13 +14,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from lucy.bots.discord_bot import DiscordBot
+from lucy.bots.linkedin_bot import LinkedInBot
+from lucy.bots.twitch_bot import TwitchBot
 from lucy.utils.config import Config
 from lucy.utils.create_https_completion import Conversations
-from lucy.utils.discord_bot import DiscordBot
 from lucy.utils.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
-from lucy.utils.linkedin_bot import LinkedInBot
 from lucy.utils.linkedin_oauth import linkedin_app, LinkedInOAuth, setup_linkedin_routes
-from lucy.utils.twitch_bot import TwitchBot
 from lucy.utils.twitch_oauth import twitch_app, TwitchOAuth, setup_twitch_routes
 from lucy.utils.helpers import *
 from lucy.utils.increment_version import increment_version
@@ -31,8 +31,6 @@ import asyncio
 import asyncpg
 import logging
 import sys
-
-global logger
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PACKAGE_ROOT))

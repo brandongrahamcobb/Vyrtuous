@@ -1,4 +1,4 @@
-''' google.py  The purpose of this program is to search using the Google Custom Search Restricted API  from cd ../.
+''' google.py  The purpose of this program is to search using the Google Custom Search Restricted API.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -15,13 +15,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from bs4 import BeautifulSoup
-from .setup_logging import logger
+from lucy.utils.setup_logging import logger
 
 import requests
 
 def google(query: str, num_results: int = 5):
-    logger.info(f'Starting Google search for query: `{query}` with {num_results} results.')
 
+    logger.info(f'Starting Google search for query: `{query}` with {num_results} results.')
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
@@ -29,13 +29,10 @@ def google(query: str, num_results: int = 5):
     params = {'q': query, 'num': num_results}
 
     try:
-        # Send the search request
         logger.debug(f'Sending request to Google search URL: {search_url} with params: {params}')
         response = requests.get(search_url, headers=headers, params=params)
         response.raise_for_status()  # Raise an error for bad HTTP responses
         logger.info('Received response from Google search.')
-
-        # Parse the search results
         soup = BeautifulSoup(response.text, 'html.parser')
         results = []
         for g in soup.find_all('div', class_='g'):
@@ -43,10 +40,8 @@ def google(query: str, num_results: int = 5):
             link = g.find('a')['href'] if g.find('a') else 'No link'
             results.append({'title': title, 'link': link})
             logger.debug(f'Extracted result: Title: {title}, Link: {link}')
-
             if len(results) >= num_results:
                 break
-
         logger.info(f'Successfully extracted {len(results)} search results.')
         return results
 

@@ -14,13 +14,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import toml
+from lucy.utils.helpers import *
+from lucy.utils.setup_logging import logger
 from typing import Any, Dict
-from .setup_logging import logger
 
+import toml
 import yaml
 
-def increment_version(toml_path: str = 'pyproject.toml'):
+def increment_version(toml_path: str = PATH_TOML):
     try:
         logger.info('Starting version increment process.')
         with open(toml_path, 'r') as file:

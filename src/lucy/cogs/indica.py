@@ -17,8 +17,6 @@
 from collections import defaultdict
 from discord.ext import commands, menus, tasks
 from discord.utils import get
-from lucy.utils.backup import perform_backup, setup_backup_directory
-from lucy.utils.create_https_completion import Conversations
 from lucy.utils.create_https_moderation import create_https_moderation
 from lucy.utils.create_moderation import create_moderation
 from lucy.utils.load_contents import load_contents
@@ -44,7 +42,7 @@ class Indica(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
-        self.conversations = Conversations()
+        self.conversations = bot.conversations
         self.handler = Message(self.config, self.conversations)
         self.predicator = Predicator(self.bot)
 

@@ -19,9 +19,10 @@ import discord
 import logging
 
 from discord.ext import commands
+from lucy.utils.create_https_completion import Conversations
+from lucy.utils.helpers import *
+from lucy.utils.setup_logging import logger
 from typing import List, Optional
-from .setup_logging import logger
-from .create_https_completion import Conversations
 
 
 class DiscordBot(commands.Bot):
@@ -46,11 +47,7 @@ class DiscordBot(commands.Bot):
     async def setup_hook(self) -> None:
         try:
             logger.info('Starting Discord bot setup_hook...')
-            cogs = [
-                'lucy.cogs.hybrid',
-                'lucy.cogs.indica',
-                'lucy.cogs.sativa',
-            ]
+            cogs = DISCORD_COGS
             for cog in cogs:
                 logger.debug(f'Loading extension: {cog}')
                 await self.load_extension(cog)

@@ -1,4 +1,4 @@
-''' nlp_utils.py  The purpose of this program is to provide generic Natural Language Processing functionality from cd ../.
+''' nlp_utils.py  The purpose of this program is to provide generic Natural Language Processing functionality.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from .setup_logging import logger
+from lucy.utils.setup_logging import logger
 
 import datetime
 import json

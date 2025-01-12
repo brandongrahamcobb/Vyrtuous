@@ -1,6 +1,4 @@
-''' create_https_completion.py  OpenAI's v1/chat/completions endpoint using their python SDK is
-                                much more efficient than this program. This is a complicated
-                                way to get a completion from OpenAI from cd ../.
+''' create_https_completion.py  OpenAI's v1/chat/completions endpoint using their python SDK is much more efficient than this program. This is a complicated way to get a completion from OpenAI.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -18,16 +16,16 @@
 '''
 from collections import defaultdict
 from datetime import datetime
+from lucy.utils.helpers import *
+from lucy.utils.load_yaml import load_yaml
+from lucy.utils.setup_logging import logger
 from openai import AsyncOpenAI
-from .load_yaml import load_yaml
-from .setup_logging import logger
 
 import aiohttp
 import datetime
 import json
 import openai
 import traceback
-from .helpers import *
 
 class Conversations:
     def __init__(self):
@@ -73,7 +71,6 @@ class Conversations:
                     for file in message['files']:
                         file_content = await self.process_file(file)
                         messages.append({'role': 'user', 'content': file_content})
-#            messages = [{'role': 'user', 'content': input_array}]
             if use_history and custom_id in self.conversations:
                 messages = self.conversations[custom_id] + messages
                 logger.info(f'Conversation history included for user: {custom_id}.')

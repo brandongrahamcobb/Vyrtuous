@@ -1,4 +1,4 @@
-''' create_batch_completionn.py  The purpose of this program is to load a better queue for 50% cheaper API requests during low traffic times from cd ../.
+''' create_batch_completionn.py  The purpose of this program is to load a better queue for 50% cheaper API requests during low traffic times for OpenAI.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,8 +14,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from lucy.utils.setup_logging import logger
 from openai import AsyncOpenAI
-from .setup_logging import logger
 
 import load_yaml
 import openai

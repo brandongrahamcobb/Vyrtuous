@@ -1,4 +1,4 @@
-''' get_scripture.py  The purpose of this program is to request a JSON response from two scripture websites from cd ../.
+''' script.py  The purpose of this program is to request a JSON response from two scripture websites.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -15,11 +15,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from bs4 import BeautifulSoup
+from lucy.utils.helpers import *
 from lucy.utils.setup_logging import logger
 
 import json
 import requests
-from lucy.utils.helpers import *
 
 def script(version: str, reference: str):
     BIBLE_IDS = {

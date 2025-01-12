@@ -14,10 +14,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-
+from lucy.utils.load_contents import load_contents
+from lucy.utils.setup_logging import logger
 from os.path import dirname, abspath, expanduser, join
-from .setup_logging import logger
-from .load_contents import load_contents
 
 import discord
 
@@ -42,7 +41,7 @@ PATH_CREATE_HTTPS_COMPLETION = join(DIR_BASE, 'lucy', 'utils', 'create_https_com
 PATH_CREATE_HTTPS_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_https_moderation.py')
 PATH_CREATE_MODERATION = join(DIR_BASE, 'lucy', 'utils', 'create_moderation.py')
 PATH_CONFIG_YAML = join(DIR_BASE, 'lucy', '.config', 'config.yaml')
-PATH_DISCORD_BOT = join(DIR_BASE, 'lucy', 'utils', 'discord_bot.py')
+PATH_DISCORD_BOT = join(DIR_BASE, 'lucy', 'bots', 'discord_bot.py')
 PATH_DISCORD_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'discord_oauth.py')
 PATH_DRAW_FINGERPRINT = join(DIR_BASE, 'lucy', 'utils', 'draw_fingerprint.py')
 PATH_DRAW_WATERMARKED_MOLECULE = join(DIR_BASE, 'lucy', 'utils', 'draw_watermarked_molecule.py')
@@ -59,7 +58,7 @@ PATH_HELPERS = join(DIR_BASE, 'lucy', 'utils', 'helpers.py')
 PATH_HYBRID = join(DIR_BASE, 'lucy', 'cogs', 'hybrid.py')
 PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'increment_version.py')
 PATH_INDICA = join(DIR_BASE, 'lucy', 'cogs', 'indica.py')
-PATH_LINKEDIN_BOT = join(DIR_BASE, 'lucy', 'utils', 'linkedin_bot.py')
+PATH_LINKEDIN_BOT = join(DIR_BASE, 'lucy', 'bots', 'linkedin_bot.py')
 PATH_LINKEDIN_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'linkedin_oauth.py')
 PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'load_contents.py')
 PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'load_yaml.py')
@@ -71,8 +70,9 @@ PATH_SATIVA = join(DIR_BASE, 'lucy', 'cogs', 'sativa.py')
 PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'script.py')
 PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'setup_logging.py')
 PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'tag.py')
+PATH_TOML = join(DIR_HOME, 'Vyrtuous', 'pyproject.toml')
 PATH_TRAINING = join(DIR_HOME, 'training.jsonl')
-PATH_TWITCH_BOT = join(DIR_BASE, 'lucy', 'utils', 'twitch_bot.py')
+PATH_TWITCH_BOT = join(DIR_BASE, 'lucy', 'bots', 'twitch_bot.py')
 PATH_TWITCH_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'twitch_oauth.py')
 PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'unique_pairs.py')
 

@@ -1,4 +1,4 @@
-''' draw_watermarked_molecule.py  The purpose of this program is to generate an rdkit drawing with a watermark from cd ../.
+''' draw_watermarked_molecule.py  The purpose of this program is to generate an rdkit drawing with a watermark.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -15,23 +15,19 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from io import BytesIO
+from lucy.utils.add_watermark import add_watermark
+from lucy.utils.get_molecule_name import get_molecule_name
+from lucy.utils.setup_logging import logger
 from rdkit.Chem import rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 rdDepictor.SetPreferCoordGen(True)
 
-from .add_watermark import add_watermark
-from .get_molecule_name import get_molecule_name
-from .setup_logging import logger
-
 def draw_watermarked_molecule(molecule) -> BytesIO:
+
     try:
         logger.info('Starting to draw watermarked molecule.')
-
-        # Resolve molecule name
         resolved_name = get_molecule_name(molecule)
         logger.debug(f'Resolved molecule name: {resolved_name}')
-
-        # Set up molecule drawing
         d2d = rdMolDraw2D.MolDraw2DCairo(1024, 1024)
         Options = d2d.drawOptions()
         Options.prepareMolsBeforeDrawing = False
@@ -39,24 +35,18 @@ def draw_watermarked_molecule(molecule) -> BytesIO:
         Options.bondLineWidth = 4.0
         d2d.SetDrawOptions(Options)
         logger.debug('Drawing options configured.')
-
-        # Prepare molecule for drawing
         rdMolDraw2D.SetDarkMode(Options)
         mol = rdMolDraw2D.PrepareMolForDrawing(molecule, kekulize=True)
         mol.UpdatePropertyCache(False)
         logger.debug('Molecule prepared for drawing.')
-
-        # Draw molecule
         d2d.DrawMolecule(mol)
         d2d.FinishDrawing()
         logger.info('Molecule drawing completed.')
-
-        # Add watermark
         drawing = d2d.GetDrawingText()
         output = add_watermark(BytesIO(drawing), watermark_text=resolved_name)
         logger.info('Watermark added successfully.')
-
         return output
+
     except Exception as e:
         logger.error(f'An error occurred while drawing the watermarked molecule: {e}')
         raise

@@ -1,4 +1,4 @@
-''' average_score.py  The purpose of this program is present the average score of the positive responses from cd ../.
+''' average_score.py  The purpose of this program is present the average score of an OpenAI training.jsonl file.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,18 +14,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from utils.setup_logging import logger
+from lucy.utils.helpers import *
+from lucy.utils.setup_logging import logger
 
 import asyncio
 import json
 import os
 
 def average_score():
-
-    home = os.path.expanduser('~') 
- 
-    path_training = os.path.join(home, 'py', 'bots', 'lucy', 'training.jsonl')
-
+    home = os.path.expanduser('~')
+    path_training = os.path.join(PATH_TRAINING)
     with open(path_training, 'r') as file:
         training_data = json.load(file)
         sum = 0
@@ -33,6 +31,5 @@ def average_score():
             sum += arg['messages'][1]['content']['sentiment_score']
         average = sum / len(training_data)
         return average
-
     file.close()
 

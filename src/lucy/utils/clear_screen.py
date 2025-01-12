@@ -1,4 +1,4 @@
-''' clear_screen.py  The purpose of this program is clear screen on terminals either in Windows or Linux functionality from cd ../.
+''' clear_screen.py  The purpose of this program is clear screen on terminals either in Windows or Linux.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from .setup_logging import logger
+from lucy.utils.setup_logging import logger
 
 import os
 import sys

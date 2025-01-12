@@ -1,4 +1,4 @@
-''' create_completion.py  The purpose of this program is to be a simpler implementation of create_https_completion.py from cd ../.
+''' create_completion.py  The purpose of this program is to be a simpler implementation of create_https_completion.py.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,10 +14,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from lucy.utils.load_yaml import load_yaml
+from lucy.utils.helpers import *
+from lucy.utils.setup_logging import logger
 from openai import AsyncOpenAI
-from .load_yaml import load_yaml
-from .setup_logging import logger
-from utils.helpers import *
 
 import openai
 import traceback

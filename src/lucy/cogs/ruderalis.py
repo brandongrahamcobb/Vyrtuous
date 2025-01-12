@@ -41,7 +41,7 @@ class Ruderalis(commands.Cog):
         except Exception as e:
             logger.error(f'Error during database backup: {e}')
 
-    @backup_task.before_loop
+    @backup_database.before_loop
     async def before_backup(self):
         await self.bot.wait_until_ready()
 

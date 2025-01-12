@@ -1,4 +1,4 @@
-''' load_content.py  The purpose of this program is to load the raw contents of files from cd ../.
+''' load_content.py  The purpose of this program is to load the raw contents of files.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,26 +14,25 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from lucy.utils.setup_logging import logger
 from os.path import exists
-from .setup_logging import logger
 
 import os
 
 def load_contents(path_to_file):
-    logger.info(f'Attempting to load contents from file: {path_to_file}')
 
-    # Check if the file exists
+    logger.info(f'Attempting to load contents from file: {path_to_file}')
     if not exists(path_to_file):
         logger.error(f'File not found: {path_to_file}')
         raise FileNotFoundError(f'The file at `{path_to_file}` does not exist.')
 
     try:
-        # Open and read the file
         logger.debug(f'Opening file: {path_to_file}')
         with open(path_to_file, 'r', encoding='utf-8') as file:
             content = file.read()
         logger.info(f'File read successfully: {path_to_file}')
         return content
+
     except Exception as e:
         logger.error(f'An error occurred while reading the file: {e}')
         raise IOError(f'An error occurred while reading the file: {e}')

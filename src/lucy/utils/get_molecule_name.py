@@ -1,4 +1,4 @@
-''' get_molecule_name.py  The purpose of this program is to reverse the conversion back to a molecule name from cd ../.
+''' get_molecule_name.py  The purpose of this program is to reverse the conversion back to a molecule name.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,33 +14,26 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from lucy.utils.setup_logging import logger
 from rdkit import Chem
-from .setup_logging import logger
 
 import pubchempy as pcp
 
 def get_molecule_name(molecule) -> str:
+
     try:
         logger.info("Starting to retrieve molecule name from the given molecule.")
-
-        # Convert the RDKit molecule to a SMILES string
         smiles = Chem.MolToSmiles(molecule)
         if not smiles:
             logger.warning("Failed to convert the molecule to a SMILES string.")
             return 'Unknown'
-
         logger.debug(f"Generated SMILES string: {smiles}")
-
-        # Query PubChem for compound data using the SMILES string
         compounds = pcp.get_compounds(smiles, 'smiles')
         if not compounds:
             logger.warning("No compounds found for the given SMILES string.")
             raise ValueError('No compound found for the given SMILES string')
-
         compound_data = compounds[0].to_dict(properties=['synonyms'])
         logger.debug(f"Retrieved compound data: {compound_data}")
-
-        # Return the first synonym as the molecule name
         if 'synonyms' in compound_data and compound_data['synonyms']:
             molecule_name = compound_data['synonyms'][0]
             logger.info(f"Molecule name retrieved: {molecule_name}")

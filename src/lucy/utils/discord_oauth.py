@@ -1,10 +1,26 @@
-import aiohttp
-from quart import Quart, request, redirect
+''' discord_oauth.py  The purpose of this program is to host the Quart app for Discord OAuth 2.0.
+    Copyright (C) 2024  github.com/brandongrahamcobb
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+'''
 from datetime import datetime, timedelta
+from lucy.utils.setup_logging import logger
+from quart import Quart, request, redirect
+
+import aiohttp
 import asyncio
 import logging
-
-from .setup_logging import logger
 
 discord_app = Quart(__name__)
 
@@ -37,23 +53,18 @@ class DiscordOAuth:
             "redirect_uri": self.redirect_uri,
             "scope": "identify email"
         }
-
         headers = {
             "Content-Type": "application/x-www-form-urlencoded"
         }
-
         async with aiohttp.ClientSession() as session:
             async with session.post("https://discord.com/api/oauth2/token", data=data, headers=headers) as resp:
                 token_data = await resp.json()
-
         if "access_token" not in token_data:
             logger.error(f"Discord token exchange failed: {token_data}")
             return False
-
         self.access_token = token_data["access_token"]
         self.refresh_token = token_data.get("refresh_token")
         self.expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
-
         logger.info("Successfully exchanged Discord authorization code for an access token.")
         self.token_event.set()
         return True
@@ -74,10 +85,8 @@ def setup_discord_routes(app, discord_oauth):
         if not code:
             logger.error("Missing Discord authorization code in callback.")
             return "Missing authorization code", 400
-
         logger.debug(f"Discord authorization code received: {code}")
         success = await discord_oauth.exchange_token(code)
         if not success:
             return "Discord token exchange failed.", 400
-
         return "Discord authentication successful! You can close this window."

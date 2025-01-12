@@ -1,6 +1,4 @@
-''' linkedin.py   endpoint using their python SDK is
-                                much more efficient than this program. This is a complicated
-                                way to get a completion from OpenAI from cd ../.
+''' linkedin_oauth.py  The purpose of this program is to host the Quart app for LinkedIn OAuth 2.0.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -16,16 +14,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from datetime import datetime, timedelta
+from lucy.utils.setup_logging import logger
+from quart import Quart, request, redirect
+
 import aiohttp
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from quart import Quart, request, redirect
-from .setup_logging import logger
 
 linkedin_app = Quart(__name__)
 
-# LinkedIn OAuth constants
 TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken'
 AUTH_URL_BASE = 'https://www.linkedin.com/oauth/v2/authorization'
 SCOPES = ['profile', 'w_member_social']
@@ -34,7 +32,7 @@ class LinkedInOAuth:
     def __init__(self, config):
         self.config = config
         self.access_token = None
-        self.refresh_token = None  # LinkedIn does not provide refresh tokens in standard OAuth
+        self.refresh_token = None
         self.expires_at = None
         self.token_event = asyncio.Event()
         self.client_id = self.config['api_keys']['LinkedIn']['client_id']
@@ -121,12 +119,10 @@ def setup_linkedin_routes(app, linkedin_oauth):
         if not code:
             logger.error("Missing LinkedIn authorization code in callback.")
             return "Missing authorization code", 400
-
         logger.debug(f"LinkedIn authorization code received: {code}")
         success = await linkedin_oauth.exchange_token(code)
         if not success:
             return "LinkedIn token exchange failed.", 400
-
         return "LinkedIn authentication successful! You can close this window."
 
     @app.route("/linkedin_validate_token")
@@ -134,5 +130,4 @@ def setup_linkedin_routes(app, linkedin_oauth):
         token = await linkedin_oauth.ensure_token()
         if not token:
             return "No valid LinkedIn token available. Reauthorization required.", 401
-
         return f"LinkedIn Access Token: {token}"

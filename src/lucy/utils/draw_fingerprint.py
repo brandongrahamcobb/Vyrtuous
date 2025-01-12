@@ -1,4 +1,4 @@
-''' draw_fingerprint.py  The purpose of this program is to draw rdkit generated graphs of the MorganFingerprint for combination and presentation from cd ../.
+''' draw_fingerprint.py  The purpose of this program is to draw rdkit generated graphs of the MorganFingerprint for combination and presentation.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,10 +14,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
-from .setup_logging import logger
-
 from io import BytesIO
+from lucy.utils.setup_logging import logger
+from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
 
 def draw_fingerprint(pair) -> BytesIO:
 #    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048, countSimulation=True)

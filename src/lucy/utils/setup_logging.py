@@ -1,4 +1,4 @@
-''' setup_logging.py  The purpose of this program is to setup_logging for Lucy, the Discord bot. rfom cd../
+''' setup_logging.py  The purpose of this program is to setup_logging for Lucy, the Discord bot.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify

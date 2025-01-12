@@ -1,4 +1,4 @@
-''' unique_pairs.py  The purpose of this program is to provide unique pairs for a list of lists from cd ../.
+''' unique_pairs.py  The purpose of this program is to provide unique pairs for a list of lists.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-from .setup_logging import logger
+from lucy.utils.setup_logging import logger
 
 import itertools
 
