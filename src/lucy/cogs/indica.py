@@ -123,7 +123,7 @@ class Indica(commands.Cog):
                 if (lambda ctx: self.predicator.is_vegan(message.author)) and message.guild.id != 730907954345279591:
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
-                            custom_id=message.author.id, array=[item]
+                            custom_id=message.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
                         ):
                             if len(chat_completion) > 2000:
                                 with open(f'temp.txt', 'w') as f:

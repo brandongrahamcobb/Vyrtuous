@@ -152,6 +152,35 @@ LOGGING_LEVEL = 'INFO'
 
 # OpenAI Chat
 OPENAI_CHAT_ADD_COMPLETION_TO_HISTORY = True
+OPENAI_CHAT_COLORIZE_RESPONSE_FORMAT = {
+'type': 'json_schema',
+'json_schema': {
+    "name": "colorize",
+    "description": "A function that returns color values for a given request.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "r": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "g": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "b": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      },
+      "required": ["r", "g", "b"],
+      "additionalProperties": False
+    }
+  }
+}
 OPENAI_CHAT_COMPLETION = True
 OPENAI_CHAT_HEADERS = {
     'Content-Type': 'application/json',
@@ -266,35 +295,6 @@ OPENAI_CHAT_MODERATION_USE_HISTORY = False
 OPENAI_CHAT_MODEL = 'gpt-4o-mini'
 OPENAI_CHAT_N = 1
 OPENAI_CHAT_RESPONSE_FORMAT = None
-OPENAI_CHAT_COLORIZE_RESPONSE_FORMAT = {
-'type': 'json_schema',
-'json_schema': {
-    "name": "colorize",
-    "description": "A function that returns color values for a given request.",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "r": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255
-        },
-        "g": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255
-        },
-        "b": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255
-        }
-      },
-      "required": ["r", "g", "b"],
-      "additionalProperties": False
-    }
-  }
-}
 OPENAI_CHAT_MODERATION_USE_HISTORY = False
 OPENAI_CHAT_MODERATION_ADD_COMPLETION_TO_HISTORY = False
 OPENAI_CHAT_STOP = ''
