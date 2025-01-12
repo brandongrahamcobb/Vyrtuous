@@ -215,7 +215,7 @@ class Indica(commands.Cog):
                             custom_id=message.author.id, array=[item]
                         ):
                             if len(chat_completion) > 2000:
-                                chunks = [text[i:i + 2000] for i in range(0, len(text), 2000)]
+                                chunks = [text[i:i + 2000] for i in range(0, len(chat_completion), 2000)]
                                 for index, chunk in enumerate(chunks):
                                     with open(f'chunk_{index + 1}.txt', 'w') as f:
                                         f.write(chunk)
