@@ -46,7 +46,7 @@ class TwitchBot(commands.Bot):
             for item in array:
                 # Moderation
                 if self.config.get('openai_chat_moderation', False):
-                    moderation_completion = await self.create_moderation(input_array=[item])  # Ensure create_moderation is defined
+                    moderation_completion = await create_moderation(input_array=[item])  # Ensure create_moderation is defined
                     try:
                         full_response = json.loads(moderation_completion)
                         results = full_response.get('results', [])
