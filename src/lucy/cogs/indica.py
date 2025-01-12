@@ -121,17 +121,17 @@ class Indica(commands.Cog):
                         if channel:
                             await channel.send('No loop tags found for this guild.')
                     continue
-                current_index = self.guild_loops_index[guild_id]
                 for cid in channel_ids:
                     channel = self.bot.get_channel(cid)
                     if channel:
+                        current_index = self.channel_loops_index[cid]
                         tag = loop_tags[current_index % len(loop_tags)]
                         msg = tag.get('content') or tag.get('attachment_url')
                         if msg:
                             await channel.send(msg)
-                self.guild_loops_index[guild_id] = (current_index + 1) % len(loop_tags)
+                        self.channel_loops_index[cid] = (current_index + 1) % len(loop_tags)
 
-    @tasks.loop(hours=24)  # Adjust the interval as needed
+    @tasks.loop(hours=24)
     async def backup_task(self):
         try:
             backup_dir = setup_backup_directory('./backups')
