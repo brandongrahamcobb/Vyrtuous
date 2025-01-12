@@ -64,7 +64,7 @@ class Indica(commands.Cog):
         self.tag_manager = TagManager(self.bot.db_pool)
         self.daily_loop.start()
         self.channel_guild_map: Dict[int, int] = {
-            798967615636504657: 730907954345279591,
+            787738272616808509: 730907954345279591,
             730907954877956179: 730907954345279591,
             1315735859848544378: 1300517536001036348,
         }
@@ -186,7 +186,8 @@ class Indica(commands.Cog):
                                     await message.reply(
                                         f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                     )
-                                    await message.delete()
+                                    if not self.is_vegan(message.author):
+                                         await message.delete()
                                     return
                             else:
                                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
@@ -199,7 +200,8 @@ class Indica(commands.Cog):
                                             await message.reply(
                                                 f"Your file '{item.get('filename', 'unknown')}' was flagged for moderation."
                                             )
-                                            await message.delete()
+                                            if not self.is_vegan(message.author):
+                                                await message.delete()
                                         NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                                         return
                         except Exception as e:
