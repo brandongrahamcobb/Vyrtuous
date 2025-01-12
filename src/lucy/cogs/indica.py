@@ -105,15 +105,15 @@ class Indica(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        if await self.predicator.at_home(before.guild.id):
+        if await self.predicator.is_at_home_func(before.guild.id):
             if before.content != after.content:
                 ctx = await self.bot.get_context(after)
                 if ctx.command:
                     await self.bot.invoke(ctx)
 
     async def handle_moderation(self, message: discord.Message):
-        if await self.predicator.at_home(message.guild.id):
-            if not await self.predicator.is_vegan(message.author):
+        if await self.predicator.is_at_home_func(message.guild.id):
+            if not await self.predicator.is_vegan_user(message.author):
                 user_id = message.author.id
                 async with self.db_pool.acquire() as connection:
                     async with connection.transaction():
@@ -147,7 +147,7 @@ class Indica(commands.Cog):
             )
             if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-                if await self.predicator.at_home(message.guild.id):
+                if await self.predicator.is_at_home_func(message.guild.id):
                     await message.reply("Your message must include text or valid attachments.")
                 return
             logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
@@ -173,10 +173,10 @@ class Indica(commands.Cog):
                                         return
                         except Exception as e:
                             logger.error(traceback.format_exc())
-                            if await self.predicator.at_home(messagee.guild.id):
+                            if await self.predicator.is_at_home_func(messagee.guild.id):
                                 await message.reply(f'An error occurred: {e}')
                 # Chat completion
-                if await self.predicator.is_vegan(message.author) and message.guild.id != 730907954345279591:
+                if await self.predicator.is_vegan_user(message.author) and message.guild.id != 730907954345279591:
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
@@ -191,7 +191,7 @@ class Indica(commands.Cog):
                                 await message.reply(chat_completion)
         except Exception as e:
             logger.error(traceback.format_exc())
-            if await self.predicator.at_home(message.guild.id):
+            if await self.predicator.is_at_home_func(message.guild.id):
                 await message.reply(f'An error occurred: {e}')
         finally:
             try:
