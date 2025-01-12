@@ -214,12 +214,10 @@ class Indica(commands.Cog):
                             custom_id=message.author.id, array=[item]
                         ):
                             if len(chat_completion) > 2000:
-                                chunks = [chat_completion[i:i + 2000] for i in range(0, len(chat_completion), 2000)]
-                                for index, chunk in enumerate(chunks):
-                                    with open(f'chunk_{index + 1}.txt', 'w') as f:
-                                        f.write(chunk)
-                                await message.reply(file=discord.File(f'chunk_{index + 1}.txt'))
-                                os.remove(f'chunk_{index + 1}.txt')
+                                with open(f'temp.txt', 'w') as f:
+                                    f.write(chat_completion)
+                                await message.reply(file=discord.File(f'temp.txt'))
+                                os.remove(f'temp.txt')
                             else:
                                 await message.reply(chat_completion)
         except Exception as e:
