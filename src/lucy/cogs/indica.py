@@ -19,10 +19,12 @@ from discord.ext import commands, menus, tasks
 from discord.utils import get
 from lucy.utils.create_https_moderation import create_https_moderation
 from lucy.utils.create_moderation import create_moderation
+from lucy.utils.helpers import *
 from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
 from lucy.utils.nlp_utils import NLPUtils
 from lucy.utils.predicator import Predicator
+from lucy.utils.tag import TagManager
 from os.path import abspath, dirname, exists, expanduser, join
 
 import asyncio
@@ -35,7 +37,7 @@ import random
 import shutil
 import subprocess
 import traceback
-from lucy.utils.helpers import *
+import uuid
 
 class Indica(commands.Cog):
 
@@ -46,18 +48,72 @@ class Indica(commands.Cog):
         self.db_pool = bot.db_pool
         self.handler = Message(self.config, self.conversations)
         self.predicator = Predicator(self.bot)
+        self.tag_manager = TagManager(self.bot.db_pool)
+        self.loop_task: Optional[str] = None
+
+    async def loop_tags(self, channel: discord.TextChannel):
+        while True:
+            try:
+                loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
+                if loop_tags:
+                    random_tag = choice(loop_tags)
+                    message_text = random_tag['content'] or random_tag['attachment_url'] or ''
+                    if message_text:
+                        await channel.send(message_text)
+                await asyncio.sleep(300)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f'Error during loop_tags: {e}')
+
+    def start_loop_task(self, channel: discord.TextChannel):
+        if self.loop_task is None or self.loop_task.done():
+            self.loop_task = asyncio.create_task(self.loop_tags(channel))
+
+    def stop_loop_task(self):
+        if self.loop_task and not self.loop_task.done():
+            self.loop_task.cancel()
+            self.loop_task = None
+
+#    @commands.Cog.listener()
+#    async def on_ready(self)
+#        if not self.config.get('openai', {}).get('api_key'):
+#            await ctx.send("API key for OpenAI is not configured.")
+#            return
+#
+#        benchmark = Benchmark(self.config)
+#        await ctx.send("Starting benchmark... This may take a while.")
+#
+#        try:
+#            results = await benchmark.perform_benchmark()
+#            embed = discord.Embed(
+#                title="Benchmark Results",
+#                color=discord.Color.green(),
+#                timestamp=datetime.datetime.utcnow()
+#            )
+#            embed.add_field(name="Total Requests", value=results['total_requests'], inline=True)
+#            embed.add_field(name="Successful Requests", value=results['successful_requests'], inline=True)
+#            embed.add_field(name="Failed Requests", value=results['failed_requests'], inline=True)
+#            embed.add_field(name="Total Time (s)", value=f"{results['total_time_seconds']:.2f}", inline=True)
+#            embed.add_field(name="Average Latency (s)", value=f"{results['average_latency_seconds']:.4f}", inline=True)
+#            embed.add_field(name="Throughput (req/s)", value=f"{results['throughput_requests_per_second']:.2f}", inline=True)
+#            embed.add_field(name="Error Rate (%)", value=f"{results['error_rate_percent']:.2f}%", inline=True)
+#            await ctx.send(embed=embed)
+#        except Exception as e:
+#            logger.error(f'Error during benchmarking: {e}')
+#            await ctx.send("An error occurred while performing the benchmark.")
 
     @commands.Cog.listener()
-    @commands.check(lambda ctx: self.predicator(release_mode))
     async def on_message_edit(self, before, after):
-        if before.content != after.content:
-            ctx = await self.bot.get_context(after)
-            if ctx.command:
-                await self.bot.invoke(ctx)
+        if await self.predicator.at_home(before.guild.id):
+            if before.content != after.content:
+                ctx = await self.bot.get_context(after)
+                if ctx.command:
+                    await self.bot.invoke(ctx)
 
     async def handle_moderation(self, message: discord.Message):
-        if lambda ctx: self.predicator.at_home():
-            if not (lambda ctx: self.predicator.is_vegan(message.author)):
+        if await self.predicator.at_home(message.guild.id):
+            if not await self.predicator.is_vegan(message.author):
                 user_id = message.author.id
                 async with self.db_pool.acquire() as connection:
                     async with connection.transaction():
@@ -91,7 +147,7 @@ class Indica(commands.Cog):
             )
             if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-                if (lambda ctx: self.predicator.at_home()):
+                if await self.predicator.at_home(message.guild.id):
                     await message.reply("Your message must include text or valid attachments.")
                 return
             logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
@@ -117,16 +173,17 @@ class Indica(commands.Cog):
                                         return
                         except Exception as e:
                             logger.error(traceback.format_exc())
-                            if (lambda ctx: self.predicator.at_home()):
+                            if await self.predicator.at_home(messagee.guild.id):
                                 await message.reply(f'An error occurred: {e}')
                 # Chat completion
-                if (lambda ctx: self.predicator.is_vegan(message.author)) and message.guild.id != 730907954345279591:
+                if await self.predicator.is_vegan(message.author) and message.guild.id != 730907954345279591:
                     if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                         async for chat_completion in self.handler.generate_chat_completion(
                             custom_id=message.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
                         ):
                             if len(chat_completion) > 2000:
-                                with open(f'temp.txt', 'w') as f:
+                                unique_filename = f'temp_{uuid.uuid4()}.txt'
+                                with open(unique_filename, 'w') as f:
                                     f.write(chat_completion)
                                 await message.reply(file=discord.File(f'temp.txt'))
                                 os.remove(f'temp.txt')
@@ -134,7 +191,7 @@ class Indica(commands.Cog):
                                 await message.reply(chat_completion)
         except Exception as e:
             logger.error(traceback.format_exc())
-            if (lambda ctx: self.predicator.at_home()):
+            if await self.predicator.at_home(message.guild.id):
                 await message.reply(f'An error occurred: {e}')
         finally:
             try:

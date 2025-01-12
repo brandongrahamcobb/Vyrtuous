@@ -33,6 +33,7 @@ from lucy.utils.google import google
 from lucy.utils.gsrs import gsrs
 from lucy.utils.helpers import *
 from lucy.utils.paginator import Paginator
+from lucy.utils.predicator import Predicator
 from lucy.utils.script import script
 from lucy.utils.unique_pairs import unique_pairs
 from lucy.utils.tag import TagManager
@@ -55,14 +56,9 @@ class Hybrid(commands.Cog):
         self.config = bot.config
         self.indica = self.bot.get_cog('Indica')
         self.sativa = self.bot.get_cog('Sativa')
+        self.predicator = Predicator(self.bot)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
-        self.loop_task: Optional[str] = None
-
-    def at_home(self):
-        async def predicate(ctx):
-            return ctx.guild is not None and ctx.guild.id == self.bot.config['discord_testing_guild_id']
-        return commands.check(predicate)
 
     def get_language_code(self, language_name):
         language_name = language_name.lower()
@@ -71,58 +67,16 @@ class Hybrid(commands.Cog):
                 return lang_code
         return None
 
-    async def is_vegan(self, user: discord.User):
-        guilds = [
-            await self.bot.fetch_guild(self.config['discord_testing_guild_id']),
-            await self.bot.fetch_guild(730907954345279591)
-        ]
-        for guild in guilds:
-            vegan_role = get(guild.roles, name="Vegan")
-            if vegan_role in user.roles:
-                return True
-        return False
-
-    async def is_vegan_check(self, ctx):
-        return await self.is_vegan(ctx.author)
-
-    async def loop_tags(self, channel: discord.TextChannel):
-        while True:
-            try:
-                loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
-                if loop_tags:
-                    random_tag = choice(loop_tags)
-                    message_text = random_tag['content'] or random_tag['attachment_url'] or ''
-                    if message_text:
-                        await channel.send(message_text)
-                await asyncio.sleep(300)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f'Error during loop_tags: {e}')
-
-    def start_loop_task(self, channel: discord.TextChannel):
-        if self.loop_task is None or self.loop_task.done():
-            self.loop_task = asyncio.create_task(self.loop_tags(channel))
-
-    def stop_loop_task(self):
-        if self.loop_task and not self.loop_task.done():
-            self.loop_task.cancel()
-            self.loop_task = None
-
-    def release_mode(self):
-        async def predicate(ctx):
-            logger.info(f"Checking user ID: {ctx.author.id}")
-            logger.info(f"Release mode setting: {self.bot.config['discord_release_mode']}")
-            return ctx.author.id == 154749533429956608 or self.bot.config['discord_release_mode'] or isinstance(ctx.message.channel, discord.DMChannel)
-        return commands.check(predicate)
-
     @commands.hybrid_command(name='colorize', description=f'Usage: between `lcolorize 0 0 0` and `lcolorize 255 255 255` or `l colorize <color>`')
     @commands.has_permissions(manage_roles=True) # Do you have manage_roles permissions?
-    @commands.check(at_home) # Are you at home?
-    @commands.check(release_mode) # Should the release be public or private?
     async def colorize(self, ctx: commands.Context, r: str = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.'), *, g: str = commands.parameter(default='147', description='Anything betwen 0 and 255.'), b: str = commands.parameter(default='165', description='Anything between 0 and 255.')):
         if ctx.interaction:
-            await ctx.interaction.response.defer(ephemeral=True)
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not await self.predicator.is_at_home_func(ctx.guild.id):
+            return
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         if not r.isnumeric():
             input_text_dict = {
                 'type': 'text',
@@ -159,8 +113,6 @@ class Hybrid(commands.Cog):
         await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
 
     @commands.hybrid_command(name='d', description=f'Usage: ld 2 <mol> <mol> or ld glow <mol> or ld gsrs <mol> or ld shadow <mole>.')
-    @commands.check(at_home) # Are you at home?
-    @commands.check(release_mode) # Should the release be public or private?
     async def d(
         self,
         ctx: commands.Context,
@@ -171,7 +123,12 @@ class Hybrid(commands.Cog):
     ):
         try:
             if ctx.interaction:
-                await ctx.interaction.response.defer(ephemeral=True)
+                async with ctx.typing():
+                    await ctx.interaction.response.defer(ephemeral=True)
+            if not await self.predicator.is_at_home_func(ctx.guild.id):
+                return
+            if not self.predicator.is_release_mode_func(ctx):
+                return
             if option == '2':
                 if not molecules:
                     await ctx.send('No molecules provided.')
@@ -241,9 +198,14 @@ class Hybrid(commands.Cog):
             await ctx.reply(e)
 
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
-    @commands.check(at_home) # Are you at home?
-    @commands.check(release_mode) # Should the release be public or private?
     async def frame(self, ctx: commands.Context):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not await self.predicator.is_at_home_func(ctx.guild.id):
+            return
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         video_path = 'frogs.mov'
         output_dir = 'frames'
         frames = extract_random_frames(video_path, output_dir)
@@ -256,20 +218,28 @@ class Hybrid(commands.Cog):
 #        await ctx.send(f'Supported languages are:\n{supported_languages}')
 #
     @commands.command(name='script', description=f'Usage: lscript <NIV/ESV/Quran> <Book>.<Chapter>.<Verse>')
-    @commands.check(at_home) # Are you at home?
-    @commands.check(release_mode) # Should the release be public or private?
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
-         try:
-             await ctx.send(script(version, reference))
-         except Exception as e:
-             print(traceback.format_exc())
+        try:
+            if ctx.interaction:
+                async with ctx.typing():
+                    await ctx.interaction.response.defer(ephemeral=True)
+            if not await self.predicator.is_at_home_func(ctx.guild.id):
+                return
+            if not self.predicator.is_release_mode_func(ctx):
+                return
+            await ctx.send(script(version, reference))
+        except Exception as e:
+            print(traceback.format_exc())
 
     @commands.hybrid_command(name='search', description=f'Usage: lsearch <query>. Search Google.')
-    @commands.check(at_home) # Are you at home?
-    @commands.check(release_mode) # Should the release be public or private?
     async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
         if ctx.interaction:
-            await ctx.interaction.response.defer(ephemeral=True)
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not await self.predicator.is_at_home_func(ctx.guild.id):
+            return
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         results = google(query)
         embed = discord.Embed(title=f'Search Results for \"{query}\"', color=discord.Color.blue())
         for result in results:
@@ -277,7 +247,6 @@ class Hybrid(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')
-    @commands.check(release_mode) # Should the release be public or private?
     async def tag_command(
         self,
         ctx: commands.Context,
@@ -286,6 +255,11 @@ class Hybrid(commands.Cog):
         content: Optional[str] = commands.parameter(default=None, description='Content for the tag (if applicable).'),
         tag_type: Optional[str] = commands.parameter(default=None, description='Optional tag type: default or loop.')
     ):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         attachment_url = ctx.message.attachments[0].url if ctx.message.attachments else None
         action = action.lower() if action else None
         # --- ADD TAG ---
@@ -494,9 +468,13 @@ class Hybrid(commands.Cog):
                 await ctx.send(f'An error occurred while fetching tag \"{action}\".')
 
     @commands.hybrid_command(name='tags', description='Display loop tags for the current location.')
-    @commands.check(release_mode) # Should the release be public or private?
     async def tags(self, ctx: commands.Context):
         try:
+            if ctx.interaction:
+                async with ctx.typing():
+                    await ctx.interaction.response.defer(ephemeral=True)
+            if not self.predicator.is_release_mode_func(ctx):
+                return
             location_id = ctx.guild.id
             tags = await self.tag_manager.list_tags(location_id, tag_type='loop')
             if not tags:
@@ -517,7 +495,6 @@ class Hybrid(commands.Cog):
 
     @commands.command(name='wipe', description=f'Usage: lwipe <all|bot|commands|text|user>')
     @commands.has_permissions(manage_messages=True)
-    @commands.check(release_mode) # Should the release be public or private?
     async def wipe(self, ctx, option: str = None, limit: int = 100):
         if limit <= 0 or limit > 100:
             return await ctx.send('Limit must be between 1 and 100.')
