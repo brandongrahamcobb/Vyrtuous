@@ -191,7 +191,7 @@ class Indica(commands.Cog):
                                     return
                             else:
                                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
-                                    results = moderation_completione.get('results', [])
+                                    results = moderation_completion.get('results', [])
                                     carnism_flagged = results[0]['categories'].get('carnism', False)
                                     if carnism_flagged:
                                         carnism_score = results[0]['category_scores'].get('carnism', 0)
