@@ -21,6 +21,7 @@ from lucy.utils.config import Config
 from lucy.utils.create_https_completion import Conversations
 from lucy.utils.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
 from lucy.utils.linkedin_oauth import linkedin_app, LinkedInOAuth, setup_linkedin_routes
+from lucy.utils.patreon_oauth import patreon_app, PatreonOAuth, setup_patreon_routes
 from lucy.utils.twitch_oauth import twitch_app, TwitchOAuth, setup_twitch_routes
 from lucy.utils.helpers import *
 from lucy.utils.increment_version import increment_version
@@ -67,12 +68,15 @@ async def main():
     setup_discord_routes(discord_app, discord_oauth)
     linkedin_oauth = LinkedInOAuth(config)
     setup_linkedin_routes(linkedin_app, linkedin_oauth)
+    patreon_oauth = PatreonOAuth(config)
+    setup_patreon_routes(patreon_app, patreon_oauth)
     twitch_oauth = TwitchOAuth(config)
     setup_twitch_routes(twitch_app, twitch_oauth)
 
     # Start OAuth apps
     discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=5000))
     linkedin_quart = asyncio.create_task(linkedin_app.run_task(host="0.0.0.0", port=5001))
+    linkedin_quart = asyncio.create_task(patreon_app.run_task(host="0.0.0.0", port=5003))
     twitch_quart = asyncio.create_task(twitch_app.run_task(host="0.0.0.0", port=5002))
 
     # Authenticate users
@@ -80,6 +84,8 @@ async def main():
     print(discord_oauth.get_authorization_url())
     print("Please authenticate LinkedIn by visiting the following URL:")
     print(linkedin_oauth.get_authorization_url())
+    print("Please authenticate Patreon by visiting the following URL:")
+    print(patreon_oauth.get_authorization_url())
     print("Please authenticate Twitch by visiting the following URL:")
     print(twitch_oauth.get_authorization_url())
     await asyncio.sleep(20)
