@@ -41,9 +41,8 @@ class DiscordOAuth:
             f"?client_id={self.client_id}"
             f"&redirect_uri={self.redirect_uri}"
             f"&response_type=code"
-            f'&permissions=8'
             f'&integration_type=0'
-            f"&scope=bot"
+            f"&scope=bot+guilds+guilds.channels.read+identify+guilds.join+guilds.members.read+messages.read+applications.commands+presences.read+dm_channels.messages.read+email+activities.read+relationships.read+dm_channels.read+dm_channels.messages.write+applications.builds.read+applications.builds.upload+connections+openid+sdk.social_layer
         )
 
     async def exchange_token(self, code):
