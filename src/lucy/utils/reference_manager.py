@@ -46,7 +46,7 @@ class ReferenceManager:
         :return: The ID of the newly created reference.
         """
         query = """
-            INSERT INTO references (user_id, location_id, title, authors, publication_year, doi, abstract, tags)
+            INSERT INTO reference_list (user_id, location_id, title, authors, publication_year, doi, abstract, tags)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id
         """
@@ -97,7 +97,7 @@ class ReferenceManager:
 
         :return: A list of references.
         """
-        base_query = "SELECT * FROM references WHERE user_id = $1 AND location_id = $2"
+        base_query = "SELECT * FROM reference_list WHERE user_id = $1 AND location_id = $2"
         params = [user_id, location_id]
         if tag_ids:
             base_query += " AND tags && $3"
@@ -107,7 +107,7 @@ class ReferenceManager:
                 rows = await conn.fetch(base_query, *params)
                 return [dict(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to list references: {e}")
+            logger.error(f"Failed to list reference_list: {e}")
             raise
 
     async def search_references(
@@ -122,7 +122,7 @@ class ReferenceManager:
         :return: A list of matching references.
         """
         search_query = """
-            SELECT * FROM references
+            SELECT * FROM reference_list
             WHERE user_id = $1 AND location_id = $2
               AND (title ILIKE '%' || $3 || '%' OR EXISTS (
                   SELECT 1 FROM unnest(authors) AS author WHERE author ILIKE '%' || $3 || '%'
@@ -133,7 +133,7 @@ class ReferenceManager:
                 rows = await conn.fetch(search_query, user_id, location_id, query_text)
                 return [dict(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to search references: {e}")
+            logger.error(f"Failed to search reference_list: {e}")
             raise
 
     async def get_reference(self, reference_id: int, user_id: int) -> Optional[Dict]:
@@ -143,7 +143,7 @@ class ReferenceManager:
         :return: The reference data or None if not found.
         """
         query = """
-            SELECT * FROM references
+            SELECT * FROM reference_list
             WHERE id = $1 AND user_id = $2
         """
         try:
@@ -151,7 +151,7 @@ class ReferenceManager:
                 row = await conn.fetchrow(query, reference_id, user_id)
                 return dict(row) if row else None
         except Exception as e:
-            logger.error(f"Failed to get reference: {e}")
+            logger.error(f"Failed to get reference:_list {e}")
             raise
 
     async def update_reference(
@@ -177,7 +177,7 @@ class ReferenceManager:
             idx += 1
         fields.append(f"updated_at = NOW()")
         query = f"""
-            UPDATE references
+            UPDATE reference_list
             SET {', '.join(fields)}
             WHERE id = ${idx} AND user_id = ${idx + 1}
         """
@@ -187,5 +187,5 @@ class ReferenceManager:
                 result = await conn.execute(query, *values)
                 return result.endswith("UPDATE 1")
         except Exception as e:
-            logger.error(f"Failed to update reference: {e}")
+            logger.error(f"Failed to update reference_list: {e}")
             raise

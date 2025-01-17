@@ -77,9 +77,9 @@ class CitationManager:
         query = """
             SELECT citations.citation_text
             FROM citations
-            JOIN references ON citations.reference_id = references.id
+            JOIN reference_list ON citations.reference_id = references.id
             WHERE citations.user_id = $1 
-              AND references.location_id = $2
+              AND reference_list.location_id = $2
               AND citations.citation_style = $3
             ORDER BY citations.created_at ASC
         """

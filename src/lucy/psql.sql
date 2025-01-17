@@ -1,5 +1,5 @@
-```sql
 -- template_database.sql
+DROP TABLE IF EXISTS references ON DELETE CASCADE;
 -- Existing Tag Table
 CREATE TABLE IF NOT EXISTS tags (
     id SERIAL PRIMARY KEY,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS loop_configs (
 );
 
 -- References Table
-CREATE TABLE IF NOT EXISTS references (
+CREATE TABLE IF NOT EXISTS reference_list (
     id SERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
     location_id BIGINT NOT NULL,
@@ -35,19 +35,19 @@ CREATE TABLE IF NOT EXISTS references (
 
 -- Join table to link references and tags (many-to-many relationship)
 CREATE TABLE IF NOT EXISTS reference_tags (
-    reference_id BIGINT NOT NULL REFERENCES "references"(id) ON DELETE CASCADE,
+    reference_id BIGINT NOT NULL REFERENCES reference_list(id) ON DELETE CASCADE,
     tag_id BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     PRIMARY KEY (reference_id, tag_id)
 );
 
 -- Index for faster search on title and authors
-CREATE INDEX IF NOT EXISTS idx_references_title ON references USING GIN (to_tsvector('english', title));
-CREATE INDEX IF NOT EXISTS idx_references_authors ON references USING GIN (authors);
+CREATE INDEX IF NOT EXISTS idx_references_title ON reference_list USING GIN (to_tsvector('english', title));
+CREATE INDEX IF NOT EXISTS idx_references_authors ON reference_list USING GIN (authors);
 
 -- PDFs Table
 CREATE TABLE IF NOT EXISTS pdfs (
     id SERIAL PRIMARY KEY,
-    reference_id INT REFERENCES references(id) ON DELETE CASCADE,
+    reference_id INT REFERENCES reference_list(id) ON DELETE CASCADE,
     file_url TEXT NOT NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -66,10 +66,9 @@ CREATE TABLE IF NOT EXISTS annotations (
 -- Citations Table
 CREATE TABLE IF NOT EXISTS citations (
     id SERIAL PRIMARY KEY,
-    reference_id INT REFERENCES references(id) ON DELETE CASCADE,
+    reference_id INT REFERENCES reference_list(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL,
     citation_style VARCHAR(50) NOT NULL,
     citation_text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-```
