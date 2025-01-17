@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS references (
 
 -- Join table to link references and tags (many-to-many relationship)
 CREATE TABLE IF NOT EXISTS reference_tags (
-    reference_id BIGINT NOT NULL REFERENCES references(id) ON DELETE CASCADE,
+    reference_id BIGINT NOT NULL REFERENCES "references"(id) ON DELETE CASCADE,
     tag_id BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     PRIMARY KEY (reference_id, tag_id)
 );
