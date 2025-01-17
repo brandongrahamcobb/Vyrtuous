@@ -17,9 +17,13 @@
 from collections import defaultdict
 from discord.ext import commands, menus, tasks
 from discord.utils import get
+from lucy.utils.combine import combine
 from lucy.utils.create_https_moderation import create_https_moderation
 from lucy.utils.create_moderation import create_moderation
+from lucy.utils.draw_fingerprint import draw_fingerprint
 from lucy.utils.helpers import *
+from lucy.utils.game import Game
+from lucy.utils.get_mol import get_mol
 from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
 from lucy.utils.nlp_utils import NLPUtils
@@ -46,6 +50,7 @@ class Indica(commands.Cog):
         self.config = bot.config
         self.conversations = bot.conversations
         self.db_pool = bot.db_pool
+        self.game = Game(self.bot, self.bot.db_pool)
         self.handler = Message(self.config, self.conversations)
         self.predicator = Predicator(self.bot)
         self.tag_manager = TagManager(self.bot.db_pool)
@@ -148,7 +153,7 @@ class Indica(commands.Cog):
             if not array:
                 logger.error("Invalid 'messages': The array is empty or improperly formatted.")
                 if await self.predicator.is_at_home_func(message.guild.id):
-                    await message.reply("Your message must include text or valid attachments.")
+                    print("Your message must include text or valid attachments.")
                 return
             logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
             for item in array:
@@ -171,7 +176,10 @@ class Indica(commands.Cog):
                                         await self.handle_moderation(message)
                                         NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
                                         return
-                                    if await self.predicator.is_vegan_user(message.author) and message.guild.id != 730907954345279591:
+#                                    if await self.predicator.is_at_home_func(message.guild.id):
+                                    await self.game.distribute_xp(message.author.id, message.author.name)
+                                    # if await self.predicator.is_vegan_user(message.author) and message.guild.id != 730907954345279591: # and self.predicator.is_at_home_func(message.guild.id):
+                                    if True:
                                         if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                                             async for chat_completion in self.handler.generate_chat_completion(
                                                 custom_id=message.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
@@ -180,18 +188,18 @@ class Indica(commands.Cog):
                                                     unique_filename = f'temp_{uuid.uuid4()}.txt'
                                                     with open(unique_filename, 'w') as f:
                                                         f.write(chat_completion)
-                                                    await message.reply(file=discord.File(f'temp.txt'))
-                                                    os.remove(f'temp.txt')
+                                                    await message.reply(file=discord.File(unique_filename))
+                                                    os.remove(unique_filename)
                                                 else:
                                                     await message.reply(chat_completion)
                         except Exception as e:
                             logger.error(traceback.format_exc())
-                            if await self.predicator.is_at_home_func(messagee.guild.id):
-                                await message.reply(f'An error occurred: {e}')
+                            if await self.predicator.is_at_home_func(message.guild.id):
+                                print(f'An error occurred: {e}')
         except Exception as e:
             logger.error(traceback.format_exc())
             if await self.predicator.is_at_home_func(message.guild.id):
-                await message.reply(f'An error occurred: {e}')
+                print(f'An error occurred: {e}')
         finally:
             try:
                 shutil.rmtree(DIR_TEMP)

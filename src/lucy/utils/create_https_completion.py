@@ -89,7 +89,7 @@ class Conversations:
             logger.info(f'Request data initialized for model: {model}.')
             if response_format:
                 request_data['response_format'] = response_format
-                logger.info(f'Response format set: {response_format}.')
+                logger.debug(f'Response format set: {response_format}.')
             if model in {'chatgpt-4o-latest', 'o1-mini', 'o1-preview'}:
                 request_data['max_completion_tokens'] = int(max_tokens)
                 request_data['temperature'] = 1.0

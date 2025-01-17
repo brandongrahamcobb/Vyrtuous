@@ -14,6 +14,49 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+#from io import BytesIO
+#from lucy.utils.setup_logging import logger
+#from rdkit.Chem import rdFingerprintGenerator
+#from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
+#
+#def draw_fingerprint(pair) -> BytesIO:
+#    # Create a Morgan Fingerprint Generator with specified parameters
+#    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048, countSimulation=True)
+#
+#    # Define a function to get the fingerprint using mfpgen
+#    def get_fp(mol, *args, **kwargs):
+#        return mfpgen.GetFingerprint(mol)
+#
+#    # Set up the drawing
+#    d2d = rdMolDraw2D.MolDraw2DCairo(1024, 1024)
+#    d2d.prepareMolsBeforeDrawing = False
+#    Options = d2d.drawOptions()
+#    Options.prepareMolsBeforeDrawing = False
+#    Options.includeMetadata = False
+#    Options.bondLineWidth = 4.0
+#    d2d.SetDrawOptions(Options)
+#
+#    # Prepare molecules for drawing
+#    mol1 = rdMolDraw2D.PrepareMolForDrawing(pair[0], kekulize=True)
+#    mol1.UpdatePropertyCache(False)
+#    mol2 = rdMolDraw2D.PrepareMolForDrawing(pair[1], kekulize=True)
+#    mol2.UpdatePropertyCache(False)
+#
+#    # Get similarity map for fingerprints
+#    fig, maxweight = SimilarityMaps.GetSimilarityMapForFingerprint(
+#        mol1, 
+#        mol2, 
+#        get_fp, 
+#        draw2d=d2d, 
+#        drawingOptions=Options
+#    )
+#
+#    # Finish drawing and return the image as a BytesIO object
+#    d2d.FinishDrawing()
+#    drawing = d2d.GetDrawingText()
+#    output = BytesIO(drawing)
+#    return output
+
 from io import BytesIO
 from lucy.utils.setup_logging import logger
 from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps

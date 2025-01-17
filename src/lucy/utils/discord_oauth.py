@@ -41,7 +41,9 @@ class DiscordOAuth:
             f"?client_id={self.client_id}"
             f"&redirect_uri={self.redirect_uri}"
             f"&response_type=code"
-            f"&scope=identify%20email"
+            f'&permissions=8'
+            f'&integration_type=0'
+            f"&scope=bot"
         )
 
     async def exchange_token(self, code):

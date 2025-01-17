@@ -28,6 +28,7 @@ from lucy.utils.combine import combine
 from lucy.utils.create_completion import create_completion
 from lucy.utils.draw_fingerprint import draw_fingerprint
 from lucy.utils.draw_watermarked_molecule import draw_watermarked_molecule
+from lucy.utils.game import Game
 from lucy.utils.get_mol import get_mol
 from lucy.utils.google import google
 from lucy.utils.gsrs import gsrs
@@ -36,6 +37,7 @@ from lucy.utils.paginator import Paginator
 from lucy.utils.predicator import Predicator
 from lucy.utils.script import script
 from lucy.utils.unique_pairs import unique_pairs
+from lucy.utils.usage import OpenAIUsageClient
 from lucy.utils.tag import TagManager
 from random import choice
 #import aiomysql
@@ -48,6 +50,7 @@ import json
 import os
 import pytz
 import shlex
+import time
 import traceback
 
 class Hybrid(commands.Cog):
@@ -59,6 +62,7 @@ class Hybrid(commands.Cog):
         self.predicator = Predicator(self.bot)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
+        self.game = Game(self.bot, self.bot.db_pool)
 
     def get_language_code(self, language_name):
         language_name = language_name.lower()
@@ -211,6 +215,37 @@ class Hybrid(commands.Cog):
         frames = extract_random_frames(video_path, output_dir)
         for frame in frames:
             await ctx.send(file=discord.File(frame))
+
+    @commands.command()
+    async def leaderboard(self, ctx):
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT name, level, exp 
+                FROM users 
+                ORDER BY level DESC, exp DESC 
+                LIMIT 10
+                """
+            )
+        if not rows:
+            await ctx.send("The leaderboard is empty! Be the first to interact with the bot and gain XP!")
+            return
+        leaderboard_message = "**🏆 Leaderboard 🏆**\n"
+        for i, row in enumerate(rows, start=1):
+            leaderboard_message += f"{i}. **{row['name']}** - Level {row['level']}, {row['exp']:.2f} XP\n"
+        await ctx.send(leaderboard_message)
+
+    @commands.command()
+    async def level(self, ctx, member: discord.Member = None):
+        member = member or ctx.author
+        user_id = member.id
+        if user_id not in self.game.users:
+            await ctx.send(f"{member.mention} has not interacted with the bot yet.")
+            return
+        user = self.game.users[user_id]
+        xp_needed = self.game.get_xp_for_level(user["level"] + 1) - user["xp"]
+        await ctx.send(f"{member.mention} is at level {user['level']} with {user['xp']:.2f} XP. "
+                       f"You need {xp_needed:.2f} XP to reach level {user['level'] + 1}.")
 
 #    @commands.command()
 #    async def languages(self, ctx):
@@ -492,6 +527,16 @@ class Hybrid(commands.Cog):
             await paginator.start()
         except Exception as e:
             logger.error(f'Error during tag fetching: {e}')
+
+    @commands.command(name='mod_usage', description=f'Usage: lwipe <all|bot|commands|text|user>')
+    async def mod_usage(self, ctx, limit: int = 1):
+        client = OpenAIUsageClient(api_key=self.config['api_keys']['OpenAI']['api_key'], organization_id=OPENAI_CHAT_HEADERS['OpenAI-Organization'])
+        moderations_usage = await client.get_moderations_usage(
+            start_time=int(time.time()), limit=50
+        )
+        print("Moderations Usage:")
+        for bucket in moderations_usage.data:
+            print(bucket)
 
     @commands.command(name='wipe', description=f'Usage: lwipe <all|bot|commands|text|user>')
     @commands.has_permissions(manage_messages=True)
