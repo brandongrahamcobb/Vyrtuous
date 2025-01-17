@@ -64,7 +64,7 @@ class Hybrid(commands.Cog):
         self.config = bot.config
         self.pdf_manager = PDFManager(self.bot.db_pool)
         self.predicator = Predicator(self.bot)
-        self.reference_manager = ReferencecManager(self.bot.db_pool)
+        self.reference_manager = ReferenceManager(self.bot.db_pool)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
         self.game = Game(self.bot, self.bot.db_pool)
