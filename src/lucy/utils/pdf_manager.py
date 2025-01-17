@@ -127,8 +127,8 @@ class PDFManager:
             DELETE FROM pdfs
             WHERE id = $1 AND id IN (
                 SELECT pdf_id FROM reference_list
-                JOIN pdfs ON references_list.id = pdfs.reference_id
-                WHERE references_list.user_id = $2
+                JOIN pdfs ON reference_list.id = pdfs.reference_id
+                WHERE reference_list.user_id = $2
             )
         """
         try:
