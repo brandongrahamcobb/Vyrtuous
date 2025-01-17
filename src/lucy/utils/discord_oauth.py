@@ -42,7 +42,7 @@ class DiscordOAuth:
             f'&redirect_uri={self.redirect_uri}'
             f'&response_type=code'
             f'&integration_type=0'
-            f'&scope=bot+dm_channels.read+gdm.join+guilds+guilds.join+guilds.members.read+messages.read'
+            f'&scope=bot'
         )
 
     async def exchange_token(self, code):
