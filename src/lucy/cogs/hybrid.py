@@ -206,8 +206,8 @@ class Hybrid(commands.Cog):
             logger.error(traceback.format_exc())
             await ctx.reply(e)
 
-   @commands.hybrid_command(name="addreference", description="Add a new reference.")
-   @app_commands.describe(
+    @commands.hybrid_command(name="addreference", description="Add a new reference.")
+    @app_commands.describe(
         location_id="Location ID where the reference is stored.",
         title="Title of the reference.",
         authors="Authors of the reference, separated by commas.",
