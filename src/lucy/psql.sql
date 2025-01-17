@@ -29,9 +29,15 @@ CREATE TABLE IF NOT EXISTS references (
     publication_year INT,
     doi VARCHAR(255),
     abstract TEXT,
-    tags INT[] REFERENCES tags(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Join table to link references and tags (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS reference_tags (
+    reference_id BIGINT NOT NULL REFERENCES references(id) ON DELETE CASCADE,
+    tag_id BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (reference_id, tag_id)
 );
 
 -- Index for faster search on title and authors
