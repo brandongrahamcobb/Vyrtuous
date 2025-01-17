@@ -1,4 +1,3 @@
-```python
 # reference_manager.py
 '''
 reference_manager.py
@@ -190,4 +189,3 @@ class ReferenceManager:
         except Exception as e:
             logger.error(f"Failed to update reference: {e}")
             raise
-```

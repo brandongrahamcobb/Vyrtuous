@@ -1,4 +1,3 @@
-```python
 # citation_manager.py
 '''
 citation_manager.py
@@ -110,4 +109,3 @@ class CitationManager:
         except Exception as e:
             logger.error(f"Failed to delete citation: {e}")
             raise
-```

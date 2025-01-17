@@ -1,4 +1,3 @@
-```python
 # pdf_manager.py
 '''
 pdf_manager.py
@@ -139,4 +138,3 @@ class PDFManager:
         except Exception as e:
             logger.error(f"Failed to delete PDF: {e}")
             raise
-```
