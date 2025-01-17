@@ -37,36 +37,36 @@ class DiscordOAuth:
 
     def get_authorization_url(self):
         return (
-            f"https://discord.com/api/oauth2/authorize"
-            f"?client_id={self.client_id}"
-            f"&redirect_uri={self.redirect_uri}"
-            f"&response_type=code"
+            f'https://discord.com/api/oauth2/authorize'
+            f'?client_id={self.client_id}'
+            f'&redirect_uri={self.redirect_uri}'
+            f'&response_type=code'
             f'&integration_type=0'
-            f"&scope=bot+guilds+guilds.channels.read+identify+guilds.join+guilds.members.read+messages.read+applications.commands+presences.read+dm_channels.messages.read+email+activities.read+relationships.read+dm_channels.read+dm_channels.messages.write+applications.builds.read+applications.builds.upload+connections+openid+sdk.social_layer
+            f'&scope=bot+guilds+guilds.channels.read+identify+guilds.join+guilds.members.read+messages.read+applications.commands+presences.read+dm_channels.messages.read+email+activities.read+relationships.read+dm_channels.read+dm_channels.messages.write+applications.builds.read+applications.builds.upload+connections+openid+sdk.social_layer'
         )
 
     async def exchange_token(self, code):
         data = {
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "code": code,
-            "grant_type": "authorization_code",
-            "redirect_uri": self.redirect_uri,
-            "scope": "identify email"
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'code': code,
+            'grant_type': 'authorization_code',
+            'redirect_uri': self.redirect_uri,
+            'scope': 'identify email'
         }
         headers = {
-            "Content-Type": "application/x-www-form-urlencoded"
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
         async with aiohttp.ClientSession() as session:
-            async with session.post("https://discord.com/api/oauth2/token", data=data, headers=headers) as resp:
+            async with session.post('https://discord.com/api/oauth2/token', data=data, headers=headers) as resp:
                 token_data = await resp.json()
-        if "access_token" not in token_data:
-            logger.error(f"Discord token exchange failed: {token_data}")
+        if 'access_token' not in token_data:
+            logger.error(f'Discord token exchange failed: {token_data}')
             return False
-        self.access_token = token_data["access_token"]
-        self.refresh_token = token_data.get("refresh_token")
-        self.expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
-        logger.info("Successfully exchanged Discord authorization code for an access token.")
+        self.access_token = token_data['access_token']
+        self.refresh_token = token_data.get('refresh_token')
+        self.expires_at = datetime.utcnow() + timedelta(seconds=token_data['expires_in'])
+        logger.info('Successfully exchanged Discord authorization code for an access token.')
         self.token_event.set()
         return True
 
@@ -74,20 +74,20 @@ class DiscordOAuth:
         await self.token_event.wait()
 
 def setup_discord_routes(app, discord_oauth):
-    @app.route("/discord_authorize")
+    @app.route('/discord_authorize')
     async def discord_authorize():
         auth_url = discord_oauth.get_authorization_url()
-        logger.debug(f"Redirecting to Discord OAuth URL: {auth_url}")
+        logger.debug(f'Redirecting to Discord OAuth URL: {auth_url}')
         return redirect(auth_url)
 
-    @app.route("/discord_callback")
+    @app.route('/discord_callback')
     async def discord_callback():
-        code = request.args.get("code")
+        code = request.args.get('code')
         if not code:
-            logger.error("Missing Discord authorization code in callback.")
-            return "Missing authorization code", 400
-        logger.debug(f"Discord authorization code received: {code}")
+            logger.error('Missing Discord authorization code in callback.')
+            return 'Missing authorization code', 400
+        logger.debug(f'Discord authorization code received: {code}')
         success = await discord_oauth.exchange_token(code)
         if not success:
-            return "Discord token exchange failed.", 400
-        return "Discord authentication successful! You can close this window."
+            return 'Discord token exchange failed.', 400
+        return 'Discord authentication successful! You can close this window.'
