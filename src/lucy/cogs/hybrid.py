@@ -206,8 +206,8 @@ class Hybrid(commands.Cog):
             logger.error(traceback.format_exc())
             await ctx.reply(e)
 
-  @commands.hybrid_command(name="addreference", description="Add a new reference.")
-    @app_commands.describe(
+   @commands.hybrid_command(name="addreference", description="Add a new reference.")
+   @app_commands.describe(
         location_id="Location ID where the reference is stored.",
         title="Title of the reference.",
         authors="Authors of the reference, separated by commas.",
@@ -491,7 +491,7 @@ class Hybrid(commands.Cog):
                 file = discord.File(fp=buffer, filename="bibliography.txt")
                 await self.send_response(ctx, "📄 Here's your bibliography:", file=file)
             else:
-                await self.send_response(ctx, f"📄 **Bibliography ({citation_style}):**\n```\n{bibliography)}\n")
+                await self.send_response(ctx, f"📄 **Bibliography ({citation_style}):**\n```\n{bibliography}\n")
 
         except Exception as e:
             logger.error(f"Error exporting bibliography: {e}")
