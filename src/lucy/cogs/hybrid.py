@@ -60,11 +60,11 @@ import traceback
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.citation_manager = CitationManager()
+        self.citation_manager = CitationManager(self.bot.db_pool)
         self.config = bot.config
-        self.pdf_manager = PDFManager()
+        self.pdf_manager = PDFManager(self.bot.db_pool)
         self.predicator = Predicator(self.bot)
-        self.reference_manager = ReferencecManager()
+        self.reference_manager = ReferencecManager(self.bot.db_pool)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
         self.game = Game(self.bot, self.bot.db_pool)
