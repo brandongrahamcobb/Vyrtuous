@@ -17,7 +17,10 @@
 from discord.ext import commands, tasks
 from lucy.utils.backup import perform_backup, setup_backup_directory
 from lucy.utils.helpers import *
-from typing import Literal, Optional
+from lucy.utils.pdf_manager import PDFManager
+from lucy.utils.paginator import Paginator
+from lucy.utils.predicator import Predicator
+from typing import Dict, List, Literal, Optional
 
 import asyncio
 import discord
@@ -26,6 +29,8 @@ class Sativa(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.pdf_manager = PDFManager(self.bot.db_pool)
+        self.predicator = Predicator(self.bot)
 
     @staticmethod
     def at_home(bot):
@@ -55,6 +60,169 @@ class Sativa(commands.Cog):
         except Exception as e:
             logger.error(f'Error during database backup: {e}')
 
+
+    @commands.hybrid_command(name="uploadpdf", description="Upload a PDF to your catalog.")
+    @discord.app_commands.describe(
+        title="Title of the PDF.",
+        description="Description of the PDF (optional).",
+        tags="Tags associated with the PDF, separated by commas (optional).",
+        file="The PDF file to upload."
+    )
+    async def upload_pdf(self, ctx: commands.Context, title: str, file: discord.Attachment, description: Optional[str] = None, tags: Optional[str] = None):
+        if not self.predicator.is_spawd(ctx):
+            return
+        user_id = ctx.author.id
+
+        # Ensure the file is a PDF
+        if not file.filename.lower().endswith(".pdf"):
+            await ctx.send("❌ Only PDF files are allowed.")
+            return
+
+        tags_list = [tag.strip() for tag in tags.split(",")] if tags else None
+        try:
+            file_url = file.url
+            pdf_id = await self.pdf_manager.upload_pdf(user_id, title, file_url, description, tags_list)
+            await ctx.send(f"✅ PDF uploaded with ID: `{pdf_id}`.")
+        except Exception as e:
+            logger.error(f"Error uploading PDF: {e}")
+            await ctx.send("❌ Failed to upload PDF.")
+
+    @commands.hybrid_command(name="listpdfs", description="List all your uploaded PDFs.")
+    @discord.app_commands.describe(tags="Filter by tags, separated by commas (optional).")
+    async def list_pdfs(self, ctx: commands.Context, tags: Optional[str] = None):
+        user_id = ctx.author.id
+        tags_list = [tag.strip() for tag in tags.split(",")] if tags else None
+        try:
+            pdfs = await self.pdf_manager.list_pdfs(user_id, tags_list)
+            if not pdfs:
+                await ctx.send("📭 No PDFs found.")
+                return
+
+            # Generate pages for pagination
+            pages = []
+            for i in range(0, len(pdfs), 5):  # Group 5 PDFs per page
+                embed = discord.Embed(title="📂 Your PDFs", color=discord.Color.blue())
+                for pdf in pdfs[i:i + 5]:
+                    embed.add_field(
+                        name=f"ID `{pdf['id']}`: {pdf['title']}",
+                        value=(
+                            f"**Description:** {pdf['description'] or 'N/A'}\n"
+                            f"**Tags:** {', '.join(pdf['tags']) if pdf['tags'] else 'N/A'}\n"
+                            f"[Download PDF]({pdf['file_url']})"
+                        ),
+                        inline=False
+                    )
+                embed.set_footer(text=f"Page {len(pages) + 1} of {((len(pdfs) - 1) // 5) + 1}")
+                pages.append(embed)
+
+            # Start the paginator
+            paginator = Paginator(self.bot, ctx, pages)
+            await paginator.start()
+
+        except Exception as e:
+            logger.error(f"Error listing PDFs: {e}")
+            await ctx.send("❌ Failed to list PDFs.")
+
+    @commands.hybrid_command(name="searchpdfs", description="Search PDFs in your catalog.")
+    @discord.app_commands.describe(query_text="Search term for title or tags.")
+    async def search_pdfs(self, ctx: commands.Context, query_text: str):
+        if not self.predicator.is_spawd(ctx):
+            return
+        user_id = ctx.author.id
+        try:
+            pdfs = await self.pdf_manager.search_pdfs(user_id, query_text)
+            if not pdfs:
+                await ctx.send("🔍 No matching PDFs found.")
+                return
+
+            embed = discord.Embed(title="🔎 Search Results", color=discord.Color.green())
+            for pdf in pdfs:
+                embed.add_field(
+                    name=f"ID `{pdf['id']}`: {pdf['title']}",
+                    value=(
+                        f"**Description:** {pdf['description'] or 'N/A'}\n"
+                        f"**Tags:** {', '.join(pdf['tags']) if pdf['tags'] else 'N/A'}\n"
+                        f"[Download PDF]({pdf['file_url']})"
+                    ),
+                    inline=False
+                )
+            await ctx.send(embed=embed)
+        except Exception as e:
+            logger.error(f"Error searching PDFs: {e}")
+            await ctx.send("❌ Failed to search PDFs.")
+
+    @commands.hybrid_command(name="viewpdf", description="View details about a PDF.")
+    @discord.app_commands.describe(pdf_id="ID of the PDF to view.")
+    async def view_pdf(self, ctx: commands.Context, pdf_id: int):
+        if not self.predicator.is_spawd(ctx):
+            return
+        try:
+            pdf = await self.pdf_manager.view_pdf(pdf_id)
+            if not pdf:
+                await ctx.send("❌ PDF not found.")
+                return
+
+            embed = discord.Embed(title=f"📄 PDF ID: {pdf_id}", color=discord.Color.gold())
+            embed.add_field(name="📂 Title", value=pdf["title"], inline=False)
+            embed.add_field(name="📜 Description", value=pdf["description"] or "N/A", inline=False)
+            embed.add_field(name="🏷️ Tags", value=", ".join(pdf["tags"]) if pdf["tags"] else "N/A", inline=False)
+            embed.add_field(name="📂 Uploaded At", value=pdf["uploaded_at"], inline=False)
+            embed.add_field(name="🔗 File URL", value=f"[Download PDF]({pdf['file_url']})", inline=False)
+            await ctx.send(embed=embed)
+        except Exception as e:
+            logger.error(f"Error viewing PDF: {e}")
+            await ctx.send("❌ Failed to retrieve PDF details.")
+
+    @commands.hybrid_command(name="deletepdf", description="Delete a PDF from your catalog.")
+    @discord.app_commands.describe(pdf_id="ID of the PDF to delete.")
+    async def delete_pdf(self, ctx: commands.Context, pdf_id: int):
+        if not self.predicator.is_spawd(ctx):
+            return
+        user_id = ctx.author.id
+        try:
+            success = await self.pdf_manager.delete_pdf(pdf_id, user_id)
+            response = (
+                f"✅ PDF with ID `{pdf_id}` deleted."
+                if success else f"❌ PDF with ID `{pdf_id}` not found or not owned by you."
+            )
+            await ctx.send(response)
+        except Exception as e:
+            logger.error(f"Error deleting PDF: {e}")
+            await ctx.send("❌ Failed to delete PDF.")
+
+    def _format_reference_list(self, references: List[Dict]) -> str:
+        if not references:
+            return "📭 No references found."
+        return "\n".join(
+            f"ID `{ref['id']}`: {ref['title']} by {', '.join(ref['authors'])}" for ref in references
+        )
+    
+    def _handle_large_response(self, content: str) -> str:
+        if len(content) > 2000:
+            buffer = io.StringIO(content)
+            file = discord.File(fp=buffer, filename="output.txt")
+            return file
+        return content
+
+    async def send_response(self, ctx: commands.Context, content: str, file: discord.File = None):
+        """Sends a response to the context, handling both slash and text commands."""
+        if isinstance(ctx, commands.Context):
+            if ctx.interaction:
+                await ctx.interaction.followup.send(content, file=file, ephemeral=True)
+            else:
+                await ctx.send(content, file=file)
+        else:
+            await ctx.send(content, file=file)
+
+    async def send_embed_response(self, ctx: commands.Context, embed: discord.Embed):
+        """Sends an embed as a response, handling both slash and text commands."""
+        if isinstance(ctx, commands.Context):
+            if ctx.interaction:
+                await ctx.interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='load', hidden=True)
     @commands.check(at_home)

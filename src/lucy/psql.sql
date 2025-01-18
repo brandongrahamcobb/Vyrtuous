@@ -66,3 +66,17 @@ CREATE TABLE IF NOT EXISTS loop_configs (
     channel_id BIGINT,
     enabled BOOLEAN DEFAULT TRUE
 );
+
+-- Drop existing tables if they exist
+DROP TABLE IF EXISTS pdf_catalog CASCADE;
+
+-- Create a table for PDF catalog
+CREATE TABLE pdf_catalog (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    title TEXT NOT NULL,
+    file_url TEXT NOT NULL,
+    description TEXT,
+    tags TEXT[],
+    uploaded_at TIMESTAMP DEFAULT NOW()
+);

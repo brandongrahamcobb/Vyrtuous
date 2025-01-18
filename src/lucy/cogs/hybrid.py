@@ -24,7 +24,6 @@ from typing import Optional
 from lucy.utils.frames import extract_random_frames
 from lucy.utils.add_watermark import add_watermark
 from lucy.utils.average_score import average_score
-from lucy.utils.citation_manager import CitationManager
 from lucy.utils.combine import combine
 from lucy.utils.create_completion import create_completion
 from lucy.utils.draw_fingerprint import draw_fingerprint
@@ -36,8 +35,6 @@ from lucy.utils.gsrs import gsrs
 from lucy.utils.helpers import *
 from lucy.utils.paginator import Paginator
 from lucy.utils.predicator import Predicator
-from lucy.utils.reference_manager import ReferenceManager
-from lucy.utils.pdf_manager import PDFManager
 from lucy.utils.script import script
 from lucy.utils.tag import TagManager
 from lucy.utils.unique_pairs import unique_pairs
@@ -60,11 +57,8 @@ import traceback
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.citation_manager = CitationManager(self.bot.db_pool)
         self.config = bot.config
-        self.pdf_manager = PDFManager(self.bot.db_pool)
         self.predicator = Predicator(self.bot)
-        self.reference_manager = ReferenceManager(self.bot.db_pool)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
         self.game = Game(self.bot, self.bot.db_pool)
@@ -205,180 +199,6 @@ class Hybrid(commands.Cog):
         except Exception as e:
             logger.error(traceback.format_exc())
             await ctx.reply(e)
-
-    @commands.hybrid_command(
-        name="manageitem",
-        description="Manage references, PDFs, or citations."
-    )
-    @app_commands.describe(
-        operation="Operation to perform (add, delete, list, search, upload_pdf, annotate, generate_citation, export_bibliography).",
-        item_type="Type of item (reference, pdf, citation).",
-        location_id="Location ID (required for some operations).",
-        title="Title of the reference (required for adding references).",
-        authors="Authors, separated by commas (required for adding references).",
-        publication_year="Publication year (optional).",
-        doi="DOI of the reference (optional).",
-        abstract="Abstract (optional).",
-        tags="Tags, separated by commas (optional).",
-        reference_id="Reference ID (required for certain operations).",
-        pdf_id="PDF ID (required for certain operations).",
-        file="PDF file to upload (required for uploading PDFs).",
-        citation_style="Citation style (e.g., APA, MLA) (required for generating/exporting citations).",
-        query_text="Search text (required for search operations)."
-    )
-    async def manage_item(
-        self,
-        ctx: commands.Context,
-        operation: str,
-        item_type: str,
-        location_id: Optional[int] = None,
-        title: Optional[str] = None,
-        authors: Optional[str] = None,
-        publication_year: Optional[int] = None,
-        doi: Optional[str] = None,
-        abstract: Optional[str] = None,
-        tags: Optional[str] = None,
-        reference_id: Optional[int] = None,
-        pdf_id: Optional[int] = None,
-        file: Optional[discord.Attachment] = None,
-        citation_style: Optional[str] = None,
-        query_text: Optional[str] = None
-    ):
-        user_id = ctx.author.id
-    
-        # Validation for required fields
-        if not operation or not item_type:
-            await self.send_response(
-                ctx,
-                "❌ You must specify both an operation and an item type. Use `/help manageitem` for details."
-            )
-            return
-    
-        # Additional validation based on item type and operation
-        if item_type == "reference":
-            if operation == "add" and not all([location_id, title, authors]):
-                await self.send_response(
-                    ctx,
-                    (
-                        "❌ For adding a reference, you must provide:\n"
-                        "- `location_id`\n- `title`\n- `authors` (comma-separated).\n"
-                        "Use `/help manageitem` for full details."
-                    )
-                )
-                return
-    
-            if operation in ["delete", "generate"] and not reference_id:
-                await self.send_response(
-                    ctx,
-                    "❌ You must provide a `reference_id` for this operation. Use `/help manageitem` for details."
-                )
-                return
-    
-        if item_type == "pdf" and operation == "annotate" and not pdf_id:
-            await self.send_response(
-                ctx,
-                "❌ You must provide a `pdf_id` for annotating a PDF. Use `/help manageitem` for details."
-            )
-            return
-    
-        if item_type == "citation" and operation in ["generate", "export"] and not citation_style:
-            await self.send_response(
-                ctx,
-                "❌ You must provide a `citation_style` (e.g., APA, MLA) for this operation. Use `/help manageitem` for details."
-            )
-            return
-    
-        try:
-            # Handle operations based on item type and operation
-            response = None
-    
-            if item_type == "reference":
-                if operation == "add":
-                    authors_list = [a.strip() for a in authors.split(",")]
-                    tags_list = [int(t.strip()) for t in tags.split(",")] if tags else None
-    
-                    ref_id = await self.reference_manager.add_reference(
-                        user_id, location_id, title, authors_list, publication_year, doi, abstract, tags_list
-                    )
-                    response = f"✅ Reference added with ID: `{ref_id}`."
-    
-                    if file and file.filename.lower().endswith(".pdf"):
-                        file_url = file.url
-                        pdf_id = await self.pdf_manager.upload_pdf(ref_id, file_url)
-                        response += f"\n✅ PDF uploaded with ID: `{pdf_id}`."
-    
-                elif operation == "delete":
-                    success = await self.reference_manager.delete_reference(reference_id, user_id)
-                    response = (
-                        f"✅ Reference with ID `{reference_id}` deleted."
-                        if success else f"❌ Reference with ID `{reference_id}` not found."
-                    )
-    
-                elif operation == "list":
-                    references = await self.reference_manager.list_references(user_id, location_id)
-                    response = self._format_reference_list(references)
-    
-                elif operation == "search":
-                    references = await self.reference_manager.search_references(user_id, location_id, query_text)
-                    response = self._format_reference_list(references)
-    
-            elif item_type == "pdf":
-                if operation == "annotate":
-                    annotation_id = await self.pdf_manager.annotate_pdf(pdf_id, user_id, location_id, query_text, abstract)
-                    response = f"✅ Annotation added with ID: `{annotation_id}`."
-    
-            elif item_type == "citation":
-                if operation == "generate":
-                    citation_id = await self.citation_manager.generate_citation(reference_id, user_id, citation_style)
-                    response = f"✅ Citation generated with ID: `{citation_id}`."
-                elif operation == "export":
-                    bibliography = await self.citation_manager.export_bibliography(user_id, location_id, citation_style)
-                    response = self._handle_large_response(bibliography)
-    
-            else:
-                response = "❌ Invalid item type or operation."
-    
-            await self.send_response(ctx, response)
-    
-        except Exception as e:
-            logger.error(f"Error during {operation} operation on {item_type}: {e}")
-            await self.send_response(ctx, f"❌ Operation failed: {e}")
-    
-    # Helper methods
-    def _format_reference_list(self, references: List[Dict]) -> str:
-        if not references:
-            return "📭 No references found."
-        return "\n".join(
-            f"ID `{ref['id']}`: {ref['title']} by {', '.join(ref['authors'])}" for ref in references
-        )
-    
-    def _handle_large_response(self, content: str) -> str:
-        if len(content) > 2000:
-            buffer = io.StringIO(content)
-            file = discord.File(fp=buffer, filename="output.txt")
-            return file
-        return content
-
-
-    async def send_response(self, ctx: commands.Context, content: str, file: discord.File = None):
-        """Sends a response to the context, handling both slash and text commands."""
-        if isinstance(ctx, commands.Context):
-            if ctx.interaction:
-                await ctx.interaction.followup.send(content, file=file, ephemeral=True)
-            else:
-                await ctx.send(content, file=file)
-        else:
-            await ctx.send(content, file=file)
-
-    async def send_embed_response(self, ctx: commands.Context, embed: discord.Embed):
-        """Sends an embed as a response, handling both slash and text commands."""
-        if isinstance(ctx, commands.Context):
-            if ctx.interaction:
-                await ctx.interaction.followup.send(embed=embed, ephemeral=True)
-            else:
-                await ctx.send(embed=embed)
-        else:
-            await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
     async def frame(self, ctx: commands.Context):

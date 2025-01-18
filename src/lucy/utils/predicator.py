@@ -47,6 +47,9 @@ class Predicator:
     async def is_at_home_func(self, guild_id: int) -> bool:
         return guild_id == self.config['discord_testing_guild_id']
 
+    def is_spawd(self, ctx: commands.Context) -> bool:
+        return ctx.author.id == 154749533429956608
+
     async def is_vegan_user(self, user: discord.User) -> bool:
         guild_ids = [
             self.config['discord_testing_guild_id'],
