@@ -357,7 +357,7 @@ class Hybrid(commands.Cog):
             buffer = io.StringIO(content)
             file = discord.File(fp=buffer, filename="output.txt")
             return file
-         return content
+        return content
 
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
     async def frame(self, ctx: commands.Context):
