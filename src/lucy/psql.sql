@@ -10,7 +10,7 @@ DROP TABLE IF EXISTS loop_configs CASCADE;
 
 CREATE TABLE reference_list (
     id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id BIGINT NOT NULL,
     location_id INT NOT NULL,
     title TEXT NOT NULL,
     authors TEXT[] NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE reference_list (
 CREATE TABLE citations (
     id SERIAL PRIMARY KEY,
     reference_id INT REFERENCES reference_list(id) ON DELETE CASCADE,
-    user_id INT NOT NULL,
+    user_id BIGINT NOT NULL,
     citation_style TEXT NOT NULL,
     citation_text TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT NOW()
@@ -41,7 +41,7 @@ CREATE TABLE pdfs (
 CREATE TABLE annotations (
     id SERIAL PRIMARY KEY,
     pdf_id INT REFERENCES pdfs(id) ON DELETE CASCADE,
-    user_id INT NOT NULL,
+    user_id BIGINT NOT NULL,
     page_number INT,
     content TEXT NOT NULL,
     highlighted_text TEXT,
