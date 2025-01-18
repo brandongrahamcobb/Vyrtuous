@@ -206,7 +206,10 @@ class Hybrid(commands.Cog):
             logger.error(traceback.format_exc())
             await ctx.reply(e)
 
-    @commands.hybrid_command(name="manageitem", description="Manage references, PDFs, or citations.")
+    @commands.hybrid_command(
+        name="manageitem",
+        description="Manage references, PDFs, or citations."
+    )
     @app_commands.describe(
         operation="Operation to perform (add, delete, list, search, upload_pdf, annotate, generate_citation, export_bibliography).",
         item_type="Type of item (reference, pdf, citation).",
@@ -242,13 +245,58 @@ class Hybrid(commands.Cog):
         query_text: Optional[str] = None
     ):
         user_id = ctx.author.id
-        authors_list = [a.strip() for a in authors.split(",")] if authors else []
-        tags_list = [int(t.strip()) for t in tags.split(",")] if tags else None
+    
+        # Validation for required fields
+        if not operation or not item_type:
+            await self.send_response(
+                ctx,
+                "❌ You must specify both an operation and an item type. Use `/help manageitem` for details."
+            )
+            return
+    
+        # Additional validation based on item type and operation
+        if item_type == "reference":
+            if operation == "add" and not all([location_id, title, authors]):
+                await self.send_response(
+                    ctx,
+                    (
+                        "❌ For adding a reference, you must provide:\n"
+                        "- `location_id`\n- `title`\n- `authors` (comma-separated).\n"
+                        "Use `/help manageitem` for full details."
+                    )
+                )
+                return
+    
+            if operation in ["delete", "generate"] and not reference_id:
+                await self.send_response(
+                    ctx,
+                    "❌ You must provide a `reference_id` for this operation. Use `/help manageitem` for details."
+                )
+                return
+    
+        if item_type == "pdf" and operation == "annotate" and not pdf_id:
+            await self.send_response(
+                ctx,
+                "❌ You must provide a `pdf_id` for annotating a PDF. Use `/help manageitem` for details."
+            )
+            return
+    
+        if item_type == "citation" and operation in ["generate", "export"] and not citation_style:
+            await self.send_response(
+                ctx,
+                "❌ You must provide a `citation_style` (e.g., APA, MLA) for this operation. Use `/help manageitem` for details."
+            )
+            return
     
         try:
-            # Handle reference operations
+            # Handle operations based on item type and operation
+            response = None
+    
             if item_type == "reference":
                 if operation == "add":
+                    authors_list = [a.strip() for a in authors.split(",")]
+                    tags_list = [int(t.strip()) for t in tags.split(",")] if tags else None
+    
                     ref_id = await self.reference_manager.add_reference(
                         user_id, location_id, title, authors_list, publication_year, doi, abstract, tags_list
                     )
@@ -267,20 +315,18 @@ class Hybrid(commands.Cog):
                     )
     
                 elif operation == "list":
-                    references = await self.reference_manager.list_references(user_id, location_id, tags_list)
+                    references = await self.reference_manager.list_references(user_id, location_id)
                     response = self._format_reference_list(references)
     
                 elif operation == "search":
                     references = await self.reference_manager.search_references(user_id, location_id, query_text)
                     response = self._format_reference_list(references)
     
-            # Handle PDF operations
             elif item_type == "pdf":
                 if operation == "annotate":
                     annotation_id = await self.pdf_manager.annotate_pdf(pdf_id, user_id, location_id, query_text, abstract)
                     response = f"✅ Annotation added with ID: `{annotation_id}`."
     
-            # Handle citation operations
             elif item_type == "citation":
                 if operation == "generate":
                     citation_id = await self.citation_manager.generate_citation(reference_id, user_id, citation_style)
