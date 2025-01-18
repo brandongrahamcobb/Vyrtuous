@@ -356,7 +356,7 @@ class Hybrid(commands.Cog):
         if len(content) > 2000:
             buffer = io.StringIO(content)
             file = discord.File(fp=buffer, filename="output.txt")
-             return file
+            return file
          return content
 
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
