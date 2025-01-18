@@ -1,4 +1,3 @@
-# pdf_manager.py
 '''
 pdf_manager.py
 
@@ -42,11 +41,10 @@ class PDFManager:
         """
         try:
             async with self.pool.acquire() as conn:
-                pdf_id = await conn.fetchval(query, reference_id, file_url)
-                return pdf_id
+                return await conn.fetchval(query, reference_id, file_url)
         except Exception as e:
-            logger.error(f"Failed to upload PDF: {e}")
-            raise
+            logger.error(f"Failed to upload PDF (reference_id: {reference_id}, file_url: {file_url}): {e}")
+            raise RuntimeError("PDF upload failed.") from e
 
     async def annotate_pdf(
         self,
@@ -68,18 +66,10 @@ class PDFManager:
         """
         try:
             async with self.pool.acquire() as conn:
-                annotation_id = await conn.fetchval(
-                    query, 
-                    pdf_id, 
-                    user_id, 
-                    page_number, 
-                    content, 
-                    highlighted_text
-                )
-                return annotation_id
+                return await conn.fetchval(query, pdf_id, user_id, page_number, content, highlighted_text)
         except Exception as e:
-            logger.error(f"Failed to annotate PDF: {e}")
-            raise
+            logger.error(f"Failed to annotate PDF (pdf_id: {pdf_id}): {e}")
+            raise RuntimeError("PDF annotation failed.") from e
 
     async def view_pdf(self, pdf_id: int) -> Optional[Dict]:
         """
@@ -87,17 +77,14 @@ class PDFManager:
 
         :return: PDF data or None if not found.
         """
-        query = """
-            SELECT * FROM pdfs
-            WHERE id = $1
-        """
+        query = "SELECT * FROM pdfs WHERE id = $1"
         try:
             async with self.pool.acquire() as conn:
                 row = await conn.fetchrow(query, pdf_id)
                 return dict(row) if row else None
         except Exception as e:
-            logger.error(f"Failed to view PDF: {e}")
-            raise
+            logger.error(f"Failed to view PDF (pdf_id: {pdf_id}): {e}")
+            raise RuntimeError("Failed to retrieve PDF details.") from e
 
     async def get_annotations(self, pdf_id: int) -> List[Dict]:
         """
@@ -105,17 +92,14 @@ class PDFManager:
 
         :return: A list of annotations.
         """
-        query = """
-            SELECT * FROM annotations
-            WHERE pdf_id = $1
-        """
+        query = "SELECT * FROM annotations WHERE pdf_id = $1"
         try:
             async with self.pool.acquire() as conn:
                 rows = await conn.fetch(query, pdf_id)
                 return [dict(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to get annotations: {e}")
-            raise
+            logger.error(f"Failed to get annotations for PDF (pdf_id: {pdf_id}): {e}")
+            raise RuntimeError("Failed to retrieve annotations.") from e
 
     async def delete_pdf(self, pdf_id: int, user_id: int) -> bool:
         """
@@ -125,16 +109,17 @@ class PDFManager:
         """
         query = """
             DELETE FROM pdfs
-            WHERE id = $1 AND id IN (
-                SELECT pdf_id FROM reference_list
-                JOIN pdfs ON reference_list.id = pdfs.reference_id
-                WHERE reference_list.user_id = $2
-            )
+            WHERE id = $1 
+              AND id IN (
+                  SELECT pdf_id 
+                  FROM reference_list
+                  WHERE user_id = $2
+              )
         """
         try:
             async with self.pool.acquire() as conn:
                 result = await conn.execute(query, pdf_id, user_id)
                 return result.endswith("DELETE 1")
         except Exception as e:
-            logger.error(f"Failed to delete PDF: {e}")
-            raise
+            logger.error(f"Failed to delete PDF (pdf_id: {pdf_id}): {e}")
+            raise RuntimeError("Failed to delete PDF.") from e

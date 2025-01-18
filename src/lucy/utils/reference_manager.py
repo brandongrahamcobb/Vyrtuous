@@ -1,8 +1,5 @@
-# reference_manager.py
 '''
-reference_manager.py
-
-Provides reference management functionality for the Discord bot.
+reference_manager.py Provides reference management functionality for the Discord bot.
 Copyright (C) 2024 github.com/brandongrahamcobb
 
 This program is free software: you can redistribute it and/or modify
@@ -38,7 +35,7 @@ class ReferenceManager:
         publication_year: Optional[int] = None,
         doi: Optional[str] = None,
         abstract: Optional[str] = None,
-        tags: Optional[List[int]] = None  # List of tag IDs
+        tags: Optional[List[int]] = None
     ) -> int:
         """
         Adds a new reference to the database.
@@ -52,21 +49,12 @@ class ReferenceManager:
         """
         try:
             async with self.pool.acquire() as conn:
-                ref_id = await conn.fetchval(
-                    query, 
-                    user_id, 
-                    location_id, 
-                    title, 
-                    authors, 
-                    publication_year, 
-                    doi, 
-                    abstract, 
-                    tags
+                return await conn.fetchval(
+                    query, user_id, location_id, title, authors, publication_year, doi, abstract, tags
                 )
-                return ref_id
         except Exception as e:
-            logger.error(f"Failed to add reference: {e}")
-            raise
+            logger.error(f"Failed to add reference (title: {title}, user_id: {user_id}): {e}")
+            raise RuntimeError("Failed to add reference.") from e
 
     async def delete_reference(self, reference_id: int, user_id: int) -> bool:
         """
@@ -74,17 +62,14 @@ class ReferenceManager:
 
         :return: True if deletion was successful, False otherwise.
         """
-        query = """
-            DELETE FROM references
-            WHERE id = $1 AND user_id = $2
-        """
+        query = "DELETE FROM reference_list WHERE id = $1 AND user_id = $2"
         try:
             async with self.pool.acquire() as conn:
                 result = await conn.execute(query, reference_id, user_id)
                 return result.endswith("DELETE 1")
         except Exception as e:
-            logger.error(f"Failed to delete reference: {e}")
-            raise
+            logger.error(f"Failed to delete reference (id: {reference_id}): {e}")
+            raise RuntimeError("Failed to delete reference.") from e
 
     async def list_references(
         self, 
@@ -107,8 +92,8 @@ class ReferenceManager:
                 rows = await conn.fetch(base_query, *params)
                 return [dict(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to list reference_list: {e}")
-            raise
+            logger.error(f"Failed to list references (user_id: {user_id}): {e}")
+            raise RuntimeError("Failed to list references.") from e
 
     async def search_references(
         self, 
@@ -124,68 +109,17 @@ class ReferenceManager:
         search_query = """
             SELECT * FROM reference_list
             WHERE user_id = $1 AND location_id = $2
-              AND (title ILIKE '%' || $3 || '%' OR EXISTS (
-                  SELECT 1 FROM unnest(authors) AS author WHERE author ILIKE '%' || $3 || '%'
-              ))
+              AND (
+                  title ILIKE '%' || $3 || '%' 
+                  OR EXISTS (
+                      SELECT 1 FROM unnest(authors) AS author WHERE author ILIKE '%' || $3 || '%'
+                  )
+              )
         """
         try:
             async with self.pool.acquire() as conn:
                 rows = await conn.fetch(search_query, user_id, location_id, query_text)
                 return [dict(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to search reference_list: {e}")
-            raise
-
-    async def get_reference(self, reference_id: int, user_id: int) -> Optional[Dict]:
-        """
-        Retrieves a single reference by ID.
-
-        :return: The reference data or None if not found.
-        """
-        query = """
-            SELECT * FROM reference_list
-            WHERE id = $1 AND user_id = $2
-        """
-        try:
-            async with self.pool.acquire() as conn:
-                row = await conn.fetchrow(query, reference_id, user_id)
-                return dict(row) if row else None
-        except Exception as e:
-            logger.error(f"Failed to get reference:_list {e}")
-            raise
-
-    async def update_reference(
-        self,
-        reference_id: int,
-        user_id: int,
-        updates: Dict
-    ) -> bool:
-        """
-        Updates fields of a reference.
-
-        :return: True if update was successful, False otherwise.
-        """
-        if not updates:
-            return False
-
-        fields = []
-        values = []
-        idx = 1
-        for key, value in updates.items():
-            fields.append(f"{key} = ${idx}")
-            values.append(value)
-            idx += 1
-        fields.append(f"updated_at = NOW()")
-        query = f"""
-            UPDATE reference_list
-            SET {', '.join(fields)}
-            WHERE id = ${idx} AND user_id = ${idx + 1}
-        """
-        values.extend([reference_id, user_id])
-        try:
-            async with self.pool.acquire() as conn:
-                result = await conn.execute(query, *values)
-                return result.endswith("UPDATE 1")
-        except Exception as e:
-            logger.error(f"Failed to update reference_list: {e}")
-            raise
+            logger.error(f"Failed to search references (query: {query_text}): {e}")
+            raise RuntimeError("Reference search failed.") from e

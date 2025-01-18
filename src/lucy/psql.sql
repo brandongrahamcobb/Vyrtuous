@@ -1,5 +1,53 @@
--- template_database.sql
-DROP TABLE IF EXISTS references ON DELETE CASCADE;
+-- Drop existing tables
+DROP TABLE IF EXISTS annotations CASCADE;
+DROP TABLE IF EXISTS pdfs CASCADE;
+DROP TABLE IF EXISTS citations CASCADE;
+DROP TABLE IF EXISTS reference_list CASCADE;
+DROP TABLE IF EXISTS tags CASCADE;
+DROP TABLE IF EXISTS loop_configs CASCADE;
+
+-- Create updated schema
+
+CREATE TABLE reference_list (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    location_id INT NOT NULL,
+    title TEXT NOT NULL,
+    authors TEXT[] NOT NULL,
+    publication_year INT,
+    doi TEXT,
+    abstract TEXT,
+    tags INT[],
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE citations (
+    id SERIAL PRIMARY KEY,
+    reference_id INT REFERENCES reference_list(id) ON DELETE CASCADE,
+    user_id INT NOT NULL,
+    citation_style TEXT NOT NULL,
+    citation_text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE pdfs (
+    id SERIAL PRIMARY KEY,
+    reference_id INT REFERENCES reference_list(id) ON DELETE CASCADE,
+    file_url TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE annotations (
+    id SERIAL PRIMARY KEY,
+    pdf_id INT REFERENCES pdfs(id) ON DELETE CASCADE,
+    user_id INT NOT NULL,
+    page_number INT,
+    content TEXT NOT NULL,
+    highlighted_text TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Existing Tag Table
 CREATE TABLE IF NOT EXISTS tags (
     id SERIAL PRIMARY KEY,
@@ -17,58 +65,4 @@ CREATE TABLE IF NOT EXISTS loop_configs (
     guild_id BIGINT PRIMARY KEY,
     channel_id BIGINT,
     enabled BOOLEAN DEFAULT TRUE
-);
-
--- References Table
-CREATE TABLE IF NOT EXISTS reference_list (
-    id SERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    location_id BIGINT NOT NULL,
-    title VARCHAR(1024) NOT NULL,
-    authors TEXT[],
-    publication_year INT,
-    doi VARCHAR(255),
-    abstract TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Join table to link references and tags (many-to-many relationship)
-CREATE TABLE IF NOT EXISTS reference_tags (
-    reference_id BIGINT NOT NULL REFERENCES reference_list(id) ON DELETE CASCADE,
-    tag_id BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-    PRIMARY KEY (reference_id, tag_id)
-);
-
--- Index for faster search on title and authors
-CREATE INDEX IF NOT EXISTS idx_references_title ON reference_list USING GIN (to_tsvector('english', title));
-CREATE INDEX IF NOT EXISTS idx_references_authors ON reference_list USING GIN (authors);
-
--- PDFs Table
-CREATE TABLE IF NOT EXISTS pdfs (
-    id SERIAL PRIMARY KEY,
-    reference_id INT REFERENCES reference_list(id) ON DELETE CASCADE,
-    file_url TEXT NOT NULL,
-    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Annotations Table
-CREATE TABLE IF NOT EXISTS annotations (
-    id SERIAL PRIMARY KEY,
-    pdf_id INT REFERENCES pdfs(id) ON DELETE CASCADE,
-    user_id BIGINT NOT NULL,
-    page_number INT,
-    content TEXT,
-    highlighted_text TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Citations Table
-CREATE TABLE IF NOT EXISTS citations (
-    id SERIAL PRIMARY KEY,
-    reference_id INT REFERENCES reference_list(id) ON DELETE CASCADE,
-    user_id BIGINT NOT NULL,
-    citation_style VARCHAR(50) NOT NULL,
-    citation_text TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
