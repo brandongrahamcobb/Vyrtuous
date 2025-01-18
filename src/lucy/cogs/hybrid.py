@@ -359,6 +359,27 @@ class Hybrid(commands.Cog):
             return file
         return content
 
+
+    async def send_response(self, ctx: commands.Context, content: str, file: discord.File = None):
+        """Sends a response to the context, handling both slash and text commands."""
+        if isinstance(ctx, commands.Context):
+            if ctx.interaction:
+                await ctx.interaction.followup.send(content, file=file, ephemeral=True)
+            else:
+                await ctx.send(content, file=file)
+        else:
+            await ctx.send(content, file=file)
+
+    async def send_embed_response(self, ctx: commands.Context, embed: discord.Embed):
+        """Sends an embed as a response, handling both slash and text commands."""
+        if isinstance(ctx, commands.Context):
+            if ctx.interaction:
+                await ctx.interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                await ctx.send(embed=embed)
+        else:
+            await ctx.send(embed=embed)
+
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
     async def frame(self, ctx: commands.Context):
         if ctx.interaction:
