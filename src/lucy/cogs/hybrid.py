@@ -206,318 +206,112 @@ class Hybrid(commands.Cog):
             logger.error(traceback.format_exc())
             await ctx.reply(e)
 
-    @commands.hybrid_command(name="addreference", description="Add a new reference.")
+    @commands.hybrid_command(name="manageitem", description="Manage references, PDFs, or citations.")
     @app_commands.describe(
-        location_id="Location ID where the reference is stored.",
-        title="Title of the reference.",
-        authors="Authors of the reference, separated by commas.",
-        publication_year="Publication year of the reference (optional).",
+        operation="Operation to perform (add, delete, list, search, upload_pdf, annotate, generate_citation, export_bibliography).",
+        item_type="Type of item (reference, pdf, citation).",
+        location_id="Location ID (required for some operations).",
+        title="Title of the reference (required for adding references).",
+        authors="Authors, separated by commas (required for adding references).",
+        publication_year="Publication year (optional).",
         doi="DOI of the reference (optional).",
-        abstract="Abstract of the reference (optional).",
-        tags="Tags associated with the reference, separated by commas (optional)."
+        abstract="Abstract (optional).",
+        tags="Tags, separated by commas (optional).",
+        reference_id="Reference ID (required for certain operations).",
+        pdf_id="PDF ID (required for certain operations).",
+        file="PDF file to upload (required for uploading PDFs).",
+        citation_style="Citation style (e.g., APA, MLA) (required for generating/exporting citations).",
+        query_text="Search text (required for search operations)."
     )
-    async def add_reference(self, ctx: commands.Context, location_id: int, title: str, authors: str, publication_year: Optional[int] = None, doi: Optional[str] = None, abstract: Optional[str] = None, tags: Optional[str] = None):
+    async def manage_item(
+        self,
+        ctx: commands.Context,
+        operation: str,
+        item_type: str,
+        location_id: Optional[int] = None,
+        title: Optional[str] = None,
+        authors: Optional[str] = None,
+        publication_year: Optional[int] = None,
+        doi: Optional[str] = None,
+        abstract: Optional[str] = None,
+        tags: Optional[str] = None,
+        reference_id: Optional[int] = None,
+        pdf_id: Optional[int] = None,
+        file: Optional[discord.Attachment] = None,
+        citation_style: Optional[str] = None,
+        query_text: Optional[str] = None
+    ):
         user_id = ctx.author.id
-        authors_list = [author.strip() for author in authors.split(",")] if authors else []
-        tags_list = [int(tag.strip()) for tag in tags.split(",")] if tags else None
-
+        authors_list = [a.strip() for a in authors.split(",")] if authors else []
+        tags_list = [int(t.strip()) for t in tags.split(",")] if tags else None
+    
         try:
-            ref_id = await self.reference_manager.add_reference(
-                user_id=user_id,
-                location_id=location_id,
-                title=title,
-                authors=authors_list,
-                publication_year=publication_year,
-                doi=doi,
-                abstract=abstract,
-                tags=tags_list
-            )
-            response = f"✅ Reference added with ID: `{ref_id}`."
+            # Handle reference operations
+            if item_type == "reference":
+                if operation == "add":
+                    ref_id = await self.reference_manager.add_reference(
+                        user_id, location_id, title, authors_list, publication_year, doi, abstract, tags_list
+                    )
+                    response = f"✅ Reference added with ID: `{ref_id}`."
+    
+                    if file and file.filename.lower().endswith(".pdf"):
+                        file_url = file.url
+                        pdf_id = await self.pdf_manager.upload_pdf(ref_id, file_url)
+                        response += f"\n✅ PDF uploaded with ID: `{pdf_id}`."
+    
+                elif operation == "delete":
+                    success = await self.reference_manager.delete_reference(reference_id, user_id)
+                    response = (
+                        f"✅ Reference with ID `{reference_id}` deleted."
+                        if success else f"❌ Reference with ID `{reference_id}` not found."
+                    )
+    
+                elif operation == "list":
+                    references = await self.reference_manager.list_references(user_id, location_id, tags_list)
+                    response = self._format_reference_list(references)
+    
+                elif operation == "search":
+                    references = await self.reference_manager.search_references(user_id, location_id, query_text)
+                    response = self._format_reference_list(references)
+    
+            # Handle PDF operations
+            elif item_type == "pdf":
+                if operation == "annotate":
+                    annotation_id = await self.pdf_manager.annotate_pdf(pdf_id, user_id, location_id, query_text, abstract)
+                    response = f"✅ Annotation added with ID: `{annotation_id}`."
+    
+            # Handle citation operations
+            elif item_type == "citation":
+                if operation == "generate":
+                    citation_id = await self.citation_manager.generate_citation(reference_id, user_id, citation_style)
+                    response = f"✅ Citation generated with ID: `{citation_id}`."
+                elif operation == "export":
+                    bibliography = await self.citation_manager.export_bibliography(user_id, location_id, citation_style)
+                    response = self._handle_large_response(bibliography)
+    
+            else:
+                response = "❌ Invalid item type or operation."
+    
             await self.send_response(ctx, response)
+    
         except Exception as e:
-            logger.error(f"Error adding reference: {e}")
-            await self.send_response(ctx, "❌ Failed to add reference.")
-
-    @commands.hybrid_command(name="deletereference", description="Delete an existing reference.")
-    @app_commands.describe(reference_id="The ID of the reference to delete.")
-    async def delete_reference(self, ctx: commands.Context, reference_id: int):
-        user_id = ctx.author.id
-
-        try:
-            success = await self.reference_manager.delete_reference(reference_id, user_id)
-            if success:
-                response = f"✅ Reference with ID `{reference_id}` deleted."
-            else:
-                response = f"❌ Reference with ID `{reference_id}` not found or you don't have permission to delete it."
-            await self.send_response(ctx, response)
-        except Exception as e:
-            logger.error(f"Error deleting reference: {e}")
-            await self.send_response(ctx, "❌ Failed to delete reference.")
-
-    @commands.hybrid_command(name="listreferences", description="List all your references.")
-    @app_commands.describe(
-        location_id="Filter by Location ID.",
-        tags="Filter by Tag IDs, separated by commas (optional)."
-    )
-    async def list_references(self, ctx: commands.Context, location_id: int, tags: Optional[str] = None):
-        user_id = ctx.author.id
-        tags_list = [int(tag.strip()) for tag in tags.split(",")] if tags else None
-
-        try:
-            references = await self.reference_manager.list_references(user_id, location_id, tags_list)
-            if not references:
-                response = "📭 You have no references matching the criteria."
-                await self.send_response(ctx, response)
-                return
-
-            embed = discord.Embed(title="📑 Your References", color=discord.Color.blue())
-            for ref in references:
-                authors_str = ', '.join(ref['authors']) if ref['authors'] else 'N/A'
-                publication_year = ref.get('publication_year', 'N/A')
-                doi = ref.get('doi', 'N/A')
-                tags = ref.get('tags', [])
-                tags_str = ', '.join(map(str, tags)) if tags else 'N/A'
-
-                embed.add_field(
-                    name=f"ID `{ref['id']}`: {ref['title']}",
-                    value=(
-                        f"**Authors:** {authors_str}\n"
-                        f"**Publication Year:** {publication_year}\n"
-                        f"**DOI:** {doi}\n"
-                        f"**Tags:** {tags_str}"
-                    ),
-                    inline=False
-                )
-            await self.send_embed_response(ctx, embed)
-        except Exception as e:
-            logger.error(f"Error listing references: {e}")
-            await self.send_response(ctx, "❌ Failed to list references.")
-
-    @commands.hybrid_command(name="searchreference", description="Search your references by title or authors.")
-    @app_commands.describe(
-        location_id="Location ID to search within.",
-        query_text="Search term for title or authors."
-    )
-    async def search_reference(self, ctx: commands.Context, location_id: int, query_text: str):
-        user_id = ctx.author.id
-
-        try:
-            references = await self.reference_manager.search_references(user_id, location_id, query_text)
-            if not references:
-                response = "🔍 No matching references found."
-                await self.send_response(ctx, response)
-                return
-
-            embed = discord.Embed(title="🔎 Search Results", color=discord.Color.green())
-            for ref in references:
-                authors_str = ', '.join(ref['authors']) if ref['authors'] else 'N/A'
-                publication_year = ref.get('publication_year', 'N/A')
-                doi = ref.get('doi', 'N/A')
-                tags = ref.get('tags', [])
-                tags_str = ', '.join(map(str, tags)) if tags else 'N/A'
-
-                embed.add_field(
-                    name=f"ID `{ref['id']}`: {ref['title']}",
-                    value=(
-                        f"**Authors:** {authors_str}\n"
-                        f"**Publication Year:** {publication_year}\n"
-                        f"**DOI:** {doi}\n"
-                        f"**Tags:** {tags_str}"
-                    ),
-                    inline=False
-                )
-            await self.send_embed_response(ctx, embed)
-        except Exception as e:
-            logger.error(f"Error searching references: {e}")
-            await self.send_response(ctx, "❌ Failed to search references.")
-
- # ------------- PDF Commands -------------
-
-    @commands.hybrid_command(name="uploadpdf", description="Upload a PDF associated with a reference.")
-    @app_commands.describe(
-        reference_id="ID of the reference to associate the PDF with.",
-        file="The PDF file to upload."
-    )
-    async def upload_pdf(self, ctx: commands.Context, reference_id: int, file: discord.Attachment):
-        user_id = ctx.author.id
-
-        await ctx.defer(ephemeral=True)
-
-        # Check if the user owns the reference
-        try:
-            reference = await self.reference_manager.get_reference(reference_id, user_id)
-            if not reference:
-                await self.send_response(ctx, "❌ Reference not found or you don't have permission to modify it.")
-                return
-        except Exception as e:
-            logger.error(f"Error fetching reference: {e}")
-            await self.send_response(ctx, "❌ Failed to verify reference.")
-            return
-
-        # Ensure the file is a PDF
-        if not file.filename.lower().endswith(".pdf"):
-            await self.send_response(ctx, "❌ Only PDF files are allowed.")
-            return
-
-        try:
-            # Download the file
-            buffer = io.BytesIO()
-            await file.save(buffer)
-            buffer.seek(0)
-
-            # Optionally, upload to persistent storage
-            # For simplicity, we'll use the Discord CDN URL
-            file_url = file.url
-
-            pdf_id = await self.pdf_manager.upload_pdf(reference_id, file_url)
-            await self.send_response(ctx, f"✅ PDF uploaded with ID: `{pdf_id}`.")
-        except Exception as e:
-            logger.error(f"Error uploading PDF: {e}")
-            await self.send_response(ctx, "❌ Failed to upload PDF.")
-
-    @commands.hybrid_command(name="annotatepdf", description="Add an annotation to a PDF.")
-    @app_commands.describe(
-        pdf_id="ID of the PDF to annotate.",
-        content="Content of the annotation.",
-        page_number="Page number to annotate (optional).",
-        highlighted_text="Text to highlight in the PDF (optional)."
-    )
-    async def annotate_pdf(self, ctx: commands.Context, pdf_id: int, content: str, page_number: Optional[int] = None, highlighted_text: Optional[str] = None):
-        user_id = ctx.author.id
-
-        await ctx.defer(ephemeral=True)
-
-        try:
-            # Verify if the PDF exists
-            pdf = await self.pdf_manager.view_pdf(pdf_id)
-            if not pdf:
-                await self.send_response(ctx, "❌ PDF not found.")
-                return
-
-            # Optionally, verify if the user has access to annotate
-            # This depends on your application's logic
-
-            annotation_id = await self.pdf_manager.annotate_pdf(
-                pdf_id=pdf_id,
-                user_id=user_id,
-                page_number=page_number,
-                content=content,
-                highlighted_text=highlighted_text
-            )
-            await self.send_response(ctx, f"✅ Annotation added with ID: `{annotation_id}`.")
-        except Exception as e:
-            logger.error(f"Error annotating PDF: {e}")
-            await self.send_response(ctx, "❌ Failed to add annotation.")
-
-    @commands.hybrid_command(name="viewpdf", description="View information about a PDF.")
-    @app_commands.describe(pdf_id="ID of the PDF to view.")
-    async def view_pdf(self, ctx: commands.Context, pdf_id: int):
-        await ctx.defer(ephemeral=True)
-
-        try:
-            pdf = await self.pdf_manager.view_pdf(pdf_id)
-            if not pdf:
-                await self.send_response(ctx, "❌ PDF not found.")
-                return
-
-            annotations = await self.pdf_manager.get_annotations(pdf_id)
-            annotation_count = len(annotations)
-
-            embed = discord.Embed(title=f"📄 PDF ID: {pdf_id}", color=discord.Color.gold())
-            embed.add_field(name="📂 File URL", value=f"[Download PDF]({pdf['file_url']})", inline=False)
-            embed.add_field(name="🔗 Reference ID", value=str(pdf['reference_id']), inline=True)
-            embed.add_field(name="📝 Annotations", value=f"{annotation_count} found.", inline=True)
-
-            await self.send_embed_response(ctx, embed)
-        except Exception as e:
-            logger.error(f"Error viewing PDF: {e}")
-            await self.send_response(ctx, "❌ Failed to retrieve PDF information.")
-
-
-    # ------------- Citation Commands -------------
-
-    @commands.hybrid_command(name="generatecitation", description="Generate a citation for a reference.")
-    @app_commands.describe(
-        reference_id="ID of the reference to cite.",
-        citation_style="Citation style (e.g., APA, MLA, Chicago)."
-    )
-    async def generate_citation(self, ctx: commands.Context, reference_id: int, citation_style: str):
-        user_id = ctx.author.id
-
-        await ctx.defer(ephemeral=True)
-
-        try:
-            # Verify that the user owns the reference
-            reference = await self.reference_manager.get_reference(reference_id, user_id)
-            if not reference:
-                await self.send_response(ctx, "❌ Reference not found or you don't have permission to cite it.")
-                return
-
-            # Call CitationManager to generate the citation
-            citation_id = await self.citation_manager.generate_citation(
-                reference_id=reference_id,
-                user_id=user_id,
-                citation_style=citation_style
-            )
-            await self.send_response(ctx, f"✅ Citation generated with ID: `{citation_id}`.")
-        except Exception as e:
-            logger.error(f"Error generating citation: {e}")
-            await self.send_response(ctx, "❌ Failed to generate citation.")
-
-    @commands.hybrid_command(name="exportbibliography", description="Export your bibliography in a specified citation style.")
-    @app_commands.describe(
-        citation_style="Citation style for the bibliography (e.g., APA, MLA).",
-        location_id="Location ID to export bibliography from."
-    )
-    async def export_bibliography(self, ctx: commands.Context, citation_style: str, location_id: int):
-        user_id = ctx.author.id
-
-        await ctx.defer(ephemeral=True)
-
-        try:
-            bibliography = await self.citation_manager.export_bibliography(
-                user_id=user_id,
-                location_id=location_id,
-                citation_style=citation_style
-            )
-
-            if not bibliography:
-                await self.send_response(ctx, "📄 No citations found to export.")
-                return
-
-            # Discord message limit is 2000 characters; if exceeded, send as a file
-            if len(bibliography) > 2000:
-                buffer = io.StringIO(bibliography)
-                file = discord.File(fp=buffer, filename="bibliography.txt")
-                await self.send_response(ctx, "📄 Here's your bibliography:", file=file)
-            else:
-                await self.send_response(ctx, f"📄 **Bibliography ({citation_style}):**\n```\n{bibliography}\n")
-
-        except Exception as e:
-            logger.error(f"Error exporting bibliography: {e}")
-            await self.send_response(ctx, "❌ Failed to export bibliography.")
-
-    # ------------- Helper Methods -------------
-
-    async def send_response(self, ctx: commands.Context, content: str, file: discord.File = None):
-        """Sends a response to the context, handling both slash and text commands."""
-        if isinstance(ctx, commands.Context):
-            if ctx.interaction:
-                await ctx.interaction.followup.send(content, file=file, ephemeral=True)
-            else:
-                await ctx.send(content, file=file)
-        else:
-            await ctx.send(content, file=file)
-
-    async def send_embed_response(self, ctx: commands.Context, embed: discord.Embed):
-        """Sends an embed as a response, handling both slash and text commands."""
-        if isinstance(ctx, commands.Context):
-            if ctx.interaction:
-                await ctx.interaction.followup.send(embed=embed, ephemeral=True)
-            else:
-                await ctx.send(embed=embed)
-        else:
-            await ctx.send(embed=embed)
+            logger.error(f"Error during {operation} operation on {item_type}: {e}")
+            await self.send_response(ctx, f"❌ Operation failed: {e}")
+    
+    # Helper methods
+    def _format_reference_list(self, references: List[Dict]) -> str:
+        if not references:
+            return "📭 No references found."
+        return "\n".join(
+            f"ID `{ref['id']}`: {ref['title']} by {', '.join(ref['authors'])}" for ref in references
+        )
+    
+    def _handle_large_response(self, content: str) -> str:
+        if len(content) > 2000:
+            buffer = io.StringIO(content)
+            file = discord.File(fp=buffer, filename="output.txt")
+            return file
+        return content
 
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
     async def frame(self, ctx: commands.Context):
