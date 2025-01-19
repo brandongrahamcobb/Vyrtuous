@@ -24,9 +24,5 @@ class TwitchBot(commands.Bot):
         self.lock = lock
         self.handler = Message(self.config, self.conversations)
 
-    async def event_ready(self):
-        logger.info(f"Twitch Bot is ready! Logged in as {self.nick}")
-        logger.info(f"Connected to channels: {', '.join(self.initial_channels)}")
-
     async def event_message(self, message):
         logger.info(f'Received message: {message.content}')
