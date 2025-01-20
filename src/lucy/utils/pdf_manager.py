@@ -29,35 +29,18 @@ class PDFManager:
     def __init__(self, db_pool):
         self.pool = db_pool
 
-    async def upload_pdf(self, user_id: int, title: str, file: discord.Attachment, description: Optional[str], tags: Optional[List[str]]) -> int:
+    async def upload_pdf(self, user_id: int, title: str, file_url: str, description: Optional[str], tags: Optional[List[str]]) -> int:
         """
-        Upload a new PDF to the catalog and save it locally.
+        Upload a new PDF to the catalog.
         """
-        # Ensure the upload directory exists
-        Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
-
-        # Save the PDF locally
-        local_filename = f"{title.replace(' ', '_')}_{user_id}.pdf"
-        local_filepath = os.path.join(UPLOAD_DIR, local_filename)
-
-        # Download the file
-        async with aiohttp.ClientSession() as session:
-            async with session.get(file.url) as resp:
-                if resp.status == 200:
-                    with open(local_filepath, "wb") as f:
-                        f.write(await resp.read())
-                else:
-                    raise Exception(f"Failed to download PDF: HTTP {resp.status}")
-
-        # Store the file path in the database
         query = """
-            INSERT INTO pdf_catalog (user_id, title, file_url, description, tags, uploaded_at)
-            VALUES ($1, $2, $3, $4, $5, NOW())
-            RETURNING id;
+            INSERT INTO pdf_catalog (user_id, title, file_url, description, tags)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id
         """
         try:
             async with self.pool.acquire() as conn:
-                pdf_id = await conn.fetchval(query, user_id, title, local_filepath, description, tags)
+                pdf_id = await conn.fetchval(query, user_id, title, file_url, description, tags)
                 return pdf_id
         except Exception as e:
             logger.error(f"Error uploading PDF: {e}")
