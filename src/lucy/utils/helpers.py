@@ -148,6 +148,13 @@ DISCORD_RELEASE_MODE = False
 DISCORD_ROLE_PASS = 1308689505158565918
 DISCORD_TESTING_GUILD_ID = 1300517536001036348
 
+FTP_HOSTNAME = ''
+FTP_PASSWORD = ''
+FTP_PDF_URL = 'http://brandongcobb.com/pdfs'
+FTP_PUBLIC_URL = 'http://brandongcobb.com'
+FTP_USER = ''
+
+
 LOGGING_LEVEL = 'INFO'
 
 # OpenAI Chat
@@ -227,7 +234,7 @@ OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
                   "self-harm/instructions": {"type": "boolean"},
                   "harassment/threatening": {"type": "boolean"},
                   "violence": {"type": "boolean"},
-                  "carnism": {"type": "boolean"}
+                  "academic-dishonesty": {"type": "boolean"}
                 },
                 "required": [
                   "sexual",
@@ -241,7 +248,7 @@ OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
                   "self-harm/instructions",
                   "harassment/threatening",
                   "violence",
-                  "carnism"
+                  "academic-dishonesty"
                 ]
               },
               "category_scores": {
@@ -258,7 +265,7 @@ OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
                   "self-harm/instructions": {"type": "number"},
                   "harassment/threatening": {"type": "number"},
                   "violence": {"type": "number"},
-                  "carnism": {"type": "number"}
+                  "academic-dishonesty": {"type": "number"}
                 },
                 "required": [
                   "sexual",
@@ -272,7 +279,7 @@ OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
                   "self-harm/instructions",
                   "harassment/threatening",
                   "violence",
-                  "carnism"
+                  "academic-dishonesty"
                 ]
               }
             },
@@ -340,6 +347,7 @@ OPENAI_FINE_TUNING_RESPONSE_FORMAT = {
   }
 }
 OPENAI_MODEL_CONTEXT_LIMITS = {
+    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2':128000,
     'gpt-3.5-turbo': 4096,
     'gpt-4': 8192,
     'gpt-4-32k': 32768,
@@ -350,6 +358,7 @@ OPENAI_MODEL_CONTEXT_LIMITS = {
     'o1-mini': 128000,
 }
 OPENAI_MODEL_OUTPUT_LIMITS = {
+    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': 16384,
     'gpt-3.5-turbo': 4096,
     'gpt-4': 8192,
     'gpt-4-32k': 32768,

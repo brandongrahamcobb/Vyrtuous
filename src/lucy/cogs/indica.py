@@ -50,63 +50,8 @@ class Indica(commands.Cog):
         self.config = bot.config
         self.conversations = bot.conversations
         self.db_pool = bot.db_pool
-        self.game = Game(self.bot, self.bot.db_pool)
         self.handler = Message(self.config, self.conversations)
         self.predicator = Predicator(self.bot)
-        self.tag_manager = TagManager(self.bot.db_pool)
-        self.loop_task: Optional[str] = None
-
-    async def loop_tags(self, channel: discord.TextChannel):
-        while True:
-            try:
-                loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
-                if loop_tags:
-                    random_tag = choice(loop_tags)
-                    message_text = random_tag['content'] or random_tag['attachment_url'] or ''
-                    if message_text:
-                        await channel.send(message_text)
-                await asyncio.sleep(300)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                logger.error(f'Error during loop_tags: {e}')
-
-    def start_loop_task(self, channel: discord.TextChannel):
-        if self.loop_task is None or self.loop_task.done():
-            self.loop_task = asyncio.create_task(self.loop_tags(channel))
-
-    def stop_loop_task(self):
-        if self.loop_task and not self.loop_task.done():
-            self.loop_task.cancel()
-            self.loop_task = None
-
-#    @commands.Cog.listener()
-#    async def on_ready(self)
-#        if not self.config.get('openai', {}).get('api_key'):
-#            await ctx.send("API key for OpenAI is not configured.")
-#            return
-#
-#        benchmark = Benchmark(self.config)
-#        await ctx.send("Starting benchmark... This may take a while.")
-#
-#        try:
-#            results = await benchmark.perform_benchmark()
-#            embed = discord.Embed(
-#                title="Benchmark Results",
-#                color=discord.Color.green(),
-#                timestamp=datetime.datetime.utcnow()
-#            )
-#            embed.add_field(name="Total Requests", value=results['total_requests'], inline=True)
-#            embed.add_field(name="Successful Requests", value=results['successful_requests'], inline=True)
-#            embed.add_field(name="Failed Requests", value=results['failed_requests'], inline=True)
-#            embed.add_field(name="Total Time (s)", value=f"{results['total_time_seconds']:.2f}", inline=True)
-#            embed.add_field(name="Average Latency (s)", value=f"{results['average_latency_seconds']:.4f}", inline=True)
-#            embed.add_field(name="Throughput (req/s)", value=f"{results['throughput_requests_per_second']:.2f}", inline=True)
-#            embed.add_field(name="Error Rate (%)", value=f"{results['error_rate_percent']:.2f}%", inline=True)
-#            await ctx.send(embed=embed)
-#        except Exception as e:
-#            logger.error(f'Error during benchmarking: {e}')
-#            await ctx.send("An error occurred while performing the benchmark.")
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -163,22 +108,35 @@ class Indica(commands.Cog):
                         try:
                             full_response = json.loads(moderation_completion)
                             results = full_response.get('results', [])
-                            if results and results[0].get('flagged', False):
+                            if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
                                 await self.handle_moderation(message)
                                 return
+                            elif self.predicator.is_spawd(ctx) and self.bot.user in message.mentions:
+                                async for chat_completion in self.handler.generate_chat_completion(
+                                    custom_id=message.author.id, array=[item], model='o1-mini'
+                                ):
+                                    if len(chat_completion) > 2000:
+                                        unique_filename = f'temp_{uuid.uuid4()}.txt'
+                                        with open('part_1_' + unique_filename, 'w') as f:
+                                            f.write(chat_completion[:1000])
+                                        await message.reply(file=discord.File('part_1_' + unique_filename))
+                                        os.remove('part_1_' + unique_filename)
+                                        with open('part_2_' + unique_filename, 'w') as f:
+                                            f.write(chat_completion[1000:])
+                                        await message.reply(file=discord.File('part_2_' + unique_filename))
+                                        os.remove('part_2_' + unique_filename)
+                                    else:
+                                        await message.reply(chat_completion)
                             else:
                                 async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
                                     chat_moderation = json.loads(moderation_completion)
-                                    carnism_results = chat_moderation.get('results', [])
-                                    carnism_flagged = carnism_results[0]['categories'].get('carnism', False)
-                                    if carnism_flagged:
-                                        carnism_score = carnism_results[0]['category_scores'].get('carnism', 0)
+                                    academic_dishonesty_results = chat_moderation.get('results', [])
+                                    academic_dishonesty_flagged = academic_dishonesty_results[0]['categories'].get('academic-dishonesty', False)
+                                    if academic_dishonesty_flagged:
+                                        academic_dishonesty_score = academic_dishonesty_results[0]['category_scores'].get('academic-dishonesty', 0)
                                         await self.handle_moderation(message)
-                                        NLPUtils.append_to_jsonl(PATH_TRAINING, carnism_score, message.content, message.author.id)
+                                        NLPUtils.append_to_jsonl(PATH_TRAINING, academic_dishonesty_score, message.content, message.author.id)
                                         return
-#                                    if await self.predicator.is_at_home_func(message.guild.id):
-                                    await self.game.distribute_xp(message.author.id, message.author.name)
-                                    # if await self.predicator.is_vegan_user(message.author) and message.guild.id != 730907954345279591: # and self.predicator.is_at_home_func(message.guild.id):
                                     if True:
                                         if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
                                             async for chat_completion in self.handler.generate_chat_completion(
