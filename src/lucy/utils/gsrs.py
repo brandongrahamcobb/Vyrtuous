@@ -29,8 +29,6 @@ import math
 import os
 import requests
 
-path = os.path.dirname(os.path.abspath(__file__))
-
 def gsrs(arg):
 
     logger.info(f'Starting GSRS search for argument: {arg}')
@@ -38,7 +36,7 @@ def gsrs(arg):
     chrome_options.add_argument('--headless')  # Run headless Chrome (no UI)
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
-    executable_path = os.path.join(path, 'chromedriver')
+    executable_path = os.path.join(DIR_BASE, '..', 'chromedriver')
     logger.debug(f'Using executable path: {executable_path}')
     driver = webdriver.Chrome(service=Service(executable_path=executable_path), options=chrome_options)
 
