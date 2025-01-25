@@ -97,31 +97,33 @@ class Sativa(commands.Cog):
             if not pdfs:
                 await ctx.send("📭 No PDFs found.")
                 return
-
-            # Generate pages for pagination
             pages = []
-            for i in range(0, len(pdfs), 5):  # Group 5 PDFs per page
+            for i in range(0, len(pdfs), 5):
                 embed = discord.Embed(title="📂 Your PDFs", color=discord.Color.blue())
                 for pdf in pdfs[i:i + 5]:
+                    description = (pdf['description'] or 'N/A')
+                    if len(description) > 500:
+                        description = description[:497] + "..."
+                    tags = ', '.join(pdf['tags']) if pdf['tags'] else 'N/A'
+                    if len(tags) > 500:
+                        tags = tags[:497] + "..."
+    
                     embed.add_field(
                         name=f"ID `{pdf['id']}`: {pdf['title']}",
                         value=(
-                            f"**Description:** {pdf['description'] or 'N/A'}\n"
-                            f"**Tags:** {', '.join(pdf['tags']) if pdf['tags'] else 'N/A'}\n"
+                            f"**Description:** {description}\n"
+                            f"**Tags:** {tags}\n"
                             f"[Download PDF]({pdf['file_url']})"
                         ),
                         inline=False
                     )
                 embed.set_footer(text=f"Page {len(pages) + 1} of {((len(pdfs) - 1) // 5) + 1}")
                 pages.append(embed)
-
-            # Start the paginator
             paginator = Paginator(self.bot, ctx, pages)
             await paginator.start()
-
         except Exception as e:
-            logger.error(f"Error listing PDFs: {e}")
-            await ctx.send("❌ Failed to list PDFs.")
+            await ctx.send(f"❌ An error occurred: {str(e)}")
+
 
     @commands.hybrid_command(name="searchpdfs", description="Search PDFs in your catalog.")
     @discord.app_commands.describe(query_text="Search term for title or tags.")
