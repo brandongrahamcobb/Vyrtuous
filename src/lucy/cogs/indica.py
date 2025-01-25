@@ -89,7 +89,7 @@ class Indica(commands.Cog):
     async def on_message(self, message):
         logger.info(f'Received message: {message.content}')
         try:
-            if message.author.bot:
+            if message.author == self.bot.user:
                 return
             ctx = await self.bot.get_context(message)
             array = await self.handler.process_array(
@@ -103,7 +103,7 @@ class Indica(commands.Cog):
             logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
             for item in array:
                 # Moderation
-                if self.config['openai_chat_moderation']:
+                if self.bot.user in message.mentions and self.config['openai_chat_moderation']:
                     async for moderation_completion in create_moderation(input_array=[item]):
                         try:
                             full_response = json.loads(moderation_completion)
@@ -127,33 +127,32 @@ class Indica(commands.Cog):
                                         os.remove('part_2_' + unique_filename)
                                     else:
                                         await message.reply(chat_completion)
-                            else:
-                                async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
-                                    chat_moderation = json.loads(moderation_completion)
-                                    academic_dishonesty_results = chat_moderation.get('results', [])
-                                    academic_dishonesty_flagged = academic_dishonesty_results[0]['categories'].get('academic-dishonesty', False)
-                                    if academic_dishonesty_flagged:
-                                        academic_dishonesty_score = academic_dishonesty_results[0]['category_scores'].get('academic-dishonesty', 0)
-                                        await self.handle_moderation(message)
-                                        NLPUtils.append_to_jsonl(PATH_TRAINING, academic_dishonesty_score, message.content, message.author.id)
-                                        return
-                                    if True:
-                                        if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
-                                            async for chat_completion in self.handler.generate_chat_completion(
-                                                custom_id=message.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
-                                            ):
-                                                if len(chat_completion) > 2000:
-                                                    unique_filename = f'temp_{uuid.uuid4()}.txt'
-                                                    with open(unique_filename, 'w') as f:
-                                                        f.write(chat_completion)
-                                                    await message.reply(file=discord.File(unique_filename))
-                                                    os.remove(unique_filename)
-                                                else:
-                                                    await message.reply(chat_completion)
                         except Exception as e:
                             logger.error(traceback.format_exc())
                             if await self.predicator.is_at_home_func(message.guild.id):
                                 print(f'An error occurred: {e}')
+                async for moderation_completion in self.handler.generate_moderation_completion(custom_id=message.author.id, array=array):
+                    chat_moderation = json.loads(moderation_completion)
+                    academic_dishonesty_results = chat_moderation.get('results', [])
+                    academic_dishonesty_flagged = academic_dishonesty_results[0]['categories'].get('academic-dishonesty', False)
+                    if academic_dishonesty_flagged:
+                        academic_dishonesty_score = academic_dishonesty_results[0]['category_scores'].get('academic-dishonesty', 0)
+                        await self.handle_moderation(message)
+                        NLPUtils.append_to_jsonl(PATH_TRAINING, academic_dishonesty_score, message.content, message.author.id)
+                        return
+                    if True:
+                        if self.config['openai_chat_completion'] and self.bot.user in message.mentions:
+                            async for chat_completion in self.handler.generate_chat_completion(
+                                custom_id=message.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
+                            ):
+                                if len(chat_completion) > 2000:
+                                    unique_filename = f'temp_{uuid.uuid4()}.txt'
+                                    with open(unique_filename, 'w') as f:
+                                        f.write(chat_completion)
+                                    await message.reply(file=discord.File(unique_filename))
+                                    os.remove(unique_filename)
+                                else:
+                                    await message.reply(chat_completion)
         except Exception as e:
             logger.error(traceback.format_exc())
             if await self.predicator.is_at_home_func(message.guild.id):

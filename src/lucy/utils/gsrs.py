@@ -36,7 +36,7 @@ def gsrs(arg):
     chrome_options.add_argument('--headless')  # Run headless Chrome (no UI)
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
-    executable_path = os.path.join(DIR_BASE, '..', 'chromedriver')
+    executable_path = os.path.join(DIR_HOME, 'Vyrtuous', 'chromedriver')
     logger.debug(f'Using executable path: {executable_path}')
     driver = webdriver.Chrome(service=Service(executable_path=executable_path), options=chrome_options)
 
