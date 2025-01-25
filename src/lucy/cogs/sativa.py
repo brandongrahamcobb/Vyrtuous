@@ -87,55 +87,52 @@ class Sativa(commands.Cog):
             logger.error(f"Error uploading PDF: {e}")
             await ctx.send("❌ Failed to upload PDF.")
 
-   @commands.hybrid_command(name="listpdfs", description="List all your uploaded PDFs.")
-   @discord.app_commands.describe(tags="Filter by tags, separated by commas (optional).")
-   async def list_pdfs(self, ctx: commands.Context, tags: Optional[str] = None):
-       user_id = ctx.author.id
-       tags_list = [tag.strip() for tag in tags.split(",")] if tags else None
-       try:
-           pdfs = await self.pdf_manager.list_pdfs(user_id, tags_list)
-           if not pdfs:
-               await ctx.send("📭 No PDFs found.")
-               return
+    @commands.hybrid_command(name="listpdfs", description="List all your uploaded PDFs.")
+    @discord.app_commands.describe(tags="Filter by tags, separated by commas (optional).")
+    async def list_pdfs(self, ctx: commands.Context, tags: Optional[str] = None):
+        user_id = ctx.author.id
+        tags_list = [tag.strip() for tag in tags.split(",")] if tags else None
+        try:
+            pdfs = await self.pdf_manager.list_pdfs(user_id, tags_list)
+            if not pdfs:
+                await ctx.send("📭 No PDFs found.")
+                return
+    
+            # Generate pages for pagination
+            pages = []
+            for i in range(0, len(pdfs), 5):  # Group 5 PDFs per page
+                embed = discord.Embed(title="📂 Your PDFs", color=discord.Color.blue())
+                for pdf in pdfs[i:i + 5]:
+                    # Truncate values to fit within the limit
+                    title = pdf['title'] if pdf['title'] else "Untitled"
+                    if len(title) > 200:  # Truncate title to fit
+                        title = title[:197] + "..."
+                    field_name = f"ID `{pdf['id']}`: {title}"
+                    if len(field_name) > 256:  # Ensure field name fits within the limit
+                        field_name = field_name[:253] + "..."
    
-           # Generate pages for pagination
-           pages = []
-           for i in range(0, len(pdfs), 5):  # Group 5 PDFs per page
-               embed = discord.Embed(title="📂 Your PDFs", color=discord.Color.blue())
-               for pdf in pdfs[i:i + 5]:
-                   # Truncate values to fit within the limit
-                   title = pdf['title'] if pdf['title'] else "Untitled"
-                   if len(title) > 200:  # Truncate title to fit
-                       title = title[:197] + "..."
-                   field_name = f"ID `{pdf['id']}`: {title}"
-                   if len(field_name) > 256:  # Ensure field name fits within the limit
-                       field_name = field_name[:253] + "..."
-   
-                   description = (pdf['description'] or 'N/A')
-                   if len(description) > 500:  # Arbitrary cutoff for description
-                       description = description[:497] + "..."
-                   tags = ', '.join(pdf['tags']) if pdf['tags'] else 'N/A'
-                   if len(tags) > 500:  # Arbitrary cutoff for tags
-                       tags = tags[:497] + "..."
-   
-                   embed.add_field(
-                       name=field_name,
-                       value=(
-                           f"**Description:** {description}\n"
-                           f"**Tags:** {tags}\n"
-                           f"[Download PDF]({pdf['file_url']})"
-                       ),
-                       inline=False
-                   )
-               embed.set_footer(text=f"Page {len(pages) + 1} of {((len(pdfs) - 1) // 5) + 1}")
-               pages.append(embed)
-   
-           # Start the paginator
-           paginator = Paginator(self.bot, ctx, pages)
-           await paginator.start()
-   
-       except Exception as e:
-           await ctx.send(f"❌ An error occurred: {str(e)}")
+                    description = (pdf['description'] or 'N/A')
+                    if len(description) > 500:  # Arbitrary cutoff for description
+                        description = description[:497] + "..."
+                    tags = ', '.join(pdf['tags']) if pdf['tags'] else 'N/A'
+                    if len(tags) > 500:  # Arbitrary cutoff for tags
+                        tags = tags[:497] + "..."
+    
+                    embed.add_field(
+                        name=field_name,
+                        value=(
+                            f"**Description:** {description}\n"
+                            f"**Tags:** {tags}\n"
+                            f"[Download PDF]({pdf['file_url']})"
+                        ),
+                        inline=False
+                    )
+                embed.set_footer(text=f"Page {len(pages) + 1} of {((len(pdfs) - 1) // 5) + 1}")
+                pages.append(embed)
+            paginator = Paginator(self.bot, ctx, pages)
+            await paginator.start()
+        except Exception as e:
+            await ctx.send(f"❌ An error occurred: {str(e)}")
 
     @commands.hybrid_command(name="searchpdfs", description="Search PDFs in your catalog.")
     @discord.app_commands.describe(query_text="Search term for title or tags.")
