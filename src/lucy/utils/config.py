@@ -141,6 +141,7 @@ class Config:
             'discord_release_mode': ('Discord release mode?', DISCORD_RELEASE_MODE),
             'discord_role_pass': ('What is the role ID you\'d like unfiltered?', DISCORD_ROLE_PASS),
             'discord_testing_guild_id': ('What is the Discord testing guild ID?', DISCORD_TESTING_GUILD_ID),
+            'discord_testing_guild_ids': ('Any extras?', DISCORD_TESTING_GUILD_ID),
             'discord_token': ('What is the Discord token?', ''),
             'logging_level': ('What is the logging level (DEBUG, INFO, etc.)?', LOGGING_LEVEL),
             'openai_chat_add_completion_to_history': ('Should completions be added to conversations?', OPENAI_CHAT_ADD_COMPLETION_TO_HISTORY),
@@ -168,4 +169,11 @@ class Config:
         }
         for key, (prompt_text, default_value) in config_fields.items():
             config[key] = prompt_for_values(prompt_text, config.get(key, default_value))
+            if key == 'discord_testing_guild_ids':
+                if isinstance(eval(config[key]), list):
+                    existing_ids = eval(config[key])
+                    new_default = [DISCORD_TESTING_GUILD_ID] + existing_ids
+                else:  # Fallback to just DISCORD_TESTING_GUILD_ID
+                    new_default = [DISCORD_TESTING_GUILD_ID]
+                config[key] = new_default
         return config

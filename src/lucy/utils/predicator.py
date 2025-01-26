@@ -45,7 +45,8 @@ class Predicator:
 
     # **Boolean Methods for Inline Checks**
     async def is_at_home_func(self, guild_id: int) -> bool:
-        return guild_id == self.config['discord_testing_guild_id']
+        if guild_id == self.config['discord_testing_guild_id'] or (guild_id in self.config['discord_testing_guild_ids']):
+            return True
 
     def is_spawd(self, ctx: commands.Context) -> bool:
         return ctx.author.id == 154749533429956608
