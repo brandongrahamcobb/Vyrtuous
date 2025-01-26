@@ -168,7 +168,6 @@ class Config:
             'version': ('Would you like to override the bot version?', VERSION),
         }
         for key, (prompt_text, default_value) in config_fields.items():
-            config[key] = prompt_for_values(prompt_text, config.get(key, default_value))
             if key == 'discord_testing_guild_ids':
                 if isinstance(eval(config[key]), list):
                     existing_ids = eval(config[key])
@@ -176,4 +175,5 @@ class Config:
                 else:  # Fallback to just DISCORD_TESTING_GUILD_ID
                     new_default = [DISCORD_TESTING_GUILD_ID]
                 config[key] = new_default
+            config[key] = prompt_for_values(prompt_text, config.get(key, default_value))
         return config
