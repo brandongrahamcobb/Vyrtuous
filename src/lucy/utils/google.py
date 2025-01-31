@@ -14,41 +14,28 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from bs4 import BeautifulSoup
+import discord
+from discord.ext import commands
+from googleapiclient.discovery import build
 from lucy.utils.setup_logging import logger
-
-import requests
+from lucy.utils.config import Config
 
 def google(query: str, num_results: int = 5):
-
-    logger.info(f'Starting Google search for query: `{query}` with {num_results} results.')
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-    search_url = 'https://www.google.com/search'
-    params = {'q': query, 'num': num_results}
+    logger.info(f"Starting Google search for query: `{query}` with {num_results} results.")
 
     try:
-        logger.debug(f'Sending request to Google search URL: {search_url} with params: {params}')
-        response = requests.get(search_url, headers=headers, params=params)
-        response.raise_for_status()  # Raise an error for bad HTTP responses
-        logger.info('Received response from Google search.')
-        soup = BeautifulSoup(response.text, 'html.parser')
-        results = []
-        for g in soup.find_all('div', class_='g'):
-            title = g.find('h3').text if g.find('h3') else 'No title'
-            link = g.find('a')['href'] if g.find('a') else 'No link'
-            results.append({'title': title, 'link': link})
-            logger.debug(f'Extracted result: Title: {title}, Link: {link}')
-            if len(results) >= num_results:
-                break
-        logger.info(f'Successfully extracted {len(results)} search results.')
-        return results
+        service = build("customsearch", "v1", developerKey=Config.get_config()['api_keys']['Google']['api_key'])
+        result = service.cse().list(q=query, cx=Config.get_config()['api_keys']['Google']['client_id'], num=num_results).execute()
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f'Error during the web request: {e}')
-        return []
+        search_results = [
+            {"title": item["title"], "link": item["link"]}
+            for item in result.get("items", [])
+        ]
+
+        logger.info(f"Successfully extracted {len(search_results)} search results.")
+        print(search_results)
+        return search_results
 
     except Exception as e:
-        logger.error(f'An unexpected error occurred: {e}')
+        logger.error(f"An error occurred: {e}")
         return []

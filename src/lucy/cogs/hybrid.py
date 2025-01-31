@@ -270,14 +270,15 @@ class Hybrid(commands.Cog):
         if ctx.interaction:
             async with ctx.typing():
                 await ctx.interaction.response.defer(ephemeral=True)
-        if not await self.predicator.is_at_home_func(ctx.guild.id):
-            return
-        if not self.predicator.is_release_mode_func(ctx):
-            return
+#        if not await self.predicator.is_at_home_func(ctx.guild.id):
+ #           return
+  #      if not self.predicator.is_release_mode_func(ctx):
+   #         return
         results = google(query)
         embed = discord.Embed(title=f'Search Results for \"{query}\"', color=discord.Color.blue())
         for result in results:
-            embed.add_field(name=result['title'], value=result['link'], inline=False)
+            title, link = result.get("title", "No Title"), result.get("link", "No Link")
+            embed.add_field(name=title, value=link, inline=False)
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')

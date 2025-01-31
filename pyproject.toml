@@ -5,7 +5,11 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "lucy"
+<<<<<<< Updated upstream
 version = "9.6.3"
+=======
+version = "9.7.1"
+>>>>>>> Stashed changes
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
@@ -50,6 +54,7 @@ toml = "^0.10.2"
 audioop-lts = "^0.2.1"
 pytz = "^2024.2"
 discord-ext-menus = "^1.1"
+google-api-python-client = "^2.160.0"
 
 [tool.poetry.scripts]
 lucy = "lucy.main:run"
