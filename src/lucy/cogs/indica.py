@@ -42,6 +42,7 @@ import shutil
 import subprocess
 import traceback
 import uuid
+import yaml
 
 class Indica(commands.Cog):
 
@@ -92,6 +93,29 @@ class Indica(commands.Cog):
             if message.author == self.bot.user:
                 return
             ctx = await self.bot.get_context(message)
+            author = ctx.author.name
+            author_char = author[0].upper()  # Fixed: Get the first character in uppercase
+            
+            data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
+            
+            users_file = join(DIR_HOME, '.users', 'users')
+            
+            if exists(users_file):
+                with open(users_file, 'r+') as file:  # Fixed: 'r+' allows reading and writing
+                    try:
+                        data = yaml.safe_load(file) or data  # Handle empty file case
+                    except yaml.YAMLError:
+                        data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}  # Reset on error
+                    if author_char not in data:
+                        data[author_char] = []  # Ensure the key exists
+                    if author not in data[author_char]:
+                        data[author_char].append(author)  # Append user if not already there
+                        file.seek(0)  # Move to beginning before writing
+                        file.write(yaml.dump(data))
+                        file.truncate()  # Truncate extra old content
+            else:
+                with open(users_file, 'w') as file:  # 'w' to create new file
+                    yaml.dump(data, file)
             array = await self.handler.process_array(
                 message.content, attachments=message.attachments
             )
