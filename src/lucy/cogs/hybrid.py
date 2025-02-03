@@ -25,6 +25,7 @@ from lucy.utils.frames import extract_random_frames
 from lucy.utils.add_watermark import add_watermark
 from lucy.utils.average_score import average_score
 from lucy.utils.combine import combine
+from lucy.utils.create_batch_completion import BatchProcessor
 from lucy.utils.create_completion import create_completion
 from lucy.utils.draw_fingerprint import draw_fingerprint
 from lucy.utils.draw_watermarked_molecule import draw_watermarked_molecule
@@ -53,11 +54,14 @@ import pytz
 import shlex
 import time
 import traceback
+import uuid
 
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
+        self.conversations = bot.conversations
+        self.batch_processor = BatchProcessor(bot)
         self.predicator = Predicator(self.bot)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
@@ -69,6 +73,80 @@ class Hybrid(commands.Cog):
             if lang_name.lower() == language_name:
                 return lang_code
         return None
+
+    @commands.hybrid_command(name="batch_results", with_app_command=True)
+    async def batch_results(self, ctx: commands.Context):
+        responses = self.batch_processor.get_user_responses(ctx.author)
+        if responses:
+            response_text = "\n\n".join(responses)
+            if len(response_text) > 2000:
+                await ctx.send("Responses are too long. Sending as a file.")
+                with open(f"batch_{ctx.author.name}.txt", "w") as f:
+                    f.write(response_text)
+                await ctx.send(file=discord.File(f"batch_{ctx.author.name}.txt"))
+            else:
+                await ctx.send(response_text)
+        else:
+            await ctx.send("No batch responses available.")
+
+    @commands.hybrid_command(name="chat", with_app_command=True)
+    async def chat(
+        self,
+        ctx: commands.Context,
+        model: str,
+        prompt: str,
+        new: bool = True,  # True = Execute now, False = Queue for batch processing
+        max_tokens: int = None,
+        response_format: str = None,
+        stop: str = None,
+        store: bool = None,
+        stream: bool = None,
+        sys_input: str = None,
+        temperature: float = None,
+        top_p: float = None,
+        use_history: bool = None,
+        add_completion_to_history: bool = None,
+    ):
+        """
+        Slash command to submit an OpenAI chat request.
+        - Users **must specify `model` and `prompt`**.
+        - Other parameters are **optional** and default to values from `config` unless overridden.
+        - **If `new=True`**, request executes immediately.
+        - **If `new=False`**, request is queued for batch processing.
+        """
+        await ctx.defer()
+        input_array = [{"role": "user", "content": prompt}]
+        custom_id = f"{ctx.author.id}-{uuid.uuid4()}"  # Unique ID per request
+        request_data = {
+            "completions": 1,
+            "custom_id": custom_id,
+            "input_array": input_array,
+            "max_tokens": max_tokens if max_tokens is not None else self.config.get("openai_chat_max_tokens", 512),
+            "model": model,  # User-specified model
+            "response_format": response_format if response_format is not None else self.config.get("openai_chat_response_format", "json"),
+            "stop": stop if stop is not None else self.config.get("openai_chat_stop", None),
+            "store": store if store is not None else self.config.get("openai_chat_store", False),
+            "stream": stream if stream is not None else self.config.get("openai_chat_stream", False),
+            "sys_input": sys_input if sys_input is not None else self.config.get("openai_chat_sys_input", None),
+            "temperature": temperature if temperature is not None else self.config.get("openai_chat_temperature", 0.7),
+            "top_p": top_p if top_p is not None else self.config.get("openai_chat_top_p", 1.0),
+            "use_history": use_history if use_history is not None else self.config.get("openai_chat_use_history", True),
+            "add_completion_to_history": add_completion_to_history if add_completion_to_history is not None else self.config.get("openai_chat_add_completion_to_history", True),
+        }
+        if new:
+            async for chat_completion in self.conversations.create_https_completion(**request_data):
+                if len(chat_completion) > 2000:
+                    unique_filename = f'temp_{uuid.uuid4()}.txt'
+                    with open(unique_filename, 'w') as f:
+                        f.write(chat_completion)
+                    await ctx.send(file=discord.File(unique_filename))
+                    os.remove(unique_filename)
+                else:
+                    await ctx.send(chat_completion)
+        else:
+            with open(PATH_OPENAI_REQUESTS, "a") as f:
+                f.write(json.dumps(request_data) + "\n")
+            await ctx.send("✅ Your request has been queued for weekend batch processing.")
 
     @commands.hybrid_command(name='colorize', description=f'Usage: between `lcolorize 0 0 0` and `lcolorize 255 255 255` or `l colorize <color>`')
     @commands.has_permissions(manage_roles=True) # Do you have manage_roles permissions?
@@ -163,6 +241,10 @@ class Hybrid(commands.Cog):
                 fingerprints = []
                 names = []
                 molecule = get_mol(args[0])
+                if molecule is None:
+                    embed = discord.Embed(description='Invalid molecule name or structure.')
+                    await ctx.send(embed=embed)
+                    return
                 for _ in range(quantity.default):
                     names.append(args[0])
                     fingerprints.append(draw_fingerprint([molecule, molecule]))
