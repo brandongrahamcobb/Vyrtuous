@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 from lucy.utils.backup import perform_backup, setup_backup_directory
 from lucy.utils.helpers import *
 from lucy.utils.tag import TagManager
-
+from lucy.utils.create_batch_completion import BatchProcessor
 import asyncio
 import datetime
 import discord
@@ -22,9 +22,19 @@ class Ruderalis(commands.Cog):
             1315735859848544378: 1300517536001036348,
         }
         self.config = bot.config
+        self.batch_processor = BatchProcessor(self.bot)
         self.guild_loops_index = defaultdict(int)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.tags_loop.start()
+        self.batch_task.start()
+
+    @tasks.loop(hours=168)  # Runs once a week
+    async def batch_task(self):
+        now = datetime.datetime.utcnow()
+        if now.weekday() in [5, 6]:  # Saturday or Sunday
+            print("Running batch processing...")
+            result_message = await self.batch_processor.process_batches()
+            print(result_message)
 
     @tasks.loop(hours=24)
     async def backup_database(self):
