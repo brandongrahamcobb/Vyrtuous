@@ -55,6 +55,7 @@ import discord
 import io
 import json
 import os
+import pubchempy as pcp
 import pytz
 import shlex
 import time
