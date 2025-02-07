@@ -57,6 +57,7 @@ import json
 import os
 import pubchempy as pcp
 import pytz
+import re
 import shlex
 import time
 import traceback
@@ -207,7 +208,7 @@ class Hybrid(commands.Cog):
         option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'),
         *,
         molecules: str = commands.parameter(default=None, description='Any molecule'),
-        quantity: int = commands.parameter(default=11, description='Quantity of glows')
+        quantity: int = commands.parameter(default=1, description='Quantity of glows')
     ):
         try:
             if ctx.interaction:
@@ -353,22 +354,42 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='smiles')
     async def smiles(self, ctx: commands.Context, *, molecules: str):
+        """
+        Hybrid command that returns the SMILES representation of the input.
+        
+        If the input is not in FASTA/peptide format, use PubChem or direct SMILES conversion.
+        Otherwise, if the input appears to be a peptide (detected by the presence of known peptide abbreviations
+        or parentheses), use the peptide conversion functions.
+        """
         try:
             if ctx.interaction:
-                 await ctx.interaction.response.defer(ephemeral=True)
+                await ctx.interaction.response.defer(ephemeral=True)
             args = shlex.split(molecules)
-            try:
-                for arg in args:
-                    compounds = pcp.get_compounds(arg, 'name')
+            output = []
+            for arg in args:
+                compounds = pcp.get_compounds(arg, 'name')
+                if compounds:
                     compound = compounds[0]
-                    isomeric_smiles = compound.isomeric_smiles
-                    await ctx.send(f'The isomeric SMILES for {arg} is: {isomeric_smiles}')
-            except:
-                await ctx.send(traceback.format_exc())
-        except:
-            if arg is None:
-                return
-            await ctx.send(f'{arg} is an unknown molecule.')
+                    smiles_str = compound.isomeric_smiles
+                    output.append(f"{arg}: {smiles_str}")
+                    continue
+                else:
+                    mol = Chem.MolFromSmiles(arg)
+                    if mol:
+                        smiles_str = Chem.MolToSmiles(mol)
+                        output.append(f"{arg}: {smiles_str}")
+                        continue
+        except Exception as e:
+            logger.warning(f"Direct molecule conversion failed for '{arg}': {e}")
+                # Otherwise, assume it's a peptide.
+        mol = get_mol(arg)
+        if mol is None:
+            output.append(f"{arg}: Failed to generate molecule.")
+        else:
+            smiles_str = Chem.MolToSmiles(mol)
+            output.append(f"{arg}: {smiles_str}")
+        result = "\n".join(output)
+        await ctx.send(f"SMILES:\n```\n{result}\n```")
 #    @commands.command()
 #    async def languages(self, ctx):
 #        supported_languages = ', '.join(LANGUAGES.values())
