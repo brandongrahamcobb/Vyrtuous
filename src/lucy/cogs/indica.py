@@ -23,7 +23,6 @@ from lucy.utils.create_moderation import create_moderation
 from lucy.utils.draw_fingerprint import draw_fingerprint
 from lucy.utils.helpers import *
 from lucy.utils.game import Game
-from lucy.utils.get_mol import get_mol
 from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
 from lucy.utils.nlp_utils import NLPUtils

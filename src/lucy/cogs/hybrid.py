@@ -31,6 +31,8 @@ from lucy.utils.draw_fingerprint import draw_fingerprint
 from lucy.utils.draw_watermarked_molecule import draw_watermarked_molecule
 from lucy.utils.game import Game
 from lucy.utils.get_mol import get_mol
+from lucy.utils.get_molecule_name import get_molecule_name
+from lucy.utils.get_proximity import get_proximity
 from lucy.utils.google import google
 from lucy.utils.gsrs import gsrs
 from lucy.utils.helpers import *
@@ -40,6 +42,9 @@ from lucy.utils.script import script
 from lucy.utils.tag import TagManager
 from lucy.utils.unique_pairs import unique_pairs
 from lucy.utils.usage import OpenAIUsageClient
+from rdkit import Chem
+from rdkit.DataStructs import FingerprintSimilarity
+from rdkit.Chem import AllChem
 from random import choice
 from typing import Dict, List, Optional
 #import aiomysql
@@ -66,6 +71,7 @@ class Hybrid(commands.Cog):
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
         self.game = Game(self.bot, self.bot.db_pool)
+        self.stacks = {}
 
     def get_language_code(self, language_name):
         language_name = language_name.lower()
@@ -200,7 +206,7 @@ class Hybrid(commands.Cog):
         option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'),
         *,
         molecules: str = commands.parameter(default=None, description='Any molecule'),
-        quantity: int = commands.parameter(default=1, description='Quantity of glows')
+        quantity: int = commands.parameter(default=11, description='Quantity of glows')
     ):
         try:
             if ctx.interaction:
@@ -328,6 +334,40 @@ class Hybrid(commands.Cog):
         await ctx.send(f"{member.mention} is at level {user['level']} with {user['xp']:.2f} XP. "
                        f"You need {xp_needed:.2f} XP to reach level {user['level'] + 1}.")
 
+    @commands.hybrid_command(name='logp')
+    async def logp(self, ctx: commands.Context, *, molecules: str):
+        args = shlex.split(molecules)
+        for arg in args:
+            compounds = pcp.get_compounds(arg, 'name')
+            compound_data = compounds[0].to_dict(properties=['isomeric_smiles'])
+            mol = Chem.MolFromSmiles(compound_data['isomeric_smiles'])
+            log_p = Crippen.MolLogP(mol)
+            await ctx.send(f'Your octanol:water coefficient is: {log_p}')
+
+    @commands.hybrid_command(name='sim')
+    async def sim(self, ctx: commands.Context, *, molecules: str):
+        args = shlex.split(molecules)
+        similarity = get_proximity(get_mol(args[0]), get_mol(args[1]))
+        await ctx.send(similarity)
+
+    @commands.hybrid_command(name='smiles')
+    async def smiles(self, ctx: commands.Context, *, molecules: str):
+        try:
+            if ctx.interaction:
+                 await ctx.interaction.response.defer(ephemeral=True)
+            args = shlex.split(molecules)
+            try:
+                for arg in args:
+                    compounds = pcp.get_compounds(arg, 'name')
+                    compound = compounds[0]
+                    isomeric_smiles = compound.isomeric_smiles
+                    await ctx.send(f'The isomeric SMILES for {arg} is: {isomeric_smiles}')
+            except:
+                await ctx.send(traceback.format_exc())
+        except:
+            if arg is None:
+                return
+            await ctx.send(f'{arg} is an unknown molecule.')
 #    @commands.command()
 #    async def languages(self, ctx):
 #        supported_languages = ', '.join(LANGUAGES.values())
@@ -362,6 +402,53 @@ class Hybrid(commands.Cog):
             title, link = result.get("title", "No Title"), result.get("link", "No Link")
             embed.add_field(name=title, value=link, inline=False)
         await ctx.send(embed=embed)
+
+    def get_user_stack(self, user_id: int):
+        return self.stacks.get(user_id, [])
+
+    def set_user_stack(self, user_id: int, molecule_names: List[str]):
+        mol_objects = [get_mol(name) for name in molecule_names]
+        self.stacks[user_id] = mol_objects
+
+    @commands.command(name='stack', description='Chose your guide.')
+    async def analog(self, ctx: commands.Context, *args):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+                # Example compounds for demonstration
+                args = ['Creatine', 'L-theanine', 'trimethyglycine']
+        new_stack = list(args)
+        if args:
+            self.set_user_stack(user_id=ctx.author.id, molecule_names=args)
+        while True:
+            embed = discord.Embed()
+            await ctx.send(f'{ctx.author.name}\'s Comparators:')
+            await ctx.send([get_molecule_name(mol) for mol in self.get_user_stack(ctx.author.id)])
+            await ctx.send('Which molecule would you like to interview?')
+            response = await self.bot.wait_for(
+                'message',
+                timeout=20000.0,
+                check=lambda message: message.author == ctx.author and message.channel == ctx.channel
+            )
+            try:
+                new = get_mol(response.content)
+                molecules = []
+                proximities = []
+                for arg in args:
+                    molecules.append(get_mol(arg))
+                for arg in molecules:
+                    proximities.append(get_proximity(new, arg))
+                for molecule, proximity in zip(args, proximities):
+                    embed.add_field(name='Molecule', value=molecule, inline=True)
+                    embed.add_field(name="Similarity", value=f'{proximity:.3f}', inline=True)
+                    embed.add_field(name="\u200b", value='\u200b', inline=True)
+                string_builder = ''
+                for field in embed.fields:
+                     string_builder += f'{field.name}: {field.value}\n'
+                await ctx.send(embed=embed)
+            except Exception as e:
+                await ctx.send(e)
+                break
 
     @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')
     async def tag_command(
