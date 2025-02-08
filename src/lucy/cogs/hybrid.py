@@ -74,6 +74,9 @@ class Hybrid(commands.Cog):
         self.messages = []
         self.game = Game(self.bot, self.bot.db_pool)
         self.stacks = {}
+        self.creatine = get_mol('Creatine')
+        self.theanine = get_mol('L-theanine')
+        self.trimethylglycine = get_mol('Trimethylglycine')
 
     def get_language_code(self, language_name):
         language_name = language_name.lower()
@@ -81,6 +84,103 @@ class Hybrid(commands.Cog):
             if lang_name.lower() == language_name:
                 return lang_code
         return None
+
+    @commands.command(name='stack', description='Build a stack and update defenders.')
+    async def stack(self, ctx: commands.Context, *molecule_names: str):
+        # 1. Initial Stack Creation
+        if not molecule_names:
+            await ctx.send("Please provide at least one molecule to build the stack.")
+            return
+    
+        try:
+            # Convert each provided name to a molecule object.
+            user_stack = [get_mol(name) for name in molecule_names]
+            # Save the initial stack (this replaces any existing stack for the user)
+            self.set_user_stack(ctx.author.id, user_stack)
+        except Exception as e:
+            await ctx.send(f"Error creating stack: {e}")
+            return
+    
+        # 2. Helper: Determine the defender for each reference chemical.
+        # The defender is the molecule in the stack with the highest proximity (i.e. most similar)
+        # to the reference.
+        def get_defenders(stack):
+            defender_tmg = max(stack, key=lambda mol: get_proximity(mol, self.trimethylglycine))
+            defender_creatine = max(stack, key=lambda mol: get_proximity(mol, self.creatine))
+            defender_theanine = max(stack, key=lambda mol: get_proximity(mol, self.theanine))
+            return {
+                'Trimethylglycine': (defender_tmg, get_proximity(defender_tmg, self.trimethylglycine)),
+                'Creatine': (defender_creatine, get_proximity(defender_creatine, self.creatine)),
+                'L-Theanine': (defender_theanine, get_proximity(defender_theanine, self.theanine))
+            }
+    
+        defenders = get_defenders(user_stack)
+        avg_prox = (defenders['Trimethylglycine'][1] +
+                    defenders['Creatine'][1] +
+                    defenders['L-Theanine'][1]) / 3
+    
+        # 3. Report the current defenders and their proximities.
+        msg_lines = ["Current defender proximities:"]
+        for ref, (mol, prox) in defenders.items():
+            msg_lines.append(f"{ref}: {get_molecule_name(mol)} with proximity {(100 * prox):.3f}%")
+        msg_lines.append(f"Average proximity: {(100 * avg_prox):.3f}%")
+        await ctx.send("\n".join(msg_lines))
+        await ctx.send("Submit another molecule to check for new defenders.")
+    
+        # 4. Main loop: Process new molecules as they come in.
+        while True:
+            try:
+                response = await self.bot.wait_for(
+                    'message',
+                    timeout=60.0,
+                    check=lambda m: m.author == ctx.author and m.channel == ctx.channel
+                )
+            except asyncio.TimeoutError:
+                await ctx.send("Timeout error. Please start the command again.")
+                return
+    
+            try:
+                new_name = response.content.strip()
+                new_mol = get_mol(new_name)
+                # Compute the new molecule's proximities to the three reference chemicals.
+                new_proximities = {
+                    'Trimethylglycine': get_proximity(new_mol, self.trimethylglycine),
+                    'Creatine': get_proximity(new_mol, self.creatine),
+                    'L-Theanine': get_proximity(new_mol, self.theanine)
+                }
+    
+                updated = False  # Flag to track if the new molecule beats any defender.
+                # For each reference chemical, check if the new molecule is a better match.
+                for ref in new_proximities:
+                    current_defender, current_prox = defenders[ref]
+                    # If new_mol is more similar (i.e. higher proximity) to the reference:
+                    if new_proximities[ref] > current_prox:
+                        defenders[ref] = (new_mol, new_proximities[ref])
+                        updated = True
+    
+                # If the new molecule became a defender for at least one reference, add it to the stack.
+                if updated:
+                    if not any(get_molecule_name(mol).lower() == get_molecule_name(new_mol).lower() 
+                               for mol in user_stack):
+                        user_stack.append(new_mol)
+                        self.set_user_stack(ctx.author.id, user_stack)
+    
+                    # Recompute the average proximity of the defenders.
+                    avg_prox = (defenders['Trimethylglycine'][1] +
+                                defenders['Creatine'][1] +
+                                defenders['L-Theanine'][1]) / 3
+    
+                    msg_lines = ["Defender update:"]
+                    for ref, (mol, prox) in defenders.items():
+                        msg_lines.append(f"{ref}: {get_molecule_name(mol)} with proximity {(100 * prox):.3f}%")
+                    msg_lines.append(f"New average proximity: {(100 * avg_prox):.3f}%")
+                    await ctx.send("\n".join(msg_lines))
+                else:
+                    await ctx.send(f"{get_molecule_name(new_mol)} did not become a new defender in any category.")
+    
+                await ctx.send("Submit another molecule to check for further updates.")
+            except Exception as e:
+                await ctx.send(f"Error processing molecule: {e}")
 
     @commands.hybrid_command(name="batch_results", with_app_command=True)
     async def batch_results(self, ctx: commands.Context):
@@ -431,46 +531,6 @@ class Hybrid(commands.Cog):
     def set_user_stack(self, user_id: int, molecule_names: List[str]):
         mol_objects = [get_mol(name) for name in molecule_names]
         self.stacks[user_id] = mol_objects
-
-    @commands.command(name='stack', description='Chose your guide.')
-    async def analog(self, ctx: commands.Context, *args):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
-                # Example compounds for demonstration
-                args = ['Creatine', 'L-theanine', 'trimethyglycine']
-        new_stack = list(args)
-        if args:
-            self.set_user_stack(user_id=ctx.author.id, molecule_names=args)
-        while True:
-            embed = discord.Embed()
-            await ctx.send(f'{ctx.author.name}\'s Comparators:')
-            await ctx.send([get_molecule_name(mol) for mol in self.get_user_stack(ctx.author.id)])
-            await ctx.send('Which molecule would you like to interview?')
-            response = await self.bot.wait_for(
-                'message',
-                timeout=20000.0,
-                check=lambda message: message.author == ctx.author and message.channel == ctx.channel
-            )
-            try:
-                new = get_mol(response.content)
-                molecules = []
-                proximities = []
-                for arg in args:
-                    molecules.append(get_mol(arg))
-                for arg in molecules:
-                    proximities.append(get_proximity(new, arg))
-                for molecule, proximity in zip(args, proximities):
-                    embed.add_field(name='Molecule', value=molecule, inline=True)
-                    embed.add_field(name="Similarity", value=f'{proximity:.3f}', inline=True)
-                    embed.add_field(name="\u200b", value='\u200b', inline=True)
-                string_builder = ''
-                for field in embed.fields:
-                     string_builder += f'{field.name}: {field.value}\n'
-                await ctx.send(embed=embed)
-            except Exception as e:
-                await ctx.send(e)
-                break
 
     @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')
     async def tag_command(
