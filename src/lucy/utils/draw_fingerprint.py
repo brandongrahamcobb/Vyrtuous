@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+rdDepictor.SetPreferCoordGen(True)
 #from io import BytesIO
 #from lucy.utils.setup_logging import logger
 #from rdkit.Chem import rdFingerprintGenerator
