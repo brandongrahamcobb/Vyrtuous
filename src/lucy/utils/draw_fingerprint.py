@@ -14,7 +14,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-rdDepictor.SetPreferCoordGen(True)
 #from io import BytesIO
 #from lucy.utils.setup_logging import logger
 #from rdkit.Chem import rdFingerprintGenerator
@@ -60,7 +59,8 @@ rdDepictor.SetPreferCoordGen(True)
 
 from io import BytesIO
 from lucy.utils.setup_logging import logger
-from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
+from rdkit.Chem.Draw import rdDepictor, rdMolDraw2D, SimilarityMaps
+rdDepictor.SetPreferCoordGen(True)
 
 def draw_fingerprint(pair) -> BytesIO:
 #    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048, countSimulation=True)
