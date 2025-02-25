@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from bs4 import BeautifulSoup
 from collections import defaultdict
 from discord.utils import get
 from discord import Embed, app_commands
@@ -62,6 +63,21 @@ import shlex
 import time
 import traceback
 import uuid
+from pyPept.sequence import Sequence, correct_pdb_atoms
+from pyPept.molecule import Molecule
+from pyPept.converter import Converter
+from rdkit import Chem
+from lucy.utils.get_mol import construct_helm_from_peptide
+from lucy.utils.get_mol import manual_helm_to_smiles
+import pubchempy as pcp
+import re
+import requests
+
+async def get_attachment_text(ctx):
+    if ctx.message.attachments:
+        content = await ctx.message.attachments[0].read()
+        return content.decode('utf-8')
+    return None
 
 class Hybrid(commands.Cog):
     def __init__(self, bot):
@@ -77,110 +93,21 @@ class Hybrid(commands.Cog):
         self.creatine = get_mol('Creatine')
         self.theanine = get_mol('L-theanine')
         self.trimethylglycine = get_mol('Trimethylglycine')
+        self.serotonin = get_mol('Serotonin')
 
-    def get_language_code(self, language_name):
-        language_name = language_name.lower()
-        for lang_code, lang_name in LANGUAGES.items():
-            if lang_name.lower() == language_name:
-                return lang_code
-        return None
+#    def get_language_code(self, language_name):
+#        language_name = language_name.lower()
+#        for lang_code, lang_name in LANGUAGES.items():
+#            if lang_name.lower() == language_name:
+#                return lang_code
+#        return None
 
-    @commands.command(name='stack', description='Build a stack and update defenders.')
-    async def stack(self, ctx: commands.Context, *molecule_names: str):
-        # 1. Initial Stack Creation
-        if not molecule_names:
-            await ctx.send("Please provide at least one molecule to build the stack.")
-            return
-    
-        try:
-            # Convert each provided name to a molecule object.
-            user_stack = [get_mol(name) for name in molecule_names]
-            # Save the initial stack (this replaces any existing stack for the user)
-            self.set_user_stack(ctx.author.id, user_stack)
-        except Exception as e:
-            await ctx.send(f"Error creating stack: {e}")
-            return
-    
-        # 2. Helper: Determine the defender for each reference chemical.
-        # The defender is the molecule in the stack with the highest proximity (i.e. most similar)
-        # to the reference.
-        def get_defenders(stack):
-            defender_tmg = max(stack, key=lambda mol: get_proximity(mol, self.trimethylglycine))
-            defender_creatine = max(stack, key=lambda mol: get_proximity(mol, self.creatine))
-            defender_theanine = max(stack, key=lambda mol: get_proximity(mol, self.theanine))
-            return {
-                'Trimethylglycine': (defender_tmg, get_proximity(defender_tmg, self.trimethylglycine)),
-                'Creatine': (defender_creatine, get_proximity(defender_creatine, self.creatine)),
-                'L-Theanine': (defender_theanine, get_proximity(defender_theanine, self.theanine))
-            }
-    
-        defenders = get_defenders(user_stack)
-        avg_prox = (defenders['Trimethylglycine'][1] +
-                    defenders['Creatine'][1] +
-                    defenders['L-Theanine'][1]) / 3
-    
-        # 3. Report the current defenders and their proximities.
-        msg_lines = ["Current defender proximities:"]
-        for ref, (mol, prox) in defenders.items():
-            msg_lines.append(f"{ref}: {get_molecule_name(mol)} with proximity {(100 * prox):.3f}%")
-        msg_lines.append(f"Average proximity: {(100 * avg_prox):.3f}%")
-        await ctx.send("\n".join(msg_lines))
-        await ctx.send("Submit another molecule to check for new defenders.")
-    
-        # 4. Main loop: Process new molecules as they come in.
-        while True:
-            try:
-                response = await self.bot.wait_for(
-                    'message',
-                    timeout=60.0,
-                    check=lambda m: m.author == ctx.author and m.channel == ctx.channel
-                )
-            except asyncio.TimeoutError:
-                await ctx.send("Timeout error. Please start the command again.")
-                return
-    
-            try:
-                new_name = response.content.strip()
-                new_mol = get_mol(new_name)
-                # Compute the new molecule's proximities to the three reference chemicals.
-                new_proximities = {
-                    'Trimethylglycine': get_proximity(new_mol, self.trimethylglycine),
-                    'Creatine': get_proximity(new_mol, self.creatine),
-                    'L-Theanine': get_proximity(new_mol, self.theanine)
-                }
-    
-                updated = False  # Flag to track if the new molecule beats any defender.
-                # For each reference chemical, check if the new molecule is a better match.
-                for ref in new_proximities:
-                    current_defender, current_prox = defenders[ref]
-                    # If new_mol is more similar (i.e. higher proximity) to the reference:
-                    if new_proximities[ref] > current_prox:
-                        defenders[ref] = (new_mol, new_proximities[ref])
-                        updated = True
-    
-                # If the new molecule became a defender for at least one reference, add it to the stack.
-                if updated:
-                    if not any(get_molecule_name(mol).lower() == get_molecule_name(new_mol).lower() 
-                               for mol in user_stack):
-                        user_stack.append(new_mol)
-                        self.set_user_stack(ctx.author.id, user_stack)
-    
-                    # Recompute the average proximity of the defenders.
-                    avg_prox = (defenders['Trimethylglycine'][1] +
-                                defenders['Creatine'][1] +
-                                defenders['L-Theanine'][1]) / 3
-    
-                    msg_lines = ["Defender update:"]
-                    for ref, (mol, prox) in defenders.items():
-                        msg_lines.append(f"{ref}: {get_molecule_name(mol)} with proximity {(100 * prox):.3f}%")
-                    msg_lines.append(f"New average proximity: {(100 * avg_prox):.3f}%")
-                    await ctx.send("\n".join(msg_lines))
-                else:
-                    await ctx.send(f"{get_molecule_name(new_mol)} did not become a new defender in any category.")
-    
-                await ctx.send("Submit another molecule to check for further updates.")
-            except Exception as e:
-                await ctx.send(f"Error processing molecule: {e}")
+    def get_user_stack(self, user_id: int):
+        return self.stacks.get(user_id, [])
+
+    def set_user_stack(self, user_id: int, molecule_names: List[str]):
+        mol_objects = [get_mol(name) for name in molecule_names]
+        self.stacks[user_id] = mol_objects
 
     @commands.hybrid_command(name="batch_results", with_app_command=True)
     async def batch_results(self, ctx: commands.Context):
@@ -308,9 +235,15 @@ class Hybrid(commands.Cog):
         option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'),
         *,
         molecules: str = commands.parameter(default=None, description='Any molecule'),
-        quantity: int = commands.parameter(default=1, description='Quantity of glows')
+        quantity: int = commands.parameter(default=1, description='Quantity of glows'),
+        reverse: bool = commands.parameter(default=False, description='Reverse')
     ):
         try:
+            async def get_attachment_text(ctx):
+                if ctx.message.attachments:
+                    content = await ctx.message.attachments[0].read()
+                    return content.decode('utf-8')
+                return None
             if ctx.interaction:
                 async with ctx.typing():
                     await ctx.interaction.response.defer(ephemeral=True)
@@ -318,6 +251,8 @@ class Hybrid(commands.Cog):
                 return
             if not self.predicator.is_release_mode_func(ctx):
                 return
+            if ctx.message.attachments:
+                molecules = await get_attachment_text(ctx)
             if option == '2':
                 if not molecules:
                     await ctx.send('No molecules provided.')
@@ -329,8 +264,8 @@ class Hybrid(commands.Cog):
                     await ctx.send(embed=embed)
                     return
                 for pair in pairs:
-                    mol = get_mol(pair[0])
-                    refmol = get_mol(pair[1])
+                    mol = get_mol(pair[0], reverse)
+                    refmol = get_mol(pair[1], reverse)
                     if mol is None or refmol is None:
                         embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
                         await ctx.send(embed=embed)
@@ -345,19 +280,29 @@ class Hybrid(commands.Cog):
                 if not molecules:
                     await ctx.send('No molecules provided.')
                     return
-                args = shlex.split(molecules)
                 fingerprints = []
                 names = []
-                molecule = get_mol(args[0])
-                if molecule is None:
-                    embed = discord.Embed(description='Invalid molecule name or structure.')
-                    await ctx.send(embed=embed)
-                    return
-                for _ in range(quantity.default):
-                    names.append(args[0])
-                    fingerprints.append(draw_fingerprint([molecule, molecule]))
+                smiles_list = molecules.split('.')  # Split input by "."
+                converted_smiles = []  # Store SMILES representations
+                for mol in smiles_list:
+                    compounds = pcp.get_compounds(mol, 'name')  # Try to fetch from PubChem
+                    if compounds:
+                        smiles = compounds[0].isomeric_smiles  # Get the SMILES representation
+                    else:
+                        helm = construct_helm_from_peptide(mol)
+                        smiles = manual_helm_to_smiles(helm)  # Fallback for peptides
+                    if not smiles:
+                        embed = discord.Embed(description=f'Invalid molecule: {mol}')
+                        await ctx.send(embed=embed)
+                        return
+                    converted_smiles.append(smiles)
+                    names.append(mol)
+                full_smiles = ".".join(converted_smiles)
+                smiles_comparison = [full_smiles, full_smiles]
+                molecule_objects = [get_mol(full_smiles, reverse=reverse) for _ in range(2)]
+                fingerprints.append(draw_fingerprint(molecule_objects))
                 combined_image = combine(fingerprints, names)
-                await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
+                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             elif option == 'gsrs':
                 if not molecules:
                     await ctx.send('No molecules provided.')
@@ -377,7 +322,7 @@ class Hybrid(commands.Cog):
                     await ctx.send('No molecules provided.')
                     return
                 args = shlex.split(molecules)
-                mol = get_mol(args[0])
+                mol = get_mol(args[0], reverse)
                 if mol is None:
                     embed = discord.Embed(description='Invalid molecule name or structure.')
                     await ctx.send(embed=embed)
@@ -446,55 +391,6 @@ class Hybrid(commands.Cog):
             log_p = Crippen.MolLogP(mol)
             await ctx.send(f'Your octanol:water coefficient is: {log_p}')
 
-    @commands.hybrid_command(name='sim')
-    async def sim(self, ctx: commands.Context, *, molecules: str):
-        args = shlex.split(molecules)
-        similarity = get_proximity(get_mol(args[0]), get_mol(args[1]))
-        await ctx.send(similarity)
-
-    @commands.hybrid_command(name='smiles')
-    async def smiles(self, ctx: commands.Context, *, molecules: str):
-        """
-        Hybrid command that returns the SMILES representation of the input.
-        
-        If the input is not in FASTA/peptide format, use PubChem or direct SMILES conversion.
-        Otherwise, if the input appears to be a peptide (detected by the presence of known peptide abbreviations
-        or parentheses), use the peptide conversion functions.
-        """
-        try:
-            if ctx.interaction:
-                await ctx.interaction.response.defer(ephemeral=True)
-            args = shlex.split(molecules)
-            output = []
-            for arg in args:
-                compounds = pcp.get_compounds(arg, 'name')
-                if compounds:
-                    compound = compounds[0]
-                    smiles_str = compound.isomeric_smiles
-                    output.append(f"{arg}: {smiles_str}")
-                    continue
-                else:
-                    mol = Chem.MolFromSmiles(arg)
-                    if mol:
-                        smiles_str = Chem.MolToSmiles(mol)
-                        output.append(f"{arg}: {smiles_str}")
-                        continue
-        except Exception as e:
-            logger.warning(f"Direct molecule conversion failed for '{arg}': {e}")
-                # Otherwise, assume it's a peptide.
-        mol = get_mol(arg)
-        if mol is None:
-            output.append(f"{arg}: Failed to generate molecule.")
-        else:
-            smiles_str = Chem.MolToSmiles(mol)
-            output.append(f"{arg}: {smiles_str}")
-        result = "\n".join(output)
-        await ctx.send(f"SMILES:\n```\n{result}\n```")
-#    @commands.command()
-#    async def languages(self, ctx):
-#        supported_languages = ', '.join(LANGUAGES.values())
-#        await ctx.send(f'Supported languages are:\n{supported_languages}')
-#
     @commands.command(name='script', description=f'Usage: lscript <NIV/ESV/Quran> <Book>.<Chapter>.<Verse>')
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
         try:
@@ -525,12 +421,146 @@ class Hybrid(commands.Cog):
             embed.add_field(name=title, value=link, inline=False)
         await ctx.send(embed=embed)
 
-    def get_user_stack(self, user_id: int):
-        return self.stacks.get(user_id, [])
+    @commands.hybrid_command(name='sim')
+    async def sim(self, ctx: commands.Context, *, molecules: str):
+        args = shlex.split(molecules)
+        similarity = get_proximity(get_mol(args[0]), get_mol(args[1]))
+        await ctx.send(similarity)
 
-    def set_user_stack(self, user_id: int, molecule_names: List[str]):
-        mol_objects = [get_mol(name) for name in molecule_names]
-        self.stacks[user_id] = mol_objects
+    @commands.hybrid_command(name='smiles')
+    async def smiles(self, ctx: commands.Context, *, molecules: str, reverse: bool = True):
+        try:
+            if ctx.interaction:
+                await ctx.interaction.response.defer(ephemeral=True)
+            args = shlex.split(molecules)
+            output = []
+            for arg in args:
+                compounds = pcp.get_compounds(arg, 'name')
+                if compounds:
+                    smiles_str = compounds[0].isomeric_smiles
+                    output.append(f"{arg}: {smiles_str}")
+                    continue
+                else:
+                    mol = Chem.MolFromSmiles(arg)
+                    if mol:
+                        smiles_str = Chem.MolToSmiles(mol, canonical=False)
+                        output.append(f"{arg}: {smiles_str}")
+                        continue
+                try:
+                    helm = construct_helm_from_peptide(arg)
+                    smiles_str = manual_helm_to_smiles(helm)
+                    output.append(f"{arg}: {smiles_str}")
+                except Exception as e:
+                    output.append(f"{arg}: Failed to generate molecule.")
+                try:
+                     mol = get_mol(arg, reverse=reverse)
+                except Exception as e:
+                    output.append(f"{arg}: Failed to generate molecule.")
+            result = "\n".join(output)
+            if len(result) > 2000:
+                with open(f"smiles_{ctx.author.name}.txt", "w") as f:
+                    f.write(result)
+                await ctx.send(file=discord.File(f"smiles_{ctx.author.name}.txt"))
+            else:
+                await ctx.send(f"SMILES:\n```\n{result}\n```")
+        except Exception as e:
+            await ctx.send(f"Error: {e}")
+#                compounds = pcp.get_compounds(arg, 'name')
+#                if compounds:
+#                    compound = compounds[0]
+#                    smiles_str = compound.isomeric_smiles
+#                    output.append(f"{arg}: {smiles_str}")
+#                    continue
+#                else:
+#                    mol = Chem.MolFromSmiles(arg)
+#                    if mol:
+#                        smiles_str = Chem.MolToSmiles(mol)
+#                        output.append(f"{arg}: {smiles_str}")
+#                        continue
+#                helm = construct_helm(arg, reverse=reverse)
+#                try:
+#                    smiles_str = helm_to_smiles_manual(helm)
+#                    output.append(f"{arg}: {smiles_str}")
+#                except Exception as e:
+#                    logger.warning(f"Direct molecule conversion failed for '{arg}': {e}")
+#        except Exception as e:
+#            logger.warning(f"Direct molecule conversion failed for '{arg}': {e}")
+                # Otherwise, assume it's a peptide.
+#        mol = get_mol(arg)
+#        if mol is None:
+#            output.append(f"{arg}: Failed to generate molecule.")
+#        else:
+#            smiles_str = Chem.MolToSmiles(mol)
+#            output.append(f"{arg}: {smiles_str}")
+#        result = "\n".join(output)
+#        else:
+#            await ctx.send(f"SMILES:\n```\n{result}\n```")
+##    @commands.command()
+#    async def languages(self, ctx):
+#        supported_languages = ', '.join(LANGUAGES.values())
+#        await ctx.send(f'Supported languages are:\n{supported_languages}')
+#
+    @commands.command(name='stack', description='Build a stack and update defenders.')
+    async def stack(self, ctx: commands.Context, *molecule_names: str):
+        if not molecule_names:
+            await ctx.send("Please provide at least one molecule to build the stack.")
+            return
+        try:
+            user_stack = [get_mol(name) for name in molecule_names]
+            self.set_user_stack(ctx.author.id, user_stack)
+        except Exception as e:
+            await ctx.send(f"Error creating stack: {e}")
+            return
+        def get_defenders(stack):
+            defender_serotonin = max(stack, key=lambda mol: get_proximity(mol, self.serotonin))
+            return {
+                '5-HT': (defender, get_proximity(defender, self.serotonin))
+            }
+        defenders = get_defenders(user_stack)
+        avg_prox = defenders['Serotonin'][1]
+        msg_lines = ["Current defender proximities:"]
+        for ref, (mol, prox) in defenders.items():
+            msg_lines.append(f"{ref}: {get_molecule_name(mol)} with proximity {(100 * prox):.3f}%")
+        msg_lines.append(f"Average proximity: {(100 * avg_prox):.3f}%")
+        await ctx.send("\n".join(msg_lines))
+        await ctx.send("Submit another molecule to check for new defenders.")
+        while True:
+            try:
+                response = await self.bot.wait_for(
+                    'message',
+                    timeout=60.0,
+                    check=lambda m: m.author == ctx.author and m.channel == ctx.channel
+                )
+            except asyncio.TimeoutError:
+                await ctx.send("Timeout error. Please start the command again.")
+                return
+            try:
+                new_name = response.content.strip()
+                new_mol = get_mol(new_name)
+                new_proximities = {
+                    'Serotonin': get_proximity(new_mol, self.serotonin)
+                }
+                updated = False  # Flag to track if the new molecule beats any defender.
+                for ref in new_proximities:
+                    current_defender, current_prox = defenders[ref]
+                    if new_proximities[ref] > current_prox:
+                        defenders[ref] = (new_mol, new_proximities[ref])
+                        updated = True
+                if updated:
+                    if set(molecule_names).issubset(defenders) and not any(get_molecule_name(mol).lower() == get_molecule_name(new_mol).lower() for mol in user_stack):
+                        user_stack.append(new_mol)
+                        self.set_user_stack(ctx.author.id, user_stack)
+                    avg_prox = defenders['Serotonin'][1]
+                    msg_lines = ["Defender update:"]
+                    for ref, (mol, prox) in defenders.items():
+                        msg_lines.append(f"{ref}: {get_molecule_name(mol)} with proximity {(100 * prox):.3f}%")
+                    msg_lines.append(f"New average proximity: {(100 * avg_prox):.3f}%")
+                    await ctx.send("\n".join(msg_lines))
+                else:
+                    await ctx.send(f"{get_molecule_name(new_mol)} did not become a new defender in any category.")
+                await ctx.send("Submit another molecule to check for further updates.")
+            except Exception as e:
+                await ctx.send(f"Error processing molecule: {e}")
 
     @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')
     async def tag_command(
@@ -579,7 +609,6 @@ class Hybrid(commands.Cog):
                 return await ctx.send(
                     f"Usage: `{self.bot.command_prefix}tag borrow <tag_name> [@owner]`"
                 )
-
             mentioned_users = ctx.message.mentions
             if mentioned_users:
                 owner = mentioned_users[0]
@@ -587,7 +616,6 @@ class Hybrid(commands.Cog):
             else:
                 owner = None
                 owner_id = None
-
             try:
                 await self.tag_manager.borrow_tag(
                     tag_name=name,
@@ -625,16 +653,12 @@ class Hybrid(commands.Cog):
                 if not tags:
                     await ctx.send('No tags found.')
                 else:
-                    # Change here: only join the tag's name (plus type if desired)
-                    # For name ONLY:
                     tag_list = '\n'.join(f'**{t["name"]}**' for t in tags)
-                    
                     # Or, if you still want to display the tag type:
                     # tag_list = '\n'.join(
                     #     f'**{t["name"]}** (type: {t["tag_type"]})'
                     #     for t in tags
                     # )
-        
                     await ctx.send(f'Tags:\n{tag_list}')
             except Exception as e:
                 logger.error(f'Error listing tags: {e}')
@@ -753,41 +777,41 @@ class Hybrid(commands.Cog):
                 logger.error(f'Error fetching tag \"{action}\": {e}')
                 await ctx.send(f'An error occurred while fetching tag \"{action}\".')
 
-    @commands.hybrid_command(name='tags', description='Display loop tags for the current location.')
-    async def tags(self, ctx: commands.Context):
-        try:
-            if ctx.interaction:
-                async with ctx.typing():
-                    await ctx.interaction.response.defer(ephemeral=True)
-            if not self.predicator.is_release_mode_func(ctx):
-                return
-            location_id = ctx.guild.id
-            tags = await self.tag_manager.list_tags(location_id, tag_type='loop')
-            if not tags:
-                await ctx.send("No loop tags found.")
-                return
-            embeds = []
-            for tag in tags:
-                embed = discord.Embed(
-                    title=f'Loop Tag: {tag["name"]}',
-                    description=tag.get('content', tag.get('attachment_url', 'No content available.')),
-                    color=discord.Color.blurple()
-                )
-                embeds.append(embed)
-            paginator = Paginator(self.bot, ctx, embeds)
-            await paginator.start()
-        except Exception as e:
-            logger.error(f'Error during tag fetching: {e}')
+#    @commands.hybrid_command(name='tags', description='Display loop tags for the current location.')
+#    async def tags(self, ctx: commands.Context):
+#        try:
+#            if ctx.interaction:
+#                async with ctx.typing():
+#                    await ctx.interaction.response.defer(ephemeral=True)
+#            if not self.predicator.is_release_mode_func(ctx):
+#                return
+#            location_id = ctx.guild.id
+#            tags = await self.tag_manager.list_tags(location_id, tag_type='loop')
+#            if not tags:
+#                await ctx.send("No loop tags found.")
+#                return
+#            embeds = []
+#            for tag in tags:
+#                embed = discord.Embed(
+#                    title=f'Loop Tag: {tag["name"]}',
+#                    description=tag.get('content', tag.get('attachment_url', 'No content available.')),
+#                    color=discord.Color.blurple()
+#                )
+#                embeds.append(embed)
+#            paginator = Paginator(self.bot, ctx, embeds)
+#            await paginator.start()
+#        except Exception as e:
+#            logger.error(f'Error during tag fetching: {e}')
 
-    @commands.command(name='mod_usage', description=f'Usage: lwipe <all|bot|commands|text|user>')
-    async def mod_usage(self, ctx, limit: int = 1):
-        client = OpenAIUsageClient(api_key=self.config['api_keys']['OpenAI']['api_key'], organization_id=OPENAI_CHAT_HEADERS['OpenAI-Organization'])
-        moderations_usage = await client.get_moderations_usage(
-            start_time=int(time.time()), limit=50
-        )
-        print("Moderations Usage:")
-        for bucket in moderations_usage.data:
-            print(bucket)
+#    @commands.command(name='mod_usage', description=f'Usage: lwipe <all|bot|commands|text|user>')
+#    async def mod_usage(self, ctx, limit: int = 1):
+#        client = OpenAIUsageClient(api_key=self.config['api_keys']['OpenAI']['api_key'], organization_id=OPENAI_CHAT_HEADERS['OpenAI-Organization'])
+#        moderations_usage = await client.get_moderations_usage(
+#            start_time=int(time.time()), limit=50
+#        )
+#        print("Moderations Usage:")
+#        for bucket in moderations_usage.data:
+#            print(bucket)
 
     @commands.command(name='wipe', description=f'Usage: lwipe <all|bot|commands|text|user>')
     @commands.has_permissions(manage_messages=True)
