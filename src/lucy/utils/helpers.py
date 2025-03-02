@@ -236,7 +236,8 @@ OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
                   "self-harm/instructions": {"type": "boolean"},
                   "harassment/threatening": {"type": "boolean"},
                   "violence": {"type": "boolean"},
-                  "academic-dishonesty": {"type": "boolean"}
+                  "academic-dishonesty": {"type": "boolean"},
+                  "animal-derived-technology": {"type": "boolean"}
                 },
                 "required": [
                   "sexual",
@@ -250,7 +251,8 @@ OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
                   "self-harm/instructions",
                   "harassment/threatening",
                   "violence",
-                  "academic-dishonesty"
+                  "academic-dishonesty",
+                  "animal-derived-technology"
                 ]
               },
               "category_scores": {
@@ -267,7 +269,8 @@ OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
                   "self-harm/instructions": {"type": "number"},
                   "harassment/threatening": {"type": "number"},
                   "violence": {"type": "number"},
-                  "academic-dishonesty": {"type": "number"}
+                  "academic-dishonesty": {"type": "number"},
+                  "animal-derived-technology": {"type": "boolean"}
                 },
                 "required": [
                   "sexual",
@@ -281,7 +284,8 @@ OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
                   "self-harm/instructions",
                   "harassment/threatening",
                   "violence",
-                  "academic-dishonesty"
+                  "academic-dishonesty",
+                  "animal-derived-technology"
                 ]
               }
             },

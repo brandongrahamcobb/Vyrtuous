@@ -99,17 +99,6 @@ class Indica(commands.Cog):
                         if await self.predicator.is_at_home_func(ctx.guild.id):
                             print(f'An error occurred: {e}')
     
-        # Academic Dishonesty Moderation Check
-        async for moderation_completion in self.handler.generate_moderation_completion(custom_id=ctx.author.id, array=array):
-            chat_moderation = json.loads(moderation_completion)
-            academic_dishonesty_results = chat_moderation.get('results', [])
-            
-            if academic_dishonesty_results and academic_dishonesty_results[0]['categories'].get('academic-dishonesty', False):
-                academic_dishonesty_score = academic_dishonesty_results[0]['category_scores'].get('academic-dishonesty', 0)
-                await self.handle_moderation(ctx.message)
-                NLPUtils.append_to_jsonl(PATH_TRAINING, academic_dishonesty_score, ctx.message.content, ctx.author.id)
-                return
-    
     async def handle_large_response(self, ctx: commands.Context, response: str):
         """Handles sending messages larger than 2000 characters by creating temp files."""
         if len(response) > 2000:
