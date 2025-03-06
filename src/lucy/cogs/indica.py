@@ -72,11 +72,11 @@ class Indica(commands.Cog):
         logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
     
         for item in array:
-            if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions and not self.predicator.is_spawd(ctx):
-                async for chat_completion in self.handler.generate_chat_completion(
-                    custom_id=ctx.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
-                ):
-                    await self.handle_large_response(ctx, chat_completion)
+#            if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions and not self.predicator.is_spawd(ctx):
+#                async for chat_completion in self.handler.generate_chat_completion(
+#                    custom_id=ctx.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
+#                ):
+#                    await self.handle_large_response(ctx, chat_completion)
     
             # Moderation Check
             if self.bot.user in ctx.message.mentions and self.config['openai_chat_moderation']:
@@ -89,15 +89,16 @@ class Indica(commands.Cog):
                             await self.handle_moderation(ctx.message)
                             return
                         
-                        elif self.predicator.is_spawd(ctx) and self.bot.user in ctx.message.mentions:
-                            async for chat_completion in self.handler.generate_chat_completion(
-                                custom_id=ctx.author.id, array=[item], model='o1-mini'
-                            ):
-                                await self.handle_large_response(ctx, chat_completion)
                     except Exception as e:
                         logger.error(traceback.format_exc())
                         if await self.predicator.is_at_home_func(ctx.guild.id):
                             print(f'An error occurred: {e}')
+        if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
+#                        elif self.predicator.is_spawd(ctx) and self.bot.user in ctx.message.mentions:
+            async for chat_completion in self.handler.generate_chat_completion(
+                custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT
+            ):
+                await self.handle_large_response(ctx, chat_completion)
     
     async def handle_large_response(self, ctx: commands.Context, response: str):
         """Handles sending messages larger than 2000 characters by creating temp files."""

@@ -500,67 +500,6 @@ class Hybrid(commands.Cog):
 #        supported_languages = ', '.join(LANGUAGES.values())
 #        await ctx.send(f'Supported languages are:\n{supported_languages}')
 #
-    @commands.command(name='stack', description='Build a stack and update defenders.')
-    async def stack(self, ctx: commands.Context, *molecule_names: str):
-        if not molecule_names:
-            await ctx.send("Please provide at least one molecule to build the stack.")
-            return
-        try:
-            user_stack = [get_mol(name) for name in molecule_names]
-            self.set_user_stack(ctx.author.id, user_stack)
-        except Exception as e:
-            await ctx.send(f"Error creating stack: {e}")
-            return
-        def get_defenders(stack):
-            defender_serotonin = max(stack, key=lambda mol: get_proximity(mol, self.serotonin))
-            return {
-                '5-HT': (defender, get_proximity(defender, self.serotonin))
-            }
-        defenders = get_defenders(user_stack)
-        avg_prox = defenders['Serotonin'][1]
-        msg_lines = ["Current defender proximities:"]
-        for ref, (mol, prox) in defenders.items():
-            msg_lines.append(f"{ref}: {get_molecule_name(mol)} with proximity {(100 * prox):.3f}%")
-        msg_lines.append(f"Average proximity: {(100 * avg_prox):.3f}%")
-        await ctx.send("\n".join(msg_lines))
-        await ctx.send("Submit another molecule to check for new defenders.")
-        while True:
-            try:
-                response = await self.bot.wait_for(
-                    'message',
-                    timeout=60.0,
-                    check=lambda m: m.author == ctx.author and m.channel == ctx.channel
-                )
-            except asyncio.TimeoutError:
-                await ctx.send("Timeout error. Please start the command again.")
-                return
-            try:
-                new_name = response.content.strip()
-                new_mol = get_mol(new_name)
-                new_proximities = {
-                    'Serotonin': get_proximity(new_mol, self.serotonin)
-                }
-                updated = False  # Flag to track if the new molecule beats any defender.
-                for ref in new_proximities:
-                    current_defender, current_prox = defenders[ref]
-                    if new_proximities[ref] > current_prox:
-                        defenders[ref] = (new_mol, new_proximities[ref])
-                        updated = True
-                if updated:
-                    if set(molecule_names).issubset(defenders) and not any(get_molecule_name(mol).lower() == get_molecule_name(new_mol).lower() for mol in user_stack):
-                        user_stack.append(new_mol)
-                        self.set_user_stack(ctx.author.id, user_stack)
-                    avg_prox = defenders['Serotonin'][1]
-                    msg_lines = ["Defender update:"]
-                    for ref, (mol, prox) in defenders.items():
-                        msg_lines.append(f"{ref}: {get_molecule_name(mol)} with proximity {(100 * prox):.3f}%")
-                    msg_lines.append(f"New average proximity: {(100 * avg_prox):.3f}%")
-                    await ctx.send("\n".join(msg_lines))
-                else:
-                    await ctx.send(f"{get_molecule_name(new_mol)} did not become a new defender in any category.")
-                await ctx.send("Submit another molecule to check for further updates.")
-            except Exception as e:
-                await ctx.send(f"Error processing molecule: {e}")
 
     @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')
     async def tag_command(
