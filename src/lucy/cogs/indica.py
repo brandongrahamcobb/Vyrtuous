@@ -52,6 +52,7 @@ class Indica(commands.Cog):
         self.db_pool = bot.db_pool
         self.handler = Message(self.config, self.conversations)
         self.predicator = Predicator(self.bot)
+        self.game = Game(self.bot)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -236,7 +237,7 @@ class Indica(commands.Cog):
             ctx = await self.bot.get_context(message)
             author = ctx.author.name
             self.handle_users(author)
-            await self.ai_handler(ctx)
+            self.game.distribute_xp(ctx.author.id)
         except Exception as e:
             logger.error(traceback.format_exc())
             if await self.predicator.is_at_home_func(message.guild.id):

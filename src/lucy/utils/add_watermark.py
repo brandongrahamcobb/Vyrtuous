@@ -41,14 +41,31 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Discord') -> BytesIO:
         except IOError:
             logger.warning('Roboto-Regular.ttf not found. Falling back to default font.')
             font = ImageFont.load_default()
+        min_font_size = 30
+        max_text_width = 512
+        
         while True:
             bbox = draw.textbbox((0, 0), watermark_text, font=font)
             text_width = bbox[2] - bbox[0]
-            if text_width <= 512 or font_size <= 1:
+            
+            if text_width <= max_text_width or font_size <= min_font_size:
                 break
+        
             font_size -= 1
-            font = ImageFont.truetype('Roboto-Regular.ttf', font_size)
+            if font_size < min_font_size:
+                font_size = min_font_size
+                break  # stop shrinking if it reaches the minimum font size
+        
+            font = ImageFont.truetype(PATH_FONT, font_size)
             logger.debug(f'Font size reduced to: {font_size}.')
+#        while True:
+#            bbox = draw.textbbox((0, 0), watermark_text, font=font)
+#            text_width = bbox[2] - bbox[0]
+#            if text_width <= 512 or font_size <= 1:
+#                break
+#            font_size -= 1
+#            font = ImageFont.truetype('Roboto-Regular.ttf', font_size)
+#            logger.debug(f'Font size reduced to: {font_size}.')
         text_height = bbox[3] - bbox[1]
         text_x = (width - text_width) / 2
         text_y = height - (2 * text_height)

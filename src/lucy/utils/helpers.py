@@ -77,7 +77,7 @@ PATH_TRAINING = join(DIR_HOME, '..', 'training.jsonl')
 PATH_TWITCH_BOT = join(DIR_BASE, 'lucy', 'bots', 'twitch_bot.py')
 PATH_TWITCH_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'twitch_oauth.py')
 PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'unique_pairs.py')
-
+PATH_USERS = join(DIR_BASE, 'lucy', '.users', 'users.yaml')
 # Main
 CONTENTS_MAIN = load_contents(PATH_MAIN)
 

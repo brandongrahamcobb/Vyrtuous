@@ -17,13 +17,18 @@
 import discord
 from discord.ext import commands
 import random
+import asyncpg
+import asyncio
+from lucy.utils.helpers import *
 import json
+import yaml
+from os import makedirs
+from os.path import exists
 import os
 
 class Game:
-    def __init__(self, bot, db_pool):
+    def __init__(self, bot):
         self.bot = bot
-        self.db_pool = db_pool
         self.users = {}
         self.xp_table = [1, 15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, 1573, 2144, 2800, 3640, 4700, 5893, 7360, 9144, 11120, 
                          13477, 16268, 19320, 22880, 27008, 31477, 36600, 42444, 48720, 55813, 63800, 86784, 98208, 110932, 124432, 
@@ -43,42 +48,25 @@ class Game:
                          615821622, 649568646, 685165008, 722712050, 762316670, 804091623, 848155844, 894634784, 943660770, 995373379, 
                          1049919840, 1107455447, 1168144006, 1232158297, 1299680571, 1370903066, 1446028554, 1525246918, 1608855764, 
                          1697021059]
-        self.loop = bot.loop
+        self.load_users()
 
-    async def load_users(self):
-        async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch("SELECT * FROM users")
-            for row in rows:
-                self.users[str(row['id'])] = {
-                    "xp": float(row['exp']),
-                    "level": row['level']
-                }
+    def load_users(self):
+        if exists(PATH_USERS):
+           with open(PATH_USERS, 'r') as file:
+               try:
+                   self.users = yaml.safe_load(file) or {}  # Store data in self.users
+               except yaml.YAMLError:
+                   self.users = {}  # Reset on error
+        else:
+            self.users = {}  # Initialize if file doesn't exist
 
-    async def save_user(self, user_id, name):
-        user = self.users[user_id]
-        async with self.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO users (id, name, level, exp)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (id) DO UPDATE
-                SET name = $2, level = $3, exp = $4
-                """,
-                int(user_id), name, user["level"], user["xp"]
-            )
 
-    async def distribute_xp(self, user_id, name):
-        if user_id not in self.users:
-            self.users[user_id] = {"xp": 0, "level": 1}
-        current_level = self.users[user_id]["level"]
-        xp_per_interaction = self.get_xp_per_interaction(current_level)
-        xp_gain = random.uniform(0.8 * xp_per_interaction, 1.2 * xp_per_interaction)
-        self.users[user_id]["xp"] += xp_gain
-        while self.users[user_id]["xp"] >= self.get_xp_for_level(current_level + 1):
-            self.users[user_id]["level"] += 1
-            current_level += 1
-            print(f"User {name} leveled up to {current_level}!")  # Replace with Discord message if needed
-        await self.save_user(user_id, name)
+    def save_users(self):
+        users_dir = os.path.dirname(PATH_USERS)  # Get the directory part of the path
+        if not exists(users_dir):  # Ensure the directory exists
+            makedirs(users_dir)
+        with open(PATH_USERS, 'w') as file:
+           yaml.dump(self.users, file)
 
     def get_xp_for_level(self, level):
         return sum(self.xp_table[:level])
@@ -88,3 +76,18 @@ class Game:
         daily_xp_required = xp_for_next_level / (365 / 200)
         xp_per_interaction = daily_xp_required / 200
         return xp_per_interaction
+
+    def distribute_xp(self, user_id):
+        if user_id not in self.users:
+             self.users[user_id] = {
+                 "xp": 0,
+                 "level": 1
+             }
+        current_level = self.users[user_id]["level"]
+        xp_per_interaction = self.get_xp_per_interaction(current_level)
+        xp_gain = random.uniform(0.8 * xp_per_interaction, 1.2 * xp_per_interaction)
+        self.users[user_id]["xp"] += xp_gain
+
+        if self.users[user_id]["xp"] >= self.get_xp_for_level(current_level + 1):
+            self.users[user_id]["level"] += 1
+        self.save_users()

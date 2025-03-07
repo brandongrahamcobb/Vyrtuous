@@ -85,10 +85,10 @@ class Hybrid(commands.Cog):
         self.config = bot.config
         self.conversations = bot.conversations
         self.batch_processor = BatchProcessor(bot)
+        self.game = Game(self.bot)
         self.predicator = Predicator(self.bot)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.messages = []
-        self.game = Game(self.bot, self.bot.db_pool)
         self.stacks = {}
         self.creatine = get_mol('Creatine')
         self.theanine = get_mol('L-theanine')
@@ -278,31 +278,89 @@ class Hybrid(commands.Cog):
                     await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
             elif option == 'glow':
                 if not molecules:
-                    await ctx.send('No molecules provided.')
-                    return
+                     await ctx.send('No molecules provided.')
+                     return
+            
+                # Split molecules by periods outside of quotes, but preserve periods inside quotes
+                molecule_parts = re.split(r'(?<!")\.(?!")', molecules)  # Split by period but avoid splitting inside quotes
+            
+                # Extract the quoted name from the end of the input, including the period inside quotes
+                name_match = re.search(r'"([^"]+)"$', molecules)
+                
+                if name_match:
+                    name = name_match.group(1)  # Extract the name from the quotes
+                    molecule_parts = molecule_parts[:-1]  # Remove the last part which is the name
+                else:
+                    name = 'Untitled'  # Default name if no quoted name is found
+                
+                # Initialize lists for storing results
                 fingerprints = []
-                names = []
-                smiles_list = molecules.split('.')  # Split input by "."
+                names = [name]  # Add the extracted name to the list
+            
+                # Process the molecule list
                 converted_smiles = []  # Store SMILES representations
-                for mol in smiles_list:
+                for mol in molecule_parts:
                     compounds = pcp.get_compounds(mol, 'name')  # Try to fetch from PubChem
-                    if compounds:
-                        smiles = compounds[0].isomeric_smiles  # Get the SMILES representation
+                    mol_obj = Chem.MolFromSmiles(mol)
+                    if mol_obj:
+                        smiles = mol  # Valid SMILES provided directly
                     else:
-                        helm = construct_helm_from_peptide(mol)
-                        smiles = manual_helm_to_smiles(helm)  # Fallback for peptides
+                        if compounds:
+                            smiles = compounds[0].isomeric_smiles  # Get the SMILES representation
+                        else:
+                            helm = construct_helm_from_peptide(mol)
+                            smiles = manual_helm_to_smiles(helm)  # Fallback for peptides
+            
                     if not smiles:
                         embed = discord.Embed(description=f'Invalid molecule: {mol}')
                         await ctx.send(embed=embed)
                         return
+                    
                     converted_smiles.append(smiles)
-                    names.append(mol)
+            
                 full_smiles = ".".join(converted_smiles)
                 smiles_comparison = [full_smiles, full_smiles]
                 molecule_objects = [get_mol(full_smiles, reverse=reverse) for _ in range(2)]
                 fingerprints.append(draw_fingerprint(molecule_objects))
+               
+                # Combine the image and send it
                 combined_image = combine(fingerprints, names)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+#                if not molecules:
+#                    await ctx.send('No molecules provided.')
+#                    return
+#                args = shlex.split(molecules)[:-1]
+#                fingerprints = []
+#                names = []
+#                smiles_list = molecules.split('.')  # Split input by "."
+#                converted_smiles = []  # Store SMILES representations
+#                for mol in smiles_list:
+#                    compounds = pcp.get_compounds(mol, 'name')  # Try to fetch from PubChem
+#                    mol_obj = Chem.MolFromSmiles(mol)
+#                    if mol_obj:
+#                        smiles = mol  # Valid SMILES provided directly
+#                    else:
+#                        if compounds:
+#                            smiles = compounds[0].isomeric_smiles  # Get the SMILES representation
+#                        else:
+#                            helm = construct_helm_from_peptide(mol)
+#                            smiles = manual_helm_to_smiles(helm)  # Fallback for peptides
+#                    if not smiles:
+#                        embed = discord.Embed(description=f'Invalid molecule: {mol}')
+#                        await ctx.send(embed=embed)
+#                        return
+#                    converted_smiles.append(smiles)
+#                if len(smiles_list) == 1:
+#                    names.append(mol)
+#                else:
+#                    names.append(molecules[-1])
+##                    names.append(mol)
+#                full_smiles = ".".join(converted_smiles)
+#                smiles_comparison = [full_smiles, full_smiles]
+#                molecule_objects = [get_mol(full_smiles, reverse=reverse) for _ in range(2)]
+#                fingerprints.append(draw_fingerprint(molecule_objects))
+#                combined_image = combine(fingerprints, names)
+#                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             elif option == 'gsrs':
                 if not molecules:
                     await ctx.send('No molecules provided.')
@@ -351,35 +409,34 @@ class Hybrid(commands.Cog):
             await ctx.send(file=discord.File(frame))
 
     @commands.command()
-    async def leaderboard(self, ctx):
-        async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT name, level, exp 
-                FROM users 
-                ORDER BY level DESC, exp DESC 
-                LIMIT 10
-                """
-            )
-        if not rows:
-            await ctx.send("The leaderboard is empty! Be the first to interact with the bot and gain XP!")
-            return
-        leaderboard_message = "**🏆 Leaderboard 🏆**\n"
-        for i, row in enumerate(rows, start=1):
-            leaderboard_message += f"{i}. **{row['name']}** - Level {row['level']}, {row['exp']:.2f} XP\n"
-        await ctx.send(leaderboard_message)
-
-    @commands.command()
     async def level(self, ctx, member: discord.Member = None):
         member = member or ctx.author
-        user_id = member.id
-        if user_id not in self.game.users:
+        user_id = int(member.id)
+
+        if user_id in self.game.users:
+            level = self.game.users[user_id]["level"]
+            xp = self.game.users[user_id]["xp"]
+            xp_needed_for_next_level = self.game.get_xp_for_level(level + 1) - xp
+            await ctx.send(f"{member.mention} is at level {level} with {xp:.2f} XP.\n"
+                           f"You need {xp_needed_for_next_level:.2f} XP to reach level {level + 1}.")
+        else:
             await ctx.send(f"{member.mention} has not interacted with the bot yet.")
-            return
-        user = self.game.users[user_id]
-        xp_needed = self.game.get_xp_for_level(user["level"] + 1) - user["xp"]
-        await ctx.send(f"{member.mention} is at level {user['level']} with {user['xp']:.2f} XP. "
-                       f"You need {xp_needed:.2f} XP to reach level {user['level'] + 1}.")
+
+    @commands.command()
+    async def leaderboard(self, ctx):
+        # Sort users by level, then by XP
+        sorted_users = sorted(self.game.users.items(), key=lambda item: (item[1]["level"], item[1]["xp"]), reverse=True)
+        
+        # Create leaderboard message
+        leaderboard_message = "Leaderboard:\n"
+        for i, (user_id, data) in enumerate(sorted_users[:10], start=1):
+            member = ctx.guild.get_member(int(user_id))
+            member_name = member.display_name if member else "Unknown User"
+            level = data["level"]
+            xp = data["xp"]
+            leaderboard_message += f"{i}. {member_name} - Level {level}, {xp:.2f} XP\n"
+
+        await ctx.send(leaderboard_message)
 
     @commands.hybrid_command(name='logp')
     async def logp(self, ctx: commands.Context, *, molecules: str):
