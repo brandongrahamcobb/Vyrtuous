@@ -410,6 +410,7 @@ class Hybrid(commands.Cog):
 
     @commands.command()
     async def level(self, ctx, member: discord.Member = None):
+        self.game.load_users()
         member = member or ctx.author
         user_id = int(member.id)
 
@@ -424,6 +425,7 @@ class Hybrid(commands.Cog):
 
     @commands.command()
     async def leaderboard(self, ctx):
+        self.game.load_users()
         # Sort users by level, then by XP
         sorted_users = sorted(self.game.users.items(), key=lambda item: (item[1]["level"], item[1]["xp"]), reverse=True)
         

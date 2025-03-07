@@ -78,6 +78,7 @@ class Game:
         return xp_per_interaction
 
     def distribute_xp(self, user_id):
+        self.load_users()
         if user_id not in self.users:
              self.users[user_id] = {
                  "xp": 0,
