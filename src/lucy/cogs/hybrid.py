@@ -111,6 +111,11 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name="batch_results", with_app_command=True)
     async def batch_results(self, ctx: commands.Context):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         responses = self.batch_processor.get_user_responses(ctx.author)
         if responses:
             response_text = "\n\n".join(responses)
@@ -189,8 +194,8 @@ class Hybrid(commands.Cog):
         if ctx.interaction:
             async with ctx.typing():
                 await ctx.interaction.response.defer(ephemeral=True)
-        if not await self.predicator.is_at_home_func(ctx.guild.id):
-            return
+#        if not await self.predicator.is_at_home_func(ctx.guild.id):
+ #           return
         if not self.predicator.is_release_mode_func(ctx):
             return
         if not r.isnumeric():
@@ -247,8 +252,8 @@ class Hybrid(commands.Cog):
             if ctx.interaction:
                 async with ctx.typing():
                     await ctx.interaction.response.defer(ephemeral=True)
-            if not await self.predicator.is_at_home_func(ctx.guild.id):
-                return
+#            if not await self.predicator.is_at_home_func(ctx.guild.id):
+ #               return
             if not self.predicator.is_release_mode_func(ctx):
                 return
             if ctx.message.attachments:
@@ -398,8 +403,8 @@ class Hybrid(commands.Cog):
         if ctx.interaction:
             async with ctx.typing():
                 await ctx.interaction.response.defer(ephemeral=True)
-        if not await self.predicator.is_at_home_func(ctx.guild.id):
-            return
+#        if not await self.predicator.is_at_home_func(ctx.guild.id):
+ #           return
         if not self.predicator.is_release_mode_func(ctx):
             return
         video_path = 'frogs.mov'
@@ -410,6 +415,11 @@ class Hybrid(commands.Cog):
 
     @commands.command()
     async def level(self, ctx, member: discord.Member = None):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         self.game.load_users()
         member = member or ctx.author
         user_id = int(member.id)
@@ -425,6 +435,11 @@ class Hybrid(commands.Cog):
 
     @commands.command()
     async def leaderboard(self, ctx):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         self.game.load_users()
         # Sort users by level, then by XP
         sorted_users = sorted(self.game.users.items(), key=lambda item: (item[1]["level"], item[1]["xp"]), reverse=True)
@@ -442,6 +457,11 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='logp')
     async def logp(self, ctx: commands.Context, *, molecules: str):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         args = shlex.split(molecules)
         for arg in args:
             compounds = pcp.get_compounds(arg, 'name')
@@ -456,8 +476,8 @@ class Hybrid(commands.Cog):
             if ctx.interaction:
                 async with ctx.typing():
                     await ctx.interaction.response.defer(ephemeral=True)
-            if not await self.predicator.is_at_home_func(ctx.guild.id):
-                return
+#            if not await self.predicator.is_at_home_func(ctx.guild.id):
+ #               return
             if not self.predicator.is_release_mode_func(ctx):
                 return
             await ctx.send(script(version, reference))
@@ -482,15 +502,23 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='sim')
     async def sim(self, ctx: commands.Context, *, molecules: str):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         args = shlex.split(molecules)
         similarity = get_proximity(get_mol(args[0]), get_mol(args[1]))
         await ctx.send(similarity)
 
     @commands.hybrid_command(name='smiles')
     async def smiles(self, ctx: commands.Context, *, molecules: str, reverse: bool = True):
-        try:
-            if ctx.interaction:
+        if ctx.interaction:
+            async with ctx.typing():
                 await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
+        try:
             args = shlex.split(molecules)
             output = []
             for arg in args:
@@ -814,6 +842,11 @@ class Hybrid(commands.Cog):
     @commands.command(name='wipe', description=f'Usage: lwipe <all|bot|commands|text|user>')
     @commands.has_permissions(manage_messages=True)
     async def wipe(self, ctx, option: str = None, limit: int = 100):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
         if limit <= 0 or limit > 100:
             return await ctx.send('Limit must be between 1 and 100.')
         check_function = None

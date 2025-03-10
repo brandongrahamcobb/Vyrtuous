@@ -56,11 +56,11 @@ class Indica(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-        if await self.predicator.is_at_home_func(before.guild.id):
-            if before.content != after.content:
-                ctx = await self.bot.get_context(after)
-                if ctx.command:
-                    await self.bot.invoke(ctx)
+#        if await self.predicator.is_at_home_func(before.guild.id):
+        if before.content != after.content:
+            ctx = await self.bot.get_context(after)
+            if ctx.command:
+                await self.bot.invoke(ctx)
 
     async def ai_handler(self, ctx: commands.Context):
         array = await self.handler.process_array(ctx.message.content, attachments=ctx.message.attachments)
@@ -92,8 +92,8 @@ class Indica(commands.Cog):
                         
                     except Exception as e:
                         logger.error(traceback.format_exc())
-                        if await self.predicator.is_at_home_func(ctx.guild.id):
-                            print(f'An error occurred: {e}')
+#                        if await self.predicator.is_at_home_func(ctx.guild.id):
+                        print(f'An error occurred: {e}')
         if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
 #                        elif self.predicator.is_spawd(ctx) and self.bot.user in ctx.message.mentions:
             async for chat_completion in self.handler.generate_chat_completion(
@@ -116,28 +116,28 @@ class Indica(commands.Cog):
             await self.send_message(ctx, response)
 
     async def handle_moderation(self, message: discord.Message):
-        if await self.predicator.is_at_home_func(message.guild.id):
-            if not await self.predicator.is_vegan_user(message.author):
-                user_id = message.author.id
-                async with self.db_pool.acquire() as connection:
-                    async with connection.transaction():
-                        row = await connection.fetchrow("SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id)
-                        if row:
-                            flagged_count = row['flagged_count'] + 1
-                            await connection.execute("UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2", flagged_count, user_id)
-                        else:
-                            flagged_count = 1
-                            await connection.execute("INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)", user_id, flagged_count)
-                if flagged_count == 1:
-                    await message.reply("Warning: Your message has been flagged.")
-                elif flagged_count in [2, 3, 4]:
-                    await message.delete()
-                    if flagged_count == 4:
-                        await message.author.send("Warning: Your message has been flagged again.")
-                elif flagged_count == 5:
-                    await message.delete()
-                    await message.author.send("You have been timed out for 30 seconds due to repeated violations.")
-                    await message.author.timeout(duration=30)  # Timeout for 30 seconds
+#        if await self.predicator.is_at_home_func(message.guild.id):
+        if not await self.predicator.is_vegan_user(message.author):
+            user_id = message.author.id
+            async with self.db_pool.acquire() as connection:
+                async with connection.transaction():
+                    row = await connection.fetchrow("SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id)
+                    if row:
+                        flagged_count = row['flagged_count'] + 1
+                        await connection.execute("UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2", flagged_count, user_id)
+                    else:
+                        flagged_count = 1
+                        await connection.execute("INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)", user_id, flagged_count)
+            if flagged_count == 1:
+                await message.reply("Warning: Your message has been flagged.")
+            elif flagged_count in [2, 3, 4]:
+                await message.delete()
+                if flagged_count == 4:
+                    await message.author.send("Warning: Your message has been flagged again.")
+            elif flagged_count == 5:
+                await message.delete()
+                await message.author.send("You have been timed out for 30 seconds due to repeated violations.")
+                await message.author.timeout(duration=30)  # Timeout for 30 seconds
 
     def handle_users(self, author: str):
         author_char = author[0].upper()  # Fixed: Get the first character in uppercase
@@ -161,12 +161,12 @@ class Indica(commands.Cog):
                 yaml.dump(data, file)
 
     async def send_message(self, ctx: commands.Context, print: str):
-        if await self.predicator.is_at_home_func(ctx.guild.id):
-            await ctx.reply(print)
+#        if await self.predicator.is_at_home_func(ctx.guild.id):
+        await ctx.reply(print)
 
     async def send_file(self, ctx: commands.Context, file: discord.File):
-        if await self.predicator.is_at_home_func(ctx.guild.id):
-            await ctx.reply(file=file)
+#        if await self.predicator.is_at_home_func(ctx.guild.id):
+        await ctx.reply(file=file)
 
 #    async def ai_handler(self, ctx: commands.Context):
 #        array = await self.handler.process_array(ctx.message.content, attachments=ctx.message.attachments)
@@ -240,8 +240,8 @@ class Indica(commands.Cog):
             self.game.distribute_xp(ctx.author.id)
         except Exception as e:
             logger.error(traceback.format_exc())
-            if await self.predicator.is_at_home_func(message.guild.id):
-                print(f'An error occurred: {e}')
+#            if await self.predicator.is_at_home_func(message.guild.id):
+            print(f'An error occurred: {e}')
         finally:
             try:
                 shutil.rmtree(DIR_TEMP)

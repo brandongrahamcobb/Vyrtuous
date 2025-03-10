@@ -52,14 +52,11 @@ class Predicator:
         return ctx.author.id == 154749533429956608
 
     async def is_vegan_user(self, user: discord.User) -> bool:
-        guild_ids = [
-            self.config['discord_testing_guild_id'],
-            730907954345279591
-        ]
+        guild_ids = self.config['discord_testing_guild_ids']
         for guild_id in guild_ids:
             guild = self.bot.get_guild(guild_id)
             if guild:
-                vegan_role = get(guild.roles, name="Vegan")
+                vegan_role = get(guild.roles, name="vegan")
                 if vegan_role and vegan_role in user.roles:
                     return True
         return False
