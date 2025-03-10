@@ -80,7 +80,7 @@ class Indica(commands.Cog):
 #                    await self.handle_large_response(ctx, chat_completion)
     
             # Moderation Check
-            if self.bot.user in ctx.message.mentions and self.config['openai_chat_moderation']:
+            if self.config['openai_chat_moderation']:
                 async for moderation_completion in create_moderation(input_array=[item]):
                     try:
                         full_response = json.loads(moderation_completion)
