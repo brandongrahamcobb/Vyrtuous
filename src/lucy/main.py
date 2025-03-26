@@ -51,19 +51,15 @@ async def start_bot(bot, name):
         logger.error(f"Error running {name}: {e}")
 
 async def main():
-    # Initialize configuration and logging
     config = Config().get_config()
     increment_version()
     setup_logging(config, PATH_LOG)
 
-    # Initialize database pool
     db_pool = await database_init()
 
-    # Shared resources
     conversations = Conversations()
     lock = asyncio.Lock()
 
-    # Initialize OAuth handlers
     discord_oauth = DiscordOAuth(config)
     setup_discord_routes(discord_app, discord_oauth)
     linkedin_oauth = LinkedInOAuth(config)
@@ -73,13 +69,11 @@ async def main():
     twitch_oauth = TwitchOAuth(config)
     setup_twitch_routes(twitch_app, twitch_oauth)
 
-    # Start OAuth apps
     discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=5000))
     linkedin_quart = asyncio.create_task(linkedin_app.run_task(host="0.0.0.0", port=5001))
     linkedin_quart = asyncio.create_task(patreon_app.run_task(host="0.0.0.0", port=5003))
     twitch_quart = asyncio.create_task(twitch_app.run_task(host="0.0.0.0", port=5002))
 
-    # Authenticate users
     print("Please authenticate Discord by visiting the following URL:")
     print(discord_oauth.get_authorization_url())
     print("Please authenticate LinkedIn by visiting the following URL:")
@@ -90,7 +84,6 @@ async def main():
     print(twitch_oauth.get_authorization_url())
     await asyncio.sleep(20)
 
-    # Initialize bots
     discord_bot = DiscordBot(
         config=config,
         db_pool=db_pool,
@@ -113,7 +106,6 @@ async def main():
         oauth_token=twitch_oauth.access_token,
     )
 
-    # Run all bots
     tasks = [
         asyncio.create_task(start_bot(discord_bot, "DiscordBot")),
         asyncio.create_task(start_bot(linkedin_bot, "LinkedInBot")),

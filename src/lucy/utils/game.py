@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import discord
+from decimal import Decimal
 from discord.ext import commands
 import random
 import asyncpg
@@ -30,6 +31,8 @@ class Game:
     def __init__(self, bot):
         self.bot = bot
         self.users = {}
+        self.factions = {}
+        self.db_pool = self.bot.db_pool
         self.xp_table = [1, 15, 34, 57, 92, 135, 372, 560, 840, 1242, 1144, 1573, 2144, 2800, 3640, 4700, 5893, 7360, 9144, 11120, 
                          13477, 16268, 19320, 22880, 27008, 31477, 36600, 42444, 48720, 55813, 63800, 86784, 98208, 110932, 124432, 
                          139372, 155865, 173280, 192400, 213345, 235372, 259392, 285532, 312928, 342624, 374760, 408336, 445544, 
@@ -48,47 +51,158 @@ class Game:
                          615821622, 649568646, 685165008, 722712050, 762316670, 804091623, 848155844, 894634784, 943660770, 995373379, 
                          1049919840, 1107455447, 1168144006, 1232158297, 1299680571, 1370903066, 1446028554, 1525246918, 1608855764, 
                          1697021059]
-        self.load_users()
+    async def get_user(self, user_id):
+        """Fetches a user row from the database by user_id."""
+        async with self.db_pool.acquire() as conn:
+            return await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+    
+    async def get_faction(self, faction_name):
+        """Fetches a faction row from the database by name."""
+        async with self.db_pool.acquire() as conn:
+            return await conn.fetchrow("SELECT * FROM factions WHERE name = $1", faction_name)
+    
+    async def get_faction_members(self, faction_name):
+        """Returns a list of user IDs belonging to a faction."""
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch("SELECT user_id FROM faction_members WHERE faction_name = $1", faction_name)
+            return [row["user_id"] for row in rows]
+    
+    async def get_faction_leaderboard(self):
+        """Returns a sorted list of factions by XP (descending)."""
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch("SELECT name, xp, level FROM factions ORDER BY xp DESC LIMIT 10")
+            return [dict(row) for row in rows]
 
-    def load_users(self):
-        if exists(PATH_USERS):
-           with open(PATH_USERS, 'r') as file:
-               try:
-                   self.users = yaml.safe_load(file) or {}  # Store data in self.users
-               except yaml.YAMLError:
-                   self.users = {}  # Reset on error
-        else:
-            self.users = {}  # Initialize if file doesn't exist
-
-
-    def save_users(self):
-        users_dir = os.path.dirname(PATH_USERS)  # Get the directory part of the path
-        if not exists(users_dir):  # Ensure the directory exists
-            makedirs(users_dir)
-        with open(PATH_USERS, 'w') as file:
-           yaml.dump(self.users, file)
-
-    def get_xp_for_level(self, level):
+    async def get_xp_for_level(self, level):
+        """Returns total XP required to reach a specific level."""
         return sum(self.xp_table[:level])
 
-    def get_xp_per_interaction(self, current_level):
+    async def get_xp_per_interaction(self, current_level):
+        """Calculates XP earned per interaction based on level."""
         xp_for_next_level = self.xp_table[current_level]
         daily_xp_required = xp_for_next_level / (365 / 200)
-        xp_per_interaction = daily_xp_required / 200
-        return xp_per_interaction
+        return daily_xp_required / 200
 
-    def distribute_xp(self, user_id):
-        self.load_users()
-        if user_id not in self.users:
-             self.users[user_id] = {
-                 "xp": 0,
-                 "level": 1
-             }
-        current_level = self.users[user_id]["level"]
-        xp_per_interaction = self.get_xp_per_interaction(current_level)
-        xp_gain = random.uniform(0.8 * xp_per_interaction, 1.2 * xp_per_interaction)
-        self.users[user_id]["xp"] += xp_gain
+    async def distribute_xp(self, user_id):
+        async with self.db_pool.acquire() as conn:
+            user = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
+            if not user:
+                # Fetch Discord username for insertion.
+                discord_user = self.bot.get_user(user_id)
+                username = discord_user.name if discord_user else f"User_{user_id}"
+                await conn.execute(
+                    "INSERT INTO users (id, name, level, exp, faction_name) VALUES ($1, $2, 1, 0, NULL)",
+                    user_id, username
+                )
+                level, xp, faction_name = 1, Decimal("0"), None
+            else:
+                level, xp, faction_name = user["level"], user["exp"], user["faction_name"]
+    
+            xp_per_interaction = await self.get_xp_per_interaction(level)
+            xp_gain = random.uniform(0.8 * xp_per_interaction, 1.2 * xp_per_interaction)
+            xp_gain = Decimal(str(xp_gain))
+            new_xp = xp + xp_gain
+    
+            # Check for level-up based on user xp thresholds.
+            if new_xp >= await self.get_xp_for_level(level + 1):
+                level += 1
+    
+            await conn.execute(
+                "UPDATE users SET level = $1, exp = $2 WHERE id = $3",
+                level, new_xp, user_id
+            )
+    
+            # If the user is in a faction, update the faction's XP and level.
+            if faction_name:
+                # Update faction XP.
+                await conn.execute(
+                    "UPDATE factions SET xp = xp + $1 WHERE name = $2",
+                    xp_gain, faction_name
+                )
+                # Fetch the updated faction data.
+                faction_row = await conn.fetchrow(
+                    "SELECT xp, level FROM factions WHERE name = $1", faction_name
+                )
+                faction_xp = faction_row["xp"]
+                faction_level = faction_row["level"]
+                # Calculate required XP for the next faction level.
+                required_xp = await self.get_xp_for_level(faction_level + 1)
+                if faction_xp >= required_xp:
+                    faction_level += 1
+                    await conn.execute(
+                        "UPDATE factions SET level = $1 WHERE name = $2",
+                        faction_level, faction_name
+                    )
 
-        if self.users[user_id]["xp"] >= self.get_xp_for_level(current_level + 1):
-            self.users[user_id]["level"] += 1
-        self.save_users()
+    async def create_faction(self, faction_name, creator_id):
+        """Allows a user to create a new faction."""
+        async with self.db_pool.acquire() as conn:
+            faction_exists = await conn.fetchrow("SELECT name FROM factions WHERE name = $1", faction_name)
+            if faction_exists:
+                return False  # Faction already exists
+
+            await conn.execute(
+                "INSERT INTO factions (name, xp, level) VALUES ($1, 0, 1)", faction_name
+            )
+            await conn.execute(
+                "UPDATE users SET faction_name = $1 WHERE id = $2", faction_name, creator_id
+            )
+            await conn.execute(
+                "INSERT INTO faction_members (user_id, faction_name) VALUES ($1, $2)", creator_id, faction_name
+            )
+            return True
+
+    async def join_faction(self, faction_name, user_id):
+        """Allows a user to join an existing faction."""
+        async with self.db_pool.acquire() as conn:
+            faction_exists = await conn.fetchrow("SELECT name FROM factions WHERE name = $1", faction_name)
+            if not faction_exists:
+                return "Faction not found"
+
+            already_member = await conn.fetchrow(
+                "SELECT * FROM faction_members WHERE user_id = $1 AND faction_name = $2",
+                user_id, faction_name
+            )
+            if already_member:
+                return "Already a member"
+
+            await conn.execute(
+                "INSERT INTO faction_members (user_id, faction_name) VALUES ($1, $2)", user_id, faction_name
+            )
+            await conn.execute(
+                "UPDATE users SET faction_name = $1 WHERE id = $2", faction_name, user_id
+            )
+            return "Joined successfully"
+
+    async def get_leaderboard(self):
+        """Fetches the top 10 users sorted by level and XP."""
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, name, level, exp FROM users ORDER BY level DESC, exp DESC LIMIT 10"
+            )
+            return rows
+
+    async def leave_faction(self, user_id, current_faction):
+        """Removes a user from their current faction and deletes the faction if it's empty."""
+        async with self.db_pool.acquire() as conn:
+            # Remove the user from the faction_members table.
+            await conn.execute(
+                "DELETE FROM faction_members WHERE user_id = $1 AND faction_name = $2",
+                user_id, current_faction
+            )
+            # Update the user's record to be factionless.
+            await conn.execute(
+                "UPDATE users SET faction_name = NULL WHERE id = $1",
+                user_id
+            )
+            # Check if there are any remaining members in the faction.
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) AS count FROM faction_members WHERE faction_name = $1",
+                current_faction
+            )
+            if row and row["count"] == 0:
+                # Delete the faction if no members remain.
+                await conn.execute(
+                    "DELETE FROM factions WHERE name = $1",
+                    current_faction
+                )

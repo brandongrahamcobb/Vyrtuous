@@ -16,6 +16,7 @@
 '''
 from discord.ext import commands, tasks
 from lucy.utils.backup import perform_backup, setup_backup_directory
+from lucy.utils.create_batch_completion import BatchProcessor
 from lucy.utils.helpers import *
 from lucy.utils.pdf_manager import PDFManager
 from lucy.utils.paginator import Paginator
@@ -29,6 +30,7 @@ class Sativa(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.batch_processor = BatchProcessor(bot)
         self.pdf_manager = PDFManager(self.bot.db_pool)
         self.predicator = Predicator(self.bot)
 
@@ -61,13 +63,34 @@ class Sativa(commands.Cog):
             logger.error(f'Error during database backup: {e}')
 
 
-    @commands.hybrid_command(name="uploadpdf", description="Upload a PDF to your catalog.")
+    @commands.hybrid_command(name="batch", hidden=True)
+    async def batch(self, ctx: commands.Context):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
+        if not self.predicator.is_release_mode_func(ctx):
+            return
+        responses = self.batch_processor.get_user_responses(ctx.author)
+        if responses:
+            response_text = "\n\n".join(responses)
+            if len(response_text) > 2000:
+                await ctx.send("Responses are too long. Sending as a file.")
+                with open(f"batch_{ctx.author.name}.txt", "w") as f:
+                    f.write(response_text)
+                await ctx.send(file=discord.File(f"batch_{ctx.author.name}.txt"))
+            else:
+                await ctx.send(response_text)
+        else:
+            await ctx.send("No batch responses available.")
+
+    @commands.hybrid_command(name="uploadpdf", description="Upload a PDF to your catalog.", hidden=True)
     @discord.app_commands.describe(
         title="Title of the PDF.",
         description="Description of the PDF (optional).",
         tags="Tags associated with the PDF, separated by commas (optional).",
         file="The PDF file to upload."
     )
+    @commands.check(at_home)
     async def upload_pdf(self, ctx: commands.Context, title: str, file: discord.Attachment, description: Optional[str] = None, tags: Optional[str] = None):
         if not self.predicator.is_spawd(ctx):
             return
@@ -87,8 +110,9 @@ class Sativa(commands.Cog):
             logger.error(f"Error uploading PDF: {e}")
             await ctx.send("❌ Failed to upload PDF.")
 
-    @commands.hybrid_command(name="listpdfs", description="List all your uploaded PDFs.")
+    @commands.hybrid_command(name="listpdfs", description="List all your uploaded PDFs.", hidden=True)
     @discord.app_commands.describe(tags="Filter by tags, separated by commas (optional).")
+    @commands.check(at_home)
     async def list_pdfs(self, ctx: commands.Context, tags: Optional[str] = None):
         user_id = ctx.author.id
         tags_list = [tag.strip() for tag in tags.split(",")] if tags else None
@@ -97,27 +121,22 @@ class Sativa(commands.Cog):
             if not pdfs:
                 await ctx.send("📭 No PDFs found.")
                 return
-    
-            # Generate pages for pagination
             pages = []
-            for i in range(0, len(pdfs), 5):  # Group 5 PDFs per page
+            for i in range(0, len(pdfs), 5):
                 embed = discord.Embed(title="📂 Your PDFs", color=discord.Color.blue())
                 for pdf in pdfs[i:i + 5]:
-                    # Truncate values to fit within the limit
                     title = pdf['title'] if pdf['title'] else "Untitled"
-                    if len(title) > 200:  # Truncate title to fit
+                    if len(title) > 200:
                         title = title[:197] + "..."
                     field_name = f"ID `{pdf['id']}`: {title}"
-                    if len(field_name) > 256:  # Ensure field name fits within the limit
+                    if len(field_name) > 256:
                         field_name = field_name[:253] + "..."
-   
                     description = (pdf['description'] or 'N/A')
-                    if len(description) > 500:  # Arbitrary cutoff for description
+                    if len(description) > 500:
                         description = description[:497] + "..."
                     tags = ', '.join(pdf['tags']) if pdf['tags'] else 'N/A'
-                    if len(tags) > 500:  # Arbitrary cutoff for tags
+                    if len(tags) > 500:
                         tags = tags[:497] + "..."
-    
                     embed.add_field(
                         name=field_name,
                         value=(
@@ -134,8 +153,9 @@ class Sativa(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ An error occurred: {str(e)}")
 
-    @commands.hybrid_command(name="searchpdfs", description="Search PDFs in your catalog.")
+    @commands.hybrid_command(name="searchpdfs", description="Search PDFs in your catalog.", hidden=True)
     @discord.app_commands.describe(query_text="Search term for title or tags.")
+    @commands.check(at_home)
     async def search_pdfs(self, ctx: commands.Context, query_text: str):
         if not self.predicator.is_spawd(ctx):
             return
@@ -162,8 +182,9 @@ class Sativa(commands.Cog):
             logger.error(f"Error searching PDFs: {e}")
             await ctx.send("❌ Failed to search PDFs.")
 
-    @commands.hybrid_command(name="viewpdf", description="View details about a PDF.")
+    @commands.hybrid_command(name="viewpdf", description="View details about a PDF.", hidden=True)
     @discord.app_commands.describe(pdf_id="ID of the PDF to view.")
+    @commands.check(at_home)
     async def view_pdf(self, ctx: commands.Context, pdf_id: int):
         if not self.predicator.is_spawd(ctx):
             return
@@ -184,8 +205,9 @@ class Sativa(commands.Cog):
             logger.error(f"Error viewing PDF: {e}")
             await ctx.send("❌ Failed to retrieve PDF details.")
 
-    @commands.hybrid_command(name="deletepdf", description="Delete a PDF from your catalog.")
+    @commands.hybrid_command(name="deletepdf", description="Delete a PDF from your catalog.", hidden=True)
     @discord.app_commands.describe(pdf_id="ID of the PDF to delete.")
+    @commands.check(at_home)
     async def delete_pdf(self, ctx: commands.Context, pdf_id: int):
         if not self.predicator.is_spawd(ctx):
             return
@@ -207,7 +229,7 @@ class Sativa(commands.Cog):
         return "\n".join(
             f"ID `{ref['id']}`: {ref['title']} by {', '.join(ref['authors'])}" for ref in references
         )
-    
+
     def _handle_large_response(self, content: str) -> str:
         if len(content) > 2000:
             buffer = io.StringIO(content)

@@ -57,15 +57,16 @@
 #    output = BytesIO(drawing)
 #    return output
 
+from rdkit import Chem
+from rdkit.Chem import rdFMCS, AllChem, Draw, rdMolAlign, rdDepictor
+from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
+import numpy as np
 from io import BytesIO
-from lucy.utils.setup_logging import logger
-from rdkit.Chem.Draw import rdDepictor, rdMolDraw2D, SimilarityMaps
+
 rdDepictor.SetPreferCoordGen(True)
 
-def draw_fingerprint(pair) -> BytesIO:
-#    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048, countSimulation=True)
-#    def get_fp(mol, *args, **kwargs):
-#        return mfpgen.GetFingerprint(mol)
+def draw_fingerprint(pair, rotation=0) -> BytesIO:
+    """Draws similarity maps for a molecular pair, aligning based on a core structure and allowing individual rotation."""
     d2d = rdMolDraw2D.MolDraw2DCairo(1024, 1024)
     d2d.prepareMolsBeforeDrawing = False
     Options = d2d.drawOptions()
@@ -73,13 +74,43 @@ def draw_fingerprint(pair) -> BytesIO:
     Options.includeMetadata = False
     Options.bondLineWidth = 4.0
     d2d.SetDrawOptions(Options)
-    mol1 = rdMolDraw2D.PrepareMolForDrawing(pair[0], kekulize=True)
-    mol1.UpdatePropertyCache(False)
-    mol2 = rdMolDraw2D.PrepareMolForDrawing(pair[1], kekulize=True)
-    mol2.UpdatePropertyCache(False)
-    fig, maxweight = SimilarityMaps.GetSimilarityMapForFingerprint(mol1, mol2, lambda m, i: SimilarityMaps.GetMorganFingerprint(m, i, radius=2, fpType='bv', nBits=8192), draw2d=d2d, drawingOptions=Options)
-#    fig, maxweight = SimilarityMaps.GetSimilarityMapForFingerprint(pair[1], pair[0], get_fp, draw2d=d2d) #colorMap=brighter_color, draw2d=d2d)
+
+    mol1, mol2 = pair[0], pair[1]
+
+    # Align molecules if a core is provided
+    mol1, mol2 = standardize_molecule(mol1), standardize_molecule(mol2)
+    # Apply independent rotations
+    rotate_molecule(mol1, rotation)
+    rotate_molecule(mol2, rotation)
+
+    # Compute similarity map
+    fig, maxweight = SimilarityMaps.GetSimilarityMapForFingerprint(
+        mol1, mol2, 
+        lambda m, i: SimilarityMaps.GetMorganFingerprint(m, i, radius=2, fpType='bv', nBits=8192), 
+        draw2d=d2d, drawingOptions=Options
+    )
+
     d2d.FinishDrawing()
     drawing = d2d.GetDrawingText()
     output = BytesIO(drawing)
     return output
+
+def standardize_molecule(mol):
+    """Generate 2D coordinates for a molecule to ensure consistent orientation."""
+    mol = Chem.Mol(mol)  # Create a copy
+    Chem.rdDepictor.Compute2DCoords(mol)  # Ensure 2D coordinates
+    return mol
+
+def rotate_molecule(mol, angle):
+    """Rotate a molecule by a given angle (in degrees)."""
+    conf = mol.GetConformer()
+    rad_angle = np.radians(angle)  # Convert degrees to radians
+    cos_theta, sin_theta = np.cos(rad_angle), np.sin(rad_angle)
+
+    for i in range(mol.GetNumAtoms()):
+        pos = conf.GetAtomPosition(i)
+        x_new = cos_theta * pos.x - sin_theta * pos.y
+        y_new = sin_theta * pos.x + cos_theta * pos.y
+        conf.SetAtomPosition(i, (x_new, y_new, pos.z))
+
+    return mol

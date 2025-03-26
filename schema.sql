@@ -24,6 +24,10 @@ DROP TABLE IF EXISTS token_usage_logs CASCADE;
 
 DROP TABLE IF EXISTS users CASCADE;
 
+DROP TABLE IF EXISTS faction_members CASCADE;
+
+DROP TABLE IF EXISTS factions CASCADE;
+
 CREATE TABLE public.annotations (
     id integer NOT NULL,
     pdf_id integer,
@@ -86,4 +90,27 @@ CREATE TABLE public.users (
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     level integer DEFAULT 1 NOT NULL,
     exp numeric DEFAULT 0 NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.users (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    create_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    level INTEGER DEFAULT 1 NOT NULL,
+    exp NUMERIC DEFAULT 0 NOT NULL,
+    faction_name VARCHAR(255) DEFAULT NULL
+);
+
+-- Create the Factions Table
+CREATE TABLE IF NOT EXISTS public.factions (
+    name VARCHAR(255) PRIMARY KEY,
+    xp NUMERIC DEFAULT 0 NOT NULL,
+    level INTEGER DEFAULT 1 NOT NULL
+);
+
+-- Create the Faction Members Table (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS public.faction_members (
+    user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
+    faction_name VARCHAR(255) REFERENCES factions(name) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, faction_name)
 );

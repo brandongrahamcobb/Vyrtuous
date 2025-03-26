@@ -14,31 +14,24 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from collections import defaultdict
-from discord.ext import commands, menus, tasks
+from discord.ext import commands
 from discord.utils import get
 from lucy.utils.combine import combine
 from lucy.utils.create_https_moderation import create_https_moderation
 from lucy.utils.create_moderation import create_moderation
-from lucy.utils.draw_fingerprint import draw_fingerprint
 from lucy.utils.helpers import *
 from lucy.utils.game import Game
 from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
-from lucy.utils.nlp_utils import NLPUtils
 from lucy.utils.predicator import Predicator
-from lucy.utils.tag import TagManager
 from os.path import abspath, dirname, exists, expanduser, join
 
 import asyncio
-import datetime
 import discord
 import json
 import os
 import pytz
-import random
 import shutil
-import subprocess
 import traceback
 import uuid
 import yaml
@@ -56,7 +49,6 @@ class Indica(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
-#        if await self.predicator.is_at_home_func(before.guild.id):
         if before.content != after.content:
             ctx = await self.bot.get_context(after)
             if ctx.command:
@@ -64,80 +56,28 @@ class Indica(commands.Cog):
 
     async def ai_handler(self, ctx: commands.Context):
         array = await self.handler.process_array(ctx.message.content, attachments=ctx.message.attachments)
-        
         if not array:
             logger.error("Invalid 'messages': The array is empty or improperly formatted.")
             await self.send_message(ctx, "Your message must include text or valid attachments.")
             return
-    
         logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
-    
         for item in array:
-#            if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions and not self.predicator.is_spawd(ctx):
-#                async for chat_completion in self.handler.generate_chat_completion(
-#                    custom_id=ctx.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
-#                ):
-#                    await self.handle_large_response(ctx, chat_completion)
-    
-            # Moderation Check
             if self.config['openai_chat_moderation']:
                 async for moderation_completion in create_moderation(input_array=[item]):
                     try:
                         full_response = json.loads(moderation_completion)
                         results = full_response.get('results', [])
-                        
                         if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
                             await self.handle_moderation(ctx.message)
                             return
-                        
                     except Exception as e:
                         logger.error(traceback.format_exc())
-#                        if await self.predicator.is_at_home_func(ctx.guild.id):
                         print(f'An error occurred: {e}')
         if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
-#                        elif self.predicator.is_spawd(ctx) and self.bot.user in ctx.message.mentions:
             async for chat_completion in self.handler.generate_chat_completion(
                 custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT
             ):
                 await self.handle_large_response(ctx, chat_completion)
-    
-    async def handle_large_response(self, ctx: commands.Context, response: str):
-        """Handles sending messages larger than 2000 characters by creating temp files."""
-        if len(response) > 2000:
-            unique_filename = f'temp_{uuid.uuid4()}.txt'
-            
-            try:
-                with open(unique_filename, 'w') as f:
-                    f.write(response)
-                await self.send_file(ctx, file=discord.File(unique_filename))
-            finally:
-                os.remove(unique_filename)
-        else:
-            await self.send_message(ctx, response)
-
-    async def handle_moderation(self, message: discord.Message):
-#        if await self.predicator.is_at_home_func(message.guild.id):
-        if not await self.predicator.is_vegan_user(message.author):
-            user_id = message.author.id
-            async with self.db_pool.acquire() as connection:
-                async with connection.transaction():
-                    row = await connection.fetchrow("SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id)
-                    if row:
-                        flagged_count = row['flagged_count'] + 1
-                        await connection.execute("UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2", flagged_count, user_id)
-                    else:
-                        flagged_count = 1
-                        await connection.execute("INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)", user_id, flagged_count)
-            if flagged_count == 1:
-                await message.reply("Warning: Your message has been flagged.")
-            elif flagged_count in [2, 3, 4]:
-                await message.delete()
-                if flagged_count == 4:
-                    await message.author.send("Warning: Your message has been flagged again.")
-            elif flagged_count == 5:
-                await message.delete()
-                await message.author.send("You have been timed out for 30 seconds due to repeated violations.")
-                await message.author.timeout(duration=30)  # Timeout for 30 seconds
 
     def handle_users(self, author: str):
         author_char = author[0].upper()  # Fixed: Get the first character in uppercase
@@ -160,87 +100,80 @@ class Indica(commands.Cog):
             with open(users_file, 'w') as file:  # 'w' to create new file
                 yaml.dump(data, file)
 
+    async def handle_large_response(self, ctx: commands.Context, response: str):
+        if len(response) > 2000:
+            unique_filename = f'temp_{uuid.uuid4()}.txt'
+            try:
+                with open(unique_filename, 'w') as f:
+                    f.write(response)
+                await self.send_file(ctx, file=discord.File(unique_filename))
+            finally:
+                os.remove(unique_filename)
+        else:
+            await self.send_message(ctx, response)
+
+    async def handle_moderation(self, message: discord.Message):
+        unfiltered_role = get(ctx.guild.roles, name=DISCORD_ROLE_PASS)
+        if unfiltered_role in ctx.author.roles:
+            return
+        user_id = message.author.id
+        async with self.db_pool.acquire() as connection:
+            async with connection.transaction():
+                row = await connection.fetchrow("SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id)
+                if row:
+                    flagged_count = row['flagged_count'] + 1
+                    await connection.execute("UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2", flagged_count, user_id)
+                else:
+                    flagged_count = 1
+                    await connection.execute("INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)", user_id, flagged_count)
+        if flagged_count == 1:
+            await message.reply("Warning: Your message has been flagged.")
+        elif flagged_count in [2, 3, 4]:
+            await message.delete()
+            if flagged_count == 4:
+                await message.author.send("Warning: Your message has been flagged again.")
+        elif flagged_count == 5:
+            await message.delete()
+            await message.author.send("You have been timed out for 30 seconds due to repeated violations.")
+            await message.author.timeout(duration=30)  # Timeout for 30 seconds
+
     async def send_message(self, ctx: commands.Context, print: str):
-#        if await self.predicator.is_at_home_func(ctx.guild.id):
         await ctx.reply(print)
 
     async def send_file(self, ctx: commands.Context, file: discord.File):
-#        if await self.predicator.is_at_home_func(ctx.guild.id):
         await ctx.reply(file=file)
 
-#    async def ai_handler(self, ctx: commands.Context):
-#        array = await self.handler.process_array(ctx.message.content, attachments=ctx.message.attachments)
-#        if not array:
-#            logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-#            await self.send_message(ctx, "Your message must include text or valid attachments.")
-#            return
-#        logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
-#        for item in array:
-#            if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions and not self.predicator.is_spawd(ctx):
-#                async for chat_completion in self.handler.generate_chat_completion(
-#                     custom_id=ctx.author.id, array=[item], sys_input=OPENAI_CHAT_SYS_INPUT
-#                ):
-#                    if len(chat_completion) > 2000:
-#                        unique_filename = f'temp_{uuid.uuid4()}.txt'
-#                        with open(unique_filename, 'w') as f:
-#                             f.write(chat_completion)
-#                        await self.send_file(ctx, file=discord.File(unique_filename))
-#                        os.remove(unique_filename)
-#                    else:
-#                        await self.send_message(ctx, chat_completion)
-#            # Moderation
-#            if self.bot.user in ctx.message.mentions and self.config['openai_chat_moderation']:
-#                async for moderation_completion in create_moderation(input_array=[item]):
-#                    try:
-#                        full_response = json.loads(moderation_completion)
-#                        results = full_response.get('results', [])
-#                        if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
-#                            await self.handle_moderation(ctx.message)
-#                            return
-#                        elif self.predicator.is_spawd(ctx) and self.bot.user in ctx.message.mentions:
-#                            async for chat_completion in self.handler.generate_chat_completion(
-#                                custom_id=ctx.author.id, array=[item], model='o1-mini'
-#                            ):
-#                                if len(chat_completion) > 2000:
-#                                    unique_filename = f'temp_{uuid.uuid4()}.txt'
-#                                    with open('part_1_' + unique_filename, 'w') as f:
-#                                        f.write(chat_completion[:1000])
-#                                    await send_file(ctx, file=discord.File('part_1_' + unique_filename))
-#                                    os.remove('part_1_' + unique_filename)
-#                                    with open('part_2_' + unique_filename, 'w') as f:
-#                                       f.write(chat_completion[1000:])
-#                                    await send_file(ctx, file=discord.File('part_2_' + unique_filename))
-#                                    os.remove('part_2_' + unique_filename)
-#                                else:
-#                                    await self.send_message(ctx, chat_completion)
-#                    except Exception as e:
-#                        logger.error(traceback.format_exc())
-#                        if await self.predicator.is_at_home_func(ctx.guild.id):
-#                            print(f'An error occurred: {e}')
-#            async for moderation_completion in self.handler.generate_moderation_completion(custom_id=ctx.author.id, array=array):
-#                chat_moderation = json.loads(moderation_completion)
-#                academic_dishonesty_results = chat_moderation.get('results', [])
-#                academic_dishonesty_flagged = academic_dishonesty_results[0]['categories'].get('academic-dishonesty', False)
-#                if academic_dishonesty_flagged:
-#                    academic_dishonesty_score = academic_dishonesty_results[0]['category_scores'].get('academic-dishonesty', 0)
-#                    await self.handle_moderation(message)
-#                    NLPUtils.append_to_jsonl(PATH_TRAINING, academic_dishonesty_score, ctx.message.content, ctx.author.id)
-#                    return
-#
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        try:
+            if self.config['openai_chat_moderation']:
+                async for moderation_completion in create_moderation(input_array=[author.name]):
+                    try:
+                        full_response = json.loads(moderation_completion)
+                        results = full_response.get('results', [])
+                        if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
+                            await self.handle_moderation(ctx.message)
+                            return
+                    except Exception as e:
+                        logger.error(traceback.format_exc())
+                        print(f'An error occurred: {e}')
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            print(f'An error occurred: {e}')
 
     @commands.Cog.listener()
     async def on_message(self, message):
         logger.info(f'Received message: {message.content}')
         try:
-            if message.author == self.bot.user:
+            if message.author.bot:
                 return
             ctx = await self.bot.get_context(message)
             author = ctx.author.name
-            self.handle_users(author)
-            self.game.distribute_xp(ctx.author.id)
+            self.handle_users(message.author.name)
+            await self.game.distribute_xp(ctx.author.id)
+            await self.ai_handler(ctx)
         except Exception as e:
             logger.error(traceback.format_exc())
-#            if await self.predicator.is_at_home_func(message.guild.id):
             print(f'An error occurred: {e}')
         finally:
             try:

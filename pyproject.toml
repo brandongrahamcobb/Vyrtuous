@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "lucy"
-version = "11.8.1"
+version = "12.9.7"
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
@@ -40,6 +40,7 @@ audioop-lts = "^0.2.1"
 pytz = "^2024.2"
 discord-ext-menus = "^1.1"
 google-api-python-client = "^2.160.0"
+gradio-client = "^1.8.0"
 
 [tool.poetry.scripts]
 lucy = "lucy.main:run"

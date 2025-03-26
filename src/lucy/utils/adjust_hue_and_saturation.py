@@ -15,8 +15,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from io import BytesIO
+from lucy.utils.helpers import *
 from lucy.utils.setup_logging import logger
 from PIL import Image
+from os.path import join
 
 import colorsys
 
@@ -40,6 +42,12 @@ def adjust_hue_and_saturation(image, hue_shift, saturation_shift) -> BytesIO:
         new_image = Image.new('RGB', image.size)
         new_image.putdata(adjusted_pixels)
         logger.debug("New image created with adjusted pixels.")
+#        radioactive_symbol = join(DIR_HOME, 'Downloads', 'radioactive_symbol.png')
+ #       overlay = Image.open(radioactive_symbol).convert("RGBA")  # Ensure RGBA mode
+  #      overlay.putalpha(int(255 * 0.0625))
+   #     x_offset = (new_image.width - overlay.width) // 2
+    #    y_offset = (new_image.height - overlay.height) // 2
+     #   new_image.paste(overlay, (x_offset, y_offset), overlay)
         output = BytesIO()
         new_image.save(output, format='PNG')
         output.seek(0)

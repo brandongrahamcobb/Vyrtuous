@@ -18,6 +18,7 @@ from io import BytesIO
 from lucy.utils.helpers import *
 from lucy.utils.setup_logging import logger
 from PIL import Image, ImageDraw, ImageFont
+from os.path import join
 
 import math
 
@@ -77,10 +78,10 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Discord') -> BytesIO:
         mask = watermark_image.split()[3]
         RGBA_image.paste(watermark_image, (0, 0), mask)
         logger.info('Watermark image pasted onto the original image.')
+        logger.info('Watermarked image saved to output stream.')
         output = BytesIO()
         RGBA_image.save(output, format='PNG')
         output.seek(0)
-        logger.info('Watermarked image saved to output stream.')
         return output
 
     except Exception as e:
