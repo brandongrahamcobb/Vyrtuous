@@ -82,7 +82,7 @@ async def main():
     print(patreon_oauth.get_authorization_url())
     print("Please authenticate Twitch by visiting the following URL:")
     print(twitch_oauth.get_authorization_url())
-    await asyncio.sleep(20)
+    await asyncio.sleep(8)
 
     discord_bot = DiscordBot(
         config=config,

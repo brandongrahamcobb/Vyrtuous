@@ -25,7 +25,7 @@ from typing import Optional
 from lucy.utils.frames import extract_random_frames
 from lucy.utils.add_watermark import add_watermark
 from lucy.utils.average_score import average_score
-from lucy.utils.combine import combine
+from lucy.utils.combine import combine_gallery
 from lucy.utils.create_batch_completion import BatchProcessor
 from lucy.utils.create_completion import create_completion
 from lucy.utils.draw_fingerprint import draw_fingerprint
@@ -268,7 +268,7 @@ class Hybrid(commands.Cog):
                 else:
                      molecule_parts = [molecule_list]
                 fingerprints = []
-                names = [name]
+                names = molecule_parts
                 converted_smiles = []
                 for mol in molecule_parts:
                     compounds = pcp.get_compounds(mol, 'name')
@@ -286,11 +286,11 @@ class Hybrid(commands.Cog):
                         await ctx.send(embed=embed)
                         return
                     converted_smiles.append(smiles)
-                full_smiles = ".".join(converted_smiles)
-                smiles_comparison = [full_smiles, full_smiles]
-                molecule_objects = [get_mol(full_smiles, reverse=reverse) for _ in range(2)]
-                fingerprints.append(draw_fingerprint(molecule_objects))
-                combined_image = combine(fingerprints, names)
+#                full_smiles = ".".join(converted_smiles)
+#                smiles_comparison = [full_smiles, full_smiles]
+                molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
+                fingerprints = [draw_fingerprint([mol_obj, mol_obj]) for mol_obj in molecule_objects]
+                combined_image = combine_gallery(fingerprints, names, name)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             elif option == 'gsrs':
                 if not molecules:

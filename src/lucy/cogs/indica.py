@@ -16,7 +16,6 @@
 '''
 from discord.ext import commands
 from discord.utils import get
-from lucy.utils.combine import combine
 from lucy.utils.create_https_moderation import create_https_moderation
 from lucy.utils.create_moderation import create_moderation
 from lucy.utils.helpers import *
@@ -32,6 +31,7 @@ import json
 import os
 import pytz
 import shutil
+import time
 import traceback
 import uuid
 import yaml
@@ -43,9 +43,10 @@ class Indica(commands.Cog):
         self.config = bot.config
         self.conversations = bot.conversations
         self.db_pool = bot.db_pool
-        self.handler = Message(self.config, self.conversations)
-        self.predicator = Predicator(self.bot)
         self.game = Game(self.bot)
+        self.handler = Message(self.config, self.conversations)
+        self.user_messages = {}
+        self.predicator = Predicator(self.bot)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -147,7 +148,7 @@ class Indica(commands.Cog):
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         try:
             if self.config['openai_chat_moderation']:
-                async for moderation_completion in create_moderation(input_array=[author.name]):
+                async for moderation_completion in create_moderation(input_array=[after.name]):
                     try:
                         full_response = json.loads(moderation_completion)
                         results = full_response.get('results', [])
@@ -165,10 +166,21 @@ class Indica(commands.Cog):
     async def on_message(self, message):
         logger.info(f'Received message: {message.content}')
         try:
-            if message.author.bot:
+            if message.author.bot or message.is_system():
                 return
             ctx = await self.bot.get_context(message)
             author = ctx.author.name
+            current_time = time.time()
+            ctx = await self.bot.get_context(message)
+            author = ctx.author.name
+            user_id = ctx.author.id
+            if user_id not in self.user_messages:
+                self.user_messages[user_id] = []
+                self.user_messages[user_id].append(current_time)
+                self.user_messages[user_id] = [t for t in self.user_messages[user_id] if current_time - t < 5]
+            if len(self.user_messages[user_id]) > 5:
+                await message.channel.send(f"{message.author.mention}, stop spamming!")
+                await message.delete()
             self.handle_users(message.author.name)
             await self.game.distribute_xp(ctx.author.id)
             await self.ai_handler(ctx)
