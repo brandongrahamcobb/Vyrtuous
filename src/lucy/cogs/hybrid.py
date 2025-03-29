@@ -219,6 +219,42 @@ class Hybrid(commands.Cog):
                     content = await ctx.message.attachments[0].read()
                     return content.decode('utf-8')
                 return None
+            async def get_molecules():
+                if not molecules:
+                     await ctx.send('No molecules provided.')
+                     return
+                name_match = re.search(r'"([^"]+)"$', molecules)
+                if name_match:
+                     name = name_match.group(1)
+                     molecule_list = molecules[:name_match.start()].strip()
+                else:
+                     name = 'Untitled'
+                     molecule_list = molecules
+                if '.' in molecule_list:
+                     molecule_parts = re.split(r'(?<!")\.(?!")', molecule_list)
+                else:
+                     molecule_parts = [molecule_list]
+                fingerprints = []
+                names = molecule_parts
+                converted_smiles = []
+                for mol in molecule_parts:
+                    compounds = pcp.get_compounds(mol, 'name')
+                    mol_obj = Chem.MolFromSmiles(mol)
+                    if mol_obj:
+                        smiles = mol
+                    else:
+                        if compounds:
+                            smiles = compounds[0].isomeric_smiles
+                        else:
+                            helm = construct_helm_from_peptide(mol)
+                            smiles = manual_helm_to_smiles(helm)
+                    if not smiles:
+                        embed = discord.Embed(description=f'Invalid molecule: {mol}')
+                        await ctx.send(embed=embed)
+                        return
+                    converted_smiles.append(smiles)
+                molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
+                return molecule_objects, names, name
             if ctx.message.attachments:
                 molecules = await get_attachment_text(ctx)
             if option == '2':
@@ -253,42 +289,7 @@ class Hybrid(commands.Cog):
                     combined_image = combine(fingerprints, reversed(pair))
                     await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
             elif option == 'glow':
-                if not molecules:
-                     await ctx.send('No molecules provided.')
-                     return
-                name_match = re.search(r'"([^"]+)"$', molecules)
-                if name_match:
-                     name = name_match.group(1)
-                     molecule_list = molecules[:name_match.start()].strip()
-                else:
-                     name = 'Untitled'
-                     molecule_list = molecules
-                if '.' in molecule_list:
-                     molecule_parts = re.split(r'(?<!")\.(?!")', molecule_list)
-                else:
-                     molecule_parts = [molecule_list]
-                fingerprints = []
-                names = molecule_parts
-                converted_smiles = []
-                for mol in molecule_parts:
-                    compounds = pcp.get_compounds(mol, 'name')
-                    mol_obj = Chem.MolFromSmiles(mol)
-                    if mol_obj:
-                        smiles = mol
-                    else:
-                        if compounds:
-                            smiles = compounds[0].isomeric_smiles
-                        else:
-                            helm = construct_helm_from_peptide(mol)
-                            smiles = manual_helm_to_smiles(helm)
-                    if not smiles:
-                        embed = discord.Embed(description=f'Invalid molecule: {mol}')
-                        await ctx.send(embed=embed)
-                        return
-                    converted_smiles.append(smiles)
-#                full_smiles = ".".join(converted_smiles)
-#                smiles_comparison = [full_smiles, full_smiles]
-                molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
+                molecule_objects, names, name = await get_molecules()
                 fingerprints = [draw_fingerprint([mol_obj, mol_obj]) for mol_obj in molecule_objects]
                 combined_image = combine_gallery(fingerprints, names, name)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
@@ -307,17 +308,10 @@ class Hybrid(commands.Cog):
                         image_binary.seek(0)
                         await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
             elif option == 'shadow':
-                if not molecules:
-                    await ctx.send('No molecules provided.')
-                    return
-                args = shlex.split(molecules)
-                mol = get_mol(args[0], reverse)
-                if mol is None:
-                    embed = discord.Embed(description='Invalid molecule name or structure.')
-                    await ctx.send(embed=embed)
-                    return
-                image = draw_watermarked_molecule(mol)
-                await ctx.send(file=discord.File(image, f'{args[0]}.png'))
+                molecule_objects, names, name = await get_molecules()
+                molecule_images = [draw_watermarked_molecule(mol_obj) for mol_obj in molecule_objects]
+                combined_image = combine_gallery(molecule_images, names, name)
+                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             else:
                 await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
         except Exception as e:

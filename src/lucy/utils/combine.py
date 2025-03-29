@@ -30,12 +30,13 @@ def combine_gallery(images: list, names: list, title: str) -> BytesIO:
     for img_bytes, name in zip_longest(images, names, fillvalue=''):
         img_bytes.seek(0)  # Reset BytesIO pointer
         img = Image.open(img_bytes).convert("RGBA")  # Open and convert to RGBA
-        inverted_img = Image.eval(img, lambda x: 255 - x)  # Invert colors
-        adjusted_output = adjust_hue_and_saturation(inverted_img, hue_shift=-180, saturation_shift=160)  
-        adjusted_output.seek(0)
-        watermarked_image_buffer = add_watermark(adjusted_output, name)
-        watermarked_image = Image.open(watermarked_image_buffer).convert("RGBA")
-        processed_images.append(watermarked_image)
+##        inverted_img = Image.eval(img, lambda x: 255 - x)  # Invert colors
+#        adjusted_output = adjust_hue_and_saturation(inverted_img, hue_shift=-180, saturation_shift=160)  
+#        adjusted_output.seek(0)
+#        watermarked_image_buffer = add_watermark(adjusted_output, name)
+#        watermarked_image = Image.open(watermarked_image_buffer).convert("RGBA")
+#        processed_images.append(watermarked_image)
+        processed_images.append(img)
 
     # Determine square dimensions
     image_size = max(img.size[0] for img in processed_images)  # Use the largest width
