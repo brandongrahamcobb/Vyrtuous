@@ -206,12 +206,12 @@ class Hybrid(commands.Cog):
         *,
         molecules: str = commands.parameter(default=None, description='Any molecule'),
         quantity: int = commands.parameter(default=1, description='Quantity of glows'),
-        reverse: bool = commands.parameter(default=False, description='Reverse')
+        reverse: bool = commands.parameter(default=False, description='Reverse'),
+        linearity: bool = commands.parameter(default=False, description='Linearity')
     ):
         try:
             if ctx.interaction:
-                async with ctx.typing():
-                    await ctx.interaction.response.defer(ephemeral=True)
+                await ctx.interaction.response.defer(ephemeral=True)
             if not self.predicator.is_release_mode_func(ctx):
                 return
             async def get_attachment_text(ctx):
@@ -258,40 +258,37 @@ class Hybrid(commands.Cog):
             if ctx.message.attachments:
                 molecules = await get_attachment_text(ctx)
             if option == '2':
+                molecule_objects, names, name = await get_molecules()
                 if not molecules:
                     await ctx.send('No molecules provided.')
                     return
-                args = molecules.split()
-                pairs = unique_pairs([args[0], args[1]])
+                pairs = unique_pairs(names)
                 if not pairs:
                     embed = discord.Embed(description='No valid pairs found.')
                     await ctx.send(embed=embed)
                     return
                 for pair in pairs:
-                    mol = get_mol(pair[0], reverse)
-                    refmol = get_mol(pair[1], reverse)
+                    mol = get_mol(pair[0], False)
+                    refmol = get_mol(pair[1], False)
                     if mol is None or refmol is None:
                         embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
                         await ctx.send(embed=embed)
                         continue
-                    if len(args) == 4:
-                        rotation1 = float(args[2])
-                        rotation2 = float(args[3])
-                        fingerprints = [
-                            draw_fingerprint([mol, refmol], rotation=rotation1),
-                            draw_fingerprint([refmol, mol], rotation=rotation2)
-                        ]
                     else:
                         fingerprints = [
                             draw_fingerprint([mol, refmol]),
                             draw_fingerprint([refmol, mol])
                         ]
-                    combined_image = combine(fingerprints, reversed(pair))
+                    if len(fingerprints) == 2:
+                        linearity = True
+                    combined_image = combine_gallery(fingerprints, names, name, 1, linearity)
                     await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
             elif option == 'glow':
                 molecule_objects, names, name = await get_molecules()
-                fingerprints = [draw_fingerprint([mol_obj, mol_obj]) for mol_obj in molecule_objects]
-                combined_image = combine_gallery(fingerprints, names, name)
+                fingerprints = [draw_fingerprint([mol_obj, mol_obj, True]) for mol_obj in molecule_objects]
+                if len(fingerprints) == 2:
+                    linearity = True
+                combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             elif option == 'gsrs':
                 if not molecules:
@@ -309,8 +306,10 @@ class Hybrid(commands.Cog):
                         await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
             elif option == 'shadow':
                 molecule_objects, names, name = await get_molecules()
-                molecule_images = [draw_watermarked_molecule(mol_obj) for mol_obj in molecule_objects]
-                combined_image = combine_gallery(molecule_images, names, name)
+                molecule_images = [draw_watermarked_molecule(mol_obj, True) for mol_obj in molecule_objects]
+                if len(molecule_images) == 2:
+                    linearity = True
+                combined_image = combine_gallery(molecule_images, names, name, quantity, linearity)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             else:
                 await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')

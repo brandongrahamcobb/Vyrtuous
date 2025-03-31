@@ -22,7 +22,7 @@ from openai import AsyncOpenAI
 import asyncio
 
 config = load_yaml(PATH_CONFIG_YAML)
-api_key = config['api_keys']['api_key_1']['api_key']
+api_key = config['api_keys']['OpenAI']['api_key']
 ai_client = AsyncOpenAI(api_key=api_key)
 
 async def cancel():

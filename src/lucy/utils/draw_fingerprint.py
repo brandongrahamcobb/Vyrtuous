@@ -62,10 +62,13 @@ from rdkit.Chem import rdFMCS, AllChem, Draw, rdMolAlign, rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
 import numpy as np
 from io import BytesIO
+from PIL import Image
+from lucy.utils.add_watermark import add_watermark
+from lucy.utils.adjust_hue_and_saturation import adjust_hue_and_saturation
+from lucy.utils.get_molecule_name import get_molecule_name
 
-rdDepictor.SetPreferCoordGen(True)
-
-def draw_fingerprint(pair, rotation=0) -> BytesIO:
+def draw_fingerprint(pair, rotation=0, rdkit_coords=True) -> BytesIO:
+    rdDepictor.SetPreferCoordGen(rdkit_coords)
     """Draws similarity maps for a molecular pair, aligning based on a core structure and allowing individual rotation."""
     d2d = rdMolDraw2D.MolDraw2DCairo(1024, 1024)
     d2d.prepareMolsBeforeDrawing = False
@@ -90,10 +93,19 @@ def draw_fingerprint(pair, rotation=0) -> BytesIO:
         draw2d=d2d, drawingOptions=Options
     )
 
+    name = get_molecule_name(mol2)
+
     d2d.FinishDrawing()
     drawing = d2d.GetDrawingText()
     output = BytesIO(drawing)
-    return output
+    output.seek(0)
+    img = Image.open(output).convert("RGBA")
+    inverted_img = Image.eval(img, lambda x: 255 - x)  # Invert colors
+    adjusted_output = adjust_hue_and_saturation(inverted_img, hue_shift=-180, saturation_shift=160)  
+    adjusted_output.seek(0)
+    watermarked_image_buffer = add_watermark(adjusted_output, name)
+    
+    return watermarked_image_buffer
 
 def standardize_molecule(mol):
     """Generate 2D coordinates for a molecule to ensure consistent orientation."""

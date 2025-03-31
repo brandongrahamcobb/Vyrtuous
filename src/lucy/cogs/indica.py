@@ -76,7 +76,7 @@ class Indica(commands.Cog):
                         print(f'An error occurred: {e}')
         if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
             async for chat_completion in self.handler.generate_chat_completion(
-                custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT
+                custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT,
             ):
                 await self.handle_large_response(ctx, chat_completion)
 
@@ -194,6 +194,25 @@ class Indica(commands.Cog):
                 logger.info("Temporary files cleaned up successfully.")
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up temporary files: {cleanup_error}")
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        bot_user = self.bot.user
+        bot_name = bot_user.name
+        bot_id = bot_user.id
+        guild_count = len(self.bot.guilds)
+        info = (
+            f'\n=============================\n'
+            f'bot Name: {bot_name}\n'
+            f'bot ID: {bot_id}\n'
+            f'Connected Guilds: {guild_count}\n'
+            f'============================='
+        )
+        guild_info = '\n'.join(
+            [f'- {guild.name} (ID: {guild.id})' for guild in self.bot.guilds]
+        )
+        stats_message = f'{info}\n\nGuilds:\n{guild_info}'
+        print(stats_message)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Indica(bot))

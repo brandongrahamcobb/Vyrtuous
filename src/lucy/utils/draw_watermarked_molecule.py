@@ -20,9 +20,9 @@ from lucy.utils.get_molecule_name import get_molecule_name
 from lucy.utils.setup_logging import logger
 from rdkit.Chem import rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
-rdDepictor.SetPreferCoordGen(True)
 
-def draw_watermarked_molecule(molecule) -> BytesIO:
+def draw_watermarked_molecule(molecule, rdkit_coords=True) -> BytesIO:
+    rdDepictor.SetPreferCoordGen(rdkit_coords)
 
     try:
         logger.info('Starting to draw watermarked molecule.')

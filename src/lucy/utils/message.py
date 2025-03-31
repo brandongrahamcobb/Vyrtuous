@@ -56,14 +56,16 @@ class Message:
         total_input_tokens = sum(
             [len(encoder.encode(message.get('text', ''))) for message in array if 'text' in message]
         )
+        if model is Ellipsis:
+            model = self.config['openai_chat_model']
+        if any(message.get("type") == "image_url" for message in array):
+            model = "gpt-4o-mini"
         for message in array:
             if 'text' not in message:
                 logger.warning(f'Missing "text" in message: {message}')
-        available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']] - total_input_tokens
-        max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
+        available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[model] - total_input_tokens
+        max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[model])
         total_tokens = sum([len(message.get('text', '').split()) for message in array if 'text' in message])
-        if model is Ellipsis:
-            model = self.config['openai_chat_model']
         if response_format is Ellipsis:
             response_format = OPENAI_CHAT_RESPONSE_FORMAT
         if stop is Ellipsis:
@@ -85,6 +87,7 @@ class Message:
         while total_tokens + max_tokens > OPENAI_MODEL_CONTEXT_LIMITS[self.config['openai_chat_model']]:
             removed_message = array.pop(0)
             total_tokens -= len(removed_message.get('text', '').split())
+        print(model)
 
         async for chat_completion in self.conversations.create_https_completion(
             custom_id=custom_id,
