@@ -88,7 +88,7 @@ import math
 #        logger.error('An error occurred during the watermarking process.', exc_info=True)
 #        raise
 
-def add_watermark(image: BytesIO, watermark_text: str = 'Unknown') -> BytesIO:
+def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool = True) -> BytesIO:
     logger.info('Starting the watermarking process.')
 
     try:
@@ -111,7 +111,7 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown') -> BytesIO:
             font = ImageFont.load_default()
 
         min_font_size = 30
-        max_text_width = width
+        max_text_width = 1024
 
         # Adjust font size to fit
         while True:
@@ -128,7 +128,10 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown') -> BytesIO:
 
         text_height = bbox[3] - bbox[1]
         text_x = (width - text_width) / 2
-        text_y = height - (2 * text_height)
+        if bottom:
+            text_y = height - (2 * text_height)
+        else:
+            text_y = text_height  # Position near the top
         logger.info(f'Text position calculated: x={text_x}, y={text_y}.')
 
         # Create a transparent overlay for the watermark

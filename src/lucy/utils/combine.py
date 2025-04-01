@@ -71,7 +71,7 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
 
     # Apply watermark if multiple images are combined
     if len(images) > 1:
-        final_image_buffer = add_watermark(combined_img_buffer, title)
+        final_image_buffer = add_watermark(combined_img_buffer, title, True)
     else:
         final_image_buffer = combined_img_buffer
 

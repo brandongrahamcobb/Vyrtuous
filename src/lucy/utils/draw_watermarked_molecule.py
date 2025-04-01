@@ -43,7 +43,7 @@ def draw_watermarked_molecule(molecule, rdkit_coords=True) -> BytesIO:
         d2d.FinishDrawing()
         logger.info('Molecule drawing completed.')
         drawing = d2d.GetDrawingText()
-        output = add_watermark(BytesIO(drawing), watermark_text=resolved_name)
+        output = add_watermark(BytesIO(drawing), resolved_name, False)
         logger.info('Watermark added successfully.')
         return output
 

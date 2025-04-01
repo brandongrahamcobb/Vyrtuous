@@ -219,6 +219,8 @@ class Hybrid(commands.Cog):
                     content = await ctx.message.attachments[0].read()
                     return content.decode('utf-8')
                 return None
+            if isinstance(quantity, commands.Parameter):
+                quantity = 1
             async def get_molecules():
                 if not molecules:
                      await ctx.send('No molecules provided.')
@@ -284,10 +286,9 @@ class Hybrid(commands.Cog):
                     combined_image = combine_gallery(fingerprints, names, name, 1, linearity)
                     await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
             elif option == 'glow':
+                print(linearity)
                 molecule_objects, names, name = await get_molecules()
                 fingerprints = [draw_fingerprint([mol_obj, mol_obj, True]) for mol_obj in molecule_objects]
-                if len(fingerprints) == 2:
-                    linearity = True
                 combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             elif option == 'gsrs':
