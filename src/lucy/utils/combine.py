@@ -34,7 +34,7 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
         img = Image.open(img_bytes).convert("RGBA")  # Open and convert to RGBA
         processed_images.append(img)
 
-    if linearity:
+    if linearity == True:
         # Create a linear (horizontal) arrangement of images
         combined_width = sum(img.size[0] for img in processed_images)  # Total width
         combined_height = max(img.size[1] for img in processed_images)  # Max height
