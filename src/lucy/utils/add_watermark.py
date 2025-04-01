@@ -88,7 +88,7 @@ import math
 #        logger.error('An error occurred during the watermarking process.', exc_info=True)
 #        raise
 
-def add_watermark(image: BytesIO, watermark_text: str = 'Discord') -> BytesIO:
+def add_watermark(image: BytesIO, watermark_text: str = 'Unknown') -> BytesIO:
     logger.info('Starting the watermarking process.')
 
     try:
@@ -111,7 +111,7 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Discord') -> BytesIO:
             font = ImageFont.load_default()
 
         min_font_size = 30
-        max_text_width = 512
+        max_text_width = width
 
         # Adjust font size to fit
         while True:

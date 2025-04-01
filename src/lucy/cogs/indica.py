@@ -26,6 +26,7 @@ from lucy.utils.predicator import Predicator
 from os.path import abspath, dirname, exists, expanduser, join
 
 import asyncio
+import datetime
 import discord
 import json
 import os
@@ -114,8 +115,8 @@ class Indica(commands.Cog):
             await self.send_message(ctx, response)
 
     async def handle_moderation(self, message: discord.Message):
-        unfiltered_role = get(ctx.guild.roles, name=DISCORD_ROLE_PASS)
-        if unfiltered_role in ctx.author.roles:
+        unfiltered_role = get(message.guild.roles, name=DISCORD_ROLE_PASS)
+        if unfiltered_role in message.author.roles:
             return
         user_id = message.author.id
         async with self.db_pool.acquire() as connection:
@@ -136,7 +137,7 @@ class Indica(commands.Cog):
         elif flagged_count == 5:
             await message.delete()
             await message.author.send("You have been timed out for 30 seconds due to repeated violations.")
-            await message.author.timeout(duration=30)  # Timeout for 30 seconds
+            await message.author.timeout(datetime.timedelta(seconds=30))  # Timeout for 30 seconds
 
     async def send_message(self, ctx: commands.Context, print: str):
         await ctx.reply(print)

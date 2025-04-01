@@ -103,7 +103,7 @@ def draw_fingerprint(pair, rotation=0, rdkit_coords=True) -> BytesIO:
     inverted_img = Image.eval(img, lambda x: 255 - x)  # Invert colors
     adjusted_output = adjust_hue_and_saturation(inverted_img, hue_shift=-180, saturation_shift=160)  
     adjusted_output.seek(0)
-    watermarked_image_buffer = add_watermark(adjusted_output, name)
+    watermarked_image_buffer = add_watermark(adjusted_output, name, True)
     
     return watermarked_image_buffer
 
