@@ -19,9 +19,6 @@ from collections import defaultdict
 from discord.utils import get
 from discord import Embed, app_commands
 from discord.ext import commands, tasks
-from PIL import Image
-from random import randint
-from typing import Optional
 from lucy.utils.frames import extract_random_frames
 from lucy.utils.add_watermark import add_watermark
 from lucy.utils.average_score import average_score
@@ -47,9 +44,11 @@ from lucy.utils.stable_cascade import stable_cascade
 from lucy.utils.tag import TagManager
 from lucy.utils.unique_pairs import unique_pairs
 from lucy.utils.usage import OpenAIUsageClient
+from PIL import Image
+from random import randint
 from rdkit import Chem
 from rdkit.DataStructs import FingerprintSimilarity
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, Crippen
 from random import choice
 from typing import Dict, List, Optional
 import asyncio
