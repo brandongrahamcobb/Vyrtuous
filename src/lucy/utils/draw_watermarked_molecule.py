@@ -21,9 +21,8 @@ from lucy.utils.setup_logging import logger
 from rdkit.Chem import rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 
-def draw_watermarked_molecule(molecule, rdkit_coords=True) -> BytesIO:
-    rdDepictor.SetPreferCoordGen(rdkit_coords)
-
+def draw_watermarked_molecule(molecule, rdkit_bool=True) -> BytesIO:
+    rdDepictor.SetPreferCoordGen(rdkit_bool)
     try:
         logger.info('Starting to draw watermarked molecule.')
         resolved_name = get_molecule_name(molecule)

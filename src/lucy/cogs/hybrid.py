@@ -17,7 +17,7 @@
 from bs4 import BeautifulSoup
 from collections import defaultdict
 from discord.utils import get
-from discord import Embed, app_commands
+from discord import Embed, File, app_commands
 from discord.ext import commands, tasks
 from lucy.utils.frames import extract_random_frames
 from lucy.utils.add_watermark import add_watermark
@@ -36,6 +36,7 @@ from lucy.utils.get_proximity import get_proximity
 from lucy.utils.google import google
 from lucy.utils.gsrs import gsrs
 from lucy.utils.helpers import *
+from lucy.utils.image import create_image, create_image_variation, edit_image
 from lucy.utils.message import Message
 from lucy.utils.paginator import Paginator
 from lucy.utils.predicator import Predicator
@@ -57,6 +58,7 @@ import discord
 from googletrans import Translator, LANGUAGES
 import io
 import json
+import openai
 import os
 import pubchempy as pcp
 import pytz
@@ -206,7 +208,8 @@ class Hybrid(commands.Cog):
         molecules: str = commands.parameter(default=None, description='Any molecule'),
         quantity: int = commands.parameter(default=1, description='Quantity of glows'),
         reverse: bool = commands.parameter(default=False, description='Reverse'),
-        linearity: bool = commands.parameter(default=False, description='Linearity')
+        linearity: bool = commands.parameter(default=False, description='Linearity'),
+        rdkit_bool: bool = commands.parameter(default=True, description='rdDepictor')
     ):
         try:
             if ctx.interaction:
@@ -287,7 +290,7 @@ class Hybrid(commands.Cog):
             elif option == 'glow':
                 print(linearity)
                 molecule_objects, names, name = await get_molecules()
-                fingerprints = [draw_fingerprint([mol_obj, mol_obj, True]) for mol_obj in molecule_objects]
+                fingerprints = [draw_fingerprint([mol_obj, mol_obj, rdkit_bool]) for mol_obj in molecule_objects]
                 combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             elif option == 'gsrs':
@@ -306,7 +309,7 @@ class Hybrid(commands.Cog):
                         await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
             elif option == 'shadow':
                 molecule_objects, names, name = await get_molecules()
-                molecule_images = [draw_watermarked_molecule(mol_obj, True) for mol_obj in molecule_objects]
+                molecule_images = [draw_watermarked_molecule(mol_obj, rdkit_bool) for mol_obj in molecule_objects]
                 if len(molecule_images) == 2:
                     linearity = True
                 combined_image = combine_gallery(molecule_images, names, name, quantity, linearity)
@@ -425,6 +428,94 @@ class Hybrid(commands.Cog):
         frames = extract_random_frames(video_path, output_dir)
         for frame in frames:
             await ctx.send(file=discord.File(frame))
+
+    @commands.hybrid_command(name="imagine")
+    async def imagine(self, ctx, *, prompt: str):
+        """Generates or edits an image based on the prompt and uploaded file."""
+        try:
+            if ctx.message.attachments:
+                # There is an attachment (image file)
+                image_attachment = ctx.message.attachments[0]
+                image_bytes = await image_attachment.read()  # Read the image bytes
+    
+                # Convert the bytes into a discord.File
+                image_file = discord.File(io.BytesIO(image_bytes), filename="uploaded_image.png")
+    
+                # Send the image and ask for what to do
+                message = await ctx.send("Choose what to do with the image:", file=image_file)
+    
+                # Add reactions to choose action (edit, variation, etc.)
+                await message.add_reaction("✅")  # Confirm edit
+                await message.add_reaction("❌")  # Cancel
+                await message.add_reaction("🖼️")  # Create variation
+                await message.add_reaction("🔲")  # Mask upload option
+    
+                def check(reaction, user):
+                    return user == ctx.author and str(reaction.emoji) in ["✅", "❌", "🖼️", "🔲"]
+    
+                reaction, user = await self.bot.wait_for("reaction_add", check=check)
+    
+                if str(reaction.emoji) == "✅":
+                    # Perform the edit (waiting for mask or full image edit)
+                    await ctx.send("Please upload a mask for editing, or confirm to use the full image as the mask.")
+                    mask_msg = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+                    if mask_msg.content.lower() == "confirm":
+                        # Use the full image as the mask
+                        mask_file = image_attachment
+                    else:
+                        # Use uploaded mask
+                        mask_file = mask_msg.attachments[0]  # Assuming user uploads the mask here
+    
+                    # Proceed with the edit
+                    edited_image = await edit_image(image_file, mask_file, prompt)
+    
+                    if isinstance(edited_image, discord.File):
+                        await ctx.send("Here is your edited image with the mask:", file=edited_image)
+                    else:
+                        await ctx.send(f"Error editing image: {edited_image}")
+    
+                elif str(reaction.emoji) == "❌":
+                    await ctx.send("Edit canceled.")
+    
+                elif str(reaction.emoji) == "🖼️":
+                    # Create a variation
+                    variation = await create_image_variation(image_file, prompt)
+                    if isinstance(variation, discord.File):
+                        await ctx.send("Here is your image variation:", file=variation)
+                    else:
+                        await ctx.send(f"Error creating variation: {variation}")
+    
+                elif str(reaction.emoji) == "🔲":
+                    # Handle the mask upload (prompt for uploading mask file)
+                    await ctx.send("Please upload a mask image to use for editing.")
+                    mask_msg = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+                    mask_file = mask_msg.attachments[0]  # Assuming user uploads the mask here
+    
+                    # Proceed with the edit using the mask
+                    edited_image = await edit_image(image_file, mask_file, prompt)
+                    if isinstance(edited_image, discord.File):
+                        await ctx.send("Here is your edited image with the mask:", file=edited_image)
+                    else:
+                        await ctx.send(f"Error editing image with mask: {edited_image}")
+    
+            else:
+                # No file, generate an image based on the prompt
+                image_file = await create_image(prompt)
+                if isinstance(image_file, discord.File):
+                    await ctx.send("Here is your generated image:", file=image_file)
+                else:
+                    await ctx.send(f"Error generating image: {image_file}")
+    
+        except openai.OpenAIError as e:
+            await ctx.send(e.http_status)
+            await ctx.send(e.error)
+
+    def _handle_large_response(self, content: str) -> str:
+        if len(content) > 2000:
+            buffer = io.StringIO(content)
+            file = discord.File(fp=buffer, filename="output.txt")
+            return file
+        return content
 
     @commands.hybrid_command(name='logp')
     async def logp(self, ctx: commands.Context, *, molecules: str):

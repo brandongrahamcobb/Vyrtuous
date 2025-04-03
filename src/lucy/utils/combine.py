@@ -52,8 +52,12 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
         grid_size = ceil(sqrt(num_images))  # Determine grid size
         image_size = max(img.size[0] for img in processed_images)  # Use largest width
         canvas_size = grid_size * image_size  # Square canvas
+        footer_ratio = 0.15  # Footer is 15% of the square canvas
+        footer_height = int(canvas_size * footer_ratio)
+        new_height = canvas_size + footer_height
 
-        combined_img = Image.new('RGBA', (canvas_size, canvas_size), (255, 255, 255, 0))  # Transparent background
+
+        combined_img = Image.new('RGB', (canvas_size, new_height), (0, 0, 0))  # Transparent background
 
         for index, img in enumerate(processed_images):
             row = index // grid_size
