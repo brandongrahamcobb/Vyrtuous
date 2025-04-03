@@ -110,6 +110,7 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool 
             logger.warning('Roboto-Regular.ttf not found. Falling back to default font.')
             font = ImageFont.load_default()
 
+        max_text_width = int(width * 0.8)
         min_font_size = 30
 
         # Adjust font size to fit
@@ -118,6 +119,8 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool 
             bbox = draw.textbbox((0, 0), watermark_text, font=font)
             text_width = bbox[2] - bbox[0]
 
+            if text_width <= max_text_width:
+                 break
 
             font_size -= 1
             font = ImageFont.truetype(PATH_FONT, font_size)
