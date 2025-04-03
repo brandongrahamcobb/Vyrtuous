@@ -111,7 +111,6 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool 
             font = ImageFont.load_default()
 
         min_font_size = 30
-        max_text_width = 1024
 
         # Adjust font size to fit
         while True:
@@ -119,8 +118,6 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool 
             bbox = draw.textbbox((0, 0), watermark_text, font=font)
             text_width = bbox[2] - bbox[0]
 
-            if text_width <= max_text_width or font_size <= min_font_size:
-                break
 
             font_size -= 1
             font = ImageFont.truetype(PATH_FONT, font_size)
