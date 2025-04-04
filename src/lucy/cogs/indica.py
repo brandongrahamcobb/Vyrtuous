@@ -70,7 +70,15 @@ class Indica(commands.Cog):
                         full_response = json.loads(moderation_completion)
                         results = full_response.get('results', [])
                         if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
-                            await self.handle_moderation(ctx.message)
+                            result = results[0]
+                            flagged = result.get('flagged', False)
+                            categories = result.get('categories', {})
+                            reasons = [category.replace("/", " → ").replace("-", " ").capitalize() for category, value in categories.items() if value is True]
+                            if reasons:
+                                reason_str = ", ".join(reasons)
+                            else:
+                                reason_str = "Unspecified moderation issue"
+                            await self.handle_moderation(ctx.message, reason_str)
                             return
                     except Exception as e:
                         logger.error(traceback.format_exc())
@@ -114,7 +122,11 @@ class Indica(commands.Cog):
         else:
             await self.send_message(ctx, response)
 
-    async def handle_moderation(self, message: discord.Message):
+    async def send_dm(ctx, member: discord.Member, *, content):
+        channel = await member.create_dm()
+        await channel.send(content)
+
+    async def handle_moderation(self, message: discord.Message, reason_str: str = "Unspecified moderation issue"):
         unfiltered_role = get(message.guild.roles, name=DISCORD_ROLE_PASS)
         if unfiltered_role in message.author.roles:
             return
@@ -129,15 +141,16 @@ class Indica(commands.Cog):
                     flagged_count = 1
                     await connection.execute("INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)", user_id, flagged_count)
         if flagged_count == 1:
-            await message.reply("Warning: Your message has been flagged.")
+            await send_dm(f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}')
         elif flagged_count in [2, 3, 4]:
             await message.delete()
             if flagged_count == 4:
-                await message.author.send("Warning: Your message has been flagged again.")
+                await send_dm(f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}')
         elif flagged_count == 5:
             await message.delete()
-            await message.author.send("You have been timed out for 30 seconds due to repeated violations.")
-            await message.author.timeout(datetime.timedelta(seconds=30))  # Timeout for 30 seconds
+            await send_dm(f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}')
+            await send_dm("You have been timed out for 5 minutes due to repeated violations.")
+            await message.author.timeout(datetime.timedelta(seconds=300))  # Timeout for 300 seconds
 
     async def send_message(self, ctx: commands.Context, print: str):
         await ctx.reply(print)
