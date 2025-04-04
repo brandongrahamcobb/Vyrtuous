@@ -68,7 +68,7 @@ from lucy.utils.adjust_hue_and_saturation import adjust_hue_and_saturation
 from lucy.utils.get_molecule_name import get_molecule_name
 
 def draw_fingerprint(pair, rotation=0, rdkit_bool=True) -> BytesIO:
-    rdDepictor.SetPreferCoordGen(rdkit_coords)
+    rdDepictor.SetPreferCoordGen(rdkit_bool)
     """Draws similarity maps for a molecular pair, aligning based on a core structure and allowing individual rotation."""
     d2d = rdMolDraw2D.MolDraw2DCairo(1024, 1024)
     d2d.prepareMolsBeforeDrawing = False

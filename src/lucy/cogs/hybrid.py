@@ -212,6 +212,7 @@ class Hybrid(commands.Cog):
         rdkit_bool: bool = commands.parameter(default=True, description='rdDepictor')
     ):
         try:
+            rdkit_bool = bool(rdkit_bool)
             if ctx.interaction:
                 await ctx.interaction.response.defer(ephemeral=True)
             if not self.predicator.is_release_mode_func(ctx):
@@ -288,7 +289,6 @@ class Hybrid(commands.Cog):
                     combined_image = combine_gallery(fingerprints, names, name, 1, linearity)
                     await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
             elif option == 'glow':
-                print(linearity)
                 molecule_objects, names, name = await get_molecules()
                 fingerprints = [draw_fingerprint([mol_obj, mol_obj, rdkit_bool]) for mol_obj in molecule_objects]
                 combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
