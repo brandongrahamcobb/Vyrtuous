@@ -277,6 +277,13 @@ def get_mol(arg, reverse=False):
     logger.info(f"🔍 Attempting to retrieve molecule for: {arg}")
     # 1. PubChem lookup.
     try:
+        mol = Chem.MolFromSmiles(arg)
+        if mol:
+            logger.info(f"✅ Molecule '{arg}' generated from direct SMILES input.")
+            return mol
+    except Exception as e:
+        logger.warning(f"Direct SMILES conversion failed for '{arg}': {e}")
+    try:
         compounds = pcp.get_compounds(arg, 'name')
         if compounds:
             smiles = compounds[0].to_dict(properties=['isomeric_smiles']).get('isomeric_smiles')
@@ -289,13 +296,6 @@ def get_mol(arg, reverse=False):
     except Exception as e:
         logger.warning(f"PubChem lookup failed for '{arg}': {e}")
     # 2. Direct SMILES conversion.
-    try:
-        mol = Chem.MolFromSmiles(arg)
-        if mol:
-            logger.info(f"✅ Molecule '{arg}' generated from direct SMILES input.")
-            return mol
-    except Exception as e:
-        logger.warning(f"Direct SMILES conversion failed for '{arg}': {e}")
     # 3. Assume input is a peptide.
     if any(x in arg for x in ["Ala", "Arg", "His", "Lys", "Pro", "Gly", "Cys"]):
         logger.info("Assuming input is a peptide sequence; using peptide conversion.")

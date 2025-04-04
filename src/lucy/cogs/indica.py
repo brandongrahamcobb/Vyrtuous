@@ -23,6 +23,7 @@ from lucy.utils.game import Game
 from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
 from lucy.utils.predicator import Predicator
+from lucy.utils.setup_logging import logger
 from os.path import abspath, dirname, exists, expanduser, join
 
 import asyncio
@@ -69,7 +70,7 @@ class Indica(commands.Cog):
                     try:
                         full_response = json.loads(moderation_completion)
                         results = full_response.get('results', [])
-                        if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
+                        if results and results[0].get('flagged', False): # and not self.predicator.is_spawd(ctx):
                             result = results[0]
                             flagged = result.get('flagged', False)
                             categories = result.get('categories', {})
@@ -122,35 +123,71 @@ class Indica(commands.Cog):
         else:
             await self.send_message(ctx, response)
 
-    async def send_dm(ctx, member: discord.Member, *, content):
+    async def send_dm(self, member: discord.Member, content):
         channel = await member.create_dm()
         await channel.send(content)
 
     async def handle_moderation(self, message: discord.Message, reason_str: str = "Unspecified moderation issue"):
+        logger.info(f"Moderating message from {message.author} (ID: {message.author.id}) - Reason: {reason_str}")
+    
         unfiltered_role = get(message.guild.roles, name=DISCORD_ROLE_PASS)
         if unfiltered_role in message.author.roles:
+            logger.info(f"User {message.author} has an unfiltered role, skipping moderation.")
             return
+    
         user_id = message.author.id
         async with self.db_pool.acquire() as connection:
             async with connection.transaction():
-                row = await connection.fetchrow("SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id)
+                row = await connection.fetchrow(
+                    "SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id
+                )
                 if row:
-                    flagged_count = row['flagged_count'] + 1
-                    await connection.execute("UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2", flagged_count, user_id)
+                    flagged_count = row["flagged_count"] + 1
+                    await connection.execute(
+                        "UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2",
+                        flagged_count, user_id
+                    )
+                    logger.info(f"Updated flagged count for user {user_id}: {flagged_count}")
                 else:
                     flagged_count = 1
-                    await connection.execute("INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)", user_id, flagged_count)
+                    await connection.execute(
+                        "INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)",
+                        user_id, flagged_count
+                    )
+                    logger.info(f"Inserted new flagged count for user {user_id}: {flagged_count}")
+    
+        await message.delete()
+        logger.info(f"Deleted flagged message from user {user_id}")
+    
         if flagged_count == 1:
-            await send_dm(f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}')
+            await self.send_dm(
+                message.author,
+                f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+            )
         elif flagged_count in [2, 3, 4]:
-            await message.delete()
             if flagged_count == 4:
-                await send_dm(f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}')
-        elif flagged_count == 5:
-            await message.delete()
-            await send_dm(f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}')
-            await send_dm("You have been timed out for 5 minutes due to repeated violations.")
-            await message.author.timeout(datetime.timedelta(seconds=300))  # Timeout for 300 seconds
+                await self.send_dm(
+                    message.author,
+                    f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+                )
+        elif flagged_count >= 5:
+            await self.send_dm(
+                message.author,
+                f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+            )
+            await self.send_dm(
+                message.author,
+                "You have been timed out for 5 minutes due to repeated violations."
+            )
+            await message.author.timeout(datetime.timedelta(seconds=300))
+            logger.warning(f"User {user_id} has been timed out for 5 minutes due to repeated violations.")
+    
+            # Reset flagged count after timeout
+            async with self.db_pool.acquire() as connection:
+                await connection.execute(
+                    "UPDATE moderation_counts SET flagged_count = 0 WHERE user_id = $1", user_id
+                )
+            logger.info(f"Flagged count reset to 0 for user {user_id} after timeout.")
 
     async def send_message(self, ctx: commands.Context, print: str):
         await ctx.reply(print)

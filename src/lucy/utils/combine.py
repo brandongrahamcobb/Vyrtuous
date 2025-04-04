@@ -23,6 +23,9 @@ from lucy.utils.setup_logging import logger
 from math import ceil, sqrt
 
 def combine_gallery(images: list, names: list, title: str, quantity: int = 1, linearity: bool = False) -> BytesIO:
+    if len(images) <= 2:
+        linearity = True
+
     processed_images = []
 
     # Repeat images based on quantity

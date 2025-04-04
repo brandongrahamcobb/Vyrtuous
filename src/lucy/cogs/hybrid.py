@@ -243,11 +243,11 @@ class Hybrid(commands.Cog):
                 names = molecule_parts
                 converted_smiles = []
                 for mol in molecule_parts:
-                    compounds = pcp.get_compounds(mol, 'name')
                     mol_obj = Chem.MolFromSmiles(mol)
                     if mol_obj:
                         smiles = mol
                     else:
+                        compounds = pcp.get_compounds(mol, 'name')
                         if compounds:
                             smiles = compounds[0].isomeric_smiles
                         else:
