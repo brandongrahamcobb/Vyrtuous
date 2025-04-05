@@ -99,9 +99,15 @@ class Hybrid(commands.Cog):
                 loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
                 if loop_tags:
                     random_tag = choice(loop_tags)
-                    message_text = random_tag['content'] or random_tag['attachment_url'] or ''
-                    if message_text:
-                        await channel.send(message_text)
+                    content_value = random_tag.get('content')
+                    attachment_url_value = random_tag.get('attachment_url')
+                    if content_value and attachment_url_value:
+                        await channel.send(content_value)
+                        await channel.send(attachment_url_value)
+                    elif content_value:
+                        await channel.send(content_value)
+                    elif attachment_url_value:
+                       await channel.send(attachment_url_value)
                 await asyncio.sleep(300)
             except asyncio.CancelledError:
                 break
@@ -125,6 +131,21 @@ class Hybrid(commands.Cog):
                 return lang_code
         return None
 
+    async def send_dm(self, member: discord.Member, content):
+        channel = await member.create_dm()
+        await channel.send(content)
+
+    async def send_message(self, ctx: commands.Context, print: str):
+        if ctx.channel and isinstance(ctx.channel, discord.abc.GuildChannel):
+            permissions = ctx.channel.permissions_for(ctx.guild.me)
+            if permissions.send_messages:
+                async with ctx.typing():
+                   await ctx.reply(print)
+            else:
+               await self.send_dm(ctx.message.author, print)
+        else:
+           async with ctx.typing():
+                await ctx.reply(print)
 
     @commands.hybrid_command(name="chat", description="Usage: chat <model> <prompt>")
     async def chat(
@@ -171,14 +192,14 @@ class Hybrid(commands.Cog):
                         unique_filename = f'temp_{uuid.uuid4()}.txt'
                         with open(unique_filename, 'w') as f:
                             f.write(chat_completion)
-                        await ctx.send(file=discord.File(unique_filename))
+                        await self.send_message(ctx, file=discord.File(unique_filename))
                         os.remove(unique_filename)
                     else:
-                        await ctx.send(chat_completion)
+                        await self.send_message(ctx, chat_completion)
             else:
                 with open(PATH_OPENAI_REQUESTS, "a") as f:
                     f.write(json.dumps(request_data) + "\n")
-                await ctx.send("✅ Your request has been queued for weekend batch processing.")
+                await self.send_message(ctx, "✅ Your request has been queued for weekend batch processing.")
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -187,65 +208,46 @@ class Hybrid(commands.Cog):
                 await function()
 
     @commands.hybrid_command(name='colorize', description=f'Usage: between `colorize 0 0 0` and `colorize 255 255 255` or `colorize <color>`')
-    @commands.has_permissions(manage_roles=True)
-    async def colorize(self, ctx: commands.Context, r: str = 'blurple', *, g: str = '147', b: str = '165'):
+    async def colorize(self, ctx: commands.Context, r: str = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.'), *, g: str = commands.parameter(default='147', description='Anything betwen 0 and 255.'), b: str = commands.parameter(default='165', description='Anything between 0 and 255.')):
+        if ctx.interaction:
+            async with ctx.typing():
+                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        r_input = str(r) if r is not None else None  # ✅ Moved outside
-    
-        async def function():
-            # Ensure r, g, b are strings or valid numbers
-            if not r_input.isnumeric() and r_input.lower() != "blurple":  # Treat non-numeric r as a color name
-                input_text_dict = {
-                    'type': 'text',
-                    'text': r_input
+        if not r.isnumeric():
+            input_text_dict = {
+                'type': 'text',
+                'text': r
+            }
+            array = [
+                {
+                    'role': 'user',
+                    'content': json.dumps(input_text_dict)
                 }
-                array = [
-                    {
-                        'role': 'user',
-                        'content': json.dumps(input_text_dict)
-                    }
-                ]
-                async for completion in create_completion(array):
-                    color_values = json.loads(completion)
-                    r = color_values.get('r', 0)  # Use default if not found
-                    g = color_values.get('g', 0)
-                    b = color_values.get('b', 0)
-            else:
-                try:
-                    r = int(r)
-                    g = int(g)
-                    b = int(b)
-                except ValueError:
-                    await ctx.send(f"Invalid color values: {r}, {g}, {b}. Please provide valid numbers between 0 and 255.")
-                    return
-            
-            # Now r, g, b are safely integers
-            guildroles = await ctx.guild.fetch_roles()
-            position = len(guildroles) - 12
-            for arg in ctx.author.roles:
-                if arg.name.isnumeric():
-                    await ctx.author.remove_roles(arg)
-    
-            for arg in guildroles:
-                if arg.name.lower() == f'{r}{g}{b}':
-                    await ctx.author.add_roles(arg)
-                    await arg.edit(position=position)
-                    await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
-                    return
-    
-            # Create a new role with the color if it doesn't exist
-            newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
-            await newrole.edit(position=position)
-            await ctx.send(f'I successfully created and assigned your new color role: {r}, {g}, {b}')
-    
-        # Hybrid deferral logic
-        if ctx.interaction:
-            await ctx.interaction.response.defer(ephemeral=True)
-            await function()
-        else:
-            async with ctx.typing():
-                await function()
+            ]
+            async for completion in create_completion(array):
+                color_values = json.loads(completion)
+                r = color_values['r']
+                g = color_values['g']
+                b = color_values['b']
+        r = int(r)
+        g = int(g)
+        b = int(b)
+        guildroles = await ctx.guild.fetch_roles()
+        position = len(guildroles) - 12
+        for arg in ctx.author.roles:
+            if arg.name.isnumeric():
+                await ctx.author.remove_roles(arg)
+        for arg in guildroles:
+            if arg.name.lower() == f'{r}{g}{b}':
+                await ctx.author.add_roles(arg)
+                await arg.edit(position=position)
+                await self.send_message(ctx, f'I successfully changed your role color to {r}, {g}, {b}')
+                return
+        newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
+        await newrole.edit(position=position)
+        await ctx.author.add_roles(newrole)
+        await self.send_message(ctx, f'I successfully changed your role color to {r}, {g}, {b}')
 
     @commands.hybrid_command(name='d', description=f'Usage: d 2 <mol> <mol> or d glow <mol> or d gsrs <mol> or d shadow <mole>.')
     async def d(
@@ -284,7 +286,7 @@ class Hybrid(commands.Cog):
     
             async def get_molecules(molecules):
                 if not molecules:
-                    await ctx.send('No molecules provided.')
+                    await self.send_message(ctx, 'No molecules provided.')
                     return
                 name_match = re.search(r'"([^"]+)"$', molecules)
                 if name_match:
@@ -313,7 +315,7 @@ class Hybrid(commands.Cog):
                             smiles = manual_helm_to_smiles(helm)
                     if not smiles:
                         embed = discord.Embed(description=f'Invalid molecule: {mol}')
-                        await ctx.send(embed=embed)
+                        await self.send_message(ctx, embed=embed)
                         return
                     converted_smiles.append(smiles)
                 molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
@@ -327,19 +329,19 @@ class Hybrid(commands.Cog):
             if option == '2':
                 molecule_objects, names, name = await get_molecules(molecules)
                 if not molecules:
-                    await ctx.send('No molecules provided.')
+                    await self.send_message(ctx, 'No molecules provided.')
                     return
                 pairs = unique_pairs(names)
                 if not pairs:
                     embed = discord.Embed(description='No valid pairs found.')
-                    await ctx.send(embed=embed)
+                    await self.send_message(ctx, embed=embed)
                     return
                 for pair in pairs:
                     mol = get_mol(pair[0], False)
                     refmol = get_mol(pair[1], False)
                     if mol is None or refmol is None:
                         embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
-                        await ctx.send(embed=embed)
+                        await self.send_message(ctx, embed=embed)
                         continue
                     else:
                         fingerprints = [
@@ -349,28 +351,28 @@ class Hybrid(commands.Cog):
                     if len(fingerprints) == 2:
                         linearity = True  # Set linearity to True for this case
                     combined_image = combine_gallery(fingerprints, names, name, 1, linearity)
-                    await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
+                    await self.send_message(ctx, file=discord.File(combined_image, f'molecule_comparison.png'))
     
             elif option == 'glow':
                 molecule_objects, names, name = await get_molecules(molecules)
                 fingerprints = [draw_fingerprint([mol_obj, mol_obj], rdkit_bool, rotation) for mol_obj in molecule_objects]
                 combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
-                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+                await self.send_message(ctx, file=discord.File(combined_image, 'molecule_comparison.png'))
     
             elif option == 'gsrs':
                 if not molecules:
-                    await ctx.send('No molecules provided.')
+                    await self.send_message(ctx, 'No molecules provided.')
                     return
                 args = shlex.split(molecules)
                 for molecule_name in args:
                     if molecule_name is None:
-                        await ctx.send(f'{molecule_name} is an unknown molecule.')
+                        await self.send_message(ctx, f'{molecule_name} is an unknown molecule.')
                         continue
                     watermarked_image = gsrs(molecule_name)
                     with io.BytesIO() as image_binary:
                         watermarked_image.save(image_binary, format='PNG')
                         image_binary.seek(0)
-                        await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
+                        await self.send_message(ctx, file=discord.File(fp=image_binary, filename='watermarked_image.png'))
     
             elif option == 'shadow':
                 molecule_objects, names, name = await get_molecules(molecules)
@@ -378,10 +380,10 @@ class Hybrid(commands.Cog):
                 if len(molecule_images) == 2:
                     linearity = True  # Set linearity to True for this case
                 combined_image = combine_gallery(molecule_images, names, name, quantity, linearity)
-                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+                await self.send_message(ctx, file=discord.File(combined_image, 'molecule_comparison.png'))
     
             else:
-                await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
+                await self.send_message(ctx, 'Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
     
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
@@ -422,7 +424,7 @@ class Hybrid(commands.Cog):
 #                return None
 #            async def get_molecules(molecules):
 #                if not molecules:
-#                     await ctx.send('No molecules provided.')
+#                     await self.send_message(ctx, 'No molecules provided.')
 #                     return
 #                name_match = re.search(r'"([^"]+)"$', molecules)
 #                if name_match:
@@ -451,7 +453,7 @@ class Hybrid(commands.Cog):
 #                            smiles = manual_helm_to_smiles(helm)
 #                    if not smiles:
 #                        embed = discord.Embed(description=f'Invalid molecule: {mol}')
-#                        await ctx.send(embed=embed)
+#                        await self.send_message(ctx, embed=embed)
 #                        return
 #                    converted_smiles.append(smiles)
 #                molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
@@ -462,19 +464,19 @@ class Hybrid(commands.Cog):
 #            if option == '2':
 #                molecule_objects, names, name = await get_molecules(molecules)
 #                if not molecules:
-#                    await ctx.send('No molecules provided.')
+#                    await self.send_message(ctx, 'No molecules provided.')
 #                    return
 #                pairs = unique_pairs(names)
 #                if not pairs:
 #                    embed = discord.Embed(description='No valid pairs found.')
-#                    await ctx.send(embed=embed)
+#                    await self.send_message(ctx, embed=embed)
 #                    return
 #                for pair in pairs:
 #                    mol = get_mol(pair[0], False)
 #                    refmol = get_mol(pair[1], False)
 #                    if mol is None or refmol is None:
 #                        embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
-#                        await ctx.send(embed=embed)
+#                        await self.send_message(ctx, embed=embed)
 #                        continue
 #                    else:
 #                        fingerprints = [
@@ -484,35 +486,35 @@ class Hybrid(commands.Cog):
 #                    if len(fingerprints) == 2:
 #                        linearity = True
 #                    combined_image = combine_gallery(fingerprints, names, name, 1, linearity)
-#                    await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
+#                    await self.send_message(ctx, file=discord.File(combined_image, f'molecule_comparison.png'))
 #            elif option == 'glow':
 #                molecule_objects, names, name = await get_molecules(molecules)
 #                fingerprints = [draw_fingerprint([mol_obj, mol_obj], rdkit_bool, rotation) for mol_obj in molecule_objects]
 #                combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
-#                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+#                await self.send_message(ctx, file=discord.File(combined_image, 'molecule_comparison.png'))
 #            elif option == 'gsrs':
 #                if not molecules:
-#                    await ctx.send('No molecules provided.')
+#                    await self.send_message(ctx, 'No molecules provided.')
 #                    return
 #                args = shlex.split(molecules)
 #                for molecule_name in args:
 #                    if molecule_name is None:
-#                        await ctx.send(f'{molecule_name} is an unknown molecule.')
+#                        await self.send_message(ctx, f'{molecule_name} is an unknown molecule.')
 #                        continue
 #                    watermarked_image = gsrs(molecule_name)
 #                    with io.BytesIO() as image_binary:
 #                        watermarked_image.save(image_binary, format='PNG')
 #                        image_binary.seek(0)
-#                        await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
+#                        await self.send_message(ctx, file=discord.File(fp=image_binary, filename='watermarked_image.png'))
 #            elif option == 'shadow':
 #                molecule_objects, names, name = await get_molecules(molecules)
 #                molecule_images = [draw_watermarked_molecule(mol_obj, rdkit_bool) for mol_obj in molecule_objects]
 #                if len(molecule_images) == 2:
 #                    linearity = True
 #                combined_image = combine_gallery(molecule_images, names, name, quantity, linearity)
-#                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+#                await self.send_message(ctx, file=discord.File(combined_image, 'molecule_comparison.png'))
 #            else:
-#                await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
+#                await self.send_message(ctx, 'Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
 #        if ctx.interaction:
 #            await ctx.interaction.response.defer(ephemeral=True)
 #            await function()
@@ -532,76 +534,76 @@ class Hybrid(commands.Cog):
             act = action.lower()
             user = await self.game.get_user(user_id)
             if not user:
-                await ctx.send("You have not interacted with the bot yet. Earn XP first!")
+                await self.send_message(ctx, "You have not interacted with the bot yet. Earn XP first!")
                 return
     
             if act == "create":
                 if not faction_input:
-                    await ctx.send("You must specify a faction name!")
+                    await self.send_message(ctx, "You must specify a faction name!")
                     return
                 if user["faction_name"]:
-                    await ctx.send("You are already in a faction!")
+                    await self.send_message(ctx, "You are already in a faction!")
                     return
                 existing_faction = await self.game.get_faction(faction_input)
                 if existing_faction:
-                    await ctx.send(f"Faction **{faction_input}** already exists!")
+                    await self.send_message(ctx, f"Faction **{faction_input}** already exists!")
                     return
                 success = await self.game.create_faction(faction_input, user_id)
                 if success:
-                    await ctx.send(f"Faction **{faction_input}** has been created! 🎉")
+                    await self.send_message(ctx, f"Faction **{faction_input}** has been created! 🎉")
                 else:
-                    await ctx.send("There was an error creating the faction.")
+                    await self.send_message(ctx, "There was an error creating the faction.")
                 return
     
             elif act == "join":
                 if not faction_input:
-                    await ctx.send("You must specify a faction to join!")
+                    await self.send_message(ctx, "You must specify a faction to join!")
                     return
                 if user["faction_name"]:
-                    await ctx.send("You are already in a faction!")
+                    await self.send_message(ctx, "You are already in a faction!")
                     return
                 response = await self.game.join_faction(faction_input, user_id)
-                await ctx.send(f"{ctx.author.mention}, {response}")
+                await self.send_message(ctx, f"{ctx.author.mention}, {response}")
                 return
     
             elif act == "leave":
                 current_faction = user.get("faction_name")
                 if not current_faction:
-                    await ctx.send("You are not in a faction!")
+                    await self.send_message(ctx, "You are not in a faction!")
                     return
                 await self.game.leave_faction(user_id, current_faction)
-                await ctx.send("You have left your faction and are now factionless.")
+                await self.send_message(ctx, "You have left your faction and are now factionless.")
                 return
     
             elif act == "switch":
                 if not faction_input:
-                    await ctx.send("You must specify a faction to switch to!")
+                    await self.send_message(ctx, "You must specify a faction to switch to!")
                     return
                 if user["faction_name"] == faction_input:
-                    await ctx.send("You are already in that faction!")
+                    await self.send_message(ctx, "You are already in that faction!")
                     return
                 new_faction = await self.game.get_faction(faction_input)
                 if not new_faction:
-                    await ctx.send("The faction you want to switch to does not exist!")
+                    await self.send_message(ctx, "The faction you want to switch to does not exist!")
                     return
                 if user["faction_name"]:
                     await self.game.leave_faction(user_id, user["faction_name"])
                 response = await self.game.join_faction(faction_input, user_id)
-                await ctx.send(f"{ctx.author.mention}, you have switched to faction **{faction_input}**.")
+                await self.send_message(ctx, f"{ctx.author.mention}, you have switched to faction **{faction_input}**.")
                 return
     
             elif act == "info":
                 faction_to_use = faction_input or user.get("faction_name")
                 if not faction_to_use:
-                    await ctx.send("You are not in a faction, and no faction name was provided!")
+                    await self.send_message(ctx, "You are not in a faction, and no faction name was provided!")
                     return
                 faction_data = await self.game.get_faction(faction_to_use)
                 if not faction_data:
-                    await ctx.send("Faction not found!")
+                    await self.send_message(ctx, "Faction not found!")
                     return
                 members = await self.game.get_faction_members(faction_to_use)
                 members_count = len(members)
-                await ctx.send(
+                await self.send_message(ctx, 
                     f"**Faction: {faction_to_use}**\n"
                     f"🔹 Level: {faction_data['level']}\n"
                     f"🔹 XP: {faction_data['xp']}\n"
@@ -612,16 +614,16 @@ class Hybrid(commands.Cog):
             elif act == "leaderboard":
                 factions = await self.game.get_faction_leaderboard()
                 if not factions:
-                    await ctx.send("No factions found.")
+                    await self.send_message(ctx, "No factions found.")
                     return
                 leaderboard = "**🏆 Faction Leaderboard:**\n"
                 for i, faction in enumerate(factions[:10], start=1):
                     leaderboard += f"{i}. **{faction['name']}** - Level {faction['level']}, XP: {faction['xp']}\n"
-                await ctx.send(leaderboard)
+                await self.send_message(ctx, leaderboard)
                 return
     
             else:
-                await ctx.send("Invalid action! Use `create`, `join`, `switch`, `info`, or `leaderboard`.")
+                await self.send_message(ctx, "Invalid action! Use `create`, `join`, `switch`, `info`, or `leaderboard`.")
     
         # Hybrid deferral logic
         if ctx.interaction:
@@ -641,7 +643,7 @@ class Hybrid(commands.Cog):
             output_dir = 'frames'
             frames = extract_random_frames(video_path, output_dir)
             for frame in frames:
-                await ctx.send(file=discord.File(frame))
+                await self.send_message(ctx, file=discord.File(frame))
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -662,7 +664,7 @@ class Hybrid(commands.Cog):
 #                image_file = discord.File(io.BytesIO(image_bytes), filename="uploaded_image.png")
 #    
 #                # Send the image and ask for what to do
-#                message = await ctx.send("Choose what to do with the image:", file=image_file)
+#                message = await self.send_message(ctx, "Choose what to do with the image:", file=image_file)
 #    
 #                # Add reactions to choose action (edit, variation, etc.)
 #                await message.add_reaction("✅")  # Confirm edit
@@ -677,7 +679,7 @@ class Hybrid(commands.Cog):
 #    
 #                if str(reaction.emoji) == "✅":
 #                    # Perform the edit (waiting for mask or full image edit)
-#                    await ctx.send("Please upload a mask for editing, or confirm to use the full image as the mask.")
+#                    await self.send_message(ctx, "Please upload a mask for editing, or confirm to use the full image as the mask.")
 #                    mask_msg = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
 #                    if mask_msg.content.lower() == "confirm":
 #                        # Use the full image as the mask
@@ -690,45 +692,45 @@ class Hybrid(commands.Cog):
 #                    edited_image = await edit_image(image_file, mask_file, prompt)
 #    
 #                    if isinstance(edited_image, discord.File):
-#                        await ctx.send("Here is your edited image with the mask:", file=edited_image)
+#                        await self.send_message(ctx, "Here is your edited image with the mask:", file=edited_image)
 #                    else:
-#                        await ctx.send(f"Error editing image: {edited_image}")
+#                        await self.send_message(ctx, f"Error editing image: {edited_image}")
 #    
 #                elif str(reaction.emoji) == "❌":
-#                    await ctx.send("Edit canceled.")
+#                    await self.send_message(ctx, "Edit canceled.")
 #    
 #                elif str(reaction.emoji) == "🖼️":
 #                    # Create a variation
 #                    variation = await create_image_variation(image_file, prompt)
 #                    if isinstance(variation, discord.File):
-#                        await ctx.send("Here is your image variation:", file=variation)
+#                        await self.send_message(ctx, "Here is your image variation:", file=variation)
 #                    else:
-#                        await ctx.send(f"Error creating variation: {variation}")
+#                        await self.send_message(ctx, f"Error creating variation: {variation}")
 #    
 #                elif str(reaction.emoji) == "🔲":
 #                    # Handle the mask upload (prompt for uploading mask file)
-#                    await ctx.send("Please upload a mask image to use for editing.")
+#                    await self.send_message(ctx, "Please upload a mask image to use for editing.")
 #                    mask_msg = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
 #                    mask_file = mask_msg.attachments[0]  # Assuming user uploads the mask here
 #    
 #                    # Proceed with the edit using the mask
 #                    edited_image = await edit_image(image_file, mask_file, prompt)
 #                    if isinstance(edited_image, discord.File):
-#                        await ctx.send("Here is your edited image with the mask:", file=edited_image)
+#                        await self.send_message(ctx, "Here is your edited image with the mask:", file=edited_image)
 #                    else:
-#                        await ctx.send(f"Error editing image with mask: {edited_image}")
+#                        await self.send_message(ctx, f"Error editing image with mask: {edited_image}")
 #    
 #            else:
 #                # No file, generate an image based on the prompt
 #                image_file = await create_image(prompt)
 #                if isinstance(image_file, discord.File):
-#                    await ctx.send("Here is your generated image:", file=image_file)
+#                    await self.send_message(ctx, "Here is your generated image:", file=image_file)
 #                else:
-#                    await ctx.send(f"Error generating image: {image_file}")
+#                    await self.send_message(ctx, f"Error generating image: {image_file}")
 #    
 #        except openai.OpenAIError as e:
-#            await ctx.send(e.http_status)
-#            await ctx.send(e.error)
+#            await self.send_message(ctx, e.http_status)
+#            await self.send_message(ctx, e.error)
 
     def _handle_large_response(self, content: str) -> str:
         if len(content) > 2000:
@@ -749,7 +751,7 @@ class Hybrid(commands.Cog):
             compound_data = compounds[0].to_dict(properties=['isomeric_smiles'])
             mol = Chem.MolFromSmiles(compound_data['isomeric_smiles'])
             log_p = Crippen.MolLogP(mol)
-            await ctx.send(f'Your octanol:water coefficient is: {log_p}')
+            await self.send_message(ctx, f'Your octanol:water coefficient is: {log_p}')
 
     @commands.hybrid_command(name='pic')
     async def pic(self, ctx: commands.Context, *, argument: str):
@@ -758,9 +760,9 @@ class Hybrid(commands.Cog):
         async def function():
             file = stable_cascade(argument)
             if isinstance(file, discord.File):
-                await ctx.send(file=file)
+                await self.send_message(ctx, file=file)
             else:
-                await ctx.send(f"Error generating image: {file}")
+                await self.send_message(ctx, f"Error generating image: {file}")
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -774,7 +776,7 @@ class Hybrid(commands.Cog):
             return
         async def function():
             async with ctx.typing():
-                await ctx.send(script(version, reference))
+                await self.send_message(ctx, script(version, reference))
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -792,7 +794,7 @@ class Hybrid(commands.Cog):
             for result in results:
                 title, link = result.get("title", "No Title"), result.get("link", "No Link")
                 embed.add_field(name=title, value=link, inline=False)
-            await ctx.send(embed=embed)
+            await self.send_message(ctx, embed=embed)
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -807,7 +809,7 @@ class Hybrid(commands.Cog):
         async def function():
             args = shlex.split(molecules)
             similarity = get_proximity(get_mol(args[0]), get_mol(args[1]))
-            await ctx.send(similarity)
+            await self.send_message(ctx, similarity)
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -848,9 +850,9 @@ class Hybrid(commands.Cog):
             if len(result) > 2000:
                 with open(f"smiles_{ctx.author.name}.txt", "w") as f:
                     f.write(result)
-                await ctx.send(file=discord.File(f"smiles_{ctx.author.name}.txt"))
+                await self.send_message(ctx, file=discord.File(f"smiles_{ctx.author.name}.txt"))
             else:
-                await ctx.send(f"SMILES:\n```\n{result}\n```")
+                await self.send_message(ctx, f"SMILES:\n```\n{result}\n```")
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -875,7 +877,7 @@ class Hybrid(commands.Cog):
             if act == 'add':
                 resolved_tag_type = 'loop' if (tag_type and tag_type.lower() == 'loop') else 'default'
                 if not name:
-                    return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag add <name> \"content\" [loop]`')
+                    return await self.send_message(ctx, f'Usage: \"{self.bot.command_prefix}tag add <name> \"content\" [loop]`')
                 try:
                     await self.tag_manager.add_tag(
                         name=name,
@@ -885,12 +887,12 @@ class Hybrid(commands.Cog):
                         attachment_url=attachment_url,
                         tag_type=resolved_tag_type
                     )
-                    await ctx.send(f'Tag \"{name}\" (type: {resolved_tag_type}) added successfully.')
+                    await self.send_message(ctx, f'Tag \"{name}\" (type: {resolved_tag_type}) added successfully.')
                 except ValueError as ve:
-                    await ctx.send(str(ve))
+                    await self.send_message(ctx, str(ve))
                 except Exception as e:
                     logger.error(f'Error adding tag: {e}')
-                    await ctx.send('An error occurred while adding the tag.')
+                    await self.send_message(ctx, 'An error occurred while adding the tag.')
             if act == "borrow":
                 """
                 Usage:
@@ -898,7 +900,7 @@ class Hybrid(commands.Cog):
                     Optionally, specify the original owner: !tag borrow <tag_name> @UserName
                 """
                 if not name:
-                    return await ctx.send(
+                    return await self.send_message(ctx, 
                         f"Usage: `{self.bot.command_prefix}tag borrow <tag_name> [@owner]`"
                     )
                 mentioned_users = ctx.message.mentions
@@ -917,20 +919,20 @@ class Hybrid(commands.Cog):
                     )
                     if owner:
                         owner_display = owner.display_name
-                        await ctx.send(
+                        await self.send_message(ctx, 
                             f'You have successfully borrowed the tag "{name}" from {owner_display}.'
                         )
                     else:
-                        await ctx.send(
+                        await self.send_message(ctx, 
                             f'You have successfully borrowed the tag "{name}".'
                         )
                 except ValueError as ve:
-                    await ctx.send(str(ve))
+                    await self.send_message(ctx, str(ve))
                 except RuntimeError as re:
-                    await ctx.send(str(re))
+                    await self.send_message(ctx, str(re))
                 except Exception as e:
                     logger.error(f"Unexpected error during tag borrowing: {e}")
-                    await ctx.send(
+                    await self.send_message(ctx, 
                         "An unexpected error occurred while borrowing the tag."
                     )
             elif act == 'list':
@@ -942,16 +944,16 @@ class Hybrid(commands.Cog):
                         tag_type=filter_tag_type
                     )
                     if not tags:
-                        await ctx.send('No tags found.')
+                        await self.send_message(ctx, 'No tags found.')
                     else:
                         tag_list = '\n'.join(f'**{t["name"]}**' for t in tags)
-                        await ctx.send(f'Tags:\n{tag_list}')
+                        await self.send_message(ctx, f'Tags:\n{tag_list}')
                 except Exception as e:
                     logger.error(f'Error listing tags: {e}')
-                    await ctx.send('An error occurred while listing your tags.')
+                    await self.send_message(ctx, 'An error occurred while listing your tags.')
             elif act == 'remove':
                 if not name:
-                    return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag remove <name>`')
+                    return await self.send_message(ctx, f'Usage: \"{self.bot.command_prefix}tag remove <name>`')
                 try:
                     result = await self.tag_manager.delete_tag(
                         name=name,
@@ -959,15 +961,15 @@ class Hybrid(commands.Cog):
                         owner_id=ctx.author.id
                     )
                     if result > 0:
-                        await ctx.send(f'Tag \"{name}\" removed.')
+                        await self.send_message(ctx, f'Tag \"{name}\" removed.')
                     else:
-                        await ctx.send(f'Tag \"{name}\" not found or you do not own it.')
+                        await self.send_message(ctx, f'Tag \"{name}\" not found or you do not own it.')
                 except Exception as e:
                     logger.error(f'Error removing tag: {e}')
-                    await ctx.send('An error occurred while removing the tag.')
+                    await self.send_message(ctx, 'An error occurred while removing the tag.')
             elif act == 'loop':
                  if not name:
-                     return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag loop on <#channel>` or \"{self.bot.command_prefix}tag loop off`')
+                     return await self.send_message(ctx, f'Usage: \"{self.bot.command_prefix}tag loop on <#channel>` or \"{self.bot.command_prefix}tag loop off`')
                  if name.lower() == 'on':
                      channel = ctx.channel
                      if content and content.startswith('<#') and content.endswith('>'):
@@ -978,18 +980,18 @@ class Hybrid(commands.Cog):
                      try:
                          await self.tag_manager.set_loop_config(ctx.guild.id, channel.id, True)
                          self.start_loop_task(channel)
-                         await ctx.send(f'Looping enabled in {channel.mention}.')
+                         await self.send_message(ctx, f'Looping enabled in {channel.mention}.')
                      except Exception as e:
                          logger.error(f'Error enabling loop: {e}')
-                         await ctx.send('Could not enable loop.')
+                         await self.send_message(ctx, 'Could not enable loop.')
                  elif name.lower() == 'off':
                      try:
                          await self.tag_manager.set_loop_config(ctx.guild.id, None, False)
                          self.stop_loop_task()
-                         await ctx.send('Looping disabled.')
+                         await self.send_message(ctx, 'Looping disabled.')
                      except Exception as e:
                          logger.error(f'Error disabling loop: {e}')
-                         await ctx.send('Could not disable loop.')
+                         await self.send_message(ctx, 'Could not disable loop.')
             else:
                 try:
                     tag = await self.tag_manager.get_tag(ctx.guild.id, act)
@@ -997,19 +999,19 @@ class Hybrid(commands.Cog):
                         content_value = tag.get('content')
                         attachment_url_value = tag.get('attachment_url')
                         if content_value and attachment_url_value:
-                            await ctx.send(content_value)
-                            await ctx.send(attachment_url_value)
+                            await self.send_message(ctx, content_value)
+                            await self.send_message(ctx, attachment_url_value)
                         elif content_value:
-                            await ctx.send(content_value)
+                            await self.send_message(ctx, content_value)
                         elif attachment_url_value:
-                            await ctx.send(attachment_url_value)
+                            await self.send_message(ctx, attachment_url_value)
                         else:
-                            await ctx.send(f'Tag \"{act}\" has no content.')
+                            await self.send_message(ctx, f'Tag \"{act}\" has no content.')
                     else:
-                        await ctx.send(f'Tag \"{act}\" not found.')
+                        await self.send_message(ctx, f'Tag \"{act}\" not found.')
                 except Exception as e:
                     logger.error(f'Error fetching tag \"{act}\": {e}')
-                    await ctx.send(f'An error occurred while fetching tag \"{act}\".')
+                    await self.send_message(ctx, f'An error occurred while fetching tag \"{act}\".')
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -1024,9 +1026,9 @@ class Hybrid(commands.Cog):
             await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        async with ctx.typing():
+        async def function():
             if limit <= 0 or limit > 100:
-                return await ctx.send('Limit must be between 1 and 100.')
+                return await self.send_message(ctx, 'Limit must be between 1 and 100.')
             check_function = None
             if option == 'bot':
                 check_function = lambda m: m.author == self.bot.user
@@ -1037,18 +1039,18 @@ class Hybrid(commands.Cog):
                 if user:
                     check_function = lambda m: m.author == user
                 else:
-                    return await ctx.send('Please mention a user.')
+                    return await self.send_message(ctx, 'Please mention a user.')
             elif option == 'commands':
                 check_function = lambda m: m.content.startswith(ctx.prefix)
             elif option == 'text':
-                await ctx.send('Provide text to delete messages containing it.')
+                await self.send_message(ctx, 'Provide text to delete messages containing it.')
                 try:
                     msg_text = await self.bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
                     check_function = lambda m: msg_text.content in m.content
                 except asyncio.TimeoutError:
-                    return await ctx.send('You took too long to provide text. Cancelling operation.')
+                    return await self.send_message(ctx, 'You took too long to provide text. Cancelling operation.')
             else:
-                return await ctx.send('Invalid option.')
+                return await self.send_message(ctx, 'Invalid option.')
             total_deleted = 0
             while total_deleted < limit:
                 deleted = await ctx.channel.purge(limit=min(limit - total_deleted, 10), check=check_function)
@@ -1057,24 +1059,41 @@ class Hybrid(commands.Cog):
                 total_deleted += len(deleted)
                 await asyncio.sleep(1)
             if total_deleted > 0:
-                await ctx.send(f'Deleted {total_deleted} messages.')
+                await self.send_message(ctx, f'Deleted {total_deleted} messages.')
             else:
-                await ctx.send('No messages matched the criteria.')
+                await self.send_message(ctx, 'No messages matched the criteria.')
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            # Check if bot can send messages in the channel
+            if ctx.channel and isinstance(ctx.channel, discord.abc.GuildChannel):
+                permissions = ctx.channel.permissions_for(ctx.guild.me)
+                if permissions.send_messages:
+                    async with ctx.typing():
+                        await function()
+                else:
+                    # No permission to send in the channel – DM instead
+                    await function()
+            else:
+                # Fallback for DMs or untypical channels
+                async with ctx.typing():
+                    await function()
 
     async def translate(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
         if toggle.lower() == 'on':
             target_lang_code = self.get_language_code(target_lang)
             source_lang_code = self.get_language_code(source_lang)
             if target_lang_code is None or source_lang_code is None:
-                await ctx.send(f'{ctx.author.mention}, please specify valid language names.')
+                await self.send_message(ctx, f'{ctx.author.mention}, please specify valid language names.')
                 return
             self.user_translation_preferences[ctx.author.id] = (target_lang_code, source_lang_code)
-            await ctx.send(f'{ctx.author.mention}, translation enabled from {source_lang} to {target_lang}.')
+            await self.send_message(ctx, f'{ctx.author.mention}, translation enabled from {source_lang} to {target_lang}.')
         elif toggle.lower() == 'off':
             self.user_translation_preferences[ctx.author.id] = None
-            await ctx.send(f'{ctx.author.mention}, translation disabled.')
+            await self.send_message(ctx, f'{ctx.author.mention}, translation disabled.')
         else:
-            await ctx.send(f'{ctx.author.mention}, please specify \'on\' or \'off\'.')
+            await self.send_message(ctx, f'{ctx.author.mention}, please specify \'on\' or \'off\'.')
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Hybrid(bot))

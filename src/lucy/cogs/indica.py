@@ -185,7 +185,16 @@ class Indica(commands.Cog):
             logger.info(f"Flagged count reset to 0 for user {user_id} after timeout.")
 
     async def send_message(self, ctx: commands.Context, print: str):
-        await ctx.reply(print)
+        if ctx.channel and isinstance(ctx.channel, discord.abc.GuildChannel):
+            permissions = ctx.channel.permissions_for(ctx.guild.me)
+            if permissions.send_messages:
+                async with ctx.typing():
+                   await ctx.reply(print)
+            else:
+               await send_dm(ctx.message, print)
+        else:
+           async with ctx.typing():
+                await ctx.reply(print)
 
     async def send_file(self, ctx: commands.Context, file: discord.File):
         await ctx.reply(file=file)
