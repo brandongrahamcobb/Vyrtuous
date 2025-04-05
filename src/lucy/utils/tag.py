@@ -314,10 +314,9 @@ class TagManager:
             INSERT INTO loop_configs (guild_id, channel_id, enabled)
             VALUES ($1, $2, $3)
             ON CONFLICT (guild_id)
-            DO UPDATE SET 
+            DO UPDATE SET
                 channel_id = EXCLUDED.channel_id,
-                enabled = EXCLUDED.enabled,
-                created_at = CURRENT_TIMESTAMP
+                enabled = EXCLUDED.enabled
         """
         try:
             async with self.pool.acquire() as conn:
@@ -334,7 +333,7 @@ class TagManager:
         :return: A dictionary containing loop config details or None if not found.
         """
         query = """
-            SELECT guild_id, channel_id, enabled, created_at
+            SELECT guild_id, channel_id, enabled
             FROM loop_configs
             WHERE guild_id = $1
         """

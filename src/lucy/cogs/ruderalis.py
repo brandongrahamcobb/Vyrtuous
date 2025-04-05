@@ -20,6 +20,7 @@ class Ruderalis(commands.Cog):
             787738272616808509: 730907954345279591,
             730907954877956179: 730907954345279591,
             1315735859848544378: 1300517536001036348,
+            1347284827350630591: 1347284828894265398
         }
         self.config = bot.config
         self.batch_processor = BatchProcessor(self.bot)

@@ -91,6 +91,32 @@ class Hybrid(commands.Cog):
         self.predicator = Predicator(self.bot)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.handler = Message(self.config, self.conversations)
+        self.loop_task: Optional[str] = None
+
+    async def loop_tags(self, channel: discord.TextChannel):
+        while True:
+            try:
+                loop_tags = await self.tag_manager.list_tags(channel.guild.id, tag_type='loop')
+                if loop_tags:
+                    random_tag = choice(loop_tags)
+                    message_text = random_tag['content'] or random_tag['attachment_url'] or ''
+                    if message_text:
+                        await channel.send(message_text)
+                await asyncio.sleep(300)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f'Error during loop_tags: {e}')
+
+    def start_loop_task(self, channel: discord.TextChannel):
+        if self.loop_task is None or self.loop_task.done():
+            self.loop_task = asyncio.create_task(self.loop_tags(channel))
+
+    def stop_loop_task(self):
+        if self.loop_task and not self.loop_task.done():
+            self.loop_task.cancel()
+            self.loop_task = None
+
 
     def get_language_code(self, language_name):
         language_name = language_name.lower()
@@ -118,86 +144,92 @@ class Hybrid(commands.Cog):
         use_history: bool = None,
         add_completion_to_history: bool = None,
     ):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        array = await self.handler.process_array(prompt, attachments=ctx.message.attachments)
-        custom_id = f"{ctx.author.id}-{uuid.uuid4()}"
-        request_data = {
-            "completions": 1,
-            "custom_id": custom_id,
-            "input_array": array,
-            "max_tokens": max_tokens if max_tokens is not None else OPENAI_MODEL_OUTPUT_LIMITS[model],
-            "model": model,
-            "response_format": response_format if response_format is not None else OPENAI_CHAT_RESPONSE_FORMAT,
-            "stop": stop if stop is not None else self.config.get("openai_chat_stop", None),
-            "store": store if store is not None else self.config.get("openai_chat_store", False),
-            "stream": stream if stream is not None else self.config.get("openai_chat_stream", False),
-            "sys_input": sys_input if sys_input is not None else self.config.get("openai_chat_sys_input", None),
-            "temperature": temperature if temperature is not None else self.config.get("openai_chat_temperature", 0.7),
-            "top_p": top_p if top_p is not None else self.config.get("openai_chat_top_p", 1.0),
-            "use_history": use_history if use_history is not None else self.config.get("openai_chat_use_history", True),
-            "add_completion_to_history": add_completion_to_history if add_completion_to_history is not None else self.config.get("openai_chat_add_completion_to_history", True),
-        }
-        if new:
-            async for chat_completion in self.conversations.create_https_completion(**request_data):
-                if len(chat_completion) > 2000:
-                    unique_filename = f'temp_{uuid.uuid4()}.txt'
-                    with open(unique_filename, 'w') as f:
-                        f.write(chat_completion)
-                    await ctx.send(file=discord.File(unique_filename))
-                    os.remove(unique_filename)
-                else:
-                    await ctx.send(chat_completion)
+        async def function():
+            array = await self.handler.process_array(prompt, attachments=ctx.message.attachments)
+            custom_id = f"{ctx.author.id}-{uuid.uuid4()}"
+            request_data = {
+                "completions": 1,
+                "custom_id": custom_id,
+                "input_array": array,
+                "max_tokens": max_tokens if max_tokens is not None else OPENAI_MODEL_OUTPUT_LIMITS[model],
+                "model": model,
+                "response_format": response_format if response_format is not None else OPENAI_CHAT_RESPONSE_FORMAT,
+                "stop": stop if stop is not None else self.config.get("openai_chat_stop", None),
+                "store": store if store is not None else self.config.get("openai_chat_store", False),
+                "stream": stream if stream is not None else self.config.get("openai_chat_stream", False),
+                "sys_input": sys_input if sys_input is not None else self.config.get("openai_chat_sys_input", None),
+                "temperature": temperature if temperature is not None else self.config.get("openai_chat_temperature", 0.7),
+                "top_p": top_p if top_p is not None else self.config.get("openai_chat_top_p", 1.0),
+                "use_history": use_history if use_history is not None else self.config.get("openai_chat_use_history", True),
+                "add_completion_to_history": add_completion_to_history if add_completion_to_history is not None else self.config.get("openai_chat_add_completion_to_history", True),
+            }
+            if new:
+                async for chat_completion in self.conversations.create_https_completion(**request_data):
+                    if len(chat_completion) > 2000:
+                        unique_filename = f'temp_{uuid.uuid4()}.txt'
+                        with open(unique_filename, 'w') as f:
+                            f.write(chat_completion)
+                        await ctx.send(file=discord.File(unique_filename))
+                        os.remove(unique_filename)
+                    else:
+                        await ctx.send(chat_completion)
+            else:
+                with open(PATH_OPENAI_REQUESTS, "a") as f:
+                    f.write(json.dumps(request_data) + "\n")
+                await ctx.send("✅ Your request has been queued for weekend batch processing.")
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
         else:
-            with open(PATH_OPENAI_REQUESTS, "a") as f:
-                f.write(json.dumps(request_data) + "\n")
-            await ctx.send("✅ Your request has been queued for weekend batch processing.")
+            async with ctx.typing():
+                await function()
 
     @commands.hybrid_command(name='colorize', description=f'Usage: between `colorize 0 0 0` and `colorize 255 255 255` or `colorize <color>`')
     @commands.has_permissions(manage_roles=True)
     async def colorize(self, ctx: commands.Context, r: str = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.'), *, g: str = commands.parameter(default='147', description='Anything betwen 0 and 255.'), b: str = commands.parameter(default='165', description='Anything between 0 and 255.')):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        if not r.isnumeric():
-            input_text_dict = {
-                'type': 'text',
-                'text': r
-            }
-            array = [
-                {
-                    'role': 'user',
-                    'content': json.dumps(input_text_dict)
+        async def function():
+            if not r.isnumeric():
+                input_text_dict = {
+                    'type': 'text',
+                    'text': r
                 }
-            ]
-            async for completion in create_completion(array):
-                color_values = json.loads(completion)
-                r = color_values['r']
-                g = color_values['g']
-                b = color_values['b']
-        r = int(r)
-        g = int(g)
-        b = int(b)
-        guildroles = await ctx.guild.fetch_roles()
-        position = len(guildroles) - 12
-        for arg in ctx.author.roles:
-            if arg.name.isnumeric():
-                await ctx.author.remove_roles(arg)
-        for arg in guildroles:
-            if arg.name.lower() == f'{r}{g}{b}':
-                await ctx.author.add_roles(arg)
-                await arg.edit(position=position)
-                await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
-                return
-        newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
-        await newrole.edit(position=position)
-        await ctx.author.add_roles(newrole)
-        await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
+                array = [
+                    {
+                        'role': 'user',
+                        'content': json.dumps(input_text_dict)
+                    }
+                ]
+                async for completion in create_completion(array):
+                    color_values = json.loads(completion)
+                    r = color_values['r']
+                    g = color_values['g']
+                    b = color_values['b']
+            r = int(r)
+            g = int(g)
+            b = int(b)
+            guildroles = await ctx.guild.fetch_roles()
+            position = len(guildroles) - 12
+            for arg in ctx.author.roles:
+                if arg.name.isnumeric():
+                    await ctx.author.remove_roles(arg)
+            for arg in guildroles:
+                if arg.name.lower() == f'{r}{g}{b}':
+                    await ctx.author.add_roles(arg)
+                    await arg.edit(position=position)
+                    await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
+                    return
+            newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
+            await newrole.edit(position=position)
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
     @commands.hybrid_command(name='d', description=f'Usage: d 2 <mol> <mol> or d glow <mol> or d gsrs <mol> or d shadow <mole>.')
     async def d(
@@ -212,7 +244,9 @@ class Hybrid(commands.Cog):
         rdkit_bool: bool = commands.parameter(default=True, description='rdDepictor'),
         rotation: int = commands.parameter(default=0, description='Rotation')
     ):
-        try:
+        if not self.predicator.is_release_mode_func(ctx):
+            return
+        async def function():
             rdkit_bool = bool(rdkit_bool)
             if ctx.interaction:
                 await ctx.interaction.response.defer(ephemeral=True)
@@ -319,199 +353,222 @@ class Hybrid(commands.Cog):
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             else:
                 await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
-        except Exception as e:
-            logger.error(traceback.format_exc())
-            await ctx.reply(e)
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
     @commands.hybrid_command()
     async def faction(self, ctx, action: str, *, faction_name: str = None):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        user_id = ctx.author.id
-        action = action.lower()
-        user = await self.game.get_user(user_id)
-        if not user:
-            await ctx.send("You have not interacted with the bot yet. Earn XP first!")
-            return
-        if action == "create":
-            if not faction_name:
-                await ctx.send("You must specify a faction name!")
+    
+        faction_input = str(faction_name) if faction_name is not None else None  # ✅ Moved outside
+    
+        async def function():
+            user_id = ctx.author.id
+            act = action.lower()
+            user = await self.game.get_user(user_id)
+            if not user:
+                await ctx.send("You have not interacted with the bot yet. Earn XP first!")
                 return
-            if user["faction_name"]:
-                await ctx.send("You are already in a faction!")
+    
+            if act == "create":
+                if not faction_input:
+                    await ctx.send("You must specify a faction name!")
+                    return
+                if user["faction_name"]:
+                    await ctx.send("You are already in a faction!")
+                    return
+                existing_faction = await self.game.get_faction(faction_input)
+                if existing_faction:
+                    await ctx.send(f"Faction **{faction_input}** already exists!")
+                    return
+                success = await self.game.create_faction(faction_input, user_id)
+                if success:
+                    await ctx.send(f"Faction **{faction_input}** has been created! 🎉")
+                else:
+                    await ctx.send("There was an error creating the faction.")
                 return
-            existing_faction = await self.game.get_faction(faction_name)
-            if existing_faction:
-                await ctx.send(f"Faction **{faction_name}** already exists!")
+    
+            elif act == "join":
+                if not faction_input:
+                    await ctx.send("You must specify a faction to join!")
+                    return
+                if user["faction_name"]:
+                    await ctx.send("You are already in a faction!")
+                    return
+                response = await self.game.join_faction(faction_input, user_id)
+                await ctx.send(f"{ctx.author.mention}, {response}")
                 return
-            success = await self.game.create_faction(faction_name, user_id)
-            if success:
-                await ctx.send(f"Faction **{faction_name}** has been created! 🎉")
-            else:
-                await ctx.send("There was an error creating the faction.")
-            return
-        elif action == "join":
-            if not faction_name:
-                await ctx.send("You must specify a faction to join!")
+    
+            elif act == "leave":
+                current_faction = user.get("faction_name")
+                if not current_faction:
+                    await ctx.send("You are not in a faction!")
+                    return
+                await self.game.leave_faction(user_id, current_faction)
+                await ctx.send("You have left your faction and are now factionless.")
                 return
-            if user["faction_name"]:
-                await ctx.send("You are already in a faction!")
+    
+            elif act == "switch":
+                if not faction_input:
+                    await ctx.send("You must specify a faction to switch to!")
+                    return
+                if user["faction_name"] == faction_input:
+                    await ctx.send("You are already in that faction!")
+                    return
+                new_faction = await self.game.get_faction(faction_input)
+                if not new_faction:
+                    await ctx.send("The faction you want to switch to does not exist!")
+                    return
+                if user["faction_name"]:
+                    await self.game.leave_faction(user_id, user["faction_name"])
+                response = await self.game.join_faction(faction_input, user_id)
+                await ctx.send(f"{ctx.author.mention}, you have switched to faction **{faction_input}**.")
                 return
-            response = await self.game.join_faction(faction_name, user_id)
-            await ctx.send(f"{ctx.author.mention}, {response}")
-            return
-        elif action == "leave":
-            current_faction = user.get("faction_name")
-            if not current_faction:
-                await ctx.send("You are not in a faction!")
-                return
-            await self.game.leave_faction(user_id, current_faction)
-            await ctx.send("You have left your faction and are now factionless.")
-            return
-        elif action == "switch":
-            if not faction_name:
-                await ctx.send("You must specify a faction to switch to!")
-                return
-            if user["faction_name"] == faction_name:
-                await ctx.send("You are already in that faction!")
-                return
-            new_faction = await self.game.get_faction(faction_name)
-            if not new_faction:
-                await ctx.send("The faction you want to switch to does not exist!")
-                return
-            if user["faction_name"]:
-                await self.game.leave_faction(user_id, user["faction_name"])
-            response = await self.game.join_faction(faction_name, user_id)
-            await ctx.send(f"{ctx.author.mention}, you have switched to faction **{faction_name}**.")
-            return
-        elif action == "info":
-            if not faction_name:
-                faction_name = user.get("faction_name")
-                if not faction_name:
+    
+            elif act == "info":
+                faction_to_use = faction_input or user.get("faction_name")
+                if not faction_to_use:
                     await ctx.send("You are not in a faction, and no faction name was provided!")
                     return
-            faction_data = await self.game.get_faction(faction_name)
-            if not faction_data:
-                await ctx.send("Faction not found!")
+                faction_data = await self.game.get_faction(faction_to_use)
+                if not faction_data:
+                    await ctx.send("Faction not found!")
+                    return
+                members = await self.game.get_faction_members(faction_to_use)
+                members_count = len(members)
+                await ctx.send(
+                    f"**Faction: {faction_to_use}**\n"
+                    f"🔹 Level: {faction_data['level']}\n"
+                    f"🔹 XP: {faction_data['xp']}\n"
+                    f"🔹 Members: {members_count}"
+                )
                 return
-            members = await self.game.get_faction_members(faction_name)
-            members_count = len(members)
-            await ctx.send(
-                f"**Faction: {faction_name}**\n"
-                f"🔹 Level: {faction_data['level']}\n"
-                f"🔹 XP: {faction_data['xp']}\n"
-                f"🔹 Members: {members_count}"
-            )
-            return
-        elif action == "leaderboard":
-            factions = await self.game.get_faction_leaderboard()
-            if not factions:
-                await ctx.send("No factions found.")
+    
+            elif act == "leaderboard":
+                factions = await self.game.get_faction_leaderboard()
+                if not factions:
+                    await ctx.send("No factions found.")
+                    return
+                leaderboard = "**🏆 Faction Leaderboard:**\n"
+                for i, faction in enumerate(factions[:10], start=1):
+                    leaderboard += f"{i}. **{faction['name']}** - Level {faction['level']}, XP: {faction['xp']}\n"
+                await ctx.send(leaderboard)
                 return
-            leaderboard = "**🏆 Faction Leaderboard:**\n"
-            for i, faction in enumerate(factions[:10], start=1):
-                leaderboard += f"{i}. **{faction['name']}** - Level {faction['level']}, XP: {faction['xp']}\n"
-            await ctx.send(leaderboard)
-            return
+    
+            else:
+                await ctx.send("Invalid action! Use `create`, `join`, `switch`, `info`, or `leaderboard`.")
+    
+        # Hybrid deferral logic
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
         else:
-            await ctx.send("Invalid action! Use `create`, `join`, `switch`, `info`, or `leaderboard`.")
+            async with ctx.typing():
+                await function()
 
     @commands.hybrid_command(name='frame', description='Sends a frame from a number of animal cruelty footage sources.')
     async def frame(self, ctx: commands.Context):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        video_path = 'frogs.mov'
-        output_dir = 'frames'
-        frames = extract_random_frames(video_path, output_dir)
-        for frame in frames:
-            await ctx.send(file=discord.File(frame))
+        async def function():
+            await ctx.interaction.response.defer(ephemeral=True)
+            video_path = 'frogs.mov'
+            output_dir = 'frames'
+            frames = extract_random_frames(video_path, output_dir)
+            for frame in frames:
+                await ctx.send(file=discord.File(frame))
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
-    @commands.hybrid_command(name="imagine")
-    async def imagine(self, ctx, *, prompt: str):
-        """Generates or edits an image based on the prompt and uploaded file."""
-        try:
-            if ctx.message.attachments:
-                # There is an attachment (image file)
-                image_attachment = ctx.message.attachments[0]
-                image_bytes = await image_attachment.read()  # Read the image bytes
-    
-                # Convert the bytes into a discord.File
-                image_file = discord.File(io.BytesIO(image_bytes), filename="uploaded_image.png")
-    
-                # Send the image and ask for what to do
-                message = await ctx.send("Choose what to do with the image:", file=image_file)
-    
-                # Add reactions to choose action (edit, variation, etc.)
-                await message.add_reaction("✅")  # Confirm edit
-                await message.add_reaction("❌")  # Cancel
-                await message.add_reaction("🖼️")  # Create variation
-                await message.add_reaction("🔲")  # Mask upload option
-    
-                def check(reaction, user):
-                    return user == ctx.author and str(reaction.emoji) in ["✅", "❌", "🖼️", "🔲"]
-    
-                reaction, user = await self.bot.wait_for("reaction_add", check=check)
-    
-                if str(reaction.emoji) == "✅":
-                    # Perform the edit (waiting for mask or full image edit)
-                    await ctx.send("Please upload a mask for editing, or confirm to use the full image as the mask.")
-                    mask_msg = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
-                    if mask_msg.content.lower() == "confirm":
-                        # Use the full image as the mask
-                        mask_file = image_attachment
-                    else:
-                        # Use uploaded mask
-                        mask_file = mask_msg.attachments[0]  # Assuming user uploads the mask here
-    
-                    # Proceed with the edit
-                    edited_image = await edit_image(image_file, mask_file, prompt)
-    
-                    if isinstance(edited_image, discord.File):
-                        await ctx.send("Here is your edited image with the mask:", file=edited_image)
-                    else:
-                        await ctx.send(f"Error editing image: {edited_image}")
-    
-                elif str(reaction.emoji) == "❌":
-                    await ctx.send("Edit canceled.")
-    
-                elif str(reaction.emoji) == "🖼️":
-                    # Create a variation
-                    variation = await create_image_variation(image_file, prompt)
-                    if isinstance(variation, discord.File):
-                        await ctx.send("Here is your image variation:", file=variation)
-                    else:
-                        await ctx.send(f"Error creating variation: {variation}")
-    
-                elif str(reaction.emoji) == "🔲":
-                    # Handle the mask upload (prompt for uploading mask file)
-                    await ctx.send("Please upload a mask image to use for editing.")
-                    mask_msg = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
-                    mask_file = mask_msg.attachments[0]  # Assuming user uploads the mask here
-    
-                    # Proceed with the edit using the mask
-                    edited_image = await edit_image(image_file, mask_file, prompt)
-                    if isinstance(edited_image, discord.File):
-                        await ctx.send("Here is your edited image with the mask:", file=edited_image)
-                    else:
-                        await ctx.send(f"Error editing image with mask: {edited_image}")
-    
-            else:
-                # No file, generate an image based on the prompt
-                image_file = await create_image(prompt)
-                if isinstance(image_file, discord.File):
-                    await ctx.send("Here is your generated image:", file=image_file)
-                else:
-                    await ctx.send(f"Error generating image: {image_file}")
-    
-        except openai.OpenAIError as e:
-            await ctx.send(e.http_status)
-            await ctx.send(e.error)
+
+#    @commands.hybrid_command(name="imagine") async def imagine(self, ctx, *, prompt: str):
+#        """Generates or edits an image based on the prompt and uploaded file."""
+#        try:
+#            if ctx.message.attachments:
+#                # There is an attachment (image file)
+#                image_attachment = ctx.message.attachments[0]
+#                image_bytes = await image_attachment.read()  # Read the image bytes
+#    
+#                # Convert the bytes into a discord.File
+#                image_file = discord.File(io.BytesIO(image_bytes), filename="uploaded_image.png")
+#    
+#                # Send the image and ask for what to do
+#                message = await ctx.send("Choose what to do with the image:", file=image_file)
+#    
+#                # Add reactions to choose action (edit, variation, etc.)
+#                await message.add_reaction("✅")  # Confirm edit
+#                await message.add_reaction("❌")  # Cancel
+#                await message.add_reaction("🖼️")  # Create variation
+#                await message.add_reaction("🔲")  # Mask upload option
+#    
+#                def check(reaction, user):
+#                    return user == ctx.author and str(reaction.emoji) in ["✅", "❌", "🖼️", "🔲"]
+#    
+#                reaction, user = await self.bot.wait_for("reaction_add", check=check)
+#    
+#                if str(reaction.emoji) == "✅":
+#                    # Perform the edit (waiting for mask or full image edit)
+#                    await ctx.send("Please upload a mask for editing, or confirm to use the full image as the mask.")
+#                    mask_msg = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+#                    if mask_msg.content.lower() == "confirm":
+#                        # Use the full image as the mask
+#                        mask_file = image_attachment
+#                    else:
+#                        # Use uploaded mask
+#                        mask_file = mask_msg.attachments[0]  # Assuming user uploads the mask here
+#    
+#                    # Proceed with the edit
+#                    edited_image = await edit_image(image_file, mask_file, prompt)
+#    
+#                    if isinstance(edited_image, discord.File):
+#                        await ctx.send("Here is your edited image with the mask:", file=edited_image)
+#                    else:
+#                        await ctx.send(f"Error editing image: {edited_image}")
+#    
+#                elif str(reaction.emoji) == "❌":
+#                    await ctx.send("Edit canceled.")
+#    
+#                elif str(reaction.emoji) == "🖼️":
+#                    # Create a variation
+#                    variation = await create_image_variation(image_file, prompt)
+#                    if isinstance(variation, discord.File):
+#                        await ctx.send("Here is your image variation:", file=variation)
+#                    else:
+#                        await ctx.send(f"Error creating variation: {variation}")
+#    
+#                elif str(reaction.emoji) == "🔲":
+#                    # Handle the mask upload (prompt for uploading mask file)
+#                    await ctx.send("Please upload a mask image to use for editing.")
+#                    mask_msg = await self.bot.wait_for("message", check=lambda m: m.author == ctx.author)
+#                    mask_file = mask_msg.attachments[0]  # Assuming user uploads the mask here
+#    
+#                    # Proceed with the edit using the mask
+#                    edited_image = await edit_image(image_file, mask_file, prompt)
+#                    if isinstance(edited_image, discord.File):
+#                        await ctx.send("Here is your edited image with the mask:", file=edited_image)
+#                    else:
+#                        await ctx.send(f"Error editing image with mask: {edited_image}")
+#    
+#            else:
+#                # No file, generate an image based on the prompt
+#                image_file = await create_image(prompt)
+#                if isinstance(image_file, discord.File):
+#                    await ctx.send("Here is your generated image:", file=image_file)
+#                else:
+#                    await ctx.send(f"Error generating image: {image_file}")
+#    
+#        except openai.OpenAIError as e:
+#            await ctx.send(e.http_status)
+#            await ctx.send(e.error)
 
     def _handle_large_response(self, content: str) -> str:
         if len(content) > 2000:
@@ -523,8 +580,7 @@ class Hybrid(commands.Cog):
     @commands.hybrid_command(name='logp')
     async def logp(self, ctx: commands.Context, *, molecules: str):
         if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
+            await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
         args = shlex.split(molecules)
@@ -537,66 +593,73 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='pic')
     async def pic(self, ctx: commands.Context, *, argument: str):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        try:
+        async def function():
             file = stable_cascade(argument)
             if isinstance(file, discord.File):
                 await ctx.send(file=file)
             else:
                 await ctx.send(f"Error generating image: {file}")
-        except Exception as e:
-            print(f"Error in on_message: {e}")
-            await ctx.send(f"An unexpected error occurred: {e}")
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
     @commands.command(name='script', description=f'Usage: lscript <NIV/ESV/Quran> <Book>.<Chapter>.<Verse>')
     async def script(self, ctx: commands.Context, version: str, *, reference: str):
-        try:
-            if ctx.interaction:
-                async with ctx.typing():
-                    await ctx.interaction.response.defer(ephemeral=True)
-            if not self.predicator.is_release_mode_func(ctx):
-                return
-            await ctx.send(script(version, reference))
-        except Exception as e:
-            print(traceback.format_exc())
+        if not self.predicator.is_release_mode_func(ctx):
+            return
+        async def function():
+            async with ctx.typing():
+                await ctx.send(script(version, reference))
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
     @commands.hybrid_command(name='search', description=f'Usage: lsearch <query>. Search Google.')
     async def search(self, ctx: commands.Context, *, query: str = commands.parameter(default=None, description='Google search a query.')):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        results = google(query)
-        embed = discord.Embed(title=f'Search Results for \"{query}\"', color=discord.Color.blue())
-        for result in results:
-            title, link = result.get("title", "No Title"), result.get("link", "No Link")
-            embed.add_field(name=title, value=link, inline=False)
-        await ctx.send(embed=embed)
+        async def function():
+            results = google(query)
+            embed = discord.Embed(title=f'Search Results for \"{query}\"', color=discord.Color.blue())
+            for result in results:
+                title, link = result.get("title", "No Title"), result.get("link", "No Link")
+                embed.add_field(name=title, value=link, inline=False)
+            await ctx.send(embed=embed)
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
     @commands.hybrid_command(name='sim')
     async def sim(self, ctx: commands.Context, *, molecules: str):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        args = shlex.split(molecules)
-        similarity = get_proximity(get_mol(args[0]), get_mol(args[1]))
-        await ctx.send(similarity)
+        async def function():
+            args = shlex.split(molecules)
+            similarity = get_proximity(get_mol(args[0]), get_mol(args[1]))
+            await ctx.send(similarity)
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
     @commands.hybrid_command(name='smiles')
     async def smiles(self, ctx: commands.Context, *, molecules: str, reverse: bool = True):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        try:
+        async def function():
             args = shlex.split(molecules)
             output = []
             for arg in args:
@@ -628,8 +691,12 @@ class Hybrid(commands.Cog):
                 await ctx.send(file=discord.File(f"smiles_{ctx.author.name}.txt"))
             else:
                 await ctx.send(f"SMILES:\n```\n{result}\n```")
-        except Exception as e:
-            await ctx.send(f"Error: {e}")
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
     @commands.hybrid_command(name='tag', description='Manage or retrieve tags. Sub-actions: add, borrow, list, loop, rename, remove, update')
     async def tag_command(
@@ -640,218 +707,199 @@ class Hybrid(commands.Cog):
         content: Optional[str] = commands.parameter(default=None, description='Content for the tag (if applicable).'),
         tag_type: Optional[str] = commands.parameter(default=None, description='Optional tag type: default or loop.')
     ):
-        if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        attachment_url = ctx.message.attachments[0].url if ctx.message.attachments else None
-        action = action.lower() if action else None
-        if action == 'add':
-            resolved_tag_type = 'loop' if (tag_type and tag_type.lower() == 'loop') else 'default'
-            if not name:
-                return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag add <name> \"content\" [loop]`')
-            try:
-                await self.tag_manager.add_tag(
-                    name=name,
-                    location_id=ctx.guild.id,
-                    owner_id=ctx.author.id,
-                    content=content,
-                    attachment_url=attachment_url,
-                    tag_type=resolved_tag_type
-                )
-                await ctx.send(f'Tag \"{name}\" (type: {resolved_tag_type}) added successfully.')
-            except ValueError as ve:
-                await ctx.send(str(ve))
-            except Exception as e:
-                logger.error(f'Error adding tag: {e}')
-                await ctx.send('An error occurred while adding the tag.')
-        if action == "borrow":
-            """
-            Usage:
-                !tag borrow <tag_name>
-                Optionally, specify the original owner: !tag borrow <tag_name> @UserName
-            """
-            if not name:
-                return await ctx.send(
-                    f"Usage: `{self.bot.command_prefix}tag borrow <tag_name> [@owner]`"
-                )
-            mentioned_users = ctx.message.mentions
-            if mentioned_users:
-                owner = mentioned_users[0]
-                owner_id = owner.id
-            else:
-                owner = None
-                owner_id = None
-            try:
-                await self.tag_manager.borrow_tag(
-                    tag_name=name,
-                    location_id=ctx.guild.id,
-                    borrower_id=ctx.author.id,
-                    owner_id=owner_id,
-                )
-                if owner:
-                    owner_display = owner.display_name
-                    await ctx.send(
-                        f'You have successfully borrowed the tag "{name}" from {owner_display}.'
+        async def function():
+            attachment_url = ctx.message.attachments[0].url if ctx.message.attachments else None
+            act = action.lower() if action else None
+            if act == 'add':
+                resolved_tag_type = 'loop' if (tag_type and tag_type.lower() == 'loop') else 'default'
+                if not name:
+                    return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag add <name> \"content\" [loop]`')
+                try:
+                    await self.tag_manager.add_tag(
+                        name=name,
+                        location_id=ctx.guild.id,
+                        owner_id=ctx.author.id,
+                        content=content,
+                        attachment_url=attachment_url,
+                        tag_type=resolved_tag_type
                     )
-                else:
-                    await ctx.send(
-                        f'You have successfully borrowed the tag "{name}".'
+                    await ctx.send(f'Tag \"{name}\" (type: {resolved_tag_type}) added successfully.')
+                except ValueError as ve:
+                    await ctx.send(str(ve))
+                except Exception as e:
+                    logger.error(f'Error adding tag: {e}')
+                    await ctx.send('An error occurred while adding the tag.')
+            if act == "borrow":
+                """
+                Usage:
+                    !tag borrow <tag_name>
+                    Optionally, specify the original owner: !tag borrow <tag_name> @UserName
+                """
+                if not name:
+                    return await ctx.send(
+                        f"Usage: `{self.bot.command_prefix}tag borrow <tag_name> [@owner]`"
                     )
-            except ValueError as ve:
-                await ctx.send(str(ve))
-            except RuntimeError as re:
-                await ctx.send(str(re))
-            except Exception as e:
-                logger.error(f"Unexpected error during tag borrowing: {e}")
-                await ctx.send(
-                    "An unexpected error occurred while borrowing the tag."
-                )
-        elif action == 'list':
-            filter_tag_type = name.lower() if name and name.lower() in ('loop', 'default') else None
-            try:
-                tags = await self.tag_manager.list_tags(
-                    location_id=ctx.guild.id,
-                    owner_id=ctx.author.id,
-                    tag_type=filter_tag_type
-                )
-                if not tags:
-                    await ctx.send('No tags found.')
+                mentioned_users = ctx.message.mentions
+                if mentioned_users:
+                    owner = mentioned_users[0]
+                    owner_id = owner.id
                 else:
-                    tag_list = '\n'.join(f'**{t["name"]}**' for t in tags)
-                    await ctx.send(f'Tags:\n{tag_list}')
-            except Exception as e:
-                logger.error(f'Error listing tags: {e}')
-                await ctx.send('An error occurred while listing your tags.')
-        elif action == 'remove':
-            if not name:
-                return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag remove <name>`')
-            try:
-                result = await self.tag_manager.delete_tag(
-                    name=name,
-                    location_id=ctx.guild.id,
-                    owner_id=ctx.author.id
-                )
-                if result > 0:
-                    await ctx.send(f'Tag \"{name}\" removed.')
-                else:
-                    await ctx.send(f'Tag \"{name}\" not found or you do not own it.')
-            except Exception as e:
-                logger.error(f'Error removing tag: {e}')
-                await ctx.send('An error occurred while removing the tag.')
-        elif action == "rename":
-            if not name or not content:
-                return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag rename <old_name> <new_name>`')
-            old_name = name
-            new_name = content
-            try:
-                row_count = await self.tag_manager.rename_tag(
-                    old_name=old_name,
-                    new_name=new_name,
-                    location_id=ctx.guild.id,
-                    owner_id=ctx.author.id
-                )
-                if row_count > 0:
-                    await ctx.send(f'Tag \"{old_name}\" renamed to \"{new_name}\".')
-                else:
-                    await ctx.send(f'Tag \"{old_name}\" not found or you do not own it.')
-            except ValueError as ve:
-                await ctx.send(str(ve))
-            except Exception as e:
-                logger.error(f'Error renaming tag: {e}')
-                await ctx.send('An error occurred while renaming the tag.')
-        elif action == 'update':
-            if not name:
-                return await ctx.send(f'Usage: {self.bot.command_prefix}tag update <name> \"new content\" [loop|default]`')
-            resolved_tag_type = (
-                tag_type.lower() if tag_type and tag_type.lower() in ('default', 'loop') else None
-            )
-            updates = {}
-            if content is not None:
-                updates['content'] = content
-            if attachment_url is not None:
-                updates['attachment_url'] = attachment_url
-            if resolved_tag_type is not None:
-                updates['tag_type'] = resolved_tag_type
-            try:
-                result = await self.tag_manager.update_tag(
-                    name=name,
-                    location_id=ctx.guild.id,
-                    owner_id=ctx.author.id,
-                    updates=updates
-                )
-                if result > 0:
-                    await ctx.send(f'Tag \"{name}\" updated.')
-                else:
-                    await ctx.send(f'Tag \"{name}\" not found or you do not own it.')
-            except Exception as e:
-                logger.error(f'Error updating tag: {e}')
-                await ctx.send('An error occurred while updating the tag.')
-        else:
-            try:
-                tag = await self.tag_manager.get_tag(ctx.guild.id, action)
-                if tag:
-                    content_value = tag.get('content')
-                    attachment_url_value = tag.get('attachment_url')
-                    if content_value and attachment_url_value:
-                        await ctx.send(content_value)
-                        await ctx.send(attachment_url_value)
-                    elif content_value:
-                        await ctx.send(content_value)
-                    elif attachment_url_value:
-                        await ctx.send(attachment_url_value)
+                    owner = None
+                    owner_id = None
+                try:
+                    await self.tag_manager.borrow_tag(
+                        tag_name=name,
+                        location_id=ctx.guild.id,
+                        borrower_id=ctx.author.id,
+                        owner_id=owner_id,
+                    )
+                    if owner:
+                        owner_display = owner.display_name
+                        await ctx.send(
+                            f'You have successfully borrowed the tag "{name}" from {owner_display}.'
+                        )
                     else:
-                        await ctx.send(f'Tag \"{action}\" has no content.')
-                else:
-                    await ctx.send(f'Tag \"{action}\" not found.')
-            except Exception as e:
-                logger.error(f'Error fetching tag \"{action}\": {e}')
-                await ctx.send(f'An error occurred while fetching tag \"{action}\".')
+                        await ctx.send(
+                            f'You have successfully borrowed the tag "{name}".'
+                        )
+                except ValueError as ve:
+                    await ctx.send(str(ve))
+                except RuntimeError as re:
+                    await ctx.send(str(re))
+                except Exception as e:
+                    logger.error(f"Unexpected error during tag borrowing: {e}")
+                    await ctx.send(
+                        "An unexpected error occurred while borrowing the tag."
+                    )
+            elif act == 'list':
+                filter_tag_type = name.lower() if name and name.lower() in ('loop', 'default') else None
+                try:
+                    tags = await self.tag_manager.list_tags(
+                        location_id=ctx.guild.id,
+                        owner_id=ctx.author.id,
+                        tag_type=filter_tag_type
+                    )
+                    if not tags:
+                        await ctx.send('No tags found.')
+                    else:
+                        tag_list = '\n'.join(f'**{t["name"]}**' for t in tags)
+                        await ctx.send(f'Tags:\n{tag_list}')
+                except Exception as e:
+                    logger.error(f'Error listing tags: {e}')
+                    await ctx.send('An error occurred while listing your tags.')
+            elif act == 'remove':
+                if not name:
+                    return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag remove <name>`')
+                try:
+                    result = await self.tag_manager.delete_tag(
+                        name=name,
+                        location_id=ctx.guild.id,
+                        owner_id=ctx.author.id
+                    )
+                    if result > 0:
+                        await ctx.send(f'Tag \"{name}\" removed.')
+                    else:
+                        await ctx.send(f'Tag \"{name}\" not found or you do not own it.')
+                except Exception as e:
+                    logger.error(f'Error removing tag: {e}')
+                    await ctx.send('An error occurred while removing the tag.')
+            elif act == 'loop':
+                 if not name:
+                     return await ctx.send(f'Usage: \"{self.bot.command_prefix}tag loop on <#channel>` or \"{self.bot.command_prefix}tag loop off`')
+                 if name.lower() == 'on':
+                     channel = ctx.channel
+                     if content and content.startswith('<#') and content.endswith('>'):
+                         channel_id = int(content.strip('<#>'))
+                         maybe_chan = self.bot.get_channel(channel_id)
+                         if maybe_chan is not None:
+                             channel = maybe_chan
+                     try:
+                         await self.tag_manager.set_loop_config(ctx.guild.id, channel.id, True)
+                         self.start_loop_task(channel)
+                         await ctx.send(f'Looping enabled in {channel.mention}.')
+                     except Exception as e:
+                         logger.error(f'Error enabling loop: {e}')
+                         await ctx.send('Could not enable loop.')
+                 elif name.lower() == 'off':
+                     try:
+                         await self.tag_manager.set_loop_config(ctx.guild.id, None, False)
+                         self.stop_loop_task()
+                         await ctx.send('Looping disabled.')
+                     except Exception as e:
+                         logger.error(f'Error disabling loop: {e}')
+                         await ctx.send('Could not disable loop.')
+            else:
+                try:
+                    tag = await self.tag_manager.get_tag(ctx.guild.id, act)
+                    if tag:
+                        content_value = tag.get('content')
+                        attachment_url_value = tag.get('attachment_url')
+                        if content_value and attachment_url_value:
+                            await ctx.send(content_value)
+                            await ctx.send(attachment_url_value)
+                        elif content_value:
+                            await ctx.send(content_value)
+                        elif attachment_url_value:
+                            await ctx.send(attachment_url_value)
+                        else:
+                            await ctx.send(f'Tag \"{act}\" has no content.')
+                    else:
+                        await ctx.send(f'Tag \"{act}\" not found.')
+                except Exception as e:
+                    logger.error(f'Error fetching tag \"{act}\": {e}')
+                    await ctx.send(f'An error occurred while fetching tag \"{act}\".')
+        if ctx.interaction:
+            await ctx.interaction.response.defer(ephemeral=True)
+            await function()
+        else:
+            async with ctx.typing():
+                await function()
 
     @commands.command(name='wipe', description=f'Usage: lwipe <all|bot|commands|text|user>')
     @commands.has_permissions(manage_messages=True)
     async def wipe(self, ctx, option: str = None, limit: int = 100):
         if ctx.interaction:
-            async with ctx.typing():
-                await ctx.interaction.response.defer(ephemeral=True)
+            await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
-        if limit <= 0 or limit > 100:
-            return await ctx.send('Limit must be between 1 and 100.')
-        check_function = None
-        if option == 'bot':
-            check_function = lambda m: m.author == self.bot.user
-        elif option == 'all':
-            check_function = lambda m: True
-        elif option == 'user':
-            user = ctx.message.mentions[0] if ctx.message.mentions else None
-            if user:
-                check_function = lambda m: m.author == user
+        async with ctx.typing():
+            if limit <= 0 or limit > 100:
+                return await ctx.send('Limit must be between 1 and 100.')
+            check_function = None
+            if option == 'bot':
+                check_function = lambda m: m.author == self.bot.user
+            elif option == 'all':
+                check_function = lambda m: True
+            elif option == 'user':
+                user = ctx.message.mentions[0] if ctx.message.mentions else None
+                if user:
+                    check_function = lambda m: m.author == user
+                else:
+                    return await ctx.send('Please mention a user.')
+            elif option == 'commands':
+                check_function = lambda m: m.content.startswith(ctx.prefix)
+            elif option == 'text':
+                await ctx.send('Provide text to delete messages containing it.')
+                try:
+                    msg_text = await self.bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
+                    check_function = lambda m: msg_text.content in m.content
+                except asyncio.TimeoutError:
+                    return await ctx.send('You took too long to provide text. Cancelling operation.')
             else:
-                return await ctx.send('Please mention a user.')
-        elif option == 'commands':
-            check_function = lambda m: m.content.startswith(ctx.prefix)
-        elif option == 'text':
-            await ctx.send('Provide text to delete messages containing it.')
-            try:
-                msg_text = await self.bot.wait_for('message', timeout=30.0, check=lambda m: m.author == ctx.author)
-                check_function = lambda m: msg_text.content in m.content
-            except asyncio.TimeoutError:
-                return await ctx.send('You took too long to provide text. Cancelling operation.')
-        else:
-            return await ctx.send('Invalid option.')
-        total_deleted = 0
-        while total_deleted < limit:
-            deleted = await ctx.channel.purge(limit=min(limit - total_deleted, 10), check=check_function)
-            if not deleted:
-                break
-            total_deleted += len(deleted)
-            await asyncio.sleep(1)
-        if total_deleted > 0:
-            await ctx.send(f'Deleted {total_deleted} messages.')
-        else:
-            await ctx.send('No messages matched the criteria.')
+                return await ctx.send('Invalid option.')
+            total_deleted = 0
+            while total_deleted < limit:
+                deleted = await ctx.channel.purge(limit=min(limit - total_deleted, 10), check=check_function)
+                if not deleted:
+                    break
+                total_deleted += len(deleted)
+                await asyncio.sleep(1)
+            if total_deleted > 0:
+                await ctx.send(f'Deleted {total_deleted} messages.')
+            else:
+                await ctx.send('No messages matched the criteria.')
 
     async def translate(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
         if toggle.lower() == 'on':

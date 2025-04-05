@@ -25,6 +25,7 @@ from lucy.utils.message import Message
 from lucy.utils.predicator import Predicator
 from lucy.utils.setup_logging import logger
 from os.path import abspath, dirname, exists, expanduser, join
+from typing import Optional
 
 import asyncio
 import datetime
@@ -91,24 +92,24 @@ class Indica(commands.Cog):
                 await self.handle_large_response(ctx, chat_completion)
 
     def handle_users(self, author: str):
-        author_char = author[0].upper()  # Fixed: Get the first character in uppercase
+        author_char = author[0].upper()
         data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
         users_file = join(DIR_HOME, '.users', 'users')
         if exists(users_file):
-            with open(users_file, 'r+') as file:  # Fixed: 'r+' allows reading and writing
+            with open(users_file, 'r+') as file:
                 try:
-                    data = yaml.safe_load(file) or data  # Handle empty file case
+                    data = yaml.safe_load(file) or data
                 except yaml.YAMLError:
-                    data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}  # Reset on error
+                    data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
                 if author_char not in data:
-                    data[author_char] = []  # Ensure the key exists
+                    data[author_char] = []
                 if author not in data[author_char]:
-                    data[author_char].append(author)  # Append user if not already there
-                    file.seek(0)  # Move to beginning before writing
+                    data[author_char].append(author)
+                    file.seek(0)
                     file.write(yaml.dump(data))
-                    file.truncate()  # Truncate extra old content
+                    file.truncate()
         else:
-            with open(users_file, 'w') as file:  # 'w' to create new file
+            with open(users_file, 'w') as file:
                 yaml.dump(data, file)
 
     async def handle_large_response(self, ctx: commands.Context, response: str):
@@ -129,12 +130,10 @@ class Indica(commands.Cog):
 
     async def handle_moderation(self, message: discord.Message, reason_str: str = "Unspecified moderation issue"):
         logger.info(f"Moderating message from {message.author} (ID: {message.author.id}) - Reason: {reason_str}")
-    
         unfiltered_role = get(message.guild.roles, name=DISCORD_ROLE_PASS)
         if unfiltered_role in message.author.roles:
             logger.info(f"User {message.author} has an unfiltered role, skipping moderation.")
             return
-    
         user_id = message.author.id
         async with self.db_pool.acquire() as connection:
             async with connection.transaction():
@@ -155,10 +154,8 @@ class Indica(commands.Cog):
                         user_id, flagged_count
                     )
                     logger.info(f"Inserted new flagged count for user {user_id}: {flagged_count}")
-    
         await message.delete()
         logger.info(f"Deleted flagged message from user {user_id}")
-    
         if flagged_count == 1:
             await self.send_dm(
                 message.author,
@@ -181,8 +178,6 @@ class Indica(commands.Cog):
             )
             await message.author.timeout(datetime.timedelta(seconds=300))
             logger.warning(f"User {user_id} has been timed out for 5 minutes due to repeated violations.")
-    
-            # Reset flagged count after timeout
             async with self.db_pool.acquire() as connection:
                 await connection.execute(
                     "UPDATE moderation_counts SET flagged_count = 0 WHERE user_id = $1", user_id
