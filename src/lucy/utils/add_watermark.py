@@ -91,6 +91,10 @@ import math
 def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool = True) -> BytesIO:
     logger.info('Starting the watermarking process.')
 
+    if not bottom:
+        normalized_text = normalize_text(watermark_text)
+    else:
+        normalized_text = watermark_text
     try:
         # Open image and ensure it's in RGBA mode (preserving transparency)
         base_image = Image.open(image).convert('RGBA')
@@ -116,7 +120,7 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool 
         # Adjust font size to fit
         while True:
             draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))  # Dummy image to get text size
-            bbox = draw.textbbox((0, 0), watermark_text, font=font)
+            bbox = draw.textbbox((0, 0), normalized_text, font=font)
             text_width = bbox[2] - bbox[0]
 
             if text_width <= max_text_width:
@@ -137,7 +141,7 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool 
         # Create a transparent overlay for the watermark
         watermark_layer = Image.new("RGBA", base_image.size, (255, 255, 255, 0))
         draw = ImageDraw.Draw(watermark_layer)
-        draw.text((text_x, text_y), watermark_text, font=font, fill=(255, 255, 255, 128))  # White text with transparency
+        draw.text((text_x, text_y), normalized_text, font=font, fill=(255, 255, 255, 128))  # White text with transparency
 
         # Composite the watermark with the original image
         watermarked_image = Image.alpha_composite(base_image, watermark_layer)
@@ -208,3 +212,11 @@ def add_watermark(image: BytesIO, watermark_text: str = 'Unknown', bottom: bool 
 #        logger.error('An error occurred during the watermarking process.', exc_info=True)
 #        raise
 
+def normalize_text(text: str) -> str:
+    # Extract only alphabetic characters for the all-uppercase check
+    letters_only = ''.join(filter(str.isalpha, text))
+
+    if letters_only.isupper():
+        return text
+    else:
+        return text.lower().capitalize()

@@ -15,15 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from io import BytesIO
-from PIL import Image, ImageEnhance
-from itertools import zip_longest
-from lucy.utils.add_watermark import add_watermark
-from lucy.utils.adjust_hue_and_saturation import adjust_hue_and_saturation
-from lucy.utils.setup_logging import logger
-from math import ceil, sqrt
-
-from io import BytesIO
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 from itertools import zip_longest
 from lucy.utils.add_watermark import add_watermark
 from lucy.utils.adjust_hue_and_saturation import adjust_hue_and_saturation
@@ -37,38 +29,43 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
     processed_images = []
 
     # Repeat images based on quantity
-    repeated_images = list(images * quantity)  # Ensuring the quantity requirement is met
+    repeated_images = list(images * quantity)
 
-    # Process each image and store it in the processed_images list
     for img_bytes in repeated_images:
-        img_bytes.seek(0)  # Reset BytesIO pointer
-        img = Image.open(img_bytes).convert("RGBA")  # Open and convert to RGBA
+        img_bytes.seek(0)
+        img = Image.open(img_bytes).convert("RGBA")
         processed_images.append(img)
 
-    if linearity == True:
-        # Create a linear (horizontal) arrangement of images
-        combined_width = sum(img.size[0] for img in processed_images)  # Total width
-        combined_height = max(img.size[1] for img in processed_images)  # Max height
+    if linearity:
+        # Linear (horizontal) arrangement
+        combined_width = sum(img.size[0] for img in processed_images)
+        combined_height = max(img.size[1] for img in processed_images)
 
-        combined_img = Image.new('RGBA', (combined_width, combined_height), (255, 255, 255, 0))  # Transparent background
+        # Add footer
+        footer_ratio = 0.15
+        footer_height = int(combined_height * footer_ratio)
+        new_height = combined_height + footer_height
+
+        combined_img = Image.new('RGB', (combined_width, new_height), (0, 0, 0))
+
         x_offset = 0
-
         for img in processed_images:
-            combined_img.paste(img, (x_offset, 0), img)  # Use alpha mask for transparency
-            x_offset += img.size[0]  # Update horizontal offset
+            y_offset = 0
+            img = img.resize((img.size[0], combined_height), Image.LANCZOS)
+            combined_img.paste(img, (x_offset, y_offset), img)
+            x_offset += img.size[0]
 
     else:
-        # Create a grid layout
+        # Grid layout
         num_images = len(processed_images)
-        grid_size = ceil(sqrt(num_images))  # Determine grid size
-        image_size = max(img.size[0] for img in processed_images)  # Use largest width
-        canvas_size = grid_size * image_size  # Square canvas
-        footer_ratio = 0.15  # Footer is 15% of the square canvas
+        grid_size = ceil(sqrt(num_images))
+        image_size = max(img.size[0] for img in processed_images)
+        canvas_size = grid_size * image_size
+        footer_ratio = 0.15
         footer_height = int(canvas_size * footer_ratio)
         new_height = canvas_size + footer_height
 
-
-        combined_img = Image.new('RGB', (canvas_size, new_height), (0, 0, 0))  # Transparent background
+        combined_img = Image.new('RGB', (canvas_size, new_height), (0, 0, 0))
 
         for index, img in enumerate(processed_images):
             row = index // grid_size
@@ -77,14 +74,13 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
             y_offset = row * image_size
 
             img = img.resize((image_size, image_size), Image.LANCZOS)
-            combined_img.paste(img, (x_offset, y_offset), img)  # Use alpha mask for transparency
+            combined_img.paste(img, (x_offset, y_offset), img)
 
     # Save image to buffer
     combined_img_buffer = BytesIO()
     combined_img.save(combined_img_buffer, format='PNG')
     combined_img_buffer.seek(0)
 
-    # Apply watermark if multiple images are combined
     if len(images) > 1:
         final_image_buffer = add_watermark(combined_img_buffer, title, True)
     else:
@@ -92,13 +88,75 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
 
     final_image_buffer.seek(0)
     return final_image_buffer
-
-
-
-
-
-
-
+#def combine_gallery(images: list, names: list, title: str, quantity: int = 1, linearity: bool = False) -> BytesIO:
+#    if len(images) <= 2:
+#        linearity = True
+#
+#    processed_images = []
+#
+#    # Repeat images based on quantity
+#    repeated_images = list(images * quantity)  # Ensuring the quantity requirement is met
+#
+#    # Process each image and store it in the processed_images list
+#    for img_bytes in repeated_images:
+#        img_bytes.seek(0)  # Reset BytesIO pointer
+#        img = Image.open(img_bytes).convert("RGBA")  # Open and convert to RGBA
+#        processed_images.append(img)
+#
+#    if linearity == True:
+#        # Create a linear (horizontal) arrangement of images
+#        combined_width = sum(img.size[0] for img in processed_images)  # Total width
+#        combined_height = max(img.size[1] for img in processed_images)  # Max height
+#
+#        combined_img = Image.new('RGBA', (combined_width, combined_height), (255, 255, 255, 0))  # Transparent background
+#        x_offset = 0
+#
+#        for img in processed_images:
+#            combined_img.paste(img, (x_offset, 0), img)  # Use alpha mask for transparency
+#            x_offset += img.size[0]  # Update horizontal offset
+#
+#    else:
+#        # Create a grid layout
+#        num_images = len(processed_images)
+#        grid_size = ceil(sqrt(num_images))  # Determine grid size
+#        image_size = max(img.size[0] for img in processed_images)  # Use largest width
+#        canvas_size = grid_size * image_size  # Square canvas
+#        footer_ratio = 0.15  # Footer is 15% of the square canvas
+#        footer_height = int(canvas_size * footer_ratio)
+#        new_height = canvas_size + footer_height
+#
+#
+#        combined_img = Image.new('RGB', (canvas_size, new_height), (0, 0, 0))  # Transparent background
+#
+#        for index, img in enumerate(processed_images):
+#            row = index // grid_size
+#            col = index % grid_size
+#            x_offset = col * image_size
+#            y_offset = row * image_size
+#
+#            img = img.resize((image_size, image_size), Image.LANCZOS)
+#            combined_img.paste(img, (x_offset, y_offset), img)  # Use alpha mask for transparency
+#
+#    # Save image to buffer
+#    combined_img_buffer = BytesIO()
+#    combined_img.save(combined_img_buffer, format='PNG')
+#    combined_img_buffer.seek(0)
+#
+#    # Apply watermark if multiple images are combined
+#    if len(images) > 1:
+#        final_image_buffer = add_watermark(combined_img_buffer, title, True)
+#    else:
+#        final_image_buffer = combined_img_buffer
+#
+#    final_image_buffer.seek(0)
+#    return final_image_buffer
+#
+#
+#
+#
+#
+#
+#
 #def combine_gallery(images: list, names: list, title: str, quantity: int = 1, linear: bool = False) -> BytesIO:
 #    if linear:
 #        
