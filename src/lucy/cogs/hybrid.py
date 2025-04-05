@@ -188,14 +188,17 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='colorize', description=f'Usage: between `colorize 0 0 0` and `colorize 255 255 255` or `colorize <color>`')
     @commands.has_permissions(manage_roles=True)
-    async def colorize(self, ctx: commands.Context, r: str = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.'), *, g: str = commands.parameter(default='147', description='Anything betwen 0 and 255.'), b: str = commands.parameter(default='165', description='Anything between 0 and 255.')):
+    async def colorize(self, ctx: commands.Context, r: str = 'blurple', *, g: str = '147', b: str = '165'):
         if not self.predicator.is_release_mode_func(ctx):
             return
+        r_input = str(r) if r is not None else None  # ✅ Moved outside
+    
         async def function():
-            if not r.isnumeric():
+            # Ensure r, g, b are strings or valid numbers
+            if not r_input.isnumeric() and r_input.lower() != "blurple":  # Treat non-numeric r as a color name
                 input_text_dict = {
                     'type': 'text',
-                    'text': r
+                    'text': r_input
                 }
                 array = [
                     {
@@ -205,25 +208,38 @@ class Hybrid(commands.Cog):
                 ]
                 async for completion in create_completion(array):
                     color_values = json.loads(completion)
-                    r = color_values['r']
-                    g = color_values['g']
-                    b = color_values['b']
-            r = int(r)
-            g = int(g)
-            b = int(b)
+                    r = color_values.get('r', 0)  # Use default if not found
+                    g = color_values.get('g', 0)
+                    b = color_values.get('b', 0)
+            else:
+                try:
+                    r = int(r)
+                    g = int(g)
+                    b = int(b)
+                except ValueError:
+                    await ctx.send(f"Invalid color values: {r}, {g}, {b}. Please provide valid numbers between 0 and 255.")
+                    return
+            
+            # Now r, g, b are safely integers
             guildroles = await ctx.guild.fetch_roles()
             position = len(guildroles) - 12
             for arg in ctx.author.roles:
                 if arg.name.isnumeric():
                     await ctx.author.remove_roles(arg)
+    
             for arg in guildroles:
                 if arg.name.lower() == f'{r}{g}{b}':
                     await ctx.author.add_roles(arg)
                     await arg.edit(position=position)
                     await ctx.send(f'I successfully changed your role color to {r}, {g}, {b}')
                     return
+    
+            # Create a new role with the color if it doesn't exist
             newrole = await ctx.guild.create_role(name=f'{r}{g}{b}', color=discord.Color.from_rgb(r, g, b), reason='new color')
             await newrole.edit(position=position)
+            await ctx.send(f'I successfully created and assigned your new color role: {r}, {g}, {b}')
+    
+        # Hybrid deferral logic
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
             await function()
@@ -237,45 +253,50 @@ class Hybrid(commands.Cog):
         ctx: commands.Context,
         option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'),
         *,
-        molecules: str = commands.parameter(default=None, description='Any molecule'),
-        quantity: int = commands.parameter(default=1, description='Quantity of glows'),
-        reverse: bool = commands.parameter(default=False, description='Reverse'),
+        chems: str = commands.parameter(default=None, description='Any molecule'),
+        dupes: int = commands.parameter(default=1, description='Quantity of glows'),
+        backwards: bool = commands.parameter(default=False, description='Reverse'),
         linearity: bool = commands.parameter(default=False, description='Linearity'),
-        rdkit_bool: bool = commands.parameter(default=True, description='rdDepictor'),
-        rotation: int = commands.parameter(default=0, description='Rotation')
+        rdkit_coords: bool = commands.parameter(default=True, description='rdDepictor'),
+        r: int = commands.parameter(default=0, description='Rotation')
     ):
         if not self.predicator.is_release_mode_func(ctx):
             return
-        async def function():
-            rdkit_bool = bool(rdkit_bool)
-            if ctx.interaction:
-                await ctx.interaction.response.defer(ephemeral=True)
-            if not self.predicator.is_release_mode_func(ctx):
-                return
+    
+        # Default initialization of variables
+        rdkit_bool = rdkit_coords if isinstance(rdkit_coords, bool) else True
+        quantity = dupes if isinstance(dupes, int) else 1
+        rotation = r if isinstance(r, int) else 0
+        reverse = backwards if isinstance(backwards, bool) else False
+    
+        # Avoid overwriting the variables in conditions
+        if isinstance(quantity, commands.Parameter):
+            quantity = 1
+        if isinstance(rotation, commands.Parameter):
+            rotation = 0
+    
+        async def function(linearity):
             async def get_attachment_text(ctx):
                 if ctx.message.attachments:
                     content = await ctx.message.attachments[0].read()
                     return content.decode('utf-8')
                 return None
-            if isinstance(quantity, commands.Parameter):
-                quantity = 1
-            if isinstance(rotation, commands.Parameter):
-                rotation = 0
-            async def get_molecules():
+    
+            async def get_molecules(molecules):
                 if not molecules:
-                     await ctx.send('No molecules provided.')
-                     return
+                    await ctx.send('No molecules provided.')
+                    return
                 name_match = re.search(r'"([^"]+)"$', molecules)
                 if name_match:
-                     name = name_match.group(1)
-                     molecule_list = molecules[:name_match.start()].strip()
+                    name = name_match.group(1)
+                    molecule_list = molecules[:name_match.start()].strip()
                 else:
-                     name = 'Untitled'
-                     molecule_list = molecules
+                    name = 'Untitled'
+                    molecule_list = molecules
                 if '.' in molecule_list:
-                     molecule_parts = re.split(r'(?<!")\.(?!")', molecule_list)
+                    molecule_parts = re.split(r'(?<!")\.(?!")', molecule_list)
                 else:
-                     molecule_parts = [molecule_list]
+                    molecule_parts = [molecule_list]
                 fingerprints = []
                 names = molecule_parts
                 converted_smiles = []
@@ -297,10 +318,14 @@ class Hybrid(commands.Cog):
                     converted_smiles.append(smiles)
                 molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
                 return molecule_objects, names, name
+    
+            # Check if molecules are attached or passed via `chems`
             if ctx.message.attachments:
                 molecules = await get_attachment_text(ctx)
+            molecules = chems or (await get_attachment_text(ctx) if ctx.message.attachments else None)
+    
             if option == '2':
-                molecule_objects, names, name = await get_molecules()
+                molecule_objects, names, name = await get_molecules(molecules)
                 if not molecules:
                     await ctx.send('No molecules provided.')
                     return
@@ -322,14 +347,16 @@ class Hybrid(commands.Cog):
                             draw_fingerprint([refmol, mol], rdkit_bool, rotation)
                         ]
                     if len(fingerprints) == 2:
-                        linearity = True
+                        linearity = True  # Set linearity to True for this case
                     combined_image = combine_gallery(fingerprints, names, name, 1, linearity)
                     await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
+    
             elif option == 'glow':
-                molecule_objects, names, name = await get_molecules()
+                molecule_objects, names, name = await get_molecules(molecules)
                 fingerprints = [draw_fingerprint([mol_obj, mol_obj], rdkit_bool, rotation) for mol_obj in molecule_objects]
                 combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+    
             elif option == 'gsrs':
                 if not molecules:
                     await ctx.send('No molecules provided.')
@@ -344,22 +371,155 @@ class Hybrid(commands.Cog):
                         watermarked_image.save(image_binary, format='PNG')
                         image_binary.seek(0)
                         await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
+    
             elif option == 'shadow':
-                molecule_objects, names, name = await get_molecules()
+                molecule_objects, names, name = await get_molecules(molecules)
                 molecule_images = [draw_watermarked_molecule(mol_obj, rdkit_bool) for mol_obj in molecule_objects]
                 if len(molecule_images) == 2:
-                    linearity = True
+                    linearity = True  # Set linearity to True for this case
                 combined_image = combine_gallery(molecule_images, names, name, quantity, linearity)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+    
             else:
                 await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
+    
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
-            await function()
+            await function(linearity)
         else:
             async with ctx.typing():
-                await function()
-
+                await function(linearity)
+#    @commands.hybrid_command(name='d', description=f'Usage: d 2 <mol> <mol> or d glow <mol> or d gsrs <mol> or d shadow <mole>.')
+#    async def d(
+#        self,
+#        ctx: commands.Context,
+#        option: str = commands.parameter(default='glow', description='Compare `compare or Draw style `glow` `gsrs` `shadow`.'),
+#        *,
+#        chems: str = commands.parameter(default=None, description='Any molecule'),
+#        dupes: int = commands.parameter(default=1, description='Quantity of glows'),
+#        backwards: bool = commands.parameter(default=False, description='Reverse'),
+#        linear: bool = commands.parameter(default=False, description='Linearity'),
+#        rdkit_coords: bool = commands.parameter(default=True, description='rdDepictor'),
+#        r: int = commands.parameter(default=0, description='Rotation')
+#    ):
+#        if not self.predicator.is_release_mode_func(ctx):
+#            return
+#        rdkit_bool = rdkit_coords if isinstance(rdkit_coords, bool) else True  # ✅ Moved outside
+#        quantity = dupes if isinstance(dupes, int) else 1
+#        linearity = linear if isinstance(linear, commands.Parameter) else False  # ✅ Moved outside
+#        rotation = r if isinstance(r, int) else 0  # ✅ Moved outside
+#        reverse = backwards if isinstance (backwards, bool) else False
+#        if isinstance(quantity, commands.Parameter):
+#            quantity = 1
+#        if isinstance(rotation, commands.Parameter):
+#            rotation = 0
+#
+#        async def function():
+#            async def get_attachment_text(ctx):
+#                if ctx.message.attachments:
+#                    content = await ctx.message.attachments[0].read()
+#                    return content.decode('utf-8')
+#                return None
+#            async def get_molecules(molecules):
+#                if not molecules:
+#                     await ctx.send('No molecules provided.')
+#                     return
+#                name_match = re.search(r'"([^"]+)"$', molecules)
+#                if name_match:
+#                     name = name_match.group(1)
+#                     molecule_list = molecules[:name_match.start()].strip()
+#                else:
+#                     name = 'Untitled'
+#                     molecule_list = molecules
+#                if '.' in molecule_list:
+#                     molecule_parts = re.split(r'(?<!")\.(?!")', molecule_list)
+#                else:
+#                     molecule_parts = [molecule_list]
+#                fingerprints = []
+#                names = molecule_parts
+#                converted_smiles = []
+#                for mol in molecule_parts:
+#                    mol_obj = Chem.MolFromSmiles(mol)
+#                    if mol_obj:
+#                        smiles = mol
+#                    else:
+#                        compounds = pcp.get_compounds(mol, 'name')
+#                        if compounds:
+#                            smiles = compounds[0].isomeric_smiles
+#                        else:
+#                            helm = construct_helm_from_peptide(mol)
+#                            smiles = manual_helm_to_smiles(helm)
+#                    if not smiles:
+#                        embed = discord.Embed(description=f'Invalid molecule: {mol}')
+#                        await ctx.send(embed=embed)
+#                        return
+#                    converted_smiles.append(smiles)
+#                molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
+#                return molecule_objects, names, name
+#            if ctx.message.attachments:
+#                molecules = await get_attachment_text(ctx)
+#            molecules = chems or (await get_attachment_text(ctx) if ctx.message.attachments else None)
+#            if option == '2':
+#                molecule_objects, names, name = await get_molecules(molecules)
+#                if not molecules:
+#                    await ctx.send('No molecules provided.')
+#                    return
+#                pairs = unique_pairs(names)
+#                if not pairs:
+#                    embed = discord.Embed(description='No valid pairs found.')
+#                    await ctx.send(embed=embed)
+#                    return
+#                for pair in pairs:
+#                    mol = get_mol(pair[0], False)
+#                    refmol = get_mol(pair[1], False)
+#                    if mol is None or refmol is None:
+#                        embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
+#                        await ctx.send(embed=embed)
+#                        continue
+#                    else:
+#                        fingerprints = [
+#                            draw_fingerprint([mol, refmol], rdkit_bool),
+#                            draw_fingerprint([refmol, mol], rdkit_bool, rotation)
+#                        ]
+#                    if len(fingerprints) == 2:
+#                        linearity = True
+#                    combined_image = combine_gallery(fingerprints, names, name, 1, linearity)
+#                    await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
+#            elif option == 'glow':
+#                molecule_objects, names, name = await get_molecules(molecules)
+#                fingerprints = [draw_fingerprint([mol_obj, mol_obj], rdkit_bool, rotation) for mol_obj in molecule_objects]
+#                combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
+#                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+#            elif option == 'gsrs':
+#                if not molecules:
+#                    await ctx.send('No molecules provided.')
+#                    return
+#                args = shlex.split(molecules)
+#                for molecule_name in args:
+#                    if molecule_name is None:
+#                        await ctx.send(f'{molecule_name} is an unknown molecule.')
+#                        continue
+#                    watermarked_image = gsrs(molecule_name)
+#                    with io.BytesIO() as image_binary:
+#                        watermarked_image.save(image_binary, format='PNG')
+#                        image_binary.seek(0)
+#                        await ctx.send(file=discord.File(fp=image_binary, filename='watermarked_image.png'))
+#            elif option == 'shadow':
+#                molecule_objects, names, name = await get_molecules(molecules)
+#                molecule_images = [draw_watermarked_molecule(mol_obj, rdkit_bool) for mol_obj in molecule_objects]
+#                if len(molecule_images) == 2:
+#                    linearity = True
+#                combined_image = combine_gallery(molecule_images, names, name, quantity, linearity)
+#                await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
+#            else:
+#                await ctx.send('Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
+#        if ctx.interaction:
+#            await ctx.interaction.response.defer(ephemeral=True)
+#            await function()
+#        else:
+#            async with ctx.typing():
+#                await function()
+#
     @commands.hybrid_command()
     async def faction(self, ctx, action: str, *, faction_name: str = None):
         if not self.predicator.is_release_mode_func(ctx):
