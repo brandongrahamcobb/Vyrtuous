@@ -209,7 +209,8 @@ class Hybrid(commands.Cog):
         quantity: int = commands.parameter(default=1, description='Quantity of glows'),
         reverse: bool = commands.parameter(default=False, description='Reverse'),
         linearity: bool = commands.parameter(default=False, description='Linearity'),
-        rdkit_bool: bool = commands.parameter(default=True, description='rdDepictor')
+        rdkit_bool: bool = commands.parameter(default=True, description='rdDepictor'),
+        rotation: int = commands.parameter(default=0, description='Rotation')
     ):
         try:
             rdkit_bool = bool(rdkit_bool)
@@ -224,6 +225,8 @@ class Hybrid(commands.Cog):
                 return None
             if isinstance(quantity, commands.Parameter):
                 quantity = 1
+            if isinstance(rotation, commands.Parameter):
+                rotation = 0
             async def get_molecules():
                 if not molecules:
                      await ctx.send('No molecules provided.')
@@ -281,8 +284,8 @@ class Hybrid(commands.Cog):
                         continue
                     else:
                         fingerprints = [
-                            draw_fingerprint([mol, refmol]),
-                            draw_fingerprint([refmol, mol])
+                            draw_fingerprint([mol, refmol], rdkit_bool),
+                            draw_fingerprint([refmol, mol], rdkit_bool, rotation)
                         ]
                     if len(fingerprints) == 2:
                         linearity = True
@@ -290,7 +293,7 @@ class Hybrid(commands.Cog):
                     await ctx.send(file=discord.File(combined_image, f'molecule_comparison.png'))
             elif option == 'glow':
                 molecule_objects, names, name = await get_molecules()
-                fingerprints = [draw_fingerprint([mol_obj, mol_obj, rdkit_bool]) for mol_obj in molecule_objects]
+                fingerprints = [draw_fingerprint([mol_obj, mol_obj], rdkit_bool, rotation) for mol_obj in molecule_objects]
                 combined_image = combine_gallery(fingerprints, names, name, quantity, linearity)
                 await ctx.send(file=discord.File(combined_image, 'molecule_comparison.png'))
             elif option == 'gsrs':

@@ -21,7 +21,7 @@ from lucy.utils.setup_logging import logger
 from rdkit.Chem import rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 
-def draw_watermarked_molecule(molecule, rdkit_bool=True) -> BytesIO:
+def draw_watermarked_molecule(molecule, rotation=0, rdkit_bool=True) -> BytesIO:
     rdDepictor.SetPreferCoordGen(rdkit_bool)
     try:
         logger.info('Starting to draw watermarked molecule.')
@@ -36,6 +36,7 @@ def draw_watermarked_molecule(molecule, rdkit_bool=True) -> BytesIO:
         logger.debug('Drawing options configured.')
         rdMolDraw2D.SetDarkMode(Options)
         mol = rdMolDraw2D.PrepareMolForDrawing(molecule, kekulize=True)
+        rotate_molecule(mol1, rotation)
         mol.UpdatePropertyCache(False)
         logger.debug('Molecule prepared for drawing.')
         d2d.DrawMolecule(mol)
@@ -49,3 +50,17 @@ def draw_watermarked_molecule(molecule, rdkit_bool=True) -> BytesIO:
     except Exception as e:
         logger.error(f'An error occurred while drawing the watermarked molecule: {e}')
         raise
+
+def rotate_molecule(mol, angle):
+    """Rotate a molecule by a given angle (in degrees)."""
+    conf = mol.GetConformer()
+    rad_angle = np.radians(angle)  # Convert degrees to radians
+    cos_theta, sin_theta = np.cos(rad_angle), np.sin(rad_angle)
+
+    for i in range(mol.GetNumAtoms()):
+        pos = conf.GetAtomPosition(i)
+        x_new = cos_theta * pos.x - sin_theta * pos.y
+        y_new = sin_theta * pos.x + cos_theta * pos.y
+        conf.SetAtomPosition(i, (x_new, y_new, pos.z))
+
+    return mol

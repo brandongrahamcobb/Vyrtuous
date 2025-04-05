@@ -22,6 +22,14 @@ from lucy.utils.adjust_hue_and_saturation import adjust_hue_and_saturation
 from lucy.utils.setup_logging import logger
 from math import ceil, sqrt
 
+from io import BytesIO
+from PIL import Image, ImageEnhance
+from itertools import zip_longest
+from lucy.utils.add_watermark import add_watermark
+from lucy.utils.adjust_hue_and_saturation import adjust_hue_and_saturation
+from lucy.utils.setup_logging import logger
+from math import ceil, sqrt
+
 def combine_gallery(images: list, names: list, title: str, quantity: int = 1, linearity: bool = False) -> BytesIO:
     if len(images) <= 2:
         linearity = True
@@ -84,6 +92,12 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
 
     final_image_buffer.seek(0)
     return final_image_buffer
+
+
+
+
+
+
 
 #def combine_gallery(images: list, names: list, title: str, quantity: int = 1, linear: bool = False) -> BytesIO:
 #    if linear:

@@ -67,7 +67,7 @@ from lucy.utils.add_watermark import add_watermark
 from lucy.utils.adjust_hue_and_saturation import adjust_hue_and_saturation
 from lucy.utils.get_molecule_name import get_molecule_name
 
-def draw_fingerprint(pair, rotation=0, rdkit_bool=True) -> BytesIO:
+def draw_fingerprint(pair, rdkit_bool=True, rotation=0) -> BytesIO:
     rdDepictor.SetPreferCoordGen(rdkit_bool)
     """Draws similarity maps for a molecular pair, aligning based on a core structure and allowing individual rotation."""
     d2d = rdMolDraw2D.MolDraw2DCairo(1024, 1024)
@@ -83,14 +83,14 @@ def draw_fingerprint(pair, rotation=0, rdkit_bool=True) -> BytesIO:
     # Align molecules if a core is provided
     mol1, mol2 = standardize_molecule(mol1), standardize_molecule(mol2)
     # Apply independent rotations
-    rotate_molecule(mol1, rotation)
-    rotate_molecule(mol2, rotation)
+    mol1 = rotate_molecule(mol1, rotation)
+    mol2 = rotate_molecule(mol2, rotation)
 
     # Compute similarity map
     fig, maxweight = SimilarityMaps.GetSimilarityMapForFingerprint(
         mol1, mol2, 
         lambda m, i: SimilarityMaps.GetMorganFingerprint(m, i, radius=2, fpType='bv', nBits=8192), 
-        draw2d=d2d, drawingOptions=Options
+        draw2d=d2d, drawingOptions=Options, forceCoords=True
     )
 
     name = get_molecule_name(mol2)
@@ -113,16 +113,34 @@ def standardize_molecule(mol):
     Chem.rdDepictor.Compute2DCoords(mol)  # Ensure 2D coordinates
     return mol
 
+from rdkit.Geometry import Point3D
+
 def rotate_molecule(mol, angle):
     """Rotate a molecule by a given angle (in degrees)."""
     conf = mol.GetConformer()
-    rad_angle = np.radians(angle)  # Convert degrees to radians
-    cos_theta, sin_theta = np.cos(rad_angle), np.sin(rad_angle)
+    rad_angle = float(np.radians(angle))  # Convert degrees to radians
+    cos_theta = float(np.cos(rad_angle))
+    sin_theta = float(np.sin(rad_angle))
 
     for i in range(mol.GetNumAtoms()):
         pos = conf.GetAtomPosition(i)
-        x_new = cos_theta * pos.x - sin_theta * pos.y
-        y_new = sin_theta * pos.x + cos_theta * pos.y
-        conf.SetAtomPosition(i, (x_new, y_new, pos.z))
+        x_new = float(cos_theta * pos.x - sin_theta * pos.y)
+        y_new = float(sin_theta * pos.x + cos_theta * pos.y)
+        z = float(pos.z)
+        conf.SetAtomPosition(i, Point3D(x_new, y_new, z))
 
     return mol
+#def rotate_molecule(mol, angle):
+#    """Rotate a molecule by a given angle (in degrees)."""
+#    conf = mol.GetConformer()
+#    rad_angle = np.radians(angle)  # Convert degrees to radians
+#    cos_theta, sin_theta = np.cos(rad_angle), np.sin(rad_angle)
+#
+#    for i in range(mol.GetNumAtoms()):
+#        pos = conf.GetAtomPosition(i)
+#        x_new = cos_theta * pos.x - sin_theta * pos.y
+#        y_new = sin_theta * pos.x + cos_theta * pos.y
+#        conf.SetAtomPosition(i, (x_new, y_new, pos.z))
+#
+#    return mol
+
