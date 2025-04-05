@@ -21,6 +21,8 @@ from lucy.utils.setup_logging import logger
 from rdkit.Chem import rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D
 
+import numpy as np
+
 def draw_watermarked_molecule(molecule, rotation=0, rdkit_bool=True) -> BytesIO:
     rdDepictor.SetPreferCoordGen(rdkit_bool)
     try:
@@ -36,7 +38,7 @@ def draw_watermarked_molecule(molecule, rotation=0, rdkit_bool=True) -> BytesIO:
         logger.debug('Drawing options configured.')
         rdMolDraw2D.SetDarkMode(Options)
         mol = rdMolDraw2D.PrepareMolForDrawing(molecule, kekulize=True)
-        rotate_molecule(mol1, rotation)
+        mol = rotate_molecule(mol, rotation)
         mol.UpdatePropertyCache(False)
         logger.debug('Molecule prepared for drawing.')
         d2d.DrawMolecule(mol)
@@ -51,16 +53,20 @@ def draw_watermarked_molecule(molecule, rotation=0, rdkit_bool=True) -> BytesIO:
         logger.error(f'An error occurred while drawing the watermarked molecule: {e}')
         raise
 
+from rdkit.Geometry import Point3D
+
 def rotate_molecule(mol, angle):
     """Rotate a molecule by a given angle (in degrees)."""
     conf = mol.GetConformer()
-    rad_angle = np.radians(angle)  # Convert degrees to radians
-    cos_theta, sin_theta = np.cos(rad_angle), np.sin(rad_angle)
+    rad_angle = float(np.radians(angle))  # Convert degrees to radians
+    cos_theta = float(np.cos(rad_angle))
+    sin_theta = float(np.sin(rad_angle))
 
     for i in range(mol.GetNumAtoms()):
         pos = conf.GetAtomPosition(i)
-        x_new = cos_theta * pos.x - sin_theta * pos.y
-        y_new = sin_theta * pos.x + cos_theta * pos.y
-        conf.SetAtomPosition(i, (x_new, y_new, pos.z))
+        x_new = float(cos_theta * pos.x - sin_theta * pos.y)
+        y_new = float(sin_theta * pos.x + cos_theta * pos.y)
+        z = float(pos.z)
+        conf.SetAtomPosition(i, Point3D(x_new, y_new, z))
 
     return mol
