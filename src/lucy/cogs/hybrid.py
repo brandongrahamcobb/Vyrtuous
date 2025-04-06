@@ -194,12 +194,14 @@ class Hybrid(commands.Cog):
                     await function()
 
     @commands.hybrid_command(name='colorize', description=f'Usage: between `colorize 0 0 0` and `colorize 255 255 255` or `colorize <color>`')
-    async def colorize(self, ctx: commands.Context, r: str = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.'), *, g: str = commands.parameter(default='147', description='Anything betwen 0 and 255.'), b: str = commands.parameter(default='165', description='Anything between 0 and 255.')):
+    async def colorize(self, ctx: commands.Context, *, color: str = commands.parameter(default='blurple', description='Anything between 0 and 255 or a color.')):
         if ctx.interaction:
             async with ctx.typing():
                 await ctx.interaction.response.defer(ephemeral=True)
         if not self.predicator.is_release_mode_func(ctx):
             return
+        args = shlex.split(color)
+        r = args[0]
         if not r.isnumeric():
             input_text_dict = {
                 'type': 'text',
@@ -216,6 +218,9 @@ class Hybrid(commands.Cog):
                 r = color_values['r']
                 g = color_values['g']
                 b = color_values['b']
+        else:
+            g = args[1]
+            b = args[2]
         r = int(r)
         g = int(g)
         b = int(b)

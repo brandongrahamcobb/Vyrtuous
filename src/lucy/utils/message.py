@@ -215,17 +215,17 @@ class Message:
             and isinstance(ctx.channel, discord.abc.GuildChannel)
             and ctx.channel.permissions_for(ctx.guild.me).send_messages
         )
-        async with ctx.typing():
-            if can_send:
-                try:
+        if can_send:
+            try:
+                async with ctx.typing():
                     await self._send_message(ctx.reply, content=content, file=file, embed=embed)
-                except discord.HTTPException as e:
-                    if e.code == 50035:  # Invalid Form Body due to message_reference
-                        await self._send_message(ctx.send, content=content, file=file, embed=embed)
-                    else:
-                        raise
-            else:
-                await self.send_dm(ctx.author, content=content, file=file, embed=embed)
+            except discord.HTTPException as e:
+                if e.code == 50035:  # Invalid Form Body due to message_reference
+                    await self._send_message(ctx.send, content=content, file=file, embed=embed)
+                else:
+                   raise
+        else:
+           await self.send_dm(ctx.author, content=content, file=file, embed=embed)
 
     async def _send_message(self, send_func, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
         kwargs = {}

@@ -22,7 +22,6 @@ class TwitchBot(commands.Bot):
         self.config = config
         self.db_pool = db_pool
         self.lock = lock
-        self.handler = Message(self.config, self.conversations)
 
     async def event_message(self, message):
         logger.info(f'Received message: {message.content}')
