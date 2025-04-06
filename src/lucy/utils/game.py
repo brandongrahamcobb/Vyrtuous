@@ -14,6 +14,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
+from lucy.utils.create_moderation import create_moderation
+from lucy.utils.predicator import Predicator
 import discord
 from decimal import Decimal
 from discord.ext import commands
@@ -30,6 +33,7 @@ import os
 class Game:
     def __init__(self, bot):
         self.bot = bot
+        self.config = bot.config
         self.users = {}
         self.factions = {}
         self.db_pool = self.bot.db_pool
@@ -51,6 +55,8 @@ class Game:
                          615821622, 649568646, 685165008, 722712050, 762316670, 804091623, 848155844, 894634784, 943660770, 995373379, 
                          1049919840, 1107455447, 1168144006, 1232158297, 1299680571, 1370903066, 1446028554, 1525246918, 1608855764, 
                          1697021059]
+        self.predicator = Predicator(self.bot)
+
     async def get_user(self, user_id):
         """Fetches a user row from the database by user_id."""
         async with self.db_pool.acquire() as conn:
@@ -134,13 +140,95 @@ class Game:
                         faction_level, faction_name
                     )
 
-    async def create_faction(self, faction_name, creator_id):
-        """Allows a user to create a new faction."""
+    async def moderate_name(self, name: str, ctx=None) -> bool:
+        """Returns True if the name is flagged by moderation."""
+        if not self.config.get('openai_chat_moderation', False):
+            return False
+        try:
+            async for moderation_completion in create_moderation(input_array=[name]):
+                try:
+                    full_response = json.loads(moderation_completion)
+                    results = full_response.get('results', [])
+                    if results and results[0].get('flagged', False):
+                        if ctx and not self.predicator.is_spawd(ctx):
+                            await self.handle_moderation(ctx.message)
+                        return True
+                except Exception as e:
+                    logger.error(traceback.format_exc())
+                    print(f'An error occurred: {e}')
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            print(f'An error occurred: {e}')
+        return False
+
+    async def handle_moderation(self, message: discord.Message, reason_str: str = "Unspecified moderation issue"):
+        logger.info(f"Moderating message from {message.author} (ID: {message.author.id}) - Reason: {reason_str}")
+        unfiltered_role = get(message.guild.roles, name=DISCORD_ROLE_PASS)
+        if unfiltered_role in message.author.roles:
+            logger.info(f"User {message.author} has an unfiltered role, skipping moderation.")
+            return
+        user_id = message.author.id
+        async with self.db_pool.acquire() as connection:
+            async with connection.transaction():
+                row = await connection.fetchrow(
+                    "SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id
+                )
+                if row:
+                    flagged_count = row["flagged_count"] + 1
+                    await connection.execute(
+                        "UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2",
+                        flagged_count, user_id
+                    )
+                    logger.info(f"Updated flagged count for user {user_id}: {flagged_count}")
+                else:
+                    flagged_count = 1
+                    await connection.execute(
+                        "INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)",
+                        user_id, flagged_count
+                    )
+                    logger.info(f"Inserted new flagged count for user {user_id}: {flagged_count}")
+        await message.delete()
+        logger.info(f"Deleted flagged message from user {user_id}")
+        if flagged_count == 1:
+            await self.send_dm(
+                message.author,
+                f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+            )
+        elif flagged_count in [2, 3, 4]:
+            if flagged_count == 4:
+                await self.send_dm(
+                    message.author,
+                    f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+                )
+        elif flagged_count >= 5:
+            await self.send_dm(
+                message.author,
+                f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+            )
+            await self.send_dm(
+                message.author,
+                "You have been timed out for 5 minutes due to repeated violations."
+            )
+            await message.author.timeout(datetime.timedelta(seconds=300))
+            logger.warning(f"User {user_id} has been timed out for 5 minutes due to repeated violations.")
+            async with self.db_pool.acquire() as connection:
+                await connection.execute(
+                    "UPDATE moderation_counts SET flagged_count = 0 WHERE user_id = $1", user_id
+                )
+            logger.info(f"Flagged count reset to 0 for user {user_id} after timeout.")
+
+    async def create_faction(self, faction_name, creator_id, ctx=None):
+        """Allows a user to create a new faction, with moderation checks."""
+        
+        # 🔍 Run name moderation
+        if await self.moderate_name(faction_name, ctx=ctx):
+            return False  # Rejected by moderation
+    
         async with self.db_pool.acquire() as conn:
             faction_exists = await conn.fetchrow("SELECT name FROM factions WHERE name = $1", faction_name)
             if faction_exists:
                 return False  # Faction already exists
-
+    
             await conn.execute(
                 "INSERT INTO factions (name, xp, level) VALUES ($1, 0, 1)", faction_name
             )
@@ -150,7 +238,20 @@ class Game:
             await conn.execute(
                 "INSERT INTO faction_members (user_id, faction_name) VALUES ($1, $2)", creator_id, faction_name
             )
-            return True
+    
+        # 🔁 Optionally update nickname here as well if needed
+        guild = discord.utils.get(self.bot.guilds)
+        member = guild.get_member(creator_id)
+        if member:
+            try:
+                new_nick = f"[{faction_name}] {member.name}"
+                await member.edit(nick=new_nick)
+            except discord.Forbidden:
+                pass
+            except discord.HTTPException:
+                pass
+    
+        return True
 
     async def join_faction(self, faction_name, user_id):
         """Allows a user to join an existing faction."""
@@ -206,3 +307,4 @@ class Game:
                     "DELETE FROM factions WHERE name = $1",
                     current_faction
                 )
+

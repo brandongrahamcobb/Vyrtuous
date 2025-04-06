@@ -15,29 +15,17 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands
-from discord.utils import get
-from lucy.utils.create_https_moderation import create_https_moderation
-from lucy.utils.create_moderation import create_moderation
 from lucy.utils.helpers import *
 from lucy.utils.game import Game
-from lucy.utils.load_contents import load_contents
 from lucy.utils.message import Message
-from lucy.utils.predicator import Predicator
 from lucy.utils.setup_logging import logger
-from os.path import abspath, dirname, exists, expanduser, join
-from typing import Optional
 
-import asyncio
-import datetime
 import discord
-import json
 import os
-import pytz
 import shutil
 import time
 import traceback
 import uuid
-import yaml
 
 class Indica(commands.Cog):
 
@@ -47,9 +35,8 @@ class Indica(commands.Cog):
         self.conversations = bot.conversations
         self.db_pool = bot.db_pool
         self.game = Game(self.bot)
-        self.handler = Message(self.config, self.conversations)
+        self.handler = Message(self.bot, self.config, self.conversations, self.db_pool)
         self.user_messages = {}
-        self.predicator = Predicator(self.bot)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -58,164 +45,49 @@ class Indica(commands.Cog):
             if ctx.command:
                 await self.bot.invoke(ctx)
 
-    async def ai_handler(self, ctx: commands.Context):
-        array = await self.handler.process_array(ctx.message.content, attachments=ctx.message.attachments)
-        if not array:
-            logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-            await self.send_message(ctx, "Your message must include text or valid attachments.")
-            return
-        logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
-        for item in array:
-            if self.config['openai_chat_moderation']:
-                async for moderation_completion in create_moderation(input_array=[item]):
-                    try:
-                        full_response = json.loads(moderation_completion)
-                        results = full_response.get('results', [])
-                        if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
-                            result = results[0]
-                            flagged = result.get('flagged', False)
-                            categories = result.get('categories', {})
-                            reasons = [category.replace("/", " → ").replace("-", " ").capitalize() for category, value in categories.items() if value is True]
-                            if reasons:
-                                reason_str = ", ".join(reasons)
-                            else:
-                                reason_str = "Unspecified moderation issue"
-                            await self.handle_moderation(ctx.message, reason_str)
-                            return
-                    except Exception as e:
-                        logger.error(traceback.format_exc())
-                        print(f'An error occurred: {e}')
-        if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
-            async for chat_completion in self.handler.generate_chat_completion(
-                custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT,
-            ):
-                await self.handle_large_response(ctx, chat_completion)
-
-    def handle_users(self, author: str):
-        author_char = author[0].upper()
-        data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
-        users_file = join(DIR_HOME, '.users', 'users')
-        if exists(users_file):
-            with open(users_file, 'r+') as file:
-                try:
-                    data = yaml.safe_load(file) or data
-                except yaml.YAMLError:
-                    data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
-                if author_char not in data:
-                    data[author_char] = []
-                if author not in data[author_char]:
-                    data[author_char].append(author)
-                    file.seek(0)
-                    file.write(yaml.dump(data))
-                    file.truncate()
-        else:
-            with open(users_file, 'w') as file:
-                yaml.dump(data, file)
-
-    async def handle_large_response(self, ctx: commands.Context, response: str):
-        if len(response) > 2000:
-            unique_filename = f'temp_{uuid.uuid4()}.txt'
-            try:
-                with open(unique_filename, 'w') as f:
-                    f.write(response)
-                await self.send_file(ctx, file=discord.File(unique_filename))
-            finally:
-                os.remove(unique_filename)
-        else:
-            await self.send_message(ctx, response)
-
-    async def send_dm(self, member: discord.Member, content):
-        channel = await member.create_dm()
-        await channel.send(content)
-
-    async def handle_moderation(self, message: discord.Message, reason_str: str = "Unspecified moderation issue"):
-        logger.info(f"Moderating message from {message.author} (ID: {message.author.id}) - Reason: {reason_str}")
-        unfiltered_role = get(message.guild.roles, name=DISCORD_ROLE_PASS)
-        if unfiltered_role in message.author.roles:
-            logger.info(f"User {message.author} has an unfiltered role, skipping moderation.")
-            return
-        user_id = message.author.id
-        async with self.db_pool.acquire() as connection:
-            async with connection.transaction():
-                row = await connection.fetchrow(
-                    "SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id
-                )
-                if row:
-                    flagged_count = row["flagged_count"] + 1
-                    await connection.execute(
-                        "UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2",
-                        flagged_count, user_id
-                    )
-                    logger.info(f"Updated flagged count for user {user_id}: {flagged_count}")
-                else:
-                    flagged_count = 1
-                    await connection.execute(
-                        "INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)",
-                        user_id, flagged_count
-                    )
-                    logger.info(f"Inserted new flagged count for user {user_id}: {flagged_count}")
-        await message.delete()
-        logger.info(f"Deleted flagged message from user {user_id}")
-        if flagged_count == 1:
-            await self.send_dm(
-                message.author,
-                f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
-            )
-        elif flagged_count in [2, 3, 4]:
-            if flagged_count == 4:
-                await self.send_dm(
-                    message.author,
-                    f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
-                )
-        elif flagged_count >= 5:
-            await self.send_dm(
-                message.author,
-                f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
-            )
-            await self.send_dm(
-                message.author,
-                "You have been timed out for 5 minutes due to repeated violations."
-            )
-            await message.author.timeout(datetime.timedelta(seconds=300))
-            logger.warning(f"User {user_id} has been timed out for 5 minutes due to repeated violations.")
-            async with self.db_pool.acquire() as connection:
-                await connection.execute(
-                    "UPDATE moderation_counts SET flagged_count = 0 WHERE user_id = $1", user_id
-                )
-            logger.info(f"Flagged count reset to 0 for user {user_id} after timeout.")
-
-    async def send_message(self, ctx: commands.Context, print: str):
-        if ctx.channel and isinstance(ctx.channel, discord.abc.GuildChannel):
-            permissions = ctx.channel.permissions_for(ctx.guild.me)
-            if permissions.send_messages:
-                async with ctx.typing():
-                   await ctx.reply(print)
-            else:
-               await send_dm(ctx.message, print)
-        else:
-           async with ctx.typing():
-                await ctx.reply(print)
-
-    async def send_file(self, ctx: commands.Context, file: discord.File):
-        await ctx.reply(file=file)
-
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
+        if before.nick == after.nick:
+            return
+        logger.info(f"[on_member_update] Detected nickname change: {before.display_name} → {after.display_name}")
         try:
-            if self.config['openai_chat_moderation']:
-                async for moderation_completion in create_moderation(input_array=[after.name]):
-                    try:
-                        full_response = json.loads(moderation_completion)
-                        results = full_response.get('results', [])
-                        if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
-                            await self.handle_moderation(ctx.message)
-                            return
-                    except Exception as e:
-                        logger.error(traceback.format_exc())
-                        print(f'An error occurred: {e}')
+            flagged = await self.game.moderate_name(after.nick or after.name)
+            if flagged:
+                logger.warning(f"[moderation] Nickname '{after.nick}' flagged for moderation. Reverting to default.")
+                try:
+                    await after.edit(nick=None, reason="Nickname reverted due to moderation violation.")
+                except discord.Forbidden:
+                    logger.error(f"[moderation] Missing permissions to revert nickname for {after}.")
+                except discord.HTTPException as e:
+                    logger.error(f"[moderation] HTTPException while reverting nickname for {after}: {e}")
+                return
+            user_data = await self.game.get_user(after.id)
+            if not user_data:
+                logger.info(f"[faction] No user data found for {after}. Skipping.")
+                return
+            faction_name = user_data["faction_name"]
+            if not faction_name:
+                logger.info(f"[faction] {after} is not in a faction.")
+                return
+            expected_nick = f"[{faction_name}] {after.name}"
+            if after.nick != expected_nick:
+                logger.info(f"[faction] Enforcing nickname for {after}: '{after.nick}' → '{expected_nick}'")
+                try:
+                    await after.edit(nick=expected_nick, reason="Enforcing faction nickname format.")
+                except discord.Forbidden:
+                    logger.error(f"[faction] Cannot change nickname for {after} due to missing permissions.")
+                except discord.HTTPException as e:
+                    logger.error(f"[faction] HTTPException while changing nickname for {after}: {e}")
         except Exception as e:
             logger.error(traceback.format_exc())
             print(f'An error occurred: {e}')
+        finally:
+            try:
+                shutil.rmtree(DIR_TEMP)
+                os.makedirs(DIR_TEMP, exist_ok=True)
+                logger.info("Temporary files cleaned up successfully.")
+            except Exception as cleanup_error:
+                logger.error(f"Error cleaning up temporary files: {cleanup_error}")
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -234,11 +106,11 @@ class Indica(commands.Cog):
                 self.user_messages[user_id].append(current_time)
                 self.user_messages[user_id] = [t for t in self.user_messages[user_id] if current_time - t < 5]
             if len(self.user_messages[user_id]) > 5:
-                await message.channel.send(f"{message.author.mention}, stop spamming!")
+                await self.handler.send_message(ctx, content=f"{message.author.mention}, stop spamming!")
                 await message.delete()
-            self.handle_users(message.author.name)
+            self.handler.handle_users(message.author.name)
             await self.game.distribute_xp(ctx.author.id)
-            await self.ai_handler(ctx)
+            await self.handler.ai_handler(ctx)
         except Exception as e:
             logger.error(traceback.format_exc())
             print(f'An error occurred: {e}')
