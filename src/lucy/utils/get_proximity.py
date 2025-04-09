@@ -18,24 +18,15 @@ from lucy.utils.setup_logging import logger
 from rdkit.Chem import AllChem, DataStructs
 
 def get_proximity(default, input) -> float:
-
     try:
-        logger.info('Starting proximity calculation between molecules.')
-        logger.debug('Generating Morgan fingerprint for the default molecule.')
         default_fp = AllChem.GetMorganFingerprintAsBitVect(default, 2)
         if default_fp is None:
-            logger.error('Failed to generate fingerprint for the default molecule.')
             raise ValueError('Invalid default molecule.')
-        logger.debug('Generating Morgan fingerprint for the input molecule.')
         input_fp = AllChem.GetMorganFingerprintAsBitVect(input, 2)
         if input_fp is None:
-            logger.error('Failed to generate fingerprint for the input molecule.')
             raise ValueError('Invalid input molecule.')
-        logger.debug('Calculating similarity between the fingerprints.')
         similarity = DataStructs.FingerprintSimilarity(default_fp, input_fp)
-        logger.info(f'Calculated similarity: {similarity}')
         return similarity
-
     except Exception as e:
         logger.error(f'An error occurred during proximity calculation: {e}')
         raise

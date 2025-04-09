@@ -14,21 +14,22 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import discord
 from discord.ext import commands
+from lucy.utils.create_moderation import create_moderation
+from lucy.utils.helpers import *
+from lucy.utils.predicator import Predicator
+from lucy.utils.setup_logging import logger
+from os.path import exists
 import aiofiles
 import base64
+import discord
 import json
 import os
 import shutil
 import tiktoken
-from lucy.utils.predicator import Predicator
-from .helpers import *
-from .setup_logging import logger
-from os.path import exists
-import yaml 
-from lucy.utils.create_moderation import create_moderation
 import uuid
+import yaml
+
 os.makedirs(DIR_TEMP, exist_ok=True)
 
 class Message:
@@ -60,17 +61,14 @@ class Message:
     ):
         if completions is Ellipsis:
             completions = OPENAI_CHAT_N
-        encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
+        encoder = tiktoken.get_encoding('cl100k_base')
         total_input_tokens = sum(
             [len(encoder.encode(message.get('text', ''))) for message in array if 'text' in message]
         )
         if model is Ellipsis:
             model = self.config['openai_chat_model']
-        if any(message.get("type") == "image_url" for message in array):
-            model = "gpt-4o-mini"
-        for message in array:
-            if 'text' not in message:
-                logger.warning(f'Missing "text" in message: {message}')
+        if any(message.get('type') == 'image_url' for message in array):
+            model = 'gpt-4o-mini'
         available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[model] - total_input_tokens
         max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[model])
         total_tokens = sum([len(message.get('text', '').split()) for message in array if 'text' in message])
@@ -115,14 +113,10 @@ class Message:
             yield chat_completion
 
     async def generate_moderation_completion(self, custom_id, array):
-#        encoder = tiktoken.get_encoding(f'openai_public:{self.config['openai_chat_model']}')  # Get encoding for the selected model
-        encoder = tiktoken.get_encoding('cl100k_base')  # Get encoding for the selected model
+        encoder = tiktoken.get_encoding('cl100k_base')
         total_input_tokens = sum(
             [len(encoder.encode(message.get('text', ''))) for message in array if 'text' in message]  # Use .get() to avoid KeyError
         )
-        for message in array:
-            if 'text' not in message and message.get('type') == 'text':
-               logger.warning(f'Missing "text" in message: {message}')
         available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[OPENAI_CHAT_MODERATION_MODEL] - total_input_tokens
         max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
         async for moderation_completion in self.conversations.create_https_completion(
@@ -151,8 +145,6 @@ class Message:
         if attachments:
             processed_attachments = await self.process_attachments(attachments)
             array.extend(processed_attachments)
-        if not array:
-            logger.warning("Generated 'array' is empty. No valid text or attachments found.")
         return array
 
     async def process_attachments(self, attachments):
@@ -167,22 +159,22 @@ class Message:
                         image_base64 = base64.b64encode(await f.read()).decode('utf-8')
                     mime_type = attachment.content_type
                     processed_attachments.append({
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{mime_type};base64,{image_base64}"
+                        'type': 'image_url',
+                        'image_url': {
+                            'url': f'data:{mime_type};base64,{image_base64}'
                         }
                     })
                 elif attachment.content_type.startswith('text/'):
                     async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
                         text_content = await f.read()
                     processed_attachments.append({
-                        "type": "text",
-                        "text": text_content
+                        'type': 'text',
+                        'text': text_content
                     })
                 else:
-                    logger.info(f"Skipping unsupported attachment type: {attachment.content_type}")
+                    return
             except Exception as e:
-                logger.error(f"Error processing file {attachment.filename}: {e}")
+                logger.error(f'Error processing file {attachment.filename}: {e}')
                 continue
         return processed_attachments
 
@@ -197,11 +189,11 @@ class Message:
         for item in array:
             if item.get('type') == 'image_base64':
                 if not item.get('image_data') or not item.get('content_type'):
-                    logger.error(f"Invalid Base64 image data: {item}")
+                    logger.error(f'Invalid Base64 image data: {item}')
                     valid = False
             elif item.get('type') == 'text':
                 if not item.get('text', '').strip():
-                    logger.error(f"Invalid text content: {item}")
+                    logger.error(f'Invalid text content: {item}')
                     valid = False
         return valid
 
@@ -229,13 +221,12 @@ class Message:
     async def _send_message(self, send_func, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
         kwargs = {}
         if content:
-            kwargs["content"] = content
+            kwargs['content'] = content
         if file:
-            kwargs["file"] = file
+            kwargs['file'] = file
         if embed:
-            kwargs["embed"] = embed
+            kwargs['embed'] = embed
         await send_func(**kwargs)
-
 
     async def completion_prep(self, array) -> bool:
         if not self.config['openai_chat_moderation']:
@@ -251,11 +242,11 @@ class Message:
                         result = results[0]
                         flagged = result.get('flagged', False)
                         categories = result.get('categories', {})
-                        reasons = [category.replace("/", " → ").replace("-", " ").capitalize() for category, value in categories.items() if value is True]
+                        reasons = [category.replace('/', ' → ').replace('-', ' ').capitalize() for category, value in categories.items() if value is True]
                         if reasons:
-                            reason_str = ", ".join(reasons)
+                            reason_str = ', '.join(reasons)
                         else:
-                            reason_str = "Unspecified moderation issue"
+                            reason_str = 'Unspecified moderation issue'
                         logger.info(reason_str)
                         overall.append(flagged)
                         reasons.append(reason_str)
@@ -269,30 +260,31 @@ class Message:
 
     async def ai_handler(self, ctx: commands.Context):
         array = await self.process_array(ctx.message.content, attachments=ctx.message.attachments)
-        async for flagged, reasons in self.completion_prep(array):
-            if flagged:
-                for reason in reasons:
-                    await self.handle_moderation(ctx.message, reason)
+        if self.predicator.is_developer(ctx.author):
+            async for flagged, reasons in self.completion_prep(array):
+                if flagged:
+                    for reason in reasons:
+                        await self.handle_moderation(ctx.message, reason)
+                        return
+                elif self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
+                    async for chat_completion in self.generate_chat_completion(
+                        custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT,
+                    ):
+                        await self.handle_large_response(ctx, chat_completion)
+                else:
+                    logger.debug('Either you do not have completions enabled or the bot was not mentioned.')
                     return
-            elif self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
-                async for chat_completion in self.generate_chat_completion(
-                    custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT,
-                ):
-                    await self.handle_large_response(ctx, chat_completion)
-            else:
-                logger.info('Either you do not have completions enabled or the bot was not mentioned.')
-                return
 
     def handle_users(self, author: str):
         author_char = author[0].upper()
-        data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
+        data = {letter: [] for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'}
         users_file = join(DIR_HOME, '.users', 'users')
         if exists(users_file):
             with open(users_file, 'r+') as file:
                 try:
                     data = yaml.safe_load(file) or data
                 except yaml.YAMLError:
-                    data = {letter: [] for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
+                    data = {letter: [] for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'}
                 if author_char not in data:
                     data[author_char] = []
                 if author not in data[author_char]:
@@ -316,7 +308,7 @@ class Message:
         else:
             await self.send_message(ctx, content=response)
 
-    async def handle_moderation(self, message: discord.Message, reason_str: str = "Unspecified moderation issue"):
+    async def handle_moderation(self, message: discord.Message, reason_str: str = 'Unspecified moderation issue'):
         unfiltered_role = get(message.guild.roles, name=DISCORD_ROLE_PASS)
         if unfiltered_role in message.author.roles:
             return
@@ -324,53 +316,53 @@ class Message:
         async with self.db_pool.acquire() as connection:
             async with connection.transaction():
                 row = await connection.fetchrow(
-                    "SELECT flagged_count FROM moderation_counts WHERE user_id = $1", user_id
+                    'SELECT flagged_count FROM moderation_counts WHERE user_id = $1', user_id
                 )
                 if row:
-                    flagged_count = row["flagged_count"] + 1
+                    flagged_count = row['flagged_count'] + 1
                     await connection.execute(
-                        "UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2",
+                        'UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2',
                         flagged_count, user_id
                     )
-                    logger.info(f"Updated flagged count for user {user_id}: {flagged_count}")
+                    logger.info(f'Updated flagged count for user {user_id}: {flagged_count}')
                 else:
                     flagged_count = 1
                     await connection.execute(
-                        "INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)",
+                        'INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)',
                         user_id, flagged_count
                     )
-                    logger.info(f"Inserted new flagged count for user {user_id}: {flagged_count}")
+                    logger.info(f'Inserted new flagged count for user {user_id}: {flagged_count}')
         await message.delete()
         if flagged_count == 1:
             await self.send_message(
                 message.author,
-                content=f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+                content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
             )
         elif flagged_count in [2, 3, 4]:
             if flagged_count == 4:
                 await self.send_message(
                     message.author,
-                    content=f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+                    content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
                 )
         elif flagged_count >= 5:
             await self.send_message(
                 message.author,
-                content=f"{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}"
+                content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
             )
             await self.send_message(
                 message.author,
-                content="You have been timed out for 5 minutes due to repeated violations."
+                content='You have been timed out for 5 minutes due to repeated violations.'
             )
             await message.author.timeout(datetime.timedelta(seconds=300))
             async with self.db_pool.acquire() as connection:
                 await connection.execute(
-                    "UPDATE moderation_counts SET flagged_count = 0 WHERE user_id = $1", user_id
+                    'UPDATE moderation_counts SET flagged_count = 0 WHERE user_id = $1', user_id
                 )
 
     def _handle_large_response(self, content: str) -> str:
         if len(content) > 2000:
             buffer = io.StringIO(content)
-            file = discord.File(fp=buffer, filename="output.txt")
+            file = discord.File(fp=buffer, filename='output.txt')
             return file
         return content
 

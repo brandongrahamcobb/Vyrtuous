@@ -14,28 +14,21 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import discord
 from discord.ext import commands
 from googleapiclient.discovery import build
 from lucy.utils.setup_logging import logger
 from lucy.utils.config import Config
+import discord
 
 def google(query: str, num_results: int = 5):
-    logger.info(f"Starting Google search for query: `{query}` with {num_results} results.")
-
     try:
         service = build("customsearch", "v1", developerKey=Config.get_config()['api_keys']['Google']['api_key'])
         result = service.cse().list(q=query, cx=Config.get_config()['api_keys']['Google']['client_id'], num=num_results).execute()
-
         search_results = [
             {"title": item["title"], "link": item["link"]}
             for item in result.get("items", [])
         ]
-
-        logger.info(f"Successfully extracted {len(search_results)} search results.")
-        print(search_results)
         return search_results
-
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         return []

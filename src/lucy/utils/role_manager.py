@@ -21,7 +21,7 @@ import asyncio
 import discord
 import time
 
-EXPIRATION_TIME = 30 * 24 * 60 * 60  # 30 days in seconds
+EXPIRATION_TIME = 30 * 24 * 60 * 60
 
 class RoleManager:
     def __init__(self, db_pool):
@@ -30,37 +30,35 @@ class RoleManager:
     async def close(self):
         if self.db_pool:
             await self.db_pool.close()
-            print("PostgreSQL connection pool closed")
 
     async def backup_roles_for_member(self, member: discord.Member):
         if not self.db_pool:
-            raise RuntimeError("Database pool is not initialized.")
+            raise RuntimeError('Database pool is not initialized.')
         roles = [
             role.id for role in member.roles
-            if not role.managed and role.name != "@everyone"
+            if not role.managed and role.name != '@everyone'
         ]
         timestamp = int(time.time())
         try:
-            await self.db_pool.execute("""
+            await self.db_pool.execute('''
                 INSERT INTO roles_backup(user_id, role_ids, timestamp)
                 VALUES($1, $2, $3)
                 ON CONFLICT (user_id) DO UPDATE
                 SET role_ids = EXCLUDED.role_ids,
                     timestamp = EXCLUDED.timestamp;
-            """, member.id, roles, timestamp)
-            print(f"Roles backed up for {member} (ID: {member.id}).")
+            ''', member.id, roles, timestamp)
         except Exception as e:
-            print(f"Error backing up roles for {member}: {e}")
+            print(f'Error backing up roles for {member}: {e}')
 
     async def restore_roles_for_member(self, member: discord.Member):
         if not self.db_pool:
-            raise RuntimeError("Database pool is not initialized.")
+            raise RuntimeError('Database pool is not initialized.')
         current_time = int(time.time())
         try:
-            record = await self.db_pool.fetchrow("""
+            record = await self.db_pool.fetchrow('''
                 SELECT role_ids, timestamp FROM roles_backup
                 WHERE user_id = $1;
-            """, member.id)
+            ''', member.id)
             if record:
                 backup_timestamp = record['timestamp']
                 if (current_time - backup_timestamp) < EXPIRATION_TIME:
@@ -72,31 +70,21 @@ class RoleManager:
                     ]
                     roles_to_add = [guild.get_role(role_id) for role_id in valid_role_ids]
                     if roles_to_add:
-                        await member.add_roles(*roles_to_add, reason="Role restoration upon rejoining.")
-                        print(f"Roles restored for {member} (ID: {member.id}).")
-                    else:
-                        print(f"No valid roles to restore for {member} (ID: {member.id}).")
-                else:
-                    print(f"Backup expired for {member} (ID: {member.id}). No roles restored.")
-                await self.db_pool.execute("""
+                        await member.add_roles(*roles_to_add, reason='Role restoration upon rejoining.')
+                await self.db_pool.execute('''
                     DELETE FROM roles_backup WHERE user_id = $1;
-                """, member.id)
-            else:
-                print(f"No backup found for {member} (ID: {member.id}).")
+                ''', member.id)
         except Exception as e:
-            print(f"Error restoring roles for {member}: {e}")
+            print(f'Error restoring roles for {member}: {e}')
 
     async def clean_old_backups(self):
-        """Remove backups older than 30 days."""
         if not self.db_pool:
-            raise RuntimeError("Database pool is not initialized.")
-
+            raise RuntimeError('Database pool is not initialized.')
         cutoff_timestamp = int(time.time()) - EXPIRATION_TIME
         try:
-            result = await self.db_pool.execute("""
+            result = await self.db_pool.execute('''
                 DELETE FROM roles_backup
                 WHERE timestamp < $1;
-            """, cutoff_timestamp)
-            print(f"Old backups cleaned up. Operation result: {result}")
+            ''', cutoff_timestamp)
         except Exception as e:
-            print(f"Error cleaning old backups: {e}")
+            print(f'Error cleaning old backups: {e}')

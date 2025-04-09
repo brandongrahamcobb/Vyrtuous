@@ -182,29 +182,29 @@ OPENAI_CHAT_ADD_COMPLETION_TO_HISTORY = True
 OPENAI_CHAT_COLORIZE_RESPONSE_FORMAT = {
 'type': 'json_schema',
 'json_schema': {
-    "name": "colorize",
-    "description": "A function that returns color values for a given request.",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "r": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255
+    'name': 'colorize',
+    'description': 'A function that returns color values for a given request.',
+    'schema': {
+      'type': 'object',
+      'properties': {
+        'r': {
+          'type': 'integer',
+          'minimum': 0,
+          'maximum': 255
         },
-        "g": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255
+        'g': {
+          'type': 'integer',
+          'minimum': 0,
+          'maximum': 255
         },
-        "b": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255
+        'b': {
+          'type': 'integer',
+          'minimum': 0,
+          'maximum': 255
         }
       },
-      "required": ["r", "g", "b"],
-      "additionalProperties": False
+      'required': ['r', 'g', 'b'],
+      'additionalProperties': False
     }
   }
 }
@@ -227,92 +227,92 @@ OPENAI_CHAT_MODERATION_MODEL = 'gpt-4o-mini'
 OPENAI_CHAT_MODERATION_RESPONSE_FORMAT = {
 'type': 'json_schema',
 'json_schema': {
-    "name": "moderation",
-    "description": "A function that returns moderation results according to a specified schema.",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "id": {"type": "string"},
-        "model": {"type": "string"},
-        "results": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "flagged": {"type": "boolean"},
-              "categories": {
-                "type": "object",
-                "properties": {
-                  "sexual": {"type": "boolean"},
-                  "hate": {"type": "boolean"},
-                  "harassment": {"type": "boolean"},
-                  "self-harm": {"type": "boolean"},
-                  "sexual/minors": {"type": "boolean"},
-                  "hate/threatening": {"type": "boolean"},
-                  "violence/graphic": {"type": "boolean"},
-                  "self-harm/intent": {"type": "boolean"},
-                  "self-harm/instructions": {"type": "boolean"},
-                  "harassment/threatening": {"type": "boolean"},
-                  "violence": {"type": "boolean"},
-                  "academic-dishonesty": {"type": "boolean"},
-                  "animal-derived-technology": {"type": "boolean"}
+    'name': 'moderation',
+    'description': 'A function that returns moderation results according to a specified schema.',
+    'schema': {
+      'type': 'object',
+      'properties': {
+        'id': {'type': 'string'},
+        'model': {'type': 'string'},
+        'results': {
+          'type': 'array',
+          'items': {
+            'type': 'object',
+            'properties': {
+              'flagged': {'type': 'boolean'},
+              'categories': {
+                'type': 'object',
+                'properties': {
+                  'sexual': {'type': 'boolean'},
+                  'hate': {'type': 'boolean'},
+                  'harassment': {'type': 'boolean'},
+                  'self-harm': {'type': 'boolean'},
+                  'sexual/minors': {'type': 'boolean'},
+                  'hate/threatening': {'type': 'boolean'},
+                  'violence/graphic': {'type': 'boolean'},
+                  'self-harm/intent': {'type': 'boolean'},
+                  'self-harm/instructions': {'type': 'boolean'},
+                  'harassment/threatening': {'type': 'boolean'},
+                  'violence': {'type': 'boolean'},
+                  'academic-dishonesty': {'type': 'boolean'},
+                  'animal-derived-technology': {'type': 'boolean'}
                 },
-                "required": [
-                  "sexual",
-                  "hate",
-                  "harassment",
-                  "self-harm",
-                  "sexual/minors",
-                  "hate/threatening",
-                  "violence/graphic",
-                  "self-harm/intent",
-                  "self-harm/instructions",
-                  "harassment/threatening",
-                  "violence",
-                  "academic-dishonesty",
-                  "animal-derived-technology"
+                'required': [
+                  'sexual',
+                  'hate',
+                  'harassment',
+                  'self-harm',
+                  'sexual/minors',
+                  'hate/threatening',
+                  'violence/graphic',
+                  'self-harm/intent',
+                  'self-harm/instructions',
+                  'harassment/threatening',
+                  'violence',
+                  'academic-dishonesty',
+                  'animal-derived-technology'
                 ]
               },
-              "category_scores": {
-                "type": "object",
-                "properties": {
-                  "sexual": {"type": "number"},
-                  "hate": {"type": "number"},
-                  "harassment": {"type": "number"},
-                  "self-harm": {"type": "number"},
-                  "sexual/minors": {"type": "number"},
-                  "hate/threatening": {"type": "number"},
-                  "violence/graphic": {"type": "number"},
-                  "self-harm/intent": {"type": "number"},
-                  "self-harm/instructions": {"type": "number"},
-                  "harassment/threatening": {"type": "number"},
-                  "violence": {"type": "number"},
-                  "academic-dishonesty": {"type": "number"},
-                  "animal-derived-technology": {"type": "boolean"}
+              'category_scores': {
+                'type': 'object',
+                'properties': {
+                  'sexual': {'type': 'number'},
+                  'hate': {'type': 'number'},
+                  'harassment': {'type': 'number'},
+                  'self-harm': {'type': 'number'},
+                  'sexual/minors': {'type': 'number'},
+                  'hate/threatening': {'type': 'number'},
+                  'violence/graphic': {'type': 'number'},
+                  'self-harm/intent': {'type': 'number'},
+                  'self-harm/instructions': {'type': 'number'},
+                  'harassment/threatening': {'type': 'number'},
+                  'violence': {'type': 'number'},
+                  'academic-dishonesty': {'type': 'number'},
+                  'animal-derived-technology': {'type': 'boolean'}
                 },
-                "required": [
-                  "sexual",
-                  "hate",
-                  "harassment",
-                  "self-harm",
-                  "sexual/minors",
-                  "hate/threatening",
-                  "violence/graphic",
-                  "self-harm/intent",
-                  "self-harm/instructions",
-                  "harassment/threatening",
-                  "violence",
-                  "academic-dishonesty",
-                  "animal-derived-technology"
+                'required': [
+                  'sexual',
+                  'hate',
+                  'harassment',
+                  'self-harm',
+                  'sexual/minors',
+                  'hate/threatening',
+                  'violence/graphic',
+                  'self-harm/intent',
+                  'self-harm/instructions',
+                  'harassment/threatening',
+                  'violence',
+                  'academic-dishonesty',
+                  'animal-derived-technology'
                 ]
               }
             },
-            "required": ["flagged", "categories", "category_scores"]
+            'required': ['flagged', 'categories', 'category_scores']
           }
         }
       },
       'additionalProperties': False,
-      "required": ["id", "model", "results"]
+      'required': ['id', 'model', 'results']
     }
   }
 }
@@ -349,24 +349,24 @@ OPENAI_ENDPOINT_URLS = {
     'uploads': 'https://api.openai.com/v1/uploads',
 }
 OPENAI_FINE_TUNING_RESPONSE_FORMAT = {
-  "type": "json_schema",
-  "json_schema": {
-    "name": "animal_rights_identification",
-    "description": "A schema to identify if content qualifies as animal rights activism",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the content being evaluated"
+  'type': 'json_schema',
+  'json_schema': {
+    'name': 'animal_rights_identification',
+    'description': 'A schema to identify if content qualifies as animal rights activism',
+    'schema': {
+      'type': 'object',
+      'properties': {
+        'id': {
+          'type': 'string',
+          'description': 'Unique identifier for the content being evaluated'
         },
-        "results": {
-          "type": "boolean",
-          "description": "Indicates whether the content qualifies as animal rights activism",
-          "enum": [True]
+        'results': {
+          'type': 'boolean',
+          'description': 'Indicates whether the content qualifies as animal rights activism',
+          'enum': [True]
         }
       },
-      "required": ["id", "results"]
+      'required': ['id', 'results']
     }
   }
 }

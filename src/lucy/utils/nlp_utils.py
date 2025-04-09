@@ -36,12 +36,9 @@ class NLPUtils:
             }
         }
         try:
-            logger.info(f'Preparing to append entry to JSONL file: {file_path}')
-            logger.debug(f'Entry content: {entry}')
             with open(file_path, 'a') as file:
                 json.dump(entry, file)
                 file.write('\n')
-                logger.info(f'Successfully appended entry to JSONL file: {file_path}')
         except Exception as e:
             logger.error(f'Error occurred while appending entry: {e}')
             return {'error': str(e)}

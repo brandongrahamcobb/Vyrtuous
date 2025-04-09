@@ -67,7 +67,6 @@ class DiscordOAuth:
         self.access_token = token_data['access_token']
         self.refresh_token = token_data.get('refresh_token')
         self.expires_at = datetime.utcnow() + timedelta(seconds=token_data['expires_in'])
-        logger.info('Successfully exchanged Discord authorization code for an access token.')
         self.token_event.set()
         return True
 

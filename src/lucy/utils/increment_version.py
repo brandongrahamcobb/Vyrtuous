@@ -23,11 +23,9 @@ import yaml
 
 def increment_version(toml_path: str = PATH_TOML):
     try:
-        logger.info('Starting version increment process.')
         with open(toml_path, 'r') as file:
             pyproject = toml.load(file)
         current_version = pyproject.get('tool', {}).get('poetry', {}).get('version', '0.0.0')
-        logger.debug(f'Current version: {current_version}')
         major, minor, patch = map(int, current_version.split('.'))
         patch += 1
         if patch >= 10:
@@ -37,11 +35,9 @@ def increment_version(toml_path: str = PATH_TOML):
             minor = 0
             major += 1
         new_version = f'{major}.{minor}.{patch}'
-        logger.info(f'New version generated: {new_version}')
         pyproject['tool']['poetry']['version'] = new_version
         with open(toml_path, 'w') as file:
             toml.dump(pyproject, file)
-        logger.info(f'Version updated successfully in the pyproject.toml: {toml_path}')
     except Exception as e:
         logger.error(f'An error occurred during version increment: {e}')
         raise

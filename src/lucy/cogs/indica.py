@@ -49,11 +49,9 @@ class Indica(commands.Cog):
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         if before.nick == after.nick:
             return
-        logger.info(f"[on_member_update] Detected nickname change: {before.display_name} → {after.display_name}")
         try:
             flagged = await self.game.moderate_name(after.nick or after.name)
             if flagged:
-                logger.warning(f"[moderation] Nickname '{after.nick}' flagged for moderation. Reverting to default.")
                 try:
                     await after.edit(nick=None, reason="Nickname reverted due to moderation violation.")
                 except discord.Forbidden:
@@ -63,15 +61,12 @@ class Indica(commands.Cog):
                 return
             user_data = await self.game.get_user(after.id)
             if not user_data:
-                logger.info(f"[faction] No user data found for {after}. Skipping.")
                 return
             faction_name = user_data["faction_name"]
             if not faction_name:
-                logger.info(f"[faction] {after} is not in a faction.")
                 return
             expected_nick = f"[{faction_name}] {after.name}"
             if after.nick != expected_nick:
-                logger.info(f"[faction] Enforcing nickname for {after}: '{after.nick}' → '{expected_nick}'")
                 try:
                     await after.edit(nick=expected_nick, reason="Enforcing faction nickname format.")
                 except discord.Forbidden:
@@ -80,18 +75,15 @@ class Indica(commands.Cog):
                     logger.error(f"[faction] HTTPException while changing nickname for {after}: {e}")
         except Exception as e:
             logger.error(traceback.format_exc())
-            print(f'An error occurred: {e}')
         finally:
             try:
                 shutil.rmtree(DIR_TEMP)
                 os.makedirs(DIR_TEMP, exist_ok=True)
-                logger.info("Temporary files cleaned up successfully.")
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up temporary files: {cleanup_error}")
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        logger.info(f'Received message: {message.content}')
         try:
             if message.author.bot or message.is_system():
                 return
@@ -113,12 +105,10 @@ class Indica(commands.Cog):
             await self.handler.ai_handler(ctx)
         except Exception as e:
             logger.error(traceback.format_exc())
-            print(f'An error occurred: {e}')
         finally:
             try:
                 shutil.rmtree(DIR_TEMP)
                 os.makedirs(DIR_TEMP, exist_ok=True)
-                logger.info("Temporary files cleaned up successfully.")
             except Exception as cleanup_error:
                 logger.error(f"Error cleaning up temporary files: {cleanup_error}")
 

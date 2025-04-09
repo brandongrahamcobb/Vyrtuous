@@ -20,28 +20,19 @@ from rdkit import Chem
 import pubchempy as pcp
 
 def get_molecule_name(molecule) -> str:
-
     try:
-        logger.info("Starting to retrieve molecule name from the given molecule.")
         smiles = Chem.MolToSmiles(molecule)
         if not smiles:
-            logger.warning("Failed to convert the molecule to a SMILES string.")
             return 'Unknown'
-        logger.debug(f"Generated SMILES string: {smiles}")
         compounds = pcp.get_compounds(smiles, 'smiles')
         if not compounds:
-            logger.warning("No compounds found for the given SMILES string.")
             raise ValueError('No compound found for the given SMILES string')
         compound_data = compounds[0].to_dict(properties=['synonyms'])
-        logger.debug(f"Retrieved compound data: {compound_data}")
         if 'synonyms' in compound_data and compound_data['synonyms']:
             molecule_name = compound_data['synonyms'][0]
-            logger.info(f"Molecule name retrieved: {molecule_name}")
             return molecule_name
         else:
-            logger.warning("No synonyms found in compound data.")
             return 'Unknown'
-
     except Exception as e:
         logger.error(f"An error occurred while retrieving the molecule name: {e}")
         return 'Unknown'

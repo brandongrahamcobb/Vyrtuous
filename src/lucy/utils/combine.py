@@ -29,7 +29,7 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
     repeated_images = list(images * quantity)
     for img_bytes in repeated_images:
         img_bytes.seek(0)
-        img = Image.open(img_bytes).convert("RGBA")
+        img = Image.open(img_bytes).convert('RGBA')
         processed_images.append(img)
     if linearity:
         combined_width = sum(img.size[0] for img in processed_images)

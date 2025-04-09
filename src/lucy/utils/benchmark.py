@@ -84,8 +84,6 @@ class Benchmark:
             await asyncio.gather(*tasks)
 
     def analyze_response_quality(self):
-        # Implement your quality analysis logic here
-        # For example, check if responses meet certain criteria
         pass
 
     async def main(self):
@@ -97,7 +95,6 @@ class Benchmark:
         avg_latency = sum(self.latencies) / len(self.latencies) if self.latencies else 0
         throughput = self.success_requests / total_time if total_time > 0 else 0
         error_rate = (self.failed_requests / self.num_requests) * 100 if self.num_requests > 0 else 0
-
         logger.info('----- Benchmark Results -----')
         logger.info(f'Total Requests: {self.num_requests}')
         logger.info(f'Successful Requests: {self.success_requests}')
@@ -107,8 +104,6 @@ class Benchmark:
         logger.info(f'Throughput: {throughput:.2f} requests/second')
         logger.info(f'Error Rate: {error_rate:.2f}%')
         logger.info('------------------------------')
-
-        # Perform any additional analysis
         self.analyze_response_quality()
 
 if __name__ == '__main__':

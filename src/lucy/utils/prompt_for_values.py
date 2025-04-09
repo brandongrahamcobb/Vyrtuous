@@ -18,5 +18,4 @@ from lucy.utils.setup_logging import logger
 
 def prompt_for_values(prompt: str, default_value: str) -> str:
     value = input(f'{prompt} [{default_value}]: ')
-    logger.info(f'Prompting for {prompt} and defaulting to {default_value}')
     return value.strip() if value.strip() else default_value

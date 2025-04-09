@@ -34,7 +34,6 @@ async def create_https_moderation(custom_id, input_array, model):
         api_key = config['api_keys']['OpenAI']['api_key']
         ai_client = AsyncOpenAI(api_key=api_key)
         headers = {'Authorization': f'Bearer {api_key}'}
-        logger.info('Headers set for the request.')
         request_data = {
             'input': input_array,
             'model': model,
@@ -47,7 +46,6 @@ async def create_https_moderation(custom_id, input_array, model):
                         yield response_data
                     else:
                         error_message = await moderation_object.text()
-                        logger.error(f'Error in response: {error_message}')
                         yield {'error': error_message}
             except Exception as e:
                 logger.error('An error occurred while making the HTTP request.')

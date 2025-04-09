@@ -27,7 +27,6 @@ class Predicator:
         self.bot = bot
         self.config = bot.config
 
-    # **Decorator Methods for Command Checks**
     def at_home(self):
         async def predicate(ctx):
             return ctx.guild is not None and ctx.guild.id == self.config['discord_testing_guild_id']
@@ -35,7 +34,6 @@ class Predicator:
 
     def release_mode(self):
         async def predicate(ctx):
-            logger.info(f"Release mode setting: {self.config.get('discord_release_mode', False)}")
             return (
                 ctx.author.id == 154749533429956608 or 
                 self.config.get('discord_release_mode', False) or 
@@ -43,20 +41,19 @@ class Predicator:
             )
         return commands.check(predicate)
 
-    # **Boolean Methods for Inline Checks**
     async def is_at_home_func(self, guild_id: int) -> bool:
         if guild_id == self.config['discord_testing_guild_id'] or (guild_id in self.config['discord_testing_guild_ids']):
             return True
 
-    def is_spawd(self, ctx: commands.Context) -> bool:
-        return ctx.author.id == 154749533429956608
+    def is_developer(self, member: discord.Member) -> bool:
+        return member.id == self.config['discord_owner_id']
 
     async def is_vegan_user(self, user: discord.User) -> bool:
         guild_ids = self.config['discord_testing_guild_ids']
         for guild_id in guild_ids:
             guild = self.bot.get_guild(guild_id)
             if guild:
-                vegan_role = get(guild.roles, name="vegan")
+                vegan_role = get(guild.roles, name='vegan')
                 if vegan_role and vegan_role in user.roles:
                     return True
         return False

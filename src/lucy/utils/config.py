@@ -55,39 +55,39 @@ class Config:
     def _create_api_keys(config: Dict[str, Any]):
         try:
             num_keys = int(prompt_for_values('How many API keys do you want to set up? (1-20)', '1'))
-            num_keys = min(max(num_keys, 1), 20)  # Ensure between 1 and 20
+            num_keys = min(max(num_keys, 1), 20)
         except ValueError:
             num_keys = 1
         for i in range(1, num_keys + 1):
-            key_name = prompt_for_values(f'Enter a unique name for API key #{i}', f'api_key_{i}')
+            key_name = prompt_for_values(f'Enter a unique name for API key \#{i}', f'api_key_{i}')
             while key_name in config['api_keys']:
-                key_name = prompt_for_values(f'Enter a unique name for API key #{i}', f'api_key_{i}')
+                key_name = prompt_for_values(f'Enter a unique name for API key \#{i}', f'api_key_{i}')
             config['api_keys'][key_name] = {
-                'api_key': prompt_for_values(f'Enter API key for "{key_name}"', ''),
-                'client_id': prompt_for_values(f'Enter client ID for "{key_name}"', ''),
-                'client_secret': prompt_for_values(f'Enter client secret for "{key_name}"', ''),
-                'redirect_uri': prompt_for_values(f'Enter redirect URI for "{key_name}"', '')
+                'api_key': prompt_for_values(f'Enter API key for \'{key_name}\'', ''),
+                'client_id': prompt_for_values(f'Enter client ID for \'{key_name}\'', ''),
+                'client_secret': prompt_for_values(f'Enter client secret for \'{key_name}\'', ''),
+                'redirect_uri': prompt_for_values(f'Enter redirect URI for \'{key_name}\'', '')
             }
 
     @staticmethod
     def _modify_api_keys(config: Dict[str, Any]):
         existing_keys = list(config['api_keys'].keys())
         for key_name in existing_keys:
-            if input(f'Do you want to modify the API key "{key_name}"? (yes/no): ').strip().lower() in ['yes', 'y']:
+            if input(f'Do you want to modify the API key \'{key_name}\'? (yes/no): ').strip().lower() in ['yes', 'y']:
                 config['api_keys'][key_name]['api_key'] = prompt_for_values(
-                    f'Enter API key for "{key_name}"',
+                    f'Enter API key for \'{key_name}\'',
                     config['api_keys'][key_name].get('api_key', '')
                 )
                 config['api_keys'][key_name]['client_id'] = prompt_for_values(
-                    f'Enter client ID for "{key_name}"',
+                    f'Enter client ID for \'{key_name}\'',
                     config['api_keys'][key_name].get('client_id', '')
                 )
                 config['api_keys'][key_name]['client_secret'] = prompt_for_values(
-                    f'Enter client secret for "{key_name}"',
+                    f'Enter client secret for \'{key_name}\'',
                     config['api_keys'][key_name].get('client_secret', '')
                 )
                 config['api_keys'][key_name]['redirect_uri'] = prompt_for_values(
-                    f'Enter redirect URI for "{key_name}"',
+                    f'Enter redirect URI for \'{key_name}\'',
                     config['api_keys'][key_name].get('redirect_uri', '')
                 )
         if len(config['api_keys']) < 20:
@@ -100,14 +100,14 @@ class Config:
                 except ValueError:
                     num_new = 1
                 for i in range(1, num_new + 1):
-                    key_name = prompt_for_values(f'Enter a unique name for new API key #{i}', f'api_key_{len(config["api_keys"]) + 1}')
+                    key_name = prompt_for_values(f'Enter a unique name for new API key \#{i}', f'api_key_{len(config['api_keys']) + 1}')
                     while key_name in config['api_keys']:
-                        key_name = prompt_for_values(f'Enter a unique name for new API key #{i}', f'api_key_{len(config["api_keys"]) + 1}')
+                        key_name = prompt_for_values(f'Enter a unique name for new API key \#{i}', f'api_key_{len(config['api_keys']) + 1}')
                     config['api_keys'][key_name] = {
-                        'api_key': prompt_for_values(f'Enter API key for "{key_name}"', ''),
-                        'client_id': prompt_for_values(f'Enter client ID for "{key_name}"', ''),
-                        'client_secret': prompt_for_values(f'Enter client secret for "{key_name}"', ''),
-                        'redirect_uri': prompt_for_values(f'Enter redirect URI for "{key_name}"', '')
+                        'api_key': prompt_for_values(f'Enter API key for \'{key_name}\'', ''),
+                        'client_id': prompt_for_values(f'Enter client ID for \'{key_name}\'', ''),
+                        'client_secret': prompt_for_values(f'Enter client secret for \'{key_name}\'', ''),
+                        'redirect_uri': prompt_for_values(f'Enter redirect URI for \'{key_name}\'', '')
                     }
 
     @staticmethod
@@ -124,7 +124,7 @@ class Config:
             'discord_token': ('What is the Discord token?', ''),
             'logging_level': ('What is the logging level (DEBUG, INFO, etc.)?', LOGGING_LEVEL),
             'openai_chat_add_completion_to_history': ('Should completions be added to conversations?', OPENAI_CHAT_ADD_COMPLETION_TO_HISTORY),
-            'openai_chat_model': ("Which chat model would you like to use for OpenAI's ChatGPT?", OPENAI_CHAT_MODEL),
+            'openai_chat_model': ('Which chat model would you like to use for OpenAI\'s ChatGPT?', OPENAI_CHAT_MODEL),
             'openai_chat_moderation_model': ('Which OpenAI completions model would you like to use for moderation?', OPENAI_CHAT_MODERATION_MODEL),
             'openai_chat_completion': ('Enable or disable OpenAI text completions (True/False)?', OPENAI_CHAT_COMPLETION),
             'openai_chat_moderation': ('Enable or disable OpenAI text moderation (True/False)?', OPENAI_CHAT_MODERATION),
@@ -151,13 +151,13 @@ class Config:
             if key == 'discord_testing_guild_ids':
                 try:
                     existing_ids = eval(user_input) if isinstance(user_input, str) else user_input
-                    if not isinstance(existing_ids, list):  # Ensure it's a list
+                    if not isinstance(existing_ids, list):
                         existing_ids = []
                 except:
-                    existing_ids = []  # Fallback if eval fails
+                    existing_ids = []
                 new_default = [DISCORD_TESTING_GUILD_ID] + existing_ids
-                config[key] = new_default  # Store it as a proper list
+                config[key] = new_default
             else:
-                config[key] = user_input  # Store normal inpu
+                config[key] = user_input
         return config
 

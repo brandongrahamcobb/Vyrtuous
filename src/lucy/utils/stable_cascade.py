@@ -16,12 +16,12 @@ def stable_cascade(prompt):
             decoder_num_inference_steps=10,
             decoder_guidance_scale=0,
             num_images_per_prompt=1,
-            api_name="/run",
+            api_name='/run',
         )
         return discord.File(result, 'image.webp')
     except ConnectionError as conn_err:
-        print(f"Connection error: {conn_err}")
-        return "Failed to connect to the server. Please try again later."
+        print(f'Connection error: {conn_err}')
+        return 'Failed to connect to the server. Please try again later.'
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return f"An error occurred: {e}"
+        print(f'An unexpected error occurred: {e}')
+        return f'An error occurred: {e}'

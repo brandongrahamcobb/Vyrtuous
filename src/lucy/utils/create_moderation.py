@@ -25,7 +25,6 @@ import traceback
 
 async def create_moderation(input_array):
     try:
-        logger.info('Starting moderation process...')
         config = load_yaml(PATH_CONFIG_YAML)
         api_key = config['api_keys']['OpenAI']['api_key']
         ai_client = AsyncOpenAI(api_key=api_key)
@@ -36,7 +35,6 @@ async def create_moderation(input_array):
             )
             moderation_response = response.json()
             yield moderation_response
-
     except Exception as e:
         error_details = traceback.format_exc()
         logger.error(f'An error occurred during moderation: {error_details}')

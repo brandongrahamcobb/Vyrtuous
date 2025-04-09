@@ -19,12 +19,6 @@ import asyncio
 
 class Paginator:
     def __init__(self, bot, ctx, pages):
-        """
-        A custom paginator for Discord embeds.
-        :param bot: The bot instance
-        :param ctx: The context of the command
-        :param pages: A list of discord.Embed objects
-        """
         self.bot = bot
         self.ctx = ctx
         self.pages = pages
@@ -33,30 +27,30 @@ class Paginator:
 
     async def start(self):
         if not self.pages:
-            await self.ctx.send("There are no tags to display.")
+            await self.ctx.send('There are no tags to display.')
             return
         self.message = await self.ctx.send(embed=self.pages[self.current_page])
-        await self.message.add_reaction("⬅️")
-        await self.message.add_reaction("➡️")
-        await self.message.add_reaction("⏹️")
+        await self.message.add_reaction('⬅️')
+        await self.message.add_reaction('➡️')
+        await self.message.add_reaction('⏹️')
         def check(reaction, user):
             return (
                 user == self.ctx.author
                 and reaction.message.id == self.message.id
-                and str(reaction.emoji) in ["⬅️", "➡️", "⏹️"]
+                and str(reaction.emoji) in ['⬅️', '➡️', '⏹️']
             )
         while True:
             try:
-                reaction, user = await self.bot.wait_for("reaction_add", timeout=60.0, check=check)
-                if str(reaction.emoji) == "⬅️":
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                if str(reaction.emoji) == '⬅️':
                     if self.current_page > 0:
                         self.current_page -= 1
                         await self.message.edit(embed=self.pages[self.current_page])
-                elif str(reaction.emoji) == "➡️":
+                elif str(reaction.emoji) == '➡️':
                     if self.current_page < len(self.pages) - 1:
                         self.current_page += 1
                         await self.message.edit(embed=self.pages[self.current_page])
-                elif str(reaction.emoji) == "⏹️":
+                elif str(reaction.emoji) == '⏹️':
                     await self.message.clear_reactions()
                     break
                 await self.message.remove_reaction(reaction.emoji, user)

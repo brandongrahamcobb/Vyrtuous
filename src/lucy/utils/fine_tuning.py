@@ -29,7 +29,6 @@ async def cancel():
     await ai_client.fine_tuning.jobs.cancel('ftjob-VBRw83PIls4zA25bypQBcCHH')
 
 async def main():
-
     await ai_client.fine_tuning.jobs.create(
         training_file='file-LvuzigtnKkifPazQptC7Mz',
         model='gpt-4o-mini-2024-07-18',
