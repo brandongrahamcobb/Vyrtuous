@@ -766,15 +766,10 @@ class Hybrid(commands.Cog):
                 except Exception as e:
                     logger.error(f'Error adding tag: {e}')
                     await self.handler.send_message(ctx, content='An error occurred while adding the tag.')
-            if act == "borrow":
-                """
-                Usage:
-                    !tag borrow <tag_name>
-                    Optionally, specify the original owner: !tag borrow <tag_name> @UserName
-                """
+            if act == 'borrow':
                 if not name:
                     return await self.handler.send_message(ctx, content=
-                        f"Usage: `{self.bot.command_prefix}tag borrow <tag_name> [@owner]`"
+                        f'Usage: `{self.bot.command_prefix}tag borrow <tag_name> [@owner]`'
                     )
                 mentioned_users = ctx.message.mentions
                 if mentioned_users:
@@ -804,9 +799,9 @@ class Hybrid(commands.Cog):
                 except RuntimeError as re:
                     await self.handler.send_message(ctx, content=str(re))
                 except Exception as e:
-                    logger.error(f"Unexpected error during tag borrowing: {e}")
+                    logger.error(f'Unexpected error during tag borrowing: {e}')
                     await self.handler.send_message(ctx, content=
-                        "An unexpected error occurred while borrowing the tag."
+                        'An unexpected error occurred while borrowing the tag.'
                     )
             elif act == 'list':
                 filter_tag_type = name.lower() if name and name.lower() in ('loop', 'default') else None
@@ -865,6 +860,53 @@ class Hybrid(commands.Cog):
                      except Exception as e:
                          logger.error(f'Error disabling loop: {e}')
                          await self.handler.send_message(ctx, content='Could not disable loop.')
+              elif action == 'rename':
+                 if not name or not content:
+                     return await self.handler.send_message(ctx, content=f'Usage: \"{self.bot.command_prefix}tag rename <old_name> <new_name>`')
+                 old_name = name
+                 new_name = content
+                 try:
+                     row_count = await self.tag_manager.rename_tag(
+                         old_name=old_name,
+                         new_name=new_name,
+                         location_id=ctx.guild.id,
+                         owner_id=ctx.author.id
+                     )
+                     if row_count > 0:
+                         await self.handler.send_message(ctx, content=f'Tag \"{old_name}\" renamed to \"{new_name}\".')
+                     else:
+                         await self.handler.send_message(ctx, content=f'Tag \"{old_name}\" not found or you do not own it.')
+                 except ValueError as ve:
+                     await self.handler.send_message(ctx, content=str(ve))
+                 except Exception as e:
+                     logger.error(f'Error renaming tag: {e}')
+                     await self.handler.send_message(ctx, content='An error occurred while renaming the tag.')
+              elif action == 'update':
+                 if not name:
+                     return await self.handler.send_message(ctx, content=f'Usage: {self.bot.command_prefix}tag update <name> \"new content\" [loop|default]`')
+                 resolved_tag_type = (
+                     tag_type.lower() if tag_type and tag_type.lower() in ('default', 'loop') else None
+                 )
+                 updates = {}
+                 if content is not None:
+                     updates['content'] = content
+                 if attachment_url is not None:
+                     updates['attachment_url'] = attachment_url
+                 if resolved_tag_type is not None:
+                     updates['tag_type'] = resolved_tag_type
+                 try:
+                     result = await self.tag_manager.update_tag(
+                         name=name,
+                         location_id=ctx.guild.id,
+                         owner_id=ctx.author.id,
+                         updates=updates
+                     )
+                     if result > 0:
+                         await self.handler.send_message(ctx, content=f'Tag \"{name}\" updated.')
+                     else:
+                         await self.handler.send_message(ctx, content=f'Tag \"{name}\" not found or you do not own it.')
+                 except Exception as e:
+                     await self.handler.send_message(ctx, content='An error occurred while updating the tag.')
             else:
                 try:
                     tag = await self.tag_manager.get_tag(ctx.guild.id, act)
