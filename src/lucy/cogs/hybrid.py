@@ -14,65 +14,40 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from bs4 import BeautifulSoup
-from collections import defaultdict
-from discord.utils import get
 from discord import Embed, File, app_commands
-from discord.ext import commands, tasks
+from discord.ext import commands
+from googletrans import Translator, LANGUAGES
+from lucy.utils.ai import create_completion, BatchProcessor, OpenAIUsageClient
+from lucy.utils.chemistry import construct_helm_from_peptide, draw_fingerprint, draw_watermarked_molecule, get_mol, get_molecule_name, get_proximity, gsrs, manual_helm_to_smiles
 from lucy.utils.frames import extract_random_frames
-from lucy.utils.add_watermark import add_watermark
-from lucy.utils.average_score import average_score
-from lucy.utils.combine import combine_gallery
-from lucy.utils.create_batch_completion import BatchProcessor
-from lucy.utils.create_completion import create_completion
-from lucy.utils.draw_fingerprint import draw_fingerprint
-from lucy.utils.draw_watermarked_molecule import draw_watermarked_molecule
 from lucy.utils.game import Game
-from lucy.utils.get_mol import construct_helm_from_peptide
-from lucy.utils.get_mol import get_mol
-from lucy.utils.get_mol import manual_helm_to_smiles
-from lucy.utils.get_molecule_name import get_molecule_name
-from lucy.utils.get_proximity import get_proximity
 from lucy.utils.google import google
-from lucy.utils.gsrs import gsrs
 from lucy.utils.helpers import *
-from lucy.utils.image import create_image, create_image_variation, edit_image
+from lucy.utils.image import add_watermark, combine_gallery, create_image, create_image_variation, edit_image, stable_cascade
 from lucy.utils.message import Message
 from lucy.utils.paginator import Paginator
 from lucy.utils.predicator import Predicator
 from lucy.utils.script import script
-from lucy.utils.stable_cascade import stable_cascade
 from lucy.utils.tag import TagManager
 from lucy.utils.unique_pairs import unique_pairs
-from lucy.utils.usage import OpenAIUsageClient
-from PIL import Image
-from random import randint
 from rdkit import Chem
-from rdkit.DataStructs import FingerprintSimilarity
 from rdkit.Chem import AllChem, Crippen
 from random import choice
 from typing import Dict, List, Optional
+
 import asyncio
 import datetime
 import discord
-from googletrans import Translator, LANGUAGES
 import io
 import json
 import openai
 import os
 import pubchempy as pcp
-import pytz
 import re
 import shlex
 import time
 import traceback
 import uuid
-from pyPept.sequence import Sequence, correct_pdb_atoms
-from pyPept.molecule import Molecule
-from pyPept.converter import Converter
-from rdkit import Chem
-import pubchempy as pcp
-import re
 import requests
 
 class Hybrid(commands.Cog):
@@ -116,7 +91,6 @@ class Hybrid(commands.Cog):
         if self.loop_task and not self.loop_task.done():
             self.loop_task.cancel()
             self.loop_task = None
-
 
     def get_language_code(self, language_name):
         language_name = language_name.lower()

@@ -19,7 +19,7 @@ import asyncio
 import time
 import datetime
 import os
-from lucy.utils.create_https_completion import Conversations
+from lucy.utils.ai import Conversations
 from lucy.utils.helpers import load_yaml, PATH_CONFIG_YAML
 from lucy.utils.message import Message
 from lucy.utils.setup_logging import logger

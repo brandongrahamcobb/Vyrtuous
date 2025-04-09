@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands
-from lucy.utils.create_moderation import create_moderation
+from lucy.utils.ai import create_moderation
 from lucy.utils.helpers import *
 from lucy.utils.predicator import Predicator
 from lucy.utils.setup_logging import logger
@@ -27,6 +27,7 @@ import json
 import os
 import shutil
 import tiktoken
+import traceback
 import uuid
 import yaml
 

@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 from lucy.utils.backup import perform_backup, setup_backup_directory
 from lucy.utils.helpers import *
 from lucy.utils.tag import TagManager
-from lucy.utils.create_batch_completion import BatchProcessor
+from lucy.utils.ai import BatchProcessor
 import asyncio
 import datetime
 import discord

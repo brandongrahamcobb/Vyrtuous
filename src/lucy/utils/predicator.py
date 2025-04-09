@@ -19,8 +19,7 @@ from discord.ext import commands
 from discord.utils import get
 import discord
 import logging
-
-logger = logging.getLogger('discord')
+from lucy.utils.setup_logging import logger
 
 class Predicator:
     def __init__(self, bot):
@@ -46,7 +45,10 @@ class Predicator:
             return True
 
     def is_developer(self, member: discord.Member) -> bool:
-        return member.id == self.config['discord_owner_id']
+        if member is not None:
+            return member.id == self.config['discord_owner_id']
+        else:
+            return False
 
     async def is_vegan_user(self, user: discord.User) -> bool:
         guild_ids = self.config['discord_testing_guild_ids']
