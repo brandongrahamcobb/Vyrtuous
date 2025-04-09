@@ -30,10 +30,8 @@ import traceback
 
 async def create_https_moderation(custom_id, input_array, model):
     try:
-        logger.info('Loading configuration file.')
         config = load_yaml(PATH_CONFIG_YAML)
         api_key = config['api_keys']['OpenAI']['api_key']
-        logger.info('API key loaded successfully.')
         ai_client = AsyncOpenAI(api_key=api_key)
         headers = {'Authorization': f'Bearer {api_key}'}
         logger.info('Headers set for the request.')
@@ -41,15 +39,11 @@ async def create_https_moderation(custom_id, input_array, model):
             'input': input_array,
             'model': model,
         }
-        logger.info('Request data prepared.')
         async with aiohttp.ClientSession() as session:
             try:
-                logger.info('Sending request to OpenAI moderation endpoint.')
                 async with session.post(url=OPENAI_ENDPOINT_URLS['moderations'], headers=headers, json=request_data) as moderation_object:
-                    logger.info(f'Received response with status: {moderation_object.status}')
                     if moderation_object.status == 200:
                         response_data = await moderation_object.json()
-                        logger.info('Request successful. Returning response data.')
                         yield response_data
                     else:
                         error_message = await moderation_object.text()

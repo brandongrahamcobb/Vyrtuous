@@ -217,8 +217,7 @@ class Message:
         )
         if can_send:
             try:
-                async with ctx.typing():
-                    await self._send_message(ctx.reply, content=content, file=file, embed=embed)
+                await self._send_message(ctx.reply, content=content, file=file, embed=embed)
             except discord.HTTPException as e:
                 if e.code == 50035:  # Invalid Form Body due to message_reference
                     await self._send_message(ctx.send, content=content, file=file, embed=embed)
@@ -238,38 +237,51 @@ class Message:
         await send_func(**kwargs)
 
 
+    async def completion_prep(self, array) -> bool:
+        if not self.config['openai_chat_moderation']:
+            return
+        overall = []
+        reasons = []
+        for item in array:
+            async for moderation_completion in create_moderation(input_array=[item]):
+                try:
+                    full_response = json.loads(moderation_completion)
+                    results = full_response.get('results', [])
+                    if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
+                        result = results[0]
+                        flagged = result.get('flagged', False)
+                        categories = result.get('categories', {})
+                        reasons = [category.replace("/", " → ").replace("-", " ").capitalize() for category, value in categories.items() if value is True]
+                        if reasons:
+                            reason_str = ", ".join(reasons)
+                        else:
+                            reason_str = "Unspecified moderation issue"
+                        logger.info(reason_str)
+                        overall.append(flagged)
+                        reasons.append(reason_str)
+                except Exception as e:
+                    logger.error(traceback.format_exc())
+                    print(f'An error occurred: {e}')
+        if True in overall:
+            yield True, reasons
+        else:
+            yield False, None
+
     async def ai_handler(self, ctx: commands.Context):
         array = await self.process_array(ctx.message.content, attachments=ctx.message.attachments)
-        if not array:
-            logger.error("Invalid 'messages': The array is empty or improperly formatted.")
-            await self.send_message(ctx, content="Your message must include text or valid attachments.")
-            return
-        logger.info(f"Final payload for processing: {json.dumps(array, indent=2)}")
-        for item in array:
-            if self.config['openai_chat_moderation']:
-                async for moderation_completion in create_moderation(input_array=[item]):
-                    try:
-                        full_response = json.loads(moderation_completion)
-                        results = full_response.get('results', [])
-                        if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
-                            result = results[0]
-                            flagged = result.get('flagged', False)
-                            categories = result.get('categories', {})
-                            reasons = [category.replace("/", " → ").replace("-", " ").capitalize() for category, value in categories.items() if value is True]
-                            if reasons:
-                                reason_str = ", ".join(reasons)
-                            else:
-                                reason_str = "Unspecified moderation issue"
-                            await self.handle_moderation(ctx.message, reason_str)
-                            return
-                    except Exception as e:
-                        logger.error(traceback.format_exc())
-                        print(f'An error occurred: {e}')
-        if self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
-            async for chat_completion in self.generate_chat_completion(
-                custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT,
-            ):
-                await self.handle_large_response(ctx, chat_completion)
+        async for flagged, reasons in self.completion_prep(array):
+            if flagged:
+                for reason in reasons:
+                    await self.handle_moderation(ctx.message, reason)
+                    return
+            elif self.config['openai_chat_completion'] and self.bot.user in ctx.message.mentions:
+                async for chat_completion in self.generate_chat_completion(
+                    custom_id=ctx.author.id, array=array, sys_input=OPENAI_CHAT_SYS_INPUT,
+                ):
+                    await self.handle_large_response(ctx, chat_completion)
+            else:
+                logger.info('Either you do not have completions enabled or the bot was not mentioned.')
+                return
 
     def handle_users(self, author: str):
         author_char = author[0].upper()

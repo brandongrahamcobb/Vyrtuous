@@ -30,38 +30,25 @@ class Config:
 
     @classmethod
     def get_config(cls) -> Dict[str, Any]:
-        logger.info('Attempting to load configuration.')
         if cls._config is None:
             if isfile(PATH_CONFIG_YAML):
-                logger.info(f'Config file found at {PATH_CONFIG_YAML}. Loading configuration.')
                 config = load_yaml(PATH_CONFIG_YAML)
                 if input('Do you want to change any settings? (yes/no): ').strip().lower() in ['yes', 'y']:
                     config['api_keys'] = config.get('api_keys', {})
-                    logger.info('API keys initialized.')
                     cls._modify_api_keys(config)
-                    logger.info('Prompting for other configuration values.')
                     config = cls._prompt_additional_config(config)
                     with open(PATH_CONFIG_YAML, 'w') as file:
                         yaml.dump(config, file)
-                        logger.info(f'Configuration updated and saved to {PATH_CONFIG_YAML}.')
-                else:
-                    logger.info('No changes made to the existing configuration.')
             else:
-                logger.info(f'Config file not found. Creating new config file at {PATH_CONFIG_YAML}.')
                 makedirs(dirname(PATH_CONFIG_YAML), exist_ok=True)
                 config = {
                     'api_keys': {}
                 }
                 cls._create_api_keys(config)
-                logger.info('Prompting for other configuration values.')
                 config = cls._prompt_additional_config(config, creating=True)
                 with open(PATH_CONFIG_YAML, 'w') as file:
                     yaml.dump(config, file)
-                    logger.info(f'Configuration saved to {PATH_CONFIG_YAML}.')
             cls._config = config
-            logger.info('Configuration successfully loaded.')
-        else:
-            logger.info('Configuration already loaded, returning cached version.')
         return cls._config
 
     @staticmethod
@@ -70,14 +57,11 @@ class Config:
             num_keys = int(prompt_for_values('How many API keys do you want to set up? (1-20)', '1'))
             num_keys = min(max(num_keys, 1), 20)  # Ensure between 1 and 20
         except ValueError:
-            logger.warning('Invalid number entered. Defaulting to 1 API key.')
             num_keys = 1
         for i in range(1, num_keys + 1):
             key_name = prompt_for_values(f'Enter a unique name for API key #{i}', f'api_key_{i}')
             while key_name in config['api_keys']:
-                logger.warning(f'API key name "{key_name}" already exists. Please choose a different name.')
                 key_name = prompt_for_values(f'Enter a unique name for API key #{i}', f'api_key_{i}')
-            logger.info(f'Configuring API key "{key_name}".')
             config['api_keys'][key_name] = {
                 'api_key': prompt_for_values(f'Enter API key for "{key_name}"', ''),
                 'client_id': prompt_for_values(f'Enter client ID for "{key_name}"', ''),
@@ -88,10 +72,8 @@ class Config:
     @staticmethod
     def _modify_api_keys(config: Dict[str, Any]):
         existing_keys = list(config['api_keys'].keys())
-        logger.info(f'You have {len(existing_keys)} existing API key(s).')
         for key_name in existing_keys:
             if input(f'Do you want to modify the API key "{key_name}"? (yes/no): ').strip().lower() in ['yes', 'y']:
-                logger.info(f'Modifying API key "{key_name}".')
                 config['api_keys'][key_name]['api_key'] = prompt_for_values(
                     f'Enter API key for "{key_name}"',
                     config['api_keys'][key_name].get('api_key', '')
@@ -116,14 +98,11 @@ class Config:
                     num_new = int(prompt_for_values(f'How many more API keys do you want to add? (1-{remaining})', '1'))
                     num_new = min(max(num_new, 1), remaining)
                 except ValueError:
-                    logger.warning(f'Invalid number entered. Defaulting to 1 API key.')
                     num_new = 1
                 for i in range(1, num_new + 1):
                     key_name = prompt_for_values(f'Enter a unique name for new API key #{i}', f'api_key_{len(config["api_keys"]) + 1}')
                     while key_name in config['api_keys']:
-                        logger.warning(f'API key name "{key_name}" already exists. Please choose a different name.')
                         key_name = prompt_for_values(f'Enter a unique name for new API key #{i}', f'api_key_{len(config["api_keys"]) + 1}')
-                    logger.info(f'Configuring new API key "{key_name}".')
                     config['api_keys'][key_name] = {
                         'api_key': prompt_for_values(f'Enter API key for "{key_name}"', ''),
                         'client_id': prompt_for_values(f'Enter client ID for "{key_name}"', ''),
@@ -169,7 +148,6 @@ class Config:
         }
         for key, (prompt_text, default_value) in config_fields.items():
             user_input = prompt_for_values(prompt_text, config.get(key, default_value))
-
             if key == 'discord_testing_guild_ids':
                 try:
                     existing_ids = eval(user_input) if isinstance(user_input, str) else user_input

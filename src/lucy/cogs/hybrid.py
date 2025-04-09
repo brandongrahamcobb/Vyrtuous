@@ -213,11 +213,13 @@ class Hybrid(commands.Cog):
                     'content': json.dumps(input_text_dict)
                 }
             ]
-            async for completion in create_completion(array):
-                color_values = json.loads(completion)
-                r = color_values['r']
-                g = color_values['g']
-                b = color_values['b']
+            async for flagged, reasons in self.handler.completion_prep(array):
+                if not flagged:
+                    async for completion in create_completion(array):
+                        color_values = json.loads(completion)
+                        r = color_values['r']
+                        g = color_values['g']
+                        b = color_values['b']
         else:
             g = args[1]
             b = args[2]
@@ -255,6 +257,7 @@ class Hybrid(commands.Cog):
     ):
         if not self.predicator.is_release_mode_func(ctx):
             return
+        linearity = linearity if isinstance(linearity, bool) else False
         rdkit_bool = rdkit_coords if isinstance(rdkit_coords, bool) else True
         quantity = dupes if isinstance(dupes, int) else 1
         rotation = r if isinstance(r, int) else 0
@@ -330,7 +333,7 @@ class Hybrid(commands.Cog):
                             draw_fingerprint([mol, refmol], rdkit_bool),
                             draw_fingerprint([refmol, mol], rdkit_bool, rotation)
                         ]
-                    if len(fingerprints) == 2:
+                    if len(fingerprints) in [2, 3]:
                         linearity = True
                     combined_image = combine_gallery(fingerprints, names, name, 1, linearity)
                     await self.handler.send_message(ctx, content=None, file=discord.File(combined_image, f'molecule_comparison.png'))
@@ -356,7 +359,7 @@ class Hybrid(commands.Cog):
             elif option == 'shadow':
                 molecule_objects, names, name = await get_molecules(molecules)
                 molecule_images = [draw_watermarked_molecule(mol_obj, rdkit_bool) for mol_obj in molecule_objects]
-                if len(molecule_images) == 2:
+                if len(molecule_images) in [2,3]:
                     linearity = True  # Set linearity to True for this case
                 combined_image = combine_gallery(molecule_images, names, name, quantity, linearity)
                 await self.handler.send_message(ctx, content=None, file=discord.File(combined_image, 'molecule_comparison.png'))
@@ -364,7 +367,7 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content='Invalid option. Use `compare`, `glow`, `gsrs`, or `shadow`.')
         if ctx.interaction:
             await ctx.interaction.response.defer(ephemeral=True)
-            await function()
+            await function(linearity)
         else:
             if ctx.channel and isinstance(ctx.channel, discord.abc.GuildChannel):
                 permissions = ctx.channel.permissions_for(ctx.guild.me)

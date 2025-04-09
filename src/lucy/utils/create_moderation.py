@@ -14,10 +14,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from openai import AsyncOpenAI
 from lucy.utils.helpers import *
 from lucy.utils.load_yaml import load_yaml
 from lucy.utils.setup_logging import logger
+from openai import AsyncOpenAI
 
 import json
 import openai
@@ -27,22 +27,14 @@ async def create_moderation(input_array):
     try:
         logger.info('Starting moderation process...')
         config = load_yaml(PATH_CONFIG_YAML)
-        logger.debug('Configuration loaded successfully.')
-
         api_key = config['api_keys']['OpenAI']['api_key']
-        logger.debug('API key retrieved successfully.')
-
         ai_client = AsyncOpenAI(api_key=api_key)
-        logger.info('AI client initialized.')
-
         for item in input_array:
             response = await ai_client.moderations.create(
                 model='omni-moderation-latest',
                 input=input_array,
             )
-            logger.info('Moderation API call completed.')
             moderation_response = response.json()
-            logger.info(f'Moderation Response: {moderation_response}')
             yield moderation_response
 
     except Exception as e:
