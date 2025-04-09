@@ -18,7 +18,7 @@ from lucy.bots.discord_bot import DiscordBot
 from lucy.bots.linkedin_bot import LinkedInBot
 from lucy.bots.twitch_bot import TwitchBot
 from lucy.utils.config import Config
-from lucy.utils.create_https_completion import Conversations
+from lucy.utils.ai import Conversations
 from lucy.utils.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
 from lucy.utils.linkedin_oauth import linkedin_app, LinkedInOAuth, setup_linkedin_routes
 from lucy.utils.patreon_oauth import patreon_app, PatreonOAuth, setup_patreon_routes

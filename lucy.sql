@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 17.2
--- Dumped by pg_dump version 17.2
+-- Dumped from database version 17.4
+-- Dumped by pg_dump version 17.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -452,7 +452,6 @@ COPY public.citations (id, reference_id, user_id, citation_style, citation_text,
 --
 
 COPY public.faction_members (user_id, faction_name) FROM stdin;
-154749533429956608	THC
 \.
 
 
@@ -461,7 +460,6 @@ COPY public.faction_members (user_id, faction_name) FROM stdin;
 --
 
 COPY public.factions (name, xp, level) FROM stdin;
-THC	7.450098697142053597	1
 \.
 
 
@@ -478,7 +476,6 @@ COPY public.loop_configs (guild_id, channel_id, enabled, updated_at) FROM stdin;
 --
 
 COPY public.moderation_counts (user_id, flagged_count, last_flagged) FROM stdin;
-154749533429956608	3	2025-01-20 14:21:34.51824
 \.
 
 
@@ -487,7 +484,6 @@ COPY public.moderation_counts (user_id, flagged_count, last_flagged) FROM stdin;
 --
 
 COPY public.pdf_catalog (id, user_id, title, file_url, description, tags, uploaded_at) FROM stdin;
-1	154749533429956608	Creatine Is a Scavenger for Methylglyoxal under Physiological Conditions via Formation of N-(4-Methyl-5-oxo-1-imidazolin-2-yl)sarcosine (MG-HCr)	/home/spawd/Downloads/pdfs/Creatine_Is_a_Scavenger_for_Methylglyoxal_under_Physiological_Conditions_via_Formation_of_N-(4-Methyl-5-oxo-1-imidazolin-2-yl)sarcosine_(MG-HCr)_154749533429956608.pdf	https://doi.org/10.1021/jf505998z	{"carbonyl stress; creatine; diabetes; dicarbonyl compounds; glycation; meat; methylglyoxal"}	2025-01-20 11:04:28.105413
 \.
 
 
@@ -528,17 +524,6 @@ COPY public.tags (tag_id, name, location_id, owner_id, content, attachment_url, 
 --
 
 COPY public.users (id, name, create_date, level, exp, faction_name) FROM stdin;
-154749533429956608	spawd.	2025-03-19 17:34:03.388736-04	1	8.037142450274286481	THC
-1325155980727816236	fredrick.krueger	2025-03-26 08:08:17.067277-04	1	0.695153851281538845	\N
-797847699709231115	idkidkidkshauna	2025-03-26 08:09:02.02735-04	1	1.287937889035274066	\N
-1286700751451848755	kartsalapsi	2025-03-26 08:09:19.128906-04	1	0.08000285962624443	\N
-1036004538504708299	dinguskitty	2025-03-20 14:01:25.092254-04	1	0.048761001320651025	\N
-1352971995758989373	adem08360	2025-03-24 19:27:12.768803-04	1	0.03570315333775605	\N
-1353869482380234772	jubilant_dragon_20974	2025-03-24 19:28:10.130343-04	1	0.03633183023051432	\N
-1353866485830783059	darine08532	2025-03-24 19:46:26.537488-04	1	0.0403606401024761	\N
-832012774040141894	User_832012774040141894	2025-03-24 19:51:07.175095-04	1	0.03807772621594197	\N
-1130481811965886515	beanie2722	2025-03-26 16:09:51.790644-04	1	0.159223484441386855	\N
-1222656637488205866	telepathyconspiracy	2025-03-26 15:45:07.423755-04	1	0.119831615652808029	\N
 \.
 
 
@@ -588,7 +573,7 @@ SELECT pg_catalog.setval('public.reference_list_id_seq', 1, false);
 -- Name: tags_tag_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.tags_tag_id_seq', 1, false);
+SELECT pg_catalog.setval('public.tags_tag_id_seq', 2, true);
 
 
 --
@@ -680,14 +665,6 @@ ALTER TABLE ONLY public.roles_backup
 
 
 --
--- Name: tags tags_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.tags
-    ADD CONSTRAINT tags_pkey PRIMARY KEY (tag_id);
-
-
---
 -- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -703,26 +680,11 @@ CREATE UNIQUE INDEX idx_borrowed_tags_unique_active ON public.borrowed_tags USIN
 
 
 --
--- Name: idx_tags_lower_name_location_owner; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE UNIQUE INDEX idx_tags_lower_name_location_owner ON public.tags USING btree (lower((name)::text), location_id, owner_id);
-
-
---
 -- Name: annotations annotations_pdf_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.annotations
     ADD CONSTRAINT annotations_pdf_id_fkey FOREIGN KEY (pdf_id) REFERENCES public.pdfs(id) ON DELETE CASCADE;
-
-
---
--- Name: borrowed_tags borrowed_tags_original_tag_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.borrowed_tags
-    ADD CONSTRAINT borrowed_tags_original_tag_id_fkey FOREIGN KEY (original_tag_id) REFERENCES public.tags(tag_id) ON DELETE CASCADE;
 
 
 --
@@ -762,156 +724,13 @@ ALTER TABLE ONLY public.pdfs
 --
 
 REVOKE USAGE ON SCHEMA public FROM PUBLIC;
-GRANT USAGE ON SCHEMA public TO spawd;
 GRANT USAGE ON SCHEMA public TO postgres;
-
-
---
--- Name: TABLE annotations; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.annotations TO spawd;
-
-
---
--- Name: SEQUENCE annotations_id_seq; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON SEQUENCE public.annotations_id_seq TO spawd;
-
-
---
--- Name: TABLE borrowed_tags; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.borrowed_tags TO spawd;
-
-
---
--- Name: SEQUENCE borrowed_tags_borrow_id_seq; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON SEQUENCE public.borrowed_tags_borrow_id_seq TO spawd;
-
-
---
--- Name: TABLE citations; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.citations TO spawd;
-
-
---
--- Name: SEQUENCE citations_id_seq; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON SEQUENCE public.citations_id_seq TO spawd;
-
-
---
--- Name: TABLE faction_members; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.faction_members TO spawd;
-
-
---
--- Name: TABLE factions; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.factions TO spawd;
-
-
---
--- Name: TABLE loop_configs; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.loop_configs TO spawd;
-
-
---
--- Name: TABLE moderation_counts; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.moderation_counts TO spawd;
-
-
---
--- Name: TABLE pdf_catalog; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pdf_catalog TO spawd;
-
-
---
--- Name: SEQUENCE pdf_catalog_id_seq; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON SEQUENCE public.pdf_catalog_id_seq TO spawd;
-
-
---
--- Name: TABLE pdfs; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.pdfs TO spawd;
-
-
---
--- Name: SEQUENCE pdfs_id_seq; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON SEQUENCE public.pdfs_id_seq TO spawd;
-
-
---
--- Name: TABLE reference_list; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.reference_list TO spawd;
-
-
---
--- Name: SEQUENCE reference_list_id_seq; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON SEQUENCE public.reference_list_id_seq TO spawd;
-
-
---
--- Name: TABLE roles_backup; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.roles_backup TO spawd;
-
-
---
--- Name: TABLE tags; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.tags TO spawd;
-
-
---
--- Name: SEQUENCE tags_tag_id_seq; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON SEQUENCE public.tags_tag_id_seq TO spawd;
-
-
---
--- Name: TABLE users; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.users TO spawd;
-
 
 --
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO spawd;
 
 
 --
@@ -919,7 +738,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENC
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO spawd;
 
 
 --
@@ -927,7 +745,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIO
 --
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO postgres;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO spawd;
 
 
 --

@@ -19,7 +19,7 @@ import discord
 import logging
 
 from discord.ext import commands
-from lucy.utils.create_https_completion import Conversations
+from lucy.utils.ai import Conversations
 from lucy.utils.helpers import *
 from lucy.utils.setup_logging import logger
 from typing import List, Optional
@@ -27,7 +27,6 @@ from typing import List, Optional
 
 class DiscordBot(commands.Bot):
     def __init__(self, *, config, db_pool: asyncpg.Pool, conversations, lock, oauth_token, **kwargs):
-        logger.info('Initializing Lucy Discord bot...')
         try:
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'], intents=intents, **kwargs)
@@ -39,26 +38,17 @@ class DiscordBot(commands.Bot):
             self.oauth_token = oauth_token
             self.api_key = self.config['api_keys']['Discord']['api_key']
             self.testing_guild_id = self.config['discord_testing_guild_id']
-
-            logger.info('Lucy Discord bot initialized successfully.')
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {e}')
 
     async def setup_hook(self) -> None:
         try:
-            logger.info('Starting Discord bot setup_hook...')
             cogs = DISCORD_COGS
             for cog in cogs:
-                logger.debug(f'Loading extension: {cog}')
                 await self.load_extension(cog)
-                logger.info(f'Extension {cog} loaded successfully.')
             if self.testing_guild_id:
-                logger.debug(f'Setting up testing guild with ID: {self.testing_guild_id}')
                 guild = discord.Object(id=self.testing_guild_id)
                 self.tree.copy_global_to(guild=guild)
                 await self.tree.sync(guild=guild)
-                logger.info(f'Commands synced with testing guild ID: {self.testing_guild_id}')
-            else:
-                logger.info('No testing guild ID provided; skipping guild sync.')
         except Exception as e:
             logger.error(f'Error during Discord bot setup_hook: {e}')

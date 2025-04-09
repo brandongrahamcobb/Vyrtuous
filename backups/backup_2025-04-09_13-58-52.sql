@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 17.2
--- Dumped by pg_dump version 17.2
+-- Dumped from database version 17.4
+-- Dumped by pg_dump version 17.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -16,24 +16,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: update_tokens_from_pledge(); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.update_tokens_from_pledge() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $_$
-BEGIN
-    UPDATE users
-    SET token_balance = NEW.pledge_amount_cents / 100 * 10 -- Example: $1 = 10 tokens
-    WHERE user_id = NEW.user_id;
-    RETURN NEW;
-END;
-$_$;
-
-
-ALTER FUNCTION public.update_tokens_from_pledge() OWNER TO postgres;
 
 SET default_tablespace = '';
 
@@ -154,6 +136,31 @@ ALTER SEQUENCE public.citations_id_seq OWNED BY public.citations.id;
 
 
 --
+-- Name: faction_members; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.faction_members (
+    user_id bigint NOT NULL,
+    faction_name character varying(255) NOT NULL
+);
+
+
+ALTER TABLE public.faction_members OWNER TO postgres;
+
+--
+-- Name: factions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.factions (
+    name character varying(255) NOT NULL,
+    xp numeric DEFAULT 0 NOT NULL,
+    level integer DEFAULT 1 NOT NULL
+);
+
+
+ALTER TABLE public.factions OWNER TO postgres;
+
+--
 -- Name: loop_configs; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -173,49 +180,12 @@ ALTER TABLE public.loop_configs OWNER TO postgres;
 
 CREATE TABLE public.moderation_counts (
     user_id bigint NOT NULL,
-    flagged_count integer DEFAULT 0 NOT NULL
+    flagged_count integer DEFAULT 0,
+    last_flagged timestamp without time zone DEFAULT now()
 );
 
 
 ALTER TABLE public.moderation_counts OWNER TO postgres;
-
---
--- Name: patreon_data; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.patreon_data (
-    patreon_id integer NOT NULL,
-    user_id bigint,
-    patreon_email character varying(255),
-    pledge_amount_cents integer NOT NULL,
-    tier character varying(50) NOT NULL,
-    synced_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.patreon_data OWNER TO postgres;
-
---
--- Name: patreon_data_patreon_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.patreon_data_patreon_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.patreon_data_patreon_id_seq OWNER TO postgres;
-
---
--- Name: patreon_data_patreon_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.patreon_data_patreon_id_seq OWNED BY public.patreon_data.patreon_id;
-
 
 --
 -- Name: pdf_catalog; Type: TABLE; Schema: public; Owner: postgres
@@ -336,16 +306,17 @@ ALTER SEQUENCE public.reference_list_id_seq OWNED BY public.reference_list.id;
 
 
 --
--- Name: reference_tags; Type: TABLE; Schema: public; Owner: postgres
+-- Name: roles_backup; Type: TABLE; Schema: public; Owner: postgres
 --
 
-CREATE TABLE public.reference_tags (
-    reference_id bigint NOT NULL,
-    tag_id bigint NOT NULL
+CREATE TABLE public.roles_backup (
+    user_id bigint NOT NULL,
+    role_ids bigint[],
+    "timestamp" bigint
 );
 
 
-ALTER TABLE public.reference_tags OWNER TO postgres;
+ALTER TABLE public.roles_backup OWNER TO postgres;
 
 --
 -- Name: tags; Type: TABLE; Schema: public; Owner: postgres
@@ -381,63 +352,10 @@ CREATE SEQUENCE public.tags_tag_id_seq
 ALTER SEQUENCE public.tags_tag_id_seq OWNER TO postgres;
 
 --
--- Name: tags_tag_id_seq1; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: tags_tag_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
-CREATE SEQUENCE public.tags_tag_id_seq1
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.tags_tag_id_seq1 OWNER TO postgres;
-
---
--- Name: tags_tag_id_seq1; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.tags_tag_id_seq1 OWNED BY public.tags.tag_id;
-
-
---
--- Name: token_usage_logs; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.token_usage_logs (
-    usage_id integer NOT NULL,
-    user_id bigint,
-    tokens_used integer NOT NULL,
-    action_type character varying(255) NOT NULL,
-    description text,
-    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.token_usage_logs OWNER TO postgres;
-
---
--- Name: token_usage_logs_usage_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.token_usage_logs_usage_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.token_usage_logs_usage_id_seq OWNER TO postgres;
-
---
--- Name: token_usage_logs_usage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.token_usage_logs_usage_id_seq OWNED BY public.token_usage_logs.usage_id;
+ALTER SEQUENCE public.tags_tag_id_seq OWNED BY public.tags.tag_id;
 
 
 --
@@ -449,7 +367,8 @@ CREATE TABLE public.users (
     name character varying(255) NOT NULL,
     create_date timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     level integer DEFAULT 1 NOT NULL,
-    exp numeric DEFAULT 0 NOT NULL
+    exp numeric DEFAULT 0 NOT NULL,
+    faction_name character varying(255) DEFAULT NULL::character varying
 );
 
 
@@ -477,13 +396,6 @@ ALTER TABLE ONLY public.citations ALTER COLUMN id SET DEFAULT nextval('public.ci
 
 
 --
--- Name: patreon_data patreon_id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.patreon_data ALTER COLUMN patreon_id SET DEFAULT nextval('public.patreon_data_patreon_id_seq'::regclass);
-
-
---
 -- Name: pdf_catalog id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -508,14 +420,7 @@ ALTER TABLE ONLY public.reference_list ALTER COLUMN id SET DEFAULT nextval('publ
 -- Name: tags tag_id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.tags ALTER COLUMN tag_id SET DEFAULT nextval('public.tags_tag_id_seq1'::regclass);
-
-
---
--- Name: token_usage_logs usage_id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.token_usage_logs ALTER COLUMN usage_id SET DEFAULT nextval('public.token_usage_logs_usage_id_seq'::regclass);
+ALTER TABLE ONLY public.tags ALTER COLUMN tag_id SET DEFAULT nextval('public.tags_tag_id_seq'::regclass);
 
 
 --
@@ -543,10 +448,29 @@ COPY public.citations (id, reference_id, user_id, citation_style, citation_text,
 
 
 --
+-- Data for Name: faction_members; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.faction_members (user_id, faction_name) FROM stdin;
+154749533429956608	Dream
+\.
+
+
+--
+-- Data for Name: factions; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.factions (name, xp, level) FROM stdin;
+Dream	0.81217959977011187	1
+\.
+
+
+--
 -- Data for Name: loop_configs; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.loop_configs (guild_id, channel_id, enabled, updated_at) FROM stdin;
+1347284827350630591	1347284828894265398	t	2025-04-05 14:31:46.876127-04
 \.
 
 
@@ -554,19 +478,11 @@ COPY public.loop_configs (guild_id, channel_id, enabled, updated_at) FROM stdin;
 -- Data for Name: moderation_counts; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.moderation_counts (user_id, flagged_count) FROM stdin;
-1277012472016015370	1
-1273029373242638366	1
-1310354178882670682	1
-154749533429956608	3
-\.
-
-
---
--- Data for Name: patreon_data; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.patreon_data (patreon_id, user_id, patreon_email, pledge_amount_cents, tier, synced_at) FROM stdin;
+COPY public.moderation_counts (user_id, flagged_count, last_flagged) FROM stdin;
+858565178979385354	7	2025-04-01 07:27:29.420417
+791945428832223242	12	2025-04-04 12:49:10.918224
+154749533429956608	0	2025-01-20 14:21:34.51824
+366138954497523725	2	2025-04-04 18:56:20.945411
 \.
 
 
@@ -575,6 +491,7 @@ COPY public.patreon_data (patreon_id, user_id, patreon_email, pledge_amount_cent
 --
 
 COPY public.pdf_catalog (id, user_id, title, file_url, description, tags, uploaded_at) FROM stdin;
+1	154749533429956608	Creatine Is a Scavenger for Methylglyoxal under Physiological Conditions via Formation of N-(4-Methyl-5-oxo-1-imidazolin-2-yl)sarcosine (MG-HCr)	/home/spawd/Downloads/pdfs/Creatine_Is_a_Scavenger_for_Methylglyoxal_under_Physiological_Conditions_via_Formation_of_N-(4-Methyl-5-oxo-1-imidazolin-2-yl)sarcosine_(MG-HCr)_154749533429956608.pdf	https://doi.org/10.1021/jf505998z	{"carbonyl stress; creatine; diabetes; dicarbonyl compounds; glycation; meat; methylglyoxal"}	2025-01-20 11:04:28.105413
 4	154749533429956608	MG-HCr, the Methylglyoxal-Derived Hydroimidazolone of Creatine, a Biomarker for the Dietary Intake of Animal Source Food	https://cdn.discordapp.com/attachments/1330241956164534403/1330255483298254928/MG-HCr_the_Methylglyoxal-Derived_Hydroimidazolone_of_Creatine_a_Biomarker_for_the_Dietary_Intake_of_Animal_Source_Food_-_PubMed.pdf?ex=678d5076&is=678bfef6&hm=77a7db5847bcdd8b255f7ae8b17c17e5a147352538e569fc5251a5ae7842d13a&	https://pubs.acs.org/doi/10.1021/acs.jafc.0c00907	{methylglyoxal,glycation,creatine,"dietary study",biomarker,"meat consumption",veganism,vegetarianism}	2025-01-18 14:19:08.285982
 8	154749533429956608	Plasma levels of advanced glycation end products in healthy, long-term vegetarians and subjects on a western mixed diet	https://cdn.discordapp.com/attachments/1330241956164534403/1330260537488965653/Plasma_levels_of_advanced_glycation_end_products_in_healthy_long-term_vegetarians_and_subjects_on_a_western_mixed_diet___European_Journal_of_Nutrition.pdf?ex=678d552b&is=678c03ab&hm=0c3d7c4320bff6fd78ec0ac7f9b0f47f395a23eec9fc98ca58345badc39d5526&	https://link.springer.com/article/10.1007/s394-001-8356-3	{"vegetarian diet","advanced glycation end products",carboxymethyllysine,"kindey function"}	2025-01-18 14:39:12.983434
 9	154749533429956608	Morphine Binds Creatine Kinase B and Inhibits Its Activity	https://cdn.discordapp.com/attachments/1330241956164534403/1330271623689011210/fncel-12-00464.pdf?ex=678d5f7e&is=678c0dfe&hm=e8758bd11c31ea181dc2e0fd00dd83a4bd246727090b215405259bab855ffba8&	https://doi.org/10.3389/fncel.2018.00464	{ASB9,"ankyrin repeat and SOCS box protein 9; CK-B","brain creatine kinase; CK-M","muscular creatine kinase; CNS","central nervous system; I2B","I2-binding; M3G","morphine-3-glucuronide; M6G","morphine-6-glucuronide; PEBP","phosphatidylethanolamine-binding protein; SEM","standard error of the mean."}	2025-01-18 15:23:16.284516
@@ -665,10 +582,10 @@ COPY public.reference_list (id, user_id, location_id, title, authors, publicatio
 
 
 --
--- Data for Name: reference_tags; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: roles_backup; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.reference_tags (reference_id, tag_id) FROM stdin;
+COPY public.roles_backup (user_id, role_ids, "timestamp") FROM stdin;
 \.
 
 
@@ -677,15 +594,35 @@ COPY public.reference_tags (reference_id, tag_id) FROM stdin;
 --
 
 COPY public.tags (tag_id, name, location_id, owner_id, content, attachment_url, tag_type, created_at) FROM stdin;
-1	Electron	1337493115983888425	154749533429956608	\N	https://cdn.discordapp.com/attachments/1337603736989601813/1337926792111067156/PSeholeETout.png?ex=67a938ec&is=67a7e76c&hm=ce377000253bf7a79f5bdcf906acf1c242a248270bc4fdf2c5fe0a861222a431&	default	2025-02-08 18:23:32.249557-05
-\.
-
-
---
--- Data for Name: token_usage_logs; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY public.token_usage_logs (usage_id, user_id, tokens_used, action_type, description, created_at) FROM stdin;
+1	bookClub	730907954345279591	730907954345279591	📚 **Book Recommendation:** ***'The Joyful Vegan: How to Stay Vegan in a World That Wants You to Eat Meat, Dairy, and Egg'* by Colleen Patrick-Goudreau**\n\n*In these pages, Colleen shares her wisdom for managing these challenges and arms readers—both vegan and plant-based—with solutions and strategies for 'coming out vegan' to family, friends, and colleagues; cultivating healthy relationships (with vegans and non-vegans); communicating effectively; sharing enthusiasm without proselytizing; finding like-minded community; and experiencing peace of mind as a vegan in a non-vegan world.  \n\nBy implementing the tools provided in this book, readers will find they can live ethically, eat healthfully, engage socially—and remain a joyful vegan.*	bookClub	default	2025-04-06 14:15:48.000703-04
+2	discordOutreach	730907954345279591	730907954345279591	Want a chance to do activism through **Discord Outreach** with us in ARA? Discord Outreach is an activism event we host weekly in the Events tab where activists will be assigned into groups to join the VCs of larger servers to do vegan activism. \n🔹An Outreach Leader will lead the group by coordinating which server and which VC channel the group will join.\n🔹Groups will have speakers and listeners. Speakers will mainly direct activism discussion for nonvegan users who join the channel. Listeners will take up spots in the channel to prevent other random users from joining to prevent distraction from ongoing discussion.\n🔹You can sign up to be pinged for Discord Outreach in <#990761562199457813>	discordOutreach	default	2025-04-06 14:15:48.000703-04
+3	tipsVegan	730907954345279591	730907954345279591	**Looking for tips to meet local vegans or activism events? **\n🔹Try searching for vegan Facebook groups for your closet major city or area. \n🔹Get in contact with an animal rights organization like [PETA](<https://www.peta.org/>), [Direct Action Everywhere](<https://www.directactioneverywhere.com/>), [Mercy for Animals](<https://mercyforanimals.org/>), [Humane Society of the US](<https://www.humanesociety.org/>), etc in your area. Try searching for an organization promoting plant-based eating as well! \n🔹You can also search in [Meetup](<https://www.meetup.com/home/>), a social media platform for organizing events and activities. \n🔹Volunteering at animal sanctuaries.\n🔹Start a Facebook or [Meetup](<https://www.meetup.com/home/>) group yourself!	tipsVegan	default	2025-04-06 14:15:48.000703-04
+5	happyCow	730907954345279591	730907954345279591	Sign up for the **[Happy Cow](<https://www.happycow.net/>)** 🐮 💜 app, a mobile app and website that lists vegan and vegan-friendly restaurants and also a passionate community of over one million vegan-focused members. Aside from listing restaurants it also lists farmers markets, health food stores and all types of businesses with a vegan focus.	happyCow	default	2025-04-06 14:15:48.000703-04
+6	veganProduct	730907954345279591	730907954345279591	**Enjoyed a vegan product recently? **\n🔹Share your opinion on the product on Instagram or Facebook, bonus if you post in vegan Facebook groups.\n🔹Sign up on the **[abillion](<https://www.abillion.com/>)** app and write your review of the product. The platform allows users to review plant-based, cruelty-free and sustainable products, while donating between 0.10 and $1 to nonprofit organizations for each review written.	veganProduct	default	2025-04-06 14:15:48.000703-04
+7	vegRecipe	730907954345279591	730907954345279591	**Tried out a great online recipe recently?** Be sure to leave a high rating and review to boost your favorite vegan and plant-based creator! ⭐	vegRecipe	default	2025-04-06 14:15:48.000703-04
+8	localOutreach	730907954345279591	730907954345279591	**Looking for street outreach opportunities?** Try searching for any local chapters from [Anonymous for the Voiceless](<https://www.anonymousforthevoiceless.org/>), [We The Free](<https://www.activism.wtf/>), or events in vegan Facebook/[Meetup](<https://www.meetup.com/home/>) groups.	localOutreach	default	2025-04-06 14:15:48.000703-04
+9	getPolitical	730907954345279591	730907954345279591	**Get political!** Join in local pressure campaigns and getting ballot measures passed with groups such as [Animal Activist Mentorship](<https://www.animalactivismmentorship.com/>), [PETA](<https://www.peta.org/action/campaigns/>), [Plant Based Treaty](<https://plantbasedtreaty.org/>), & [Pro-Animal Future](<https://proanimal.org/>) in the US, [Viva!](<https://viva.org.uk/>) in the UK, [Animal Justice Party](<https://www.animaljusticeparty.org/>) in AU. They can be coalitions with goals ranging from banning fur, banning foi gras, banning cages, getting plant-based milks in schools, to banning factory farms.	getPolitical	default	2025-04-06 14:15:48.000703-04
+10	nonConActivism	730907954345279591	730907954345279591	**Prefer a more non-confrontational form of activism?** Consider these ideas!\n🔹Sidewalk chalking is a great way for public visual messaging in public areas with higher foot traffic. Chalking is not permanent and non-damaging so legally does not typically count as vandalism, so it's usually allowed but check with your local municipals first.\n🔹You can also draw vegan messaging at the beach in the sand, weather permitting.\n🔹Consider using vegan usernames like in online gaming or social media.\n🔹Stickering such as placing them on your phone, car, laptop, or water bottle when going out.\n🔹Wearing clothes that promote the vegan message whether you're just going out for groceries or at the gym to show off your cruelty-free gains to others.	nonConActivism	default	2025-04-06 14:15:48.000703-04
+11	veganFacebook	730907954345279591	730907954345279591	**Be a foundation for local vegan community building.**\n🔹There are numerous Facebook groups to assist new vegans and the veg curious in finding resources in their local community. If you don't have one, consider starting one yourself!\n🔹Direct people to **[r/Vegan](<https://www.reddit.com/r/vegan/>)** or **[r/AskVegans](<https://www.reddit.com/r/AskVegans/>)** on Reddit to ask questions or utilize the search function in the groups for specific advice.\n🔹Schedule vegan potlucks, game nights, or other events on [Meetup](<https://www.meetup.com/home/>) for your area.	veganFacebook	default	2025-04-06 14:15:48.000703-04
+12	veganSkills	730907954345279591	730907954345279591	**Harness your skills!** Utilize your unique skills and talent to be in service for the animals, such as:\n🔹If you are a programmer or software engineer, consider volunteering with [Vegan Hacktivists](<https://veganhacktivists.org/>).\n🔹If you are a graphic designer, you can help design pamphlets or T-shirts.\n🔹If you are handy, consider volunteering at animal sanctuaries to help construct infrastructure for the residents.\n🔹If you're a cook, consider taking photos and posting them in social media or foodie groups. \n🔹If you got music or comedic talent, consider going to open mic events or volunteering at Veg Fests about veganism.	veganSkills	default	2025-04-06 14:15:48.000703-04
+13	betterOutreach	730907954345279591	730907954345279591	**How can I become a better Outreacher?**\n🔹Here is a useful **[video](<https://www.youtube.com/watch?v=-nznQXhXgMY>)** on a conversation structure guide by [The Victim's Perspective](<https://www.youtube.com/@TheVictimsPerspective>) on Youtube\n🔹Learn from prominent vegan outreachers like [Earthling Ed](<https://www.youtube.com/@ed.winters/featured>), [Joey Carbstrong](<https://www.youtube.com/@JoeyCarbstrong>), [Debug Your Brain](<https://www.youtube.com/@DebugYourBrain>), [Clif Grant](<https://www.youtube.com/@clifgrant>), [David Ramms](<https://www.youtube.com/@davidramms>), and more by watching their content. \n🔹Do group outreach with [Anonymous for the Voiceless](<https://www.anonymousforthevoiceless.org/>), [We The Free](<https://www.activism.wtf/>), or host activism events in vegan Facebook/[Meetup](<https://www.meetup.com/home/>) groups.	betterOutreach	default	2025-04-06 14:15:48.000703-04
+14	onlineComment	730907954345279591	730907954345279591	**Online comment section activism ideas:**\n🔹Leaving comments on viral videos or posts on veganism or related videos that can direct toward veganism.\n🔹Getting vegan allies involved to help give a 'like' to your comment or post to get noticed. \n🔹Carnists giving you a short fuse? Consider keeping a digital document with saved pre-written replies to copy and paste to help avoid being tempted to use condescending tone in replies.	onlineComment	default	2025-04-06 14:15:48.000703-04
+15	getActive	730907954345279591	730907954345279591	**Willing to your get your hands dirty and be proactive for the animals?**\n🔹Consider doing direct action, attending vigils such as by the [Animal Save Movement](<https://thesavemovement.org/>), or get involved in pressure campaigns.\n🔹Get in contact with organizations such as [Direct Action Everywhere](<https://www.directactioneverywhere.com/>), [Animal Rebellion](<https://animalrebellion.org/about/>), [PETA](<https://www.peta.org/action/campaigns/>), and [Animal Liberation Front](<https://animalliberationfrontline.com/>)\n🔹**[Video](<https://www.youtube.com/watch?v=LHyqJxSeUFc>)** on the importance of pressure campaigns by [The Cranky Vegan](<https://www.instagram.com/the.cranky.vegan/?hl=en>) on [VeganFTA](<https://veganfta.com/>)	getActive	default	2025-04-06 14:15:48.000703-04
+16	USAVegan	730907954345279591	730907954345279591	**In the US?** Get into legislation activism! Find state and local representatives to send letters about animal rights, meat subsidies, ag gag laws, environmental impacts, or increased food disease risks to by using [CommonCause.org](<https://www.commoncause.org/find-your-representative/>) by entering your street address.	USAVegan	default	2025-04-06 14:15:48.000703-04
+17	USA2Vegan	730907954345279591	730907954345279591	**In the US 🇺🇸?** Get connected with [Agriculture Fairness Alliance](<https://www.agriculturefairnessalliance.org/>) for legislation activism! A 501(c)(4) nonprofit whose mission is to strategically employ lobbyists to accelerate policy changes that make sustainable plant-based food accessible to everyone at a price they can afford, empower communities to develop local plant based agriculture systems, and give farmers tools and strategy to transition from animal ag to plant based farming.	USA2Vegan	default	2025-04-06 14:15:48.000703-04
+18	DEVegan	730907954345279591	730907954345279591	**In Germany 🇩🇪?** Get connected with [V-Party3](<https://v-partei.de/>) for legislation activism!\n*Die V-Partei ist eine deutsche Partei, die der Tierproduktindustrie den Kampf angesagt hat, mit Verboten jeglicher tierischen Produkten, Tierversuchen und Zurschaustellung in Zoo und Circus. Zusätzlich setzen sie sich für ernstzunehmende ethische und ernährungstechnische Bildung an Schulen und den Schutz von Tierrechtsaktivisten ein und fördern bezahlbare Nahrungsmittel aus solidarischer Landwirtschaft mit ökologischen Alternativen zu Pestiziden.*	DEVegan	default	2025-04-06 14:15:48.000703-04
+19	cheatsheet	730907954345279591	730907954345279591	**Need a cheatsheet for responding to justifications to harm and exploit animals?** Bookmark [Vegan Sidekick](<https://www.godfist.com/vegansidekick/guide.php>). A comprehensive list of the known excuses and the responses for them. It will also link to the common comebacks after responding to certain excuses too!	cheatsheet	default	2025-04-06 14:15:48.000703-04
+20	stream	730907954345279591	730907954345279591	**Looking for a streaming service of Plant-Based News & Entertainment Network for FREE? **Download [UnchainedTV](<https://unchainedtv.com/>) on your phone via the APP store or on your TV via your Amazon Fire Stick, AppleTV device or Roku device.	stream	default	2025-04-06 14:15:48.000703-04
+21	contentCreator	730907954345279591	730907954345279591	**Need some food content creator recommendations? **\n🔹[Nora Cooks](<https://www.noracooks.com/>) - Recipes that are easy to make and even easier to eat\n🔹[Forks Over Knives](<https://www.forksoverknives.com/recipes/>) - Healthy whole food plant-based recipes\n🔹[Rainbow Plant Life](<https://rainbowplantlife.com/>) - For the home cook looking to wow their friends\n🔹[Cheap Lazy Vegan](<https://thecheaplazyvegan.com/blog/>) - Easy and affordable vegan meal ideas\n🔹[The Foodie Takes Flight](<https://thefoodietakesflight.com/>) - Asian-inspired recipes\n🔹[Vegan Richa](<https://www.veganricha.com/recipes/>) - Indian-inspired recipes\n🔹[Eat Figs Not Pigs](<https://www.eatfigsnotpigs.com/>) - Fusion comfort foods\n🔹[Thee Burger Dude](<https://theeburgerdude.com/>) - Popular fast food recipes veganized	contentCreator	default	2025-04-06 14:15:48.000703-04
+22	nutrition	730907954345279591	730907954345279591	**Need a comprehensive source on vegan nutrition?** [Vegan Health](<https://veganhealth.org/>) is a website with sources and studies by registered dieticians on evidence-based nutrient recommendations.	nutrition	default	2025-04-06 14:15:48.000703-04
+23	calendar	730907954345279591	730907954345279591	**Looking for activism opportunities and events near you?** Try [Animal Rights Calender](<https://animalrightscalendar.com/>)! Not finding an organization or event? Contact email: *person@animalrightscalendar.com*	calendar	default	2025-04-06 14:15:48.000703-04
+24	gallery	730907954345279591	730907954345279591	**Need a database of stock animal rights images for activism?** Try <https://stock.weanimals.org/>	gallery	default	2025-04-06 14:15:48.000703-04
+27	horseBook	730907954345279591	730907954345279591	📚 **Book Recommendation:** ***'Riding On the Power of Others: A Horsewoman's Path to Unconditional Love'* by Ren Hurst**\n\n*Ren Hurst's memoir explores her journey of self-discovery and healing through her relationships with horses, learning to let go of control and embrace unconditional love and acceptance that leads her to walk away completely from riding and training horses and into a world where relationship is all that matters.. \n\nThrough her experiences, Hurst reveals the transformative power of horses and the natural world to teach humans about empathy, compassion, and the interconnectedness of all beings.*	horseBook	default	2025-04-06 14:15:48.000703-04
+28	restaurantVegan	730907954345279591	730907954345279591	\N	restaurantVegan	default	2025-04-06 14:15:48.000703-04
+29	restaurantVegan	730907954345279591	730907954345279591	\N	restaurantVegan	default	2025-04-06 14:15:48.000703-04
+31	DiscordOutreach	730907954345279591	730907954345279591	Want a chance to do activism through **Discord Outreach** with us in ARA? Discord Outreach is an activism event we host weekly in the Events tab where activists will be assigned into groups to join the VCs of larger servers to do vegan activism. \n🔹An Outreach Leader will lead the group by coordinating which server and which VC channel the group will join.\n🔹Groups will have speakers and listeners. Speakers will mainly direct activism discussion for nonvegan users who join the channel. Listeners will take up spots in the channel to prevent other random users from joining to prevent distraction from ongoing discussion.\n🔹You can sign up to be pinged for Discord Outreach in <#990761562199457813>	DiscordOutreach	default	2025-04-06 14:15:48.000703-04
+1	src	1347284827350630591	154749533429956608	Vyrtuous Source Code	https://cdn.discordapp.com/attachments/1347284828894265398/1358507379490296100/lucy-16.8.0-py3-none-any.whl?ex=67f41817&is=67f2c697&hm=9391e2fe9136668a6207d52bf0b20e73df9a48df78e813ab611d126a06d92684&	default	2025-04-06 14:19:04.212568-04
+2	1P-LSD	1347284827350630591	154749533429956608	\N	https://cdn.discordapp.com/attachments/1347284828894265398/1358739918087651339/IMG_5648.png?ex=67f4f0a8&is=67f39f28&hm=2f760cd10ce8a4da2900b9d46e4000295d867feb37262e846ef8f57e081176e4&	default	2025-04-07 05:43:04.81308-04
 \.
 
 
@@ -693,7 +630,22 @@ COPY public.token_usage_logs (usage_id, user_id, tokens_used, action_type, descr
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.users (id, name, create_date, level, exp) FROM stdin;
+COPY public.users (id, name, create_date, level, exp, faction_name) FROM stdin;
+791945428832223242	kenerion	2025-04-04 12:49:10.200468-04	1	0.704428415057684379	\N
+797847699709231115	idkidkidkshauna	2025-03-26 08:09:02.02735-04	1	1.287937889035274066	\N
+1286700751451848755	kartsalapsi	2025-03-26 08:09:19.128906-04	1	0.129028514396365565	\N
+858565178979385354	mastermedic1929	2025-04-01 06:52:10.397861-04	1	6.060064093083376721	\N
+1352971995758989373	adem08360	2025-03-24 19:27:12.768803-04	1	0.03570315333775605	\N
+1353869482380234772	jubilant_dragon_20974	2025-03-24 19:28:10.130343-04	1	0.03633183023051432	\N
+1353866485830783059	darine08532	2025-03-24 19:46:26.537488-04	1	0.0403606401024761	\N
+832012774040141894	User_832012774040141894	2025-03-24 19:51:07.175095-04	1	0.03807772621594197	\N
+1130481811965886515	beanie2722	2025-03-26 16:09:51.790644-04	1	0.159223484441386855	\N
+1222656637488205866	telepathyconspiracy	2025-03-26 15:45:07.423755-04	1	0.119831615652808029	\N
+1325155980727816236	fredrick.krueger	2025-03-26 08:08:17.067277-04	1	1.123347501373537534	\N
+977391770734301255	myaboo_	2025-03-30 20:45:49.100722-04	1	0.087682678357341305	\N
+154749533429956608	spawd.	2025-03-19 17:34:03.388736-04	3	86.308266933333634850	Dream
+1036004538504708299	dinguskitty	2025-03-20 14:01:25.092254-04	1	0.124259990351212255	\N
+366138954497523725	vampii	2025-04-04 15:05:33.188256-04	1	3.212666701434011291	\N
 \.
 
 
@@ -719,17 +671,10 @@ SELECT pg_catalog.setval('public.citations_id_seq', 1, false);
 
 
 --
--- Name: patreon_data_patreon_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.patreon_data_patreon_id_seq', 1, false);
-
-
---
 -- Name: pdf_catalog_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.pdf_catalog_id_seq', 76, true);
+SELECT pg_catalog.setval('public.pdf_catalog_id_seq', 1, true);
 
 
 --
@@ -750,21 +695,7 @@ SELECT pg_catalog.setval('public.reference_list_id_seq', 1, false);
 -- Name: tags_tag_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.tags_tag_id_seq', 1, false);
-
-
---
--- Name: tags_tag_id_seq1; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.tags_tag_id_seq1', 1, true);
-
-
---
--- Name: token_usage_logs_usage_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
---
-
-SELECT pg_catalog.setval('public.token_usage_logs_usage_id_seq', 1, false);
+SELECT pg_catalog.setval('public.tags_tag_id_seq', 2, true);
 
 
 --
@@ -792,6 +723,22 @@ ALTER TABLE ONLY public.citations
 
 
 --
+-- Name: faction_members faction_members_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.faction_members
+    ADD CONSTRAINT faction_members_pkey PRIMARY KEY (user_id, faction_name);
+
+
+--
+-- Name: factions factions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.factions
+    ADD CONSTRAINT factions_pkey PRIMARY KEY (name);
+
+
+--
 -- Name: loop_configs loop_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -805,22 +752,6 @@ ALTER TABLE ONLY public.loop_configs
 
 ALTER TABLE ONLY public.moderation_counts
     ADD CONSTRAINT moderation_counts_pkey PRIMARY KEY (user_id);
-
-
---
--- Name: patreon_data patreon_data_patreon_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.patreon_data
-    ADD CONSTRAINT patreon_data_patreon_email_key UNIQUE (patreon_email);
-
-
---
--- Name: patreon_data patreon_data_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.patreon_data
-    ADD CONSTRAINT patreon_data_pkey PRIMARY KEY (patreon_id);
 
 
 --
@@ -848,27 +779,11 @@ ALTER TABLE ONLY public.reference_list
 
 
 --
--- Name: reference_tags reference_tags_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roles_backup roles_backup_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.reference_tags
-    ADD CONSTRAINT reference_tags_pkey PRIMARY KEY (reference_id, tag_id);
-
-
---
--- Name: tags tags_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.tags
-    ADD CONSTRAINT tags_pkey PRIMARY KEY (tag_id);
-
-
---
--- Name: token_usage_logs token_usage_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.token_usage_logs
-    ADD CONSTRAINT token_usage_logs_pkey PRIMARY KEY (usage_id);
+ALTER TABLE ONLY public.roles_backup
+    ADD CONSTRAINT roles_backup_pkey PRIMARY KEY (user_id);
 
 
 --
@@ -887,20 +802,6 @@ CREATE UNIQUE INDEX idx_borrowed_tags_unique_active ON public.borrowed_tags USIN
 
 
 --
--- Name: idx_tags_lower_name_location_owner; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE UNIQUE INDEX idx_tags_lower_name_location_owner ON public.tags USING btree (lower((name)::text), location_id, owner_id);
-
-
---
--- Name: patreon_data trigger_update_tokens; Type: TRIGGER; Schema: public; Owner: postgres
---
-
-CREATE TRIGGER trigger_update_tokens AFTER INSERT OR UPDATE ON public.patreon_data FOR EACH ROW EXECUTE FUNCTION public.update_tokens_from_pledge();
-
-
---
 -- Name: annotations annotations_pdf_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -909,19 +810,27 @@ ALTER TABLE ONLY public.annotations
 
 
 --
--- Name: borrowed_tags borrowed_tags_original_tag_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.borrowed_tags
-    ADD CONSTRAINT borrowed_tags_original_tag_id_fkey FOREIGN KEY (original_tag_id) REFERENCES public.tags(tag_id) ON DELETE CASCADE;
-
-
---
 -- Name: citations citations_reference_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.citations
     ADD CONSTRAINT citations_reference_id_fkey FOREIGN KEY (reference_id) REFERENCES public.reference_list(id) ON DELETE CASCADE;
+
+
+--
+-- Name: faction_members faction_members_faction_name_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.faction_members
+    ADD CONSTRAINT faction_members_faction_name_fkey FOREIGN KEY (faction_name) REFERENCES public.factions(name) ON DELETE CASCADE;
+
+
+--
+-- Name: faction_members faction_members_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.faction_members
+    ADD CONSTRAINT faction_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -984,10 +893,31 @@ GRANT ALL ON SEQUENCE public.citations_id_seq TO spawd;
 
 
 --
+-- Name: TABLE faction_members; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.faction_members TO spawd;
+
+
+--
+-- Name: TABLE factions; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.factions TO spawd;
+
+
+--
 -- Name: TABLE loop_configs; Type: ACL; Schema: public; Owner: postgres
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.loop_configs TO spawd;
+
+
+--
+-- Name: TABLE moderation_counts; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.moderation_counts TO spawd;
 
 
 --
@@ -1033,6 +963,13 @@ GRANT ALL ON SEQUENCE public.reference_list_id_seq TO spawd;
 
 
 --
+-- Name: TABLE roles_backup; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.roles_backup TO spawd;
+
+
+--
 -- Name: TABLE tags; Type: ACL; Schema: public; Owner: postgres
 --
 
@@ -1044,13 +981,6 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.tags TO spawd;
 --
 
 GRANT ALL ON SEQUENCE public.tags_tag_id_seq TO spawd;
-
-
---
--- Name: SEQUENCE tags_tag_id_seq1; Type: ACL; Schema: public; Owner: postgres
---
-
-GRANT ALL ON SEQUENCE public.tags_tag_id_seq1 TO spawd;
 
 
 --
