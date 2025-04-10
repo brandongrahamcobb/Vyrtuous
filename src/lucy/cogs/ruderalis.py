@@ -1,9 +1,11 @@
 from collections import defaultdict
 from discord.ext import commands, tasks
-from lucy.utils.backup import perform_backup, setup_backup_directory
+from lucy.utils.handlers.ai_manager import BatchProcessor
+from lucy.utils.handlers.sql_manager import perform_backup, setup_backup_directory
 from lucy.utils.helpers import *
-from lucy.utils.tag import TagManager
-from lucy.utils.ai import BatchProcessor
+#from lucy.utils.role_manager import RoleManager
+from lucy.utils.handlers.tag_manager import TagManager
+
 import asyncio
 import datetime
 import discord
@@ -28,6 +30,7 @@ class Ruderalis(commands.Cog):
         self.tag_manager = TagManager(self.bot.db_pool)
         self.tags_loop.start()
         self.batch_task.start()
+  #      self.role_manager = RoleManager(self.bot.db_pool)
 
     @tasks.loop(hours=168)  # Runs once a week
     async def batch_task(self):
@@ -40,6 +43,8 @@ class Ruderalis(commands.Cog):
     @tasks.loop(hours=24)
     async def backup_database(self):
         try:
+#            for member in members:
+ #               await self.role_manager.backup_roles(member)
             backup_dir = setup_backup_directory('./backups')
             backup_file = perform_backup(
                 db_user='postgres',
@@ -47,7 +52,6 @@ class Ruderalis(commands.Cog):
                 db_host='localhost',
                 backup_dir=backup_dir
             )
-
             logger.info(f'Backup completed successfully: {backup_file}')
         except Exception as e:
             logger.error(f'Error during database backup: {e}')

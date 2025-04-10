@@ -16,9 +16,9 @@
 '''
 from discord.ext import commands
 from lucy.utils.helpers import *
-from lucy.utils.game import Game
-from lucy.utils.message import Message
-from lucy.utils.setup_logging import logger
+from lucy.utils.handlers.game_manager import Game
+from lucy.utils.handlers.message_manager import Message
+from lucy.utils.inc.setup_logging import logger
 
 import discord
 import os

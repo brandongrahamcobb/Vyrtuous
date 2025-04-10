@@ -1,5 +1,5 @@
 # bots/twitch_bot.py
-from lucy.utils.setup_logging import logger
+from lucy.utils.inc.setup_logging import logger
 from twitchio.ext import commands
 
 import logging

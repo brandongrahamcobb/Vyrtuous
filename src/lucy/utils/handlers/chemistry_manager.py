@@ -15,8 +15,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from lucy.utils.helpers import *
-from lucy.utils.image import adjust_hue_and_saturation, add_watermark
-from lucy.utils.setup_logging import logger
+from lucy.utils.handlers.image_manager import adjust_hue_and_saturation, add_watermark
+from lucy.utils.inc.setup_logging import logger
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 from pyPept.sequence import Sequence, correct_pdb_atoms

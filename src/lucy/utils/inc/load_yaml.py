@@ -1,4 +1,4 @@
-''' load_content.py  The purpose of this program is to load the raw contents of files.
+''' load_yaml.py  The purpose of this program is to load the config file.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,18 +14,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from lucy.utils.setup_logging import logger
-from os.path import exists
+from lucy.utils.inc.setup_logging import logger
 
 import os
+import traceback
+import yaml
 
-def load_contents(path_to_file):
-    if not exists(path_to_file):
-        raise FileNotFoundError(f'The file at `{path_to_file}` does not exist.')
+def load_yaml(path_to_file):
     try:
-        with open(path_to_file, 'r', encoding='utf-8') as file:
-            content = file.read()
-        return content
+        if not os.path.exists(path_to_file):
+            return {}
+        with open(path_to_file, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+        return data
     except Exception as e:
-        logger.error(f'An error occurred while reading the file: {e}')
-        raise IOError(f'An error occurred while reading the file: {e}')
+        logger.error(f'An error occurred while loading the YAML file: {e}')
+        logger.debug(traceback.format_exc())
+        return {}

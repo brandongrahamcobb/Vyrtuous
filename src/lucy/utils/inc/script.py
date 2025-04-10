@@ -16,7 +16,7 @@
 '''
 from bs4 import BeautifulSoup
 from lucy.utils.helpers import *
-from lucy.utils.setup_logging import logger
+from lucy.utils.inc.setup_logging import logger
 
 import json
 import requests

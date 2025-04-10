@@ -1,5 +1,5 @@
 from datetime import datetime
-from lucy.utils.setup_logging import logger
+from lucy.utils.inc.setup_logging import logger
 
 import aiohttp
 import asyncio

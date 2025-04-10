@@ -15,12 +15,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timedelta
-from lucy.utils.setup_logging import logger
+from lucy.utils.inc.setup_logging import logger
 from quart import Quart, request, redirect
 
 import aiohttp
 import asyncio
-import logging
 
 twitch_app = Quart(__name__)
 

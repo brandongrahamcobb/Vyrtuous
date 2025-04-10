@@ -1,4 +1,4 @@
-''' prompt_for_values.py  The purpose of this program is to prompt for new config values and present the old ones or keep the old ones.
+''' unique_pairs.py  The purpose of this program is to provide unique pairs for a list of lists.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,8 +14,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from lucy.utils.setup_logging import logger
 
-def prompt_for_values(prompt: str, default_value: str) -> str:
-    value = input(f'{prompt} [{default_value}]: ')
-    return value.strip() if value.strip() else default_value
+from lucy.utils.inc.setup_logging import logger
+
+import itertools
+
+def unique_pairs(strings_list):
+    pairs = list(itertools.combinations(strings_list, 2))
+    sorted_pairs = [sorted(list(pair)) for pair in pairs]
+    sorted_pairs_overall = sorted(sorted_pairs)
+    return sorted_pairs_overall

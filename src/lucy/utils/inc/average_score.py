@@ -1,4 +1,4 @@
-''' fine_tuning.py  The purpose of this program is to access OpenAI's v1/fine-tuning endpoint using their python SDK.
+''' average_score.py  The purpose of this program is present the average score of an OpenAI training.jsonl file.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -15,25 +15,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from lucy.utils.helpers import *
-from lucy.utils.load_yaml import load_yaml
-from lucy.utils.setup_logging import logger
-from openai import AsyncOpenAI
+from lucy.utils.inc.setup_logging import logger
 
 import asyncio
+import json
+import os
 
-config = load_yaml(PATH_CONFIG_YAML)
-api_key = config['api_keys']['OpenAI']['api_key']
-ai_client = AsyncOpenAI(api_key=api_key)
+def average_score():
+    home = os.path.expanduser('~')
+    path_training = os.path.join(PATH_TRAINING)
+    with open(path_training, 'r') as file:
+        training_data = json.load(file)
+        sum = 0
+        for arg in training_data:
+            sum += arg['messages'][1]['content']['sentiment_score']
+        average = sum / len(training_data)
+        return average
+    file.close()
 
-async def cancel():
-    await ai_client.fine_tuning.jobs.cancel('ftjob-VBRw83PIls4zA25bypQBcCHH')
-
-async def main():
-    await ai_client.fine_tuning.jobs.create(
-        training_file='file-LvuzigtnKkifPazQptC7Mz',
-        model='gpt-4o-mini-2024-07-18',
-        suffix='vyrtuous'
-    )
-
-if __name__ == '__main__':
-    asyncio.run(main())

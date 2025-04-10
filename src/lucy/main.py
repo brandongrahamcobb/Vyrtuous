@@ -17,15 +17,15 @@
 from lucy.bots.discord_bot import DiscordBot
 from lucy.bots.linkedin_bot import LinkedInBot
 from lucy.bots.twitch_bot import TwitchBot
-from lucy.utils.config import Config
-from lucy.utils.ai import Conversations
-from lucy.utils.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
-from lucy.utils.linkedin_oauth import linkedin_app, LinkedInOAuth, setup_linkedin_routes
-from lucy.utils.patreon_oauth import patreon_app, PatreonOAuth, setup_patreon_routes
-from lucy.utils.twitch_oauth import twitch_app, TwitchOAuth, setup_twitch_routes
+from lucy.config import Config
+from lucy.utils.handlers.ai_manager import Conversations
 from lucy.utils.helpers import *
-from lucy.utils.increment_version import increment_version
-from lucy.utils.setup_logging import setup_logging
+from lucy.utils.inc.increment_version import increment_version
+from lucy.utils.inc.setup_logging import setup_logging
+from lucy.utils.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
+from lucy.utils.sec.linkedin_oauth import linkedin_app, LinkedInOAuth, setup_linkedin_routes
+from lucy.utils.sec.patreon_oauth import patreon_app, PatreonOAuth, setup_patreon_routes
+from lucy.utils.sec.twitch_oauth import twitch_app, TwitchOAuth, setup_twitch_routes
 from pathlib import Path
 
 import asyncio

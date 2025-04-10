@@ -14,8 +14,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from lucy.utils.load_contents import load_contents
-from lucy.utils.setup_logging import logger
+from lucy.utils.inc.load_contents import load_contents
+from lucy.utils.inc.setup_logging import logger
 from os.path import dirname, abspath, expanduser, join
 
 import discord
@@ -26,68 +26,56 @@ DIR_HOME = expanduser('~')
 DIR_TEMP = join(DIR_BASE, 'lucy', 'temp')
 
 # Script Paths
-PATH_ARPP = join(DIR_BASE, 'lucy', 'utils', 'api_request_parallel_processor.py')
-PATH_AVERAGE_SCORE = join(DIR_BASE, 'lucy', 'utils', 'average_score.py')
-PATH_BENCHMARK = join(DIR_BASE, 'lucy', 'utils', 'benchmark.py')
-PATH_CHEMISTRY = join(DIR_BASE, 'lucy', 'utils', 'chemistry.py')
-PATH_CITATION_MANAGER = join(DIR_BASE, 'lucy', 'utils', 'citation_manager.py')
-PATH_CLEAR_SCREEN = join(DIR_BASE, 'lucy', 'utils', 'clear_screen.py')
-PATH_CONFIG = join(DIR_BASE, 'lucy', 'utils', 'config.py')
+PATH_AVERAGE_SCORE = join(DIR_BASE, 'lucy', 'utils', 'inc', 'average_score.py')
+PATH_CHEMISTRY = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'chemistry_manager.py')
+PATH_CLEAR_SCREEN = join(DIR_BASE, 'lucy', 'utils', 'inc', 'clear_screen.py')
+PATH_CONFIG = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'config.py')
 PATH_CONFIG_YAML = join(DIR_BASE, 'lucy', '.config', 'config.yaml')
 PATH_DISCORD_BOT = join(DIR_BASE, 'lucy', 'bots', 'discord_bot.py')
-PATH_DISCORD_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'discord_oauth.py')
-PATH_FINE_TUNING = join(DIR_BASE, 'lucy', 'utils', 'fine_tuning.py')
+PATH_DISCORD_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'discord_oauth.py')
 PATH_FONT = join(DIR_HOME, 'Vyrtuous', 'Roboto-Regular.ttf')
-PATH_FORMAT_ERROR_CHECK = join(DIR_BASE, 'lucy', 'utils', 'format_error_check.py')
-PATH_FRAMES = join(DIR_BASE, 'lucy', 'utils', 'frames.py')
-PATH_GAME = join(DIR_BASE, 'lucy', 'utils', 'game.py')
-PATH_GET_SCRIPTURE = join(DIR_BASE, 'lucy', 'utils', 'get_scripture.py')
-PATH_GOOGLE = join(DIR_BASE, 'lucy', 'utils', 'google.py')
+PATH_FRAMES = join(DIR_BASE, 'lucy', 'utils', 'inc', 'frames.py')
+PATH_GAME = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'game_manager.py')
+PATH_GOOGLE = join(DIR_BASE, 'lucy', 'utils', 'inc', 'google.py')
 PATH_HELPERS = join(DIR_BASE, 'lucy', 'utils', 'helpers.py')
 PATH_HYBRID = join(DIR_BASE, 'lucy', 'cogs', 'hybrid.py')
-PATH_IMAGE = join(DIR_BASE, 'lucy', 'utils', 'image.py')
-PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'increment_version.py')
+PATH_IMAGE = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'image_manager.py')
+PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'inc', 'increment_version.py')
 PATH_INDICA = join(DIR_BASE, 'lucy', 'cogs', 'indica.py')
 PATH_LINKEDIN_BOT = join(DIR_BASE, 'lucy', 'bots', 'linkedin_bot.py')
-PATH_LINKEDIN_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'linkedin_oauth.py')
-PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'load_contents.py')
-PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'load_yaml.py')
+PATH_LINKEDIN_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'linkedin_oauth.py')
+PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'inc', 'load_contents.py')
+PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'inc', 'load_yaml.py')
 PATH_LOG = join(DIR_BASE, 'lucy', '.log', 'discord.log')
 PATH_MAIN = join(DIR_BASE, 'lucy', 'main.py')
-PATH_MESSAGE = join(DIR_BASE, 'lucy', 'utils', 'message.py')
-PATH_NLP_UTILS = join(DIR_BASE, 'lucy', 'utils', 'nlp_utils.py')
+PATH_MESSAGE = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'message_manager.py')
 PATH_OPENAI_REQUESTS = join(DIR_HOME, 'Downloads', 'queued_requests.json')
 PATH_OPENAI_RESULTS = join(DIR_HOME, 'Downloads', 'processed_results.json')
-PATH_PAGINATOR = join(DIR_BASE, 'lucy', 'utils', 'paginator.py')
-PATH_PDF_MANAGER = join(DIR_BASE, 'lucy', 'utils', 'pdf_manager.py')
-PATH_PATREON_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'patreon_oauth.py')
-PATH_PREDICATOR = join(DIR_BASE, 'lucy', 'utils', 'predicator.py')
-PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'lucy', 'utils', 'prompt_for_values.py')
-PATH_ROLE_MANAGER = join(DIR_BASE, 'lucy', 'utils', 'role_manager.py')
+PATH_PDF_MANAGER = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'pdf_manager.py')
+PATH_PATREON_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec','patreon_oauth.py')
+PATH_PREDICATOR = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'predicator.py')
+PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'lucy', 'utils', 'inc', 'prompt_for_values.py')
+PATH_ROLE_MANAGER = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'role_manager.py')
 PATH_SATIVA = join(DIR_BASE, 'lucy', 'cogs', 'sativa.py')
-PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'script.py')
-PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'setup_logging.py')
-PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'tag.py')
+PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'inc', 'script.py')
+PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'inc', 'setup_logging.py')
+PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'tag_manager.py')
 PATH_TOML = join(DIR_HOME, 'Vyrtuous', 'pyproject.toml')
 PATH_TRAINING = join(DIR_HOME, '..', 'training.jsonl')
 PATH_TWITCH_BOT = join(DIR_BASE, 'lucy', 'bots', 'twitch_bot.py')
-PATH_TWITCH_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'twitch_oauth.py')
-PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'unique_pairs.py')
+PATH_TWITCH_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'twitch_oauth.py')
+PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'inc', 'unique_pairs.py')
 PATH_USERS = join(DIR_BASE, 'lucy', '.users', 'users.yaml')
 
 # Main
 CONTENTS_MAIN = load_contents(PATH_MAIN)
 
 # Utilities
-CONTENTS_ARPP = load_contents(PATH_ARPP)
 CONTENTS_AVERAGE_SCORE = load_contents(PATH_AVERAGE_SCORE)
-CONTENTS_BENCHMARK = load_contents(PATH_BENCHMARK)
 CONTENTS_CLEAR_SCREEN = load_contents(PATH_CLEAR_SCREEN)
 CONTENTS_CHEMISTRY = load_contents(PATH_CHEMISTRY)
 CONTENTS_DISCORD_BOT = load_contents(PATH_DISCORD_BOT)
 CONTENTS_DISCORD_OAUTH = load_contents(PATH_DISCORD_OAUTH)
-CONTENTS_FINE_TUNING = load_contents(PATH_FINE_TUNING)
-CONTENTS_FORMAT_ERROR_CHECK = load_contents(PATH_FORMAT_ERROR_CHECK)
 CONTENTS_FRAMES = load_contents(PATH_FRAMES)
 CONTENTS_GAME = load_contents(PATH_GAME)
 CONTENTS_GOOGLE = load_contents(PATH_GOOGLE)
@@ -100,7 +88,6 @@ CONTENTS_LOAD_CONTENTS= load_contents(PATH_LOAD_CONTENTS)
 CONTENTS_LOAD_YAML = load_contents(PATH_LOAD_YAML)
 CONTENTS_MESSAGE = load_contents(PATH_MESSAGE)
 CONTENTS_PROMPT_FOR_VALUES = load_contents(PATH_PROMPT_FOR_VALUES)
-CONTENTS_PAGINATOR = load_contents(PATH_PAGINATOR)
 CONTENTS_PATREON_OAUTH = load_contents(PATH_PATREON_OAUTH)
 CONTENTS_PDF_MANAGER = load_contents(PATH_PDF_MANAGER)
 CONTENTS_PREDICATOR = load_contents(PATH_PREDICATOR)
@@ -111,11 +98,11 @@ CONTENTS_TWITCH_BOT = load_contents(PATH_TWITCH_BOT)
 CONTENTS_TWITCH_OAUTH = load_contents(PATH_TWITCH_OAUTH)
 CONTENTS_UNIQUE_PAIRS = load_contents(PATH_UNIQUE_PAIRS)
 SUM_OF_UTILITIES = f'''
-    {CONTENTS_ARPP} and {CONTENTS_AVERAGE_SCORE} and {CONTENTS_BENCHMARK} and {CONTENTS_CLEAR_SCREEN} \n
+    {CONTENTS_AVERAGE_SCORE} and {CONTENTS_CLEAR_SCREEN} \n
     {CONTENTS_DISCORD_BOT} and {CONTENTS_DISCORD_OAUTH} \n
-    {CONTENTS_FINE_TUNING} and {CONTENTS_FORMAT_ERROR_CHECK} and {CONTENTS_FRAMES} \n
+    {CONTENTS_FRAMES} \n
     {CONTENTS_GAME} and {CONTENTS_GOOGLE} and {CONTENTS_HELPERS} and {CONTENTS_INCREMENT_VERSION} \n
-    {CONTENTS_LINKEDIN_BOT} and {CONTENTS_LINKEDIN_OAUTH} and {CONTENTS_LOAD_CONTENTS} and {CONTENTS_LOAD_YAML} and {CONTENTS_MESSAGE} and {CONTENTS_PAGINATOR} and {CONTENTS_PATREON_OAUTH} and {CONTENTS_PDF_MANAGER} AND {CONTENTS_PREDICATOR} and {CONTENTS_PROMPT_FOR_VALUES}
+    {CONTENTS_LINKEDIN_BOT} and {CONTENTS_LINKEDIN_OAUTH} and {CONTENTS_LOAD_CONTENTS} and {CONTENTS_LOAD_YAML} and {CONTENTS_MESSAGE} and {CONTENTS_PATREON_OAUTH} and {CONTENTS_PDF_MANAGER} AND {CONTENTS_PREDICATOR} and {CONTENTS_PROMPT_FOR_VALUES}
     {CONTENTS_SCRIPT} and {CONTENTS_SETUP_LOGGING} and {CONTENTS_TAG} and {CONTENTS_TWITCH_BOT} {CONTENTS_TWITCH_OAUTH} {CONTENTS_UNIQUE_PAIRS} \n
 '''
 # MySQL

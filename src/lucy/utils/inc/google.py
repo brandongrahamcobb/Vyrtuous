@@ -16,8 +16,8 @@
 '''
 from discord.ext import commands
 from googleapiclient.discovery import build
-from lucy.utils.setup_logging import logger
-from lucy.utils.config import Config
+from lucy.config import Config
+from lucy.utils.inc.setup_logging import logger
 import discord
 
 def google(query: str, num_results: int = 5):

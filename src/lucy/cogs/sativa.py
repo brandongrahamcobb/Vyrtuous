@@ -15,12 +15,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands, tasks
-from lucy.utils.ai import BatchProcessor
-from lucy.utils.backup import perform_backup, setup_backup_directory
+from lucy.utils.handlers.ai_manager import BatchProcessor
+from lucy.utils.handlers.pdf_manager import PDFManager
+from lucy.utils.handlers.predicator import Predicator
+from lucy.utils.handlers.sql_manager import perform_backup, setup_backup_directory
 from lucy.utils.helpers import *
-from lucy.utils.pdf_manager import PDFManager
-from lucy.utils.paginator import Paginator
-from lucy.utils.predicator import Predicator
 from typing import Dict, List, Literal, Optional
 
 import asyncio

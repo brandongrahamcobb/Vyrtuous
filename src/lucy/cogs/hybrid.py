@@ -1,4 +1,5 @@
-''' hybrid.py The purpose of this program is to be an extension to a Discord bot to provide the command functionality to Vyrtuous.
+''' hybrid.py The purpose of this program is to be an extension to a Discord
+    bot to provide the command functionality to Vyrtuous.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -17,19 +18,18 @@
 from discord import Embed, File, app_commands
 from discord.ext import commands
 from googletrans import Translator, LANGUAGES
-from lucy.utils.ai import create_completion, BatchProcessor, OpenAIUsageClient
-from lucy.utils.chemistry import construct_helm_from_peptide, draw_fingerprint, draw_watermarked_molecule, get_mol, get_molecule_name, get_proximity, gsrs, manual_helm_to_smiles
-from lucy.utils.frames import extract_random_frames
-from lucy.utils.game import Game
-from lucy.utils.google import google
+from lucy.utils.handlers.ai_manager import create_completion, BatchProcessor, OpenAIUsageClient
+from lucy.utils.handlers.chemistry_manager import construct_helm_from_peptide, draw_fingerprint, draw_watermarked_molecule, get_mol, get_molecule_name, get_proximity, gsrs, manual_helm_to_smiles
+from lucy.utils.handlers.game_manager import Game
+from lucy.utils.handlers.image_manager import add_watermark, combine_gallery, create_image, create_image_variation, edit_image, stable_cascade
+from lucy.utils.handlers.message_manager import Message
+from lucy.utils.handlers.predicator import Predicator
+from lucy.utils.handlers.tag_manager import TagManager
 from lucy.utils.helpers import *
-from lucy.utils.image import add_watermark, combine_gallery, create_image, create_image_variation, edit_image, stable_cascade
-from lucy.utils.message import Message
-from lucy.utils.paginator import Paginator
-from lucy.utils.predicator import Predicator
-from lucy.utils.script import script
-from lucy.utils.tag import TagManager
-from lucy.utils.unique_pairs import unique_pairs
+from lucy.utils.inc.frames import extract_random_frames
+from lucy.utils.inc.google import google
+from lucy.utils.inc.script import script
+from lucy.utils.inc.unique_pairs import unique_pairs
 from rdkit import Chem
 from rdkit.Chem import AllChem, Crippen
 from random import choice
@@ -98,6 +98,45 @@ class Hybrid(commands.Cog):
             if lang_name.lower() == language_name:
                 return lang_code
         return None
+
+    @commands.hybrid_command(name="export_roles", description="Export non-numeric roles and their permissions with channel access info.")
+    @commands.has_permissions(administrator=True)
+    async def export_roles(self, ctx: commands.Context):
+        guild = ctx.guild
+        if not guild:
+            await ctx.send("This command must be run in a server.")
+            return
+
+        output = ""
+
+        for role in guild.roles:
+            # Skip @everyone and numeric-only roles
+            if role.is_default() or role.name.isnumeric():
+                continue
+
+            output += f"Role: {role.name}\nPermissions:\n"
+            perms: discord.Permissions = role.permissions
+            allowed_perms = [name for name, value in perms if value]
+            for perm in allowed_perms:
+                output += f"  - {perm}\n"
+
+            has_access = []
+            no_access = []
+            for channel in guild.channels:
+                if isinstance(channel, discord.TextChannel):
+                    perms_in_channel = channel.permissions_for(role)
+                    if perms_in_channel.view_channel:
+                        has_access.append(channel.name)
+                    else:
+                        no_access.append(channel.name)
+
+            output += "Has Access To Channels:\n"
+            for c in has_access:
+                output += f"  - {c}\n"
+            output += "No Access To Channels:\n"
+            for c in no_access:
+                output += f"  - {c}\n"
+            output += "\n"
 
     @commands.hybrid_command(name="chat", description="Usage: chat <model> <prompt>")
     async def chat(

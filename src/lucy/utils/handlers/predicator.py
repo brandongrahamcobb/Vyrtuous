@@ -17,9 +17,9 @@
 
 from discord.ext import commands
 from discord.utils import get
+from lucy.utils.inc.setup_logging import logger
 import discord
 import logging
-from lucy.utils.setup_logging import logger
 
 class Predicator:
     def __init__(self, bot):

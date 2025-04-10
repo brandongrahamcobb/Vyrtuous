@@ -1,4 +1,4 @@
-''' average_score.py  The purpose of this program is present the average score of an OpenAI training.jsonl file.
+''' load_content.py  The purpose of this program is to load the raw contents of files.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,22 +14,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from lucy.utils.helpers import *
-from lucy.utils.setup_logging import logger
+from lucy.utils.inc.setup_logging import logger
+from os.path import exists
 
-import asyncio
-import json
 import os
 
-def average_score():
-    home = os.path.expanduser('~')
-    path_training = os.path.join(PATH_TRAINING)
-    with open(path_training, 'r') as file:
-        training_data = json.load(file)
-        sum = 0
-        for arg in training_data:
-            sum += arg['messages'][1]['content']['sentiment_score']
-        average = sum / len(training_data)
-        return average
-    file.close()
-
+def load_contents(path_to_file):
+    if not exists(path_to_file):
+        raise FileNotFoundError(f'The file at `{path_to_file}` does not exist.')
+    try:
+        with open(path_to_file, 'r', encoding='utf-8') as file:
+            content = file.read()
+        return content
+    except Exception as e:
+        logger.error(f'An error occurred while reading the file: {e}')
+        raise IOError(f'An error occurred while reading the file: {e}')

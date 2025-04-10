@@ -14,10 +14,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from lucy.utils.load_yaml import load_yaml
 from lucy.utils.helpers import *
-from lucy.utils.prompt_for_values import prompt_for_values
-from lucy.utils.setup_logging import logger
+from lucy.utils.inc.load_yaml import load_yaml
+from lucy.utils.inc.prompt_for_values import prompt_for_values
+from lucy.utils.inc.setup_logging import logger
 from os import makedirs
 from os.path import dirname, isfile
 from typing import Any, Dict

@@ -17,9 +17,9 @@
 
 from decimal import Decimal
 from discord.ext import commands
-from lucy.utils.ai import create_moderation
+from lucy.utils.handlers.ai_manager import create_moderation
+from lucy.utils.handlers.predicator import Predicator
 from lucy.utils.helpers import *
-from lucy.utils.predicator import Predicator
 from os import makedirs
 from os.path import exists
 import asyncpg

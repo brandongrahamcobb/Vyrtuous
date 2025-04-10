@@ -17,9 +17,9 @@
 from gradio_client import Client
 from itertools import zip_longest
 from io import BytesIO
-from lucy.utils.load_yaml import load_yaml
+from lucy.utils.inc.load_yaml import load_yaml
 from lucy.utils.helpers import *
-from lucy.utils.setup_logging import logger
+from lucy.utils.inc.setup_logging import logger
 from math import ceil, sqrt
 from openai import AsyncOpenAI, OpenAI
 from os.path import join
