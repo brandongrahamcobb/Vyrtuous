@@ -18,19 +18,19 @@ import asyncpg
 import discord
 
 from discord.ext import commands
-from lucy.utils.handlers.ai_manager import Conversations
+from lucy.utils.handlers.ai_manager import Completions
 from lucy.utils.helpers import *
 from lucy.utils.inc.setup_logging import logger
 from typing import List, Optional
 
 class DiscordBot(commands.Bot):
-    def __init__(self, *, config, db_pool: asyncpg.Pool, conversations, lock, oauth_token, **kwargs):
+    def __init__(self, *, config, db_pool: asyncpg.Pool, completions, lock, oauth_token, **kwargs):
         try:
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'], intents=intents, **kwargs)
 
             self.config = config
-            self.conversations = conversations
+            self.completions = completions
             self.db_pool = db_pool
             self.lock = lock
             self.oauth_token = oauth_token

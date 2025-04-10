@@ -16,6 +16,7 @@
 '''
 from discord.ext import commands
 from lucy.utils.helpers import *
+from lucy.utils.handlers.ai_manager import Completions
 from lucy.utils.handlers.game_manager import Game
 from lucy.utils.handlers.message_manager import Message
 from lucy.utils.inc.setup_logging import logger
@@ -32,10 +33,10 @@ class Indica(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
-        self.conversations = bot.conversations
+        self.completions = Completions()
         self.db_pool = bot.db_pool
         self.game = Game(self.bot)
-        self.handler = Message(self.bot, self.config, self.conversations, self.db_pool)
+        self.handler = Message(self.bot, self.config, self.completions, self.db_pool)
         self.user_messages = {}
 
     @commands.Cog.listener()

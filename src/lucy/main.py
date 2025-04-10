@@ -18,7 +18,7 @@ from lucy.bots.discord_bot import DiscordBot
 from lucy.bots.linkedin_bot import LinkedInBot
 from lucy.bots.twitch_bot import TwitchBot
 from lucy.config import Config
-from lucy.utils.handlers.ai_manager import Conversations
+from lucy.utils.handlers.ai_manager import Completions
 from lucy.utils.helpers import *
 from lucy.utils.inc.increment_version import increment_version
 from lucy.utils.inc.setup_logging import setup_logging
@@ -57,7 +57,7 @@ async def main():
 
     db_pool = await database_init()
 
-    conversations = Conversations()
+    conversations = Completions()
     lock = asyncio.Lock()
 
     discord_oauth = DiscordOAuth(config)

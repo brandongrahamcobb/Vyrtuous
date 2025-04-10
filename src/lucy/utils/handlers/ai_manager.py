@@ -24,15 +24,153 @@ from openai import AsyncOpenAI
 from typing import List, Optional, Any, Dict, Union
 
 import aiohttp
+import argparse  # for running script from command line
 import asyncio
 import datetime
 import json
+import numpy as np
 import openai
 import os
+import re  # for matching endpoint from request URL
+import tiktoken  # for counting tokens
+import time  # for sleeping after rate limit is hit
 import traceback
 
 config = load_yaml(PATH_CONFIG_YAML)
 OPENAI_API_KEY = config['api_keys']['OpenAI']['api_key']
+ai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+encoding = tiktoken.encoding_for_model('gpt-4o-mini-07-18') #get_encoding('cl100k_base')
+
+@dataclass
+class StatusTracker:
+    num_tasks_started: int = 0
+    num_tasks_in_progress: int = 0  # script ends when this reaches 0
+    num_tasks_succeeded: int = 0
+    num_tasks_failed: int = 0
+    num_rate_limit_errors: int = 0
+    num_api_errors: int = 0  # excluding rate limit errors, counted above
+    num_other_errors: int = 0
+    time_of_last_rate_limit_error: int = 0  # used to cool off after hitting rate limits
+
+@dataclass
+class APIRequest:
+    """Stores an API request's inputs, outputs, and other metadata. Contains a method to make an API call."""
+
+    task_id: int
+    request_json: dict
+    token_consumption: int
+    attempts_left: int
+    metadata: dict
+    result: list = field(default_factory=list)
+
+    async def call_api(
+        self,
+        session: aiohttp.ClientSession,
+        request_url: str,
+        request_header: dict,
+        retry_queue: asyncio.Queue,
+        save_filepath: str,
+        status_tracker: StatusTracker,
+    ):
+        """Calls the OpenAI API and saves results."""
+        logging.info(f"Starting request #{self.task_id}")
+        error = None
+        try:
+            async with session.post(
+                url=request_url, headers=request_header, json=self.request_json
+            ) as response:
+                response = await response.json()
+            if "error" in response:
+                logging.warning(
+                    f"Request {self.task_id} failed with error {response['error']}"
+                )
+                status_tracker.num_api_errors += 1
+                error = response
+                if "rate limit" in response["error"].get("message", "").lower():
+                    status_tracker.time_of_last_rate_limit_error = time.time()
+                    status_tracker.num_rate_limit_errors += 1
+                    status_tracker.num_api_errors -= (
+                        1  # rate limit errors are counted separately
+                    )
+
+        except (
+            Exception
+        ) as e:  # catching naked exceptions is bad practice, but in this case we'll log & save them
+            logging.warning(f"Request {self.task_id} failed with Exception {e}")
+            status_tracker.num_other_errors += 1
+            error = e
+        if error:
+            self.result.append(error)
+            if self.attempts_left:
+                retry_queue.put_nowait(self)
+            else:
+                logging.error(
+                    f"Request {self.request_json} failed after all attempts. Saving errors: {self.result}"
+                )
+                data = (
+                    [self.request_json, [str(e) for e in self.result], self.metadata]
+                    if self.metadata
+                    else [self.request_json, [str(e) for e in self.result]]
+                )
+                append_to_jsonl(data, save_filepath)
+                status_tracker.num_tasks_in_progress -= 1
+                status_tracker.num_tasks_failed += 1
+        else:
+            data = (
+                [self.request_json, response, self.metadata]
+                if self.metadata
+                else [self.request_json, response]
+            )
+            append_to_jsonl(data, save_filepath)
+            status_tracker.num_tasks_in_progress -= 1
+            status_tracker.num_tasks_succeeded += 1
+            logging.debug(f"Request {self.task_id} saved to {save_filepath}")
+
+@dataclass
+class CompletionResult:
+    object: str
+    input_tokens: int
+    output_tokens: int
+    input_cached_tokens: int
+    input_audio_tokens: int
+    output_audio_tokens: int
+    num_model_requests: int
+    project_id: Optional[str]
+    user_id: Optional[str]
+    api_key_id: Optional[str]
+    model: Optional[str]
+    batch: Optional[bool]
+
+@dataclass
+class CompletionBucket:
+    object: str
+    start_time: int
+    end_time: int
+    results: List[CompletionResult]
+
+@dataclass
+class ModerationResult:
+    object: str
+    input_tokens: int
+    num_model_requests: int
+    project_id: Optional[str]
+    user_id: Optional[str]
+    api_key_id: Optional[str]
+    model: Optional[str]
+
+@dataclass
+class ModerationBucket:
+    object: str
+    start_time: int
+    end_time: int
+    results: List[ModerationResult]
+
+@dataclass
+class UsagePage:
+    object: str
+    data: List[Union[ModerationBucket, CompletionBucket]]
+    has_more: bool
+    next_page: Optional[str]
 
 class NLPUtils:
 
@@ -157,7 +295,8 @@ class BatchProcessor:
             return responses
         return None
 
-class Conversations:
+class Completions:
+
     def __init__(self):
         self.conversations = defaultdict(list)
 
@@ -186,15 +325,10 @@ class Conversations:
         add_completion_to_history=True
     ):
         try:
-            config = load_yaml(PATH_CONFIG_YAML)
-            api_key = config['api_keys']['OpenAI']['api_key']
-            ai_client = AsyncOpenAI(api_key=api_key)
             headers = {'Authorization': f'Bearer {api_key}'}
-            logger.info('Headers prepared for the request.')
             messages = []
             if sys_input:
                 messages.append({'role': 'system', 'content': sys_input})
-                logger.info('System input added at the beginning.')
             for message in input_array:
                 if 'text' in message and message['text']:
                     messages.append({'role': 'user', 'content': message['text']})
@@ -230,7 +364,6 @@ class Conversations:
             async with aiohttp.ClientSession() as session:
                 try:
                     async with session.post(url=OPENAI_ENDPOINT_URLS['chat'], headers=headers, json=request_data) as response:
-                        logger.info(f'Received response with status: {response.status}.')
                         full_response = ''
                         if stream:
                             if response.status != 200:
@@ -274,114 +407,60 @@ class Conversations:
                 output_chunks.append(f'```{part}```')
         return output_chunks
 
-async def create_completion(input_array):
-    try:
-        config = load_yaml(PATH_CONFIG_YAML)
-        api_key = config['api_keys']['OpenAI']['api_key']
-        ai_client = AsyncOpenAI(api_key=api_key)
-        response = await ai_client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=input_array,
-            response_format=OPENAI_CHAT_COLORIZE_RESPONSE_FORMAT
-        )
-        yield response.choices[0].message.content
-    except Exception as e:
-        yield {'error': traceback.format_exc()}
-
-async def create_https_moderation(custom_id, input_array, model):
-    try:
-        config = load_yaml(PATH_CONFIG_YAML)
-        api_key = config['api_keys']['OpenAI']['api_key']
-        ai_client = AsyncOpenAI(api_key=api_key)
-        headers = {'Authorization': f'Bearer {api_key}'}
-        request_data = {
-            'input': input_array,
-            'model': model,
-        }
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(url=OPENAI_ENDPOINT_URLS['moderations'], headers=headers, json=request_data) as moderation_object:
-                    if moderation_object.status == 200:
-                        response_data = await moderation_object.json()
-                        yield response_data
-                    else:
-                        error_message = await moderation_object.text()
-                        yield {'error': error_message}
-            except Exception as e:
-                logger.error('An error occurred while making the HTTP request.')
-                logger.error(traceback.format_exc())
-                yield traceback.format_exc()
-    except Exception as e:
-        logger.error('An error occurred in create_https_moderation.')
-        logger.error(traceback.format_exc())
-        yield traceback.format_exc()
-
-async def create_moderation(input_array):
-    try:
-        config = load_yaml(PATH_CONFIG_YAML)
-        api_key = config['api_keys']['OpenAI']['api_key']
-        ai_client = AsyncOpenAI(api_key=api_key)
-        for item in input_array:
-            response = await ai_client.moderations.create(
-                model='omni-moderation-latest',
-                input=input_array,
+    async def create_completion(input_array):
+        try:
+            response = await ai_client.chat.completions.create(
+                model='gpt-4o-mini',
+                messages=input_array,
+                response_format=OPENAI_CHAT_COLORIZE_RESPONSE_FORMAT
             )
-            moderation_response = response.json()
-            yield moderation_response
-    except Exception as e:
-        error_details = traceback.format_exc()
-        logger.error(f'An error occurred during moderation: {error_details}')
-        yield {'error': error_details}
+            yield response.choices[0].message.content
+        except Exception as e:
+            yield {'error': traceback.format_exc()}
 
-@dataclass
-class ModerationResult:
-    object: str
-    input_tokens: int
-    num_model_requests: int
-    project_id: Optional[str]
-    user_id: Optional[str]
-    api_key_id: Optional[str]
-    model: Optional[str]
+class Moderator:
 
-@dataclass
-class ModerationBucket:
-    object: str
-    start_time: int
-    end_time: int
-    results: List[ModerationResult]
+    async def create_https_moderation(custom_id, input_array, model):
+        try:
+            headers = {'Authorization': f'Bearer {api_key}'}
+            request_data = {
+                'input': input_array,
+                'model': model,
+            }
+            async with aiohttp.ClientSession() as session:
+                try:
+                    async with session.post(url=OPENAI_ENDPOINT_URLS['moderations'], headers=headers, json=request_data) as moderation_object:
+                        if moderation_object.status == 200:
+                            response_data = await moderation_object.json()
+                            yield response_data
+                        else:
+                            error_message = await moderation_object.text()
+                            yield {'error': error_message}
+                except Exception as e:
+                    logger.error('An error occurred while making the HTTP request.')
+                    logger.error(traceback.format_exc())
+                    yield traceback.format_exc()
+        except Exception as e:
+            logger.error('An error occurred in create_https_moderation.')
+            logger.error(traceback.format_exc())
+            yield traceback.format_exc()
 
-@dataclass
-class CompletionResult:
-    object: str
-    input_tokens: int
-    output_tokens: int
-    input_cached_tokens: int
-    input_audio_tokens: int
-    output_audio_tokens: int
-    num_model_requests: int
-    project_id: Optional[str]
-    user_id: Optional[str]
-    api_key_id: Optional[str]
-    model: Optional[str]
-    batch: Optional[bool]
-
-@dataclass
-class CompletionBucket:
-    object: str
-    start_time: int
-    end_time: int
-    results: List[CompletionResult]
-
-@dataclass
-class UsagePage:
-    object: str
-    data: List[Union[ModerationBucket, CompletionBucket]]
-    has_more: bool
-    next_page: Optional[str]
+    async def create_moderation(input_array):
+        try:
+            for item in input_array:
+                response = await ai_client.moderations.create(
+                    model='omni-moderation-latest',
+                    input=input_array,
+                )
+                moderation_response = response.json()
+                yield moderation_response
+        except Exception as e:
+            error_details = traceback.format_exc()
+            logger.error(f'An error occurred during moderation: {error_details}')
+            yield {'error': error_details}
 
 class OpenAIUsageClient:
     BASE_URL = 'https://api.openai.com/v1/organization/usage'
-
     def __init__(self, api_key: str, organization_id: Optional[str] = None):
         self.api_key = api_key
         self.organization_id = organization_id
@@ -389,12 +468,10 @@ class OpenAIUsageClient:
             'Authorization': f'Bearer {self.api_key}',
             'Content-Type': 'application/json'
         }
-
     async def _get_usage(self, endpoint: str, params: Dict[str, Any]) -> UsagePage:
         url = f'{self.BASE_URL}/{endpoint}'
         if self.organization_id:
             params['organization_id'] = self.organization_id
-
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=self.headers, params=params) as response:
                 if response.status != 200:
@@ -435,22 +512,6 @@ class OpenAIUsageClient:
     async def get_completions_usage(self, **params) -> UsagePage:
         return await self._get_usage('completions', params)
 
-async def main():
-    api_key = self.config['api_keys']['OpenAI']['api_key']
-    client = OpenAIUsageClient(api_key=api_key)
-    start_time = 1730419200  # Example Unix timestamp
-    limit = 1
-    # Fetch Moderations usage
-
-# To run the example, uncomment the following lines:
-if __name__ == '__main__':
-     asyncio.run(main())
-
-import aiohttp
-import asyncio
-import time
-import datetime
-import os
 class Benchmark:
     def __init__(self):
         self.config = load_yaml(PATH_CONFIG_YAML)
@@ -533,381 +594,6 @@ class Benchmark:
         logger.info('------------------------------')
         self.analyze_response_quality()
 
-if __name__ == '__main__':
-    benchmark = Benchmark()
-    asyncio.run(benchmark.main())
-
-"""
-API REQUEST PARALLEL PROCESSOR
-
-Using the OpenAI API to process lots of text quickly takes some care.
-If you trickle in a million API requests one by one, they'll take days to complete.
-If you flood a million API requests in parallel, they'll exceed the rate limits and fail with errors.
-To maximize throughput, parallel requests need to be throttled to stay under rate limits.
-
-This script parallelizes requests to the OpenAI API while throttling to stay under rate limits.
-
-Features:
-- Streams requests from file, to avoid running out of memory for giant jobs
-- Makes requests concurrently, to maximize throughput
-- Throttles request and token usage, to stay under rate limits
-- Retries failed requests up to {max_attempts} times, to avoid missing data
-- Logs errors, to diagnose problems with requests
-
-Example command to call script:
-```
-python examples/api_request_parallel_processor.py \
-  --requests_filepath examples/data/example_requests_to_parallel_process.jsonl \
-  --save_filepath examples/data/example_requests_to_parallel_process_results.jsonl \
-  --request_url https://api.openai.com/v1/embeddings \
-  --max_requests_per_minute 1500 \
-  --max_tokens_per_minute 6250000 \
-  --token_encoding_name cl100k_base \
-  --max_attempts 5 \
-  --logging_level 20
-```
-
-Inputs:
-- requests_filepath : str
-    - path to the file containing the requests to be processed
-    - file should be a jsonl file, where each line is a json object with API parameters and an optional metadata field
-    - e.g., {"model": "text-embedding-3-small", "input": "embed me", "metadata": {"row_id": 1}}
-    - as with all jsonl files, take care that newlines in the content are properly escaped (json.dumps does this automatically)
-    - an example file is provided at examples/data/example_requests_to_parallel_process.jsonl
-    - the code to generate the example file is appended to the bottom of this script
-- save_filepath : str, optional
-    - path to the file where the results will be saved
-    - file will be a jsonl file, where each line is an array with the original request plus the API response
-    - e.g., [{"model": "text-embedding-3-small", "input": "embed me"}, {...}]
-    - if omitted, results will be saved to {requests_filename}_results.jsonl
-- request_url : str, optional
-    - URL of the API endpoint to call
-    - if omitted, will default to "https://api.openai.com/v1/embeddings"
-- api_key : str, optional
-    - API key to use
-    - if omitted, the script will attempt to read it from an environment variable {os.getenv("OPENAI_API_KEY")}
-- max_requests_per_minute : float, optional
-    - target number of requests to make per minute (will make less if limited by tokens)
-    - leave headroom by setting this to 50% or 75% of your limit
-    - if requests are limiting you, try batching multiple embeddings or completions into one request
-    - if omitted, will default to 1,500
-- max_tokens_per_minute : float, optional
-    - target number of tokens to use per minute (will use less if limited by requests)
-    - leave headroom by setting this to 50% or 75% of your limit
-    - if omitted, will default to 125,000
-- token_encoding_name : str, optional
-    - name of the token encoding used, as defined in the `tiktoken` package
-    - if omitted, will default to "cl100k_base" (used by `text-embedding-3-small`)
-- max_attempts : int, optional
-    - number of times to retry a failed request before giving up
-    - if omitted, will default to 5
-- logging_level : int, optional
-    - level of logging to use; higher numbers will log fewer messages
-    - 40 = ERROR; will log only when requests fail after all retries
-    - 30 = WARNING; will log when requests his rate limits or other errors
-    - 20 = INFO; will log when requests start and the status at finish
-    - 10 = DEBUG; will log various things as the loop runs to see when they occur
-    - if omitted, will default to 20 (INFO).
-
-The script is structured as follows:
-    - Imports
-    - Define main()
-        - Initialize things
-        - In main loop:
-            - Get next request if one is not already waiting for capacity
-            - Update available token & request capacity
-            - If enough capacity available, call API
-            - The loop pauses if a rate limit error is hit
-            - The loop breaks when no tasks remain
-    - Define dataclasses
-        - StatusTracker (stores script metadata counters; only one instance is created)
-        - APIRequest (stores API inputs, outputs, metadata; one method to call API)
-    - Define functions
-        - api_endpoint_from_url (extracts API endpoint from request URL)
-        - append_to_jsonl (writes to results file)
-        - num_tokens_consumed_from_request (bigger function to infer token usage from request)
-        - task_id_generator_function (yields 0, 1, 2, ...)
-    - Run main()
-"""
-
-# imports
-import aiohttp  # for making API calls concurrently
-import argparse  # for running script from command line
-import asyncio  # for running API calls concurrently
-import json  # for saving results to a jsonl file
-import logging  # for logging rate limit warnings and other messages
-import os  # for reading API key
-import re  # for matching endpoint from request URL
-import tiktoken  # for counting tokens
-import time  # for sleeping after rate limit is hit
-from dataclasses import (
-    dataclass,
-    field,
-)  # for storing API inputs, outputs, and metadata
-
-
-async def process_api_requests_from_file(
-    requests_filepath: str,
-    save_filepath: str,
-    request_url: str,
-    api_key: str,
-    max_requests_per_minute: float,
-    max_tokens_per_minute: float,
-    token_encoding_name: str,
-    max_attempts: int,
-    logging_level: int,
-    status_tracker=None
-):
-    if status_tracker is None:
-        status_tracker = StatusTracker()
-    """Processes API requests in parallel, throttling to stay under rate limits."""
-    # constants
-    seconds_to_pause_after_rate_limit_error = 15
-    seconds_to_sleep_each_loop = (
-        0.001  # 1 ms limits max throughput to 1,000 requests per second
-    )
-
-    # initialize logging
-    logging.basicConfig(level=logging_level)
-    logging.debug(f"Logging initialized at level {logging_level}")
-
-    # infer API endpoint and construct request header
-    api_endpoint = api_endpoint_from_url(request_url)
-    request_header = {"Authorization": f"Bearer {api_key}"}
-    # use api-key header for Azure deployments
-    if "/deployments" in request_url:
-        request_header = {"api-key": f"{api_key}"}
-
-    # initialize trackers
-    queue_of_requests_to_retry = asyncio.Queue()
-    task_id_generator = (
-        task_id_generator_function()
-    )  # generates integer IDs of 0, 1, 2, ...
-    status_tracker = (
-        StatusTracker()
-    )  # single instance to track a collection of variables
-    next_request = None  # variable to hold the next request to call
-
-    # initialize available capacity counts
-    available_request_capacity = max_requests_per_minute
-    available_token_capacity = max_tokens_per_minute
-    last_update_time = time.time()
-
-    # initialize flags
-    file_not_finished = True  # after file is empty, we'll skip reading it
-    logging.debug(f"Initialization complete.")
-
-    # initialize file reading
-    with open(requests_filepath) as file:
-        # `requests` will provide requests one at a time
-        requests = file.__iter__()
-        logging.debug(f"File opened. Entering main loop")
-        async with aiohttp.ClientSession() as session:  # Initialize ClientSession here
-            while True:
-                # get next request (if one is not already waiting for capacity)
-                if next_request is None:
-                    if not queue_of_requests_to_retry.empty():
-                        next_request = queue_of_requests_to_retry.get_nowait()
-                        logging.debug(
-                            f"Retrying request {next_request.task_id}: {next_request}"
-                        )
-                    elif file_not_finished:
-                        try:
-                            # get new request
-                            request_json = json.loads(next(requests))
-                            next_request = APIRequest(
-                                task_id=next(task_id_generator),
-                                request_json=request_json,
-                                token_consumption=num_tokens_consumed_from_request(
-                                    request_json, api_endpoint, token_encoding_name
-                                ),
-                                attempts_left=max_attempts,
-                                metadata=request_json.pop("metadata", None),
-                            )
-                            status_tracker.num_tasks_started += 1
-                            status_tracker.num_tasks_in_progress += 1
-                            logging.debug(
-                                f"Reading request {next_request.task_id}: {next_request}"
-                            )
-                        except StopIteration:
-                            # if file runs out, set flag to stop reading it
-                            logging.debug("Read file exhausted")
-                            file_not_finished = False
-
-                # update available capacity
-                current_time = time.time()
-                seconds_since_update = current_time - last_update_time
-                available_request_capacity = min(
-                    available_request_capacity
-                    + max_requests_per_minute * seconds_since_update / 60.0,
-                    max_requests_per_minute,
-                )
-                available_token_capacity = min(
-                    available_token_capacity
-                    + max_tokens_per_minute * seconds_since_update / 60.0,
-                    max_tokens_per_minute,
-                )
-                last_update_time = current_time
-
-                # if enough capacity available, call API
-                if next_request:
-                    next_request_tokens = next_request.token_consumption
-                    if (
-                        available_request_capacity >= 1
-                        and available_token_capacity >= next_request_tokens
-                    ):
-                        # update counters
-                        available_request_capacity -= 1
-                        available_token_capacity -= next_request_tokens
-                        next_request.attempts_left -= 1
-
-                        # call API
-                        asyncio.create_task(
-                            next_request.call_api(
-                                session=session,
-                                request_url=request_url,
-                                request_header=request_header,
-                                retry_queue=queue_of_requests_to_retry,
-                                save_filepath=save_filepath,
-                                status_tracker=status_tracker,
-                            )
-                        )
-                        next_request = None  # reset next_request to empty
-
-                # if all tasks are finished, break
-                if status_tracker.num_tasks_in_progress == 0:
-                    break
-
-                # main loop sleeps briefly so concurrent tasks can run
-                await asyncio.sleep(seconds_to_sleep_each_loop)
-
-                # if a rate limit error was hit recently, pause to cool down
-                seconds_since_rate_limit_error = (
-                    time.time() - status_tracker.time_of_last_rate_limit_error
-                )
-                if (
-                    seconds_since_rate_limit_error
-                    < seconds_to_pause_after_rate_limit_error
-                ):
-                    remaining_seconds_to_pause = (
-                        seconds_to_pause_after_rate_limit_error
-                        - seconds_since_rate_limit_error
-                    )
-                    await asyncio.sleep(remaining_seconds_to_pause)
-                    # ^e.g., if pause is 15 seconds and final limit was hit 5 seconds ago
-                    logging.warn(
-                        f"Pausing to cool down until {time.ctime(status_tracker.time_of_last_rate_limit_error + seconds_to_pause_after_rate_limit_error)}"
-                    )
-
-        # after finishing, log final status
-        logging.info(
-            f"""Parallel processing complete. Results saved to {save_filepath}"""
-        )
-        if status_tracker.num_tasks_failed > 0:
-            logging.warning(
-                f"{status_tracker.num_tasks_failed} / {status_tracker.num_tasks_started} requests failed. Errors logged to {save_filepath}."
-            )
-        if status_tracker.num_rate_limit_errors > 0:
-            logging.warning(
-                f"{status_tracker.num_rate_limit_errors} rate limit errors received. Consider running at a lower rate."
-            )
-
-
-# dataclasses
-
-
-@dataclass
-class StatusTracker:
-    """Stores metadata about the script's progress. Only one instance is created."""
-
-    num_tasks_started: int = 0
-    num_tasks_in_progress: int = 0  # script ends when this reaches 0
-    num_tasks_succeeded: int = 0
-    num_tasks_failed: int = 0
-    num_rate_limit_errors: int = 0
-    num_api_errors: int = 0  # excluding rate limit errors, counted above
-    num_other_errors: int = 0
-    time_of_last_rate_limit_error: int = 0  # used to cool off after hitting rate limits
-
-
-@dataclass
-class APIRequest:
-    """Stores an API request's inputs, outputs, and other metadata. Contains a method to make an API call."""
-
-    task_id: int
-    request_json: dict
-    token_consumption: int
-    attempts_left: int
-    metadata: dict
-    result: list = field(default_factory=list)
-
-    async def call_api(
-        self,
-        session: aiohttp.ClientSession,
-        request_url: str,
-        request_header: dict,
-        retry_queue: asyncio.Queue,
-        save_filepath: str,
-        status_tracker: StatusTracker,
-    ):
-        """Calls the OpenAI API and saves results."""
-        logging.info(f"Starting request #{self.task_id}")
-        error = None
-        try:
-            async with session.post(
-                url=request_url, headers=request_header, json=self.request_json
-            ) as response:
-                response = await response.json()
-            if "error" in response:
-                logging.warning(
-                    f"Request {self.task_id} failed with error {response['error']}"
-                )
-                status_tracker.num_api_errors += 1
-                error = response
-                if "rate limit" in response["error"].get("message", "").lower():
-                    status_tracker.time_of_last_rate_limit_error = time.time()
-                    status_tracker.num_rate_limit_errors += 1
-                    status_tracker.num_api_errors -= (
-                        1  # rate limit errors are counted separately
-                    )
-
-        except (
-            Exception
-        ) as e:  # catching naked exceptions is bad practice, but in this case we'll log & save them
-            logging.warning(f"Request {self.task_id} failed with Exception {e}")
-            status_tracker.num_other_errors += 1
-            error = e
-        if error:
-            self.result.append(error)
-            if self.attempts_left:
-                retry_queue.put_nowait(self)
-            else:
-                logging.error(
-                    f"Request {self.request_json} failed after all attempts. Saving errors: {self.result}"
-                )
-                data = (
-                    [self.request_json, [str(e) for e in self.result], self.metadata]
-                    if self.metadata
-                    else [self.request_json, [str(e) for e in self.result]]
-                )
-                append_to_jsonl(data, save_filepath)
-                status_tracker.num_tasks_in_progress -= 1
-                status_tracker.num_tasks_failed += 1
-        else:
-            data = (
-                [self.request_json, response, self.metadata]
-                if self.metadata
-                else [self.request_json, response]
-            )
-            append_to_jsonl(data, save_filepath)
-            status_tracker.num_tasks_in_progress -= 1
-            status_tracker.num_tasks_succeeded += 1
-            logging.debug(f"Request {self.task_id} saved to {save_filepath}")
-
-
-# functions
-
-
 def api_endpoint_from_url(request_url):
     """Extract the API endpoint from the request URL."""
     match = re.search("^https://[^/]+/v\\d+/(.+)$", request_url)
@@ -925,192 +611,16 @@ def append_to_jsonl(data, filename: str) -> None:
     with open(filename, "a") as f:
         f.write(json_string + "\n")
 
-
-def num_tokens_consumed_from_request(
-    request_json: dict,
-    api_endpoint: str,
-    token_encoding_name: str,
-):
-    """Count the number of tokens in the request. Only supports completion and embedding requests."""
-    encoding = tiktoken.get_encoding(token_encoding_name)
-    # if completions request, tokens = prompt + n * max_tokens
-    if api_endpoint.endswith("completions"):
-        max_tokens = request_json.get("max_tokens", 15)
-        n = request_json.get("n", 1)
-        completion_tokens = n * max_tokens
-
-        # chat completions
-        if api_endpoint.startswith("chat/"):
-            num_tokens = 0
-            for message in request_json["messages"]:
-                num_tokens += 4  # every message follows <im_start>{role/name}\n{content}<im_end>\n
-                for key, value in message.items():
-                    num_tokens += len(encoding.encode(value))
-                    if key == "name":  # if there's a name, the role is omitted
-                        num_tokens -= 1  # role is always required and always 1 token
-            num_tokens += 2  # every reply is primed with <im_start>assistant
-            return num_tokens + completion_tokens
-        # normal completions
-        else:
-            prompt = request_json["prompt"]
-            if isinstance(prompt, str):  # single prompt
-                prompt_tokens = len(encoding.encode(prompt))
-                num_tokens = prompt_tokens + completion_tokens
-                return num_tokens
-            elif isinstance(prompt, list):  # multiple prompts
-                prompt_tokens = sum([len(encoding.encode(p)) for p in prompt])
-                num_tokens = prompt_tokens + completion_tokens * len(prompt)
-                return num_tokens
-            else:
-                raise TypeError(
-                    'Expecting either string or list of strings for "prompt" field in completion request'
-                )
-    # if embeddings request, tokens = input tokens
-    elif api_endpoint == "embeddings":
-        input = request_json["input"]
-        if isinstance(input, str):  # single input
-            num_tokens = len(encoding.encode(input))
-            return num_tokens
-        elif isinstance(input, list):  # multiple inputs
-            num_tokens = sum([len(encoding.encode(i)) for i in input])
-            return num_tokens
-        else:
-            raise TypeError(
-                'Expecting either string or list of strings for "inputs" field in embedding request'
-            )
-    # more logic needed to support other API calls (e.g., edits, inserts, DALL-E)
-    else:
-        raise NotImplementedError(
-            f'API endpoint "{api_endpoint}" not implemented in this script'
-        )
-
-
-def task_id_generator_function():
-    """Generate integers 0, 1, 2, and so on."""
-    task_id = 0
-    while True:
-        yield task_id
-        task_id += 1
-
-
-# run script
-
-
-if __name__ == "__main__":
-    # parse command line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--requests_filepath")
-    parser.add_argument("--save_filepath", default=None)
-    parser.add_argument("--request_url", default="https://api.openai.com/v1/embeddings")
-    parser.add_argument("--api_key", default=os.getenv("OPENAI_API_KEY"))
-    parser.add_argument("--max_requests_per_minute", type=int, default=3_000 * 0.5)
-    parser.add_argument("--max_tokens_per_minute", type=int, default=250_000 * 0.5)
-    parser.add_argument("--token_encoding_name", default="cl100k_base")
-    parser.add_argument("--max_attempts", type=int, default=5)
-    parser.add_argument("--logging_level", default=logging.INFO)
-    args = parser.parse_args()
-
-    if args.save_filepath is None:
-        args.save_filepath = args.requests_filepath.replace(".jsonl", "_results.jsonl")
-
-    # run script
-    asyncio.run(
-        process_api_requests_from_file(
-            requests_filepath=args.requests_filepath,
-            save_filepath=args.save_filepath,
-            request_url=args.request_url,
-            api_key=args.api_key,
-            max_requests_per_minute=float(args.max_requests_per_minute),
-            max_tokens_per_minute=float(args.max_tokens_per_minute),
-            token_encoding_name=args.token_encoding_name,
-            max_attempts=int(args.max_attempts),
-            logging_level=int(args.logging_level),
-        )
-    )
-
-
-"""
-APPENDIX
-
-The example requests file at openai-cookbook/examples/data/example_requests_to_parallel_process.jsonl contains 10,000 requests to text-embedding-3-small.
-
-It was generated with the following code:
-
-```python
-import json
-
-filename = "data/example_requests_to_parallel_process.jsonl"
-n_requests = 10_000
-jobs = [{"model": "text-embedding-3-small", "input": str(x) + "\n"} for x in range(n_requests)]
-with open(filename, "w") as f:
-    for job in jobs:
-        json_string = json.dumps(job)
-        f.write(json_string + "\n")
-```
-
-As with all jsonl files, take care that newlines in the content are properly escaped (json.dumps does this automatically).
-"""
-from openai import AsyncOpenAI
-
-import asyncio
-
-config = load_yaml(PATH_CONFIG_YAML)
-api_key = config['api_keys']['OpenAI']['api_key']
-ai_client = AsyncOpenAI(api_key=api_key)
-
 async def cancel():
     await ai_client.fine_tuning.jobs.cancel('ftjob-VBRw83PIls4zA25bypQBcCHH')
 
-async def main():
+
+async def fine_tuning():
     await ai_client.fine_tuning.jobs.create(
         training_file='file-LvuzigtnKkifPazQptC7Mz',
         model='gpt-4o-mini-2024-07-18',
         suffix='vyrtuous'
     )
-
-if __name__ == '__main__':
-    asyncio.run(main())
-
-from collections import defaultdict
-
-import json
-import numpy as np
-import tiktoken
-
-encoding = tiktoken.encoding_for_model('gpt-4o-mini-07-18') #get_encoding('cl100k_base')
-
-# not exact!
-# simplified from https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
-def num_tokens_from_messages(messages, tokens_per_message=3, tokens_per_name=1):
-    num_tokens = 0
-    for message in messages:
-        num_tokens += tokens_per_message
-        for key, value in message.items():
-            if isinstance(value, str):  # Check if the value is a string
-                num_tokens += len(encoding.encode(value))
-            else:
-                print(f'Warning: Non-string value {value} of type {type(value)} encountered. Skipping.')
-            if key == 'name':
-                num_tokens += tokens_per_name
-    num_tokens += 3  # For end-of-sequence token
-    return num_tokens
-
-def num_assistant_tokens_from_messages(messages):
-    num_tokens = 0
-    for message in messages:
-        if message['role'] == 'assistant':
-            content = message.get('content', '')
-            if isinstance(content, str):
-                num_tokens += len(encoding.encode(content))
-            else:
-                print(f'Warning: Non-string assistant content {content} of type {type(content)} encountered. Skipping.')
-    return num_tokens
-
-def print_distribution(values, name):
-    print(f'\n#### Distribution of {name}:')
-    print(f'min / max: {min(values)}, {max(values)}')
-    print(f'mean / median: {np.mean(values)}, {np.median(values)}')
-    print(f'p5 / p95: {np.quantile(values, 0.1)}, {np.quantile(values, 0.9)}')
 
 def format_error_check():
     format_errors = defaultdict(int)
@@ -1142,7 +652,189 @@ def format_error_check():
     else:
         print('No errors found')
 
-if __name__ == '__main__':
+def num_tokens_from_messages(messages, tokens_per_message=3, tokens_per_name=1):
+    num_tokens = 0
+    for message in messages:
+        num_tokens += tokens_per_message
+        for key, value in message.items():
+            if isinstance(value, str):  # Check if the value is a string
+                num_tokens += len(encoding.encode(value))
+            else:
+                print(f'Warning: Non-string value {value} of type {type(value)} encountered. Skipping.')
+            if key == 'name':
+                num_tokens += tokens_per_name
+    num_tokens += 3  # For end-of-sequence token
+    return num_tokens
+
+def num_assistant_tokens_from_messages(messages):
+    num_tokens = 0
+    for message in messages:
+        if message['role'] == 'assistant':
+            content = message.get('content', '')
+            if isinstance(content, str):
+                num_tokens += len(encoding.encode(content))
+            else:
+                print(f'Warning: Non-string assistant content {content} of type {type(content)} encountered. Skipping.')
+    return num_tokens
+
+def print_distribution(values, name):
+    print(f'\n#### Distribution of {name}:')
+    print(f'min / max: {min(values)}, {max(values)}')
+    print(f'mean / median: {np.mean(values)}, {np.median(values)}')
+    print(f'p5 / p95: {np.quantile(values, 0.1)}, {np.quantile(values, 0.9)}')
+
+async def process_api_requests_from_file(
+    requests_filepath: str,
+    save_filepath: str,
+    request_url: str,
+    api_key: str,
+    max_requests_per_minute: float,
+    max_tokens_per_minute: float,
+    token_encoding_name: str,
+    max_attempts: int,
+    logging_level: int,
+    status_tracker=None
+):
+    if status_tracker is None:
+        status_tracker = StatusTracker()
+    seconds_to_pause_after_rate_limit_error = 15
+    seconds_to_sleep_each_loop = (
+        0.001
+    )
+    api_endpoint = api_endpoint_from_url(request_url)
+    request_header = {"Authorization": f"Bearer {api_key}"}
+    if "/deployments" in request_url:
+        request_header = {"api-key": f"{api_key}"}
+    queue_of_requests_to_retry = asyncio.Queue()
+    task_id_generator = (
+        task_id_generator_function()
+    )
+    status_tracker = (
+        StatusTracker()
+    )
+    next_request = None
+    available_request_capacity = max_requests_per_minute
+    available_token_capacity = max_tokens_per_minute
+    last_update_time = time.time()
+    file_not_finished = True  # after file is empty, we'll skip reading it
+    with open(requests_filepath) as file:
+        requests = file.__iter__()
+        async with aiohttp.ClientSession() as session:  # Initialize ClientSession here
+            while True:
+                if next_request is None:
+                    if not queue_of_requests_to_retry.empty():
+                        next_request = queue_of_requests_to_retry.get_nowait()
+                    elif file_not_finished:
+                        try:
+                            request_json = json.loads(next(requests))
+                            next_request = APIRequest(
+                                task_id=next(task_id_generator),
+                                request_json=request_json,
+                                token_consumption=num_tokens_consumed_from_request(
+                                    request_json, api_endpoint, token_encoding_name
+                                ),
+                                attempts_left=max_attempts,
+                                metadata=request_json.pop("metadata", None),
+                            )
+                            status_tracker.num_tasks_started += 1
+                            status_tracker.num_tasks_in_progress += 1
+                        except StopIteration:
+                            logging.debug("Read file exhausted")
+                            file_not_finished = False
+                current_time = time.time()
+                seconds_since_update = current_time - last_update_time
+                available_request_capacity = min(
+                    available_request_capacity
+                    + max_requests_per_minute * seconds_since_update / 60.0,
+                    max_requests_per_minute,
+                )
+                available_token_capacity = min(
+                    available_token_capacity
+                    + max_tokens_per_minute * seconds_since_update / 60.0,
+                    max_tokens_per_minute,
+                )
+                last_update_time = current_time
+                if next_request:
+                    next_request_tokens = next_request.token_consumption
+                    if (
+                        available_request_capacity >= 1
+                        and available_token_capacity >= next_request_tokens
+                    ):
+                        available_request_capacity -= 1
+                        available_token_capacity -= next_request_tokens
+                        next_request.attempts_left -= 1
+                        asyncio.create_task(
+                            next_request.call_api(
+                                session=session,
+                                request_url=request_url,
+                                request_header=request_header,
+                                retry_queue=queue_of_requests_to_retry,
+                                save_filepath=save_filepath,
+                                status_tracker=status_tracker,
+                            )
+                        )
+                        next_request = None  # reset next_request to empty
+                if status_tracker.num_tasks_in_progress == 0:
+                    break
+                await asyncio.sleep(seconds_to_sleep_each_loop)
+                seconds_since_rate_limit_error = (
+                    time.time() - status_tracker.time_of_last_rate_limit_error
+                )
+                if (
+                    seconds_since_rate_limit_error
+                    < seconds_to_pause_after_rate_limit_error
+                ):
+                    remaining_seconds_to_pause = (
+                        seconds_to_pause_after_rate_limit_error
+                        - seconds_since_rate_limit_error
+                    )
+                    await asyncio.sleep(remaining_seconds_to_pause)
+        if status_tracker.num_tasks_failed > 0:
+            logging.warning(
+                f"{status_tracker.num_tasks_failed} / {status_tracker.num_tasks_started} requests failed. Errors logged to {save_filepath}."
+            )
+        if status_tracker.num_rate_limit_errors > 0:
+            logging.warning(
+                f"{status_tracker.num_rate_limit_errors} rate limit errors received. Consider running at a lower rate."
+            )
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--requests_filepath")
+    parser.add_argument("--save_filepath", default=None)
+    parser.add_argument("--request_url", default="https://api.openai.com/v1/embeddings")
+    parser.add_argument("--api_key", default=os.getenv("OPENAI_API_KEY"))
+    parser.add_argument("--max_requests_per_minute", type=int, default=3_000 * 0.5)
+    parser.add_argument("--max_tokens_per_minute", type=int, default=250_000 * 0.5)
+    parser.add_argument("--token_encoding_name", default="cl100k_base")
+    parser.add_argument("--max_attempts", type=int, default=5)
+    parser.add_argument("--logging_level", default=logging.INFO)
+    args = parser.parse_args()
+
+    if args.save_filepath is None:
+        args.save_filepath = args.requests_filepath.replace(".jsonl", "_results.jsonl")
+    asyncio.run(
+        process_api_requests_from_file(
+            requests_filepath=args.requests_filepath,
+            save_filepath=args.save_filepath,
+            request_url=args.request_url,
+            api_key=args.api_key,
+            max_requests_per_minute=float(args.max_requests_per_minute),
+            max_tokens_per_minute=float(args.max_tokens_per_minute),
+            token_encoding_name=args.token_encoding_name,
+            max_attempts=int(args.max_attempts),
+            logging_level=int(args.logging_level),
+        )
+    )
+
+def task_id_generator_function():
+    """Generate integers 0, 1, 2, and so on."""
+    task_id = 0
+    while True:
+        yield task_id
+        task_id += 1
+
+async def training():
     data_path = 'training_temp.jsonl'
     with open(data_path, 'r', encoding='utf-8') as f:
        dataset = [json.loads(line) for line in f]
@@ -1156,7 +848,6 @@ if __name__ == '__main__':
     n_messages = []
     convo_lens = []
     assistant_message_lens = []
-    
     for ex in dataset:
         messages = ex['messages']
         if not any(message['role'] == 'system' for message in messages):
@@ -1166,7 +857,6 @@ if __name__ == '__main__':
         n_messages.append(len(messages))
         convo_lens.append(num_tokens_from_messages(messages))
         assistant_message_lens.append(num_assistant_tokens_from_messages(messages))
-        
     print('Num examples missing system message:', n_missing_system)
     print('Num examples missing user message:', n_missing_user)
     print_distribution(n_messages, 'num_messages_per_example')
@@ -1174,22 +864,18 @@ if __name__ == '__main__':
     print_distribution(assistant_message_lens, 'num_assistant_tokens_per_example')
     n_too_long = sum(l > 16385 for l in convo_lens)
     print(f'\n{n_too_long} examples may be over the 16,385 token limit, they will be truncated during fine-tuning') 
-    # Pricing and default n_epochs estimate
     MAX_TOKENS_PER_EXAMPLE = 16385
-    
     TARGET_EPOCHS = 3
     MIN_TARGET_EXAMPLES = 100
     MAX_TARGET_EXAMPLES = 25000
     MIN_DEFAULT_EPOCHS = 1
     MAX_DEFAULT_EPOCHS = 25
-    
     n_epochs = TARGET_EPOCHS
     n_train_examples = len(dataset)
     if n_train_examples * TARGET_EPOCHS < MIN_TARGET_EXAMPLES:
         n_epochs = min(MAX_DEFAULT_EPOCHS, MIN_TARGET_EXAMPLES // n_train_examples)
     elif n_train_examples * TARGET_EPOCHS > MAX_TARGET_EXAMPLES:
         n_epochs = max(MIN_DEFAULT_EPOCHS, MAX_TARGET_EXAMPLES // n_train_examples)
-    
     n_billing_tokens_in_dataset = sum(min(MAX_TOKENS_PER_EXAMPLE, length) for length in convo_lens)
     print(f'Dataset has ~{n_billing_tokens_in_dataset} tokens that will be charged for during training')
     print(f'By default, you\'ll train for {n_epochs} epochs on this dataset')

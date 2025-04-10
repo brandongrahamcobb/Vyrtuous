@@ -18,7 +18,7 @@
 from discord import Embed, File, app_commands
 from discord.ext import commands
 from googletrans import Translator, LANGUAGES
-from lucy.utils.handlers.ai_manager import create_completion, BatchProcessor, OpenAIUsageClient
+from lucy.utils.handlers.ai_manager import Completions, BatchProcessor, OpenAIUsageClient
 from lucy.utils.handlers.chemistry_manager import construct_helm_from_peptide, draw_fingerprint, draw_watermarked_molecule, get_mol, get_molecule_name, get_proximity, gsrs, manual_helm_to_smiles
 from lucy.utils.handlers.game_manager import Game
 from lucy.utils.handlers.image_manager import add_watermark, combine_gallery, create_image, create_image_variation, edit_image, stable_cascade
@@ -54,12 +54,12 @@ class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
-        self.conversations = bot.conversations
+        self.completions = Completions()
         self.batch_processor = BatchProcessor(bot)
         self.game = Game(self.bot)
         self.predicator = Predicator(self.bot)
         self.tag_manager = TagManager(self.bot.db_pool)
-        self.handler = Message(self.bot, self.config, self.conversations, self.bot.db_pool)
+        self.handler = Message(self.bot, self.config, self.completions, self.bot.db_pool)
         self.loop_task: Optional[str] = None
 
     async def loop_tags(self, channel: discord.TextChannel):
@@ -178,7 +178,7 @@ class Hybrid(commands.Cog):
                 "add_completion_to_history": add_completion_to_history if add_completion_to_history is not None else self.config.get("openai_chat_add_completion_to_history", True),
             }
             if new:
-                async for chat_completion in self.conversations.create_https_completion(**request_data):
+                async for chat_completion in self.completions.create_https_completion(**request_data):
                     if len(chat_completion) > 2000:
                         unique_filename = f'temp_{uuid.uuid4()}.txt'
                         with open(unique_filename, 'w') as f:
@@ -228,7 +228,7 @@ class Hybrid(commands.Cog):
             ]
             async for flagged, reasons in self.handler.completion_prep(array):
                 if not flagged:
-                    async for completion in create_completion(array):
+                    async for completion in self.completions.create_completion(array):
                         color_values = json.loads(completion)
                         r = color_values['r']
                         g = color_values['g']

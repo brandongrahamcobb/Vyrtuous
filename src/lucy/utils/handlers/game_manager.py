@@ -17,7 +17,7 @@
 
 from decimal import Decimal
 from discord.ext import commands
-from lucy.utils.handlers.ai_manager import create_moderation
+from lucy.utils.handlers.ai_manager import Moderator
 from lucy.utils.handlers.predicator import Predicator
 from lucy.utils.helpers import *
 from os import makedirs
@@ -56,6 +56,7 @@ class Game:
                          1049919840, 1107455447, 1168144006, 1232158297, 1299680571, 1370903066, 1446028554, 1525246918, 1608855764,
                          1697021059]
         self.predicator = Predicator(self.bot)
+        self.moderator = Moderator()
 
     async def get_user(self, user_id):
         async with self.db_pool.acquire() as conn:
@@ -129,7 +130,7 @@ class Game:
         if not self.config.get('openai_chat_moderation', False) or self.predicator.is_developer(member):
             return False
         try:
-            async for moderation_completion in create_moderation(input_array=[faction_name]):
+            async for moderation_completion in self.moderator.create_moderation(input_array=[faction_name]):
                 try:
                     full_response = json.loads(moderation_completion)
                     results = full_response.get('results', [])

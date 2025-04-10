@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands
-from lucy.utils.handlers.ai_manager import create_moderation
+from lucy.utils.handlers.ai_manager import Moderator
 from lucy.utils.handlers.predicator import Predicator
 from lucy.utils.helpers import *
 from lucy.utils.inc.setup_logging import logger
@@ -35,13 +35,14 @@ import yaml
 os.makedirs(DIR_TEMP, exist_ok=True)
 
 class Message:
-    def __init__(self, bot, config, conversations, db_pool):
+    def __init__(self, bot, config, completions, db_pool):
         self.bot = bot
         self.config = config
-        self.conversations = conversations
+        self.completions = completions
         self.db_pool = db_pool
         self.user_messages = {}
         self.predicator = Predicator(self.bot)
+        self.moderator = Moderator()
 
     async def generate_chat_completion(
         self,
@@ -96,7 +97,7 @@ class Message:
             removed_message = array.pop(0)
             total_tokens -= len(removed_message.get('text', '').split())
         print(model)
-        async for chat_completion in self.conversations.create_https_completion(
+        async for chat_completion in self.completions.create_https_completion(
             custom_id=custom_id,
             completions=completions,
             input_array=array,
@@ -121,7 +122,7 @@ class Message:
         )
         available_tokens = OPENAI_MODEL_CONTEXT_LIMITS[OPENAI_CHAT_MODERATION_MODEL] - total_input_tokens
         max_tokens = min(available_tokens, OPENAI_MODEL_OUTPUT_LIMITS[self.config['openai_chat_model']])
-        async for moderation_completion in self.conversations.create_https_completion(
+        async for moderation_completion in self.completions.create_https_completion(
             completions=OPENAI_CHAT_MODERATION_N,
             custom_id=custom_id,
             input_array=array,
@@ -236,7 +237,7 @@ class Message:
         overall = []
         reasons = []
         for item in array:
-            async for moderation_completion in create_moderation(input_array=[item]):
+            async for moderation_completion in self.moderator.create_moderation(input_array=[item]):
                 try:
                     full_response = json.loads(moderation_completion)
                     results = full_response.get('results', [])

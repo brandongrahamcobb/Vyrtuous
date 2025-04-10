@@ -6,17 +6,16 @@ import asyncio
 import logging
 
 class LinkedInBot:
-    def __init__(self, config, db_pool, conversations, lock, oauth_token):
+    def __init__(self, config, db_pool, completions, lock, oauth_token):
         self.config = config
         self.db_pool = db_pool
-        self.conversations = conversations
+        self.completions = completions
         self.lock = lock
         self.oauth_token = oauth_token
         self.base_url = "https://api.linkedin.com/v2"
 
     async def event_ready(self):
-        logger.info("LinkedIn Bot is ready!")
-        logger.info("Listening for LinkedIn messages and events...")
+        return
 
     async def run(self):
         try:
