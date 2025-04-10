@@ -241,7 +241,7 @@ class Message:
                 try:
                     full_response = json.loads(moderation_completion)
                     results = full_response.get('results', [])
-                    if results and results[0].get('flagged', False) and not self.predicator.is_spawd(ctx):
+                    if results and results[0].get('flagged', False) and not self.predicator.is_developer(ctx):
                         result = results[0]
                         flagged = result.get('flagged', False)
                         categories = result.get('categories', {})
