@@ -407,7 +407,7 @@ class Completions:
                 output_chunks.append(f'```{part}```')
         return output_chunks
 
-    async def create_completion(input_array):
+    async def create_completion(self, input_array):
         try:
             response = await ai_client.chat.completions.create(
                 model='gpt-4o-mini',
@@ -420,7 +420,7 @@ class Completions:
 
 class Moderator:
 
-    async def create_https_moderation(custom_id, input_array, model):
+    async def create_https_moderation(self, custom_id, input_array, model):
         try:
             headers = {'Authorization': f'Bearer {api_key}'}
             request_data = {
@@ -445,7 +445,7 @@ class Moderator:
             logger.error(traceback.format_exc())
             yield traceback.format_exc()
 
-    async def create_moderation(input_array):
+    async def create_moderation(self, input_array):
         try:
             for item in input_array:
                 response = await ai_client.moderations.create(

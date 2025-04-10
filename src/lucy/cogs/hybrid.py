@@ -99,45 +99,6 @@ class Hybrid(commands.Cog):
                 return lang_code
         return None
 
-    @commands.hybrid_command(name="export_roles", description="Export non-numeric roles and their permissions with channel access info.")
-    @commands.has_permissions(administrator=True)
-    async def export_roles(self, ctx: commands.Context):
-        guild = ctx.guild
-        if not guild:
-            await ctx.send("This command must be run in a server.")
-            return
-
-        output = ""
-
-        for role in guild.roles:
-            # Skip @everyone and numeric-only roles
-            if role.is_default() or role.name.isnumeric():
-                continue
-
-            output += f"Role: {role.name}\nPermissions:\n"
-            perms: discord.Permissions = role.permissions
-            allowed_perms = [name for name, value in perms if value]
-            for perm in allowed_perms:
-                output += f"  - {perm}\n"
-
-            has_access = []
-            no_access = []
-            for channel in guild.channels:
-                if isinstance(channel, discord.TextChannel):
-                    perms_in_channel = channel.permissions_for(role)
-                    if perms_in_channel.view_channel:
-                        has_access.append(channel.name)
-                    else:
-                        no_access.append(channel.name)
-
-            output += "Has Access To Channels:\n"
-            for c in has_access:
-                output += f"  - {c}\n"
-            output += "No Access To Channels:\n"
-            for c in no_access:
-                output += f"  - {c}\n"
-            output += "\n"
-
     @commands.hybrid_command(name="chat", description="Usage: chat <model> <prompt>")
     async def chat(
         self,

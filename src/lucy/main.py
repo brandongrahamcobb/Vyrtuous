@@ -57,7 +57,7 @@ async def main():
 
     db_pool = await database_init()
 
-    conversations = Completions()
+    completions = Completions()
     lock = asyncio.Lock()
 
     discord_oauth = DiscordOAuth(config)
@@ -87,21 +87,21 @@ async def main():
     discord_bot = DiscordBot(
         config=config,
         db_pool=db_pool,
-        conversations=conversations,
+        completions=completions,
         lock=lock,
         oauth_token=discord_oauth.access_token,
     )
     linkedin_bot = LinkedInBot(
         config=config,
         db_pool=db_pool,
-        conversations=conversations,
+        completions=completions,
         lock=lock,
         oauth_token=linkedin_oauth.access_token,
     )
     twitch_bot = TwitchBot(
         config=config,
         db_pool=db_pool,
-        conversations=conversations,
+        completions=completions,
         lock=lock,
         oauth_token=twitch_oauth.access_token,
     )
