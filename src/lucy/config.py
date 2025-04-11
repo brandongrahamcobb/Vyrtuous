@@ -38,7 +38,7 @@ class Config:
                     cls._modify_api_keys(config)
                     config = cls._prompt_additional_config(config)
                     with open(PATH_CONFIG_YAML, 'w') as file:
-                        yaml.dump(config, file)
+                        yaml.dump(config, file, default_flow_style=False, allow_unicode=True, sort_keys=False)
             else:
                 makedirs(dirname(PATH_CONFIG_YAML), exist_ok=True)
                 config = {
@@ -47,7 +47,7 @@ class Config:
                 cls._create_api_keys(config)
                 config = cls._prompt_additional_config(config, creating=True)
                 with open(PATH_CONFIG_YAML, 'w') as file:
-                    yaml.dump(config, file)
+                    yaml.dump(config, file, default_flow_style=False, allow_unicode=True, sort_keys=False)
             cls._config = config
         return cls._config
 
@@ -146,7 +146,7 @@ class Config:
             'user_agent': ('What should be the User-Agent header?', USER_AGENT),
             'version': ('Would you like to override the bot version?', VERSION),
         }
-        config['custom_headers'] = config.get('custom_headers', {})
+        config['web_headers'] = config.get('web_headers', {})
         add_headers = input('Do you want to add custom header sets? (yes/no): ').strip().lower()
         while add_headers in ['yes', 'y']:
             header_name = prompt_for_values('Enter a name for this header set:', 'my_header')
@@ -159,8 +159,8 @@ class Config:
             for i in range(num_fields):
                 key = prompt_for_values(f'Enter field name #{i + 1}:', f'Header-Key-{i+1}')
                 value = prompt_for_values(f'Enter value for "{key}":', '')
-                header_dict[key] = value
-            config['custom_headers'][header_name] = header_dict
+                header_dict[key.strip('\'"')] = value
+            config['web_headers'][header_name] = header_dict
             add_headers = input('Do you want to add another header set? (yes/no): ').strip().lower()
         for key, (prompt_text, default_value) in config_fields.items():
             user_input = prompt_for_values(prompt_text, config.get(key, default_value))

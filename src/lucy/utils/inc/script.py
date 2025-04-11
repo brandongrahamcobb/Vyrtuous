@@ -16,12 +16,13 @@
 '''
 from bs4 import BeautifulSoup
 from lucy.utils.inc.helpers import *
+from lucy.utils.inc.load_yaml import load_yaml
 from lucy.utils.inc.setup_logging import logger
 
 import json
 import requests
 
-config = load_yaml(PATH_CONFIG)
+config = load_yaml(PATH_CONFIG_YAML)
 
 def script(version: str, reference: str):
     BIBLE_IDS = {
@@ -33,7 +34,7 @@ def script(version: str, reference: str):
     if version in BIBLE_IDS:
         bible_id = BIBLE_IDS[version]
         api = f'https://api.scripture.api.bible/v1/bibles/{bible_id}/search?query={reference}'
-        response = requests.get(api, headers=config['API.Bible'])
+        response = requests.get(api, headers=config['web_headers'].get('API.Bible', {}))
         if response.ok:
             json = response.json()
             passages = json.get('data', {}).get('passages', [])

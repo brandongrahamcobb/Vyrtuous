@@ -325,7 +325,7 @@ class Completions:
         add_completion_to_history=True
     ):
         try:
-            headers = {'Authorization': f'Bearer {api_key}'}
+            headers = {'Authorization': f'Bearer {OPENAI_API_KEY}'}
             messages = []
             if sys_input:
                 messages.append({'role': 'system', 'content': sys_input})
@@ -422,7 +422,7 @@ class Moderator:
 
     async def create_https_moderation(self, custom_id, input_array, model):
         try:
-            headers = {'Authorization': f'Bearer {api_key}'}
+            headers = {'Authorization': f'Bearer {OPENAI_API_KEY}'}
             request_data = {
                 'input': input_array,
                 'model': model,
@@ -702,9 +702,9 @@ async def process_api_requests_from_file(
         0.001
     )
     api_endpoint = api_endpoint_from_url(request_url)
-    request_header = {"Authorization": f"Bearer {api_key}"}
+    request_header = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
     if "/deployments" in request_url:
-        request_header = {"api-key": f"{api_key}"}
+        request_header = {"api-key": f"{OPENAI_API_KEY}"}
     queue_of_requests_to_retry = asyncio.Queue()
     task_id_generator = (
         task_id_generator_function()
