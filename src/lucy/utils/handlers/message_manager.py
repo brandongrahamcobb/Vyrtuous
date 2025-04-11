@@ -17,7 +17,7 @@
 from discord.ext import commands
 from lucy.utils.handlers.ai_manager import Moderator
 from lucy.utils.handlers.predicator import Predicator
-from lucy.utils.helpers import *
+from lucy.utils.inc.helpers import *
 from lucy.utils.inc.setup_logging import logger
 from os.path import exists
 

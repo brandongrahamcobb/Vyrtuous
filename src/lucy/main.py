@@ -19,7 +19,7 @@ from lucy.bots.linkedin_bot import LinkedInBot
 from lucy.bots.twitch_bot import TwitchBot
 from lucy.config import Config
 from lucy.utils.handlers.ai_manager import Completions
-from lucy.utils.helpers import *
+from lucy.utils.inc.helpers import *
 from lucy.utils.inc.increment_version import increment_version
 from lucy.utils.inc.setup_logging import setup_logging
 from lucy.utils.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes

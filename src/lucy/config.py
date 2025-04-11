@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from lucy.utils.helpers import *
+from lucy.utils.inc.helpers import *
 from lucy.utils.inc.load_yaml import load_yaml
 from lucy.utils.inc.prompt_for_values import prompt_for_values
 from lucy.utils.inc.setup_logging import logger
@@ -146,6 +146,22 @@ class Config:
             'user_agent': ('What should be the User-Agent header?', USER_AGENT),
             'version': ('Would you like to override the bot version?', VERSION),
         }
+        config['custom_headers'] = config.get('custom_headers', {})
+        add_headers = input('Do you want to add custom header sets? (yes/no): ').strip().lower()
+        while add_headers in ['yes', 'y']:
+            header_name = prompt_for_values('Enter a name for this header set:', 'my_header')
+            header_dict = {}
+            try:
+                num_fields = int(prompt_for_values('How many fields in this header?', '2'))
+                num_fields = max(1, num_fields)
+            except ValueError:
+                num_fields = 1
+            for i in range(num_fields):
+                key = prompt_for_values(f'Enter field name #{i + 1}:', f'Header-Key-{i+1}')
+                value = prompt_for_values(f'Enter value for "{key}":', '')
+                header_dict[key] = value
+            config['custom_headers'][header_name] = header_dict
+            add_headers = input('Do you want to add another header set? (yes/no): ').strip().lower()
         for key, (prompt_text, default_value) in config_fields.items():
             user_input = prompt_for_values(prompt_text, config.get(key, default_value))
             if key == 'discord_testing_guild_ids':

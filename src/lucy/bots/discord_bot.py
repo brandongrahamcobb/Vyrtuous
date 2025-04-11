@@ -19,7 +19,7 @@ import discord
 
 from discord.ext import commands
 from lucy.utils.handlers.ai_manager import Completions
-from lucy.utils.helpers import *
+from lucy.utils.inc.helpers import *
 from lucy.utils.inc.setup_logging import logger
 from typing import List, Optional
 

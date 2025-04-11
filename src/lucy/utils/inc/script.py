@@ -15,11 +15,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from bs4 import BeautifulSoup
-from lucy.utils.helpers import *
+from lucy.utils.inc.helpers import *
 from lucy.utils.inc.setup_logging import logger
 
 import json
 import requests
+
+config = load_yaml(PATH_CONFIG)
 
 def script(version: str, reference: str):
     BIBLE_IDS = {
@@ -31,7 +33,7 @@ def script(version: str, reference: str):
     if version in BIBLE_IDS:
         bible_id = BIBLE_IDS[version]
         api = f'https://api.scripture.api.bible/v1/bibles/{bible_id}/search?query={reference}'
-        response = requests.get(api, headers=SCRIPTURE_HEADERS)
+        response = requests.get(api, headers=config['API.Bible'])
         if response.ok:
             json = response.json()
             passages = json.get('data', {}).get('passages', [])

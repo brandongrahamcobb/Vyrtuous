@@ -15,10 +15,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands
-from lucy.utils.helpers import *
 from lucy.utils.handlers.ai_manager import Completions
 from lucy.utils.handlers.game_manager import Game
 from lucy.utils.handlers.message_manager import Message
+from lucy.utils.inc.helpers import *
 from lucy.utils.inc.setup_logging import logger
 
 import discord

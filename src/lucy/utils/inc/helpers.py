@@ -20,108 +20,168 @@ from os.path import dirname, abspath, expanduser, join
 
 import discord
 
-# Base and Home Paths
-DIR_BASE = abspath(join(dirname(dirname(dirname(__file__)))))
+#### DIRECTORIES
+DIR_BASE = abspath(join(dirname(dirname(dirname(dirname(__file__))))))
 DIR_HOME = expanduser('~')
 DIR_TEMP = join(DIR_BASE, 'lucy', 'temp')
 
-# Script Paths
-PATH_AVERAGE_SCORE = join(DIR_BASE, 'lucy', 'utils', 'inc', 'average_score.py')
-PATH_CHEMISTRY = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'chemistry_manager.py')
-PATH_CLEAR_SCREEN = join(DIR_BASE, 'lucy', 'utils', 'inc', 'clear_screen.py')
-PATH_CONFIG = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'config.py')
+#### PATHS
+### Path: Root (Vyrtuous)
+PATH_TOML = join(DIR_HOME, 'Vyrtuous', 'pyproject.toml')
+## Path: Source (src)
+# Path: Lucy (lucy)
+PATH_CONFIG = join(DIR_BASE, 'lucy', 'config.py')
 PATH_CONFIG_YAML = join(DIR_BASE, 'lucy', '.config', 'config.yaml')
-PATH_DISCORD_BOT = join(DIR_BASE, 'lucy', 'bots', 'discord_bot.py')
-PATH_DISCORD_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'discord_oauth.py')
-PATH_FONT = join(DIR_HOME, 'Vyrtuous', 'Roboto-Regular.ttf')
-PATH_FRAMES = join(DIR_BASE, 'lucy', 'utils', 'inc', 'frames.py')
-PATH_GAME = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'game_manager.py')
-PATH_GOOGLE = join(DIR_BASE, 'lucy', 'utils', 'inc', 'google.py')
-PATH_HELPERS = join(DIR_BASE, 'lucy', 'utils', 'helpers.py')
-PATH_HYBRID = join(DIR_BASE, 'lucy', 'cogs', 'hybrid.py')
-PATH_IMAGE = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'image_manager.py')
-PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'inc', 'increment_version.py')
-PATH_INDICA = join(DIR_BASE, 'lucy', 'cogs', 'indica.py')
-PATH_LINKEDIN_BOT = join(DIR_BASE, 'lucy', 'bots', 'linkedin_bot.py')
-PATH_LINKEDIN_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'linkedin_oauth.py')
-PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'inc', 'load_contents.py')
-PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'inc', 'load_yaml.py')
 PATH_LOG = join(DIR_BASE, 'lucy', '.log', 'discord.log')
 PATH_MAIN = join(DIR_BASE, 'lucy', 'main.py')
+PATH_USERS = join(DIR_BASE, 'lucy', '.users', 'users.yaml')
+# Path: Bots (bots)
+PATH_DISCORD_BOT = join(DIR_BASE, 'lucy', 'bots', 'discord_bot.py')
+PATH_LINKEDIN_BOT = join(DIR_BASE, 'lucy', 'bots', 'linkedin_bot.py')
+PATH_TWITCH_BOT = join(DIR_BASE, 'lucy', 'bots', 'twitch_bot.py')
+# Path: Cogs (cogs)
+PATH_EVENT_LISTENERS = join(DIR_BASE, 'lucy', 'cogs', 'event_listeners.py')
+PATH_OWNER_COMMANDS = join(DIR_BASE, 'lucy', 'cogs', 'commands_extra.py')
+PATH_PUBLIC_COMMANDS = join(DIR_BASE, 'lucy', 'cogs', 'commands.py')
+PATH_SCHEDULED_TASKS = join (DIR_BASE, 'lucy', 'cogs', 'scheduled_tasks.py')
+# Path: Drivers (drivers)
+PATH_CHROMEDRIVER = join (DIR_BASE, 'lucy', 'resources', 'drivers', 'chromedriver')
+# Path: Fonts (fonts)
+PATH_FONT = join(DIR_HOME, 'lucy', 'resources', 'fonts', 'Roboto-Regular.ttf')
+# Path: Handlers (handlers)
+PATH_CHEMISTRY = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'chemistry_manager.py')
+PATH_GAME = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'game_manager.py')
+PATH_IMAGE = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'image_manager.py')
 PATH_MESSAGE = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'message_manager.py')
-PATH_OPENAI_REQUESTS = join(DIR_HOME, 'Downloads', 'queued_requests.json')
-PATH_OPENAI_RESULTS = join(DIR_HOME, 'Downloads', 'processed_results.json')
-PATH_PDF_MANAGER = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'pdf_manager.py')
-PATH_PATREON_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec','patreon_oauth.py')
 PATH_PREDICATOR = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'predicator.py')
-PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'lucy', 'utils', 'inc', 'prompt_for_values.py')
+PATH_PDF_MANAGER = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'pdf_manager.py')
 PATH_ROLE_MANAGER = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'role_manager.py')
-PATH_SATIVA = join(DIR_BASE, 'lucy', 'cogs', 'sativa.py')
+PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'tag_manager.py')
+# Path: Include (inc)
+PATH_AVERAGE_SCORE = join(DIR_BASE, 'lucy', 'utils', 'inc', 'average_score.py')
+PATH_CLEAR_SCREEN = join(DIR_BASE, 'lucy', 'utils', 'inc', 'clear_screen.py')
+PATH_FRAMES = join(DIR_BASE, 'lucy', 'utils', 'inc', 'frames.py')
+PATH_GOOGLE = join(DIR_BASE, 'lucy', 'utils', 'inc', 'google.py')
+PATH_HELPERS = join(DIR_BASE, 'lucy', 'utils', 'inc', 'helpers.py')
+PATH_INCREMENT_VERSION = join(DIR_BASE, 'lucy', 'utils', 'inc', 'increment_version.py')
+PATH_LOAD_CONTENTS = join(DIR_BASE, 'lucy', 'utils', 'inc', 'load_contents.py')
+PATH_LOAD_YAML = join(DIR_BASE, 'lucy', 'utils', 'inc', 'load_yaml.py')
+PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'lucy', 'utils', 'inc', 'prompt_for_values.py')
 PATH_SCRIPT = join(DIR_BASE, 'lucy', 'utils', 'inc', 'script.py')
 PATH_SETUP_LOGGING = join(DIR_BASE, 'lucy', 'utils', 'inc', 'setup_logging.py')
-PATH_TAG = join(DIR_BASE, 'lucy', 'utils', 'handlers', 'tag_manager.py')
-PATH_TOML = join(DIR_HOME, 'Vyrtuous', 'pyproject.toml')
-PATH_TRAINING = join(DIR_HOME, '..', 'training.jsonl')
-PATH_TWITCH_BOT = join(DIR_BASE, 'lucy', 'bots', 'twitch_bot.py')
-PATH_TWITCH_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'twitch_oauth.py')
 PATH_UNIQUE_PAIRS = join(DIR_BASE, 'lucy', 'utils', 'inc', 'unique_pairs.py')
-PATH_USERS = join(DIR_BASE, 'lucy', '.users', 'users.yaml')
+# Path: Security (sec)
+PATH_DISCORD_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'discord_oauth.py')
+PATH_LINKEDIN_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'linkedin_oauth.py')
+PATH_PATREON_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec','patreon_oauth.py')
+PATH_TWITCH_OAUTH = join(DIR_BASE, 'lucy', 'utils', 'sec', 'twitch_oauth.py')
+# Path: Temporary (temp)
+PATH_OPENAI_REQUESTS = join(DIR_BASE, 'lucy', 'temp', 'queued_requests.json')
+PATH_OPENAI_RESULTS = join(DIR_BASE, 'lucy', 'temp', 'processed_results.json')
 
-# Main
+#### CONTENTS
+### Path: Root (Vyrtuous)
+## Path: Source (src)
+# Path: Lucy (lucy)
+CONTENTS_CONFIG = load_contents(PATH_CONFIG)
 CONTENTS_MAIN = load_contents(PATH_MAIN)
-
-# Utilities
+contents_main = [
+    CONTENTS_CONFIG,
+    CONTENTS_MAIN
+]
+# Path: Bots (bots)
+CONTENTS_DISCORD_BOT = load_contents(PATH_DISCORD_BOT)
+CONTENTS_LINKEDIN_BOT = load_contents(PATH_LINKEDIN_BOT)
+CONTENTS_TWITCH_BOT = load_contents(PATH_TWITCH_BOT)
+contents_bots = [
+    CONTENTS_DISCORD_BOT,
+    CONTENTS_LINKEDIN_BOT,
+    CONTENTS_TWITCH_BOT,
+]
+CONTENTS_BOTS_SUM = " and ".join(contents_bots)
+# Path: Cogs (cogs)
+CONTENTS_EVENT_LISTENERS = load_contents(PATH_EVENT_LISTENERS)
+CONTENTS_OWNER_COMMANDS = load_contents(PATH_OWNER_COMMANDS)
+CONTENTS_PUBLIC_COMMANDS = load_contents(PATH_PUBLIC_COMMANDS)
+CONTENTS_SCHEDULED_TASKS = load_contents(PATH_SCHEDULED_TASKS)
+contents_cogs = [
+    CONTENTS_EVENT_LISTENERS,
+    CONTENTS_OWNER_COMMANDS,
+    CONTENTS_PUBLIC_COMMANDS,
+    CONTENTS_SCHEDULED_TASKS,
+]
+CONTENTS_COGS_SUM = " and ".join(contents_cogs)
+# Path: Include (inc)
 CONTENTS_AVERAGE_SCORE = load_contents(PATH_AVERAGE_SCORE)
 CONTENTS_CLEAR_SCREEN = load_contents(PATH_CLEAR_SCREEN)
-CONTENTS_CHEMISTRY = load_contents(PATH_CHEMISTRY)
-CONTENTS_DISCORD_BOT = load_contents(PATH_DISCORD_BOT)
-CONTENTS_DISCORD_OAUTH = load_contents(PATH_DISCORD_OAUTH)
 CONTENTS_FRAMES = load_contents(PATH_FRAMES)
-CONTENTS_GAME = load_contents(PATH_GAME)
 CONTENTS_GOOGLE = load_contents(PATH_GOOGLE)
-CONTENTS_IMAGE = load_contents(PATH_IMAGE)
 CONTENTS_HELPERS = load_contents(PATH_HELPERS)
 CONTENTS_INCREMENT_VERSION = load_contents(PATH_INCREMENT_VERSION)
-CONTENTS_LINKEDIN_BOT = load_contents(PATH_LINKEDIN_BOT)
-CONTENTS_LINKEDIN_OAUTH = load_contents(PATH_LINKEDIN_OAUTH)
-CONTENTS_LOAD_CONTENTS= load_contents(PATH_LOAD_CONTENTS)
+CONTENTS_LOAD_CONTENTS = load_contents(PATH_LOAD_CONTENTS)
 CONTENTS_LOAD_YAML = load_contents(PATH_LOAD_YAML)
-CONTENTS_MESSAGE = load_contents(PATH_MESSAGE)
 CONTENTS_PROMPT_FOR_VALUES = load_contents(PATH_PROMPT_FOR_VALUES)
-CONTENTS_PATREON_OAUTH = load_contents(PATH_PATREON_OAUTH)
-CONTENTS_PDF_MANAGER = load_contents(PATH_PDF_MANAGER)
-CONTENTS_PREDICATOR = load_contents(PATH_PREDICATOR)
 CONTENTS_SCRIPT = load_contents(PATH_SCRIPT)
 CONTENTS_SETUP_LOGGING = load_contents(PATH_SETUP_LOGGING)
-CONTENTS_TAG = load_contents(PATH_TAG)
-CONTENTS_TWITCH_BOT = load_contents(PATH_TWITCH_BOT)
-CONTENTS_TWITCH_OAUTH = load_contents(PATH_TWITCH_OAUTH)
 CONTENTS_UNIQUE_PAIRS = load_contents(PATH_UNIQUE_PAIRS)
-SUM_OF_UTILITIES = f'''
-    {CONTENTS_AVERAGE_SCORE} and {CONTENTS_CLEAR_SCREEN} \n
-    {CONTENTS_DISCORD_BOT} and {CONTENTS_DISCORD_OAUTH} \n
-    {CONTENTS_FRAMES} \n
-    {CONTENTS_GAME} and {CONTENTS_GOOGLE} and {CONTENTS_HELPERS} and {CONTENTS_INCREMENT_VERSION} \n
-    {CONTENTS_LINKEDIN_BOT} and {CONTENTS_LINKEDIN_OAUTH} and {CONTENTS_LOAD_CONTENTS} and {CONTENTS_LOAD_YAML} and {CONTENTS_MESSAGE} and {CONTENTS_PATREON_OAUTH} and {CONTENTS_PDF_MANAGER} AND {CONTENTS_PREDICATOR} and {CONTENTS_PROMPT_FOR_VALUES}
-    {CONTENTS_SCRIPT} and {CONTENTS_SETUP_LOGGING} and {CONTENTS_TAG} and {CONTENTS_TWITCH_BOT} {CONTENTS_TWITCH_OAUTH} {CONTENTS_UNIQUE_PAIRS} \n
-'''
-# MySQL
-DATABASE_URL = ''
+contents_inc = [
+    CONTENTS_AVERAGE_SCORE,
+    CONTENTS_CLEAR_SCREEN,
+    CONTENTS_FRAMES,
+    CONTENTS_GOOGLE,
+    CONTENTS_HELPERS,
+    CONTENTS_INCREMENT_VERSION,
+    CONTENTS_LOAD_CONTENTS,
+    CONTENTS_LOAD_YAML,
+    CONTENTS_PROMPT_FOR_VALUES,
+    CONTENTS_SCRIPT,
+    CONTENTS_SETUP_LOGGING,
+    CONTENTS_UNIQUE_PAIRS,
+]
+CONTENTS_INC_SUM = " and ".join(contents_inc)
+# Path: Handlers (handlers)
+CONTENTS_CHEMISTRY = load_contents(PATH_CHEMISTRY)
+CONTENTS_CONFIG = load_contents(PATH_CONFIG)
+CONTENTS_GAME = load_contents(PATH_GAME)
+CONTENTS_IMAGE = load_contents(PATH_IMAGE)
+CONTENTS_MESSAGE = load_contents(PATH_MESSAGE)
+CONTENTS_PDF_MANAGER = load_contents(PATH_PDF_MANAGER)
+CONTENTS_PREDICATOR = load_contents(PATH_PREDICATOR)
+CONTENTS_ROLE_MANAGER = load_contents(PATH_ROLE_MANAGER)
+CONTENTS_TAG = load_contents(PATH_TAG)
+contents_handlers = [
+    CONTENTS_CHEMISTRY,
+    CONTENTS_CONFIG,
+    CONTENTS_GAME,
+    CONTENTS_IMAGE,
+    CONTENTS_MESSAGE,
+    CONTENTS_PDF_MANAGER,
+    CONTENTS_PREDICATOR,
+    CONTENTS_ROLE_MANAGER,
+    CONTENTS_TAG,
+]
+CONTENTS_HANDLERS_SUM = " and ".join(contents_handlers)
+# Path: Security (sec)
+CONTENTS_DISCORD_OAUTH = load_contents(PATH_DISCORD_OAUTH)
+CONTENTS_LINKEDIN_OAUTH = load_contents(PATH_LINKEDIN_OAUTH)
+CONTENTS_PATREON_OAUTH = load_contents(PATH_PATREON_OAUTH)
+CONTENTS_TWITCH_OAUTH = load_contents(PATH_TWITCH_OAUTH)
+contents_sec = [
+    CONTENTS_DISCORD_OAUTH,
+    CONTENTS_LINKEDIN_OAUTH,
+    CONTENTS_PATREON_OAUTH,
+    CONTENTS_TWITCH_OAUTH,
+]
+CONTENTS_SEC_SUM = " and ".join(contents_sec)
 
-# Discord
-CONTENTS_HYBRID = load_contents(PATH_HYBRID)
-CONTENTS_INDICA = load_contents(PATH_INDICA)
-CONTENTS_SATIVA = load_contents(PATH_SATIVA)
-SUM_OF_COGS = f'''
-    {CONTENTS_HYBRID} and {CONTENTS_INDICA} and {CONTENTS_SATIVA}
-'''
+#### DISCORD
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
-    'lucy.cogs.hybrid',
-    'lucy.cogs.indica',
-    'lucy.cogs.ruderalis',
-    'lucy.cogs.sativa',
+    'lucy.cogs.commands',
+    'lucy.cogs.commands_extra',
+    'lucy.cogs.event_listeners',
+    'lucy.cogs.scheduled_tasks',
 ]
 DISCORD_COMMAND_PREFIX = '!'
 DISCORD_INTENTS = discord.Intents.all()
@@ -131,16 +191,10 @@ DISCORD_RELEASE_MODE = False
 DISCORD_ROLE_PASS = 1308689505158565918
 DISCORD_TESTING_GUILD_ID = 1300517536001036348
 
-FTP_HOSTNAME = ''
-FTP_PASSWORD = ''
-FTP_PDF_URL = 'http://brandongcobb.com/pdfs'
-FTP_PUBLIC_URL = 'http://brandongcobb.com'
-FTP_USER = ''
-
-
 LOGGING_LEVEL = 'INFO'
 
-# OpenAI Chat
+#### OPENAI
+### Completions
 OPENAI_CHAT_ADD_COMPLETION_TO_HISTORY = True
 OPENAI_CHAT_COLORIZE_RESPONSE_FORMAT = {
 'type': 'json_schema',
@@ -182,8 +236,7 @@ OPENAI_CHAT_MODELS = {
     'current': ['chatgpt-4o-mini-latest', 'o1-preview', 'o1-mini'],
     'deprecated': ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-32k', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'chatgpt-4o-latest'],
 }
-
-#OpenAI Moderations
+### Moderations
 OPENAI_CHAT_MODERATION = True
 OPENAI_CHAT_MODERATION_N = 1
 OPENAI_CHAT_MODERATION_MODEL = 'gpt-4o-mini'
@@ -294,7 +347,7 @@ OPENAI_CHAT_MODERATION_ADD_COMPLETION_TO_HISTORY = False
 OPENAI_CHAT_STOP = ''
 OPENAI_CHAT_STORE = False
 OPENAI_CHAT_STREAM = False
-OPENAI_CHAT_SYS_INPUT = f'Your main.py is {CONTENTS_MAIN}. Your cogs are {SUM_OF_COGS}. Your utilities {SUM_OF_UTILITIES}. Short conversational responses only.'
+OPENAI_CHAT_SYS_INPUT = f'You are Vyrtuous.'
 OPENAI_CHAT_TOP_P = 1
 OPENAI_CHAT_TEMPERATURE = 0.7
 OPENAI_CHAT_USE_HISTORY = True
@@ -358,11 +411,11 @@ OPENAI_MODEL_OUTPUT_LIMITS = {
 OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
 OPENAI_MODERATION_IMAGE = True
 
-# Scripture Headers
+#### SCRIPTURE
 SCRIPTURE_HEADERS = {
     'User-Agent': 'brandongrahamcobb@icloud.com',
     'api-key': '2eb327f99245cd3d68da55370656d6e2'
 }
 
-USER_AGENT = 'https://github.com/brandongrahamcobb/lucy.git'
+USER_AGENT = 'https://github.com/brandongrahamcobb/Vyrtuous.git'
 VERSION = '1.0.0'

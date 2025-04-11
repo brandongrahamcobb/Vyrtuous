@@ -25,7 +25,7 @@ from lucy.utils.handlers.image_manager import add_watermark, combine_gallery, cr
 from lucy.utils.handlers.message_manager import Message
 from lucy.utils.handlers.predicator import Predicator
 from lucy.utils.handlers.tag_manager import TagManager
-from lucy.utils.helpers import *
+from lucy.utils.inc.helpers import *
 from lucy.utils.inc.frames import extract_random_frames
 from lucy.utils.inc.google import google
 from lucy.utils.inc.script import script

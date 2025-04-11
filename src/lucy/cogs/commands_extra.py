@@ -19,7 +19,7 @@ from lucy.utils.handlers.ai_manager import BatchProcessor
 from lucy.utils.handlers.pdf_manager import PDFManager
 from lucy.utils.handlers.predicator import Predicator
 from lucy.utils.handlers.sql_manager import perform_backup, setup_backup_directory
-from lucy.utils.helpers import *
+from lucy.utils.inc.helpers import *
 from typing import Dict, List, Literal, Optional
 
 import asyncio

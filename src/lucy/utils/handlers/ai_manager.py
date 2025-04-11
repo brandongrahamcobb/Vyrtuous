@@ -17,7 +17,7 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from lucy.utils.helpers import *
+from lucy.utils.inc.helpers import *
 from lucy.utils.inc.load_yaml import load_yaml
 from lucy.utils.inc.setup_logging import logger
 from openai import AsyncOpenAI
