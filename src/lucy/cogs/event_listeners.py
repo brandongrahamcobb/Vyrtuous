@@ -18,6 +18,7 @@ from discord.ext import commands
 from lucy.utils.handlers.ai_manager import Completions
 from lucy.utils.handlers.game_manager import Game
 from lucy.utils.handlers.message_manager import Message
+from lucy.utils.handlers.role_manager import RoleManager
 from lucy.utils.inc.helpers import *
 from lucy.utils.inc.setup_logging import logger
 
@@ -38,6 +39,20 @@ class Indica(commands.Cog):
         self.game = Game(self.bot)
         self.handler = Message(self.bot, self.config, self.completions, self.db_pool)
         self.user_messages = {}
+        self.role_manager = RoleManager(self.db_pool)
+
+    @commands.after_invoke
+    async def after_invoke(ctx):
+        if hasattr(bot, 'db_pool'):
+            await bot.db_pool.close()
+
+    @commands.Cog.listener()
+    async def on_member_remove(member):
+        await role_manager.backup_roles_for_member(member)
+
+    @commands.Cog.listener()
+    async def on_member_join(member):
+        await role_manager.restore_roles_for_member(member)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):

@@ -305,7 +305,7 @@ class Message:
             try:
                 with open(unique_filename, 'w') as f:
                     f.write(response)
-                await self.send_file(ctx, file=discord.File(unique_filename))
+                await self.send_message(ctx, file=discord.File(unique_filename))
             finally:
                 os.remove(unique_filename)
         else:

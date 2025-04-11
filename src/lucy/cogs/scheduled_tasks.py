@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 from lucy.utils.handlers.ai_manager import BatchProcessor
 from lucy.utils.handlers.sql_manager import perform_backup, setup_backup_directory
 from lucy.utils.inc.helpers import *
-#from lucy.utils.role_manager import RoleManager
+from lucy.utils.handlers.role_manager import RoleManager
 from lucy.utils.handlers.tag_manager import TagManager
 
 import asyncio
@@ -30,7 +30,21 @@ class Ruderalis(commands.Cog):
         self.tag_manager = TagManager(self.bot.db_pool)
         self.tags_loop.start()
         self.batch_task.start()
-  #      self.role_manager = RoleManager(self.bot.db_pool)
+        self.role_manager = RoleManager(self.bot.db_pool)
+        self.role_backup_task.start()
+
+    @tasks.loop(hours=24)  # This will run every 24 hours
+    async def role_backup_task(self):
+        for guild in self.bot.guilds:
+            for member in guild.members:
+                await self.role_manager.backup_roles_for_member(member)
+                await self.role_manager.restore_roles_for_member(member)
+        await self.role_manager.clean_old_backups()
+
+    @commands.after_invoke
+    async def after_invoke(self, ctx):
+        if hasattr(bot, 'db_pool'):
+            await bot.db_pool.close()
 
     @tasks.loop(hours=168)  # Runs once a week
     async def batch_task(self):
@@ -43,8 +57,6 @@ class Ruderalis(commands.Cog):
     @tasks.loop(hours=24)
     async def backup_database(self):
         try:
-#            for member in members:
- #               await self.role_manager.backup_roles(member)
             backup_dir = setup_backup_directory('./backups')
             backup_file = perform_backup(
                 db_user='postgres',
