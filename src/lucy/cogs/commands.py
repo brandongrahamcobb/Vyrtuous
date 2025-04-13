@@ -753,6 +753,7 @@ class Hybrid(commands.Cog):
                 array = await self.handler.process_array(content)
             else:
                 attachment_url = ctx.message.attachments[0].url
+                array = await self.handler.process_attachments(ctx.message.attachments)
             async for flagged, reasons in self.handler.completion_prep(array):
                 if flagged:
                     return
