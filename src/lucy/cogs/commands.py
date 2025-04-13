@@ -745,12 +745,14 @@ class Hybrid(commands.Cog):
         if not self.predicator.is_release_mode_func(ctx):
             return
         async def function():
-            if ctx.message.attachments:
+            if ctx.message.attachments and content:
                 attachment_url = ctx.message.attachments[0].url
                 array = await self.handler.process_array(content, attachments=ctx.message.attachments)
-            else:
+            elif content:
                 attachment_url = None
                 array = await self.handler.process_array(content)
+            else:
+                attachment_url = ctx.message.attachments[0].url
             async for flagged, reasons in self.handler.completion_prep(array):
                 if flagged:
                     return
