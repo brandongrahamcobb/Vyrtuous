@@ -747,7 +747,7 @@ class Hybrid(commands.Cog):
         async def function():
             if ctx.message.attachments:
                 attachment_url = ctx.message.attachments[0].url
-                array = await self.handler.process_array(content, ctx.message.attachments)
+                array = await self.handler.process_array(content, attachments=ctx.message.attachments)
             else:
                 attachment_url = None
                 array = await self.handler.process_array(content)
