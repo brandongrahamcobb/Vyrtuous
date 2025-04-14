@@ -262,7 +262,12 @@ class Message:
             yield False, None
 
     async def ai_handler(self, ctx: commands.Context):
-        array = await self.process_array(ctx.message.content, attachments=ctx.message.attachments)
+        if ctx.message.attachments and ctx.message.content:
+            array = await self.process_array(ctx.message.content, attachments=ctx.message.attachments)
+        elif ctx.message.attachments:
+            array = await self.process_array(ctx.message.content)
+        elif ctx.message.content:
+            array = await self.process_array(content=None, attachments=ctx.message.attachments)
         if self.predicator.is_developer(ctx.author):
             async for flagged, reasons in self.completion_prep(array):
                 if flagged:
