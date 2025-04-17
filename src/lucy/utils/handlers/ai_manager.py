@@ -327,7 +327,7 @@ class Completions:
         try:
             headers = {'Authorization': f'Bearer {OPENAI_API_KEY}'}
             messages = []
-            if sys_input:
+            if not model in {'chatgpt-4o-latest', 'o1-mini', 'o1-preview'}:
                 messages.append({'role': 'system', 'content': sys_input})
             for message in input_array:
                 if 'text' in message and message['text']:
@@ -346,7 +346,6 @@ class Completions:
                 'temperature': float(temperature),
                 'top_p': float(top_p),
                 'n': int(completions),
-                'stop': stop,
                 'store': bool(store),
                 'stream': bool(stream),
             }
@@ -354,8 +353,8 @@ class Completions:
                 request_data['response_format'] = response_format
             if model in {'chatgpt-4o-latest', 'o1-mini', 'o1-preview'}:
                 request_data['max_completion_tokens'] = int(max_tokens)
-                request_data['temperature'] = 1.0
             else:
+                request_data['stop'] = stop,
                 request_data['max_tokens'] = int(max_tokens)
             if store:
                 request_data.update({
@@ -385,6 +384,7 @@ class Completions:
                                     continue
                         else:
                             full_response_json = await response.json()
+                            print(full_response_json)
                             full_response = full_response_json['choices'][0]['message']['content']
                         if add_completion_to_history:
                             self.conversations[custom_id].append({'role': 'assistant', 'content': full_response})

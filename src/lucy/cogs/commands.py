@@ -61,6 +61,11 @@ class Hybrid(commands.Cog):
         self.tag_manager = TagManager(self.bot.db_pool)
         self.handler = Message(self.bot, self.config, self.completions, self.bot.db_pool)
         self.loop_task: Optional[str] = None
+        self.uploads_dir = "uploads"  # Directory to save uploaded files
+
+        # Create uploads directory if it doesn't exist
+        if not os.path.exists(self.uploads_dir):
+            os.makedirs(self.uploads_dir)
 
     async def loop_tags(self, channel: discord.TextChannel):
         while True:
@@ -98,6 +103,83 @@ class Hybrid(commands.Cog):
             if lang_name.lower() == language_name:
                 return lang_code
         return None
+
+    @commands.command(name='join')
+    async def join(self, ctx):
+        """Join the voice channel."""
+        if ctx.author.voice:
+            channel = ctx.author.voice.channel
+            await channel.connect()
+            await ctx.send(f'Joined {channel}')
+        else:
+            await ctx.send('You are not connected to a voice channel.')
+
+    @commands.command(name='leave')
+    async def leave(self, ctx):
+        """Leave the voice channel."""
+        if ctx.voice_client:
+            await ctx.voice_client.disconnect()
+            await ctx.send('Disconnected from the voice channel.')
+        else:
+            await ctx.send('I am not in a voice channel.')
+
+    @commands.command(name='play')
+    async def play(self, ctx, *, file_name: str):
+        """Play a music file from the computer."""
+        if ctx.voice_client is None:
+            await ctx.send('I need to be in a voice channel to play music.')
+            return
+
+        file_path = os.path.join(self.uploads_dir, file_name)
+        # Check if the file exists
+        if not os.path.isfile(file_path):
+            await ctx.send('File not found. Please provide a valid file path.')
+            return
+
+        # Play the audio file
+        ctx.voice_client.play(discord.FFmpegPCMAudio(file_name), after=lambda e: print(f'Finished playing: {e}'))
+        await ctx.send(f'Now playing: {file_name}')
+
+    @commands.command(name='upload')
+    async def upload(self, ctx):
+        """Upload a WAV file for playback."""
+        if ctx.message.attachments:
+            for attachment in ctx.message.attachments:
+                if attachment.filename.endswith('.wav'):
+                    file_path = os.path.join(self.uploads_dir, attachment.filename)
+                    await attachment.save(file_path)
+                    await ctx.send(f'Uploaded: {attachment.filename}')
+                else:
+                    await ctx.send('Please upload a WAV file.')
+        else:
+            await ctx.send('Please attach a file.')
+
+    @commands.command(name='stop')
+    async def stop(self, ctx):
+        """Stop playing music."""
+        if ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+            await ctx.send('Stopped the music.')
+        else:
+            await ctx.send('No music is currently playing.')
+
+    @commands.command(name='pause')
+    async def pause(self, ctx):
+        """Pause the music."""
+        if ctx.voice_client.is_playing():
+            ctx.voice_client.pause()
+            await ctx.send('Paused the music.')
+        else:
+            await ctx.send('No music is currently playing.')
+
+    @commands.command(name='resume')
+    async def resume(self, ctx):
+        """Resume playing music."""
+        if ctx.voice_client.is_paused():
+            ctx.voice_client.resume()
+            await ctx.send('Resumed the music.')
+        else:
+            await ctx.send('The music is not paused.')
 
     @commands.hybrid_command(name="chat", description="Usage: chat <model> <prompt>")
     async def chat(

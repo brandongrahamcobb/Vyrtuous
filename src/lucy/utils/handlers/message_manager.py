@@ -175,7 +175,7 @@ class Message:
                         'text': text_content
                     })
                 else:
-                    return
+                   continue
             except Exception as e:
                 logger.error(f'Error processing file {attachment.filename}: {e}')
                 continue
@@ -265,9 +265,9 @@ class Message:
         if ctx.message.attachments and ctx.message.content:
             array = await self.process_array(ctx.message.content, attachments=ctx.message.attachments)
         elif ctx.message.attachments:
-            array = await self.process_array(ctx.message.content)
+            array = await self.process_array(ctx.message.attachments)
         elif ctx.message.content:
-            array = await self.process_array(content=None, attachments=ctx.message.attachments)
+            array = await self.process_array(content=ctx.message.content)
         if self.predicator.is_developer(ctx.author):
             async for flagged, reasons in self.completion_prep(array):
                 if flagged:

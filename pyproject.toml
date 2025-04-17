@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "lucy"
-version = "17.4.0"
+version = "17.6.6"
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
@@ -34,7 +34,6 @@ twitchio = "^2.10.0"
 webdriver-manager = "^4.0.2"
 transformers = "^4.47.1"
 tiktoken = "^0.8.0"
-discord-py = "^2.4.0"
 toml = "^0.10.2"
 audioop-lts = "^0.2.1"
 pytz = "^2024.2"
@@ -44,6 +43,10 @@ gradio-client = "^1.8.0"
 
 [tool.poetry.scripts]
 lucy = "lucy.main:run"
+
+[tool.poetry.dependencies.discord-py]
+extras = [ "voice",]
+version = "^2.5.2"
 
 [tool.poetry.dependencies.pypept]
 git = "https://github.com/Boehringer-Ingelheim/pyPept.git"
