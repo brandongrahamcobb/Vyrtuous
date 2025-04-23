@@ -132,13 +132,13 @@ class Indica(commands.Cog):
             ctx = await self.bot.get_context(message)
             author = ctx.author.name
             user_id = ctx.author.id
-            if user_id not in self.user_messages:
-                self.user_messages[user_id] = []
-                self.user_messages[user_id].append(current_time)
-                self.user_messages[user_id] = [t for t in self.user_messages[user_id] if current_time - t < 5]
-            if len(self.user_messages[user_id]) > 5:
-                await self.handler.send_message(ctx, content=f"{message.author.mention}, stop spamming!")
-                await message.delete()
+##            if user_id not in self.user_messages:
+##                self.user_messages[user_id] = []
+##                self.user_messages[user_id].append(current_time)
+##                self.user_messages[user_id] = [t for t in self.user_messages[user_id] if current_time - t < 5]
+##            if len(self.user_messages[user_id]) > 5:
+##                await self.handler.send_message(ctx, content=f"{message.author.mention}, stop spamming!")
+#                await message.delete()
             self.handler.handle_users(message.author.name)
 #            await self.game.distribute_xp(ctx.author.id)
             await self.handler.ai_handler(ctx)
