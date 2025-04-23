@@ -175,7 +175,15 @@ class Message:
                         'text': text_content
                     })
                 else:
+<<<<<<< HEAD
                    continue
+=======
+<<<<<<< HEAD
+                    continue
+=======
+                   continue
+>>>>>>> d0ae038 (274th)
+>>>>>>> bb6a75e (276th)
             except Exception as e:
                 logger.error(f'Error processing file {attachment.filename}: {e}')
                 continue
