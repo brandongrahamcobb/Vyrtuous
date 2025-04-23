@@ -20,6 +20,9 @@ from os.path import dirname, abspath, expanduser, join
 
 import discord
 
+def parse_comma_number(s):
+    return int(s.replace(",", ""))
+
 #### DIRECTORIES
 DIR_BASE = abspath(join(dirname(dirname(dirname(dirname(__file__))))))
 DIR_HOME = expanduser('~')
@@ -388,32 +391,36 @@ OPENAI_FINE_TUNING_RESPONSE_FORMAT = {
   }
 }
 OPENAI_MODEL_CONTEXT_LIMITS = {
-    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2':128000,
-    'gpt-3.5-turbo': 4096,
-    'gpt-4': 8192,
-    'gpt-4-32k': 32768,
-    'gpt-4o': 128000,
-    'gpt-4o-mini': 128000,
-    'gpt-4-turbo': 128000,
-    'o1-preview': 128000,
-    'o1-mini': 128000,
-    'o3-mini': 200000,
-    'o4-mini': 200000,
-    'gpt-4.1': 32768
+    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': parse16384"),
+    'gpt-3.5-turbo': parse_comma_number("4,096"),
+    'gpt-4': parse_comma_number("8,192"),
+    'gpt-4-32k': parse_comma_number("32,768"),
+    'gpt-4o': parse_comma_number("128,000"),
+    'gpt-4o-mini': parse_comma_number("128,000"),
+    'gpt-4-turbo': parse_comma_number("128,000"),
+    'gpt-4.1': parse_comma_number("32,768"),
+    'gpt-4.1-nano': parse_comma_number("1,047,576"),
+    'gpt-4o-audio': parse_comma_number("128,000"),
+    'o1-preview': parse_comma_number("128,000"),
+    'o1-mini': parse_comma_number("128,000"),
+    'o3-mini': parse_comma_number("200,000"),
+    'o4-mini': parse_comma_number("200,000")
 }
 OPENAI_MODEL_OUTPUT_LIMITS = {
-    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': 16384,
-    'gpt-3.5-turbo': 4096,
-    'gpt-4': 8192,
-    'gpt-4-32k': 32768,
-    'gpt-4o': 4096,         # Initially capped at 4,096; updated to 16,384 in later versions
-    'gpt-4o-mini': 16384,
-    'gpt-4-turbo': 4096,
-    'o1-preview': 32768,
-    'o1-mini': 16384,
-    'o3-mini': 100000,
-    'o4-mini': 100000,
-    'gpt-4.1': 300000
+    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': parse_comma_number("parse_comma_number("128,000"),
+    'gpt-3.5-turbo': parse_comma_number("4,096"),
+    'gpt-4': parse_comma_number("8,192"),
+    'gpt-4-32k': parse_comma_number("32,768"),
+    'gpt-4o': parse_comma_number("4,096"),         # Initially capped at 4"),096; updated to 16"),384 in later versions
+    'gpt-4o-mini': parse_comma_number("16,384"),
+    'gpt-4-turbo': parse_comma_number("4,096"),
+    'gpt-4.1': parse_comma_number("300,000"),
+    'gpt-4.1-nano': parse_comma_number("32,768"),
+    'gpt-4o-audio': parse_comma_number("16,384"),
+    'o1-preview': parse_comma_number("32,768"),
+    'o1-mini': parse_comma_number("16,384"),
+    'o3-mini': parse_comma_number("100,000"),
+    'o4-mini': parse_comma_number("100,000")
 }
 OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
 OPENAI_MODERATION_IMAGE = True
