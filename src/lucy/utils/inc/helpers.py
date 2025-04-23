@@ -397,6 +397,9 @@ OPENAI_MODEL_CONTEXT_LIMITS = {
     'gpt-4-turbo': 128000,
     'o1-preview': 128000,
     'o1-mini': 128000,
+    'o3-mini': 200000,
+    'o4-mini': 200000,
+    'gpt-4.1': 32768
 }
 OPENAI_MODEL_OUTPUT_LIMITS = {
     'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': 16384,
@@ -408,6 +411,9 @@ OPENAI_MODEL_OUTPUT_LIMITS = {
     'gpt-4-turbo': 4096,
     'o1-preview': 32768,
     'o1-mini': 16384,
+    'o3-mini': 100000,
+    'o4-mini': 100000,
+    'gpt-4.1': 1047576,
 }
 OPENAI_MODERATION_MODEL = 'omni-moderation-latest'
 OPENAI_MODERATION_IMAGE = True
