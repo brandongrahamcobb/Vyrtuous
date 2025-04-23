@@ -319,51 +319,51 @@ class Message:
         if unfiltered_role in message.author.roles:
             return
         user_id = message.author.id
-        async with self.db_pool.acquire() as connection:
-            async with connection.transaction():
-                row = await connection.fetchrow(
-                    'SELECT flagged_count FROM moderation_counts WHERE user_id = $1', user_id
-                )
-                if row:
-                    flagged_count = row['flagged_count'] + 1
-                    await connection.execute(
-                        'UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2',
-                        flagged_count, user_id
-                    )
-                    logger.info(f'Updated flagged count for user {user_id}: {flagged_count}')
-                else:
-                    flagged_count = 1
-                    await connection.execute(
-                        'INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)',
-                        user_id, flagged_count
-                    )
-                    logger.info(f'Inserted new flagged count for user {user_id}: {flagged_count}')
+#        async with self.db_pool.acquire() as connection:
+#            async with connection.transaction():
+#                row = await connection.fetchrow(
+#                    'SELECT flagged_count FROM moderation_counts WHERE user_id = $1', user_id
+#                )
+#                if row:
+#                    flagged_count = row['flagged_count'] + 1
+#                    await connection.execute(
+#                        'UPDATE moderation_counts SET flagged_count = $1 WHERE user_id = $2',
+#                        flagged_count, user_id
+#                    )
+#                    logger.info(f'Updated flagged count for user {user_id}: {flagged_count}')
+#                else:
+#                    flagged_count = 1
+#                    await connection.execute(
+#                        'INSERT INTO moderation_counts (user_id, flagged_count) VALUES ($1, $2)',
+#                        user_id, flagged_count
+#                    )
+#                    logger.info(f'Inserted new flagged count for user {user_id}: {flagged_count}')
         await message.delete()
-        if flagged_count == 1:
-            await self.send_message(
-                message.author,
-                content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
-            )
-        elif flagged_count in [2, 3, 4]:
-            if flagged_count == 4:
-                await self.send_message(
-                    message.author,
-                    content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
-                )
-        elif flagged_count >= 5:
-            await self.send_message(
-                message.author,
-                content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
-            )
-            await self.send_message(
-                message.author,
-                content='You have been timed out for 5 minutes due to repeated violations.'
-            )
-            await message.author.timeout(datetime.timedelta(seconds=300))
-            async with self.db_pool.acquire() as connection:
-                await connection.execute(
-                    'UPDATE moderation_counts SET flagged_count = 0 WHERE user_id = $1', user_id
-                )
+#        if flagged_count == 1:
+#            await self.send_message(
+#                message.author,
+#                content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
+#            )
+#        elif flagged_count in [2, 3, 4]:
+#            if flagged_count == 4:
+#                await self.send_message(
+#                    message.author,
+#                    content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
+#                )
+#        elif flagged_count >= 5:
+#            await self.send_message(
+#                message.author,
+#                content=f'{self.config['discord_moderation_warning']}. Your message was flagged for: {reason_str}'
+#            )
+#            await self.send_message(
+#                message.author,
+#                content='You have been timed out for 5 minutes due to repeated violations.'
+#            )
+#            await message.author.timeout(datetime.timedelta(seconds=300))
+#            async with self.db_pool.acquire() as connection:
+#                await connection.execute(
+#                    'UPDATE moderation_counts SET flagged_count = 0 WHERE user_id = $1', user_id
+#                )
 
     def _handle_large_response(self, content: str) -> str:
         if len(content) > 2000:

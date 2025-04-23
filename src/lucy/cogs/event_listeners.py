@@ -15,14 +15,16 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands
-from lucy.utils.handlers.ai_manager import Completions
+from lucy.utils.handlers.ai_manager import Completions, Moderator
 from lucy.utils.handlers.game_manager import Game
 from lucy.utils.handlers.message_manager import Message
+from lucy.utils.handlers.predicator import Predicator
 from lucy.utils.handlers.role_manager import RoleManager
 from lucy.utils.inc.helpers import *
 from lucy.utils.inc.setup_logging import logger
 
 import discord
+import json
 import os
 import shutil
 import time
@@ -36,8 +38,10 @@ class Indica(commands.Cog):
         self.config = bot.config
         self.completions = Completions()
         self.db_pool = bot.db_pool
-        self.game = Game(self.bot)
+#        self.game = Game(self.bot)
         self.handler = Message(self.bot, self.config, self.completions, self.db_pool)
+        self.moderator = Moderator()
+        self.predicator = Predicator(self.bot)
         self.user_messages = {}
         self.role_manager = RoleManager(self.db_pool)
 
@@ -61,12 +65,31 @@ class Indica(commands.Cog):
             if ctx.command:
                 await self.bot.invoke(ctx)
 
+    async def moderate_name(self, member: discord.Member, faction_name) -> bool:
+        if not self.config.get('openai_chat_moderation', False) or self.predicator.is_developer(member):
+            return False
+        try:
+            async for moderation_completion in self.moderator.create_moderation(input_array=[faction_name]):
+                try:
+                    full_response = json.loads(moderation_completion)
+                    results = full_response.get('results', [])
+                    if results and results[0].get('flagged', False):
+                        await self.moderator.handle_moderation(ctx.message)
+                        return True
+                except Exception as e:
+                    logger.error(traceback.format_exc())
+                    print(f'An error occurred: {e}')
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            print(f'An error occurred: {e}')
+        return False
+
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         if before.nick == after.nick:
             return
         try:
-            flagged = await self.game.moderate_name(after.nick or after.name)
+            flagged = await moderate_name(after.nick or after.name)
             if flagged:
                 try:
                     await after.edit(nick=None, reason="Nickname reverted due to moderation violation.")
@@ -117,7 +140,7 @@ class Indica(commands.Cog):
                 await self.handler.send_message(ctx, content=f"{message.author.mention}, stop spamming!")
                 await message.delete()
             self.handler.handle_users(message.author.name)
-            await self.game.distribute_xp(ctx.author.id)
+#            await self.game.distribute_xp(ctx.author.id)
             await self.handler.ai_handler(ctx)
         except Exception as e:
             logger.error(traceback.format_exc())
