@@ -230,7 +230,7 @@ class Hybrid(commands.Cog):
                         await self.handler.send_message(ctx, content=None, file=discord.File(unique_filename))
                         os.remove(unique_filename)
                     else:
-                        await message_manager.handle_large_response(ctx, chat_completion)
+                        await self.handler.handle_large_response(ctx, chat_completion)
             else:
                 with open(PATH_OPENAI_REQUESTS, "a") as f:
                     f.write(json.dumps(request_data) + "\n")
