@@ -1,4 +1,4 @@
-''' helpers.py  The purpose of this program is to provide generic parameters.
+	''' helpers.py  The purpose of this program is to provide generic parameters.
     Copyright (C) 2024 github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -236,7 +236,7 @@ OPENAI_CHAT_HEADERS = {
     'OpenAI-Project': 'proj_u5htBCWX0LSHxkw45po1Vfz9',
 }
 OPENAI_CHAT_MODELS = {
-    'current': ['chatgpt-4o-mini-latest', 'o1-preview', 'o1-mini'],
+    'current': ['chatgpt-4o-mini-latest', 'gpt-4.1', 'gpt-4.1-nano', 'gpt-4o-audio', 'o1-mini', 'o1-preview', 'o3-mini', 'o4-mini'],
     'deprecated': ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-32k', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'chatgpt-4o-latest'],
 }
 ### Moderations
@@ -342,7 +342,7 @@ OPENAI_CHAT_MODERATION_SYS_INPUT = 'You are a JSON moderation assistant.'
 OPENAI_CHAT_MODERATION_TEMPERATURE = 1.0
 OPENAI_CHAT_MODERATION_TOP_P = 1.0
 OPENAI_CHAT_MODERATION_USE_HISTORY = False
-OPENAI_CHAT_MODEL = 'gpt-4o-mini'
+OPENAI_CHAT_MODEL = 'gpt-4.1-nano'
 OPENAI_CHAT_N = 1
 OPENAI_CHAT_RESPONSE_FORMAT = None
 OPENAI_CHAT_MODERATION_USE_HISTORY = False
@@ -391,7 +391,7 @@ OPENAI_FINE_TUNING_RESPONSE_FORMAT = {
   }
 }
 OPENAI_MODEL_CONTEXT_LIMITS = {
-    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': parse16384"),
+    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': parse_comma_number("16,384"),
     'gpt-3.5-turbo': parse_comma_number("4,096"),
     'gpt-4': parse_comma_number("8,192"),
     'gpt-4-32k': parse_comma_number("32,768"),
@@ -407,7 +407,7 @@ OPENAI_MODEL_CONTEXT_LIMITS = {
     'o4-mini': parse_comma_number("200,000")
 }
 OPENAI_MODEL_OUTPUT_LIMITS = {
-    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': parse_comma_number("parse_comma_number("128,000"),
+    'ft:gpt-4o-mini-2024-07-18:spawd:vyrtuous:AjZpTNN2': parse_comma_number("128,000"),
     'gpt-3.5-turbo': parse_comma_number("4,096"),
     'gpt-4': parse_comma_number("8,192"),
     'gpt-4-32k': parse_comma_number("32,768"),
