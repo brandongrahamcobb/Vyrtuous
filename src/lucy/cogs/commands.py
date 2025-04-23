@@ -57,6 +57,7 @@ class Hybrid(commands.Cog):
         self.completions = Completions()
         self.batch_processor = BatchProcessor(bot)
         self.game = Game(self.bot)
+        self.message_manager = Message(self.bot, self.config, bot.completions, bot.db_pool)
         self.predicator = Predicator(self.bot)
         self.tag_manager = TagManager(self.bot.db_pool)
         self.handler = Message(self.bot, self.config, self.completions, self.bot.db_pool)
@@ -229,7 +230,7 @@ class Hybrid(commands.Cog):
                         await self.handler.send_message(ctx, content=None, file=discord.File(unique_filename))
                         os.remove(unique_filename)
                     else:
-                        await self.handler.send_message(ctx, content=chat_completion)
+                        await message_manager.handle_large_response(ctx, chat_completion)
             else:
                 with open(PATH_OPENAI_REQUESTS, "a") as f:
                     f.write(json.dumps(request_data) + "\n")
