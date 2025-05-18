@@ -40,7 +40,7 @@ class Message:
         self.db_pool = db_pool
         self.user_messages = {}
         self.predicator = Predicator(self.bot)
-        self.moderator = Moderator()
+
 
     async def send_dm(self, member: discord.Member, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
         channel = await member.create_dm()

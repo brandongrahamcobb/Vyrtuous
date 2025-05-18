@@ -35,10 +35,8 @@ class Indica(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
-        self.completions = Completions()
         self.db_pool = bot.db_pool
-        self.handler = Message(self.bot, self.config, self.completions, self.db_pool)
-        self.moderator = Moderator()
+        self.handler = Message(self.bot, self.config,  self.db_pool)
         self.predicator = Predicator(self.bot)
         self.user_messages = {}
         self.role_manager = RoleManager(self.db_pool)

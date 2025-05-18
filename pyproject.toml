@@ -5,18 +5,17 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "py_vyrtuous"
-version = "17.6.6"
+version = "2.8.9"
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
 readme = "README.md"
 homepage = "https://brandongcobb.com"
 repository = "https://github.com/brandongrahamcobb/lucy.git"
-keywords = [ "AI", "chemistry", "Discord", "json", "moderation", "python", "Twitch", "yaml",]
+keywords = [ "chemistry", "Discord", "json", "python", "yaml",]
 
 [tool.poetry.dependencies]
 python = "~3.13.1"
-openai = "^1.58.1"
 rdkit = "^2024.9.1"
 aiohttp = "^3.11.11"
 asyncpg = "^0.30.0"
@@ -29,18 +28,13 @@ pyyaml = "^6.0.2"
 requests = "^2.32.3"
 selenium = "^4.27.1"
 quart = "^0.20.0"
-torch = "^2.5.1"
-twitchio = "^2.10.0"
 webdriver-manager = "^4.0.2"
-transformers = "^4.47.1"
-tiktoken = "^0.8.0"
 toml = "^0.10.2"
 audioop-lts = "^0.2.1"
 pytz = "^2024.2"
 discord-ext-menus = "^1.1"
 google-api-python-client = "^2.160.0"
 gradio-client = "^1.8.0"
-
 [tool.poetry.scripts]
 py_vyrtuous = "py_vyrtuous.main:run"
 
