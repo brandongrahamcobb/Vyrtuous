@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 package-mode = true
-name = "lucy"
+name = "py_vyrtuous"
 version = "17.6.6"
 description = ""
 license = "GPL-3.0-or-later"
@@ -42,7 +42,7 @@ google-api-python-client = "^2.160.0"
 gradio-client = "^1.8.0"
 
 [tool.poetry.scripts]
-lucy = "lucy.main:run"
+py_vyrtuous = "py_vyrtuous.main:run"
 
 [tool.poetry.dependencies.discord-py]
 extras = [ "voice",]
