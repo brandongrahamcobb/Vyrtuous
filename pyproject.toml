@@ -34,7 +34,7 @@ audioop-lts = "^0.2.1"
 pytz = "^2024.2"
 discord-ext-menus = "^1.1"
 google-api-python-client = "^2.160.0"
-gradio-client = "^1.8.0"
+
 [tool.poetry.scripts]
 py_vyrtuous = "py_vyrtuous.main:run"
 
