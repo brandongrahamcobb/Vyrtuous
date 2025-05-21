@@ -29,10 +29,10 @@ DIR_HOME = expanduser('~')
 DIR_TEMP = join(DIR_BASE, 'py_vyrtuous', 'temp')
 
 #### PATHS
-### Path: Root (Vyrtuous)
-PATH_TOML = join(DIR_HOME, 'pyVyrtuous', 'pyproject.toml')
+### Path: Root (Py_vyrtuous)
+PATH_TOML = join(DIR_HOME, 'git', 'pyVyrtuous', 'pyproject.toml')
 ## Path: Source (src)
-# Path: Py_Vyrtuous (py_vyrtuous)
+# Path: Py_Py_vyrtuous (py_vyrtuous)
 PATH_CONFIG = join(DIR_BASE, 'py_vyrtuous', 'config.py')
 PATH_CONFIG_YAML = join(DIR_BASE, 'py_vyrtuous', '.config', 'config.yaml')
 PATH_LOG = join(DIR_BASE, 'py_vyrtuous', '.log', 'discord.log')
@@ -72,7 +72,7 @@ PATH_SCRIPT = join(DIR_BASE, 'py_vyrtuous', 'utils', 'inc', 'script.py')
 PATH_SETUP_LOGGING = join(DIR_BASE, 'py_vyrtuous', 'utils', 'inc', 'setup_logging.py')
 PATH_UNIQUE_PAIRS = join(DIR_BASE, 'py_vyrtuous', 'utils', 'inc', 'unique_pairs.py')
 #### CONTENTS
-# Path: Py_Vyrtuous (py_vyrtuous)
+# Path: Py_Py_vyrtuous (py_vyrtuous)
 CONTENTS_CONFIG = load_contents(PATH_CONFIG)
 CONTENTS_MAIN = load_contents(PATH_MAIN)
 contents_main = [
@@ -171,5 +171,5 @@ SCRIPTURE_HEADERS = {
     'api-key': '2eb327f99245cd3d68da55370656d6e2'
 }
 
-USER_AGENT = 'https://github.com/brandongrahamcobb/Vyrtuous.git'
+USER_AGENT = 'https://github.com/brandongrahamcobb/Py_vyrtuous.git'
 VERSION = '1.0.0'

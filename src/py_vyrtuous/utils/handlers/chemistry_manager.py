@@ -238,7 +238,7 @@ def gsrs(arg):
     chrome_options.add_argument('--headless')  # Run headless Chrome (no UI)
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
-    executable_path = os.path.join(DIR_HOME, 'Vyrtuous', 'chromedriver')
+    executable_path = os.path.join(DIR_HOME, 'Py_vyrtuous', 'chromedriver')
     driver = webdriver.Chrome(service=Service(executable_path=executable_path), options=chrome_options)
     try:
         search_url = f'https://gsrs.ncats.nih.gov/ginas/app/beta/browse-substance?search={arg}'

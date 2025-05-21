@@ -35,7 +35,7 @@ import openai
 import os
 import traceback
 
-def add_watermark(image: BytesIO, watermark_text: str = 'Vyrtuous', bottom: bool = True) -> BytesIO:
+def add_watermark(image: BytesIO, watermark_text: str = 'Py_vyrtuous', bottom: bool = True) -> BytesIO:
     if not bottom:
         normalized_text = normalize_text(watermark_text)
     else:

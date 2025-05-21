@@ -1,4 +1,4 @@
-''' main.py  The purpose of this program is to be the primary executable for Vyrtuous.
+''' main.py  The purpose of this program is to be the primary executable for Py_vyrtuous.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify

@@ -1,5 +1,5 @@
 ''' hybrid.py The purpose of this program is to be an extension to a Discord
-    bot to provide the command functionality to Vyrtuous.
+    bot to provide the command functionality to Py_vyrtuous.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
