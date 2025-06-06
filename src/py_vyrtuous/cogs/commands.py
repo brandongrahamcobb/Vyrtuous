@@ -159,31 +159,19 @@ class Hybrid(commands.Cog):
         else:
             return False
             
-    async def translate(ctx: discord.ext.commands.Context, text_to_translate: str, target_lang: str) -> str:
-    """
-    Translates the given text to the specified target language using Google Translate.
-
-    Args:
-        ctx: The command context (used to access user preferences).
-        text_to_translate: The text to be translated.
-        target_lang: The target language (e.g., "spanish", "french").
-
-    Returns:
-        The translated text, or an error message if translation fails.
-    """
-
-    translator = Translator()
-
-    try:
-        # Check if the target language is valid
-        if target_lang not in LANGUAGES:
-            return f"'{target_lang}' is not a supported language.  See available languages with !languages."
-
-        translation = translator.translate(text_to_translate, dest=target_lang)
-        return translation.text
-    except Exception as e:
-        print(f"Translation error: {e}")
-        return "An error occurred during translation. Please try again later."
+    def translate(ctx: discord.ext.commands.Context, text_to_translate: str, target_lang: str) -> str:
+        translator = Translator()
+    
+        try:
+            # Check if the target language is valid
+            if target_lang not in LANGUAGES:
+                return f"'{target_lang}' is not a supported language.  See available languages with !languages."
+    
+            translation = translator.translate(text_to_translate, dest=target_lang)
+            return translation.text
+        except Exception as e:
+            print(f"Translation error: {e}")
+            return "An error occurred during translation. Please try again later."
             
     @commands.command(name='join')
     async def join(self, ctx):
