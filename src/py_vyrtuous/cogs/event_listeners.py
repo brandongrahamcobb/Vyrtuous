@@ -25,6 +25,7 @@ from py_vyrtuous.utils.inc.setup_logging import logger
 import discord
 import json
 import os
+import py_vyrtuous.utils.inc.handle_users
 import shutil
 import time
 import traceback
@@ -68,11 +69,7 @@ class Indica(commands.Cog):
                 return
             ctx = await self.bot.get_context(message)
             author = ctx.author.name
-            current_time = time.time()
-            ctx = await self.bot.get_context(message)
-            author = ctx.author.name
-            user_id = ctx.author.id
-            self.handler.handle_users(message.author.name)
+            handle_users(author)
         except Exception as e:
             logger.error(traceback.format_exc())
         finally:

@@ -17,9 +17,9 @@
 from py_vyrtuous.bots.discord_bot import DiscordBot
 from py_vyrtuous.config import Config
 from py_vyrtuous.utils.inc.helpers import *
+from py_vyrtuous.utils.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
 from py_vyrtuous.utils.inc.increment_version import increment_version
 from py_vyrtuous.utils.inc.setup_logging import setup_logging
-
 from pathlib import Path
 
 import asyncio
@@ -37,8 +37,6 @@ async def start_bot(bot, name):
     try:
         if isinstance(bot, DiscordBot):
             await bot.start(bot.api_key)
-        elif isinstance(bot, LinkedInBot):
-            await bot.run()
         elif isinstance(bot, TwitchBot):
             await bot.start()
     except Exception as e:
@@ -53,14 +51,24 @@ async def main():
 
     lock = asyncio.Lock()
 
+    discord_oauth = DiscordOAuth(config)
+    setup_discord_routes(discord_app, discord_oauth)
+
+    discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=5000))
+    print("Please authenticate Discord by visiting the following URL:")
+    print(discord_oauth.get_authorization_url())
+
     discord_bot = DiscordBot(
         config=config,
         db_pool=db_pool,
         lock=lock,
+        oauth_token=discord_oauth.access_token,
     )
+
 
     tasks = [
         asyncio.create_task(start_bot(discord_bot, "DiscordBot")),
+        discord_quart,
     ]
 
     await asyncio.gather(*tasks)

@@ -23,7 +23,7 @@ from py_vyrtuous.utils.inc.setup_logging import logger
 from typing import List, Optional
 
 class DiscordBot(commands.Bot):
-    def __init__(self, *, config, db_pool: asyncpg.Pool, lock, **kwargs):
+    def __init__(self, *, config, db_pool: asyncpg.Pool, lock, oauth_token, **kwargs):
         try:
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'], intents=intents, **kwargs)
@@ -31,6 +31,7 @@ class DiscordBot(commands.Bot):
             self.config = config
             self.db_pool = db_pool
             self.lock = lock
+            self.oauth_token = oauth_token
             self.api_key = self.config['api_keys']['Discord']['api_key']
             self.testing_guild_id = self.config['discord_testing_guild_id']
         except Exception as e:
