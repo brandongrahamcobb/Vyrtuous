@@ -64,6 +64,56 @@ class Hybrid(commands.Cog):
         if not os.path.exists(self.uploads_dir):
             os.makedirs(self.uploads_dir)
 
+    def get_language_name_from_role(role_name: str) -> str:
+        """
+        Extracts the language name from a role name with either "original-" or "target-" prefix.
+    
+        Args:
+            role_name: The role name (e.g., "original-french" or "target-spanish").
+    
+        Returns:
+            The language name (e.g., "french" or "spanish").
+            Returns None if the role name doesn't start with the expected prefixes.
+        """
+        if role_name.startswith("original-"):
+            return role_name[len("original-"):]
+        elif role_name.startswith("target-"):
+            return role_name[len("target-"):]
+        else:
+            return None
+    
+    def get_original_language_name(ctx: discord.ext.commands.Context) -> str | None:
+        """
+        Gets the original language name from the user's roles.
+    
+        Args:
+            ctx: The command context.
+    
+        Returns:
+            The original language name (e.g., "french") if the user has an "original-" role,
+            None otherwise.
+        """
+        for role in ctx.guild.roles:
+            if role.name.startswith("original-"):
+                return get_language_name_from_role(role.name)
+        return None
+    
+    def get_target_language_name(ctx: discord.ext.commands.Context) -> str | None:
+        """
+        Gets the target language name from the user's roles.
+    
+        Args:
+            ctx: The command context.
+    
+        Returns:
+            The target language name (e.g., "spanish") if the user has a "target-" role,
+            None otherwise.
+        """
+        for role in ctx.guild.roles:
+            if role.name.startswith("target-"):
+                return get_language_name_from_role(role.name)
+        return None
+        
     async def loop_tags(self, channel: discord.TextChannel):
         while True:
             try:
@@ -101,6 +151,40 @@ class Hybrid(commands.Cog):
                 return lang_code
         return None
 
+    def has_translate_on(self, ctx: commands.Context) -> bool:
+        target_roles = [role for role in ctx.guild.roles if role.name.startswith("target-")]
+        original_roles = [role for role in ctx.guild.roles if role.name.startswith("original-")]
+        if len(target_roles) == 1 and len(original_roles) == 1:
+            return True
+        else:
+            return False
+            
+    async def translate(ctx: discord.ext.commands.Context, text_to_translate: str, target_lang: str) -> str:
+    """
+    Translates the given text to the specified target language using Google Translate.
+
+    Args:
+        ctx: The command context (used to access user preferences).
+        text_to_translate: The text to be translated.
+        target_lang: The target language (e.g., "spanish", "french").
+
+    Returns:
+        The translated text, or an error message if translation fails.
+    """
+
+    translator = Translator()
+
+    try:
+        # Check if the target language is valid
+        if target_lang not in LANGUAGES:
+            return f"'{target_lang}' is not a supported language.  See available languages with !languages."
+
+        translation = translator.translate(text_to_translate, dest=target_lang)
+        return translation.text
+    except Exception as e:
+        print(f"Translation error: {e}")
+        return "An error occurred during translation. Please try again later."
+            
     @commands.command(name='join')
     async def join(self, ctx):
         """Join the voice channel."""
@@ -194,6 +278,7 @@ class Hybrid(commands.Cog):
     ):
         if not self.predicator.is_release_mode_func(ctx):
             return
+        
         linearity = linearity if isinstance(linearity, bool) else False
         rdkit_bool = rdkit_coords if isinstance(rdkit_coords, bool) else True
         quantity = dupes if isinstance(dupes, int) else 1
@@ -210,6 +295,7 @@ class Hybrid(commands.Cog):
                     return content.decode('utf-8')
                 return None
             async def get_molecules(molecules):
+            
                 if not molecules:
                     await self.handler.send_message(ctx, content='No molecules provided.')
                     return
@@ -238,11 +324,23 @@ class Hybrid(commands.Cog):
                         else:
                             helm = construct_helm_from_peptide(mol)
                             smiles = manual_helm_to_smiles(helm)
-                    if not smiles:
-                        embed = discord.Embed(description=f'Invalid molecule: {mol}')
-                        await self.handler.send_message(ctx, content=None, file=None, embed=embed)
-                        return
-                    distribute_xp(ctx.author.id)
+                            if not smiles and has_translate_on(ctx):
+                                mol = translate(mol, get_original_language_name(), get_target_language_name())
+                                mol_obj = Chem.MolFromSmiles(mol)
+                                if mol_obj:
+                                    smiles = mol
+                                else:
+                                    compounds = pcp.get_compounds(mol, 'name')
+                                    if compounds:
+                                        smiles = compounds[0].isomeric_smiles
+                                    else:
+                                        helm = construct_helm_from_peptide(mol)
+                                        smiles = manual_helm_to_smiles(helm)
+                                if not smiles:
+                                    embed = discord.Embed(description=f'Invalid molecule: {mol}')
+                                    await self.handler.send_message(ctx, content=None, file=None, embed=embed)
+                                    return
+                    self.game.distribute_xp(ctx.author.id)
                     converted_smiles.append(smiles)
                 molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
                 return molecule_objects, names, name
@@ -260,8 +358,6 @@ class Hybrid(commands.Cog):
                     await self.handler.send_message(ctx, content=None, file=None, embed=embed)
                     return
                 for pair in pairs:
-                    mol = get_mol(pair[0], False)
-                    refmol = get_mol(pair[1], False)
                     if mol is None or refmol is None:
                         embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
                         await self.handler.send_message(ctx, content=None, file=None, embed=embed)
@@ -286,9 +382,12 @@ class Hybrid(commands.Cog):
                     return
                 args = shlex.split(molecules)
                 for molecule_name in args:
-                    if molecule_name is None:
+                    if not molecule_name and has_translate_on(ctx):
+                       molecule_name = translate(molecule_name, get_original_language_name(), get_target_language_name())
+                    elif not molecule_name:
                         await self.handler.send_message(ctx, content=f'{molecule_name} is an unknown molecule.')
-                        continue
+                        return
+                    #distribute_xp(ctx.author.id)
                     watermarked_image = gsrs(molecule_name)
                     with io.BytesIO() as image_binary:
                         watermarked_image.save(image_binary, format='PNG')
@@ -881,94 +980,93 @@ class Hybrid(commands.Cog):
                 async with ctx.typing():
                     await function()
 
-@commands.command(name='language', description=f'Usage: <command-prefix>language on <your-language> <target-language>')
-@commands.has_permissions(manage_messages=True)
-async def translate(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
-    """
-    Enables or disables translation preferences for a user.  Dynamically creates roles based on language.
-    """
-
-    if toggle.lower() == 'on':
-        target_lang_code = self.get_language_code(target_lang)
-        source_lang_code = self.get_language_code(source_lang)
-
-        if target_lang_code is None or source_lang_code is None:
-            await self.handler.send_message(ctx, content=f'{ctx.author.mention}, please specify valid language names.')
-            return
-
-        # Create/Get Target Language Role
-        target_role_name = f"target-{target_lang}"
-        target_role = None
-        for role in ctx.guild.roles:
-            if role.name == target_role_name:
-                target_role = role
-                break
-
-        if not target_role:
+    @commands.command(name='language', description=f'Usage: <command-prefix>language on <your-language> <target-language>')
+    async def language(self, ctx, toggle: str, target_lang: str = 'english', source_lang: str = 'auto'):
+        """
+        Enables or disables translation preferences for a user.  Dynamically creates roles based on language.
+        """
+    
+        if toggle.lower() == 'on':
+            target_lang_code = self.get_language_code(target_lang)
+            source_lang_code = self.get_language_code(source_lang)
+    
+            if target_lang_code is None or source_lang_code is None:
+                await self.handler.send_message(ctx, content=f'{ctx.author.mention}, please specify valid language names.')
+                return
+    
+            # Create/Get Target Language Role
+            target_role_name = f"target-{target_lang}"
+            target_role = None
+            for role in ctx.guild.roles:
+                if role.name == target_role_name:
+                    target_role = role
+                    break
+    
+            if not target_role:
+                try:
+                    target_role = await ctx.guild.create_role(name=target_role_name, permissions=discord.Permissions(manage_messages=True)) #Adjust permissions as needed
+                    await ctx.message.guild.me.add_to_roles(target_role)
+                except discord.Forbidden:
+                    await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to create roles.')
+                    return
+                except discord.HTTPException as e:
+                    await self.handler.send_message(ctx, content=f'{ctx.author.mention}, An error occurred creating the target role: {e}')
+                    return
+    
+            # Create/Get Source Language Role
+            original_role_name = f"original-{source_lang}"
+            original_role = None
+            for role in ctx.guild.roles:
+                if role.name == original_role_name:
+                    original_role = role
+                    break
+    
+            if not original_role:
+                try:
+                    original_role = await ctx.guild.create_role(name=original_role_name, permissions=discord.Permissions(manage_messages=True)) #Adjust permissions as needed
+                    await ctx.message.guild.me.add_to_roles(original_role)
+                except discord.Forbidden:
+                    await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to create roles.')
+                    return
+                except discord.HTTPException as e:
+                    await self.handler.send_message(ctx, content=f'{ctx.author.mention}, An error occurred creating the original role: {e}')
+                    return
+    
+            # Assign/Remove Roles
             try:
-                target_role = await ctx.guild.create_role(name=target_role_name, permissions=discord.Permissions(manage_messages=True)) #Adjust permissions as needed
-                await ctx.message.guild.me.add_to_roles(target_role)
-            except discord.Forbidden:
-                await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to create roles.')
-                return
-            except discord.HTTPException as e:
-                await self.handler.send_message(ctx, content=f'{ctx.author.mention}, An error occurred creating the target role: {e}')
-                return
-
-        # Create/Get Source Language Role
-        original_role_name = f"original-{source_lang}"
-        original_role = None
-        for role in ctx.guild.roles:
-            if role.name == original_role_name:
-                original_role = role
-                break
-
-        if not original_role:
-            try:
-                original_role = await ctx.guild.create_role(name=original_role_name, permissions=discord.Permissions(manage_messages=True)) #Adjust permissions as needed
-                await ctx.message.guild.me.add_to_roles(original_role)
-            except discord.Forbidden:
-                await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to create roles.')
-                return
-            except discord.HTTPException as e:
-                await self.handler.send_message(ctx, content=f'{ctx.author.mention}, An error occurred creating the original role: {e}')
-                return
-
-        # Assign/Remove Roles
-        try:
-            if not ctx.author.get_role(target_role.id):
-                await ctx.author.add_roles(target_role)
-            if ctx.author.get_role(original_role.id):
-                await ctx.author.remove_roles(original_role)
-        except discord.Forbidden:
-            await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to manage your roles.')
-            return
-
-        await self.handler.send_message(ctx, content=f'{ctx.author.mention}, translation enabled from {source_lang} to {target_lang}.')
-
-    elif toggle.lower() == 'off':
-        # Remove target role and potentially add original role back (adjust as needed)
-        target_lang_code = self.get_language_code(target_lang)
-        target_role_name = f"target-{target_lang}"
-        target_role = None
-        for role in ctx.guild.roles:
-            if role.name == target_role_name:
-                target_role = role
-                break
-
-        if target_role:
-            try:
-                await ctx.author.remove_roles(target_role)
+                if not ctx.author.get_role(target_role.id):
+                    await ctx.author.add_roles(target_role)
+                if ctx.author.get_role(original_role.id):
+                    await ctx.author.remove_roles(original_role)
             except discord.Forbidden:
                 await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to manage your roles.')
                 return
-            
-            await self.handler.send_message(ctx, content=f'{ctx.author.mention}, translation disabled.')
+    
+            await self.handler.send_message(ctx, content=f'{ctx.author.mention}, translation enabled from {source_lang} to {target_lang}.')
+    
+        elif toggle.lower() == 'off':
+            # Remove target role and potentially add original role back (adjust as needed)
+            target_lang_code = self.get_language_code(target_lang)
+            target_role_name = f"target-{target_lang}"
+            target_role = None
+            for role in ctx.guild.roles:
+                if role.name == target_role_name:
+                    target_role = role
+                    break
+    
+            if target_role:
+                try:
+                    await ctx.author.remove_roles(target_role)
+                except discord.Forbidden:
+                    await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to manage your roles.')
+                    return
+    
+                await self.handler.send_message(ctx, content=f'{ctx.author.mention}, translation disabled.')
+            else:
+                await self.handler.send_message(ctx, content=f'{ctx.author.mention}, target role not found.')
+    
         else:
-            await self.handler.send_message(ctx, content=f'{ctx.author.mention}, target role not found.')
-
-    else:
-        await self.handler.send_message(ctx, content=f'{ctx.author.mention}, please specify \'on\' or \'off\'.')
+            await self.handler.send_message(ctx, content=f'{ctx.author.mention}, please specify \'on\' or \'off\'.')
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Hybrid(bot))
