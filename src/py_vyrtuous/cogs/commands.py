@@ -340,7 +340,7 @@ class Hybrid(commands.Cog):
                                     embed = discord.Embed(description=f'Invalid molecule: {mol}')
                                     await self.handler.send_message(ctx, content=None, file=None, embed=embed)
                                     return
-                    self.game.distribute_xp(ctx.author.id)
+                    await self.game.distribute_xp(ctx.author.id)
                     converted_smiles.append(smiles)
                 molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
                 return molecule_objects, names, name
