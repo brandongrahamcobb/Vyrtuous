@@ -993,7 +993,7 @@ class Hybrid(commands.Cog):
             if not target_role:
                 try:
                     target_role = await ctx.guild.create_role(name=target_role_name, permissions=discord.Permissions(manage_messages=True)) #Adjust permissions as needed
-                    await ctx.message.guild.me.add_to_roles(target_role)
+                    await ctx.message.guild.me.add_roles(target_role)
                 except discord.Forbidden:
                     await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to create roles.')
                     return
@@ -1012,7 +1012,7 @@ class Hybrid(commands.Cog):
             if not original_role:
                 try:
                     original_role = await ctx.guild.create_role(name=original_role_name, permissions=discord.Permissions(manage_messages=True)) #Adjust permissions as needed
-                    await ctx.message.guild.me.add_to_roles(original_role)
+                    await ctx.message.guild.me.add_roles(original_role)
                 except discord.Forbidden:
                     await self.handler.send_message(ctx, content=f'{ctx.author.mention}, I don\'t have permission to create roles.')
                     return
