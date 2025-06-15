@@ -346,6 +346,8 @@ class Hybrid(commands.Cog):
                     await self.handler.send_message(ctx, content=None, file=None, embed=embed)
                     return
                 for pair in pairs:
+                    mol = get_mol(pair[0], False)
+                    refmol = get_mol(pair[1], False)
                     if mol is None or refmol is None:
                         embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
                         await self.handler.send_message(ctx, content=None, file=None, embed=embed)
