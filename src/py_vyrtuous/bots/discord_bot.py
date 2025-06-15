@@ -37,6 +37,11 @@ class DiscordBot(commands.Bot):
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {e}')
 
+    async def process_commands(self, message):
+            """Override process_commands to listen to bots."""
+            ctx = await self.get_context(message)
+            await self.invoke(ctx)
+        
     async def setup_hook(self) -> None:
         try:
             cogs = DISCORD_COGS
