@@ -16,6 +16,7 @@
 '''
 from py_vyrtuous.bots.discord_bot import DiscordBot
 from py_vyrtuous.config import Config
+from py_vyrtuous.utils.handlers.chemistry_manager import chemistry_quart
 from py_vyrtuous.utils.inc.helpers import *
 from py_vyrtuous.utils.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
 from py_vyrtuous.utils.inc.increment_version import increment_version
@@ -69,6 +70,7 @@ async def main():
     tasks = [
         asyncio.create_task(start_bot(discord_bot, "DiscordBot")),
         discord_quart,
+        asyncio.create_task(chemistry_quart())
     ]
 
     await asyncio.gather(*tasks)

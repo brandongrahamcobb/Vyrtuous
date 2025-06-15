@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw, ImageFont
 from pyPept.sequence import Sequence, correct_pdb_atoms
 from pyPept.molecule import Molecule
 from pyPept.converter import Converter
+from quart import Quart, send_from_directory
 from rdkit import Chem
 from rdkit.Chem import rdFMCS, AllChem, DataStructs, Draw, rdMolAlign, rdDepictor
 from rdkit.Chem.Draw import rdMolDraw2D, SimilarityMaps
@@ -42,6 +43,24 @@ import requests
 import shlex
 import os
 
+
+app = Quart(__name__)
+
+@app.route("/api/image", methods=["POST"])
+async def image_from_input():
+    data = await request.get_json()
+    arg = data.get("input")
+    rotation = int(data.get("rotation", 0))
+
+    mol = get_mol(arg)
+    if mol is None:
+        return {"error": "Invalid input"}, 400
+
+    image_buf = draw_watermarked_molecule(mol, rotation=rotation)
+    image_buf.seek(0)
+    return await send_file(image_buf, mimetype="image/png")
+
+CHEM_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "CID"))
 residue_fragments = {
     "A": "[*:1]NC(=O)[C@@H](C)[*:2]",
     "R": "[*:1]NC(=O)[C@@H](CCCNC(=N)N)[*:2]",
@@ -65,6 +84,14 @@ residue_fragments = {
     "V": "[*:1]NC(=O)[C@@H](C(C)C)[*:2]"
 }
 
+@app.route('/CID/<filename>')
+async def serve_chem_file(filename):
+    return await send_from_directory(CHEM_FOLDER, filename)
+
+async def chemistry_quart():
+    await app.run_task(host="0.0.0.0", port=2001)
+    
+    
 def build_peptide_from_residues(res_list, cyclic=False):
     if not res_list:
         raise ValueError("Residue list is empty.")
