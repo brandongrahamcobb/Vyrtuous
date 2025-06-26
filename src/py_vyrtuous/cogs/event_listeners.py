@@ -65,11 +65,12 @@ class Indica(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         try:
-            if message.author.bot or message.is_system():
+            if message.author.id == 1318597210119864385: #bot or message.is_system():
                 return
             ctx = await self.bot.get_context(message)
             author = ctx.author.name
-            handle_users(author)
+            await self.bot.process_commands(message)
+            #handle_users(author)
         except Exception as e:
             logger.error(traceback.format_exc())
         finally:

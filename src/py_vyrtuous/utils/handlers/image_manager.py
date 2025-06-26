@@ -140,9 +140,12 @@ def combine_gallery(images: list, names: list, title: str, quantity: int = 1, li
     combined_img_buffer = BytesIO()
     combined_img.save(combined_img_buffer, format='PNG')
     combined_img_buffer.seek(0)
-    final_image_buffer = add_watermark(combined_img_buffer, title, True)
-    final_image_buffer.seek(0)
-    return final_image_buffer
+    if title == 'Untitled':
+        return combined_img_buffer
+    else:
+        final_image_buffer = add_watermark(combined_img_buffer, title, True)
+        final_image_buffer.seek(0)
+        return final_image_buffer
 
 def normalize_text(text: str) -> str:
     letters_only = ''.join(filter(str.isalpha, text))

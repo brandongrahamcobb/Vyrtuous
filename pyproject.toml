@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "py_vyrtuous"
-version = "2.9.4"
+version = "3.4.6"
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
@@ -15,7 +15,7 @@ repository = "https://github.com/brandongrahamcobb/lucy.git"
 keywords = [ "chemistry", "Discord", "json", "python", "yaml",]
 
 [tool.poetry.dependencies]
-python = "~3.13.1"
+python = "~3.13.5"
 rdkit = "^2024.9.1"
 aiohttp = "^3.11.11"
 asyncpg = "^0.30.0"
@@ -30,10 +30,14 @@ selenium = "^4.27.1"
 quart = "^0.20.0"
 webdriver-manager = "^4.0.2"
 toml = "^0.10.2"
-audioop-lts = "^0.2.1"
 pytz = "^2024.2"
 discord-ext-menus = "^1.1"
 google-api-python-client = "^2.160.0"
+filelock = "^3.18.0"
+gradio-client = "^1.10.3"
+googletrans = "^4.0.2"
+openai = "^1.86.0"
+tiktoken = "^0.9.0"
 
 [tool.poetry.scripts]
 py_vyrtuous = "py_vyrtuous.main:run"

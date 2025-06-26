@@ -134,8 +134,11 @@ def draw_fingerprint(pair, rdkit_bool=True, rotation=0) -> BytesIO:
     inverted_img = Image.eval(img, lambda x: 255 - x)
     adjusted_output = adjust_hue_and_saturation(inverted_img, hue_shift=-180, saturation_shift=160)
     adjusted_output.seek(0)
-    watermarked_image_buffer = add_watermark(adjusted_output, name, False)
-    return watermarked_image_buffer
+    if rotation == 0:
+        return adjusted_output
+    else:
+        watermarked_image_buffer = add_watermark(adjusted_output, name, False)
+        return watermarked_image_buffer
 
 def draw_watermarked_molecule(molecule, rotation=0, rdkit_bool=True) -> BytesIO:
     rdDepictor.SetPreferCoordGen(rdkit_bool)

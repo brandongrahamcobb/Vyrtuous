@@ -328,7 +328,7 @@ class Hybrid(commands.Cog):
                                     embed = discord.Embed(description=f'Invalid molecule: {mol}')
                                     await self.handler.send_message(ctx, content=None, file=None, embed=embed)
                                     return
-                    await self.game.distribute_xp(ctx.author.id)
+                    #await self.game.distribute_xp(ctx.author.id)
                     converted_smiles.append(smiles)
                 molecule_objects = [get_mol(smiles, reverse=reverse) for smiles in converted_smiles]
                 return molecule_objects, names, name
@@ -346,6 +346,8 @@ class Hybrid(commands.Cog):
                     await self.handler.send_message(ctx, content=None, file=None, embed=embed)
                     return
                 for pair in pairs:
+                    mol = molecule_objects[0]
+                    refmol = molecule_objects[1]
                     if mol is None or refmol is None:
                         embed = discord.Embed(description=f'One or both of the molecules {pair[0]} or {pair[1]} are invalid.')
                         await self.handler.send_message(ctx, content=None, file=None, embed=embed)

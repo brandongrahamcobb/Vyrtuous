@@ -48,7 +48,7 @@ PATH_SCHEDULED_TASKS = join (DIR_BASE, 'py_vyrtuous', 'cogs', 'scheduled_tasks.p
 # Path: Drivers (drivers)
 PATH_CHROMEDRIVER = join (DIR_BASE, 'py_vyrtuous', 'resources', 'drivers', 'chromedriver')
 # Path: Fonts (fonts)
-PATH_FONT = join(DIR_HOME, 'py_vyrtuous', 'resources', 'fonts', 'Roboto-Regular.ttf')
+PATH_FONT = join(DIR_BASE, 'py_vyrtuous', 'resources', 'fonts', 'Roboto-Regular.ttf')
 # Path: Handlers (handlers)
 PATH_CHEMISTRY = join(DIR_BASE, 'py_vyrtuous', 'utils', 'handlers', 'chemistry_manager.py')
 PATH_GAME = join(DIR_BASE, 'py_vyrtuous', 'utils', 'handlers', 'game_manager.py')
