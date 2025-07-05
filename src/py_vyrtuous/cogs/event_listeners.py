@@ -69,7 +69,7 @@ class Indica(commands.Cog):
                 return
             ctx = await self.bot.get_context(message)
             author = ctx.author.name
-            await self.bot.process_commands(message)
+            #await self.bot.process_commands(message)
             #handle_users(author)
         except Exception as e:
             logger.error(traceback.format_exc())
