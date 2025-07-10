@@ -1,6 +1,6 @@
 **The Vyrtuous Project** is a vegan-owned Discord bot written in Python. It brings together:
 
-![Vyrtuous UML Diagram](pictures/VyrtuousUML.svg)
+![Vyrtuous UML Diagram](resources/pictures/VyrtuousUML.svg)
 
 * Room moderator data persistence
 * Custom room mute commands
