@@ -7,7 +7,6 @@
 * Custom room unmute commands
 * Loading and unloading Cogs, the fundamental components of the Discord bot
 * Backing up roles and redeploying the backup
-* PDF-based research management
 
 ## Features
 
