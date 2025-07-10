@@ -14,15 +14,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from py_vyrtuous.utils.inc.helpers import *
-from py_vyrtuous.utils.inc.load_yaml import load_yaml
-from py_vyrtuous.utils.inc.prompt_for_values import prompt_for_values
-from py_vyrtuous.utils.inc.setup_logging import logger
 from os import makedirs
 from os.path import dirname, isfile
 from typing import Any, Dict
 
 import yaml
+from vyrtuous.utils.inc.helpers import *
+from vyrtuous.utils.inc.load_yaml import load_yaml
+from vyrtuous.utils.inc.prompt_for_values import prompt_for_values
+from vyrtuous.utils.inc.setup_logging import logger
+
 
 class Config:
 
@@ -115,6 +116,7 @@ class Config:
         config_fields = {
             'discord_character_limit': ('Discord character limit?', DISCORD_CHARACTER_LIMIT),
             'discord_command_prefix': ('Discord command prefix?', DISCORD_COMMAND_PREFIX),
+            'discord_developer_channel': ('Discord developer channel?', DISCORD_DEVELOPER_CHANNEL),
             'discord_owner_id': ('Discord Owner ID?', DISCORD_OWNER_ID),
             'discord_release_mode': ('Discord release mode?', DISCORD_RELEASE_MODE),
             'discord_testing_guild_id': ('What is the Discord testing guild ID?', DISCORD_TESTING_GUILD_ID),

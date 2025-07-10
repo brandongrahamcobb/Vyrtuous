@@ -14,26 +14,20 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext import commands
-from py_vyrtuous.utils.handlers.predicator import Predicator
-from py_vyrtuous.utils.inc.helpers import *
-from py_vyrtuous.utils.inc.setup_logging import logger
-from os.path import exists
+import os
 
 import aiofiles
-import base64
 import discord
-import json
-import os
-import shutil
 import tiktoken
-import traceback
-import uuid
 import yaml
+from discord.ext import commands
+from vyrtuous.utils.handlers.predicator import Predicator
+from vyrtuous.utils.inc.helpers import *
+from vyrtuous.utils.inc.setup_logging import logger
 
 os.makedirs(DIR_TEMP, exist_ok=True)
 
-class Message:
+class MessageService:
     def __init__(self, bot, config, db_pool):
         self.bot = bot
         self.config = config

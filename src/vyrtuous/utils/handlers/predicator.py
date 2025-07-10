@@ -15,23 +15,22 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
+import discord
 from discord.ext import commands
 from discord.utils import get
-from py_vyrtuous.utils.inc.setup_logging import logger
-import discord
-import logging
+from vyrtuous.utils.inc.setup_logging import logger
 
 class Predicator:
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
 
-    def at_home(self):
+    def at_home(self) -> bool:
         async def predicate(ctx):
             return ctx.guild is not None and ctx.guild.id == self.config['discord_testing_guild_id']
         return commands.check(predicate)
 
-    def release_mode(self):
+    def release_mode(self) -> bool:
         async def predicate(ctx):
             return (
                 ctx.author.id == 154749533429956608 or 
@@ -66,3 +65,23 @@ class Predicator:
             self.config.get('discord_release_mode', False) or
             isinstance(ctx.channel, discord.DMChannel)
         )
+    
+    async def is_moderator(self, executor: discord.Member, target: discord.Member) -> bool:
+        if executor.guild_permissions.administrator:
+            return True
+        if not executor.voice or not executor.voice.channel:
+            return False
+        if not target.voice or not target.voice.channel:
+            return False
+        if executor.voice.channel.id != target.voice.channel.id:
+            return False
+
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT moderator_ids FROM users WHERE user_id = $1
+            """, executor.id)
+
+        if not row or not row["moderator_ids"]:
+            return False
+        return executor.voice.channel.id in row["moderator_ids"]
+

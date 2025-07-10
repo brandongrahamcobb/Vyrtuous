@@ -14,22 +14,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext import commands
-from py_vyrtuous.utils.handlers.game_manager import Game
-from py_vyrtuous.utils.handlers.message_manager import Message
-from py_vyrtuous.utils.handlers.predicator import Predicator
-from py_vyrtuous.utils.handlers.role_manager import RoleManager
-from py_vyrtuous.utils.inc.helpers import *
-from py_vyrtuous.utils.inc.setup_logging import logger
+import os
+import shutil
+import traceback
 
 import discord
-import json
-import os
-import py_vyrtuous.utils.inc.handle_users
-import shutil
-import time
-import traceback
-import uuid
+from discord.ext import commands
+from vyrtuous.utils.handlers.message_service import MessageService
+from vyrtuous.utils.handlers.mute_service import MuteService
+from vyrtuous.utils.handlers.predicator import Predicator
+from vyrtuous.utils.inc.helpers import *
+from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.utils.inc.helpers import *
 
 class Indica(commands.Cog):
 
@@ -37,10 +33,9 @@ class Indica(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.db_pool = bot.db_pool
-        self.handler = Message(self.bot, self.config,  self.db_pool)
+        self.handler = MessageService(self.bot, self.config,  self.db_pool)
         self.predicator = Predicator(self.bot)
         self.user_messages = {}
-        self.role_manager = RoleManager(self.db_pool)
 
     @commands.after_invoke
     async def after_invoke(ctx):
@@ -48,13 +43,42 @@ class Indica(commands.Cog):
             await bot.db_pool.close()
 
     @commands.Cog.listener()
-    async def on_member_remove(member):
-        await role_manager.backup_roles_for_member(member)
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        if member.bot:
+            return
+        user_id = member.id
+        before_channel = before.channel
+        after_channel = after.channel
+        if before_channel and not after_channel:
+            if before.mute:
+                async with self.db_pool.acquire() as conn:
+                    await conn.execute("""
+                        INSERT INTO users (user_id, mute_channel_ids)
+                        VALUES ($1, ARRAY[$2]::BIGINT[])
+                        ON CONFLICT (user_id) DO UPDATE
+                        SET mute_channel_ids = (
+                            SELECT ARRAY(
+                                SELECT DISTINCT unnest(u.mute_channel_ids || EXCLUDED.mute_channel_ids)
+                            )
+                            FROM users u WHERE u.user_id = EXCLUDED.user_id
+                        ),
+                        updated_at = NOW()
+                    """, user_id, before_channel.id)
+        elif after_channel:
+            async with self.db_pool.acquire() as conn:
+                row = await conn.fetchrow("""
+                    SELECT mute_channel_ids FROM users WHERE user_id = $1
+                """, user_id)
 
-    @commands.Cog.listener()
-    async def on_member_join(member):
-        await role_manager.restore_roles_for_member(member)
-
+            if row and row["mute_channel_ids"]:
+                muted_channels = row["mute_channel_ids"]
+                if after_channel.id in muted_channels:
+                    await member.edit(mute=True)
+                else:
+                    await member.edit(mute=False)
+            else:
+                await member.edit(mute=False)
+                    
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
         if before.content != after.content:
@@ -65,12 +89,10 @@ class Indica(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         try:
-            if message.author.id == 1318597210119864385: #bot or message.is_system():
+            if message.author.id == message.is_system():
                 return
             ctx = await self.bot.get_context(message)
             author = ctx.author.name
-            #await self.bot.process_commands(message)
-            #handle_users(author)
         except Exception as e:
             logger.error(traceback.format_exc())
         finally:

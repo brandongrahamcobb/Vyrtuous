@@ -14,24 +14,23 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from py_vyrtuous.bots.discord_bot import DiscordBot
-from py_vyrtuous.config import Config
-from py_vyrtuous.utils.inc.helpers import *
-from py_vyrtuous.utils.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
-from py_vyrtuous.utils.inc.increment_version import increment_version
-from py_vyrtuous.utils.inc.setup_logging import setup_logging
+import asyncio
+import sys
 from pathlib import Path
 
-import asyncio
 import asyncpg
-import logging
-import sys
+from vyrtuous.bots.discord_bot import DiscordBot
+from vyrtuous.config import Config
+from vyrtuous.utils.inc.helpers import *
+from vyrtuous.utils.inc.increment_version import increment_version
+from vyrtuous.utils.inc.setup_logging import setup_logging
+from vyrtuous.utils.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PACKAGE_ROOT))
 
 async def database_init():
-    return await asyncpg.create_pool(database='py_vyrtuous', user='postgres', command_timeout=30)
+    return await asyncpg.create_pool(database='vyrtuous', user='postgres', command_timeout=30)
 
 async def start_bot(bot, name):
     try:

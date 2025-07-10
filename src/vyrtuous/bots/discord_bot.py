@@ -18,16 +18,15 @@ import asyncpg
 import discord
 
 from discord.ext import commands
-from py_vyrtuous.utils.inc.helpers import *
-from py_vyrtuous.utils.inc.setup_logging import logger
-from typing import List, Optional
+from vyrtuous.utils.inc.helpers import *
+from vyrtuous.utils.inc.setup_logging import logger
 
 class DiscordBot(commands.Bot):
     def __init__(self, *, config, db_pool: asyncpg.Pool, lock, oauth_token, **kwargs):
         try:
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'], intents=intents, **kwargs)
-
+            super().remove_command('help')
             self.config = config
             self.db_pool = db_pool
             self.lock = lock

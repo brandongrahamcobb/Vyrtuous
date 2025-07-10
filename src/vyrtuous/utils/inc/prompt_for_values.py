@@ -1,4 +1,4 @@
-''' average_score.py  The purpose of this program is present the average score of an OpenAI training.jsonl file.
+''' prompt_for_values.py  The purpose of this program is to prompt for new config values and present the old ones or keep the old ones.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,22 +14,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from py_vyrtuous.utils.inc.helpers import *
-from py_vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.utils.inc.setup_logging import logger
 
-import asyncio
-import json
-import os
-
-def average_score():
-    home = os.path.expanduser('~')
-    path_training = os.path.join(PATH_TRAINING)
-    with open(path_training, 'r') as file:
-        training_data = json.load(file)
-        sum = 0
-        for arg in training_data:
-            sum += arg['messages'][1]['content']['sentiment_score']
-        average = sum / len(training_data)
-        return average
-    file.close()
-
+def prompt_for_values(prompt: str, default_value: str) -> str:
+    value = input(f'{prompt} [{default_value}]: ')
+    return value.strip() if value.strip() else default_value

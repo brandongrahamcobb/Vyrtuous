@@ -14,16 +14,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from typing import List, Optional
 
-import asyncpg
-import asyncio
-import discord
 import time
 
-EXPIRATION_TIME = 30 * 24 * 60 * 60
+import asyncpg
+import discord
+from vyrtuous.utils.inc.helpers import *
 
-class RoleManager:
+class MuteService:
     def __init__(self, db_pool):
         self.db_pool = db_pool
 
@@ -41,11 +39,11 @@ class RoleManager:
         timestamp = int(time.time())
         try:
             await self.db_pool.execute('''
-                INSERT INTO roles_backup(user_id, role_ids, timestamp)
+                INSERT INTO roles_backup(user_id, role_ids, created_at)
                 VALUES($1, $2, $3)
                 ON CONFLICT (user_id) DO UPDATE
                 SET role_ids = EXCLUDED.role_ids,
-                    timestamp = EXCLUDED.timestamp;
+                    created_at = EXCLUDED.created_at;
             ''', member.id, roles, timestamp)
         except Exception as e:
             print(f'Error backing up roles for {member}: {e}')
@@ -56,11 +54,11 @@ class RoleManager:
         current_time = int(time.time())
         try:
             record = await self.db_pool.fetchrow('''
-                SELECT role_ids, timestamp FROM roles_backup
+                SELECT role_ids, created_at FROM roles_backup
                 WHERE user_id = $1;
             ''', member.id)
             if record:
-                backup_timestamp = record['timestamp']
+                backup_timestamp = record['created_at']
                 if (current_time - backup_timestamp) < EXPIRATION_TIME:
                     role_ids = record['role_ids']
                     guild = member.guild
@@ -84,7 +82,7 @@ class RoleManager:
         try:
             result = await self.db_pool.execute('''
                 DELETE FROM roles_backup
-                WHERE timestamp < $1;
+                WHERE created_at < $1;
             ''', cutoff_timestamp)
         except Exception as e:
             print(f'Error cleaning old backups: {e}')

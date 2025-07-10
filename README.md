@@ -1,32 +1,31 @@
-**py\_vyrtuous** is a multipurpose Discord bot in Python. It brings together:
+**The Vyrtuous Project** is a vegan-owned Discord bot written in Python. It brings together:
 
-* Chemistry tools (structure rendering, comparison, logP prediction)
-* Scripture lookup (Bible & Quran)
-* Moderation (message wiping)
-* Tagging & routine posts
+![Vyrtuous UML Diagram](pictures/VyrtuousUML.svg)
+
+* Room moderator data persistence
+* Custom room mute commands
+* Custom room unmute commands
+* Loading and unloading Cogs, the fundamental components of the Discord bot
+* Backing up roles and redeploying the backup
 * PDF-based research management
 
 ## Features
 
-Chemistry
-• `d <compound1> <compound2>` —  Render a molecule or peptide by name and/or get side-by-side comparison
-• In-bot help: `help d`
-• `logp <name>` — Predict octanol–water partition coefficient
-• `smiles <name>` — Return the SMILES string for a given molecule
+Moderation Features
+• `delalias <mute|unmute> <alias>` — Delete a room specific alias for mute or unmute.
+• `setalias <mute|unmute> <alias> <channelId>` — Create a room specific alias for users to use to mute or unmute members in their room.
+• `help <command>` - Get command-specific usage information.
+• `give_mod <userId> <channelId>` — Give a user's permissions in a room to mute and unmute members.
+• `list_mods <userId>` — Lists all the current room mods in the server where the command was run.
+• `revoke_mod <userId> <channelId>` — Revoke a user's permissions in a room to mute and unmute members.
+• `give_dev <userId>` — Give a user's permissions to operate the bot in the server as a developer.
+• `list_devs <userId>` — Lists all the current devs in the server where the command was run.
+• `revoke_dev <userId>` — Revoke a user's permissions to operate the bot in the server as a developer.
 
-Scripture
-• `script ESV <book>.<chapter>.<verse>`
-• `script quran <sura>.<ayah>`
-
-Moderation & Tagging
-• `wipe <count>` — Bulk-delete last `<count>` messages
-• In-bot help: `help wipe`
-• `tag add <key> <value>` / `tag <key>` / `tag list`
-• In-bot help: `help tag`
-
-PDF Manager
-• A suite of `pdf` subcommands to upload, search, annotate, and retrieve PDFs
-• In-bot help: `help uploadpdf`
+Lifecycle Features
+• `load <path-to-cog>` — Loads the bot's cogs after an unload.
+• `reload <path-to-cog>` - Reloads the bot's cogs on the fly.
+• `sync <~|^|*|>` or `sync` - Syncs the command tree for the bot to a server for application command access.
 
 ## Installation
 
@@ -39,17 +38,13 @@ Prerequisites:
 
 ```bash
 git clone https://github.com/brandongrahamcobb/Vyrtuous.git
-cd lucy
 ```
 
 2. Create & activate a virtual environment
 
 ```bash
 python3 -m venv .venv
-# macOS / Linux
 source .venv/bin/activate
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
 ```
 
 3. Inside the venv, install Poetry
@@ -62,24 +57,24 @@ pip install poetry
 
 ```bash
 poetry build --format wheel
-pip install dist/py_vyrtuous-2.8.9-py3-none-any.whl
+pip install dist/vyrtuous-0.0.1-py3-none-any.whl
 ```
 
 5. Create the PostgreSQL database
 
 ```bash
-createdb py_vyrtuous
+createdb vyrtuous
 ```
 
 6. Run the SQL setup script
 
 ```bash
-psql py_vyrtuous < script.sql
+psql -U postgres -d vyrtuous -f vyrtuous.sql
 ```
 
 ## Configuration
 
-On first run, py\_vyrtuous will prompt you to enter and confirm:
+On first run, The Vyrtuous Project will prompt you to enter and confirm:
 • Discord bot token
 
 ```txt
@@ -97,7 +92,7 @@ Enter api_key
 Your settings are saved to:
 
 ```txt
-<installation_directory>/.config/config.yml
+/venv/lib/<python-version>/site-packages/vyrtuous/.config/config.yml
 ```
 
 Subsequent launches read from this file—no environment variables needed.
@@ -107,7 +102,7 @@ Subsequent launches read from this file—no environment variables needed.
 With your venv active, simply run:
 
 ```bash
-py_vyrtuous
+vyrtuous
 ```
 
 The bot will load or create its config, connect to Discord, and register commands.
@@ -116,32 +111,18 @@ The bot will load or create its config, connect to Discord, and register command
 
 Replace `<prefix>` with your configured prefix (default `!`).
 
-Chemistry
-• `<prefix>draw <name>`
-• `<prefix>d <compound1> <compound2>`
-• `<prefix>logp <name>`
-
-Scripture
-• `<prefix>script bible <book> <chapter>:<verse>`
-• `<prefix>script quran <sura>:<ayah>`
-
-Moderation & Tagging
-• `<prefix>wipe <count>`
-• `<prefix>tag set <key> <value>`
-• `<prefix>tag get <key>`
-• `<prefix>tag list>`
-
-PDF Manager
-• `<prefix>listpdfs ...`
-• `<prefix>uploadpdf ...`
-• See `<prefix>help uploadpdf` for full subcommand list
-
-## Contributing
-
-1. Fork the repo
-2. Create a feature branch
-3. Commit your changes
-4. Push and open a Pull Request
+• `!delalias <mute|unmute> <alias>`
+• `!setalias <mute|unmute> <alias> <channelId>`
+• `!help <command>`
+• `!give_mod <userId> <channelId>`
+• `!list_mods <userId>`
+• `!revoke_mod <userId> <channelId>`
+• `!give_dev <userId>`
+• `!list_devs <userId>`
+• `!revoke_dev <userId>`
+• `!load <path-to-cog>`
+• `!reload <path-to-cog>`
+• `!sync <~|^|*|>` or `sync`
 
 ## License
 
