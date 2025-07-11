@@ -26,7 +26,6 @@ class DiscordBot(commands.Bot):
         try:
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'], intents=intents, **kwargs)
-            super().remove_command('help')
             self.config = config
             self.db_pool = db_pool
             self.lock = lock

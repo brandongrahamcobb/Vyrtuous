@@ -31,6 +31,9 @@ class Hybrid(commands.Cog):
         self.predicator = Predicator(self.bot)
         self.handler = MessageService(self.bot, self.config, self.bot.db_pool)
         self.command_aliases: dict[int, dict[str, dict[str, int]]] = defaultdict(lambda: {"mute": {}, "unmute": {}})
+
+    async def cog_load(self):
+        await self.load_aliases()
         
     @staticmethod
     def is_owner(bot):
@@ -69,15 +72,44 @@ class Hybrid(commands.Cog):
             rows = await conn.fetch("SELECT guild_id, alias_type, alias_name, channel_id FROM command_aliases")
             for row in rows:
                 guild_id = row["guild_id"]
-                alias_type = row["alias_type"]  # 'mute' or 'unmute'
+                alias_type = row["alias_type"]
                 alias_name = row["alias_name"]
                 channel_id = row["channel_id"]
+    
                 self.command_aliases[guild_id][alias_type][alias_name] = channel_id
+    
+                # Register the command dynamically
+                if alias_type == "mute":
+                    cmd = self.create_mute_command(alias_name)
+                    self.bot.add_command(cmd)
+                elif alias_type == "unmute":
+                    cmd = self.create_unmute_command(alias_name)
+                    self.bot.add_command(cmd)
 
     def create_mute_command(self, command_name: str):
         @commands.command(name=command_name)
-        async def mute_command(ctx, member: discord.Member):
+        async def mute_command(ctx, member_input: str):
             guild_id = ctx.guild.id
+            member_id = None
+            member_object = None
+    
+            # Try resolving by raw ID
+            if member_input.isdigit():
+                member_id = int(member_input)
+            # Try resolving by mention
+            elif member_input.startswith("<@") and member_input.endswith(">"):
+                try:
+                    member_id = int(member_input.strip("<@!>"))
+                except ValueError:
+                    pass
+    
+            # If member_id was successfully parsed, try to get the member object
+            if member_id:
+                member_object = ctx.guild.get_member(member_id)
+    
+            if not member_object:
+                return await ctx.send("Could not resolve a valid guild member from your input.")
+
             static_channel_id = self.command_aliases.get(guild_id, {}).get("mute", {}).get(command_name)
     
             if not static_channel_id:
@@ -100,13 +132,12 @@ class Hybrid(commands.Cog):
                         FROM users u WHERE u.user_id = EXCLUDED.user_id
                     ),
                     updated_at = NOW()
-                """, member.id, static_channel_id)
-    
-            if member.voice and member.voice.channel and member.voice.channel.id == static_channel_id:
-                await member.edit(mute=True)
-                await ctx.send(f"{member.mention} has been muted in <#{static_channel_id}>.")
+                """, member_object.id, static_channel_id)
+            if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
+                await member_object.edit(mute=False)
+                await ctx.send(f"{member_object.mention} has been muted in <#{static_channel_id}>.")
             else:
-                await ctx.send(f"{member.mention} is now marked to be muted when they join <#{static_channel_id}>.")
+                await ctx.send(f"{member_object.mention} is marked as muted in <#{static_channel_id}>.")
     
         mute_command.__name__ = f"mute_cmd_{command_name}"
         return mute_command
@@ -114,8 +145,28 @@ class Hybrid(commands.Cog):
 
     def create_unmute_command(self, command_name: str):
         @commands.command(name=command_name)
-        async def unmute_command(ctx, member: discord.Member):
+        async def unmute_command(ctx, member_input: str):
             guild_id = ctx.guild.id
+            member_id = None
+            member_object = None
+    
+            # Try resolving by raw ID
+            if member_input.isdigit():
+                member_id = int(member_input)
+            # Try resolving by mention
+            elif member_input.startswith("<@") and member_input.endswith(">"):
+                try:
+                    member_id = int(member_input.strip("<@!>"))
+                except ValueError:
+                    pass
+    
+            # If member_id was successfully parsed, try to get the member object
+            if member_id:
+                member_object = ctx.guild.get_member(member_id)
+    
+            if not member_object:
+                return await ctx.send("Could not resolve a valid guild member from your input.")
+    
             static_channel_id = self.command_aliases.get(guild_id, {}).get("unmute", {}).get(command_name)
     
             if not static_channel_id:
@@ -132,13 +183,12 @@ class Hybrid(commands.Cog):
                     SET mute_channel_ids = array_remove(mute_channel_ids, $2),
                         updated_at = NOW()
                     WHERE user_id = $1
-                """, member.id, static_channel_id)
-    
-            if member.voice and member.voice.channel and member.voice.channel.id == static_channel_id:
-                await member.edit(mute=False)
-                await ctx.send(f"{member.mention} has been unmuted in <#{static_channel_id}>.")
+                """, member_object.id, static_channel_id)
+            if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
+                await member_object.edit(mute=False)
+                await ctx.send(f"{member_object.mention} has been unmuted in <#{static_channel_id}>.")
             else:
-                await ctx.send(f"{member.mention} is no longer marked as muted in <#{static_channel_id}>.")
+                await ctx.send(f"{member_object.mention} is no longer marked as muted in <#{static_channel_id}>.")
     
         unmute_command.__name__ = f"unmute_cmd_{command_name}"
         return unmute_command
@@ -146,8 +196,28 @@ class Hybrid(commands.Cog):
     # For developers
     @commands.command(name="give_dev")
     @commands.check(is_owner)  # Only existing devs/owners can grant
-    async def grant_developer(ctx, member: discord.Member):
+    async def grant_developer(ctx, member_input: str):
         guild_id = ctx.guild.id
+        member_id = None
+        member_object = None
+
+        # Try resolving by raw ID
+        if member_input.isdigit():
+            member_id = int(member_input)
+        # Try resolving by mention
+        elif member_input.startswith("<@") and member_input.endswith(">"):
+            try:
+                member_id = int(member_input.strip("<@!>"))
+            except ValueError:
+                pass
+
+        # If member_id was successfully parsed, try to get the member object
+        if member_id:
+            member_object = ctx.guild.get_member(member_id)
+
+        if not member_object:
+            return await ctx.send("Could not resolve a valid guild member from your input.")
+
     
         async with bot.db_pool.acquire() as conn:
             await conn.execute("""
@@ -161,7 +231,7 @@ class Hybrid(commands.Cog):
                     FROM users u WHERE u.user_id = EXCLUDED.user_id
                 ),
                 updated_at = NOW()
-            """, member.id, guild_id)
+            """, member_object.id, guild_id)
     
         await ctx.send(f"{member.mention} has been granted developer rights in this server.")
         
@@ -197,7 +267,27 @@ class Hybrid(commands.Cog):
         
     @commands.command(name="revoke_dev")
     @commands.check(is_owner_or_developer)
-    async def revoke_developer(ctx, member: discord.Member):
+    async def revoke_developer(ctx, member_input: str):
+        member_id = None
+        member_object = None
+
+        # Try resolving by raw ID
+        if member_input.isdigit():
+            member_id = int(member_input)
+        # Try resolving by mention
+        elif member_input.startswith("<@") and member_input.endswith(">"):
+            try:
+                member_id = int(member_input.strip("<@!>"))
+            except ValueError:
+                pass
+
+        # If member_id was successfully parsed, try to get the member object
+        if member_id:
+            member_object = ctx.guild.get_member(member_id)
+
+        if not member_object:
+            return await ctx.send("Could not resolve a valid guild member from your input.")
+
         guild_id = ctx.guild.id
         async with bot.db_pool.acquire() as conn:
             await conn.execute("""
@@ -205,14 +295,56 @@ class Hybrid(commands.Cog):
                 SET developer_guild_ids = array_remove(developer_guild_ids, $2),
                     updated_at = NOW()
                 WHERE user_id = $1
-            """, member.id, guild_id)
+            """, member_object.id, guild_id)
     
         await ctx.send(f"{member.mention}'s developer access has been revoked in this server.")
 
     # For moderators
     @commands.command(name="give_mod")
     @commands.check(is_owner_or_developer)
-    async def add_moderator_channel(self, ctx, member: discord.Member, channel: discord.VoiceChannel):
+    async def add_moderator_channel(self, ctx, member_input: str, channel_input: str):
+        """Add a voice channel to the user's moderator_ids array."""
+        member_id = None
+        member_object = None
+
+        # Try resolving by raw ID
+        if member_input.isdigit():
+            member_id = int(member_input)
+        # Try resolving by mention
+        elif member_input.startswith("<@") and member_input.endswith(">"):
+            try:
+                member_id = int(member_input.strip("<@!>"))
+            except ValueError:
+                pass
+
+        # If member_id was successfully parsed, try to get the member object
+        if member_id:
+            member_object = ctx.guild.get_member(member_id)
+
+        if not member_object:
+            return await ctx.send("Could not resolve a valid guild member from your input.")
+
+        # Resolve string to VoiceChannel
+        resolved_channel = None
+    
+        if channel_input.isdigit():
+            resolved_channel = ctx.guild.get_channel(int(channel_input))
+        elif channel_input.startswith("<#") and channel_input.endswith(">"):
+            try:
+                channel_id = int(channel_input.strip("<#>"))
+                resolved_channel = ctx.guild.get_channel(channel_id)
+            except ValueError:
+                pass
+        else:
+            for vc in ctx.guild.voice_channels:
+                if vc.name.lower() == channel_input.lower():
+                    resolved_channel = vc
+                    break
+    
+        if not isinstance(resolved_channel, discord.VoiceChannel):
+            return await ctx.send("Could not resolve a valid **voice** channel from yourinput.")
+
+    # DB insert/update
         async with self.db_pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO users (user_id, moderator_ids)
@@ -225,9 +357,9 @@ class Hybrid(commands.Cog):
                     FROM users u WHERE u.user_id = EXCLUDED.user_id
                 ),
                 updated_at = NOW()
-            """, member.id, channel.id)
-    
-        await ctx.send(f"{member.mention} has been granted moderator access in {channel.name}.")
+            """, member_object.id, resolved_channel.id)
+
+        await ctx.send(f"{member.mention} has been granted moderator access in {resolved_channel.name}.")
 
     @commands.command(name="list_mods")
     @commands.check(is_owner_or_developer)
@@ -268,15 +400,58 @@ class Hybrid(commands.Cog):
         
     @commands.command(name="revoke_mod")
     @commands.check(is_owner_or_developer)
-    async def remove_moderator_channel(self, ctx, member: discord.Member, channel: discord.VoiceChannel):
+    async def remove_moderator_channel(self, ctx, member_input: str, channel_input: str):
+        """Remove a voice channel from the user's moderator list."""
+        member_id = None
+        member_object = None
+
+        # Try resolving by raw ID
+        if member_input.isdigit():
+            member_id = int(member_input)
+        # Try resolving by mention
+        elif member_input.startswith("<@") and member_input.endswith(">"):
+            try:
+                member_id = int(member_input.strip("<@!>"))
+            except ValueError:
+                pass
+
+        # If member_id was successfully parsed, try to get the member object
+        if member_id:
+            member_object = ctx.guild.get_member(member_id)
+
+        if not member_object:
+            return await ctx.send("Could not resolve a valid guild member from your input.")
+
+        # Resolve channel from string input
+        resolved_channel = None
+    
+        if channel_input.isdigit():
+            resolved_channel = ctx.guild.get_channel(int(channel_input))
+        elif channel_input.startswith("<#") and channel_input.endswith(">"):
+            try:
+                channel_id = int(channel_input.strip("<#>"))
+                resolved_channel = ctx.guild.get_channel(channel_id)
+            except ValueError:
+                pass
+        else:
+            for vc in ctx.guild.voice_channels:
+                if vc.name.lower() == channel_input.lower():
+                    resolved_channel = vc
+                    break
+        
+
+        if not isinstance(resolved_channel, discord.VoiceChannel):
+            return await ctx.send("Could not resolve a valid **voice** channel from your input.")
+
         async with self.db_pool.acquire() as conn:
             await conn.execute("""
                 UPDATE users
                 SET moderator_ids = array_remove(moderator_ids, $2),
                     updated_at = NOW()
                 WHERE user_id = $1
-            """, member.id, channel.id)
-        await ctx.send(f"{member.mention} has been revoked moderator access in {channel.name}.")
+            """, member_object.id, resolved_channel.id)
+
+        await ctx.send(f"{member.mention} has been revoked moderator access in {resolved_channel.name}.")
 
     # Aliasing
     @commands.command(name="delalias")
@@ -304,11 +479,32 @@ class Hybrid(commands.Cog):
         
     @commands.command(name="setalias")
     @commands.check(is_owner_or_developer)
-    async def set_alias(self, ctx, alias_type: str, alias_name: str, channel: discord.TextChannel):
+    async def set_alias(self, ctx, alias_type: str, alias_name: str, channel: str):
         """Set or update an alias for mute/unmute."""
+    
         if alias_type not in ("mute", "unmute"):
             return await ctx.send("Alias type must be `mute` or `unmute`.")
     
+        # Convert str to VoiceChannel object
+        resolved_channel = None
+    
+        if channel.isdigit():
+            resolved_channel = ctx.guild.get_channel(int(channel))
+        elif channel.startswith("<#") and channel.endswith(">"):
+            try:
+                channel_id = int(channel.strip("<#>"))
+                resolved_channel = ctx.guild.get_channel(channel_id)
+            except ValueError:
+                pass
+        else:
+            for vc in ctx.guild.voice_channels:
+                if vc.name.lower() == channel.lower():
+                    resolved_channel = vc
+                    break
+    
+        if not isinstance(resolved_channel, discord.VoiceChannel):
+            return await ctx.send("Could not resolve a valid **voice** channel from your input.")
+
         guild_id = ctx.guild.id
         async with self.db_pool.acquire() as conn:
             await conn.execute(
@@ -318,34 +514,15 @@ class Hybrid(commands.Cog):
                 ON CONFLICT (guild_id, alias_type, alias_name)
                 DO UPDATE SET channel_id = EXCLUDED.channel_id
                 """,
-                guild_id, alias_type, alias_name, channel.id
+                guild_id, alias_type, alias_name, resolved_channel.id
             )
-    
-        self.command_aliases[guild_id][alias_type][alias_name] = channel.id
-        await ctx.send(f"Alias `{alias_name}` ({alias_type}) set to channel {channel.mention}.")
 
-
-    @commands.command(name="help")
-    @commands.check(is_owner_or_developer)  # apply the check here
-    async def restricted_help(self, ctx):
-        """Displays help menu, but only for owners or developers."""
-        embed = discord.Embed(title="Py_vyrtuous Command Help", color=discord.Color.blurple())
-    
-        embed.add_field(name="give_mod", value="Grants a user mod rights in a voice channel.", inline=False)
-        embed.add_field(name="revoke_mod", value="Revokes a user's mod rights in a voice channel.", inline=False)
-        embed.add_field(name="give_dev", value="Grants a user developer rights in this server.", inline=False)
-        embed.add_field(name="remove_dev", value="Revokes a user's developer rights.", inline=False)
-        embed.add_field(name="setalias", value="Set an alias for a mute/unmute command.", inline=False)
-        embed.add_field(name="delalias", value="Delete an alias for a mute/unmute command.", inline=False)
-        embed.add_field(name="listaliases", value="List all aliases configured in this server.", inline=False)
-    
-        await ctx.send(embed=embed)
-        
+        self.command_aliases[guild_id][alias_type][alias_name] = resolved_channel.id
+        await ctx.send(f"Alias `{alias_name}` ({alias_type}) set to voice channel {resolved_channel.mention}.")
 
 async def setup(bot: commands.Bot):
     cog = Hybrid(bot)
-    await cog.load_aliases()
-    await bot.add_cog(Hybrid(bot))
+    await bot.add_cog(cog)
     
     @bot.check
     async def restrict_help(ctx):
