@@ -22,7 +22,9 @@ from vyrtuous.utils.handlers.message_service import MessageService
 from vyrtuous.utils.handlers.predicator import Predicator
 from vyrtuous.utils.inc.helpers import *
 from types import MethodType
+import logging
 
+logger = logging.getLogger(__name__)
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -34,7 +36,8 @@ class Hybrid(commands.Cog):
 
     async def cog_load(self):
         await self.load_aliases()
-        
+    
+    
     @staticmethod
     def is_owner(bot):
         async def predicate(ctx):
