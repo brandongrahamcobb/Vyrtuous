@@ -233,7 +233,7 @@ class Hybrid(commands.Cog):
                 updated_at = NOW()
             """, member_object.id, guild_id)
     
-        await ctx.send(f"{member.mention} has been granted developer rights in this server.")
+        await ctx.send(f"{member_object.mention} has been granted developer rights in this server.")
         
     @commands.command(name="list_devs")
     @commands.check(is_owner_or_developer)
@@ -297,7 +297,7 @@ class Hybrid(commands.Cog):
                 WHERE user_id = $1
             """, member_object.id, guild_id)
     
-        await ctx.send(f"{member.mention}'s developer access has been revoked in this server.")
+        await ctx.send(f"{member_object.mention}'s developer access has been revoked in this server.")
 
     # For moderators
     @commands.command(name="give_mod")
@@ -359,7 +359,7 @@ class Hybrid(commands.Cog):
                 updated_at = NOW()
             """, member_object.id, resolved_channel.id)
 
-        await ctx.send(f"{member.mention} has been granted moderator access in {resolved_channel.name}.")
+        await ctx.send(f"{member_object.mention} has been granted moderator access in {resolved_channel.name}.")
 
     @commands.command(name="list_mods")
     @commands.check(is_owner_or_developer)
@@ -451,7 +451,7 @@ class Hybrid(commands.Cog):
                 WHERE user_id = $1
             """, member_object.id, resolved_channel.id)
 
-        await ctx.send(f"{member.mention} has been revoked moderator access in {resolved_channel.name}.")
+        await ctx.send(f"{member_object.mention} has been revoked moderator access in {resolved_channel.name}.")
 
     # Aliasing
     @commands.command(name="delalias")
