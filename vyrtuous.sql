@@ -16,3 +16,10 @@ CREATE TABLE command_aliases (
     channel_id BIGINT NOT NULL,
     PRIMARY KEY (guild_id, alias_type, alias_name)
 );
+CREATE TABLE mute_reasons (
+    guild_id   BIGINT NOT NULL,
+    user_id    BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    reason     TEXT,
+    PRIMARY KEY (guild_id, user_id, channel_id)
+);
