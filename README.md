@@ -24,7 +24,7 @@ Moderation Features
 
 • `revoke_mod <userId> <channelId>` — Revoke a user's permissions in a room to mute and unmute members.
 
-• `give_dev <userId>` — Give a user's permissions to operate the bot in the server as a developer.
+• `give_dev <userId>` — Give a user permissions to operate the bot in the server as a developer.
 
 • `list_devs <userId>` — Lists all the current devs in the server where the command was run.
 
