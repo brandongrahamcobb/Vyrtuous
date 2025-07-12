@@ -11,6 +11,7 @@
 ## Features
 
 Moderation Features
+
 • `delalias <mute|unmute> <alias>` — Delete a room specific alias for mute or unmute.
 
 • `setalias <mute|unmute> <alias> <channelId>` — Create a room specific alias for users to use to mute or unmute members in their room.
