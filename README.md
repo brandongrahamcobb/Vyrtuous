@@ -12,18 +12,28 @@
 
 Moderation Features
 • `delalias <mute|unmute> <alias>` — Delete a room specific alias for mute or unmute.
+
 • `setalias <mute|unmute> <alias> <channelId>` — Create a room specific alias for users to use to mute or unmute members in their room.
+
 • `help <command>` - Get command-specific usage information.
+
 • `give_mod <userId> <channelId>` — Give a user's permissions in a room to mute and unmute members.
+
 • `list_mods <userId>` — Lists all the current room mods in the server where the command was run.
+
 • `revoke_mod <userId> <channelId>` — Revoke a user's permissions in a room to mute and unmute members.
+
 • `give_dev <userId>` — Give a user's permissions to operate the bot in the server as a developer.
+
 • `list_devs <userId>` — Lists all the current devs in the server where the command was run.
+
 • `revoke_dev <userId>` — Revoke a user's permissions to operate the bot in the server as a developer.
 
 Lifecycle Features
 • `load <path-to-cog>` — Loads the bot's cogs after an unload.
+
 • `reload <path-to-cog>` - Reloads the bot's cogs on the fly.
+
 • `sync <~|^|*|>` or `sync` - Syncs the command tree for the bot to a server for application command access.
 
 ## Installation
