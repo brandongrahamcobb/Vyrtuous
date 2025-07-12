@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 package-mode = true
 name = "vyrtuous"
-version = "4.2.1"
+version = "4.3.2"
 description = ""
 license = "GPL-3.0-or-later"
 authors = [ "Brandon Graham Cobb <brandongrahamcobb@icloud.com>",]
@@ -15,12 +15,11 @@ repository = "https://github.com/brandongrahamcobb/Vyrtuous.git"
 keywords = [ "json", "python", "yaml",]
 
 [tool.poetry.dependencies]
-python = "~3.13.5"
+python = "^3.12"
 aiohttp = "^3.11.11"
 asyncpg = "^0.30.0"
 discord = "^2.3.2"
 opencv-python = "^4.10.0.84"
-pyqt5 = "^5.15.11"
 pyyaml = "^6.0.2"
 requests = "^2.32.3"
 quart = "^0.20.0"

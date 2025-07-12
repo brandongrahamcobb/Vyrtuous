@@ -60,9 +60,9 @@ class Config:
         except ValueError:
             num_keys = 1
         for i in range(1, num_keys + 1):
-            key_name = prompt_for_values(f'Enter a unique name for API key \#{i}', f'api_key_{i}')
+            key_name = prompt_for_values(f'Enter a unique name for API key {i}', f'api_key_{i}')
             while key_name in config['api_keys']:
-                key_name = prompt_for_values(f'Enter a unique name for API key \#{i}', f'api_key_{i}')
+                key_name = prompt_for_values(f'Enter a unique name for API key {i}', f'api_key_{i}')
             config['api_keys'][key_name] = {
                 'api_key': prompt_for_values(f'Enter API key for \'{key_name}\'', ''),
                 'client_id': prompt_for_values(f'Enter client ID for \'{key_name}\'', ''),
@@ -101,9 +101,9 @@ class Config:
                 except ValueError:
                     num_new = 1
                 for i in range(1, num_new + 1):
-                    key_name = prompt_for_values(f'Enter a unique name for new API key \#{i}', f'api_key_{len(config['api_keys']) + 1}')
+                    key_name = prompt_for_values(f'Enter a unique name for new API key {i}', f'api_key_{len(config['api_keys']) + 1}')
                     while key_name in config['api_keys']:
-                        key_name = prompt_for_values(f'Enter a unique name for new API key \#{i}', f'api_key_{len(config['api_keys']) + 1}')
+                        key_name = prompt_for_values(f'Enter a unique name for new API key {i}', f'api_key_{len(config['api_keys']) + 1}')
                     config['api_keys'][key_name] = {
                         'api_key': prompt_for_values(f'Enter API key for \'{key_name}\'', ''),
                         'client_id': prompt_for_values(f'Enter client ID for \'{key_name}\'', ''),

@@ -24,6 +24,7 @@ class Predicator:
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
+        self.db_pool = bot.db_pool
 
     def at_home(self) -> bool:
         async def predicate(ctx):
@@ -67,15 +68,6 @@ class Predicator:
         )
     
     async def is_moderator(self, executor: discord.Member, target: discord.Member) -> bool:
-        if executor.guild_permissions.administrator:
-            return True
-        if not executor.voice or not executor.voice.channel:
-            return False
-        if not target.voice or not target.voice.channel:
-            return False
-        if executor.voice.channel.id != target.voice.channel.id:
-            return False
-
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow("""
                 SELECT moderator_ids FROM users WHERE user_id = $1

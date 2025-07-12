@@ -1,0 +1,17 @@
+services:
+  vyrtuous:
+    build: .
+    container_name: vyrtuous
+    env_file:
+      - /Users/spawd/.env_vyrtuous
+    volumes:
+      - ./src/vyrtuous:/app/vyrtuous
+    ports:
+      - "2001:2001"  # Remove or adjust if not running a web app
+    command: python -u vyrtuous/main.py
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    stdin_open: true  # Keep stdin open (like -i)
+    tty: true
+    platform: linux/arm64
