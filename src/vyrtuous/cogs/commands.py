@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from collections import defaultdict
+from discord import app_commands
 import discord
 from discord.ext import commands
 from vyrtuous.utils.handlers.message_service import MessageService
@@ -33,7 +34,13 @@ class Hybrid(commands.Cog):
         self.predicator = Predicator(self.bot)
         self.handler = MessageService(self.bot, self.config, self.bot.db_pool)
         self.command_aliases: dict[int, dict[str, dict[str, int]]] = defaultdict(lambda: {"mute": {}, "unmute": {}})
-
+   
+    @staticmethod
+    def is_owner(bot):
+        async def predicate(ctx):
+            return ctx.guild is not None and (ctx.guild.owner_id == ctx.author.id or ctx.guild.owner_id == bot.config['discord_owner_id'])
+        return commands.check(predicate)
+        
     async def cog_load(self):
         await self.load_aliases()
     
@@ -50,15 +57,8 @@ class Hybrid(commands.Cog):
             if not row or not row["moderator_ids"]:
                 return False
             return channel_id in row["moderator_ids"]
-        return commands.check(predicate)
+        return app_commands.check(predicate)
     
-    
-    @staticmethod
-    def is_owner(bot):
-        async def predicate(ctx):
-            return ctx.guild is not None and (ctx.guild.owner_id == ctx.author.id or ctx.guild.owner_id == bot.config['discord_owner_id'])
-        return commands.check(predicate)
-        
     @staticmethod
     def is_owner_or_developer(bot):
         async def predicate(ctx):
@@ -75,7 +75,7 @@ class Hybrid(commands.Cog):
                 if row and row["developer_guild_ids"] and guild_id in row["developer_guild_ids"]:
                     return True
             return False
-        return commands.check(predicate)
+        return app_commands.check(predicate)
     
     
     async def load_aliases(self):
@@ -95,12 +95,15 @@ class Hybrid(commands.Cog):
                     self.bot.add_command(cmd)
 
     def create_mute_command(self, command_name: str):
-        @commands.command(name=command_name)
+        @commands.hybrid_command(name=command_name)
+        @app_commands.describe(
+            member_input="Tag a user or include their user ID",
+            reason="Optionally provide a reason for muting"
+        )
         async def mute_command(ctx, member_input: str, *, reason: str = "No reason provided."):
             guild_id = ctx.guild.id
             member_id = None
             member_object = None
-    
             if member_input.isdigit():
                 member_id = int(member_input)
             elif member_input.startswith("<@") and member_input.endswith(">"):
@@ -108,19 +111,15 @@ class Hybrid(commands.Cog):
                     member_id = int(member_input.strip("<@!>"))
                 except ValueError:
                     pass
-    
             if member_id:
                 member_object = ctx.guild.get_member(member_id)
             if not member_object:
                 return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
-    
             static_channel_id = self.command_aliases.get(guild_id, {}).get("mute", {}).get(command_name)
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content="This mute command is not configured properly.")
-    
             if not await self.predicator.is_moderator(ctx.author, static_channel_id):
                 return await self.handler.send_message(ctx, content="You are not a moderator in this channel.")
-    
             async with self.db_pool.acquire() as conn:
                 await conn.execute("""
                     INSERT INTO users (user_id, mute_channel_ids)
@@ -134,14 +133,12 @@ class Hybrid(commands.Cog):
                     ),
                     updated_at = NOW()
                 """, member_object.id, static_channel_id)
-    
                 await conn.execute("""
                     INSERT INTO mute_reasons (guild_id, user_id, reason)
                     VALUES ($1, $2, $3)
                     ON CONFLICT (guild_id, user_id)
                     DO UPDATE SET reason = EXCLUDED.reason
                 """, guild_id, member_object.id, reason)
-    
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                 await member_object.edit(mute=True)
                 await self.handler.send_message(ctx, content=f"{member_object.mention} has been muted in <#{static_channel_id}>.")
@@ -150,9 +147,10 @@ class Hybrid(commands.Cog):
         mute_command.__name__ = f"mute_cmd_{command_name}"
         return mute_command
 
-
-
-    @commands.command(name='reason')
+    @commands.hybrid_command(name='reason')
+    @app_commands.describe(
+        member_input="Tag a user or include their user ID"
+    )
     async def reason_command(self, ctx, member_input: str):
         guild_id = ctx.guild.id
         member_id = None
@@ -165,40 +163,36 @@ class Hybrid(commands.Cog):
                 member_id = int(member_input.strip("<@!>"))
             except ValueError:
                 pass
-
         if member_id:
             member_object = ctx.guild.get_member(member_id)
-
         if not member_object:
             return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
-        
-        # Fetch mute reasons per channel
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch("""
                 SELECT channel_id, reason
                 FROM mute_reasons
                 WHERE guild_id = $1 AND user_id = $2
             """, guild_id, member_object.id)
-
         if not rows:
             return await self.handler.send_message(ctx, content=f"No mute/unmute history found for {member_object.mention}.")
-
         lines = []
         for row in rows:
             channel_id = row["channel_id"]
             reason = row["reason"] or "*No reason provided*"
             lines.append(f"• <#{channel_id}>: `{reason}`")
-
         content = f"📄 Mute/Unmute reasons for {member_object.mention}:\n" + "\n".join(lines)
         await self.handler.send_message(ctx, content=content)
 
     def create_unmute_command(self, command_name: str):
-        @commands.command(name=command_name)
+        @commands.hybrid_command(name=command_name, description="Unmutes a member. Requires room moderator priviledges")
+        @app_commands.describe(
+            member_input="Tag a user or include their user ID",
+            reason="Optionally provide a reason for unmuting"
+        )
         async def unmute_command(ctx, member_input: str, *, reason: str = ""):
             guild_id = ctx.guild.id
             member_id = None
             member_object = None
-    
             if member_input.isdigit():
                 member_id = int(member_input)
             elif member_input.startswith("<@") and member_input.endswith(">"):
@@ -206,19 +200,15 @@ class Hybrid(commands.Cog):
                     member_id = int(member_input.strip("<@!>"))
                 except ValueError:
                     pass
-    
             if member_id:
                 member_object = ctx.guild.get_member(member_id)
             if not member_object:
                 return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
-    
             static_channel_id = self.command_aliases.get(guild_id, {}).get("unmute", {}).get(command_name)
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content="This unmute command is not configured properly.")
-    
             if not await self.predicator.is_moderator(ctx.author, static_channel_id):
                 return await self.handler.send_message(ctx, content="You are not a moderator in this channel.")
-    
             async with self.db_pool.acquire() as conn:
                 await conn.execute("""
                     UPDATE users
@@ -233,7 +223,6 @@ class Hybrid(commands.Cog):
                     ON CONFLICT (guild_id, user_id)
                     DO UPDATE SET reason = EXCLUDED.reason
                 """, guild_id, member_object.id, reason)
-    
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                 await member_object.edit(mute=False)
                 await self.handler.send_message(ctx, content=f"{member_object.mention} has been unmuted in <#{static_channel_id}>.")
@@ -244,31 +233,26 @@ class Hybrid(commands.Cog):
 
         
     # For developers
-    @commands.command(name="give_dev")
-    @commands.check(is_owner)  # Only existing devs/owners can grant
-    async def grant_developer(ctx, member_input: str):
+    @commands.hybrid_command(name="give_dev", description="Gives a user developer status. Requires owner permission")
+    @app_commands.check(is_owner)
+    @app_commands.describe(
+        member_input="Tag a user or include their user ID"
+    )
+    async def grant_developer(self, ctx, member_input: str):
         guild_id = ctx.guild.id
         member_id = None
         member_object = None
-
-        # Try resolving by raw ID
         if member_input.isdigit():
             member_id = int(member_input)
-        # Try resolving by mention
         elif member_input.startswith("<@") and member_input.endswith(">"):
             try:
                 member_id = int(member_input.strip("<@!>"))
             except ValueError:
                 pass
-
-        # If member_id was successfully parsed, try to get the member object
         if member_id:
             member_object = ctx.guild.get_member(member_id)
-
         if not member_object:
             return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
-
-    
         async with bot.db_pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO users (user_id, developer_guild_ids)
@@ -282,11 +266,10 @@ class Hybrid(commands.Cog):
                 ),
                 updated_at = NOW()
             """, member_object.id, guild_id)
-    
         await self.handler.send_message(ctx, content=f"{member_object.mention} has been granted developer rights in this server.")
         
-    @commands.command(name="list_devs")
-    @commands.check(is_owner_or_developer)
+    @commands.hybrid_command(name="list_devs", description="Lists all developers in current guild. Requires owner or developer.")
+    @app_commands.check(is_owner_or_developer)
     async def list_developers(self, ctx):
         guild = ctx.guild
         pages = []
@@ -296,7 +279,6 @@ class Hybrid(commands.Cog):
                 FROM users
                 WHERE $1 = ANY(developer_guild_ids)
             """, guild.id)
-    
         if not rows:
             await self.handler.send_message(ctx, content="No developers are configured in this server.")
             return
@@ -304,40 +286,31 @@ class Hybrid(commands.Cog):
             user_id = row["user_id"]
             user = guild.get_member(user_id)
             name = user.display_name if user else f"User ID {user_id}"
-    
             embed = discord.Embed(
                 title="Developer Access",
                 description=f"👤 {name}\n🆔 `{user_id}`",
                 color=discord.Color.orange()
             )
             pages.append(embed)
-    
         paginator = self.handler.Paginator(self.bot, ctx, pages)
         await paginator.start()
         
-    @commands.command(name="revoke_dev")
-    @commands.check(is_owner_or_developer)
-    async def revoke_developer(ctx, member_input: str):
+    @commands.hybrid_command(name="revoke_dev", description="Removes developers in current guild. Requires owner or developer.")
+    @app_commands.check(is_owner_or_developer)
+    async def revoke_developer(self, ctx, member_input: str):
         member_id = None
         member_object = None
-
-        # Try resolving by raw ID
         if member_input.isdigit():
             member_id = int(member_input)
-        # Try resolving by mention
         elif member_input.startswith("<@") and member_input.endswith(">"):
             try:
                 member_id = int(member_input.strip("<@!>"))
             except ValueError:
                 pass
-
-        # If member_id was successfully parsed, try to get the member object
         if member_id:
             member_object = ctx.guild.get_member(member_id)
-
         if not member_object:
             return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
-
         guild_id = ctx.guild.id
         async with bot.db_pool.acquire() as conn:
             await conn.execute("""
@@ -346,37 +319,30 @@ class Hybrid(commands.Cog):
                     updated_at = NOW()
                 WHERE user_id = $1
             """, member_object.id, guild_id)
-    
         await self.handler.send_message(ctx, content=f"{member_object.mention}'s developer access has been revoked in this server.")
 
     # For moderators
-    @commands.command(name="give_mod")
-    @commands.check(is_owner_or_developer)
+    @commands.hybrid_command(name="give_mod", description="Gives room moderator status in current guild for a given channel")
+    @app_commands.check(is_owner_or_developer)
+    @app_commands.describe(
+        member_input="Tag a user or include their user ID",
+        channel_input="Tag a channel or include its ID"
+    )
     async def add_moderator_channel(self, ctx, member_input: str, channel_input: str):
-        """Add a voice channel to the user's moderator_ids array."""
         member_id = None
         member_object = None
-
-        # Try resolving by raw ID
         if member_input.isdigit():
             member_id = int(member_input)
-        # Try resolving by mention
         elif member_input.startswith("<@") and member_input.endswith(">"):
             try:
                 member_id = int(member_input.strip("<@!>"))
             except ValueError:
                 pass
-
-        # If member_id was successfully parsed, try to get the member object
         if member_id:
             member_object = ctx.guild.get_member(member_id)
-
         if not member_object:
             return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
-
-        # Resolve string to VoiceChannel
         resolved_channel = None
-    
         if channel_input.isdigit():
             resolved_channel = ctx.guild.get_channel(int(channel_input))
         elif channel_input.startswith("<#") and channel_input.endswith(">"):
@@ -390,11 +356,8 @@ class Hybrid(commands.Cog):
                 if vc.name.lower() == channel_input.lower():
                     resolved_channel = vc
                     break
-    
         if not isinstance(resolved_channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content="Could not resolve a valid **voice** channel from yourinput.")
-
-    # DB insert/update
         async with self.db_pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO users (user_id, moderator_ids)
@@ -408,11 +371,10 @@ class Hybrid(commands.Cog):
                 ),
                 updated_at = NOW()
             """, member_object.id, resolved_channel.id)
-
         await self.handler.send_message(ctx, content=f"{member_object.mention} has been granted moderator access in {resolved_channel.name}.")
 
-    @commands.command(name="list_mods")
-    @commands.check(is_owner_or_developer)
+    @commands.hybrid_command(name="list_mods", description="Lists room moderators in a guild. Requires owner or developer")
+    @app_commands.check(is_owner_or_developer)
     async def list_moderators(self, ctx):
         guild = ctx.guild
         pages = []
@@ -446,35 +408,28 @@ class Hybrid(commands.Cog):
             return
         paginator = self.handler.Paginator(self.bot, ctx, pages)
         await paginator.start()
-
         
-    @commands.command(name="revoke_mod")
-    @commands.check(is_owner_or_developer)
+    @commands.hybrid_command(name="revoke_mod", description="Revokes a member's room moderator role for a given channel. Requires owner or developer.")
+    @app_commands.check(is_owner_or_developer)
+    @app_commands.describe(
+        member_input="Tag a user or include their user ID",
+        channel_input="Tag a channel or include its ID"
+    )
     async def remove_moderator_channel(self, ctx, member_input: str, channel_input: str):
-        """Remove a voice channel from the user's moderator list."""
         member_id = None
         member_object = None
-
-        # Try resolving by raw ID
         if member_input.isdigit():
             member_id = int(member_input)
-        # Try resolving by mention
         elif member_input.startswith("<@") and member_input.endswith(">"):
             try:
                 member_id = int(member_input.strip("<@!>"))
             except ValueError:
                 pass
-
-        # If member_id was successfully parsed, try to get the member object
         if member_id:
             member_object = ctx.guild.get_member(member_id)
-
         if not member_object:
             return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
-
-        # Resolve channel from string input
         resolved_channel = None
-    
         if channel_input.isdigit():
             resolved_channel = ctx.guild.get_channel(int(channel_input))
         elif channel_input.startswith("<#") and channel_input.endswith(">"):
@@ -488,11 +443,8 @@ class Hybrid(commands.Cog):
                 if vc.name.lower() == channel_input.lower():
                     resolved_channel = vc
                     break
-        
-
         if not isinstance(resolved_channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content="Could not resolve a valid **voice** channel from your input.")
-
         async with self.db_pool.acquire() as conn:
             await conn.execute("""
                 UPDATE users
@@ -504,10 +456,14 @@ class Hybrid(commands.Cog):
         await self.handler.send_message(ctx, content=f"{member_object.mention} has been revoked moderator access in {resolved_channel.name}.")
 
     # Aliasing
-    @commands.command(name="delalias")
-    @commands.check(is_owner_or_developer)
-    async def delete_alias(self, ctx, alias_type: str, alias_name: str):
-        guild_id = ctx.guild.id
+    @commands.hybrid_command(name="delalias", description="Deletes an alias. Requires owner or developer.")
+    @app_commands.check(is_owner_or_developer)
+    @app_commands.describe(
+        alias_type="Either `mute` or `unmute`",
+        alias_name="Name to delete",
+        guild_id="Guild ID"
+    )
+    async def delete_alias(self, ctx, alias_type: str, alias_name: str, guild_id: str):
         async with self.db_pool.acquire() as conn:
             await conn.execute(
                 "DELETE FROM command_aliases WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3",
@@ -516,8 +472,8 @@ class Hybrid(commands.Cog):
         self.command_aliases[guild_id][alias_type].pop(alias_name, None)
         await self.handler.send_message(ctx, content=f"Deleted alias `{alias_name}` from {alias_type}.")
     
-    @commands.command(name="listaliases")
-    @commands.check(is_owner_or_developer)
+    @commands.hybrid_command(name="list_aliases", description="List all the aliases in the current guild. Requires owner or developer.")
+    @app_commands.check(is_owner_or_developer)
     async def list_aliases(self, ctx):
         guild_id = ctx.guild.id
         aliases = self.command_aliases.get(guild_id, {})
@@ -527,17 +483,17 @@ class Hybrid(commands.Cog):
             embed.add_field(name=kind.capitalize(), value="\n".join(lines) or "None", inline=False)
         await self.handler.send_message(ctx, embed=embed)
         
-    @commands.command(name="setalias")
-    @commands.check(is_owner_or_developer)
+    @commands.hybrid_command(name="setalias", description="Set a mute/unmute alias for a given channel and guild.")
+    @app_commands.check(is_owner_or_developer)
+    @app_commands.describe(
+        alias_type="Either `mute` or `unmute`",
+        alias_name="Name to create",
+        channel="Tag a channel or include its ID"
+    )
     async def set_alias(self, ctx, alias_type: str, alias_name: str, channel: str):
-        """Set or update an alias for mute/unmute."""
-    
         if alias_type not in ("mute", "unmute"):
             return await self.handler.send_message(ctx, content="Alias type must be `mute` or `unmute`.")
-    
-        # Convert str to VoiceChannel object
         resolved_channel = None
-    
         if channel.isdigit():
             resolved_channel = ctx.guild.get_channel(int(channel))
         elif channel.startswith("<#") and channel.endswith(">"):
@@ -551,10 +507,8 @@ class Hybrid(commands.Cog):
                 if vc.name.lower() == channel.lower():
                     resolved_channel = vc
                     break
-    
         if not isinstance(resolved_channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content="Could not resolve a valid **voice** channel from your input.")
-
         guild_id = ctx.guild.id
         async with self.db_pool.acquire() as conn:
             await conn.execute(
@@ -579,16 +533,13 @@ async def setup(bot: commands.Bot):
         if ctx.command.name == "help":
             author_id = ctx.author.id
             guild_id = ctx.guild.id if ctx.guild else None
-    
             if guild_id and (
                 ctx.guild.owner_id == author_id or author_id == bot.config["discord_owner_id"]
             ):
                 return True
-    
             async with bot.db_pool.acquire() as conn:
                 row = await conn.fetchrow(
                     "SELECT developer_guild_ids FROM users WHERE user_id = $1", author_id
                 )
                 return row and guild_id in (row["developer_guild_ids"] or [])
-    
         return True
