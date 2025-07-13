@@ -92,9 +92,6 @@ class Indica(commands.Cog):
             if message.author.id == message.is_system():
                 return
             ctx = await self.bot.get_context(message)
-            prefix = await self.bot.get_prefix(message)
-            if message.content.strip() == prefix.strip():
-                await self.bot.invoke(await self.bot.get_command("help2").callback(ctx))
             author = ctx.author.name
             return
         except Exception as e:
