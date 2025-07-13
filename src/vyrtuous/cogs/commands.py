@@ -34,7 +34,18 @@ class Hybrid(commands.Cog):
         self.predicator = Predicator(self.bot)
         self.handler = MessageService(self.bot, self.config, self.bot.db_pool)
         self.command_aliases: dict[int, dict[str, dict[str, int]]] = defaultdict(lambda: {"mute": {}, "unmute": {}})
-   
+  
+    async def get_available_commands(bot, ctx):
+        available_commands = []
+        for command in bot.commands:
+            try:
+                if await command.can_run(ctx):
+                    available_commands.append(command)
+            except commands.CheckFailure:
+                # Command not available
+                continue
+        return available_commands
+
     @staticmethod
     def is_owner(bot):
         async def predicate(ctx):
@@ -147,7 +158,7 @@ class Hybrid(commands.Cog):
         mute_command.__name__ = f"mute_cmd_{command_name}"
         return mute_command
 
-    @commands.hybrid_command(name='reason')
+    @commands.hybrid_command(name='reason', help='Get the reason for mute or unmute')
     @app_commands.describe(
         member_input="Tag a user or include their user ID"
     )
@@ -231,7 +242,7 @@ class Hybrid(commands.Cog):
         unmute_command.__name__ = f"unmute_cmd_{command_name}"
         return unmute_command
 
-        
+    
     # For developers
     @commands.hybrid_command(name="give_dev", help="Gives a user developer status. Requires owner permission")
     @app_commands.check(is_owner)
@@ -524,6 +535,17 @@ class Hybrid(commands.Cog):
         self.command_aliases[guild_id][alias_type][alias_name] = resolved_channel.id
         await self.handler.send_message(ctx, content=f"Alias `{alias_name}` ({alias_type}) set to voice channel {resolved_channel.mention}.")
 
+        @commands.command(name="?")
+        async def help_command(self, ctx):
+            available_commands = await get_available_commands(ctx.bot, ctx)
+            if not available_commands:
+                await ctx.send("No commands available for you.")
+                return
+        
+            lines = [f"**{cmd.name}**: {cmd.help or 'No description'}" for cmd in         available_commands]
+            help_message = "\n".join(lines)
+            await ctx.send(f"Available commands:\n{help_message}")
+    
 async def setup(bot: commands.Bot):
     cog = Hybrid(bot)
     await bot.add_cog(cog)
