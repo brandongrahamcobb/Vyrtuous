@@ -535,8 +535,8 @@ class Hybrid(commands.Cog):
         self.command_aliases[guild_id][alias_type][alias_name] = resolved_channel.id
         await self.handler.send_message(ctx, content=f"Alias `{alias_name}` ({alias_type}) set to voice channel {resolved_channel.mention}.")
 
-        @commands.hybrid_command(name="help2", hidden=True)
-        async def help2_command(self, ctx):
+        @commands.hybrid_command(name="help", hidden=True)
+        async def help(self, ctx):
             available_commands = await get_available_commands(ctx.bot, ctx)
             if not available_commands:
                 await ctx.send("No commands available for you.")
@@ -550,18 +550,18 @@ async def setup(bot: commands.Bot):
     cog = Hybrid(bot)
     await bot.add_cog(cog)
     
-    @bot.check
-    async def restrict_help(ctx):
-        if ctx.command.name == "help":
-            author_id = ctx.author.id
-            guild_id = ctx.guild.id if ctx.guild else None
-            if guild_id and (
-                ctx.guild.owner_id == author_id or author_id == bot.config["discord_owner_id"]
-            ):
-                return True
-            async with bot.db_pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT developer_guild_ids FROM users WHERE user_id = $1", author_id
-                )
-                return row and guild_id in (row["developer_guild_ids"] or [])
-        return True
+#    @bot.check
+#    async def restrict_help(ctx):
+#        if ctx.command.name == "help":
+#            author_id = ctx.author.id
+#            guild_id = ctx.guild.id if ctx.guild else None
+#            if guild_id and (
+#                ctx.guild.owner_id == author_id or author_id == bot.config["discord_owner_id"]
+#            ):
+#                return True
+#            async with bot.db_pool.acquire() as conn:
+#                row = await conn.fetchrow(
+#                    "SELECT developer_guild_ids FROM users WHERE user_id = $1", author_id
+#                )
+#                return row and guild_id in (row["developer_guild_ids"] or [])
+#        return True
