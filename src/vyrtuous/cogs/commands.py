@@ -535,8 +535,8 @@ class Hybrid(commands.Cog):
         self.command_aliases[guild_id][alias_type][alias_name] = resolved_channel.id
         await self.handler.send_message(ctx, content=f"Alias `{alias_name}` ({alias_type}) set to voice channel {resolved_channel.mention}.")
 
-        @commands.command(name="?")
-        async def help_command(self, ctx):
+        @commands.hybrid_command(name="help2", hidden=True)
+        async def help2_command(self, ctx):
             available_commands = await get_available_commands(ctx.bot, ctx)
             if not available_commands:
                 await ctx.send("No commands available for you.")

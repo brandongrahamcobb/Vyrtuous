@@ -33,7 +33,7 @@ class Indica(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.db_pool = bot.db_pool
-        self.handler = MessageService(self.bot, self.config,  self.db_pool)
+        self.handler = MessageService(self.bot, self.config, self.db_pool)
         self.predicator = Predicator(self.bot)
         self.user_messages = {}
 
@@ -92,7 +92,11 @@ class Indica(commands.Cog):
             if message.author.id == message.is_system():
                 return
             ctx = await self.bot.get_context(message)
+            prefix = await bot.get_prefix(message)
+            if message.content.strip() == prefix.strip():
+                await bot.invoke(await bot.get_command("help2").callback(ctx))
             author = ctx.author.name
+            return
         except Exception as e:
             logger.error(traceback.format_exc())
         finally:

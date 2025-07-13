@@ -41,9 +41,6 @@ class Sativa(commands.Cog):
             return ctx.guild is not None and (ctx.guild.owner_id == ctx.author.id or ctx.guild.owner_id == bot.config['discord_owner_id'])
         return commands.check(predicate)
         
-
-
-
     @commands.hybrid_command(name='load', hidden=True)
     @commands.check(at_home)
     async def load(self, ctx: commands.Context, *, module: str):
