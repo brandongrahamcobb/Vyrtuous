@@ -47,7 +47,7 @@ class DiscordBot(commands.Bot):
                 await self.load_extension(cog)
             if self.testing_guild_id:
                 guild = discord.Object(id=self.testing_guild_id)
-                self.tree.copy_global_to(guild=guild)
+               # self.tree.copy_global_to(guild=guild)
                 await self.tree.sync(guild=guild)
         except Exception as e:
             logger.error(f'Error during Discord bot setup_hook: {e}')
