@@ -184,7 +184,7 @@ class Hybrid(commands.Cog):
         await self.handler.send_message(ctx, content=content)
 
     def create_unmute_command(self, command_name: str):
-        @commands.hybrid_command(name=command_name, description="Unmutes a member. Requires room moderator priviledges")
+        @commands.hybrid_command(name=command_name, help="Unmutes a member. Requires room moderator priviledges")
         @app_commands.describe(
             member_input="Tag a user or include their user ID",
             reason="Optionally provide a reason for unmuting"
@@ -233,7 +233,7 @@ class Hybrid(commands.Cog):
 
         
     # For developers
-    @commands.hybrid_command(name="give_dev", description="Gives a user developer status. Requires owner permission")
+    @commands.hybrid_command(name="give_dev", help="Gives a user developer status. Requires owner permission")
     @app_commands.check(is_owner)
     @app_commands.describe(
         member_input="Tag a user or include their user ID"
@@ -268,7 +268,7 @@ class Hybrid(commands.Cog):
             """, member_object.id, guild_id)
         await self.handler.send_message(ctx, content=f"{member_object.mention} has been granted developer rights in this server.")
         
-    @commands.hybrid_command(name="list_devs", description="Lists all developers in current guild. Requires owner or developer.")
+    @commands.hybrid_command(name="list_devs", help="Lists all developers in current guild. Requires owner or developer.")
     @app_commands.check(is_owner_or_developer)
     async def list_developers(self, ctx):
         guild = ctx.guild
@@ -288,14 +288,14 @@ class Hybrid(commands.Cog):
             name = user.display_name if user else f"User ID {user_id}"
             embed = discord.Embed(
                 title="Developer Access",
-                description=f"👤 {name}\n🆔 `{user_id}`",
+                help=f"👤 {name}\n🆔 `{user_id}`",
                 color=discord.Color.orange()
             )
             pages.append(embed)
         paginator = self.handler.Paginator(self.bot, ctx, pages)
         await paginator.start()
         
-    @commands.hybrid_command(name="revoke_dev", description="Removes developers in current guild. Requires owner or developer.")
+    @commands.hybrid_command(name="revoke_dev", help="Removes developers in current guild. Requires owner or developer.")
     @app_commands.check(is_owner_or_developer)
     async def revoke_developer(self, ctx, member_input: str):
         member_id = None
@@ -322,7 +322,7 @@ class Hybrid(commands.Cog):
         await self.handler.send_message(ctx, content=f"{member_object.mention}'s developer access has been revoked in this server.")
 
     # For moderators
-    @commands.hybrid_command(name="give_mod", description="Gives room moderator status in current guild for a given channel")
+    @commands.hybrid_command(name="give_mod", help="Gives room moderator status in current guild for a given channel")
     @app_commands.check(is_owner_or_developer)
     @app_commands.describe(
         member_input="Tag a user or include their user ID",
@@ -373,7 +373,7 @@ class Hybrid(commands.Cog):
             """, member_object.id, resolved_channel.id)
         await self.handler.send_message(ctx, content=f"{member_object.mention} has been granted moderator access in {resolved_channel.name}.")
 
-    @commands.hybrid_command(name="list_mods", description="Lists room moderators in a guild. Requires owner or developer")
+    @commands.hybrid_command(name="list_mods", help="Lists room moderators in a guild. Requires owner or developer")
     @app_commands.check(is_owner_or_developer)
     async def list_moderators(self, ctx):
         guild = ctx.guild
@@ -398,7 +398,7 @@ class Hybrid(commands.Cog):
             display_name = user.display_name if user else f"User ID {user_id}"
             embed = discord.Embed(
                 title=f"Moderator: {display_name}",
-                description="\n".join(f"<#{channel.id}> — {channel.name}" for channel in valid_channels),
+                help="\n".join(f"<#{channel.id}> — {channel.name}" for channel in valid_channels),
                 color=discord.Color.blue()
             )
             embed.set_footer(text=f"User ID: {user_id}")
@@ -409,7 +409,7 @@ class Hybrid(commands.Cog):
         paginator = self.handler.Paginator(self.bot, ctx, pages)
         await paginator.start()
         
-    @commands.hybrid_command(name="revoke_mod", description="Revokes a member's room moderator role for a given channel. Requires owner or developer.")
+    @commands.hybrid_command(name="revoke_mod", help="Revokes a member's room moderator role for a given channel. Requires owner or developer.")
     @app_commands.check(is_owner_or_developer)
     @app_commands.describe(
         member_input="Tag a user or include their user ID",
@@ -456,7 +456,7 @@ class Hybrid(commands.Cog):
         await self.handler.send_message(ctx, content=f"{member_object.mention} has been revoked moderator access in {resolved_channel.name}.")
 
     # Aliasing
-    @commands.hybrid_command(name="delalias", description="Deletes an alias. Requires owner or developer.")
+    @commands.hybrid_command(name="delalias", help="Deletes an alias. Requires owner or developer.")
     @app_commands.check(is_owner_or_developer)
     @app_commands.describe(
         alias_type="Either `mute` or `unmute`",
@@ -472,7 +472,7 @@ class Hybrid(commands.Cog):
         self.command_aliases[guild_id][alias_type].pop(alias_name, None)
         await self.handler.send_message(ctx, content=f"Deleted alias `{alias_name}` from {alias_type}.")
     
-    @commands.hybrid_command(name="list_aliases", description="List all the aliases in the current guild. Requires owner or developer.")
+    @commands.hybrid_command(name="list_aliases", help="List all the aliases in the current guild. Requires owner or developer.")
     @app_commands.check(is_owner_or_developer)
     async def list_aliases(self, ctx):
         guild_id = ctx.guild.id
@@ -483,7 +483,7 @@ class Hybrid(commands.Cog):
             embed.add_field(name=kind.capitalize(), value="\n".join(lines) or "None", inline=False)
         await self.handler.send_message(ctx, embed=embed)
         
-    @commands.hybrid_command(name="setalias", description="Set a mute/unmute alias for a given channel and guild.")
+    @commands.hybrid_command(name="setalias", help="Set a mute/unmute alias for a given channel and guild.")
     @app_commands.check(is_owner_or_developer)
     @app_commands.describe(
         alias_type="Either `mute` or `unmute`",
