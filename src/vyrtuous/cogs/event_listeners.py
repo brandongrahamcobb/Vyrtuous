@@ -42,42 +42,71 @@ class Indica(commands.Cog):
         if hasattr(bot, 'db_pool'):
             await bot.db_pool.close()
 
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
-        if member.bot:
-            return
-        user_id = member.id
-        before_channel = before.channel
-        after_channel = after.channel
-        if before_channel and not after_channel:
-            if before.mute:
-                async with self.db_pool.acquire() as conn:
-                    await conn.execute("""
-                        INSERT INTO users (user_id, mute_channel_ids)
-                        VALUES ($1, ARRAY[$2]::BIGINT[])
-                        ON CONFLICT (user_id) DO UPDATE
-                        SET mute_channel_ids = (
-                            SELECT ARRAY(
-                                SELECT DISTINCT unnest(u.mute_channel_ids || EXCLUDED.mute_channel_ids)
-                            )
-                            FROM users u WHERE u.user_id = EXCLUDED.user_id
-                        ),
-                        updated_at = NOW()
-                    """, user_id, before_channel.id)
-        elif after_channel:
-            async with self.db_pool.acquire() as conn:
-                row = await conn.fetchrow("""
-                    SELECT mute_channel_ids FROM users WHERE user_id = $1
-                """, user_id)
+@commands.Cog.listener()
+async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+    if member.bot:
+        return
 
-            if row and row["mute_channel_ids"]:
-                muted_channels = row["mute_channel_ids"]
-                if after_channel.id in muted_channels:
-                    await member.edit(mute=True)
-                else:
-                    await member.edit(mute=False)
+    user_id = member.id
+    guild_id = member.guild.id
+    before_channel = before.channel
+    after_channel = after.channel
+
+    # 1. User left a channel while muted — record the mute
+    if before_channel and not after_channel and before.mute:
+        async with self.db_pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO users (user_id, mute_channel_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[])
+                ON CONFLICT (user_id) DO UPDATE
+                SET mute_channel_ids = (
+                    SELECT ARRAY(
+                        SELECT DISTINCT unnest(u.mute_channel_ids || EXCLUDED.mute_channel_ids)
+                    )
+                    FROM users u WHERE u.user_id = EXCLUDED.user_id
+                ),
+                updated_at = NOW()
+            """, user_id, before_channel.id)
+
+    # 2. User joined a channel — check if they should still be muted
+    elif after_channel:
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT mute_channel_ids FROM users WHERE user_id = $1
+            """, user_id)
+
+        if row and row["mute_channel_ids"]:
+            muted_channels = row["mute_channel_ids"]
+            if after_channel.id in muted_channels:
+                await member.edit(mute=True)
             else:
                 await member.edit(mute=False)
+        else:
+            await member.edit(mute=False)
+
+    # 3. Detect manual unmute
+    if before.mute and not after.mute:
+        # Only do this if the user was marked as muted in the DB
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT mute_channel_ids FROM users WHERE user_id = $1
+            """, user_id)
+
+            if row and row["mute_channel_ids"]:
+                updated = await conn.execute("""
+                    UPDATE users
+                    SET mute_channel_ids = array_remove(mute_channel_ids, $2),
+                        updated_at = NOW()
+                    WHERE user_id = $1
+                """, user_id, before_channel.id if before_channel else None)
+
+                # Optional: clear the mute reason as well
+                await conn.execute("""
+                    INSERT INTO mute_reasons (guild_id, user_id, reason)
+                    VALUES ($1, $2, '')
+                    ON CONFLICT (guild_id, user_id)
+                    DO UPDATE SET reason = EXCLUDED.reason
+                """, guild_id, user_id)
                     
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
