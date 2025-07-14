@@ -201,7 +201,7 @@ class Hybrid(commands.Cog):
         return unmute_command
     
     # For developers
-    @commands.hybrid_command(name='dev', help='Elevates a user's permissions to a bot developer.')
+    @commands.hybrid_command(name='dev', help='Elevates a user\'s permissions to a bot developer.')
     @commands.check(is_owner)
     async def add_developer(
         self,
@@ -291,10 +291,10 @@ class Hybrid(commands.Cog):
                     updated_at = NOW()
                 WHERE user_id = $1
             ''', member_object.id, guild_id)
-        await self.handler.send_message(ctx, content=f'{member_object.mention}'s developer access has been revoked in this guild.')
+        await self.handler.send_message(ctx, content=f'{member_object.mention}\'s developer access has been revoked in this guild.')
 
     # For moderators
-    @commands.hybrid_command(name='mod', help='Elevates a user's permission to VC moderator for a specific channel.')
+    @commands.hybrid_command(name='mod', help='Elevates a user\'s permission to VC moderator for a specific channel.')
     @commands.check(is_owner_or_developer)
     async def add_moderator(
         self,
@@ -382,7 +382,7 @@ class Hybrid(commands.Cog):
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
         
-    @commands.hybrid_command(name='xmod', help='Revokes a member's VC moderator role for a given channel.')
+    @commands.hybrid_command(name='xmod', help='Revokes a member\'s VC moderator role for a given channel.')
     @commands.check(is_owner_or_developer)
     async def revoke_moderator(
         self,
