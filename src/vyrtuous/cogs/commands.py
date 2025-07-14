@@ -20,6 +20,7 @@ from discord import app_commands
 import asyncio
 import discord
 from discord.ext import commands
+import inspect
 from vyrtuous.utils.handlers.message_service import MessageService, Paginator
 from vyrtuous.utils.handlers.predicator import *
 from vyrtuous.utils.inc.helpers import *
@@ -523,7 +524,7 @@ class Hybrid(commands.Cog):
     async def help(
         self,
         ctx,
-        command_name: str = commands.parameter(default="help", description="Include a command name")
+        command_name: str = commands.parameter(default="None", description="Include a command name")
     ):
         bot = ctx.bot
         if command_name:
@@ -542,14 +543,31 @@ class Hybrid(commands.Cog):
                 description=cmd.help or "No description provided.",
                 color=discord.Color.blue()
             )
-            if cmd.params:
-                for name, param in list(cmd.params.items()):  # Skip `self` and `ctx`
-                    annotation = param.annotation.__name__ if hasattr(param.annotation, "__name__") else str(param.annotation)
-                    embed.add_field(
-                        name=name,
-                        value=f"Type: `{annotation}`\nRequired: `{param.default == param.empty}`",
-                        inline=False
-                    )
+            sig = inspect.signature(cmd.callback)
+            parameters = list(sig.parameters.items())[2:]
+            for name, param in parameters:
+                is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY
+                default = param.default
+                description = (
+                    getattr(default, "description", None)
+                    if isinstance(default, commands.Parameter)
+                    else None
+                )
+                default_value = (
+                    getattr(default, "default", None)
+                    if isinstance(default, commands.Parameter)
+                    else default
+                )
+                annotation = (
+                    param.annotation.__name__
+                    if hasattr(param.annotation, "__name__")
+                    else str(param.annotation)
+                )
+                label = "Optional" if is_optional else "Required"
+                display = f"Type: `{annotation}`\n{label}"
+                if description:
+                    display += f"\nDescription: {description}"
+                embed.add_field(name=f"`{name}`", value=display, inline=False)
             await ctx.send(embed=embed)
             return
         all_commands = await self.get_available_commands(bot, ctx)
@@ -560,21 +578,18 @@ class Hybrid(commands.Cog):
         for command in all_commands:
             if command.hidden:
                 continue
-            cog_name = command.cog_name or "Uncategorized"
-            cog_map.setdefault(cog_name, []).append(command)
+            cog_map.setdefault(command.cog_name or "Uncategorized", []).append(command)
         pages = []
         for cog_name in sorted(cog_map):
             commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
-            embed = discord.Embed(
-                title=f"{cog_name} Commands",
-                color=discord.Color.green()
+            embed = discord.Embed(title=f"{cog_name} Commands", color=discord.Color.green())
+            embed.description = "\n".join(
+                f"**/{cmd.name}** – {cmd.help or 'No description'}" for cmd in commands_in_cog
             )
-            for cmd in commands_in_cog:
-                embed.description = embed.description or ""
-                embed.description += f"**/{cmd.name}** – {cmd.help or 'No description'}\n"
             pages.append(embed)
         paginator = Paginator(bot, ctx, pages)
         await paginator.start()
+        
     
 async def setup(bot: commands.Bot):
     cog = Hybrid(bot)
