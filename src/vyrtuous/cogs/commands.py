@@ -71,7 +71,7 @@ class Hybrid(commands.Cog):
         @commands.check(is_moderator)
         async def mute_command(
             ctx,
-            member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+            member_input: str = commands.parameter(description="Tag a user or include their snowflake ID."),
             *,
             reason: str = commands.parameter(default="N/A", description="Optionally include a reason for the mute.")
         ):
@@ -122,7 +122,7 @@ class Hybrid(commands.Cog):
     async def reason_command(
         self,
         ctx,
-        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID.")
+        member_input: str = commands.parameter(description="Tag a user or include their snowflake ID.")
     ):
         guild_id = ctx.guild.id
         member_id = None
@@ -159,7 +159,7 @@ class Hybrid(commands.Cog):
         @commands.check(is_moderator)
         async def unmute_command(
             ctx,
-            member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+            member_input: str = commands.parameter(description="Tag a user or include their snowflake ID."),
             *,
             reason: str = commands.parameter(default="N/A", description="Include a reason for the unmute.")
         ):
@@ -206,7 +206,7 @@ class Hybrid(commands.Cog):
     async def add_developer(
         self,
         ctx,
-        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+        member_input: str = commands.parameter(description="Tag a user or include their snowflake ID."),
     ):
         guild_id = ctx.guild.id
         member_id = None
@@ -268,7 +268,7 @@ class Hybrid(commands.Cog):
     async def revoke_developer(
         self,
         ctx,
-        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+        member_input: str = commands.parameter(description="Tag a user or include their snowflake ID."),
     ):
         member_id = None
         member_object = None
@@ -299,8 +299,8 @@ class Hybrid(commands.Cog):
     async def add_moderator(
         self,
         ctx,
-        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
-        channel_input: str = commands.parameter(default=None, description="Tag a channel or include its snowflake ID.")
+        member_input: str = commands.parameter(description="Tag a user or include their snowflake ID."),
+        channel_input: str = commands.parameter(description="Tag a channel or include its snowflake ID.")
     ):
         member_id = None
         member_object = None
@@ -387,8 +387,8 @@ class Hybrid(commands.Cog):
     async def revoke_moderator(
         self,
         ctx,
-        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
-        channel_input: str = commands.parameter(default=None, description="Tag a channel or include its snowflake ID.")
+        member_input: str = commands.parameter(description="Tag a user or include their snowflake ID."),
+        channel_input: str = commands.parameter(description="Tag a channel or include its snowflake ID.")
     ):
         member_id = None
         member_object = None
@@ -434,9 +434,8 @@ class Hybrid(commands.Cog):
     async def delete_alias(
         self,
         ctx,
-        alias_type: str = commands.parameter(default=None, description="Include either `mute` or `unmute`"),
-        alias_name: str = commands.parameter(default=None, description="Includ an alias name"),
-        guild_id: str = commands.parameter(default=None, description="Include a guild snowflake ID")
+        alias_type: str = commands.parameter(description="Include either `mute` or `unmute`"),
+        alias_name: str = commands.parameter(description="Includ an alias name")
     ):
         if alias_type.lower() not in {"mute", "unmute"}:
             await ctx.send("❌ `alias_type` must be either `mute` or `unmute`.", ephemeral=True)
@@ -444,10 +443,7 @@ class Hybrid(commands.Cog):
         if not alias_name.strip():
             await ctx.send("❌ `alias_name` cannot be empty.", ephemeral=True)
             return
-        if not guild_id.isdigit():
-            await ctx.send("❌ `guild_id` must be a valid numeric ID.", ephemeral=True)
-            return
-        guild_id = int(guild_id)
+        guild_id = ctx.guild.id
         alias_map = self.command_aliases.get(guild_id, {}).get(alias_type.lower(), {})
         if alias_name not in alias_map:
             await ctx.send(f"❌ Alias `{alias_name}` not found in `{alias_type}` for guild `{guild_id}`.", ephemeral=True)
@@ -476,9 +472,9 @@ class Hybrid(commands.Cog):
     async def set_alias(
         self,
         ctx,
-        alias_type: str = commands.parameter(default=None, description="Include either `mute` or `unmute`"),
-        alias_name: str = commands.parameter(default=None, description="Includ an alias name"),
-        guild_id: str = commands.parameter(default=None, description="Include a guild snowflake ID")
+        alias_type: str = commands.parameter(description="Include either `mute` or `unmute`"),
+        alias_name: str = commands.parameter(description="Includ an alias name"),
+        channel: str = commands.parameter(description="Include a channel snowflake ID")
     ):
         alias_type = alias_type.lower()
         if alias_type not in {"mute", "unmute"}:
@@ -525,6 +521,7 @@ class Hybrid(commands.Cog):
     async def help(
         self,
         ctx,
+        *,
         command_name: str = commands.parameter(default=None, description="Include a command name")
     ):
         bot = ctx.bot
