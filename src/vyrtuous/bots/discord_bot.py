@@ -25,7 +25,7 @@ class DiscordBot(commands.Bot):
     def __init__(self, *, config, db_pool: asyncpg.Pool, lock, oauth_token, **kwargs):
         try:
             intents = discord.Intents.all()
-            super().__init__(command_prefix=config['discord_command_prefix'], intents=intents, **kwargs)
+            super().__init__(command_prefix=config['discord_command_prefix'], help_command=None, intents=intents, **kwargs)
             self.config = config
             self.db_pool = db_pool
             self.lock = lock

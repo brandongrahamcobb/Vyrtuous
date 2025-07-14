@@ -19,7 +19,111 @@ import discord
 from discord.ext import commands
 from discord.utils import get
 from vyrtuous.utils.inc.setup_logging import logger
+       
+class NotModerator(commands.CheckFailure):
+    def __init__(self, message="You are not a moderator in the requested channel."):
+        super().__init__(message)
 
+class NotGuildOwner(commands.CheckFailure):
+    def __init__(self, message="You are not the guild owner."):
+        super().__init__(message)
+
+class NotSystemOwner(commands.CheckFailure):
+    def __init__(self, message="You are not the bot owner."):
+        super().__init__(message)
+
+class NotDeveloper(commands.CheckFailure):
+    def __init__(self, message="You are not a developer in this guild."):
+        super().__init__(message)
+
+class NoCommandAlias(commands.CheckFailure):
+    def __init__(self, message="This command alias is not mapped to a target channel."):
+        super().__init__(message)
+
+async def has_command_alias(ctx):
+    if not ctx.guild or not ctx.command:
+        raise NoCommandAlias("Command must be used in a guild and be an actual command.")
+    bot = ctx.bot
+    guild_id = ctx.guild.id
+    command_name = ctx.command.name.lower()
+    invoked_name = ctx.invoked_with.lower()
+    alias_map = getattr(bot, "command_aliases", {}).get(guild_id, {}).get(command_name, {})
+    target_channel_id = alias_map.get(invoked_name)
+    if not target_channel_id:
+        raise NoCommandAlias()
+    ctx._target_channel_id = target_channel_id
+    return True
+    
+async def is_guild_owner(ctx):
+    if ctx.guild is None:
+        raise NotGuildOwner("Command must be used in a guild.")
+    if ctx.guild.owner_id != ctx.author.id:
+        raise NotGuildOwner()
+    return True
+    
+async def is_system_owner(ctx):
+    system_owner_id = ctx.bot.config["discord_owner_id"]
+    if ctx.author.id != system_owner_id:
+        raise NotSystemOwner()
+    return True
+
+async def is_developer(ctx):
+    if ctx.guild is None:
+        raise NotDeveloper("Command must be used in a guild.")
+    async with ctx.bot.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT developer_guild_ids FROM users WHERE user_id = $1", ctx.author.id
+        )
+    if not row or ctx.guild.id not in row.get("developer_guild_ids", []):
+        raise NotDeveloper()
+    return True
+    
+async def is_owner_or_developer(ctx):
+    errors = []
+    for check in (is_guild_owner, is_system_owner, is_developer):
+        try:
+            if await check(ctx):
+                return True
+        except commands.CheckFailure as e:
+            errors.append(str(e))
+    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
+    
+async def is_owner(ctx):
+    errors = []
+    for check in (is_guild_owner, is_system_owner):
+        try:
+            if await check(ctx):
+                return True
+        except commands.CheckFailure as e:
+            errors.append(str(e))
+    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
+
+async def is_channel_moderator(ctx):
+    bot = ctx.bot
+    user_id = ctx.author.id
+    target_channel_id = getattr(ctx, "_target_channel_id", None)
+    if not target_channel_id:
+        raise NotModerator("No target channel ID was found for this command.")
+    async with bot.db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT moderator_ids FROM users WHERE user_id = $1
+        """, user_id)
+    if not row or target_channel_id not in row.get("moderator_ids", []):
+        raise NotModerator()
+    return True
+    
+async def is_moderator(ctx):
+    errors = []
+    for check in (has_command_alias, is_channel_moderator):
+        try:
+            if await check(ctx):
+                continue
+        except commands.CheckFailure as e:
+            errors.append(str(e))
+    if errors:
+        raise commands.CheckFailure("\n".join(f"❌ {e}" for e in errors))
+    return True
+        
 class Predicator:
     def __init__(self, bot):
         self.bot = bot
@@ -66,14 +170,4 @@ class Predicator:
             self.config.get('discord_release_mode', False) or
             isinstance(ctx.channel, discord.DMChannel)
         )
-    
-    async def is_moderator(self, executor: discord.Member, target: discord.Member) -> bool:
-        async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT moderator_ids FROM users WHERE user_id = $1
-            """, executor.id)
-
-        if not row or not row["moderator_ids"]:
-            return False
-        return executor.voice.channel.id in row["moderator_ids"]
 
