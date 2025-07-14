@@ -524,7 +524,7 @@ class Hybrid(commands.Cog):
     async def help(
         self,
         ctx,
-        command_name: str = commands.parameter(default="None", description="Include a command name")
+        command_name: str = commands.parameter(default=None, description="Include a command name")
     ):
         bot = ctx.bot
         if command_name:
