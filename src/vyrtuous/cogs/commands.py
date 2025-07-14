@@ -15,17 +15,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from collections import defaultdict
-from discord import app_commands
 import asyncio
 import discord
 import inspect
-from discord.ext import commands, Command
+import logging
+from collections import defaultdict
+from discord import app_commands
+from discord.ext import commands
+from discord.ext.commands import Command
 from vyrtuous.utils.handlers.message_service import MessageService, Paginator
 from vyrtuous.utils.handlers.predicator import *
 from vyrtuous.utils.inc.helpers import *
 from types import MethodType
-import logging
+from typing import List
 
 logger = logging.getLogger(__name__)
 class Hybrid(commands.Cog):
@@ -419,7 +421,7 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content=f'{member_object.mention} has been muted in <#{static_channel_id}> with reason {reason}.')
             else:
                 await self.handler.send_message(ctx, content=f'{member_object.mention} has been muted in <#{static_channel_id}> with reason {reason}.')
-        return mute_command
+        return mute_alias
         
     def create_unmute_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(name=command_name, help='Unmutes a member in a specific VC.')
@@ -475,7 +477,7 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content=f'{member_object.mention} has been unmuted in <#{static_channel_id}>.')
             else:
                 await self.handler.send_message(ctx, content=f'{member_object.mention} is no longer marked as muted in <#{static_channel_id}>.')
-        return unmute_command
+        return unmute_alias
         
     @commands.hybrid_command(name='xalias', help='Deletes an alias.')
     @commands.check(is_owner_or_developer)
