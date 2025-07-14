@@ -429,7 +429,7 @@ class Hybrid(commands.Cog):
         await self.handler.send_message(ctx, content=f"{member_object.mention} has been revoked moderator access in {resolved_channel.name}.")
 
     # Aliasing
-    @commands.hybrid_command(name="delalias", help="Deletes an alias. Requires owner or developer.")
+    @commands.hybrid_command(name="xalias", help="Deletes an alias. Requires owner or developer.")
     @commands.check(is_owner_or_developer)
     async def delete_alias(
         self,
@@ -467,7 +467,7 @@ class Hybrid(commands.Cog):
             embed.add_field(name=kind.capitalize(), value="\n".join(lines) or "None", inline=False)
         await self.handler.send_message(ctx, embed=embed)
         
-    @commands.hybrid_command(name="setalias", help="Set a mute/unmute alias for a given channel and guild.")
+    @commands.hybrid_command(name="alias", help="Set a mute/unmute alias for a given channel and guild.")
     @commands.check(is_owner_or_developer)
     async def set_alias(
         self,
