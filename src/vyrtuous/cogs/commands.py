@@ -430,6 +430,7 @@ class Hybrid(commands.Cog):
 
     # Aliasing
     @commands.hybrid_command(name="delalias", help="Deletes an alias. Requires owner or developer.")
+    @commands.check(is_owner_or_developer)
     async def delete_alias(
         self,
         ctx,
