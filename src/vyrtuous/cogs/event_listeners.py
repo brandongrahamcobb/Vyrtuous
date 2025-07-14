@@ -79,9 +79,11 @@ class Indica(commands.Cog):
             if row and row["mute_channel_ids"]:
                 muted_channels = row["mute_channel_ids"]
                 if after_channel.id in muted_channels:
-                    await member.edit(mute=True)
+                    if not after.mute:
+                        await member.edit(mute=True)
                 else:
-                    await member.edit(mute=False)
+                    if after.mute:
+                        await member.edit(mute=False)
             else:
                 await member.edit(mute=False)
         if before.mute and not after.mute:

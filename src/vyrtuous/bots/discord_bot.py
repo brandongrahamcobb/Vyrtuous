@@ -17,6 +17,7 @@
 import asyncpg
 import discord
 
+from collections import defaultdict
 from discord.ext import commands
 from vyrtuous.utils.inc.helpers import *
 from vyrtuous.utils.inc.setup_logging import logger
@@ -26,11 +27,15 @@ class DiscordBot(commands.Bot):
         try:
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'], help_command=None, intents=intents, **kwargs)
+            
             self.config = config
             self.db_pool = db_pool
             self.lock = lock
             self.oauth_token = oauth_token
             self.api_key = self.config['api_keys']['Discord']['api_key']
+            self.command_aliases: dict[int, dict[str, dict[str, int]]] = defaultdict(
+                lambda: {"mute": {}, "unmute": {}}
+            )
             self.testing_guild_id = self.config['discord_testing_guild_id']
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {e}')
