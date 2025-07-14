@@ -40,17 +40,17 @@ class Indica(commands.Cog):
         self.user_messages = {}
 
     @commands.after_invoke
-    async def after_invoke(ctx):
+    async def after_invoke(ctx) -> None:
         if hasattr(bot, 'db_pool'):
             await bot.db_pool.close()
             
     @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
+    async def on_command_error(self, ctx, error) -> None:
         if isinstance(error, commands.CheckFailure):
             await self.handler.send_message(ctx, content=str(error))
 
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
         if member.bot:
             return
         user_id = member.id

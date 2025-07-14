@@ -29,7 +29,7 @@ class MuteService:
         if self.db_pool:
             await self.db_pool.close()
 
-    async def backup_roles_for_member(self, member: discord.Member):
+    async def backup_roles_for_member(self, member: discord.Member) -> None:
         if not self.db_pool:
             raise RuntimeError('Database pool is not initialized.')
         roles = [
@@ -48,7 +48,19 @@ class MuteService:
         except Exception as e:
             print(f'Error backing up roles for {member}: {e}')
 
-    async def restore_roles_for_member(self, member: discord.Member):
+    async def clean_old_backups(self) -> None:
+        if not self.db_pool:
+            raise RuntimeError('Database pool is not initialized.')
+        cutoff_timestamp = int(time.time()) - EXPIRATION_TIME
+        try:
+            result = await self.db_pool.execute('''
+                DELETE FROM roles_backup
+                WHERE created_at < $1;
+            ''', cutoff_timestamp)
+        except Exception as e:
+            print(f'Error cleaning old backups: {e}')
+            
+    async def restore_roles_for_member(self, member: discord.Member) -> None:
         if not self.db_pool:
             raise RuntimeError('Database pool is not initialized.')
         current_time = int(time.time())
@@ -74,15 +86,3 @@ class MuteService:
                 ''', member.id)
         except Exception as e:
             print(f'Error restoring roles for {member}: {e}')
-
-    async def clean_old_backups(self):
-        if not self.db_pool:
-            raise RuntimeError('Database pool is not initialized.')
-        cutoff_timestamp = int(time.time()) - EXPIRATION_TIME
-        try:
-            result = await self.db_pool.execute('''
-                DELETE FROM roles_backup
-                WHERE created_at < $1;
-            ''', cutoff_timestamp)
-        except Exception as e:
-            print(f'Error cleaning old backups: {e}')

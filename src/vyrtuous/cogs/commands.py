@@ -366,7 +366,7 @@ class Hybrid(commands.Cog):
             content=f'✅ Alias `{alias_name}` ({alias_type}) set to VC {resolved_channel.mention}.'
         )
     
-    def create_mute_aalias(self, command_name: str) -> Command:
+    def create_mute_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(name=command_name, help='Mutes a member in a specific VC.')
         @commands.check(is_moderator)
         async def mute_alias(
