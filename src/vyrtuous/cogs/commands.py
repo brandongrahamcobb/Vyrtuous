@@ -68,11 +68,12 @@ class Hybrid(commands.Cog):
     def create_mute_command(self, command_name: str):
         @commands.hybrid_command(name=command_name)
         @commands.check(is_moderator)
-        @app_commands.describe(
-            member_input="Tag a user or include their user ID",
-            reason="Optionally provide a reason for muting"
-        )
-        async def mute_command(ctx, member_input: str, *, reason: str = "No reason provided."):
+        async def mute_command(
+            ctx,
+            member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+            *,
+            reason: str = commands.parameter(default="N/A", description="Optionally include a reason for the mute.")
+        ):
             guild_id = ctx.guild.id
             member_id = None
             member_object = None
@@ -117,10 +118,11 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(name='reason', help='Get the reason for mute or unmute')
     @commands.check(is_moderator)
-    @app_commands.describe(
-        member_input="Tag a user or include their user ID"
-    )
-    async def reason_command(self, ctx, member_input: str):
+    async def reason_command(
+        self,
+        ctx,
+        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID.")
+    ):
         guild_id = ctx.guild.id
         member_id = None
         member_object = None
@@ -154,11 +156,12 @@ class Hybrid(commands.Cog):
     def create_unmute_command(self, command_name: str):
         @commands.hybrid_command(name=command_name, help="Unmutes a member. Requires room moderator priviledges")
         @commands.check(is_moderator)
-        @app_commands.describe(
-            member_input="Tag a user or include their user ID",
-            reason="Optionally provide a reason for unmuting"
-        )
-        async def unmute_command(ctx, member_input: str, *, reason: str = ""):
+        async def unmute_command(
+            ctx,
+            member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+            *,
+            reason: str = commands.parameter(default="N/A", description="Include a reason for the unmute.")
+        ):
             guild_id = ctx.guild.id
             member_id = None
             member_object = None
@@ -199,10 +202,11 @@ class Hybrid(commands.Cog):
     # For developers
     @commands.hybrid_command(name="dev", help="Gives a user developer status. Requires owner permission")
     @commands.check(is_owner)
-    @app_commands.describe(
-        member_input="Tag a user or include their user ID"
-    )
-    async def add_developer(self, ctx, member_input: str):
+    async def add_developer(
+        self,
+        ctx,
+        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+    ):
         guild_id = ctx.guild.id
         member_id = None
         member_object = None
@@ -258,9 +262,13 @@ class Hybrid(commands.Cog):
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
         
-    @commands.hybrid_command(name="xdev", help="Removes developers in current guild. Requires owner or developer.")
+    @commands.hybrid_command(name="xdev", help="Removes developers in current guild.")
     @commands.check(is_owner_or_developer)
-    async def revoke_developer(self, ctx, member_input: str):
+    async def revoke_developer(
+        self,
+        ctx,
+        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+    ):
         member_id = None
         member_object = None
         if member_input.isdigit():
@@ -287,11 +295,12 @@ class Hybrid(commands.Cog):
     # For moderators
     @commands.hybrid_command(name="mod", help="Gives room moderator status in current guild for a given channel")
     @commands.check(is_owner_or_developer)
-    @app_commands.describe(
-        member_input="Tag a user or include their user ID",
-        channel_input="Tag a channel or include its ID"
-    )
-    async def add_moderator(self, ctx, member_input: str, channel_input: str):
+    async def add_moderator(
+        self,
+        ctx,
+        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+        channel_input: str = commands.parameter(default=None, description="Tag a channel or include its snowflake ID.")
+    ):
         member_id = None
         member_object = None
         if member_input.isdigit():
@@ -374,11 +383,12 @@ class Hybrid(commands.Cog):
         
     @commands.hybrid_command(name="xmod", help="Revokes a member's room moderator role for a given channel. Requires owner or developer.")
     @commands.check(is_owner_or_developer)
-    @app_commands.describe(
-        member_input="Tag a user or include their user ID",
-        channel_input="Tag a channel or include its ID"
-    )
-    async def revoke_moderator(self, ctx, member_input: str, channel_input: str):
+    async def revoke_moderator(
+        self,
+        ctx,
+        member_input: str = commands.parameter(default=None, description="Tag a user or include their snowflake ID."),
+        channel_input: str = commands.parameter(default=None, description="Tag a channel or include its snowflake ID.")
+    ):
         member_id = None
         member_object = None
         if member_input.isdigit():
@@ -419,12 +429,13 @@ class Hybrid(commands.Cog):
 
     # Aliasing
     @commands.hybrid_command(name="delalias", help="Deletes an alias. Requires owner or developer.")
-    @app_commands.describe(
-        alias_type="Either `mute` or `unmute`",
-        alias_name="Name to delete",
-        guild_id="Guild ID"
-    )
-    async def delete_alias(self, ctx, alias_type: str, alias_name: str, guild_id: str):
+    async def delete_alias(
+        self,
+        ctx,
+        alias_type: str = commands.parameter(default=None, description="Include either `mute` or `unmute`"),
+        alias_name: str = commands.parameter(default=None, description="Includ an alias name"),
+        guild_id: str = commands.parameter(default=None, description="Include a guild snowflake ID")
+    ):
         if alias_type.lower() not in {"mute", "unmute"}:
             await ctx.send("❌ `alias_type` must be either `mute` or `unmute`.", ephemeral=True)
             return
@@ -447,7 +458,7 @@ class Hybrid(commands.Cog):
         self.command_aliases[guild_id][alias_type.lower()].pop(alias_name, None)
         await self.handler.send_message(ctx, content=f"✅ Deleted alias `{alias_name}` from `{alias_type}`.")
         
-    @commands.hybrid_command(name="list_aliases", help="List all the aliases in the current guild. Requires owner or developer.")
+    @commands.hybrid_command(name="aliases", help="List all the aliases in the current guild. Requires owner or developer.")
     @commands.check(is_owner_or_developer)
     async def list_aliases(self, ctx):
         guild_id = ctx.guild.id
@@ -460,12 +471,13 @@ class Hybrid(commands.Cog):
         
     @commands.hybrid_command(name="setalias", help="Set a mute/unmute alias for a given channel and guild.")
     @commands.check(is_owner_or_developer)
-    @app_commands.describe(
-        alias_type="Either `mute` or `unmute`",
-        alias_name="Name to create",
-        channel="Tag a channel or include its ID"
-    )
-    async def set_alias(self, ctx, alias_type: str, alias_name: str, channel: str):
+    async def set_alias(
+        self,
+        ctx,
+        alias_type: str = commands.parameter(default=None, description="Include either `mute` or `unmute`"),
+        alias_name: str = commands.parameter(default=None, description="Includ an alias name"),
+        guild_id: str = commands.parameter(default=None, description="Include a guild snowflake ID")
+    ):
         alias_type = alias_type.lower()
         if alias_type not in {"mute", "unmute"}:
             await ctx.send("❌ `alias_type` must be either `mute` or `unmute`.", ephemeral=True)
@@ -507,16 +519,62 @@ class Hybrid(commands.Cog):
             content=f"✅ Alias `{alias_name}` ({alias_type}) set to voice channel {resolved_channel.mention}."
         )
         
-    @commands.hybrid_command(name="help", hidden=True)
-    async def help(self, ctx):
-        available_commands = await self.get_available_commands(ctx.bot, ctx)
-        if not available_commands:
-            await ctx.send("No commands available for you.")
+    @commands.hybrid_command(name="help")
+    async def help(
+        self,
+        ctx,
+        command_name: str = commands.parameter(default="help", description="Include a command name")
+    ):
+        bot = ctx.bot
+        if command_name:
+            cmd = bot.get_command(command_name.lower())
+            if not cmd:
+                await ctx.send(f"❌ Command `{command_name}` not found.")
+                return
+            if cmd.hidden:
+                await ctx.send(f"❌ Command `{command_name}` is hidden.")
+                return
+            if not await cmd.can_run(ctx):
+                await ctx.send(f"❌ You do not have permission to run `{command_name}`.")
+                return
+            embed = discord.Embed(
+                title=f"/{cmd.name}",
+                description=cmd.help or "No description provided.",
+                color=discord.Color.blue()
+            )
+            if cmd.params:
+                for name, param in list(cmd.params.items()):  # Skip `self` and `ctx`
+                    annotation = param.annotation.__name__ if hasattr(param.annotation, "__name__") else str(param.annotation)
+                    embed.add_field(
+                        name=name,
+                        value=f"Type: `{annotation}`\nRequired: `{param.default == param.empty}`",
+                        inline=False
+                    )
+            await ctx.send(embed=embed)
             return
-    
-        lines = [f"**{cmd.name}**: {cmd.help or 'No description'}" for cmd in available_commands]
-        help_message = "\n".join(lines)
-        await ctx.send(f"Available commands:\n{help_message}")
+        all_commands = await self.get_available_commands(bot, ctx)
+        if not all_commands:
+            await ctx.send("❌ No commands available to you.")
+            return
+        cog_map: dict[str, list[commands.Command]] = {}
+        for command in all_commands:
+            if command.hidden:
+                continue
+            cog_name = command.cog_name or "Uncategorized"
+            cog_map.setdefault(cog_name, []).append(command)
+        pages = []
+        for cog_name in sorted(cog_map):
+            commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
+            embed = discord.Embed(
+                title=f"{cog_name} Commands",
+                color=discord.Color.green()
+            )
+            for cmd in commands_in_cog:
+                embed.description = embed.description or ""
+                embed.description += f"**/{cmd.name}** – {cmd.help or 'No description'}\n"
+            pages.append(embed)
+        paginator = Paginator(bot, ctx, pages)
+        await paginator.start()
     
 async def setup(bot: commands.Bot):
     cog = Hybrid(bot)
