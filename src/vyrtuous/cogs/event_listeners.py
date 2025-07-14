@@ -116,23 +116,6 @@ async def on_voice_state_update(self, member: discord.Member, before: discord.Vo
                 await self.bot.invoke(ctx)
 
     @commands.Cog.listener()
-    async def on_message(self, message):
-        try:
-            if message.author.id == message.is_system():
-                return
-            ctx = await self.bot.get_context(message)
-            author = ctx.author.name
-            return
-        except Exception as e:
-            logger.error(traceback.format_exc())
-        finally:
-            try:
-                shutil.rmtree(DIR_TEMP)
-                os.makedirs(DIR_TEMP, exist_ok=True)
-            except Exception as cleanup_error:
-                logger.error(f"Error cleaning up temporary files: {cleanup_error}")
-
-    @commands.Cog.listener()
     async def on_ready(self):
         bot_user = self.bot.user
         bot_name = bot_user.name
