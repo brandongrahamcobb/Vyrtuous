@@ -112,7 +112,6 @@ async def is_channel_moderator(ctx):
             break
     if not target_channel_id:
         raise NotModerator("This command alias is not mapped to a target channel.")
-    setattr(ctx, "_target_channel_id", target_channel_id)
     async with bot.db_pool.acquire() as conn:
         row = await conn.fetchrow("""
             SELECT moderator_ids FROM users WHERE user_id = $1

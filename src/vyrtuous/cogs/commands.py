@@ -91,25 +91,28 @@ class Hybrid(commands.Cog):
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('mute', {}).get(command_name)
             async with self.db_pool.acquire() as conn:
                 await conn.execute('''
+                    INSERT INTO active_mutes (user_id, channel_id, source)
+                    VALUES ($1, $2, 'bot')
+                    ON CONFLICT DO NOTHING
+                ''', member_object.id, static_channel_id)
+                await conn.execute('''
                     INSERT INTO users (user_id, mute_channel_ids)
                     VALUES ($1, ARRAY[$2]::BIGINT[])
                     ON CONFLICT (user_id) DO UPDATE
                     SET mute_channel_ids = (
                         SELECT ARRAY(
-                            SELECT DISTINCT unnest(u.mute_channel_ids || EXCLUDED.mute_channel_ids)
+                            SELECT DISTINCT unnest(u.mute_channel_ids || ARRAY[$2])
                         )
                         FROM users u WHERE u.user_id = EXCLUDED.user_id
                     ),
                     updated_at = NOW()
                 ''', member_object.id, static_channel_id)
-            
                 await conn.execute('''
                     INSERT INTO mute_reasons (guild_id, user_id, reason, channel_id)
                     VALUES ($1, $2, $3, $4)
                     ON CONFLICT (guild_id, user_id, channel_id)
                     DO UPDATE SET reason = EXCLUDED.reason
                 ''', guild_id, member_object.id, reason, static_channel_id)
-
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                 await member_object.edit(mute=True)
                 await self.handler.send_message(ctx, content=f'{member_object.mention} has been muted in <#{static_channel_id}> with reason {reason}.')
@@ -179,19 +182,30 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unmute', {}).get(command_name)
             async with self.db_pool.acquire() as conn:
-                await conn.execute('''
+                row = await conn.fetchrow("""
+                    SELECT source FROM active_mutes
+                    WHERE user_id = $1 AND channel_id = $2
+                """, member_object.id, static_channel_id)
+                if not row or row["source"] != "bot":
+                    return await self.handler.send_message(ctx, content=f"❌ {member_object.mention} was not muted by the bot in <#{static_channel_id}>.")
+                if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
+                    await member_object.edit(mute=False)
+                await conn.execute("""
+                    DELETE FROM active_mutes
+                    WHERE user_id = $1 AND channel_id = $2 AND source = 'bot'
+                """, member_object.id, static_channel_id)
+                await conn.execute("""
                     UPDATE users
                     SET mute_channel_ids = array_remove(mute_channel_ids, $2),
                         updated_at = NOW()
                     WHERE user_id = $1
-                ''', member_object.id, static_channel_id)
-    
-                await conn.execute('''
-                    INSERT INTO mute_reasons (guild_id, user_id, reason, channel_id)
+                """, member_object.id, static_channel_id)
+                await conn.execute("""
+                    INSERT INTO mute_reasons (guild_id, user_id, channel_id, reason)
                     VALUES ($1, $2, $3, $4)
                     ON CONFLICT (guild_id, user_id, channel_id)
                     DO UPDATE SET reason = EXCLUDED.reason
-                ''', guild_id, member_object.id, reason, static_channel_id)
+                """, guild_id, member_object.id, static_channel_id, reason)
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                 await member_object.edit(mute=False)
                 await self.handler.send_message(ctx, content=f'{member_object.mention} has been unmuted in <#{static_channel_id}>.')
