@@ -35,7 +35,7 @@ class Hybrid(commands.Cog):
         self.handler = MessageService(self.bot, self.config, self.bot.db_pool)
         self.command_aliases: dict[int, dict[str, dict[str, int]]] = defaultdict(lambda: {"mute": {}, "unmute": {}})
   
-    async def get_available_commands(bot, ctx):
+    async def get_available_commands(self, bot, ctx):
         available_commands = []
         for command in bot.commands:
             try:
@@ -264,7 +264,7 @@ class Hybrid(commands.Cog):
             member_object = ctx.guild.get_member(member_id)
         if not member_object:
             return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
-        async with bot.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute("""
                 INSERT INTO users (user_id, developer_guild_ids)
                 VALUES ($1, ARRAY[$2]::BIGINT[])
@@ -323,7 +323,7 @@ class Hybrid(commands.Cog):
         if not member_object:
             return await self.handler.send_message(ctx, content="Could not resolve a valid guild member from your input.")
         guild_id = ctx.guild.id
-        async with bot.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute("""
                 UPDATE users
                 SET developer_guild_ids = array_remove(developer_guild_ids, $2),
@@ -537,7 +537,7 @@ class Hybrid(commands.Cog):
 
         @commands.hybrid_command(name="help", hidden=True)
         async def help(self, ctx):
-            available_commands = await get_available_commands(ctx.bot, ctx)
+            available_commands = await self.get_available_commands(ctx.bot, ctx)
             if not available_commands:
                 await ctx.send("No commands available for you.")
                 return
