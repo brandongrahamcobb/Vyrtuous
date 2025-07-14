@@ -191,7 +191,7 @@ class Hybrid(commands.Cog):
                     VALUES ($1, $2, $3, $4)
                     ON CONFLICT (guild_id, user_id, channel_id)
                     DO UPDATE SET reason = EXCLUDED.reason
-                ''', guild_id, member_object.id, reason)
+                ''', guild_id, member_object.id, reason, static_channel_id)
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                 await member_object.edit(mute=False)
                 await self.handler.send_message(ctx, content=f'{member_object.mention} has been unmuted in <#{static_channel_id}>.')
