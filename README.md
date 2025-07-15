@@ -2,40 +2,43 @@
 
 ![Vyrtuous UML Diagram](resources/pictures/VyrtuousUML.svg)
 
-* Room moderator data persistence
-* Custom room mute commands
-* Custom room unmute commands
-* Loading and unloading Cogs, the fundamental components of the Discord bot
-* Backing up roles and redeploying the backup
+* Custom room mute commands.
+* Custom room unmute commands.
+* No conflict with manual muting.
+* PostgreSQL database information like developers, moderators and roles.
+* Loading and unloading Cogs, the fundamental components of the Discord bot.
+* Backup redelployment commands.
 
 ## Features
 
 Moderation Features
 
-• `delalias <mute|unmute> <alias>` — Delete a room specific alias for mute or unmute.
+• `alias <mute|unmute> <alias> <channelId>` — Create a room specific alias for users to use to mute or unmute members in their room.
 
-• `setalias <mute|unmute> <alias> <channelId>` — Create a room specific alias for users to use to mute or unmute members in their room.
+• `dev <userId> <guildId>` — Give a user permissions to operate the bot in the guild as a developer.
+
+• `devs` — Lists all the current devs in the guild where the command was run.
 
 • `help <command>` - Get command-specific usage information.
 
-• `give_mod <userId> <channelId>` — Give a user's permissions in a room to mute and unmute members.
+• `mod <userId> <channelId>` — Give a user's permissions in a room to mute and unmute members.
 
-• `list_mods <userId>` — Lists all the current room mods in the server where the command was run.
+• `mods` — Lists all the current room mods in the guild where the command was run.
 
-• `revoke_mod <userId> <channelId>` — Revoke a user's permissions in a room to mute and unmute members.
+• `xalias <mute|unmute> <alias>` — Delete a room specific alias for mute or unmute.
 
-• `give_dev <userId>` — Give a user permissions to operate the bot in the server as a developer.
+• `xdev <userId> <guildid>` — Revoke a user's permissions to operate the bot in the guild as a developer.
 
-• `list_devs <userId>` — Lists all the current devs in the server where the command was run.
+• `xmod <userId> <channelId>` — Revoke a user's permissions in a room to mute and unmute members.
 
-• `revoke_dev <userId>` — Revoke a user's permissions to operate the bot in the server as a developer.
 
 Lifecycle Features
+
 • `load <path-to-cog>` — Loads the bot's cogs after an unload.
 
 • `reload <path-to-cog>` - Reloads the bot's cogs on the fly.
 
-• `sync <~|^|*|>` or `sync` - Syncs the command tree for the bot to a server for application command access.
+• `sync <~|^|*|>` or `sync` - Syncs the command tree for the bot to a guild for application command access.
 
 ## Installation
 
@@ -102,7 +105,7 @@ Enter api_key
 Your settings are saved to:
 
 ```txt
-/venv/lib/<python-version>/site-packages/vyrtuous/.config/config.yml
+~/.config/vyrtuous/config.yml
 ```
 
 Subsequent launches read from this file—no environment variables needed.
@@ -119,20 +122,31 @@ The bot will load or create its config, connect to Discord, and register command
 
 ## Commands
 
-Replace `<prefix>` with your configured prefix (default `!`).
+Replace `<prefix>` with your configured prefix (default `?`).
 
-• `!delalias <mute|unmute> <alias>`
-• `!setalias <mute|unmute> <alias> <channelId>`
-• `!help <command>`
-• `!give_mod <userId> <channelId>`
-• `!list_mods <userId>`
-• `!revoke_mod <userId> <channelId>`
-• `!give_dev <userId>`
-• `!list_devs <userId>`
-• `!revoke_dev <userId>`
-• `!load <path-to-cog>`
-• `!reload <path-to-cog>`
-• `!sync <~|^|*|>` or `sync`
+• `?xalias <mute|unmute> <alias>`
+
+• `?alias <mute|unmute> <alias> <channelId>`
+
+• `?dev <userId>`
+
+• `?devs`
+
+• `?help <command>` or `?help`
+
+• `?load <path-to-cog>`
+
+• `?mod <userId> <channelId>`
+
+• `?mods`
+
+• `?reload <path-to-cog>`
+
+• `?xdev <userId>`
+
+• `?xmod <userId> <channelId>`
+
+• `?sync <~|^|*|>` or `?sync`
 
 ## License
 
