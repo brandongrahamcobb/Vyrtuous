@@ -484,16 +484,23 @@ class Hybrid(commands.Cog):
     async def delete_alias(
         self,
         ctx,
-        alias_type: str = commands.parameter(description='Include either `mute` or `unmute`'),
         alias_name: str = commands.parameter(description='Includ an alias name')
     ) -> None:
-        if alias_type.lower() not in {'mute', 'unmute'}:
-            await ctx.send('❌ `alias_type` must be either `mute` or `unmute`.', ephemeral=True)
-            return
         if not alias_name.strip():
             await ctx.send('❌ `alias_name` cannot be empty.', ephemeral=True)
             return
         guild_id = ctx.guild.id
+        alias_type = None
+        for candidate in ("mute", "unmute"):
+            if alias_name in self.bot.command_aliases.get(guild_id, {}).get(candidate, {}):
+                alias_type = candidate
+                break
+        if alias_type.lower() not in {'mute', 'unmute'}:
+            await ctx.send('❌ `alias_type` must be either `mute` or `unmute`.', ephemeral=True)
+            return
+        if not alias_type:
+            await ctx.send(f'❌ Alias `{alias_name}` not found.', ephemeral=True)
+            return
         alias_map = self.bot.command_aliases.get(guild_id, {}).get(alias_type.lower(), {})
         if alias_name not in alias_map:
             await ctx.send(f'❌ Alias `{alias_name}` not found in `{alias_type}` for guild `{guild_id}`.', ephemeral=True)
