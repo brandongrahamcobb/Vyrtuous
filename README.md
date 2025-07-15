@@ -124,8 +124,6 @@ The bot will load or create its config, connect to Discord, and register command
 
 Replace `<prefix>` with your configured prefix (default `?`).
 
-• `?xalias <mute|unmute> <alias>`
-
 • `?alias <mute|unmute> <alias> <channelId>`
 
 • `?dev <userId>`
@@ -141,6 +139,8 @@ Replace `<prefix>` with your configured prefix (default `?`).
 • `?mods`
 
 • `?reload <path-to-cog>`
+
+• `?xalias <mute|unmute> <alias>`
 
 • `?xdev <userId>`
 
