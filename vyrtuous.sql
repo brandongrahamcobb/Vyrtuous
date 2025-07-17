@@ -1,6 +1,8 @@
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS command_aliases;
 DROP TABLE IF EXISTS mute_reasons;
+DROP TABLE IF EXISTS active_mutes;
+
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
     mute_channel_ids BIGINT[],              -- an array of channel IDs where user is muted
