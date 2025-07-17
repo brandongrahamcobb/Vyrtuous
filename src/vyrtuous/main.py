@@ -43,6 +43,7 @@ async def start_bot(bot, name):
 
 async def main():
     config = Config().get_config()
+
     increment_version()
     setup_logging(config, PATH_LOG)
 
