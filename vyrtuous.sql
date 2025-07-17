@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     role_ids BIGINT[],                      -- an array of role IDs associated with the user
     moderator_ids BIGINT[],                 -- an array of channel IDs where user is a moderator
     developer_guild_ids BIGINT[],           -- an array of guild IDs where user has developer rights
+    flagged BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
