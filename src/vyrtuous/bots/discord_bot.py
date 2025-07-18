@@ -33,9 +33,6 @@ class DiscordBot(commands.Bot):
             self.lock = lock
             self.oauth_token = oauth_token
             self.api_key = self.config['api_keys']['Discord']['api_key']
-            self.command_aliases: dict[int, dict[str, dict[str, int]]] = defaultdict(
-                lambda: {"mute": {}, "unmute": {}}
-            )
             self.testing_guild_id = self.config['discord_testing_guild_id']
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {e}')
@@ -52,7 +49,7 @@ class DiscordBot(commands.Bot):
                 await self.load_extension(cog)
             if self.testing_guild_id:
                 guild = discord.Object(id=self.testing_guild_id)
-               # self.tree.copy_global_to(guild=guild)
+                self.tree.copy_global_to(guild=guild)
                 await self.tree.sync(guild=guild)
         except Exception as e:
             logger.error(f'Error during Discord bot setup_hook: {e}')

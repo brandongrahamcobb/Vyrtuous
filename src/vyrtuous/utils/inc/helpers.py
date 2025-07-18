@@ -31,41 +31,28 @@ DIR_TEMP = join(DIR_BASE, 'vyrtuous', 'temp')
 #### PATHS
 ### Path: Root (Py_vyrtuous)
 PATH_TOML = join(DIR_HOME, 'git', 'python', 'Vyrtuous', 'pyproject.toml')
-## Path: Source (src)
 # Path: Py_Py_vyrtuous (vyrtuous)
 PATH_BASHRC = join(DIR_HOME, '.bashrc_vyrtuous')
 PATH_CONFIG = join(DIR_BASE, 'vyrtuous', 'config.py')
 PATH_CONFIG_YAML = join(DIR_HOME, '.config', 'vyrtuous', 'config.yaml')
 PATH_LOG = join(DIR_BASE, 'vyrtuous', '.log', 'discord.log')
 PATH_MAIN = join(DIR_BASE, 'vyrtuous', 'main.py')
-PATH_USERS = join(DIR_BASE, 'vyrtuous', '.users', 'users.yaml')
 # Path: Bots (bots)
 PATH_DISCORD_BOT = join(DIR_BASE, 'vyrtuous', 'bots', 'discord_bot.py')
 # Path: Cogs (cogs)
 PATH_EVENT_LISTENERS = join(DIR_BASE, 'vyrtuous', 'cogs', 'event_listeners.py')
-PATH_OWNER_COMMANDS = join(DIR_BASE, 'vyrtuous', 'cogs', 'commands_extra.py')
-PATH_PUBLIC_COMMANDS = join(DIR_BASE, 'vyrtuous', 'cogs', 'commands.py')
-PATH_SCHEDULED_TASKS = join (DIR_BASE, 'vyrtuous', 'cogs', 'scheduled_tasks.py')
 # Path: Handlers (handlers)
-PATH_MESSAGE = join(DIR_BASE, 'vyrtuous', 'utils', 'handlers', 'message_service..py')
-PATH_PREDICATOR = join(DIR_BASE, 'vyrtuous', 'utils', 'handlers', 'predicator.py')
-PATH_ROLE_MANAGER = join(DIR_BASE, 'vyrtuous', 'utils', 'handlers', 'mute_service.py')
-# Path: Include (inc)
 PATH_HELPERS = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'helpers.py')
 PATH_INCREMENT_VERSION = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'increment_version.py')
 PATH_LOAD_CONTENTS = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'load_contents.py')
 PATH_LOAD_YAML = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'load_yaml.py')
 PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'prompt_for_values.py')
 PATH_SETUP_LOGGING = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'setup_logging.py')
-#### CONTENTS
 #### DISCORD
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
-    'vyrtuous.cogs.commands',
-    'vyrtuous.cogs.commands_extra',
     'vyrtuous.cogs.event_listeners',
-    'vyrtuous.cogs.scheduled_tasks',
 ]
 DISCORD_COMMAND_PREFIX = '!'
 DISCORD_DEVELOPER_CHANNEL = 1391574892826329261

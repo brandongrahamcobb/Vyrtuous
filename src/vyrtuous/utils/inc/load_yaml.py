@@ -20,7 +20,6 @@ import traceback
 import yaml
 from vyrtuous.utils.inc.setup_logging import logger
 
-
 def load_yaml(path_to_file):
     try:
         if not os.path.exists(path_to_file):

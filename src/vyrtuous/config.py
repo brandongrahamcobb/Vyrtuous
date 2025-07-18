@@ -24,7 +24,6 @@ from vyrtuous.utils.inc.load_yaml import load_yaml
 from vyrtuous.utils.inc.prompt_for_values import prompt_for_values
 from vyrtuous.utils.inc.setup_logging import logger
 
-
 class Config:
 
     _config = None
