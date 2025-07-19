@@ -53,6 +53,7 @@ source .venv/bin/activate
 ## Configuration
 
 On first run, The Vyrtuous Project will prompt you to enter and confirm:
+
 • Discord bot token
 
 ```txt
