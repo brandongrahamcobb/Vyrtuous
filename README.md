@@ -21,9 +21,13 @@ Lifecycle Features
 ## Installation
 
 Prerequisites:
+
 • Python 3.13+ (`python3 --version`)
+
 • pip (`pip --version`)
+
 • PostgreSQL (`psql --version`)
+
 • Docker (`docker --version`)
 
 1. Clone the repo
