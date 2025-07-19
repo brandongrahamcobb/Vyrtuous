@@ -30,7 +30,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PACKAGE_ROOT))
 
 async def database_init():
-    return await asyncpg.create_pool(database='vyrtuous', user='postgres', command_timeout=30)
+    return await asyncpg.create_pool(host='db', database='vyrtuous', user='postgres', password='password', command_timeout=30)
 
 async def start_bot(bot, name):
     try:
@@ -44,7 +44,6 @@ async def start_bot(bot, name):
 async def main():
     config = Config().get_config()
 
-    increment_version()
     setup_logging(config, PATH_LOG)
 
     db_pool = await database_init()
