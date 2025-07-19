@@ -5,19 +5,13 @@ services:
       POSTGRES_DB: vyrtuous
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+    volumes:
+      - ./schema:/docker-entrypoint-initdb.d
   vyrtuous:
     build: .
     container_name: vyrtuous
     depends_on:
       - db
-    env_file:
-      - /Users/spawd/.env_vyrtuous
-    volumes:
-      - ./src/vyrtuous:/app/vyrtuous
-    ports:
-      - "2001:2001"  # Remove or adjust if not running a web app
-      - "3000:3000"
-    command: python -u vyrtuous/main.py
     environment:
       DATABASE_HOST: db
       DATABASE_USER: postgres
@@ -25,6 +19,13 @@ services:
       DATABASE_NAME: vyrtuous
       PYTHONPATH: /app
       PYTHONUNBUFFERED: '1'
+    env_file:
+      - /home/spawd/.env_vyrtuous
+    volumes:
+      - ~/.config/vyrtuous:/root/.config/vyrtuous
+      - ./src/vyrtuous:/app/vyrtuous
+    ports:
+      - "3000:3000"
+    command: python -u vyrtuous/main.py
     stdin_open: true  # Keep stdin open (like -i)
     tty: true
-    platform: linux/arm64

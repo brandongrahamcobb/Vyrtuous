@@ -1,0 +1,2 @@
+DROP DATABASE IF EXISTS vyrtuous;
+CREATE DATABASE vyrtuous;
