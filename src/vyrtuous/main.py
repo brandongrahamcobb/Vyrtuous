@@ -15,23 +15,23 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import asyncio
-import sys
 from pathlib import Path
-
-import asyncpg
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.increment_version import increment_version
 from vyrtuous.utils.setup_logging import setup_logging
 from vyrtuous.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
+import asyncio
+import asyncpg
+import os
+import sys
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PACKAGE_ROOT))
 
 async def database_init():
-    return await asyncpg.create_pool(host='db', database='vyrtuous', user='postgres', password='password', command_timeout=30)
+    return await asyncpg.create_pool(host=os.getenv('POSTGRES_HOST'), database=os.getenv('POSTGRES_DATABASE'), user=os.getenv('POSTGRES_USER'), password=os.getenv('POSTGRES_PASSWORD'), command_timeout=30)
 
 async def start_bot(bot, name):
     try:
@@ -54,7 +54,7 @@ async def main():
     discord_oauth = DiscordOAuth(config)
     setup_discord_routes(discord_app, discord_oauth)
 
-    discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=2000))
+    discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=2592))
     print("Please authenticate Discord by visiting the following URL:")
     print(discord_oauth.get_authorization_url())
 

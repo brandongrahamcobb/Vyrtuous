@@ -1,3 +1,4 @@
+ALTER DATABASE vyrtuous OWNER TO spawd;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS command_aliases;
 DROP TABLE IF EXISTS mute_reasons;

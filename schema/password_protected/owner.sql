@@ -1,0 +1,2 @@
+CREATE ROLE spawd WITH LOGIN PASSWORD 'password';
+ALTER DATABASE vyrtuous OWNER TO spawd;

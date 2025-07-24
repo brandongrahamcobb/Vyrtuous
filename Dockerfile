@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libqt5gui5 \
     libqt5webkit5-dev \
     libqt5svg5-dev \
+    postgresql-client \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -24,5 +25,6 @@ COPY pyproject.toml poetry.lock* ./
 RUN pip install --no-cache-dir poetry
 
 RUN poetry install --no-root
+
 
 CMD ["python", "-u", "vyrtuous/main.py"] 
