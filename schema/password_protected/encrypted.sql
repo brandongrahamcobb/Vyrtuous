@@ -9,48 +9,60 @@ DROP TABLE IF EXISTS active_bans;
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
     ban_channel_ids BIGINT[],
-    mute_channel_ids BIGINT[],              -- an array of channel IDs where user is muted
+    mute_channel_ids BIGINT[],
     manual_mute_channels BIGINT[],
-    role_ids BIGINT[],                      -- an array of role IDs associated with the user
-    moderator_ids BIGINT[],                 -- an array of channel IDs where user is a moderator
+    role_ids BIGINT[],
+    moderator_ids BIGINT[],
     coordinator_ids BIGINT[],
-    developer_guild_ids BIGINT[],           -- an array of guild IDs where user has developer rights
+    developer_guild_ids BIGINT[],
     flagged BOOLEAN DEFAULT FALSE,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE TABLE command_aliases (
+
+CREATE TABLE IF NOT EXISTS command_aliases (
     guild_id BIGINT NOT NULL,
-    alias_type TEXT NOT NULL CHECK (alias_type IN ('mute', 'unmute', 'ban', 'unban')),
+    alias_type TEXT NOT NULL CHECK (alias_type IN (
+        'mute', 'unmute', 'ban', 'unban', 'role', 'unrole'
+    )),
     alias_name TEXT NOT NULL,
     channel_id BIGINT NOT NULL,
+    role_id BIGINT,
     PRIMARY KEY (guild_id, alias_type, alias_name)
 );
-CREATE TABLE mute_reasons (
-    guild_id   BIGINT NOT NULL,
-    user_id    BIGINT NOT NULL,
+
+CREATE TABLE IF NOT EXISTS mute_reasons (
+    guild_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    reason     TEXT,
+    reason TEXT,
     PRIMARY KEY (guild_id, user_id, channel_id)
 );
-CREATE TABLE ban_reasons (
-    guild_id   BIGINT NOT NULL,
-    user_id    BIGINT NOT NULL,
+
+CREATE TABLE IF NOT EXISTS ban_reasons (
+    guild_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    reason     TEXT,
+    reason TEXT,
     PRIMARY KEY (guild_id, user_id, channel_id)
 );
-CREATE TABLE active_bans (
-    user_id BIGINT,
-    channel_id BIGINT,
+
+-- Currently active bans
+CREATE TABLE IF NOT EXISTS active_bans (
+    user_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
     PRIMARY KEY (user_id, channel_id)
 );
-CREATE TABLE active_mutes (
-    user_id BIGINT,
-    channel_id BIGINT,
+
+-- Currently active mutes
+CREATE TABLE IF NOT EXISTS active_mutes (
+    user_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
     source TEXT CHECK (source IN ('bot', 'manual')),
     PRIMARY KEY (user_id, channel_id)
 );
+
+-- Expiring bans
 CREATE TABLE IF NOT EXISTS ban_expirations (
     user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
