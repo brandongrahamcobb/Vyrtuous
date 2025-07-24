@@ -1,0 +1,6 @@
+2025-07-24 01:12:44,631 - vyrtuous.utils.inc.setup_logging - ERROR - Error running DiscordBot: Improper token has been passed.
+2025-07-24 01:15:39,677 - vyrtuous.utils.inc.setup_logging - ERROR - Error running DiscordBot: Improper token has been passed.
+2025-07-24 01:18:30,757 - vyrtuous.utils.inc.setup_logging - ERROR - Error during Discord bot setup_hook: Extension 'vyrtuous.cogs.event_listeners' raised an error: NameError: name 'DiscordMessageService' is not defined
+2025-07-24 01:19:42,596 - vyrtuous.utils.inc.setup_logging - ERROR - Error during Discord bot setup_hook: Extension 'vyrtuous.cogs.event_listeners' raised an error: SyntaxError: invalid syntax (discord_message_service.py, line 1)
+2025-07-24 01:20:51,908 - vyrtuous.utils.inc.setup_logging - ERROR - Error during Discord bot setup_hook: Extension 'vyrtuous.cogs.event_listeners' raised an error: SyntaxError: invalid syntax (discord_message_service.py, line 1)
+2025-07-24 01:21:44,745 - vyrtuous.utils.inc.setup_logging - ERROR - Error during Discord bot setup_hook: Extension 'vyrtuous.cogs.event_listeners' raised an error: TypeError: DiscordMessageService.__init__() takes 3 positional arguments but 4 were given

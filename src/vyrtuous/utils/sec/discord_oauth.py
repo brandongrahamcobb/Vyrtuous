@@ -14,12 +14,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import asyncio
 from datetime import datetime, timedelta
+from quart import Quart, request, redirect
+from vyrtuous.utils.inc.setup_logging import logger
 
 import aiohttp
-from vyrtuous.utils.inc.setup_logging import logger
-from quart import Quart, request, redirect
+import asyncio
+import os
 
 discord_app = Quart(__name__)
 
@@ -31,7 +32,7 @@ class DiscordOAuth:
         self.expires_at = None
         self.token_event = asyncio.Event()
         self.client_id = self.config['api_keys']['Discord']['client_id']
-        self.client_secret = self.config['api_keys']['Discord']['client_secret']
+        self.client_secret = os.getenv('DISCORD_CLIENT_SECRET')
         self.redirect_uri = self.config['api_keys']['Discord']['redirect_uri']
 
     def get_authorization_url(self):

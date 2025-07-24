@@ -7,6 +7,11 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - ./schema:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   vyrtuous:
     build: .
     container_name: vyrtuous
@@ -20,7 +25,7 @@ services:
       PYTHONPATH: /app
       PYTHONUNBUFFERED: '1'
     env_file:
-      - /home/spawd/.env_vyrtuous
+      - /Users/spawd/.env_vyrtuous
     volumes:
       - ~/.config/vyrtuous:/root/.config/vyrtuous
       - ./src/vyrtuous:/app/vyrtuous

@@ -1,4 +1,5 @@
-''' indica.py The purpose of the program is to be an extension for a Discord bot for listeners.
+''' event_listeners.py
+
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -15,22 +16,20 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands
+
+from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.utils.inc.helpers import *
 from vyrtuous.utils.inc.setup_logging import logger
 
 import discord
 
-class Indica(commands.Cog):
+class EventListeners(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
         self.db_pool = bot.db_pool
-
-    @commands.after_invoke
-    async def after_invoke(ctx) -> None:
-        if hasattr(bot, 'db_pool'):
-            await bot.db_pool.close()
+        self.handler = DiscordMessageService(self.bot, self.db_pool)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
@@ -91,5 +90,17 @@ class Indica(commands.Cog):
                     if after.mute:
                         await member.edit(mute=False)
 
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if before.content != after.content:
+            ctx = await self.bot.get_context(after)
+            if ctx.command:
+                await self.bot.invoke(ctx)
+            
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error) -> None:
+        if isinstance(error, commands.CheckFailure):
+            await self.handler.send_message(ctx, content=str(error))
+            
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Indica(bot))
+    await bot.add_cog(EventListeners(bot))

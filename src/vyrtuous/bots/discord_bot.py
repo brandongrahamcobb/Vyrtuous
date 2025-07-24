@@ -16,6 +16,7 @@
 '''
 import asyncpg
 import discord
+import os
 
 from collections import defaultdict
 from discord.ext import commands
@@ -26,21 +27,21 @@ class DiscordBot(commands.Bot):
     def __init__(self, *, config, db_pool: asyncpg.Pool, lock, oauth_token, **kwargs):
         try:
             intents = discord.Intents.all()
-            super().__init__(command_prefix=config['discord_command_prefix'], help_command=None, intents=intents, **kwargs)
+            super().__init__(command_prefix=os.getenv('DISCORD_COMMAND_PREFIX'), help_command=None, intents=intents, **kwargs)
             
             self.config = config
             self.db_pool = db_pool
             self.lock = lock
             self.oauth_token = oauth_token
-            self.api_key = self.config['api_keys']['Discord']['api_key']
+            self.api_key = os.getenv('DISCORD_API_KEY')
             self.testing_guild_id = self.config['discord_testing_guild_id']
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {e}')
 
-    async def process_commands(self, message):
-            """Override process_commands to listen to bots."""
-            ctx = await self.get_context(message)
-            await self.invoke(ctx)
+#    async def process_commands(self, message):
+#            """Enable to listen to bots."""
+#            ctx = await self.get_context(message)
+#            await self.invoke(ctx)
         
     async def setup_hook(self) -> None:
         try:
