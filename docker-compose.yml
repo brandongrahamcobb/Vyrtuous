@@ -19,11 +19,11 @@ services:
       PYTHONUNBUFFERED: '1'
     env_file:
       - /Users/spawd/.env_vyrtuous
+    expose:
+      - "2592"
     volumes:
       - ~/.config/vyrtuous:/root/.config/vyrtuous
       - ./src/vyrtuous:/app/vyrtuous
-    ports:
-      - "2592:2592"
     command: python -u vyrtuous/main.py
     stdin_open: true  # Keep stdin open (like -i)
     tty: true
