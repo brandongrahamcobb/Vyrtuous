@@ -16,12 +16,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord.ext import commands
-
 from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 
 import discord
+import inspect
 
 class EventListeners(commands.Cog):
 
@@ -96,9 +96,37 @@ class EventListeners(commands.Cog):
             ctx = await self.bot.get_context(after)
             if ctx.command:
                 await self.bot.invoke(ctx)
-            
+                
+    async def send_command_help(self, ctx: commands.Context, cmd: commands.Command) -> None:
+        embed = discord.Embed(
+            title=f'/{cmd.name}',
+            description=cmd.help or 'No description provided.',
+            color=discord.Color.blue()
+        )
+    
+        sig = inspect.signature(cmd.callback)
+        parameters = list(sig.parameters.items())[2:]  # Skip self and ctx
+    
+        for name, param in parameters:
+            is_optional = param.default != inspect.Parameter.empty
+            annotation = (
+                param.annotation.__name__
+                if hasattr(param.annotation, '__name__')
+                else str(param.annotation)
+            )
+            label = 'Optional' if is_optional else 'Required'
+            embed.add_field(
+                name=f'`{name}`',
+                value=f'Type: `{annotation}`\n{label}',
+                inline=False
+            )
+    
+        await ctx.send(embed=embed)
+        
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error) -> None:
+        if isinstance(error, commands.MissingRequiredArgument):
+            await self.send_command_help(ctx, ctx.command)
         if isinstance(error, commands.CheckFailure):
             await self.handler.send_message(ctx, content=str(error))
             

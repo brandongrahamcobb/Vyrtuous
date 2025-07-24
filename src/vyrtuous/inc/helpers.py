@@ -53,9 +53,9 @@ PATH_SETUP_LOGGING = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'setup_logging.p
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
-    'vyrtuous.cogs.commands',
     'vyrtuous.cogs.dev_commands',
     'vyrtuous.cogs.event_listeners',
+    'vyrtuous.cogs.hybrid_commands',
     'vyrtuous.cogs.scheduled_tasks'
 ]
 DISCORD_COMMAND_PREFIX = '!'

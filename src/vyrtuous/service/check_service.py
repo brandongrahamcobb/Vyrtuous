@@ -19,6 +19,9 @@
 import discord
 from discord.ext import commands
 from vyrtuous.utils.setup_logging import logger
+from vyrtuous.config import Config  # adjust import path accordingly
+
+config = Config.get_config()
        
 class NotModerator(commands.CheckFailure):
     def __init__(self, message="You are not a moderator in the requested channel."):
@@ -45,7 +48,7 @@ class NotAtHome(commands.CheckFailure):
         super().__init__(message)
 
 async def at_home(ctx) -> bool:
-    if ctx.guild is not None and ctx.guild.id == self.config['discord_testing_guild_id']:
+    if ctx.guild is not None and ctx.guild.id == config['discord_testing_guild_id']:
         return True
     raise NotAtHome()
                                     

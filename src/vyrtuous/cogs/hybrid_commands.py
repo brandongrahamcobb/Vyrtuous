@@ -59,7 +59,7 @@ class Hybrid(commands.Cog):
     #
     #  Help Command: helper method for the help command.
     #
-    async def get_available_commands(self, bot, ctx) -> List[Command]:
+    async def get_available_commands(self, bot, ctx) -> list[commands.Command]:
         available_commands = []
         for command in bot.commands:
             try:
@@ -67,6 +67,9 @@ class Hybrid(commands.Cog):
                     available_commands.append(command)
             except commands.CheckFailure:
                 continue
+            except Exception as e:
+                print(f"❌ Exception while checking command '{command}': {e}")
+        print(f"✅ Returning {len(available_commands)} available commands")
         return available_commands
     
     #
@@ -629,7 +632,7 @@ class Hybrid(commands.Cog):
                 label = 'Optional' if is_optional else 'Required'
                 display = f'Type: `{annotation}`\n{label}'
                 if description:
-                    display += f'\nDescription: {description}'
+                    display += f'\n{description}'
                 embed.add_field(name=f'`{name}`', value=display, inline=False)
             await ctx.send(embed=embed)
             return
@@ -647,7 +650,7 @@ class Hybrid(commands.Cog):
             commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
             embed = discord.Embed(title=f'{cog_name} Commands', color=discord.Color.green())
             embed.description = '\n'.join(
-                f'**/{cmd.name}** – {cmd.help or 'No description'}' for cmd in commands_in_cog
+                f'**/{cmd.name}** – {cmd.help or "No description"}' for cmd in commands_in_cog
             )
             pages.append(embed)
         paginator = Paginator(bot, ctx, pages)
@@ -693,7 +696,10 @@ class Hybrid(commands.Cog):
             lines.append(f'• <#{channel_id}>: `{reason}`')
         content = f'📄 Mute/Unmute reasons for {member_object.mention}:\n' + '\n'.join(lines)
         await self.handler.send_message(ctx, content=content)
+        
+    
     
 async def setup(bot: commands.Bot):
     cog = Hybrid(bot)
+    logger.info("Added hybrid cog.")
     await bot.add_cog(cog)
