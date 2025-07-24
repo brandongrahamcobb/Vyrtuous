@@ -1,4 +1,5 @@
 ''' helpers.py  The purpose of this program is to provide generic parameters.
+
     Copyright (C) 2024 github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -17,7 +18,7 @@
 from os.path import dirname, abspath, expanduser, join
 
 import discord
-from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.utils.setup_logging import logger
 
 
 def parse_comma_number(s):

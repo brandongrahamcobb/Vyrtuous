@@ -1,4 +1,5 @@
 ''' increment_version.py  The purpose of this program is to provide persistent versioning from cd ../.
+
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -16,8 +17,8 @@
 '''
 import toml
 import yaml
-from vyrtuous.utils.inc.helpers import *
-from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.setup_logging import logger
 
 
 def increment_version(toml_path: str = PATH_TOML):

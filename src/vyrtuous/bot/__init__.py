@@ -1,4 +1,4 @@
-''' load_yaml.py  The purpose of this program is to load the config file.
+''' __init__.py  The purpose of this program is to provide the advanced_startup.py logic provided by Rapptz; from cd ../.
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,20 +14,3 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import os
-import traceback
-
-import yaml
-from vyrtuous.utils.inc.setup_logging import logger
-
-def load_yaml(path_to_file):
-    try:
-        if not os.path.exists(path_to_file):
-            return {}
-        with open(path_to_file, 'r', encoding='utf-8') as f:
-            data = yaml.safe_load(f) or {}
-        return data
-    except Exception as e:
-        logger.error(f'An error occurred while loading the YAML file: {e}')
-        logger.debug(traceback.format_exc())
-        return {}

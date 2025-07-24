@@ -18,8 +18,8 @@
 from discord.ext import commands
 
 from vyrtuous.service.discord_message_service import DiscordMessageService
-from vyrtuous.utils.inc.helpers import *
-from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.setup_logging import logger
 
 import discord
 

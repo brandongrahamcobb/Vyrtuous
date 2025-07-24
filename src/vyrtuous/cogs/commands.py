@@ -25,7 +25,7 @@ from discord.ext import commands
 from discord.ext.commands import Command
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.service.check_service import *
-from vyrtuous.utils.inc.helpers import *
+from vyrtuous.inc.helpers import *
 from types import MethodType
 from typing import List
 

@@ -1,4 +1,5 @@
-''' message.py  The purpose of this program is to handle messages to OpenAI.
+''' message.py  The purpose of this program is to handle messages in Discord.
+
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -18,8 +19,8 @@ import os
 
 import discord
 from discord.ext import commands
-from vyrtuous.utils.inc.helpers import *
-from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.setup_logging import logger
 
 os.makedirs(DIR_TEMP, exist_ok=True)
 

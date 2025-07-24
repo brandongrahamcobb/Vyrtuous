@@ -1,4 +1,6 @@
-''' __init__.py  The purpose of this program is to provide the advanced_startup.py logic provided by Rapptz; from cd ../.
+''' prompt_for_values.py The purpose of this program is to prompt for new config 
+    values and present the old ones or keep the old ones.
+
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -14,3 +16,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from vyrtuous.utils.setup_logging import logger
+
+def prompt_for_values(prompt: str, default_value: str) -> str:
+    value = input(f'{prompt} [{default_value}]: ')
+    return value.strip() if value.strip() else default_value

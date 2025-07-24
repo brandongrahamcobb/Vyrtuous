@@ -18,7 +18,7 @@
 
 import discord
 from discord.ext import commands
-from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.utils.setup_logging import logger
        
 class NotModerator(commands.CheckFailure):
     def __init__(self, message="You are not a moderator in the requested channel."):

@@ -1,4 +1,5 @@
 ''' discord_oauth.py  The purpose of this program is to host the Quart app for Discord OAuth 2.0.
+
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -16,7 +17,7 @@
 '''
 from datetime import datetime, timedelta
 from quart import Quart, request, redirect
-from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.utils.setup_logging import logger
 
 import aiohttp
 import asyncio

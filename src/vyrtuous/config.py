@@ -1,4 +1,5 @@
 ''' config.py  The purpose of this program is to provide my primary configuaration script.
+
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -19,10 +20,10 @@ from os.path import dirname, isfile
 from typing import Any, Dict
 
 import yaml
-from vyrtuous.utils.inc.helpers import *
-from vyrtuous.utils.inc.load_yaml import load_yaml
-from vyrtuous.utils.inc.prompt_for_values import prompt_for_values
-from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.load_yaml import load_yaml
+from vyrtuous.utils.prompt_for_values import prompt_for_values
+from vyrtuous.utils.setup_logging import logger
 
 class Config:
 
@@ -114,11 +115,11 @@ class Config:
     def _prompt_additional_config(config: Dict[str, Any], creating: bool = False) -> Dict[str, Any]:
         config_fields = {
 #            'discord_character_limit': ('Discord character limit?', DISCORD_CHARACTER_LIMIT),
-#            'discord_command_prefix': ('Discord command prefix?', DISCORD_COMMAND_PREFIX),
+            'discord_command_prefix': ('Discord command prefix?', DISCORD_COMMAND_PREFIX),
             'discord_developer_channel': ('Discord developer channel?', ''),
             'discord_owner_id': ('Discord Owner ID?', ''),
 #            'discord_release_mode': ('Discord release mode?', DISCORD_RELEASE_MODE),
-            'discord_testing_guild_id': ('What is the Discord testing guild ID?', ''),
+#            'discord_testing_guild_id': ('What is the Discord testing guild ID?', ''),
 #            'discord_testing_guild_ids': ('Any extras?', DISCORD_TESTING_GUILD_ID),
 #            'logging_level': ('What is the logging level (DEBUG, INFO, etc.)?', LOGGING_LEVEL),
 #            'user_agent': ('What should be the User-Agent header?', USER_AGENT),

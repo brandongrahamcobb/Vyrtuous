@@ -22,7 +22,7 @@ import pytz
 import subprocess
 from collections import defaultdict
 from discord.ext import commands, tasks
-from vyrtuous.utils.inc.helpers import *
+from vyrtuous.inc.helpers import *
 
 class ScheduledTasks(commands.Cog):
 

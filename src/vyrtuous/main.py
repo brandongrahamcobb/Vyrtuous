@@ -1,4 +1,5 @@
-''' main.py  The purpose of this program is to be the primary executable for Py_vyrtuous.
+''' main.py  The purpose of this program is to be the primary executable Vyrtuous.
+
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -19,12 +20,12 @@ import sys
 from pathlib import Path
 
 import asyncpg
-from vyrtuous.bots.discord_bot import DiscordBot
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
-from vyrtuous.utils.inc.helpers import *
-from vyrtuous.utils.inc.increment_version import increment_version
-from vyrtuous.utils.inc.setup_logging import setup_logging
-from vyrtuous.utils.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.increment_version import increment_version
+from vyrtuous.utils.setup_logging import setup_logging
+from vyrtuous.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PACKAGE_ROOT))

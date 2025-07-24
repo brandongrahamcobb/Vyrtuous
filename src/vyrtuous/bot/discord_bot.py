@@ -1,4 +1,5 @@
 ''' discord.py  This is essentially a stripped version of Rapptz advanced_startup.py.
+
     Copyright (C) 2024  github.com/brandongrahamcobb
 
     This program is free software: you can redistribute it and/or modify
@@ -20,14 +21,14 @@ import os
 
 from collections import defaultdict
 from discord.ext import commands
-from vyrtuous.utils.inc.helpers import *
-from vyrtuous.utils.inc.setup_logging import logger
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.setup_logging import logger
 
 class DiscordBot(commands.Bot):
     def __init__(self, *, config, db_pool: asyncpg.Pool, lock, oauth_token, **kwargs):
         try:
             intents = discord.Intents.all()
-            super().__init__(command_prefix=os.getenv('DISCORD_COMMAND_PREFIX'), help_command=None, intents=intents, **kwargs)
+            super().__init__(command_prefix=config.get('discord_command_prefix'), help_command=None, intents=intents, **kwargs)
             
             self.config = config
             self.db_pool = db_pool
