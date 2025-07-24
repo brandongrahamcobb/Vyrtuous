@@ -45,6 +45,12 @@ CREATE TABLE active_bans (
     channel_id BIGINT,
     PRIMARY KEY (user_id, channel_id)
 );
+CREATE TABLE active_mutes (
+    user_id BIGINT,
+    channel_id BIGINT,
+    source TEXT CHECK (source IN ('bot', 'manual')),
+    PRIMARY KEY (user_id, channel_id)
+);
 CREATE TABLE IF NOT EXISTS ban_expirations (
     user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,

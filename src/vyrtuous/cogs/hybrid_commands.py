@@ -389,6 +389,18 @@ class Hybrid(commands.Cog):
             ctx,
             content=f'✅ Alias `{alias_name}` ({alias_type}) set to {target_object.mention}.'
         )
+        if alias_type == 'mute':
+            cmd = self.create_mute_alias(alias_name)
+            self.bot.add_command(cmd)
+        elif alias_type == 'unmute':
+            cmd = self.create_unmute_alias(alias_name)
+            self.bot.add_command(cmd)
+        elif alias_type == 'ban':
+            cmd = self.create_ban_alias(alias_name)
+            self.bot.add_command(cmd)
+        elif alias_type == 'unban':
+            cmd = self.create_unban_alias(alias_name)
+            self.bot.add_command(cmd)
     
     def create_ban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
