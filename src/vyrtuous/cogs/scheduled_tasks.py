@@ -30,6 +30,7 @@ class ScheduledTasks(commands.Cog):
         self.backup_database.start()
         self.bot = bot
         self.config = bot.config
+        self.check_expired_bans.start()
     
     def perform_backup(self, db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -63,7 +64,45 @@ class ScheduledTasks(commands.Cog):
     async def after_invoke(self, ctx) -> None:
         if hasattr(bot, 'db_pool'):
             await bot.db_pool.close()
+            
+    @tasks.loop(minutes=5)
+    async def check_expired_bans(self):
+        now = datetime.datetime.utcnow()
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                '''
+                SELECT user_id, channel_id
+                FROM ban_expirations
+                WHERE expires_at <= $1
+                ''',
+                now
+            )
+            for row in rows:
+                user_id = row['user_id']
+                channel_id = row['channel_id']
+                channel = self.bot.get_channel(channel_id)
+                if not isinstance(channel, discord.VoiceChannel):
+                    continue
+                guild = channel.guild
+                member = guild.get_member(user_id)
+                if member and channel:
+                    await self.remove_ban_role(member, channel)
+                await conn.execute(
+                    '''
+                    DELETE FROM ban_expirations
+                    WHERE user_id = $1 AND channel_id = $2
+                    ''',
+                    user_id, channel_id
+                )
 
+    async def remove_ban_role(self, member: discord.Member, channel: discord.VoiceChannel):
+        role_id = self.bot.command_aliases.get(member.guild.id, {}).get('role', {}).get(str(channel.id))
+        if not role_id:
+            return
+        role = member.guild.get_role(role_id)
+        if role and role in member.roles:
+            await member.remove_roles(role, reason='Ban expired')
+                
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
@@ -80,6 +119,10 @@ class ScheduledTasks(commands.Cog):
             logger.error(f'Error during database backup: {e}')
 
     @backup_database.before_loop
+    async def before_backup(self):
+        await self.bot.wait_until_ready()
+        
+    @check_expired_bans.before_loop
     async def before_backup(self):
         await self.bot.wait_until_ready()
 

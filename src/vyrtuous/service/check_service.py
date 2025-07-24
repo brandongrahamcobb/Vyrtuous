@@ -22,7 +22,11 @@ from vyrtuous.utils.setup_logging import logger
 from vyrtuous.config import Config  # adjust import path accordingly
 
 config = Config.get_config()
-       
+      
+class NotCoordinator(commands.CheckFailure):
+    def __init__(self, message="You are not a coordinator in the requested channel."):
+        super().__init__(message)
+
 class NotModerator(commands.CheckFailure):
     def __init__(self, message="You are not a moderator in the requested channel."):
         super().__init__(message)
@@ -90,7 +94,18 @@ async def is_channel_moderator(ctx):
     if target_channel_id not in moderator_ids:
         raise NotModerator()
     return True
-                                    
+
+async def is_coordinator(ctx):
+    if ctx.guild is None:
+        raise NotCoordinator("Command must be used in a guild.")
+    async with ctx.bot.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT coordinator_ids FROM users WHERE user_id = $1", ctx.author.id
+        )
+    if not row or ctx.guild.id not in row.get("coordinator_ids", []):
+        raise NotCoordinator()
+    return True
+    
 async def is_developer(ctx):
     if ctx.guild is None:
         raise NotDeveloper("Command must be used in a guild.")
@@ -131,9 +146,29 @@ async def is_owner(ctx):
             errors.append(str(e))
     raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
 
-async def is_owner_or_developer(ctx):
+async def is_owner_developer(ctx):
     errors = []
     for check in (is_guild_owner, is_system_owner, is_developer):
+        try:
+            if await check(ctx):
+                return True
+        except commands.CheckFailure as e:
+            errors.append(str(e))
+    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
+    
+async def is_owner_developer_coordinator(ctx):
+    errors = []
+    for check in (is_guild_owner, is_system_owner, is_developer, is_coordinator):
+        try:
+            if await check(ctx):
+                return True
+        except commands.CheckFailure as e:
+            errors.append(str(e))
+    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
+    
+async def is_owner_developer_coordinator_moderator(ctx):
+    errors = []
+    for check in (is_guild_owner, is_system_owner, is_developer, is_coordinator, is_moderator):
         try:
             if await check(ctx):
                 return True
