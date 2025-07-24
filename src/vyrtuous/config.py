@@ -141,18 +141,18 @@ class Config:
 #                header_dict[key.strip('\'"')] = value
 #            config['web_headers'][header_name] = header_dict
 #            add_headers = input('Do you want to add another header set? (yes/no): ').strip().lower()
-#        for key, (prompt_text, default_value) in config_fields.items():
-#            user_input = prompt_for_values(prompt_text, config.get(key, default_value))
-#            if key == 'discord_testing_guild_ids':
-#                try:
-#                    existing_ids = eval(user_input) if isinstance(user_input, str) else user_input
-#                    if not isinstance(existing_ids, list):
-#                        existing_ids = []
-#                except:
-#                    existing_ids = []
-#                new_default = [DISCORD_TESTING_GUILD_ID] + existing_ids
-#                config[key] = new_default
-#            else:
-#                config[key] = user_input
+        for key, (prompt_text, default_value) in config_fields.items():
+            user_input = prompt_for_values(prompt_text, config.get(key, default_value))
+            if key == 'discord_testing_guild_ids':
+                try:
+                    existing_ids = eval(user_input) if isinstance(user_input, str) else user_input
+                    if not isinstance(existing_ids, list):
+                        existing_ids = []
+                except:
+                    existing_ids = []
+                new_default = [DISCORD_TESTING_GUILD_ID] + existing_ids
+                config[key] = new_default
+            else:
+                config[key] = user_input
         return config
 

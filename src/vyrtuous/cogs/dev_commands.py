@@ -19,7 +19,7 @@ from typing import Dict, List, Literal, Optional
 
 import discord
 from discord.ext import commands, tasks
-from vyrtuous.check_service import *
+from vyrtuous.service.check_service import *
 from vyrtuous.inc.helpers import *
 
 class DevCommands(commands.Cog):

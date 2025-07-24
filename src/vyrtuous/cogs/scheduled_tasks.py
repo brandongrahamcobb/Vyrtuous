@@ -31,8 +31,7 @@ class ScheduledTasks(commands.Cog):
         self.bot = bot
         self.config = bot.config
     
-    @staticmethod
-    def perform_backup(db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
+    def perform_backup(self, db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         backup_file = os.path.join(backup_dir, f'backup_{timestamp}.sql')
         dump_command = [
@@ -56,8 +55,7 @@ class ScheduledTasks(commands.Cog):
             raise RuntimeError(f'Backup failed: {result.stderr}')
         return backup_file
     
-    @staticmethod
-    def setup_backup_directory(backup_dir: str) -> str:
+    def setup_backup_directory(self, backup_dir: str) -> str:
         os.makedirs(backup_dir, exist_ok=True)
         return backup_dir
         
@@ -69,8 +67,8 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
-            backup_dir = setup_backup_directory('./backups')
-            backup_file = perform_backup(
+            backup_dir = self.setup_backup_directory('./backups')
+            backup_file = self.perform_backup(
                 db_user=os.getenv("POSTGRES_USER"),
                 db_name=os.getenv("POSTGRES_DATABASE"),
                 db_host=os.getenv("POSTGRES_HOST"),

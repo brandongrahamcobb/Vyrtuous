@@ -1,27 +1,17 @@
 services:
   db:
     image: postgres
-    environment:
-      POSTGRES_DB: vyrtuous
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
     volumes:
       - ./schema:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
   vyrtuous:
     build: .
     container_name: vyrtuous
     depends_on:
       - db
     environment:
-      DATABASE_HOST: db
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: password
-      DATABASE_NAME: vyrtuous
+      POSTGRES_DATABASE: vyrtuous
+      POSTGRES_HOST: db
+      POSTGRES_USER: spawd
       PYTHONPATH: /app
       PYTHONUNBUFFERED: '1'
     env_file:

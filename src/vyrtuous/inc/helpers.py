@@ -53,14 +53,14 @@ PATH_SETUP_LOGGING = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'setup_logging.p
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
+    'vyrtuous.cogs.commands',
+    'vyrtuous.cogs.dev_commands',
     'vyrtuous.cogs.event_listeners',
+    'vyrtuous.cogs.scheduled_tasks'
 ]
 DISCORD_COMMAND_PREFIX = '!'
-DISCORD_DEVELOPER_CHANNEL = 1391574892826329261
 DISCORD_INTENTS = discord.Intents.all()
-DISCORD_OWNER_ID = 154749533429956608
 DISCORD_RELEASE_MODE = False
-DISCORD_TESTING_GUILD_ID = 1300517536001036348
 
 LOGGING_LEVEL = 'INFO'
 

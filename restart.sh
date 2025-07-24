@@ -1,11 +1,10 @@
 #!/bin/bash
-
 set -e
 cd ~/git/python/Vyrtuous
-
-# 1. Activate virtual environment
 source ~/venv/bin/activate
-
+poetry build --format wheel
+pip uninstall vyrtuous
+pip install dist/vyrtuous-6.0.6-py3-none-any.whl 
 docker stop $(docker ps -aq) || true
 docker compose build
 docker compose up -d db
