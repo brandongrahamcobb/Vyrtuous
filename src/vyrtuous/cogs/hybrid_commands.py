@@ -335,7 +335,7 @@ class Hybrid(commands.Cog):
         alias_type: str = commands.parameter(description='One of: `mute`, `unmute`, `ban`, `unban`, `unrole`, `role`'),
         alias_name: str = commands.parameter(description='Alias name'),
         target1: str = commands.parameter(description='VC or Channel for alias'),
-        target2: Optional[str] = commands.parameter(description='Role (for banrole only)')
+        target2: Optional[str] = commands.parameter(description='Optional: Troll role')
     ) -> None:
         alias_type = alias_type.lower()
         guild_id = ctx.guild.id
@@ -450,9 +450,15 @@ class Hybrid(commands.Cog):
                 if not reason.strip():
                     return await self.handler.send_message(ctx, content='❌ Reason is required for permanent bans.')
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
-            role_id = self.bot.command_aliases.get(guild_id, {}).get('role', {}).get(command_name)
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
+            role_id = None
+            ban_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
+            role_aliases = self.bot.command_aliases.get(guild_id, {}).get('role', {})
+            for alias_data in role_aliases.values():
+                if alias_data.get('channel_id') == ban_channel_id:
+                    role_id = alias_data.get('role_id')
+                    break
             if not role_id:
                 return await self.handler.send_message(ctx, content=f'❌ No ban role alias mapping found for `{command_name}`.')
             role = ctx.guild.get_role(role_id)
@@ -581,9 +587,15 @@ class Hybrid(commands.Cog):
             if not member_object:
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
-            role_id = self.bot.command_aliases.get(guild_id, {}).get('banrole', {}).get(command_name)
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
+            role_id = None
+            ban_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
+            role_aliases = self.bot.command_aliases.get(guild_id, {}).get('role', {})
+            for alias_data in role_aliases.values():
+                if alias_data.get('channel_id') == ban_channel_id:
+                    role_id = alias_data.get('role_id')
+                    break
             if not role_id:
                 return await self.handler.send_message(ctx, content=f'❌ No ban role alias mapping found for `{command_name}`.')
             role = ctx.guild.get_role(role_id)
@@ -790,12 +802,12 @@ class Hybrid(commands.Cog):
         @commands.check(is_owner_developer_coordinator)
         async def role_alias(ctx, role: discord.Role):
             guild_id = ctx.guild.id
-            self.bot.command_aliases.setdefault(guild_id, {}).setdefault('banrole', {})[alias_name] = role.id
+            self.bot.command_aliases.setdefault(guild_id, {}).setdefault('role', {})[alias_name] = role.id
             async with self.db_pool.acquire() as conn:
                 await conn.execute(
                     '''
                     INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
-                    VALUES ($1, 'banrole', $2, $3)
+                    VALUES ($1, 'role', $2, $3)
                     ON CONFLICT (guild_id, alias_type, alias_name)
                     DO UPDATE SET channel_id = EXCLUDED.channel_id
                     ''',
