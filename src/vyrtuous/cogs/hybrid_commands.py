@@ -162,7 +162,7 @@ class Hybrid(commands.Cog):
     async def list_coordinators(
         self,
         ctx,
-        channel_input: str = commands.parameter(description='Voice channel ID, mention, or name.')
+        channel: str = commands.parameter(description='Voice channel ID, mention, or name.')
     ) -> None:
         guild = ctx.guild
         def resolve_channel(value: str) -> Optional[discord.VoiceChannel]:
@@ -173,7 +173,7 @@ class Hybrid(commands.Cog):
             else:
                 channel = discord.utils.get(guild.voice_channels, name=value)
             return channel if isinstance(channel, discord.VoiceChannel) else None
-        voice_channel = resolve_channel(channel_input)
+        voice_channel = resolve_channel(channel)
         if not voice_channel:
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
         async with self.db_pool.acquire() as conn:
@@ -307,7 +307,7 @@ class Hybrid(commands.Cog):
         self,
         ctx,
         member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
-        channel_input: str = commands.parameter(description='Tag a channel or include its snowflake ID.')
+        channel: str = commands.parameter(description='Tag a channel or include its snowflake ID.')
     ) -> None:
         member_id = None
         member_object = None
@@ -323,17 +323,17 @@ class Hybrid(commands.Cog):
         if not member_object:
             return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
         resolved_channel = None
-        if channel_input.isdigit():
-            resolved_channel = ctx.guild.get_channel(int(channel_input))
-        elif channel_input.startswith('<#') and channel_input.endswith('>'):
+        if channel.isdigit():
+            resolved_channel = ctx.guild.get_channel(int(channel))
+        elif channel.startswith('<#') and channel.endswith('>'):
             try:
-                channel_id = int(channel_input.strip('<#>'))
+                channel_id = int(channel.strip('<#>'))
                 resolved_channel = ctx.guild.get_channel(channel_id)
             except ValueError:
                 pass
         else:
             for vc in ctx.guild.voice_channels:
-                if vc.name.lower() == channel_input.lower():
+                if vc.name.lower() == channel.lower():
                     resolved_channel = vc
                     break
         if not isinstance(resolved_channel, discord.VoiceChannel):
@@ -359,7 +359,7 @@ class Hybrid(commands.Cog):
         self,
         ctx,
         member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
-        channel_input: str = commands.parameter(description='Tag a VC or include its snowflake ID.')
+        channel: str = commands.parameter(description='Tag a VC or include its snowflake ID.')
     ) -> None:
         member_id = None
         member_object = None
@@ -375,17 +375,17 @@ class Hybrid(commands.Cog):
         if not member_object:
             return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
         resolved_channel = None
-        if channel_input.isdigit():
-            resolved_channel = ctx.guild.get_channel(int(channel_input))
-        elif channel_input.startswith('<#') and channel_input.endswith('>'):
+        if channel.isdigit():
+            resolved_channel = ctx.guild.get_channel(int(channel))
+        elif channel.startswith('<#') and channel.endswith('>'):
             try:
-                channel_id = int(channel_input.strip('<#>'))
+                channel_id = int(channel.strip('<#>'))
                 resolved_channel = ctx.guild.get_channel(channel_id)
             except ValueError:
                 pass
         else:
             for vc in ctx.guild.voice_channels:
-                if vc.name.lower() == channel_input.lower():
+                if vc.name.lower() == channel.lower():
                     resolved_channel = vc
                     break
         if not isinstance(resolved_channel, discord.VoiceChannel):
@@ -404,7 +404,7 @@ class Hybrid(commands.Cog):
     async def list_moderators(
         self,
         ctx,
-        channel_input: str = commands.parameter(description='Voice channel ID, mention, or name.')
+        channel: str = commands.parameter(description='Voice channel ID, mention, or name.')
     ) -> None:
         guild = ctx.guild
         def resolve_channel(value: str) -> Optional[discord.VoiceChannel]:
@@ -415,7 +415,7 @@ class Hybrid(commands.Cog):
             else:
                 channel = discord.utils.get(guild.voice_channels, name=value)
             return channel if isinstance(channel, discord.VoiceChannel) else None
-        voice_channel = resolve_channel(channel_input)
+        voice_channel = resolve_channel(channel)
         if not voice_channel:
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
         channel_id = voice_channel.id
@@ -446,13 +446,13 @@ class Hybrid(commands.Cog):
         
     @commands.hybrid_command(
         name='flags',
-        help='List flagged users currently in a specific voice channel.'
+        help='List users flagged in the database for a specific voice channel.'
     )
     @commands.check(is_owner_developer_coordinator_moderator)
     async def flags(
         self,
         ctx,
-        channel_input: str = commands.parameter(description='Voice channel ID, mention, or name.')
+        channel: str = commands.parameter(description='Voice channel ID, mention, or name.')
     ) -> None:
         guild = ctx.guild
         def resolve_channel(value: str) -> Optional[discord.VoiceChannel]:
@@ -463,29 +463,26 @@ class Hybrid(commands.Cog):
             else:
                 channel = discord.utils.get(guild.voice_channels, name=value)
             return channel if isinstance(channel, discord.VoiceChannel) else None
-        channel = resolve_channel(channel_input)
+        channel = resolve_channel(channel)
         if not channel:
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
         channel_id = channel.id
-        voice_members = channel.members
-        voice_ids = {member.id for member in voice_members}
-        if not voice_ids:
-            return await self.handler.send_message(ctx, content=f'ℹ️ No members are currently in <#{channel_id}>.')
         sql = '''
             SELECT user_id FROM users
-            WHERE flagged = TRUE AND user_id = ANY($1::BIGINT[])
+            WHERE flagged = TRUE AND $1 = ANY(flagged_channel_ids)
         '''
         try:
             async with self.db_pool.acquire() as conn:
-                rows = await conn.fetch(sql, list(voice_ids))
+                rows = await conn.fetch(sql, channel_id)
             if not rows:
-                return await self.handler.send_message(ctx, content=f'✅ No flagged users currently in <#{channel_id}>.')
+                return await self.handler.send_message(ctx, content=f'✅ No users are flagged for <#{channel_id}>.')
             mentions = [f'<@{row["user_id"]}>' for row in rows]
-            message = f'🚩 Flagged users in <#{channel_id}>:\n' + '\n'.join(mentions)
+            message = f'🚩 Users flagged for <#{channel_id}>:\n' + '\n'.join(mentions)
             await self.handler.send_message(ctx, content=message)
         except Exception as e:
             await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
             raise
+
 
     #
     # Alias Commands: creation
@@ -670,15 +667,15 @@ class Hybrid(commands.Cog):
     async def list_bans(
         self,
         ctx: commands.Context,
-        channel_input: str = commands.parameter(description='Mention or ID of the channel to check bans for.')
+        channel: str = commands.parameter(description='Mention or ID of the channel to check bans for.')
     ) -> None:
         guild = ctx.guild
         channel_id = None
-        if channel_input.isdigit():
-            channel_id = int(channel_input)
-        elif channel_input.startswith('<#') and channel_input.endswith('>'):
+        if channel.isdigit():
+            channel_id = int(channel)
+        elif channel.startswith('<#') and channel.endswith('>'):
             try:
-                channel_id = int(channel_input.strip('<#>'))
+                channel_id = int(channel.strip('<#>'))
             except ValueError:
                 pass
         if not channel_id or not guild.get_channel(channel_id):
@@ -823,7 +820,7 @@ class Hybrid(commands.Cog):
             ctx,
             member: str = commands.parameter(description='Mention or user ID of the member to unban.'),
             *,
-            reason: str = commands.parameter(default='', description='Optional reason for unbanning.')
+            reason: str = commands.parameter(default='N/A', description='Optional reason for unbanning.')
         ) -> None:
             guild_id = ctx.guild.id
             member_id = None
@@ -1148,7 +1145,7 @@ class Hybrid(commands.Cog):
         self,
         ctx,
         *,
-        command_name: str = commands.parameter(default=None, description='Include a command name')
+        command_name: str = commands.parameter(description='Include a command name')
     ) -> None:
         bot = ctx.bot
         if command_name:
@@ -1283,7 +1280,7 @@ class Hybrid(commands.Cog):
         self,
         ctx,
         *,
-        command_name: str = commands.parameter(default=None, description='Include a command name')
+        command_name: str = commands.parameter(description='Include a command name')
     ) -> None:
         bot = ctx.bot
         if command_name:

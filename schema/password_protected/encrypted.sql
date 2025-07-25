@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     coordinator_ids BIGINT[],
     developer_guild_ids BIGINT[],
     flagged BOOLEAN DEFAULT FALSE,
+    flagged_channel_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS command_aliases (
     guild_id BIGINT NOT NULL,
     alias_type TEXT NOT NULL CHECK (alias_type IN (
-        'mute', 'unmute', 'ban', 'unban', 'role', 'unrole'
+        'mute', 'unmute', 'ban', 'unban', 'flag'
     )),
     alias_name TEXT NOT NULL,
     channel_id BIGINT NOT NULL,
