@@ -942,12 +942,12 @@ class Hybrid(commands.Cog):
             return
         guild_id = ctx.guild.id
         alias_type = None
-        for candidate in ('mute', 'unmute', 'ban', 'unban'):
+        for candidate in ('mute', 'unmute', 'ban', 'unban', 'flag'):
             if alias_name in self.bot.command_aliases.get(guild_id, {}).get(candidate, {}):
                 alias_type = candidate
                 break
-        if alias_type.lower() not in {'mute', 'unmute', 'ban', 'unban'}:
-            await self.handler.send_message('❌ `alias_type` must be either `mute` or `unmute`.', ephemeral=True)
+        if alias_type.lower() not in {'mute', 'unmute', 'ban', 'unban', 'flag'}:
+            await self.handler.send_message('❌ `alias_type` must be either `mute`, `unmute`, `ban`, `unban`, or `flag`.', ephemeral=True)
             return
         if not alias_type:
             await self.handler.send_message(f'❌ Alias `{alias_name}` not found.', ephemeral=True)
@@ -976,7 +976,7 @@ class Hybrid(commands.Cog):
         if channel:
             channel_id = channel.id
             found_aliases = False
-            for kind in ('mute', 'unmute', 'ban', 'unban'):
+            for kind in ('mute', 'unmute', 'ban', 'unban', 'flag'):
                 entries = aliases.get(kind, {})
                 if not entries:
                     continue
@@ -996,7 +996,7 @@ class Hybrid(commands.Cog):
                 )
                 return
         else:
-            for kind in ('mute', 'unmute', 'ban', 'unban'):
+            for kind in ('mute', 'unmute', 'ban', 'unban', 'flag'):
                 entries = aliases.get(kind, {})
                 if not entries:
                     continue
