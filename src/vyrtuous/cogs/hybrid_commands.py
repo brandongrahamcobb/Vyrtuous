@@ -89,17 +89,17 @@ class Hybrid(commands.Cog):
     async def create_coordinator(
         self,
         ctx,
-        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+        member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
     ) -> None:
         guild_id = ctx.guild.id
         member_id = None
         member_object = None
     
-        if member_input.isdigit():
-            member_id = int(member_input)
-        elif member_input.startswith('<@') and member_input.endswith('>'):
+        if member.isdigit():
+            member_id = int(member)
+        elif member.startswith('<@') and member.endswith('>'):
             try:
-                member_id = int(member_input.strip('<@!>'))
+                member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
     
@@ -130,17 +130,17 @@ class Hybrid(commands.Cog):
     async def delete_coordinator(
         self,
         ctx,
-        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+        member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
     ) -> None:
         guild_id = ctx.guild.id
         member_id = None
         member_object = None
     
-        if member_input.isdigit():
-            member_id = int(member_input)
-        elif member_input.startswith('<@') and member_input.endswith('>'):
+        if member.isdigit():
+            member_id = int(member)
+        elif member.startswith('<@') and member.endswith('>'):
             try:
-                member_id = int(member_input.strip('<@!>'))
+                member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
     
@@ -200,16 +200,16 @@ class Hybrid(commands.Cog):
     async def create_developer(
         self,
         ctx,
-        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+        member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
     ) -> None:
         guild_id = ctx.guild.id
         member_id = None
         member_object = None
-        if member_input.isdigit():
-            member_id = int(member_input)
-        elif member_input.startswith('<@') and member_input.endswith('>'):
+        if member.isdigit():
+            member_id = int(member)
+        elif member.startswith('<@') and member.endswith('>'):
             try:
-                member_id = int(member_input.strip('<@!>'))
+                member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
         if member_id:
@@ -236,15 +236,15 @@ class Hybrid(commands.Cog):
     async def delete_developer(
         self,
         ctx,
-        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+        member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
     ) -> None:
         member_id = None
         member_object = None
-        if member_input.isdigit():
-            member_id = int(member_input)
-        elif member_input.startswith('<@') and member_input.endswith('>'):
+        if member.isdigit():
+            member_id = int(member)
+        elif member.startswith('<@') and member.endswith('>'):
             try:
-                member_id = int(member_input.strip('<@!>'))
+                member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
         if member_id:
@@ -297,16 +297,16 @@ class Hybrid(commands.Cog):
     async def create_moderator(
         self,
         ctx,
-        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+        member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
         channel_input: str = commands.parameter(description='Tag a channel or include its snowflake ID.')
     ) -> None:
         member_id = None
         member_object = None
-        if member_input.isdigit():
-            member_id = int(member_input)
-        elif member_input.startswith('<@') and member_input.endswith('>'):
+        if member.isdigit():
+            member_id = int(member)
+        elif member.startswith('<@') and member.endswith('>'):
             try:
-                member_id = int(member_input.strip('<@!>'))
+                member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
         if member_id:
@@ -349,16 +349,16 @@ class Hybrid(commands.Cog):
     async def delete_moderator(
         self,
         ctx,
-        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+        member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
         channel_input: str = commands.parameter(description='Tag a VC or include its snowflake ID.')
     ) -> None:
         member_id = None
         member_object = None
-        if member_input.isdigit():
-            member_id = int(member_input)
-        elif member_input.startswith('<@') and member_input.endswith('>'):
+        if member.isdigit():
+            member_id = int(member)
+        elif member.startswith('<@') and member.endswith('>'):
             try:
-                member_id = int(member_input.strip('<@!>'))
+                member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
         if member_id:
@@ -533,7 +533,7 @@ class Hybrid(commands.Cog):
         @commands.check(is_owner_developer_coordinator_moderator)
         async def ban_alias(
             ctx,
-            member_input: str = commands.parameter(description='Mention or user ID of the member to ban.'),
+            member: str = commands.parameter(description='Mention or user ID of the member to ban.'),
             duration_hours: Optional[int] = commands.parameter(default=6, description='Duration of ban in hours (0 = permanent).'),
             *,
             reason: str = commands.parameter(default='', description='Reason for ban (required for permanent).')
@@ -543,11 +543,11 @@ class Hybrid(commands.Cog):
             logger.info(f"[{guild_id}] Ban command invoked: {command_name} by {ctx.author} (User ID: {ctx.author.id})")
             member_id = None
             member_object = None
-            if member_input.isdigit():
-                member_id = int(member_input)
-            elif member_input.startswith('<@') and member_input.endswith('>'):
+            if member.isdigit():
+                member_id = int(member)
+            elif member.startswith('<@') and member.endswith('>'):
                 try:
-                    member_id = int(member_input.strip('<@!>'))
+                    member_id = int(member.strip('<@!>'))
                 except ValueError:
                     pass
             member_object = ctx.guild.get_member(member_id) if member_id else None
@@ -648,18 +648,18 @@ class Hybrid(commands.Cog):
         @commands.check(is_owner_developer_coordinator_moderator)
         async def mute_alias(
             ctx,
-            member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+            member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
             *,
             reason: str = commands.parameter(default='N/A', description='Optionally include a reason for the mute.')
         ) -> None:
             guild_id = ctx.guild.id
             member_id = None
             member_object = None
-            if member_input.isdigit():
-                member_id = int(member_input)
-            elif member_input.startswith('<@') and member_input.endswith('>'):
+            if member.isdigit():
+                member_id = int(member)
+            elif member.startswith('<@') and member.endswith('>'):
                 try:
-                    member_id = int(member_input.strip('<@!>'))
+                    member_id = int(member.strip('<@!>'))
                 except ValueError:
                     pass
             if member_id:
@@ -706,17 +706,17 @@ class Hybrid(commands.Cog):
         @commands.check(is_owner_developer_coordinator_moderator)
         async def unban_alias(
             ctx,
-            member_input: str = commands.parameter(description='Mention or user ID of the member to unban.'),
+            member: str = commands.parameter(description='Mention or user ID of the member to unban.'),
             *,
             reason: str = commands.parameter(default='', description='Optional reason for unbanning.')
         ) -> None:
             guild_id = ctx.guild.id
             member_id = None
-            if member_input.isdigit():
-                member_id = int(member_input)
-            elif member_input.startswith('<@') and member_input.endswith('>'):
+            if member.isdigit():
+                member_id = int(member)
+            elif member.startswith('<@') and member.endswith('>'):
                 try:
-                    member_id = int(member_input.strip('<@!>'))
+                    member_id = int(member.strip('<@!>'))
                 except ValueError:
                     pass
             member_object = ctx.guild.get_member(member_id) if member_id else None
@@ -767,18 +767,18 @@ class Hybrid(commands.Cog):
         @commands.check(is_owner_developer_coordinator_moderator)
         async def unmute_alias(
             ctx,
-            member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+            member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
             *,
             reason: str = commands.parameter(default='N/A', description='Include a reason for the unmute.')
         ) -> None:
             guild_id = ctx.guild.id
             member_id = None
             member_object = None
-            if member_input.isdigit():
-                member_id = int(member_input)
-            elif member_input.startswith('<@') and member_input.endswith('>'):
+            if member.isdigit():
+                member_id = int(member)
+            elif member.startswith('<@') and member.endswith('>'):
                 try:
-                    member_id = int(member_input.strip('<@!>'))
+                    member_id = int(member.strip('<@!>'))
                 except ValueError:
                     pass
             if member_id:
@@ -879,18 +879,18 @@ class Hybrid(commands.Cog):
         @commands.check(is_owner_developer_coordinator_moderator)
         async def unmute_alias(
             ctx,
-            member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+            member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
             *,
             reason: str = commands.parameter(default='N/A', description='Include a reason for the unmute.')
         ) -> None:
             guild_id = ctx.guild.id
             member_id = None
             member_object = None
-            if member_input.isdigit():
-                member_id = int(member_input)
-            elif member_input.startswith('<@') and member_input.endswith('>'):
+            if member.isdigit():
+                member_id = int(member)
+            elif member.startswith('<@') and member.endswith('>'):
                 try:
-                    member_id = int(member_input.strip('<@!>'))
+                    member_id = int(member.strip('<@!>'))
                 except ValueError:
                     pass
             if member_id:
@@ -1062,16 +1062,16 @@ class Hybrid(commands.Cog):
     async def get_mute_unmute_reason(
         self,
         ctx,
-        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.')
+        member: str = commands.parameter(description='Tag a user or include their snowflake ID.')
     ) -> None:
         guild_id = ctx.guild.id
         member_id = None
         member_object = None
-        if member_input.isdigit():
-            member_id = int(member_input)
-        elif member_input.startswith('<@') and member_input.endswith('>'):
+        if member.isdigit():
+            member_id = int(member)
+        elif member.startswith('<@') and member.endswith('>'):
             try:
-                member_id = int(member_input.strip('<@!>'))
+                member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
         if member_id:
@@ -1164,7 +1164,6 @@ class Hybrid(commands.Cog):
                         value="\n".join(param_details),
                         inline=False
                     )
-    
             await ctx.send(embed=embed)
             return
         all_commands = await self.get_available_commands(bot, ctx)
@@ -1226,7 +1225,6 @@ class Hybrid(commands.Cog):
         await paginator.start()
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):
-        """Group commands by their permission requirements."""
         permission_groups = {
             'Owner': [],
             'Developer': [],
@@ -1234,20 +1232,15 @@ class Hybrid(commands.Cog):
             'Moderator': [],
             'Public': []
         }
-    
         for command in commands_list:
             perm_level = await self.get_command_permission_level(bot, ctx, command)
             if perm_level in permission_groups:
                 permission_groups[perm_level].append(command)
-    
         return permission_groups
     
     async def get_command_permission_level(self, bot, ctx, command):
-        """Determine the permission level required for a command."""
         if not hasattr(command, 'checks') or not command.checks:
             return 'Public'
-    
-        # Track the highest permission level found
         permission_levels = {
             'Owner': 4,
             'Developer': 3,
@@ -1255,28 +1248,18 @@ class Hybrid(commands.Cog):
             'Moderator': 1,
             'Public': 0
         }
-    
         highest_level = 'Public'
         highest_value = 0
-    
-        # Check each permission check function
         for check in command.checks:
             check_names = []
-    
-            # Try multiple ways to get the function name
             if hasattr(check, '__name__'):
                 check_names.append(check.__name__)
-    
             if hasattr(check, '__wrapped__'):
                 wrapped = check.__wrapped__
                 if hasattr(wrapped, '__name__'):
                     check_names.append(wrapped.__name__)
-    
-            # For commands.check() decorators, try to get the predicate
             if hasattr(check, 'predicate') and hasattr(check.predicate, '__name__'):
                 check_names.append(check.predicate.__name__)
-    
-            # Try string representation as fallback
             check_str = str(check)
             if 'function' in check_str:
                 try:
@@ -1284,14 +1267,8 @@ class Hybrid(commands.Cog):
                     check_names.append(func_name)
                 except:
                     pass
-    
-            print(f"Debug: Command '{command.name}' has check names: {check_names}")  # Debug
-    
-            # Check all found names
             for check_name in check_names:
                 level = None
-    
-                # Exact matches for your specific functions
                 if check_name == 'is_owner_developer_coordinator_moderator':
                     level = 'Moderator'
                 elif check_name == 'is_owner_developer_coordinator':
@@ -1306,15 +1283,12 @@ class Hybrid(commands.Cog):
                     level = 'Coordinator'
                 elif check_name in ['is_moderator', 'is_channel_moderator']:
                     level = 'Moderator'
-    
                 if level and permission_levels[level] > highest_value:
                     highest_level = level
                     highest_value = permission_levels[level]
-    
         return highest_level
     
     def get_permission_color(self, perm_level):
-        """Get color for each permission level."""
         colors = {
             'Owner': discord.Color.red(),
             'Developer': discord.Color.purple(),
@@ -1325,15 +1299,12 @@ class Hybrid(commands.Cog):
         return colors.get(perm_level, discord.Color.greyple())
     
     def split_command_list(self, commands_list, max_length=1024):
-        """Split a long command list into chunks that fit in embed fields."""
         chunks = []
         current_chunk = []
         current_length = 0
-    
         for cmd in commands_list:
             cmd_line = f'**/{cmd.name}** – {cmd.help or "No description"}\n'
             cmd_length = len(cmd_line)
-    
             if current_length + cmd_length > max_length and current_chunk:
                 chunks.append('\n'.join(current_chunk))
                 current_chunk = [cmd_line.rstrip()]
@@ -1341,10 +1312,8 @@ class Hybrid(commands.Cog):
             else:
                 current_chunk.append(cmd_line.rstrip())
                 current_length += cmd_length
-    
         if current_chunk:
             chunks.append('\n'.join(current_chunk))
-    
         return chunks
     
 async def setup(bot: commands.Bot):
