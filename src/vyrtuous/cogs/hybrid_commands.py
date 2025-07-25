@@ -83,6 +83,112 @@ class Hybrid(commands.Cog):
                 print(f"❌ Exception while checking command '{command}': {e}")
         return available_commands
     
+    @commands.hybrid_command(name='coord', help='Grants coordinator access to a user in this guild.')
+    @commands.check(is_owner)
+    async def create_coordinator(
+        self,
+        ctx,
+        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+    ) -> None:
+        guild_id = ctx.guild.id
+        member_id = None
+        member_object = None
+    
+        if member_input.isdigit():
+            member_id = int(member_input)
+        elif member_input.startswith('<@') and member_input.endswith('>'):
+            try:
+                member_id = int(member_input.strip('<@!>'))
+            except ValueError:
+                pass
+    
+        if member_id:
+            member_object = ctx.guild.get_member(member_id)
+    
+        if not member_object:
+            return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
+    
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO users (user_id, coordinator_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[])
+                ON CONFLICT (user_id) DO UPDATE
+                SET coordinator_ids = (
+                    SELECT ARRAY(
+                        SELECT DISTINCT unnest(u.coordinator_ids || EXCLUDED.coordinator_ids)
+                    )
+                    FROM users u WHERE u.user_id = EXCLUDED.user_id
+                ),
+                updated_at = NOW()
+            ''', member_object.id, guild_id)
+    
+        await self.handler.send_message(ctx, content=f'{member_object.mention} has been granted coordinator rights in this guild.')
+
+    @commands.hybrid_command(name='xcoord', help='Revokes coordinator access from a user in this guild.')
+    @commands.check(is_owner)
+    async def delete_coordinator(
+        self,
+        ctx,
+        member_input: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+    ) -> None:
+        guild_id = ctx.guild.id
+        member_id = None
+        member_object = None
+    
+        if member_input.isdigit():
+            member_id = int(member_input)
+        elif member_input.startswith('<@') and member_input.endswith('>'):
+            try:
+                member_id = int(member_input.strip('<@!>'))
+            except ValueError:
+                pass
+    
+        if member_id:
+            member_object = ctx.guild.get_member(member_id)
+    
+        if not member_object:
+            return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
+    
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE users
+                SET coordinator_ids = array_remove(coordinator_ids, $2),
+                    updated_at = NOW()
+                WHERE user_id = $1
+            ''', member_object.id, guild_id)
+    
+        await self.handler.send_message(ctx, content=f'{member_object.mention}\'s coordinator access has been revoked in this guild.')
+
+    @commands.hybrid_command(name='coords', help='Lists all coordinators in this guild.')
+    @commands.check(is_owner_developer_coordinator)
+    async def list_coordinators(self, ctx) -> None:
+        guild = ctx.guild
+        pages = []
+    
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT user_id, coordinator_ids
+                FROM users
+                WHERE $1 = ANY(coordinator_ids)
+            ''', guild.id)
+    
+        if not rows:
+            await self.handler.send_message(ctx, content='No coordinators are configured in this guild.')
+            return
+    
+        for row in rows:
+            user_id = row['user_id']
+            user = guild.get_member(user_id)
+            name = user.display_name if user else f'User ID {user_id}'
+            embed = discord.Embed(
+                title=f'Coordinator: {name}',
+                color=discord.Color.gold()
+            )
+            pages.append(embed)
+    
+        paginator = Paginator(self.bot, ctx, pages)
+        await paginator.start()
+
     #
     # Developer Commands: creation
     #                     deletion
@@ -461,9 +567,23 @@ class Hybrid(commands.Cog):
                     break
             if not role_id:
                 return await self.handler.send_message(ctx, content=f'❌ No ban role alias mapping found for `{command_name}`.')
+            async with self.db_pool.acquire() as conn:
+                existing_ban = await conn.fetchval(
+                    '''
+                    SELECT 1 FROM active_bans
+                    WHERE user_id = $1 AND channel_id = $2
+                    ''',
+                    member_object.id, static_channel_id
+                )
+                if existing_ban:
+                    return await self.handler.send_message(
+                        ctx,
+                        content=f'ℹ️ {member_object.mention} is already banned from <#{static_channel_id}>.'
+                    )
             role = ctx.guild.get_role(role_id)
             if not role:
                 return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
+
             try:
                 await member_object.add_roles(role, reason=f"Banned from <#{static_channel_id}>: {reason or 'No reason provided'}")
             except discord.Forbidden:
@@ -794,28 +914,38 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content=f'{member_object.mention} is no longer marked as muted in <#{static_channel_id}>.')
         return unmute_command
     
-    def create_role_alias(self, alias_name: str) -> Command:
-        @commands.hybrid_command(
-            name=alias_name,
-            help='Set a role to be used for bans in conjunction with a voice channel.'
-        )
-        @commands.check(is_owner_developer_coordinator)
-        async def role_alias(ctx, role: discord.Role):
-            guild_id = ctx.guild.id
-            self.bot.command_aliases.setdefault(guild_id, {}).setdefault('role', {})[alias_name] = role.id
-            async with self.db_pool.acquire() as conn:
-                await conn.execute(
-                    '''
-                    INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
-                    VALUES ($1, 'role', $2, $3)
-                    ON CONFLICT (guild_id, alias_type, alias_name)
-                    DO UPDATE SET channel_id = EXCLUDED.channel_id
-                    ''',
-                    guild_id, alias_name, role.id
-                )
-            await ctx.send(f'✅ Role `{role.name}` set for alias `{alias_name}`.')
-    
-        return role_alias
+
+    @commands.hybrid_command(
+        name='role',
+        help='Associate a voice channel with a role used for bans.'
+    )
+    @commands.check(is_owner_developer_coordinator)
+    async def role(
+        self,
+        ctx: commands.Context,
+        channel: discord.VoiceChannel,
+        role: discord.Role
+    ):
+        guild_id = ctx.guild.id
+        alias_type = 'role'
+        alias_name = str(channel.id)  # use channel ID as the alias name
+        role_id = role.id
+        # Update in-memory map
+        self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = role_id
+
+        # Persist to database
+        async with self.db_pool.acquire() as conn:
+            await conn.execute(
+                '''
+                INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (guild_id, alias_type, alias_name)
+                DO UPDATE SET channel_id = EXCLUDED.channel_id
+                ''',
+                guild_id, alias_type, alias_name, role_id
+            )
+
+        await ctx.reply(f"Associated voice channel {channel.mention} with role {role.mention}.")
     #
     #  Help Command: Provides a scope-limited command to investigate available bot commands.
     #
