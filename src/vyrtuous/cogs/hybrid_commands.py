@@ -26,6 +26,7 @@ from discord.ext.commands import Command
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.service.check_service import *
 from vyrtuous.inc.helpers import *
+from vyrtuous.utils.setup_logging import logger
 from types import MethodType
 from typing import List, Optional
 
@@ -80,7 +81,7 @@ class Hybrid(commands.Cog):
             except commands.CheckFailure:
                 continue
             except Exception as e:
-                print(f"❌ Exception while checking command '{command}': {e}")
+                logger.warning(f"❌ Exception while checking command '{command}': {e}")
         return available_commands
     
     @commands.hybrid_command(name='coord', help='Grants coordinator access to a user in this guild.')
@@ -537,7 +538,9 @@ class Hybrid(commands.Cog):
             *,
             reason: str = commands.parameter(default='', description='Reason for ban (required for permanent).')
         ) -> None:
+            command_name = ctx.invoked_with
             guild_id = ctx.guild.id
+            logger.info(f"[{guild_id}] Ban command invoked: {command_name} by {ctx.author} (User ID: {ctx.author.id})")
             member_id = None
             member_object = None
             if member_input.isdigit():
@@ -559,14 +562,17 @@ class Hybrid(commands.Cog):
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
             role_id = None
-            ban_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
-            role_aliases = self.bot.command_aliases.get(guild_id, {}).get('role', {})
-            for alias_data in role_aliases.values():
-                if alias_data.get('channel_id') == ban_channel_id:
-                    role_id = alias_data.get('role_id')
-                    break
-            if not role_id:
-                return await self.handler.send_message(ctx, content=f'❌ No ban role alias mapping found for `{command_name}`.')
+            ban_channel_id = static_channel_id
+            async with self.db_pool.acquire() as conn:
+                role_id = await conn.fetchval(
+                    '''
+                    SELECT role_id FROM channel_roles
+                    WHERE guild_id = $1 AND channel_id = $2
+                    ''',
+                    guild_id, static_channel_id
+                )
+                if not role_id:
+                    return await self.handler.send_message(ctx, content=f'❌ No ban role alias mapping found for `{command_name}`.')
             async with self.db_pool.acquire() as conn:
                 existing_ban = await conn.fetchval(
                     '''
@@ -583,36 +589,46 @@ class Hybrid(commands.Cog):
             role = ctx.guild.get_role(role_id)
             if not role:
                 return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
-
             try:
                 await member_object.add_roles(role, reason=f"Banned from <#{static_channel_id}>: {reason or 'No reason provided'}")
             except discord.Forbidden:
                 return await self.handler.send_message(ctx, content='❌ Missing permissions to assign ban role.')
-            async with self.db_pool.acquire() as conn:
-                await conn.execute('''
-                    INSERT INTO active_bans (user_id, channel_id, expires_at)
-                    VALUES ($1, $2, $3)
-                    ON CONFLICT (user_id, channel_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
-                ''', member_object.id, static_channel_id,
-                    None if duration_hours == 0 else discord.utils.utcnow() + timedelta(hours=duration_hours)
-                )
-                await conn.execute('''
-                    UPDATE users
-                    SET ban_channel_ids = array_append(ban_channel_ids, $2),
-                        updated_at = NOW()
-                    WHERE user_id = $1
-                ''', member_object.id, static_channel_id)
-    
-                await conn.execute('''
-                    INSERT INTO ban_reasons (guild_id, user_id, channel_id, reason)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (guild_id, user_id, channel_id)
-                    DO UPDATE SET reason = EXCLUDED.reason
-                ''', guild_id, member_object.id, static_channel_id, reason or 'No reason provided')
+            try:
+                async with self.db_pool.acquire() as conn:
+                    await conn.execute(
+                        '''
+                        INSERT INTO active_bans (user_id, channel_id, expires_at)
+                        VALUES ($1, $2, $3)
+                        ON CONFLICT (user_id, channel_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
+                        ''',
+                        member_object.id, static_channel_id,
+                        None if duration_hours == 0 else discord.utils.utcnow() + timedelta(hours=duration_hours)
+                    )
+                    await conn.execute(
+                        '''
+                        UPDATE users
+                        SET ban_channel_ids = array_append(ban_channel_ids, $2),
+                            updated_at = NOW()
+                        WHERE user_id = $1
+                        ''',
+                        member_object.id, static_channel_id
+                    )
+                    await conn.execute(
+                        '''
+                        INSERT INTO ban_reasons (guild_id, user_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (guild_id, user_id, channel_id)
+                        DO UPDATE SET reason = EXCLUDED.reason
+                        ''',
+                        guild_id, member_object.id, static_channel_id, reason or 'No reason provided'
+                    )
+            except Exception as e:
+                logger.warning(f"🔥 Database error occurred: {e}")
             await self.handler.send_message(
                 ctx,
                 content=f'🔇 {member_object.mention} has been banned from <#{static_channel_id}> {"permanently" if duration_hours == 0 else f"for {duration_hours} hour(s)"}.'
             )
+        
             if duration_hours > 0:
                 expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
                 async with self.db_pool.acquire() as conn:
@@ -623,7 +639,7 @@ class Hybrid(commands.Cog):
                         ON CONFLICT (user_id, channel_id)
                         DO UPDATE SET expires_at = EXCLUDED.expires_at
                         ''',
-                        user.id, channel.id, expires_at
+                        member_object.id, static_channel_id, expires_at
                     )
         return ban_alias
     
@@ -927,25 +943,18 @@ class Hybrid(commands.Cog):
         role: discord.Role
     ):
         guild_id = ctx.guild.id
-        alias_type = 'role'
-        alias_name = str(channel.id)  # use channel ID as the alias name
-        role_id = role.id
-        # Update in-memory map
-        self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = role_id
-
-        # Persist to database
+    
         async with self.db_pool.acquire() as conn:
             await conn.execute(
                 '''
-                INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (guild_id, alias_type, alias_name)
-                DO UPDATE SET channel_id = EXCLUDED.channel_id
+                INSERT INTO channel_roles (guild_id, channel_id, role_id)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (guild_id, channel_id) DO UPDATE SET role_id = EXCLUDED.role_id
                 ''',
-                guild_id, alias_type, alias_name, role_id
+                guild_id, channel.id, role.id
             )
-
-        await ctx.reply(f"Associated voice channel {channel.mention} with role {role.mention}.")
+    
+        await ctx.reply(f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
     #
     #  Help Command: Provides a scope-limited command to investigate available bot commands.
     #

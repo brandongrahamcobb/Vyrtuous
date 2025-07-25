@@ -5,13 +5,13 @@ DROP TABLE IF EXISTS mute_reasons;
 DROP TABLE IF EXISTS active_mutes;
 DROP TABLE IF EXISTS ban_reasons;
 DROP TABLE IF EXISTS active_bans;
+DROP TABLE IF EXISTS channel_roles;
 
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
     ban_channel_ids BIGINT[],
     mute_channel_ids BIGINT[],
     manual_mute_channels BIGINT[],
-    role_ids BIGINT[],
     moderator_ids BIGINT[],
     coordinator_ids BIGINT[],
     developer_guild_ids BIGINT[],
@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS ban_reasons (
 CREATE TABLE IF NOT EXISTS active_bans (
     user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
+    expires_at TIMESTAMPTZ,
     PRIMARY KEY (user_id, channel_id)
 );
 
@@ -68,6 +69,12 @@ CREATE TABLE IF NOT EXISTS ban_expirations (
     channel_id BIGINT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (user_id, channel_id)
+);
+CREATE TABLE IF NOT EXISTS channel_roles (
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    PRIMARY KEY (guild_id, channel_id)
 );
 GRANT ALL PRIVILEGES ON DATABASE vyrtuous TO spawd;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO spawd;

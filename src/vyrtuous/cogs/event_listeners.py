@@ -125,8 +125,8 @@ class EventListeners(commands.Cog):
         
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error) -> None:
-        if isinstance(error, commands.MissingRequiredArgument):
-            await self.send_command_help(ctx, ctx.command)
+#        if isinstance(error, commands.MissingRequiredArgument):
+#            await self.send_command_help(ctx, ctx.command)
         if isinstance(error, commands.CheckFailure):
             await self.handler.send_message(ctx, content=str(error))
             
