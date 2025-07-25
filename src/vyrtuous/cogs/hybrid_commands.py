@@ -52,22 +52,19 @@ class Hybrid(commands.Cog):
                 self.bot.command_aliases[guild_id][alias_type][alias_name] = channel_id
                 if alias_type == 'mute':
                     cmd = self.create_mute_alias(alias_name)
-                    self.bot.add_command(cmd)
                 elif alias_type == 'unmute':
                     cmd = self.create_unmute_alias(alias_name)
-                    self.bot.add_command(cmd)
                 elif alias_type == 'ban':
                     cmd = self.create_ban_alias(alias_name)
-                    self.bot.add_command(cmd)
                 elif alias_type == 'unban':
                     cmd = self.create_unban_alias(alias_name)
-                    self.bot.add_command(cmd)
                 elif alias_type == 'role':
                     cmd = self.create_role_alias(alias_name)
-                    self.bot.add_command(cmd)
                 elif alias_type == 'unrole':
                     cmd = self.create_unrole_alias(alias_name)
-                    self.bot.add_command(cmd)
+                elif alias_type == 'flag':
+                    cmd = self.create_flag_alias(alias_name)
+                self.bot.add_command(cmd)
         
     #
     #  Help Command: helper method for the help command.
@@ -160,35 +157,47 @@ class Hybrid(commands.Cog):
     
         await self.handler.send_message(ctx, content=f'{member_object.mention}\'s coordinator access has been revoked in this guild.')
 
-    @commands.hybrid_command(name='coords', help='Lists all coordinators in this guild.')
+    @commands.hybrid_command(name='coords', help='Lists coordinators for a specific voice channel.')
     @commands.check(is_owner_developer_coordinator)
-    async def list_coordinators(self, ctx) -> None:
+    async def list_coordinators(
+        self,
+        ctx,
+        channel_input: str = commands.parameter(description='Voice channel ID, mention, or name.')
+    ) -> None:
         guild = ctx.guild
-        pages = []
-    
+        def resolve_channel(value: str) -> Optional[discord.VoiceChannel]:
+            if value.isdigit():
+                channel = guild.get_channel(int(value))
+            elif value.startswith('<#') and value.endswith('>'):
+                channel = guild.get_channel(int(value.strip('<#>')))
+            else:
+                channel = discord.utils.get(guild.voice_channels, name=value)
+            return channel if isinstance(channel, discord.VoiceChannel) else None
+        voice_channel = resolve_channel(channel_input)
+        if not voice_channel:
+            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT user_id, coordinator_ids
-                FROM users
+                SELECT user_id FROM users
                 WHERE $1 = ANY(coordinator_ids)
-            ''', guild.id)
-    
+            ''', voice_channel.id)
         if not rows:
-            await self.handler.send_message(ctx, content='No coordinators are configured in this guild.')
-            return
-    
+            return await self.handler.send_message(ctx, content=f'ℹ️ No coordinators found for <#{voice_channel.id}>.')
+        pages = []
         for row in rows:
             user_id = row['user_id']
             user = guild.get_member(user_id)
             name = user.display_name if user else f'User ID {user_id}'
             embed = discord.Embed(
                 title=f'Coordinator: {name}',
+                description=f'Assigned to <#{voice_channel.id}>',
                 color=discord.Color.gold()
             )
+            embed.set_footer(text=f'User ID: {user_id}')
             pages.append(embed)
-    
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
+
 
     #
     # Developer Commands: creation
@@ -390,42 +399,94 @@ class Hybrid(commands.Cog):
             ''', member_object.id, resolved_channel.id)
         await self.handler.send_message(ctx, content=f'{member_object.mention} has been revoked moderator access in {resolved_channel.name}.')
 
-    @commands.hybrid_command(name='mods', help='Lists VC moderators.')
+    @commands.hybrid_command(name='mods', help='Lists moderators for a specific voice channel.')
     @commands.check(is_owner_developer_coordinator_moderator)
-    async def list_moderators(self, ctx) -> None:
+    async def list_moderators(
+        self,
+        ctx,
+        channel_input: str = commands.parameter(description='Voice channel ID, mention, or name.')
+    ) -> None:
         guild = ctx.guild
-        pages = []
+        def resolve_channel(value: str) -> Optional[discord.VoiceChannel]:
+            if value.isdigit():
+                channel = guild.get_channel(int(value))
+            elif value.startswith('<#') and value.endswith('>'):
+                channel = guild.get_channel(int(value.strip('<#>')))
+            else:
+                channel = discord.utils.get(guild.voice_channels, name=value)
+            return channel if isinstance(channel, discord.VoiceChannel) else None
+        voice_channel = resolve_channel(channel_input)
+        if not voice_channel:
+            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
+        channel_id = voice_channel.id
+    
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT user_id, moderator_ids
-                FROM users
-                WHERE cardinality(moderator_ids) > 0
-            ''')
+                SELECT user_id FROM users
+                WHERE $1 = ANY(moderator_ids)
+            ''', channel_id)
+        if not rows:
+            return await self.handler.send_message(ctx, content=f'ℹ️ No moderators found for <#{channel_id}>.')
+        pages = []
         for row in rows:
             user_id = row['user_id']
-            moderator_ids = row['moderator_ids'] or []
-            valid_channels = [
-                guild.get_channel(cid)
-                for cid in moderator_ids
-                if (guild.get_channel(cid) and isinstance(guild.get_channel(cid), discord.VoiceChannel))
-            ]
-            if not valid_channels:
-                continue
             user = guild.get_member(user_id)
             display_name = user.display_name if user else f'User ID {user_id}'
+    
             embed = discord.Embed(
-                title=f'VC Mod: {display_name}',
-                description='\n'.join(f'<#{channel.id}> — {channel.name}' for channel in valid_channels),
-                color=discord.Color.blue()
+                title=f'Moderator for {voice_channel.name}',
+                description=f'{display_name} (<@{user_id}>)',
+                color=discord.Color.green()
             )
             embed.set_footer(text=f'User ID: {user_id}')
             pages.append(embed)
-        if not pages:
-            await self.handler.send_message(ctx, content='No VC moderators are configured in this guild.')
-            return
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
+
         
+    @commands.hybrid_command(
+        name='flags',
+        help='List flagged users currently in a specific voice channel.'
+    )
+    @commands.check(is_owner_developer_coordinator_moderator)
+    async def flags(
+        self,
+        ctx,
+        channel_input: str = commands.parameter(description='Voice channel ID, mention, or name.')
+    ) -> None:
+        guild = ctx.guild
+        def resolve_channel(value: str) -> Optional[discord.VoiceChannel]:
+            if value.isdigit():
+                channel = guild.get_channel(int(value))
+            elif value.startswith('<#') and value.endswith('>'):
+                channel = guild.get_channel(int(value.strip('<#>')))
+            else:
+                channel = discord.utils.get(guild.voice_channels, name=value)
+            return channel if isinstance(channel, discord.VoiceChannel) else None
+        channel = resolve_channel(channel_input)
+        if not channel:
+            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
+        channel_id = channel.id
+        voice_members = channel.members
+        voice_ids = {member.id for member in voice_members}
+        if not voice_ids:
+            return await self.handler.send_message(ctx, content=f'ℹ️ No members are currently in <#{channel_id}>.')
+        sql = '''
+            SELECT user_id FROM users
+            WHERE flagged = TRUE AND user_id = ANY($1::BIGINT[])
+        '''
+        try:
+            async with self.db_pool.acquire() as conn:
+                rows = await conn.fetch(sql, list(voice_ids))
+            if not rows:
+                return await self.handler.send_message(ctx, content=f'✅ No flagged users currently in <#{channel_id}>.')
+            mentions = [f'<@{row["user_id"]}>' for row in rows]
+            message = f'🚩 Flagged users in <#{channel_id}>:\n' + '\n'.join(mentions)
+            await self.handler.send_message(ctx, content=message)
+        except Exception as e:
+            await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
+            raise
+
     #
     # Alias Commands: creation
     #                 deletion
@@ -433,19 +494,19 @@ class Hybrid(commands.Cog):
     #
     @commands.hybrid_command(
         name='alias',
-        help='Set an alias for a mute, unmute, ban or unban action.'
+        help='Set an alias for a mute, unmute, ban, unban or flagaction.'
     )
     @commands.check(is_owner_developer_coordinator)
     async def create_alias(
         self,
         ctx,
-        alias_type: str = commands.parameter(description='One of: `mute`, `unmute`, `ban`, `unban`'),
+        alias_type: str = commands.parameter(description='One of: `mute`, `unmute`, `ban`, `unban`, `flag`'),
         alias_name: str = commands.parameter(description='Alias/Pseudonym'),
         channel_id: str = commands.parameter(description='Voice channel')
     ) -> None:
         alias_type = alias_type.lower()
         guild_id = ctx.guild.id
-        valid_types = {'mute', 'unmute', 'ban', 'unban'}
+        valid_types = {'mute', 'unmute', 'ban', 'unban', 'flag'}
         if alias_type not in valid_types:
             return await ctx.send(f'❌ Invalid alias type. Must be one of: {", ".join(valid_types)}', ephemeral=True)
         if not alias_name.strip():
@@ -482,8 +543,9 @@ class Hybrid(commands.Cog):
             cmd = self.create_ban_alias(alias_name)
         elif alias_type == 'unban':
             cmd = self.create_unban_alias(alias_name)
+        elif alias_type == 'flag':
+            cmd = self.create_flag_alias(alias_name)
         self.bot.add_command(cmd)
-
             
     def create_ban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
@@ -1032,6 +1094,46 @@ class Hybrid(commands.Cog):
                 guild_id, channel.id, role.id
             )
         await ctx.reply(f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
+        
+    def create_flag_alias(self, command_name: str) -> Command:
+        @commands.hybrid_command(
+            name=command_name,
+            help='Flag one or more users in the database.'
+        )
+        @commands.check(is_owner_developer_coordinator_moderator)
+        async def flag_alias(
+            ctx,
+            *args: str
+        ) -> None:
+            if not args:
+                return await self.handler.send_message(ctx, content='❌ You must provide at least one user ID or mention.')
+            user_ids = set()
+            for arg in args:
+                if re.fullmatch(r'<@!?\d+>', arg):
+                    arg = re.sub(r'\D', '', arg)
+                try:
+                    user_ids.add(int(arg))
+                except ValueError:
+                    await self.handler.send_message(ctx, content=f'❌ Invalid user ID or mention: `{arg}`')
+            if not user_ids:
+                return await self.handler.send_message(ctx, content='❌ No valid user IDs found.')
+            sql = '''
+                INSERT INTO users (user_id, flagged)
+                VALUES ($1, TRUE)
+                ON CONFLICT (user_id)
+                DO UPDATE SET flagged = TRUE, updated_at = NOW()
+            '''
+            try:
+                async with self.db_pool.acquire() as conn:
+                    async with conn.transaction():
+                        for uid in user_ids:
+                            await conn.execute(sql, uid)
+                await self.handler.send_message(ctx, content='✅ User(s) have been flagged.')
+            except Exception as e:
+                await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
+                raise
+        return flag_alias
+
     #
     #  Help Command: Provides a scope-limited command to investigate available bot commands.
     #
