@@ -441,8 +441,8 @@ class Hybrid(commands.Cog):
         ctx,
         alias_type: str = commands.parameter(description='One of: `mute`, `unmute`, `ban`, `unban`, `unrole`, `role`'),
         alias_name: str = commands.parameter(description='Alias name'),
-        target1: str = commands.parameter(description='VC or Channel for alias'),
-        target2: Optional[str] = commands.parameter(description='Optional: Troll role')
+        channel_id: str = commands.parameter(description='VC or Channel for alias'),
+        role_id: Optional[str] = commands.parameter(description='Optional: Troll role')
     ) -> None:
         alias_type = alias_type.lower()
         guild_id = ctx.guild.id
@@ -464,10 +464,10 @@ class Hybrid(commands.Cog):
                 return ctx.guild.get_role(int(value.strip('<@&>')))
             return discord.utils.get(ctx.guild.roles, name=value)
         if alias_type == 'role':
-            if not target2:
+            if not role_id:
                 return await ctx.send('❌ Role alias requires two arguments: `<channel>` and `<role>`', ephemeral=True)
-            channel = resolve_channel(target1)
-            role = resolve_role(target2)
+            channel = resolve_channel(channel_id)
+            role = resolve_role(role_id)
             if not channel or channel.type != discord.ChannelType.voice:
                 return await ctx.send('❌ Invalid voice channel.', ephemeral=True)
             if not role:
@@ -491,9 +491,9 @@ class Hybrid(commands.Cog):
                 content=f'✅ Ban role alias `{alias_name}` set: {channel.mention} → {role.mention}.'
             )
         else:
-            if target2:
+            if role_id:
                 return await ctx.send(f'❌ `{alias_type}` alias only accepts one target.', ephemeral=True)
-            channel = resolve_channel(target1)
+            channel = resolve_channel(channel_id)
             if not channel or channel.type != discord.ChannelType.voice:
                 return await ctx.send('❌ Could not resolve a valid voice channel.', ephemeral=True)
             self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel.id
