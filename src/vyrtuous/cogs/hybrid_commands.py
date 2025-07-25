@@ -830,11 +830,11 @@ class Hybrid(commands.Cog):
             return
         guild_id = ctx.guild.id
         alias_type = None
-        for candidate in ('mute', 'unmute', 'ban', 'unban', 'role', 'xrole'):
+        for candidate in ('mute', 'unmute', 'ban', 'unban'):
             if alias_name in self.bot.command_aliases.get(guild_id, {}).get(candidate, {}):
                 alias_type = candidate
                 break
-        if alias_type.lower() not in {'mute', 'unmute', 'ban', 'unban', 'role', 'xrole'}:
+        if alias_type.lower() not in {'mute', 'unmute', 'ban', 'unban'}:
             await ctx.send('❌ `alias_type` must be either `mute` or `unmute`.', ephemeral=True)
             return
         if not alias_type:
@@ -852,24 +852,50 @@ class Hybrid(commands.Cog):
         self.bot.command_aliases[guild_id][alias_type.lower()].pop(alias_name, None)
         await self.handler.send_message(ctx, content=f'✅ Deleted alias `{alias_name}` from `{alias_type}`.')
         
-    @commands.hybrid_command(name='aliases', help='List all the aliases in the current guild.')
+    @commands.hybrid_command(name='aliases', help='List all the aliases in the current guild, or filter by channel.')
     @commands.check(is_owner_developer_coordinator_moderator)
-    async def list_aliases(self, ctx) -> None:
+    async def list_aliases(self, ctx, channel: discord.TextChannel = None) -> None:
         guild_id = ctx.guild.id
         aliases = self.bot.command_aliases.get(guild_id, {})
-        pages = []
-        for kind in ('mute', 'unmute', 'ban', 'unban', 'role', 'xrole'):
-            entries = aliases.get(kind, {})
-            if not entries:
-                continue
-            embed = discord.Embed(
-                title=f'{kind.capitalize()} Aliases for {ctx.guild.name}',
-                description='\n'.join(f'`{name}` → <#{cid}>' for name, cid in entries.items()),
-                color=discord.Color.blue()
-            )
-            pages.append(embed)
-        if not pages:
+        if not aliases:
             await self.handler.send_message(ctx, content='No aliases defined in this guild.')
+            return
+        pages = []
+        if channel:
+            channel_id = channel.id
+            found_aliases = False
+            for kind in ('mute', 'unmute', 'ban', 'unban'):
+                entries = aliases.get(kind, {})
+                if not entries:
+                    continue
+                channel_entries = {name: cid for name, cid in entries.items() if cid == channel_id}
+                if channel_entries:
+                    found_aliases = True
+                    embed = discord.Embed(
+                        title=f'{kind.capitalize()} Aliases for {channel.mention}',
+                        description='\n'.join(f'`{name}` → <#{cid}>' for name, cid in channel_entries.items()),
+                        color=discord.Color.blue()
+                    )
+                    pages.append(embed)
+            if not found_aliases:
+                await self.handler.send_message(
+                    ctx,
+                    content=f'No aliases found for {channel.mention}.'
+                )
+                return
+        else:
+            for kind in ('mute', 'unmute', 'ban', 'unban'):
+                entries = aliases.get(kind, {})
+                if not entries:
+                    continue
+                embed = discord.Embed(
+                    title=f'{kind.capitalize()} Aliases for {ctx.guild.name}',
+                    description='\n'.join(f'`{name}` → <#{cid}>' for name, cid in entries.items()),
+                    color=discord.Color.blue()
+                )
+                pages.append(embed)
+        if not pages:
+            await self.handler.send_message(ctx, content='No aliases found.')
             return
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
