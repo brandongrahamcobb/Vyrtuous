@@ -505,9 +505,9 @@ class Hybrid(commands.Cog):
         guild_id = ctx.guild.id
         valid_types = {'mute', 'unmute', 'ban', 'unban', 'flag'}
         if alias_type not in valid_types:
-            return await ctx.send(f'❌ Invalid alias type. Must be one of: {", ".join(valid_types)}', ephemeral=True)
+            return await self.handler.send_message(f'❌ Invalid alias type. Must be one of: {", ".join(valid_types)}', ephemeral=True)
         if not alias_name.strip():
-            return await ctx.send('❌ Alias name cannot be empty.', ephemeral=True)
+            return await self.handler.send_message('❌ Alias name cannot be empty.', ephemeral=True)
         def resolve_channel(value: str):
             if value.isdigit():
                 return ctx.guild.get_channel(int(value))
@@ -516,7 +516,7 @@ class Hybrid(commands.Cog):
             return discord.utils.get(ctx.guild.voice_channels, name=value)
         channel = resolve_channel(channel_id)
         if not channel or channel.type != discord.ChannelType.voice:
-            return await ctx.send('❌ Could not resolve a valid voice channel.', ephemeral=True)
+            return await self.handler.send_message('❌ Could not resolve a valid voice channel.', ephemeral=True)
         self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel.id
         async with self.db_pool.acquire() as conn:
             await conn.execute(
@@ -808,7 +808,7 @@ class Hybrid(commands.Cog):
             description='\n'.join(description_lines),
             color=discord.Color.orange()
         )
-        await ctx.send(embed=embed)
+        await self.handler.send_message(embed=embed)
 
     def create_unban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
@@ -938,7 +938,7 @@ class Hybrid(commands.Cog):
         alias_name: str = commands.parameter(description='Includ an alias name')
     ) -> None:
         if not alias_name.strip():
-            await ctx.send('❌ `alias_name` cannot be empty.', ephemeral=True)
+            await self.handler.send_message('❌ `alias_name` cannot be empty.', ephemeral=True)
             return
         guild_id = ctx.guild.id
         alias_type = None
@@ -947,14 +947,14 @@ class Hybrid(commands.Cog):
                 alias_type = candidate
                 break
         if alias_type.lower() not in {'mute', 'unmute', 'ban', 'unban'}:
-            await ctx.send('❌ `alias_type` must be either `mute` or `unmute`.', ephemeral=True)
+            await self.handler.send_message('❌ `alias_type` must be either `mute` or `unmute`.', ephemeral=True)
             return
         if not alias_type:
-            await ctx.send(f'❌ Alias `{alias_name}` not found.', ephemeral=True)
+            await self.handler.send_message(f'❌ Alias `{alias_name}` not found.', ephemeral=True)
             return
         alias_map = self.bot.command_aliases.get(guild_id, {}).get(alias_type.lower(), {})
         if alias_name not in alias_map:
-            await ctx.send(f'❌ Alias `{alias_name}` not found in `{alias_type}` for guild `{guild_id}`.', ephemeral=True)
+            await self.handler.send_message(f'❌ Alias `{alias_name}` not found in `{alias_type}` for guild `{guild_id}`.', ephemeral=True)
             return
         async with self.db_pool.acquire() as conn:
             await conn.execute(
@@ -1136,7 +1136,6 @@ class Hybrid(commands.Cog):
                 raise
         return flag_alias
 
-
     #
     #  Help Command: Provides a scope-limited command to investigate available bot commands.
     #
@@ -1151,13 +1150,13 @@ class Hybrid(commands.Cog):
         if command_name:
             cmd = bot.get_command(command_name.lower())
             if not cmd:
-                await ctx.send(f'❌ Command `{command_name}` not found.')
+                await self.handler.send_message(f'❌ Command `{command_name}` not found.')
                 return
             if cmd.hidden:
-                await ctx.send(f'❌ Command `{command_name}` is hidden.')
+                await self.handler.send_message(f'❌ Command `{command_name}` is hidden.')
                 return
             if not await cmd.can_run(ctx):
-                await ctx.send(f'❌ You do not have permission to run `{command_name}`.')
+                await self.handler.send_message(f'❌ You do not have permission to run `{command_name}`.')
                 return
             embed = discord.Embed(
                 title=f'/{cmd.name}',
@@ -1190,24 +1189,22 @@ class Hybrid(commands.Cog):
                     if description:
                         detail += f": {description}"
                     param_details.append(detail)
-        
                 embed.add_field(
                     name="Usage",
                     value=f"`{' '.join(usage_parts)}`",
                     inline=False
                 )
-        
                 if param_details:
                     embed.add_field(
                         name="Parameter Details",
                         value="\n".join(param_details),
                         inline=False
                     )
-            await ctx.send(embed=embed)
+            await self.handler.send_message(embed=embed)
             return
         all_commands = await self.get_available_commands(bot, ctx)
         if not all_commands:
-            await ctx.send('❌ No commands available to you.')
+            await self.handler.send_message('❌ No commands available to you.')
             return
         cog_map: dict[str, list[commands.Command]] = {}
         for command in all_commands:
@@ -1286,13 +1283,13 @@ class Hybrid(commands.Cog):
         if command_name:
             cmd = bot.get_command(command_name.lower())
             if not cmd:
-                await ctx.send(f'❌ Command `{command_name}` not found.')
+                await self.handler.send_message(f'❌ Command `{command_name}` not found.')
                 return
             if cmd.hidden:
-                await ctx.send(f'❌ Command `{command_name}` is hidden.')
+                await self.handler.send_message(f'❌ Command `{command_name}` is hidden.')
                 return
             if not await cmd.can_run(ctx):
-                await ctx.send(f'❌ You do not have permission to run `{command_name}`.')
+                await self.handler.send_message(f'❌ You do not have permission to run `{command_name}`.')
                 return
             embed = discord.Embed(
                 title=f'/{cmd.name}',
@@ -1336,11 +1333,11 @@ class Hybrid(commands.Cog):
                         value="\n".join(param_details),
                         inline=False
                     )
-            await ctx.send(embed=embed)
+            await self.handler.send_message(embed=embed)
             return
         all_commands = await self.get_available_commands(bot, ctx)
         if not all_commands:
-            await ctx.send('❌ No commands available to you.')
+            await self.handler.send_message('❌ No commands available to you.')
             return
         permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
         pages = []
@@ -1391,7 +1388,7 @@ class Hybrid(commands.Cog):
                     )
             pages.append(embed)
         if not pages:
-            await ctx.send('❌ No commands available to you.')
+            await self.handler.send_message('❌ No commands available to you.')
             return
         paginator = Paginator(bot, ctx, pages)
         await paginator.start()

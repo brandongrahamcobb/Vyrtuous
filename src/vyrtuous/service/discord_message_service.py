@@ -33,17 +33,22 @@ class DiscordMessageService:
         await self._send_message(channel.send, content=content, file=file, embed=embed)
 
     async def send_message(self, ctx: commands.Context, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
-        can_send = (ctx.guild and isinstance(ctx.channel, discord.abc.GuildChannel) and ctx.channel.permissions_for(ctx.guild.me).send_messages)
+        can_send = (
+            ctx.guild
+            and isinstance(ctx.channel, discord.abc.GuildChannel)
+            and ctx.channel.permissions_for(ctx.guild.me).send_messages
+        )
         if can_send:
             try:
-                await self._send_message(ctx.reply, content=content, file=file, embed=embed)
+                await self._send_message(lambda **kwargs: ctx.reply(**kwargs), content=content, file=file, embed=embed)
             except discord.HTTPException as e:
                 if e.code == 50035:  # Invalid Form Body due to message_reference
-                    await self._send_message(ctx.send, content=content, file=file, embed=embed)
+                    await self._send_message(lambda **kwargs: ctx.send(**kwargs), content=content, file=file, embed=embed)
                 else:
-                   raise
+                    raise
         else:
-           await self.send_dm(ctx.author, content=content, file=file, embed=embed)
+            await self.send_dm(ctx.author, content=content, file=file, embed=embed)
+
 
     async def _send_message(self, send_func, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
         kwargs = {}
