@@ -1105,7 +1105,9 @@ class Hybrid(commands.Cog):
             print('test')
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
+            print('text')
             channel_id = flag_aliases.get(command_name)
+            print('text')
             if not channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No flag alias configured for `{command_name}`.')
             if not user:
