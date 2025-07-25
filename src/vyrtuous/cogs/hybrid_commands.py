@@ -1100,24 +1100,18 @@ class Hybrid(commands.Cog):
         @commands.check(is_owner_developer_coordinator_moderator)
         async def flag_alias(
             ctx,
-            *users: str
+            user: str
         ) -> None:
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
             if not channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No flag alias configured for `{command_name}`.')
-            if not users:
+            if not user:
                 return await self.handler.send_message(ctx, content='❌ You must provide at least one user ID or mention.')
-            user_ids = set()
-            for arg in users:
-                if re.fullmatch(r'<@!?\d+>', arg):
-                    arg = re.sub(r'\D', '', arg)
-                try:
-                    user_ids.add(int(arg))
-                except ValueError:
-                    await self.handler.send_message(ctx, content=f'❌ Invalid user ID or mention: `{arg}`')
-            if not user_ids:
+            if re.fullmatch(r'<@!?\d+>', user):
+                user_id = re.sub(r'\D', '', user)
+            if not user_id:
                 return await self.handler.send_message(ctx, content='❌ No valid user IDs found.')
             sql = '''
                 INSERT INTO users (user_id, flagged)
