@@ -28,7 +28,7 @@ from vyrtuous.service.check_service import *
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from types import MethodType
-from typing import List, Optional
+from typing import List, Optional, Union
 
 logger = logging.getLogger(__name__)
 class Hybrid(commands.Cog):
@@ -642,7 +642,57 @@ class Hybrid(commands.Cog):
                         member_object.id, static_channel_id, expires_at
                     )
         return ban_alias
-    
+        
+    @commands.hybrid_command(name='listbans', help='Lists all users banned from a specific channel.')
+    @commands.check(is_owner_developer)
+    async def list_bans(
+        self,
+        ctx: commands.Context,
+        channel_input: str = commands.parameter(description='Mention or ID of the channel to check bans for.')
+    ) -> None:
+        guild = ctx.guild
+        channel_id = None
+        if channel_input.isdigit():
+            channel_id = int(channel_input)
+        elif channel_input.startswith('<#') and channel_input.endswith('>'):
+            try:
+                channel_id = int(channel_input.strip('<#>'))
+            except ValueError:
+                pass
+        if not channel_id or not guild.get_channel(channel_id):
+            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid channel.')
+        async with self.db_pool.acquire() as conn:
+            bans = await conn.fetch('''
+                SELECT ab.user_id, ab.expires_at, br.reason
+                FROM active_bans ab
+                LEFT JOIN ban_reasons br ON ab.user_id = br.user_id AND ab.channel_id = br.channel_id AND br.guild_id = $1
+                WHERE ab.channel_id = $2
+                ORDER BY ab.expires_at NULLS LAST
+            ''', guild.id, channel_id)
+        if not bans:
+            return await self.handler.send_message(ctx, content=f'✅ No active bans found for <#{channel_id}>.')
+        embeds = []
+        for record in bans:
+            user = guild.get_member(record['user_id'])
+            name = user.mention if user else f"User ID {record['user_id']}"
+            reason = record['reason'] or 'No reason provided'
+            expires_at = record['expires_at']
+            duration_str = (
+                "Permanent" if expires_at is None
+                else discord.utils.format_dt(expires_at, style='R')  # e.g., "in 5 minutes"
+            )
+            embed = discord.Embed(
+                title="⛔ Channel Ban",
+                description=f"{name} is banned from <#{channel_id}>.",
+                color=discord.Color.red()
+            )
+            embed.add_field(name="Reason", value=reason, inline=False)
+            embed.add_field(name="Duration", value=duration_str, inline=True)
+            embed.set_footer(text=f"Channel ID: {channel_id}")
+            embeds.append(embed)
+        paginator = Paginator(self.bot, ctx, embeds)
+        await paginator.start()
+
     def create_mute_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(name=command_name, help='Mutes a member in a specific VC.')
         @commands.check(is_owner_developer_coordinator_moderator)
@@ -698,6 +748,49 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content=f'{member_object.mention} has been muted in <#{static_channel_id}> with reason {reason}.')
         return mute_alias
     
+    @commands.hybrid_command(
+        name='listmutes',
+        help='Lists all users currently muted in a specific voice channel.'
+    )
+    @commands.check(is_owner_developer_coordinator)
+    async def list_mutes(
+        ctx,
+        channel: Union[discord.VoiceChannel, str] = commands.parameter(description='Voice channel mention or ID.')
+    ) -> None:
+        guild_id = ctx.guild.id
+        try:
+            if isinstance(channel, discord.VoiceChannel):
+                channel_id = channel.id
+            elif channel.isdigit():
+                channel_id = int(channel)
+            elif channel.startswith('<#') and channel.endswith('>'):
+                channel_id = int(channel.strip('<#>'))
+            else:
+                raise ValueError
+        except ValueError:
+            return await self.handler.send_message(ctx, content='❌ Invalid channel mention or ID.')
+        async with self.db_pool.acquire() as conn:
+            records = await conn.fetch('''
+                SELECT u.user_id, u.mute_channel_ids, mr.reason
+                FROM users u
+                JOIN mute_reasons mr ON u.user_id = mr.user_id
+                WHERE $1 = ANY(u.mute_channel_ids) AND mr.channel_id = $1 AND mr.guild_id = $2
+            ''', channel_id, guild_id)
+        if not records:
+            return await self.handler.send_message(ctx, content=f'ℹ️ No users are currently muted in <#{channel_id}>.')
+        description_lines = []
+        for record in records:
+            user = ctx.guild.get_member(record['user_id'])
+            mention = user.mention if user else f'`{record["user_id"]}`'
+            reason = record['reason']
+            description_lines.append(f'• {mention} — {reason}')
+        embed = discord.Embed(
+            title=f'Muted Users in <#{channel_id}>',
+            description='\n'.join(description_lines),
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
+
     def create_unban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
@@ -969,7 +1062,6 @@ class Hybrid(commands.Cog):
         role: discord.Role
     ):
         guild_id = ctx.guild.id
-    
         async with self.db_pool.acquire() as conn:
             await conn.execute(
                 '''
@@ -979,7 +1071,6 @@ class Hybrid(commands.Cog):
                 ''',
                 guild_id, channel.id, role.id
             )
-    
         await ctx.reply(f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
     #
     #  Help Command: Provides a scope-limited command to investigate available bot commands.
@@ -1003,21 +1094,16 @@ class Hybrid(commands.Cog):
             if not await cmd.can_run(ctx):
                 await ctx.send(f'❌ You do not have permission to run `{command_name}`.')
                 return
-        
             embed = discord.Embed(
                 title=f'/{cmd.name}',
                 description=cmd.help or 'No description provided.',
                 color=discord.Color.blue()
             )
-        
             sig = inspect.signature(cmd.callback)
             parameters = list(sig.parameters.items())[2:]
-        
             if parameters:
-                # Build usage syntax
                 usage_parts = [f"/{cmd.name}"]
                 param_details = []
-        
                 for name, param in parameters:
                     is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY
                     default = param.default
@@ -1031,14 +1117,10 @@ class Hybrid(commands.Cog):
                         if hasattr(param.annotation, '__name__')
                         else str(param.annotation)
                     )
-        
-                    # Add to usage syntax
                     if is_optional:
                         usage_parts.append(f"[{name}]")
                     else:
                         usage_parts.append(f"<{name}>")
-        
-                    # Add to parameter details
                     detail = f"**{name}** ({annotation})"
                     if description:
                         detail += f": {description}"
@@ -1056,7 +1138,6 @@ class Hybrid(commands.Cog):
                         value="\n".join(param_details),
                         inline=False
                     )
-        
             await ctx.send(embed=embed)
             return
         all_commands = await self.get_available_commands(bot, ctx)
@@ -1199,11 +1280,11 @@ class Hybrid(commands.Cog):
         permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
         pages = []
         permission_order = [
-            ('Owner', 'Guild owners and system owners'),
-            ('Developer', 'Bot developers'),
-            ('Coordinator', 'Server coordinators'),
-            ('Moderator', 'Channel moderators'),
-            ('Public', 'Available to everyone')
+            ('Owner', '`Owner` inherits `developer`'),
+            ('Developer', '`Developer` inherits `coordinator`.'),
+            ('Coordinator', '`Coordinator inherits `moderator`.'),
+            ('Moderator', 'Moderators can use these commands.'),
+            ('Everyone', 'No commands available.')
         ]
         for perm_level, description in permission_order:
             if perm_level not in permission_groups:
@@ -1256,7 +1337,7 @@ class Hybrid(commands.Cog):
             'Developer': [],
             'Coordinator': [],
             'Moderator': [],
-            'Public': []
+            'Everyone': []
         }
         for command in commands_list:
             perm_level = await self.get_command_permission_level(bot, ctx, command)
@@ -1266,15 +1347,15 @@ class Hybrid(commands.Cog):
     
     async def get_command_permission_level(self, bot, ctx, command):
         if not hasattr(command, 'checks') or not command.checks:
-            return 'Public'
+            return 'Everyone'
         permission_levels = {
             'Owner': 4,
             'Developer': 3,
             'Coordinator': 2,
             'Moderator': 1,
-            'Public': 0
+            'Everyone': 0
         }
-        highest_level = 'Public'
+        highest_level = 'Everyone'
         highest_value = 0
         for check in command.checks:
             check_names = []
@@ -1320,7 +1401,7 @@ class Hybrid(commands.Cog):
             'Developer': discord.Color.purple(),
             'Coordinator': discord.Color.orange(),
             'Moderator': discord.Color.blue(),
-            'Public': discord.Color.green()
+            'Everyone': discord.Color.green()
         }
         return colors.get(perm_level, discord.Color.greyple())
     
