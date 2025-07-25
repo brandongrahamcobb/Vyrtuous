@@ -1090,7 +1090,7 @@ class Hybrid(commands.Cog):
                 ''',
                 guild_id, channel.id, role.id
             )
-        await ctx.reply(f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
+        await self.handler.send_message(f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
         
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
@@ -1102,6 +1102,7 @@ class Hybrid(commands.Cog):
             ctx,
             user: str
         ) -> None:
+            print('test')
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
@@ -1113,6 +1114,7 @@ class Hybrid(commands.Cog):
                 user_id = re.sub(r'\D', '', user)
             if not user_id:
                 return await self.handler.send_message(ctx, content='❌ No valid user IDs found.')
+            print("test")
             sql = '''
                 INSERT INTO users (user_id, flagged)
                 VALUES ($1, TRUE)
