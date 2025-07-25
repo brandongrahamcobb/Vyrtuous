@@ -977,36 +977,60 @@ class Hybrid(commands.Cog):
             if not await cmd.can_run(ctx):
                 await ctx.send(f'❌ You do not have permission to run `{command_name}`.')
                 return
+        
             embed = discord.Embed(
                 title=f'/{cmd.name}',
                 description=cmd.help or 'No description provided.',
                 color=discord.Color.blue()
             )
+        
             sig = inspect.signature(cmd.callback)
             parameters = list(sig.parameters.items())[2:]
-            for name, param in parameters:
-                is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY
-                default = param.default
-                description = (
-                    getattr(default, 'description', None)
-                    if isinstance(default, commands.Parameter)
-                    else None
+        
+            if parameters:
+                # Build usage syntax
+                usage_parts = [f"/{cmd.name}"]
+                param_details = []
+        
+                for name, param in parameters:
+                    is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY
+                    default = param.default
+                    description = (
+                        getattr(default, 'description', None)
+                        if isinstance(default, commands.Parameter)
+                        else None
+                    )
+                    annotation = (
+                        param.annotation.__name__
+                        if hasattr(param.annotation, '__name__')
+                        else str(param.annotation)
+                    )
+        
+                    # Add to usage syntax
+                    if is_optional:
+                        usage_parts.append(f"[{name}]")
+                    else:
+                        usage_parts.append(f"<{name}>")
+        
+                    # Add to parameter details
+                    detail = f"**{name}** ({annotation})"
+                    if description:
+                        detail += f": {description}"
+                    param_details.append(detail)
+        
+                embed.add_field(
+                    name="Usage",
+                    value=f"`{' '.join(usage_parts)}`",
+                    inline=False
                 )
-                default_value = (
-                    getattr(default, 'default', None)
-                    if isinstance(default, commands.Parameter)
-                    else default
-                )
-                annotation = (
-                    param.annotation.__name__
-                    if hasattr(param.annotation, '__name__')
-                    else str(param.annotation)
-                )
-                label = 'Optional' if is_optional else 'Required'
-                display = f'Type: `{annotation}`\n{label}'
-                if description:
-                    display += f'\n{description}'
-                embed.add_field(name=f'`{name}`', value=display, inline=False)
+        
+                if param_details:
+                    embed.add_field(
+                        name="Parameter Details",
+                        value="\n".join(param_details),
+                        inline=False
+                    )
+        
             await ctx.send(embed=embed)
             return
         all_commands = await self.get_available_commands(bot, ctx)
@@ -1078,6 +1102,250 @@ class Hybrid(commands.Cog):
         lines += [format_row(row, 'ban') for row in ban_rows]
         content = f'📄 Disciplinary reasons for {member_object.mention}:\n' + '\n'.join(lines)
         await self.handler.send_message(ctx, content=content)
+        
+    @commands.hybrid_command(name='help')
+    async def help(
+        self,
+        ctx,
+        *,
+        command_name: str = commands.parameter(default=None, description='Include a command name')
+    ) -> None:
+        bot = ctx.bot
+        if command_name:
+            cmd = bot.get_command(command_name.lower())
+            if not cmd:
+                await ctx.send(f'❌ Command `{command_name}` not found.')
+                return
+            if cmd.hidden:
+                await ctx.send(f'❌ Command `{command_name}` is hidden.')
+                return
+            if not await cmd.can_run(ctx):
+                await ctx.send(f'❌ You do not have permission to run `{command_name}`.')
+                return
+            embed = discord.Embed(
+                title=f'/{cmd.name}',
+                description=cmd.help or 'No description provided.',
+                color=discord.Color.blue()
+            )
+            sig = inspect.signature(cmd.callback)
+            parameters = list(sig.parameters.items())[2:]
+            if parameters:
+                usage_parts = [f"/{cmd.name}"]
+                param_details = []
+                for name, param in parameters:
+                    is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY
+                    default = param.default
+                    description = (
+                        getattr(default, 'description', None)
+                        if isinstance(default, commands.Parameter)
+                        else None
+                    )
+                    annotation = (
+                        param.annotation.__name__
+                        if hasattr(param.annotation, '__name__')
+                        else str(param.annotation)
+                    )
+                    if is_optional:
+                        usage_parts.append(f"[{name}]")
+                    else:
+                        usage_parts.append(f"<{name}>")
+                    detail = f"**{name}** ({annotation})"
+                    if description:
+                        detail += f": {description}"
+                    param_details.append(detail)
+                embed.add_field(
+                    name="Usage",
+                    value=f"`{' '.join(usage_parts)}`",
+                    inline=False
+                )
+                if param_details:
+                    embed.add_field(
+                        name="Parameter Details",
+                        value="\n".join(param_details),
+                        inline=False
+                    )
+    
+            await ctx.send(embed=embed)
+            return
+        all_commands = await self.get_available_commands(bot, ctx)
+        if not all_commands:
+            await ctx.send('❌ No commands available to you.')
+            return
+        permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
+        pages = []
+        permission_order = [
+            ('Owner', 'Guild owners and system owners'),
+            ('Developer', 'Bot developers'),
+            ('Coordinator', 'Server coordinators'),
+            ('Moderator', 'Channel moderators'),
+            ('Public', 'Available to everyone')
+        ]
+        for perm_level, description in permission_order:
+            if perm_level not in permission_groups:
+                continue
+            commands_in_level = sorted(permission_groups[perm_level], key=lambda c: c.name)
+            if not commands_in_level:
+                continue
+            embed = discord.Embed(
+                title=f'{perm_level} Commands',
+                description=description,
+                color=self.get_permission_color(perm_level)
+            )
+            cog_map = {}
+            for command in commands_in_level:
+                if command.hidden:
+                    continue
+                cog_name = command.cog_name or 'Uncategorized'
+                cog_map.setdefault(cog_name, []).append(command)
+            for cog_name in sorted(cog_map):
+                commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
+                command_list = '\n'.join(
+                    f'**/{cmd.name}** – {cmd.help or "No description"}'
+                    for cmd in commands_in_cog
+                )
+                if len(command_list) > 1024:
+                    chunks = self.split_command_list(commands_in_cog)
+                    for i, chunk in enumerate(chunks):
+                        field_name = f'{cog_name}' if i == 0 else f'{cog_name} (cont.)'
+                        embed.add_field(
+                            name=field_name,
+                            value=chunk,
+                            inline=False
+                        )
+                else:
+                    embed.add_field(
+                        name=cog_name,
+                        value=command_list,
+                        inline=False
+                    )
+            pages.append(embed)
+        if not pages:
+            await ctx.send('❌ No commands available to you.')
+            return
+        paginator = Paginator(bot, ctx, pages)
+        await paginator.start()
+    
+    async def group_commands_by_permission(self, bot, ctx, commands_list):
+        """Group commands by their permission requirements."""
+        permission_groups = {
+            'Owner': [],
+            'Developer': [],
+            'Coordinator': [],
+            'Moderator': [],
+            'Public': []
+        }
+    
+        for command in commands_list:
+            perm_level = await self.get_command_permission_level(bot, ctx, command)
+            if perm_level in permission_groups:
+                permission_groups[perm_level].append(command)
+    
+        return permission_groups
+    
+    async def get_command_permission_level(self, bot, ctx, command):
+        """Determine the permission level required for a command."""
+        if not hasattr(command, 'checks') or not command.checks:
+            return 'Public'
+    
+        # Track the highest permission level found
+        permission_levels = {
+            'Owner': 4,
+            'Developer': 3,
+            'Coordinator': 2,
+            'Moderator': 1,
+            'Public': 0
+        }
+    
+        highest_level = 'Public'
+        highest_value = 0
+    
+        # Check each permission check function
+        for check in command.checks:
+            check_names = []
+    
+            # Try multiple ways to get the function name
+            if hasattr(check, '__name__'):
+                check_names.append(check.__name__)
+    
+            if hasattr(check, '__wrapped__'):
+                wrapped = check.__wrapped__
+                if hasattr(wrapped, '__name__'):
+                    check_names.append(wrapped.__name__)
+    
+            # For commands.check() decorators, try to get the predicate
+            if hasattr(check, 'predicate') and hasattr(check.predicate, '__name__'):
+                check_names.append(check.predicate.__name__)
+    
+            # Try string representation as fallback
+            check_str = str(check)
+            if 'function' in check_str:
+                try:
+                    func_name = check_str.split('function ')[1].split(' ')[0]
+                    check_names.append(func_name)
+                except:
+                    pass
+    
+            print(f"Debug: Command '{command.name}' has check names: {check_names}")  # Debug
+    
+            # Check all found names
+            for check_name in check_names:
+                level = None
+    
+                # Exact matches for your specific functions
+                if check_name == 'is_owner_developer_coordinator_moderator':
+                    level = 'Moderator'
+                elif check_name == 'is_owner_developer_coordinator':
+                    level = 'Coordinator'
+                elif check_name == 'is_owner_developer':
+                    level = 'Developer'
+                elif check_name in ['is_owner', 'is_guild_owner', 'is_system_owner']:
+                    level = 'Owner'
+                elif check_name == 'is_developer':
+                    level = 'Developer'
+                elif check_name == 'is_coordinator':
+                    level = 'Coordinator'
+                elif check_name in ['is_moderator', 'is_channel_moderator']:
+                    level = 'Moderator'
+    
+                if level and permission_levels[level] > highest_value:
+                    highest_level = level
+                    highest_value = permission_levels[level]
+    
+        return highest_level
+    
+    def get_permission_color(self, perm_level):
+        """Get color for each permission level."""
+        colors = {
+            'Owner': discord.Color.red(),
+            'Developer': discord.Color.purple(),
+            'Coordinator': discord.Color.orange(),
+            'Moderator': discord.Color.blue(),
+            'Public': discord.Color.green()
+        }
+        return colors.get(perm_level, discord.Color.greyple())
+    
+    def split_command_list(self, commands_list, max_length=1024):
+        """Split a long command list into chunks that fit in embed fields."""
+        chunks = []
+        current_chunk = []
+        current_length = 0
+    
+        for cmd in commands_list:
+            cmd_line = f'**/{cmd.name}** – {cmd.help or "No description"}\n'
+            cmd_length = len(cmd_line)
+    
+            if current_length + cmd_length > max_length and current_chunk:
+                chunks.append('\n'.join(current_chunk))
+                current_chunk = [cmd_line.rstrip()]
+                current_length = cmd_length
+            else:
+                current_chunk.append(cmd_line.rstrip())
+                current_length += cmd_length
+    
+        if current_chunk:
+            chunks.append('\n'.join(current_chunk))
+    
+        return chunks
     
 async def setup(bot: commands.Bot):
     cog = Hybrid(bot)
