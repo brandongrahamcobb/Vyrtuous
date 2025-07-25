@@ -433,20 +433,19 @@ class Hybrid(commands.Cog):
     #
     @commands.hybrid_command(
         name='alias',
-        help='Set an alias for a mute, unmute, ban, unban, or role action.'
+        help='Set an alias for a mute, unmute, ban or unban action.'
     )
     @commands.check(is_owner_developer_coordinator)
     async def create_alias(
         self,
         ctx,
-        alias_type: str = commands.parameter(description='One of: `mute`, `unmute`, `ban`, `unban`, `unrole`, `role`'),
-        alias_name: str = commands.parameter(description='Alias name'),
-        channel_id: str = commands.parameter(description='VC or Channel for alias'),
-        role_id: Optional[str] = commands.parameter(description='Optional: Troll role')
+        alias_type: str = commands.parameter(description='One of: `mute`, `unmute`, `ban`, `unban`'),
+        alias_name: str = commands.parameter(description='Alias/Pseudonym'),
+        channel_id: str = commands.parameter(description='Voice channel')
     ) -> None:
         alias_type = alias_type.lower()
         guild_id = ctx.guild.id
-        valid_types = {'mute', 'unmute', 'ban', 'unban', 'role', 'unrole'}
+        valid_types = {'mute', 'unmute', 'ban', 'unban'}
         if alias_type not in valid_types:
             return await ctx.send(f'❌ Invalid alias type. Must be one of: {", ".join(valid_types)}', ephemeral=True)
         if not alias_name.strip():
@@ -457,73 +456,34 @@ class Hybrid(commands.Cog):
             if value.startswith('<#') and value.endswith('>'):
                 return ctx.guild.get_channel(int(value.strip('<#>')))
             return discord.utils.get(ctx.guild.voice_channels, name=value)
-        def resolve_role(value: str):
-            if value.isdigit():
-                return ctx.guild.get_role(int(value))
-            if value.startswith('<@&') and value.endswith('>'):
-                return ctx.guild.get_role(int(value.strip('<@&>')))
-            return discord.utils.get(ctx.guild.roles, name=value)
-        if alias_type == 'role':
-            if not role_id:
-                return await ctx.send('❌ Role alias requires two arguments: `<channel>` and `<role>`', ephemeral=True)
-            channel = resolve_channel(channel_id)
-            role = resolve_role(role_id)
-            if not channel or channel.type != discord.ChannelType.voice:
-                return await ctx.send('❌ Invalid voice channel.', ephemeral=True)
-            if not role:
-                return await ctx.send('❌ Invalid role.', ephemeral=True)
-            self.bot.command_aliases.setdefault(guild_id, {}).setdefault('role', {})[alias_name] = {
-                'channel_id': channel.id,
-                'role_id': role.id
-            }
-            async with self.db_pool.acquire() as conn:
-                await conn.execute(
-                    '''
-                    INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id, role_id)
-                    VALUES ($1, $2, $3, $4, $5)
-                    ON CONFLICT (guild_id, alias_type, alias_name)
-                    DO UPDATE SET channel_id = EXCLUDED.channel_id, role_id = EXCLUDED.role_id
-                    ''',
-                    guild_id, 'role', alias_name, channel.id, role.id
-                )
-            await self.handler.send_message(
-                ctx,
-                content=f'✅ Ban role alias `{alias_name}` set: {channel.mention} → {role.mention}.'
+        channel = resolve_channel(channel_id)
+        if not channel or channel.type != discord.ChannelType.voice:
+            return await ctx.send('❌ Could not resolve a valid voice channel.', ephemeral=True)
+        self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel.id
+        async with self.db_pool.acquire() as conn:
+            await conn.execute(
+                '''
+                INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (guild_id, alias_type, alias_name)
+                DO UPDATE SET channel_id = EXCLUDED.channel_id
+                ''',
+                guild_id, alias_type, alias_name, channel.id
             )
-        else:
-            if role_id:
-                return await ctx.send(f'❌ `{alias_type}` alias only accepts one target.', ephemeral=True)
-            channel = resolve_channel(channel_id)
-            if not channel or channel.type != discord.ChannelType.voice:
-                return await ctx.send('❌ Could not resolve a valid voice channel.', ephemeral=True)
-            self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel.id
-            async with self.db_pool.acquire() as conn:
-                await conn.execute(
-                    '''
-                    INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (guild_id, alias_type, alias_name)
-                    DO UPDATE SET channel_id = EXCLUDED.channel_id
-                    ''',
-                    guild_id, alias_type, alias_name, channel.id
-                )
-            await self.handler.send_message(
-                ctx,
-                content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
-            )
-            if alias_type == 'mute':
-                cmd = self.create_mute_alias(alias_name)
-            elif alias_type == 'unmute':
-                cmd = self.create_unmute_alias(alias_name)
-            elif alias_type == 'ban':
-                cmd = self.create_ban_alias(alias_name)
-            elif alias_type == 'unban':
-                cmd = self.create_unban_alias(alias_name)
-            elif alias_type == 'unrole':
-                cmd = self.create_unrole_alias(alias_name)
-            elif alias_type == 'role':
-                cmd = self.create_role_alias(alias_name)
-            self.bot.add_command(cmd)
+        await self.handler.send_message(
+            ctx,
+            content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
+        )
+        if alias_type == 'mute':
+            cmd = self.create_mute_alias(alias_name)
+        elif alias_type == 'unmute':
+            cmd = self.create_unmute_alias(alias_name)
+        elif alias_type == 'ban':
+            cmd = self.create_ban_alias(alias_name)
+        elif alias_type == 'unban':
+            cmd = self.create_unban_alias(alias_name)
+        self.bot.add_command(cmd)
+
             
     def create_ban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
