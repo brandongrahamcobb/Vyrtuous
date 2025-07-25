@@ -494,7 +494,7 @@ class Hybrid(commands.Cog):
     #
     @commands.hybrid_command(
         name='alias',
-        help='Set an alias for a mute, unmute, ban, unban or flagaction.'
+        help='Set an alias for a mute, unmute, ban, unban or flag action.'
     )
     @commands.check(is_owner_developer_coordinator)
     async def create_alias(
@@ -1098,17 +1098,22 @@ class Hybrid(commands.Cog):
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
-            help='Flag one or more users in the database.'
+            help='Flag one or more users in the database for the voice channel mapped to this alias.'
         )
         @commands.check(is_owner_developer_coordinator_moderator)
         async def flag_alias(
             ctx,
-            *args: str
+            *users: str
         ) -> None:
-            if not args:
+            guild_id = ctx.guild.id
+            flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
+            channel_id = flag_aliases.get(command_name)
+            if not channel_id:
+                return await self.handler.send_message(ctx, content=f'❌ No flag alias configured for `{command_name}`.')
+            if not users:
                 return await self.handler.send_message(ctx, content='❌ You must provide at least one user ID or mention.')
             user_ids = set()
-            for arg in args:
+            for arg in users:
                 if re.fullmatch(r'<@!?\d+>', arg):
                     arg = re.sub(r'\D', '', arg)
                 try:
@@ -1128,11 +1133,12 @@ class Hybrid(commands.Cog):
                     async with conn.transaction():
                         for uid in user_ids:
                             await conn.execute(sql, uid)
-                await self.handler.send_message(ctx, content='✅ User(s) have been flagged.')
+                await self.handler.send_message(ctx, content=f'✅ Flagged {len(user_ids)} user(s) for channel <#{channel_id}>.')
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
                 raise
         return flag_alias
+
 
     #
     #  Help Command: Provides a scope-limited command to investigate available bot commands.
