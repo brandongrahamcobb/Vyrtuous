@@ -85,7 +85,7 @@ class Hybrid(commands.Cog):
         return available_commands
     
     @commands.hybrid_command(name='coord', help='Grants coordinator access to a user in this guild.')
-    @commands.check(is_owner)
+    @commands.check(is_owner_developer)
     async def create_coordinator(
         self,
         ctx,
@@ -126,7 +126,7 @@ class Hybrid(commands.Cog):
         await self.handler.send_message(ctx, content=f'{member_object.mention} has been granted coordinator rights in this guild.')
 
     @commands.hybrid_command(name='xcoord', help='Revokes coordinator access from a user in this guild.')
-    @commands.check(is_owner)
+    @commands.check(is_owner_developer)
     async def delete_coordinator(
         self,
         ctx,
