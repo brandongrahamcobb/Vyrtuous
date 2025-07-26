@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import asyncio
+import datetime
 import discord
 import inspect
 import logging
@@ -644,7 +645,7 @@ class Hybrid(commands.Cog):
                         ON CONFLICT (user_id, channel_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
                         ''',
                         member_object.id, static_channel_id,
-                        None if duration_hours == 0 else discord.utils.utcnow() + timedelta(hours=duration_hours)
+                        None if duration_hours == 0 else discord.utils.utcnow() + datetime.timedelta(hours=duration_hours)
                     )
                     await conn.execute(
                         '''
