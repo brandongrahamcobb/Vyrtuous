@@ -31,7 +31,6 @@ class EventListeners(commands.Cog):
         self.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.db_pool)
 
-    @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
         if member.bot:
             return
@@ -41,7 +40,7 @@ class EventListeners(commands.Cog):
         async with self.db_pool.acquire() as conn:
             if before.mute and not after.mute and before_channel:
                 row = await conn.fetchrow("""
-                    SELECT source FROM active_mutes
+                    SELECT source, issuer_id FROM active_mutes
                     WHERE user_id = $1 AND channel_id = $2
                 """, user_id, before_channel.id)
                 if row and row['source'] == 'manual':
@@ -57,7 +56,7 @@ class EventListeners(commands.Cog):
                     """, user_id, before_channel.id)
             if not before.mute and after.mute and after_channel:
                 row = await conn.fetchrow("""
-                    SELECT source FROM active_mutes
+                    SELECT source, issuer_id FROM active_mutes
                     WHERE user_id = $1 AND channel_id = $2
                 """, user_id, after_channel.id)
                 if not row:
@@ -80,15 +79,19 @@ class EventListeners(commands.Cog):
                     """, user_id, after_channel.id)
             if after_channel:
                 row = await conn.fetchrow("""
-                    SELECT source FROM active_mutes
+                    SELECT source, issuer_id FROM active_mutes
                     WHERE user_id = $1 AND channel_id = $2
                 """, user_id, after_channel.id)
                 if row:
-                    if row['source'] in ('manual', 'bot') and not after.mute:
+                    if row['source'] == 'owner':
+                        if not after.mute:
+                            await member.edit(mute=True)
+                    elif row['source'] in ('manual', 'bot') and not after.mute:
                         await member.edit(mute=True)
                 else:
                     if after.mute:
                         await member.edit(mute=False)
+        
             if after_channel and before_channel != after_channel:
                 is_flagged = await conn.fetchval("""
                     SELECT flagged FROM users WHERE user_id = $1 AND flagged = TRUE

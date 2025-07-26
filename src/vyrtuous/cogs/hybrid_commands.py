@@ -737,24 +737,41 @@ class Hybrid(commands.Cog):
             if not member_object:
                 return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('mute', {}).get(command_name)
+            is_owner = await self.bot.is_owner(ctx.author)
+            mute_source = 'owner' if is_owner else 'bot'
             async with self.db_pool.acquire() as conn:
                 await conn.execute('''
-                    INSERT INTO active_mutes (user_id, channel_id, source)
-                    VALUES ($1, $2, 'bot')
-                    ON CONFLICT DO NOTHING
-                ''', member_object.id, static_channel_id)
-                await conn.execute('''
-                    INSERT INTO users (user_id, mute_channel_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (user_id) DO UPDATE
-                    SET mute_channel_ids = (
-                        SELECT ARRAY(
-                            SELECT DISTINCT unnest(u.mute_channel_ids || ARRAY[$2])
-                        )
-                        FROM users u WHERE u.user_id = EXCLUDED.user_id
-                    ),
-                    updated_at = NOW()
-                ''', member_object.id, static_channel_id)
+                    INSERT INTO active_mutes (user_id, channel_id, source, issuer_id)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (user_id, channel_id) DO UPDATE 
+                    SET source = EXCLUDED.source, issuer_id = EXCLUDED.issuer_id
+                ''', member_object.id, static_channel_id, mute_source, ctx.author.id)
+                if is_owner:
+                    await conn.execute('''
+                        INSERT INTO users (user_id, server_mute_channel_ids)
+                        VALUES ($1, ARRAY[$2]::BIGINT[])
+                        ON CONFLICT (user_id) DO UPDATE
+                        SET server_mute_channel_ids = (
+                            SELECT ARRAY(
+                                SELECT DISTINCT unnest(u.server_mute_channel_ids || ARRAY[$2])
+                            )
+                            FROM users u WHERE u.user_id = EXCLUDED.user_id
+                        ),
+                        updated_at = NOW()
+                    ''', member_object.id, static_channel_id)
+                else:
+                    await conn.execute('''
+                        INSERT INTO users (user_id, mute_channel_ids)
+                        VALUES ($1, ARRAY[$2]::BIGINT[])
+                        ON CONFLICT (user_id) DO UPDATE
+                        SET mute_channel_ids = (
+                            SELECT ARRAY(
+                                SELECT DISTINCT unnest(u.mute_channel_ids || ARRAY[$2])
+                            )
+                            FROM users u WHERE u.user_id = EXCLUDED.user_id
+                        ),
+                        updated_at = NOW()
+                    ''', member_object.id, static_channel_id)
                 await conn.execute('''
                     INSERT INTO mute_reasons (guild_id, user_id, reason, channel_id)
                     VALUES ($1, $2, $3, $4)
@@ -763,9 +780,11 @@ class Hybrid(commands.Cog):
                 ''', guild_id, member_object.id, reason, static_channel_id)
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                 await member_object.edit(mute=True)
-                await self.handler.send_message(ctx, content=f'{member_object.mention} has been muted in <#{static_channel_id}> with reason {reason}.')
+                mute_type = "server muted" if is_owner else "muted"
+                await self.handler.send_message(ctx, content=f'{member_object.mention} has been {mute_type} in <#{static_channel_id}> with reason {reason}.')
             else:
-                await self.handler.send_message(ctx, content=f'{member_object.mention} has been muted in <#{static_channel_id}> with reason {reason}.')
+                mute_type = "server muted" if is_owner else "muted"
+                await self.handler.send_message(ctx, content=f'{member_object.mention} has been {mute_type} in <#{static_channel_id}> with reason {reason}.')
         return mute_alias
     
     @commands.hybrid_command(
