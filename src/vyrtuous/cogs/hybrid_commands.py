@@ -1574,6 +1574,31 @@ class Hybrid(commands.Cog):
         if not all_commands:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
+        # Step 2: Get the user's current voice channel. A user must be in a VC to see VC-specific aliases.
+        user_vc_id = ctx.author.voice.channel.id if ctx.author.voice and ctx.author.voice.channel else None
+
+        # Step 3: Create a simple lookup map of all aliases in the guild.
+        # The bot stores aliases in self.bot.command_aliases.
+        guild_aliases = self.bot.command_aliases.get(ctx.guild.id, {})
+        alias_to_channel_map = {}
+        for alias_type_map in guild_aliases.values():
+            for alias_name, channel_id in alias_type_map.items():
+                alias_to_channel_map[alias_name] = channel_id
+
+        # Step 4: Filter the command list based on context.
+        contextual_commands = []
+        for command in all_commands:
+            # Check if the command is an alias
+            alias_channel_id = alias_to_channel_map.get(command.name)
+
+            if alias_channel_id:
+                # It's an alias. Only show it if the user is in the correct voice channel.
+                if user_vc_id and user_vc_id == alias_channel_id:
+                    contextual_commands.append(command)
+            else:
+                # It's a regular command, so always show it.
+                contextual_commands.append(command)
+        
         permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
         pages = []
         user_highest = await self.get_user_highest_permission(bot, ctx)
