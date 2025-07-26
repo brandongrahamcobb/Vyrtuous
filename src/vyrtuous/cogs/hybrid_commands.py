@@ -1296,16 +1296,25 @@ class Hybrid(commands.Cog):
         self,
         ctx: commands.Context,
         function: str,
-        channel: discord.VoiceChannel,
+        channel: str,
         role: discord.Role
     ):
         if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', function):
             await self.handler.send_message(ctx, "❌ Invalid function name. Use only letters, numbers, and underscores.")
             return
+    
         allowed_functions = {'ban', 'mute'}  # Add your allowed functions
         if function not in allowed_functions:
             await self.handler.send_message(ctx, f"❌ Function '{function}' is not allowed. Valid functions: {', '.join(allowed_functions)}")
             return
+    
+        # Parse the voice channel from string
+        try:
+            voice_channel = await resolve_voice_channel(ctx.guild, channel)
+        except commands.BadArgument as e:
+            await self.handler.send_message(ctx, f"❌ {str(e)}")
+            return
+    
         guild_id = ctx.guild.id
         table_name = f"{function}_roles"
         async with self.bot.db_pool.acquire() as conn:
@@ -1314,10 +1323,9 @@ class Hybrid(commands.Cog):
                 VALUES ($1, $2, $3)
                 ON CONFLICT (guild_id, channel_id) DO UPDATE SET role_id = EXCLUDED.role_id
             '''
-            await conn.execute(query, guild_id, channel.id, role.id)
+            await conn.execute(query, guild_id, voice_channel.id, role.id)
     
-        await self.handler.send_message(ctx, f"✅ Associated voice channel {channel.mention} with role {role.mention} for {function}.")
-
+        await self.handler.send_message(ctx, f"✅ Associated voice channel {voice_channel.mention} with role {role.mention} for {function}.")
     
     @commands.hybrid_command(
         name='xrole',
@@ -1328,33 +1336,43 @@ class Hybrid(commands.Cog):
         self,
         ctx: commands.Context,
         function: str,
-        channel: discord.VoiceChannel
+        channel: str
     ):
         if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', function):
             await self.handler.send_message(ctx, "❌ Invalid function name. Use only letters, numbers, and underscores.")
             return
+    
         allowed_functions = {'ban', 'mute'}
         if function not in allowed_functions:
             await self.handler.send_message(ctx, f"❌ Function '{function}' is not allowed. Valid functions: {', '.join(allowed_functions)}")
             return
+    
+        # Parse the voice channel from string
+        try:
+            voice_channel = await resolve_voice_channel(ctx.guild, channel)
+        except commands.BadArgument as e:
+            await self.handler.send_message(ctx, f"❌ {str(e)}")
+            return
+    
         guild_id = ctx.guild.id
         table_name = f"{function}_roles"
         async with self.bot.db_pool.acquire() as conn:
             check_query = f'SELECT role_id FROM {table_name} WHERE guild_id = $1 AND channel_id = $2'
-            result = await conn.fetchrow(check_query, guild_id, channel.id)
+            result = await conn.fetchrow(check_query, guild_id, voice_channel.id)
             if not result:
                 await self.handler.send_message(
                     ctx,
-                    f"❌ No {function} role association found for {channel.mention}."
+                    f"❌ No {function} role association found for {voice_channel.mention}."
                 )
                 return
             delete_query = f'DELETE FROM {table_name} WHERE guild_id = $1 AND channel_id = $2'
-            await conn.execute(delete_query, guild_id, channel.id)
+            await conn.execute(delete_query, guild_id, voice_channel.id)
+    
         await self.handler.send_message(
             ctx,
-            f"✅ Removed {function} role association from {channel.mention}."
+            f"✅ Removed {function} role association from {voice_channel.mention}."
         )
-        
+
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
@@ -1757,6 +1775,7 @@ class Hybrid(commands.Cog):
         if current_chunk:
             chunks.append('\n'.join(current_chunk))
         return chunks
+    
     
 async def setup(bot: commands.Bot):
     cog = Hybrid(bot)
