@@ -1286,7 +1286,6 @@ class Hybrid(commands.Cog):
                         inline=False
                     )
             await self.handler.send_message(ctx, embed=embed)
-            print("text")
             return
         all_commands = await self.get_available_commands(bot, ctx)
         if not all_commands:
@@ -1378,16 +1377,20 @@ class Hybrid(commands.Cog):
         return 'Everyone'
     
     async def get_user_highest_permission(self, bot, ctx):
-        # Example permission check functions — replace with your actual logic
-        if await is_owner(ctx):
-            return 'Owner'
-        if await is_developer(ctx):
-            return 'Developer'
-        if await is_coordinator(ctx):
-            return 'Coordinator'
-        if await is_moderator(ctx):
-            return 'Moderator'
+        permission_checks = [
+            ('Owner', self.is_owner),
+            ('Developer', self.is_developer),
+            ('Coordinator', self.is_coordinator),
+            ('Moderator', self.is_moderator)
+        ]
+        for level, check in permission_checks:
+            try:
+                if await check(ctx):
+                    return level
+            except commands.CheckFailure:
+                continue
         return 'Everyone'
+
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):
         permission_groups = {level: [] for level in PERMISSION_ORDER}
