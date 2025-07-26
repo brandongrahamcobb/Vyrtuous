@@ -42,7 +42,7 @@ class DiscordOAuth:
             f'?client_id={self.client_id}'
             f'&redirect_uri={self.redirect_uri}'
             f'&response_type=code'
-            f'&permissions=2141842833124'
+            f'&permissions=380385745984'
             f'&integration_type=0'
             f'&scope=bot'
         )
