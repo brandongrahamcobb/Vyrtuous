@@ -76,6 +76,7 @@ async def is_channel_moderator(ctx):
     user_id = ctx.author.id
     guild_id = ctx.guild.id
     command_name = ctx.invoked_with.lower()
+    print("test")
 
     target_channel_id = None
     for alias_type in ("mute", "unmute", "ban", "unban"):
