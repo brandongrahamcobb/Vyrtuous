@@ -1534,6 +1534,7 @@ class Hybrid(commands.Cog):
                 level = None
                 if check_name == 'is_owner_developer_coordinator_moderator':
                     level = 'Moderator'
+                    print("test")
                 elif check_name == 'is_owner_developer_coordinator':
                     level = 'Coordinator'
                 elif check_name == 'is_owner_developer':

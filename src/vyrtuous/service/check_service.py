@@ -88,8 +88,6 @@ async def is_moderator(ctx):
         raise NotModerator("You are not a moderator in this guild.")
     return True
 
-
-
 async def is_coordinator(ctx):
     if ctx.guild is None:
         raise NotCoordinator("Command must be used in a guild.")
