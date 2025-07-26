@@ -878,11 +878,11 @@ class Hybrid(commands.Cog):
             member_object = ctx.guild.get_member(member_id) if member_id else None
             if not member_object:
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
-            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
+            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
             role_id = None
-            ban_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
+            ban_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
             role_aliases = self.bot.command_aliases.get(guild_id, {}).get('role', {})
             for alias_data in role_aliases.values():
                 if alias_data.get('channel_id') == ban_channel_id:
