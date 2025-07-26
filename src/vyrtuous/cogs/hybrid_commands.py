@@ -136,14 +136,17 @@ class Hybrid(commands.Cog):
         )
 
 
-    @commands.hybrid_command(name='xcoord', help='Revokes coordinator access from a user in this guild.')
+    @commands.hybrid_command(
+        name='xcoord',
+        help='Revokes coordinator access from a user in a specific voice channel.'
+    )
     @commands.check(is_owner_developer)
     async def delete_coordinator(
         self,
         ctx,
         member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+        channel: discord.VoiceChannel = commands.parameter(description='Voice channel to revoke coordinator access from.')
     ) -> None:
-        guild_id = ctx.guild.id
         member_id = None
         member_object = None
     
@@ -159,17 +162,18 @@ class Hybrid(commands.Cog):
             member_object = ctx.guild.get_member(member_id)
     
         if not member_object:
-            return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
+            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
     
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE users
-                SET coordinator_ids = array_remove(coordinator_ids, $2),
+                SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2),
                     updated_at = NOW()
                 WHERE user_id = $1
-            ''', member_object.id, guild_id)
+            ''', member_object.id, channel.id)
     
-        await self.handler.send_message(ctx, content=f'{member_object.mention}\'s coordinator access has been revoked in this guild.')
+        await self.handler.send_message(ctx, content=f'✅ {member_object.mention}\'s coordinator access has been revoked from {channel.mention}.')
+
 
     @commands.hybrid_command(name='coords', help='Lists coordinators for a specific voice channel.')
     @commands.check(is_owner_developer_coordinator)
