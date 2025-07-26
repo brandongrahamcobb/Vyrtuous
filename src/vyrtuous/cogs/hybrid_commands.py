@@ -1398,7 +1398,7 @@ class Hybrid(commands.Cog):
         if not pages:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
-        paginator = paginator(bot, ctx, pages, self.handler)
+        paginator = paginator(bot, ctx, pages)
         await paginator.start()
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):

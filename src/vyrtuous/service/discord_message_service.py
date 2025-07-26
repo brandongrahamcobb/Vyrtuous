@@ -61,19 +61,18 @@ class DiscordMessageService:
         await send_func(**kwargs)
 
 class Paginator:
-    def __init__(self, bot, ctx, pages, handler):
+    def __init__(self, bot, ctx, pages):
         self.bot = bot
         self.ctx = ctx
         self.pages = pages
-        self.handler = handler
         self.current_page = 0
         self.message = None
 
     async def start(self):
         if not self.pages:
-            await self.handler.send_message(ctx, 'There are no pages to display.')
+            await ctx.send('There are no pages to display.')
             return
-        self.message = await self.handler.send_message(ctx, embed=self.pages[self.current_page])
+        self.message = await self.send(embed=self.pages[self.current_page])
         await self.message.add_reaction('⬅️')
         await self.message.add_reaction('➡️')
         await self.message.add_reaction('⏹️')
