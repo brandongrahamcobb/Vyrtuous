@@ -197,7 +197,7 @@ class Hybrid(commands.Cog):
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT user_id FROM users
-                WHERE $1 = ANY(coordinator_ids)
+                WHERE $1 = ANY(coordinator_channel_ids)
             ''', voice_channel.id)
         if not rows:
             return await self.handler.send_message(ctx, content=f'ℹ️ No coordinators found for <#{voice_channel.id}>.')
