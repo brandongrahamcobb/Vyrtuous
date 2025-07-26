@@ -84,7 +84,7 @@ async def is_moderator(ctx):
             "SELECT moderator_ids FROM users WHERE user_id = $1",
             user_id
         )
-    if not row or guild_id not in row.get("moderator_ids", []):
+    if not row not in row.get("moderator_ids", []):
         raise NotModerator("You are not a moderator in this guild.")
     return True
 
@@ -97,7 +97,7 @@ async def is_coordinator(ctx):
         row = await conn.fetchrow(
             "SELECT coordinator_ids FROM users WHERE user_id = $1", ctx.author.id
         )
-    if not row or ctx.guild.id not in row.get("coordinator_ids", []):
+    if not row not in row.get("coordinator_ids", []):
         raise NotCoordinator()
     return True
     
@@ -108,7 +108,7 @@ async def is_developer(ctx):
         row = await conn.fetchrow(
             "SELECT developer_guild_ids FROM users WHERE user_id = $1", ctx.author.id
         )
-    if not row or ctx.guild.id not in row.get("developer_guild_ids", []):
+    if not row not in row.get("developer_guild_ids", []):
         raise NotDeveloper()
     return True
                                     

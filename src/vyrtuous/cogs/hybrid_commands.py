@@ -15,22 +15,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import asyncio
 import datetime
-import discord
 import inspect
 import logging
 import re
-from collections import defaultdict
-from discord import app_commands
+from typing import Optional
+
+import discord
 from discord.ext import commands
 from discord.ext.commands import Command
-from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
-from vyrtuous.service.check_service import *
 from vyrtuous.inc.helpers import *
+from vyrtuous.service.check_service import *
+from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.utils.setup_logging import logger
-from types import MethodType
-from typing import List, Optional, Union
 
 logger = logging.getLogger(__name__)
 class Hybrid(commands.Cog):
@@ -67,7 +64,6 @@ class Hybrid(commands.Cog):
                     cmd = self.create_unban_alias(alias_name)
                 elif alias_type == 'flag':
                     cmd = self.create_flag_alias(alias_name)
-    
                 if cmd:
                     self.bot.add_command(cmd)
         
@@ -971,14 +967,12 @@ class Hybrid(commands.Cog):
                 member_object = ctx.guild.get_member(member_id)
             if not member_object:
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
-            print(f"DEBUG: Member resolved: {member_object.name} ({member_object.id})")
             try:
                 async with self.db_pool.acquire() as conn:
                     row = await conn.fetchrow('''
                         SELECT source, issuer_id FROM active_mutes
                         WHERE user_id = $1 AND channel_id = $2
                     ''', member_object.id, static_channel_id)
-                    print(f"DEBUG: Active mute row: {row}")
                     if not row:
                         return await self.handler.send_message(ctx, content=f"❌ {member_object.mention} is not muted in <#{static_channel_id}>.")
                     if row["source"] == "owner":
@@ -1546,12 +1540,6 @@ class Hybrid(commands.Cog):
                     level = 'Developer'
                 elif check_name in ['is_owner', 'is_guild_owner', 'is_system_owner']:
                     level = 'Owner'
-                elif check_name == 'is_developer':
-                    level = 'Developer'
-                elif check_name == 'is_coordinator':
-                    level = 'Coordinator'
-                elif check_name in ['is_moderator', 'is_channel_moderator']:
-                    level = 'Moderator'
                 if level and permission_levels[level] > highest_value:
                     highest_level = level
                     highest_value = permission_levels[level]
