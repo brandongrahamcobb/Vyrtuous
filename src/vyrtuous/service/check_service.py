@@ -86,12 +86,12 @@ async def is_channel_moderator(ctx):
         raise NotModerator("This command alias is not mapped to a target channel.")
     async with bot.db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT moderator_ids FROM users WHERE user_id = $1
-        """, user_id)
+            SELECT moderator_ids FROM channels WHERE channel_id = $1
+        """, target_channel_id)
     if not row:
-        raise NotModerator(f"You are not a VC moderator in <#{target_channel_id}>.")
+        raise NotModerator("Channel record not found.")
     moderator_ids = row.get("moderator_ids") or []
-    if target_channel_id not in moderator_ids:
+    if user_id not in moderator_ids:
         raise NotModerator()
     return True
 
