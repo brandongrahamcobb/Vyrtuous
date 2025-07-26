@@ -28,7 +28,7 @@ from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.utils.setup_logging import logger
-
+PERMISSION_ORDER = ['Owner', 'Developer', 'Coordinator', 'Moderator', 'Everyone']
 logger = logging.getLogger(__name__)
 class Hybrid(commands.Cog):
     def __init__(self, bot):
@@ -1357,148 +1357,13 @@ class Hybrid(commands.Cog):
         content = f'📄 Disciplinary reasons for {member_object.mention}:\n' + '\n'.join(lines)
         await self.handler.send_message(ctx, content=content)
         
-    @commands.hybrid_command(name='help')
-    async def help(
-        self,
-        ctx,
-        *,
-        command_name: str = commands.parameter(default=None, description='Include a command name')
-    ) -> None:
-        bot = ctx.bot
-        if command_name:
-            cmd = bot.get_command(command_name.lower())
-            if not cmd:
-                await self.handler.send_message(ctx, f'❌ Command `{command_name}` not found.')
-                return
-            if cmd.hidden:
-                await self.handler.send_message(ctx, f'❌ Command `{command_name}` is hidden.')
-                return
-            if not await cmd.can_run(ctx):
-                await self.handler.send_message(ctx, f'❌ You do not have permission to run `{command_name}`.')
-                return
-            embed = discord.Embed(
-                title=f'/{cmd.name}',
-                description=cmd.help or 'No description provided.',
-                color=discord.Color.blue()
-            )
-            sig = inspect.signature(cmd.callback)
-            parameters = list(sig.parameters.items())[2:]
-            if parameters:
-                usage_parts = [f"/{cmd.name}"]
-                param_details = []
-                for name, param in parameters:
-                    is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY
-                    default = param.default
-                    description = (
-                        getattr(default, 'description', None)
-                        if isinstance(default, commands.Parameter)
-                        else None
-                    )
-                    annotation = (
-                        param.annotation.__name__
-                        if hasattr(param.annotation, '__name__')
-                        else str(param.annotation)
-                    )
-                    if is_optional:
-                        usage_parts.append(f"[{name}]")
-                    else:
-                        usage_parts.append(f"<{name}>")
-                    detail = f"**{name}** ({annotation})"
-                    if description:
-                        detail += f": {description}"
-                    param_details.append(detail)
-                embed.add_field(
-                    name="Usage",
-                    value=f"`{' '.join(usage_parts)}`",
-                    inline=False
-                )
-                if param_details:
-                    embed.add_field(
-                        name="Parameter Details",
-                        value="\n".join(param_details),
-                        inline=False
-                    )
-            await self.handler.send_message(ctx, embed=embed)
-            return
-        all_commands = await self.get_available_commands(bot, ctx)
-        if not all_commands:
-            await self.handler.send_message(ctx, '❌ No commands available to you.')
-            return
-        permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
-        pages = []
-        permission_order = [
-            ('Owner', '`Owner` inherits `developer`'),
-            ('Developer', '`Developer` inherits `coordinator`.'),
-            ('Coordinator', '`Coordinator` inherits `moderator`.'),
-            ('Moderator', 'Moderators can use these commands.'),
-            ('Everyone', 'No commands available.')
-        ]
-        for perm_level, description in permission_order:
-            if perm_level not in permission_groups:
-                continue
-            commands_in_level = sorted(permission_groups[perm_level], key=lambda c: c.name)
-            if not commands_in_level:
-                continue
-            embed = discord.Embed(
-                title=f'{perm_level} Commands',
-                description=description,
-                color=self.get_permission_color(perm_level)
-            )
-            cog_map = {}
-            for command in commands_in_level:
-                if command.hidden:
-                    continue
-                cog_name = command.cog_name or 'Uncategorized'
-                cog_map.setdefault(cog_name, []).append(command)
-            for cog_name in sorted(cog_map):
-                commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
-                command_list = '\n'.join(
-                    f'**/{cmd.name}** – {cmd.help or "No description"}'
-                    for cmd in commands_in_cog
-                )
-                if len(command_list) > 1024:
-                    chunks = self.split_command_list(commands_in_cog)
-                    for i, chunk in enumerate(chunks):
-                        field_name = f'{cog_name}' if i == 0 else f'{cog_name} (cont.)'
-                        embed.add_field(
-                            name=field_name,
-                            value=chunk,
-                            inline=False
-                        )
-                else:
-                    embed.add_field(
-                        name=cog_name,
-                        value=command_list,
-                        inline=False
-                    )
-            pages.append(embed)
-        if not pages:
-            await self.handler.send_message(ctx, '❌ No commands available to you.')
-            return
-        paginator = Paginator(bot, ctx, pages)
-        await paginator.start()
-    
-    async def group_commands_by_permission(self, bot, ctx, commands_list):
-        permission_groups = {
-            'Owner': [],
-            'Developer': [],
-            'Coordinator': [],
-            'Moderator': [],
-            'Everyone': []
-        }
-        for command in commands_list:
-            perm_level = await self.get_command_permission_level(bot, ctx, command)
-            if perm_level in permission_groups:
-                permission_groups[perm_level].append(command)
-        return permission_groups
-    
     async def get_command_permission_level(self, bot, ctx, command):
         if not hasattr(command, 'checks') or not command.checks:
             return 'Everyone'
         check_names = []
         for check in command.checks:
             func = check
-            if hasattr(func, '__wrapped__'): # Handles decorators
+            if hasattr(func, '__wrapped__'):  # unwrap decorators
                 func = func.__wrapped__
             if hasattr(func, '__name__'):
                 check_names.append(func.__name__)
@@ -1511,6 +1376,119 @@ class Hybrid(commands.Cog):
         if 'is_owner_developer_coordinator_moderator' in check_names:
             return 'Moderator'
         return 'Everyone'
+    
+    async def get_user_highest_permission(self, bot, ctx):
+        # Example permission check functions — replace with your actual logic
+        if await self.is_owner(ctx):
+            return 'Owner'
+        if await self.is_developer(ctx):
+            return 'Developer'
+        if await self.is_coordinator(ctx):
+            return 'Coordinator'
+        if await self.is_moderator(ctx):
+            return 'Moderator'
+        return 'Everyone'
+    
+    async def group_commands_by_permission(self, bot, ctx, commands_list):
+        permission_groups = {level: [] for level in PERMISSION_ORDER}
+    
+        for command in commands_list:
+            perm_level = await self.get_command_permission_level(bot, ctx, command)
+            if perm_level in permission_groups:
+                permission_groups[perm_level].append(command)
+            else:
+                permission_groups['Everyone'].append(command)
+    
+        return permission_groups
+    
+    
+    @commands.hybrid_command(name='help')
+    async def help(self, ctx, *, command_name: str = None):
+        bot = ctx.bot
+        if command_name:
+            cmd = bot.get_command(command_name.lower())
+            if not cmd:
+                await self.handler.send_message(ctx, f'❌ Command `{command_name}` not found.')
+                return
+            if cmd.hidden:
+                await self.handler.send_message(ctx, f'❌ Command `{command_name}` is hidden.')
+                return
+            if not await cmd.can_run(ctx):
+                await self.handler.send_message(ctx, f'❌ You do not have permission to run `{command_name}`.')
+                return
+            # ... your existing command help embed code here ...
+            return
+    
+        all_commands = await self.get_available_commands(bot, ctx)
+        if not all_commands:
+            await self.handler.send_message(ctx, '❌ No commands available to you.')
+            return
+    
+        permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
+        pages = []
+    
+        user_highest = await self.get_user_highest_permission(bot, ctx)
+        user_index = PERMISSION_ORDER.index(user_highest)
+    
+        permission_order = [
+            ('Owner', '`Owner` inherits `developer`.'),
+            ('Developer', '`Developer` inherits `coordinator`.'),
+            ('Coordinator', '`Coordinator` inherits `moderator`.'),
+            ('Moderator', 'Moderators can use these commands.'),
+            ('Everyone', 'Commands available to everyone.')
+        ]
+    
+        for i, (perm_level, description) in enumerate(permission_order):
+            if i > user_index:
+                break  # Stop at user's highest permission
+    
+            commands_in_level = sorted(permission_groups.get(perm_level, []), key=lambda c: c.name)
+            if not commands_in_level:
+                continue
+    
+            embed = discord.Embed(
+                title=f'{perm_level} Commands',
+                description=description,
+                color=self.get_permission_color(perm_level)
+            )
+    
+            cog_map = {}
+            for command in commands_in_level:
+                if command.hidden:
+                    continue
+                cog_name = command.cog_name or 'Uncategorized'
+                cog_map.setdefault(cog_name, []).append(command)
+    
+            for cog_name in sorted(cog_map):
+                commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
+                command_list = '\n'.join(
+                    f'**/{cmd.name}** – {cmd.help or "No description"}'
+                    for cmd in commands_in_cog
+                )
+                if len(command_list) > 1024:
+                    chunks = self.split_command_list(commands_in_cog)
+                    for j, chunk in enumerate(chunks):
+                        field_name = f'{cog_name}' if j == 0 else f'{cog_name} (cont.)'
+                        embed.add_field(
+                            name=field_name,
+                            value=chunk,
+                            inline=False
+                        )
+                else:
+                    embed.add_field(
+                        name=cog_name,
+                        value=command_list,
+                        inline=False
+                    )
+    
+            pages.append(embed)
+    
+        if not pages:
+            await self.handler.send_message(ctx, '❌ No commands available to you.')
+            return
+    
+        paginator = Paginator(bot, ctx, pages)
+        await paginator.start()
     
     def get_permission_color(self, perm_level):
         colors = {
