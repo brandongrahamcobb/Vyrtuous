@@ -4,7 +4,7 @@
 * Permission scaling for server developers, channel coordinators and channel moderators.
 * PostgreSQL database information about ban, flags and mutes.
 ## Project Flow
-![Vyrtuous](resources/pictures/VyrtuousUML.svg)
+![Vyrtuous](resources/images/VyrtuousUML.svg)
 
 ## Features
 
