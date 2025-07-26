@@ -23,6 +23,7 @@ from vyrtuous.utils.setup_logging import logger
 import discord
 import inspect
 
+
 class EventListeners(commands.Cog):
 
     def __init__(self, bot):
@@ -182,6 +183,7 @@ class EventListeners(commands.Cog):
             missing = error.param.name
             await ctx.reply(f"❌ Missing required argument: `{missing}`")
             return
+
     
 async def setup(bot: commands.Bot):
     await bot.add_cog(EventListeners(bot))

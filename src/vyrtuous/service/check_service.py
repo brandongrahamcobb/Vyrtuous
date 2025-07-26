@@ -18,7 +18,7 @@
 
 import discord
 from discord.ext import commands
-from vyrtuous.utils.setup_logging import logger as permission_logger
+from vyrtuous.utils.setup_logging import logger
 from vyrtuous.config import Config  # adjust import path accordingly
 
 config = Config.get_config()
@@ -72,11 +72,11 @@ async def has_command_alias(ctx) -> bool:
     raise NoCommandAlias(f"Command alias `{command_name}` is not mapped to any target channel.")
 
 async def is_moderator(ctx):
-    user_id = ctx.author.id
-    guild_id = ctx.guild.id if ctx.guild else None
-    channel_id = ctx.channel.id
     if ctx.guild is None:
-        raise commands.CheckFailure("Command must be used in a guild.")
+        raise NotModerator("Command must be used in a guild.")
+    user_id = ctx.author.id
+    guild_id = ctx.guild.id
+    channel_id = ctx.channel.id
     bot = ctx.bot
     try:
         async with bot.db_pool.acquire() as conn:
@@ -85,18 +85,28 @@ async def is_moderator(ctx):
                 user_id
             )
     except Exception as e:
-        raise commands.CheckFailure(f"Database error: {str(e)}")
+        raise NotModerator(f"Database error: {e}")
+
     if not row:
-        raise commands.CheckFailure("User not found in database.")
-    moderator_ids = row.get("moderator_ids") if row else None
-    moderator_channels = row.get("moderator_channel_ids") if row else None
+        raise NotModerator("User not found in database.")
+    moderator_ids = row.get("moderator_ids")
+    moderator_channels = row.get("moderator_channel_ids")
+    if not moderator_ids:
+        raise NotModerator("You have no moderator permissions configured.")
+    if guild_id not in moderator_ids:
+        raise NotModerator("You are not a moderator in this guild.")
+    if not moderator_channels:
+        raise NotModerator("You have no channel permissions configured.")
+    if channel_id not in moderator_channels:
+        raise NotModerator("You are not authorized to use moderator commands in this channel.")
+    return True
     
 async def is_coordinator(ctx):
-    user_id = ctx.author.id
-    guild_id = ctx.guild.id if ctx.guild else None
-    channel_id = ctx.channel.id
     if ctx.guild is None:
-        raise commands.CheckFailure("Command must be used in a guild.")
+        raise NotCoordinator("Command must be used in a guild.")
+    user_id = ctx.author.id
+    guild_id = ctx.guild.id
+    channel_id = ctx.channel.id
     bot = ctx.bot
     try:
         async with bot.db_pool.acquire() as conn:
@@ -105,19 +115,19 @@ async def is_coordinator(ctx):
                 user_id
             )
     except Exception as e:
-        raise commands.CheckFailure(f"Database error: {str(e)}")
+        raise NotCoordinator(f"Database error: {e}")
     if not row:
-        raise commands.CheckFailure("User not found in database.")
-    coordinator_ids = row.get("coordinator_ids") if row else None
-    coordinator_channels = row.get("coordinator_channel_ids") if row else None
+        raise NotCoordinator("User not found in database.")
+    coordinator_ids = row.get("coordinator_ids")
+    coordinator_channels = row.get("coordinator_channel_ids")
     if not coordinator_ids:
-        raise commands.CheckFailure("You have no coordinator permissions configured.")
+        raise NotCoordinator("You have no coordinator permissions configured.")
     if guild_id not in coordinator_ids:
-        raise commands.CheckFailure("You are not a coordinator in this guild.")
+        raise NotCoordinator("You are not a coordinator in this guild.")
     if not coordinator_channels:
-        raise commands.CheckFailure("You have no channel permissions configured.")
+        raise NotCoordinator("You have no channel permissions configured.")
     if channel_id not in coordinator_channels:
-        raise commands.CheckFailure("You are not authorized to use commands in this channel.")
+        raise NotCoordinator("You are not authorized to use coordinator commands in this channel.")
     return True
     
 async def is_developer(ctx):
