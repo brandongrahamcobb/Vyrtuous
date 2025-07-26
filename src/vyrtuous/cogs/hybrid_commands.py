@@ -812,6 +812,7 @@ class Hybrid(commands.Cog):
     )
     @commands.check(is_owner_developer_coordinator)
     async def list_mutes(
+        self,
         ctx,
         channel: str = commands.parameter(description='Voice channel mention or ID.')
     ) -> None:
