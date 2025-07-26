@@ -729,7 +729,7 @@ class Hybrid(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
-                    SELECT role_id FROM channel_roles
+                    SELECT role_id FROM ban_roles
                     WHERE guild_id = $1 AND channel_id = $2
                     ''',
                     guild_id, static_channel_id
@@ -1004,7 +1004,7 @@ class Hybrid(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
-                    SELECT role_id FROM channel_roles
+                    SELECT role_id FROM ban_roles
                     WHERE guild_id = $1 AND channel_id = $2
                     ''',
                     guild_id, static_channel_id
@@ -1114,8 +1114,6 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content=f'✅ {member_object.mention} has been unmuted in <#{static_channel_id}>.')
             else:
                 await self.handler.send_message(ctx, content=f'✅ {member_object.mention} is no longer marked as muted in <#{static_channel_id}>.')
-            print("DEBUG: Unmute command completed successfully")
-        
         return unmute_alias
         
     @commands.hybrid_command(name='xalias', help='Deletes an alias.')
@@ -1265,20 +1263,29 @@ class Hybrid(commands.Cog):
     async def role(
         self,
         ctx: commands.Context,
+        function: str,
         channel: discord.VoiceChannel,
         role: discord.Role
     ):
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', function):
+            await self.handler.send_message(ctx, "❌ Invalid function name. Use only letters, numbers, and underscores.")
+            return
+        allowed_functions = {'ban', 'mute'}  # Add your allowed functions
+        if function not in allowed_functions:
+            await self.handler.send_message(ctx, f"❌ Function '{function}' is not allowed. Valid functions: {', '.join(allowed_functions)}")
+            return
         guild_id = ctx.guild.id
+        table_name = f"{function}_roles"
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute(
-                '''
-                INSERT INTO channel_roles (guild_id, channel_id, role_id)
+            query = f'''
+                INSERT INTO {table_name} (guild_id, channel_id, role_id)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (guild_id, channel_id) DO UPDATE SET role_id = EXCLUDED.role_id
-                ''',
-                guild_id, channel.id, role.id
-            )
-        await self.handler.send_message(ctx, f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
+            '''
+            await conn.execute(query, guild_id, channel.id, role.id)
+    
+        await self.handler.send_message(ctx, f"✅ Associated voice channel {channel.mention} with role {role.mention} for {function}.")
+
         
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
