@@ -76,24 +76,31 @@ async def is_channel_moderator(ctx):
     user_id = ctx.author.id
     guild_id = ctx.guild.id
     command_name = ctx.invoked_with.lower()
+
     target_channel_id = None
     for alias_type in ("mute", "unmute", "ban", "unban"):
         alias_map = bot.command_aliases.get(guild_id, {}).get(alias_type, {})
         if command_name in alias_map:
             target_channel_id = alias_map.get(command_name)
             break
+
     if not target_channel_id:
         raise NotModerator("This command alias is not mapped to a target channel.")
+
     async with bot.db_pool.acquire() as conn:
         row = await conn.fetchrow("""
-            SELECT moderator_ids FROM channels WHERE channel_id = $1
-        """, target_channel_id)
+            SELECT moderator_ids FROM users WHERE user_id = $1
+        """, user_id)
+
     if not row:
-        raise NotModerator("Channel record not found.")
+        raise NotModerator(f"You are not a VC moderator in <#{target_channel_id}>.")
+
     moderator_ids = row.get("moderator_ids") or []
-    if user_id not in moderator_ids:
+    if target_channel_id not in moderator_ids:
         raise NotModerator()
+
     return True
+
 
 async def is_coordinator(ctx):
     if ctx.guild is None:
