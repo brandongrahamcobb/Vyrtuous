@@ -37,9 +37,7 @@ class EventListeners(commands.Cog):
         user_id = member.id
         before_channel = before.channel
         after_channel = after.channel
-        
         async with self.db_pool.acquire() as conn:
-            # Handle manual unmute (user unmuted themselves)
             if before.mute and not after.mute and before_channel:
                 row = await conn.fetchrow("""
                     SELECT source, issuer_id FROM active_mutes
@@ -56,8 +54,6 @@ class EventListeners(commands.Cog):
                             updated_at = NOW()
                         WHERE user_id = $1
                     """, user_id, before_channel.id)
-        
-            # Handle manual mute (user muted themselves)
             if not before.mute and after.mute and after_channel:
                 row = await conn.fetchrow("""
                     SELECT source, issuer_id FROM active_mutes
@@ -81,36 +77,11 @@ class EventListeners(commands.Cog):
                         ),
                         updated_at = NOW()
                     """, user_id, after_channel.id)
-        
-            # Enforce mutes when user joins a channel
             if after_channel:
                 row = await conn.fetchrow("""
                     SELECT source, issuer_id FROM active_mutes
                     WHERE user_id = $1 AND channel_id = $2
                 """)
-            
-            # Handle flagged user notifications when changing channels
-            if after_channel and before_channel != after_channel:
-                is_flagged = await conn.fetchval("""
-                    SELECT flagged FROM users WHERE user_id = $1 AND flagged = TRUE
-                """, user_id)
-                if is_flagged:
-                    linked_text_channel = discord.utils.get(
-                        after_channel.guild.text_channels,
-                        name=after_channel.name
-                    )
-                    if not linked_text_channel and after_channel.category:
-                        for tc in after_channel.category.text_channels:
-                            if tc.permissions_for(after_channel.guild.me).send_messages:
-                                linked_text_channel = tc
-                                break
-                    if linked_text_channel:
-                        try:
-                            await linked_text_channel.send(
-                                f'🚩 **Flagged user joined**: {member.mention} has joined {after_channel.mention}.'
-                            )
-                        except discord.Forbidden:
-                            pass
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
