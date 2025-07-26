@@ -1378,10 +1378,10 @@ class Hybrid(commands.Cog):
     
     async def get_user_highest_permission(self, bot, ctx):
         permission_checks = [
-            ('Owner', self.is_owner),
-            ('Developer', self.is_developer),
-            ('Coordinator', self.is_coordinator),
-            ('Moderator', self.is_moderator)
+            ('Owner', is_owner),
+            ('Developer', is_developer),
+            ('Coordinator', is_coordinator),
+            ('Moderator', is_moderator)
         ]
         for level, check in permission_checks:
             try:
