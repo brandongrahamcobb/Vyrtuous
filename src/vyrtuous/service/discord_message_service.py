@@ -70,9 +70,9 @@ class Paginator:
 
     async def start(self):
         if not self.pages:
-            await ctx.send('There are no pages to display.')
+            await self.ctx.send('There are no pages to display.')
             return
-        self.message = await ctx.send(embed=self.pages[self.current_page])
+        self.message = await self.ctx.send(embed=self.pages[self.current_page])
         await self.message.add_reaction('⬅️')
         await self.message.add_reaction('➡️')
         await self.message.add_reaction('⏹️')
