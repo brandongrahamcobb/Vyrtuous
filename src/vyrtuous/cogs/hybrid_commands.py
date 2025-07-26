@@ -838,10 +838,10 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content='❌ Invalid channel mention or ID.')
         async with self.db_pool.acquire() as conn:
             records = await conn.fetch('''
-                SELECT u.user_id, u.mute_channel_ids, mr.reason
-                FROM users u
-                JOIN mute_reasons mr ON u.user_id = mr.user_id
-                WHERE $1 = ANY(u.mute_channel_ids) AND mr.channel_id = $1 AND mr.guild_id = $2
+                SELECT am.user_id, mr.reason, am.source
+                FROM active_mutes am
+                JOIN mute_reasons mr ON am.user_id = mr.user_id AND am.channel_id = mr.channel_id
+                WHERE am.channel_id = $1 AND mr.guild_id = $2
             ''', channel_id, guild_id)
         if not records:
             return await self.handler.send_message(ctx, content=f'ℹ️ No users are currently muted in <#{channel_id}>.')
