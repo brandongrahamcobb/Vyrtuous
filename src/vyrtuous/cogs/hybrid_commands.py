@@ -470,7 +470,7 @@ class Hybrid(commands.Cog):
         channel_id = channel.id
         sql = '''
             SELECT user_id FROM users
-            WHERE flagged = TRUE AND $1 = ANY(flagged_channel_ids)
+            WHERE $1 = ANY(flagged_channel_ids)
         '''
         try:
             async with self.db_pool.acquire() as conn:
@@ -1096,43 +1096,50 @@ class Hybrid(commands.Cog):
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
-            help='Flag one or more users in the database for the voice channel mapped to this alias.'
+            help='Flag a user in the database for the voice channel mapped to this alias.'
         )
         @commands.check(is_owner_developer_coordinator_moderator)
         async def flag_alias(
             ctx,
             user: str
         ) -> None:
-            print('test')
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
             if not channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No flag alias configured for `{command_name}`.')
             if not user:
-                return await self.handler.send_message(ctx, content='❌ You must provide at least one user ID or mention.')
-                
+                return await self.handler.send_message(ctx, content='❌ You must provide a user ID or mention.')
             if re.fullmatch(r'<@!?\d+>', user):
-                user_id = re.sub(r'\D', '', user)
-            if not user_id:
-                return await self.handler.send_message(ctx, content='❌ No valid user IDs found.')
-            print("test")
-            sql = '''
-                INSERT INTO users (user_id, flagged)
-                VALUES ($1, TRUE)
+                user_id = int(re.sub(r'\D', '', user))
+            elif user.isdigit():
+                user_id = int(user)
+            else:
+                return await self.handler.send_message(ctx, content='❌ Invalid user ID or mention.')
+            select_sql = '''
+                SELECT 1 FROM users
+                WHERE user_id = $1 AND $2 = ANY(flagged_channel_ids)
+            '''
+            insert_sql = '''
+                INSERT INTO users (user_id, flagged_channel_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[])
                 ON CONFLICT (user_id)
-                DO UPDATE SET flagged = TRUE, updated_at = NOW()
+                DO UPDATE SET flagged_channel_ids = (
+                    SELECT ARRAY(
+                        SELECT DISTINCT unnest(users.flagged_channel_ids || EXCLUDED.flagged_channel_ids)
+                    )
+                )
             '''
             try:
                 async with self.db_pool.acquire() as conn:
-                    async with conn.transaction():
-                        for uid in user_ids:
-                            await conn.execute(sql, uid)
-                await self.handler.send_message(ctx, content=f'✅ Flagged {len(user_ids)} user(s) for channel <#{channel_id}>.')
+                    already_flagged = await conn.fetchval(select_sql, user_id, channel_id)
+                    if already_flagged:
+                        return await self.handler.send_message(ctx, content=f'ℹ️ <@{user_id}> is already flagged for <#{channel_id}>.')
+                    await conn.execute(insert_sql, user_id, channel_id)
+                    await self.handler.send_message(ctx, content=f'✅ Flagged <@{user_id}> for channel <#{channel_id}>.')
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
                 raise
-        return flag_alias
 
     #
     #  Help Command: Provides a scope-limited command to investigate available bot commands.
