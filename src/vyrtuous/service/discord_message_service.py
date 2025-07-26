@@ -72,7 +72,7 @@ class Paginator:
         if not self.pages:
             await ctx.send('There are no pages to display.')
             return
-        self.message = await self.send(embed=self.pages[self.current_page])
+        self.message = await ctx.send(embed=self.pages[self.current_page])
         await self.message.add_reaction('⬅️')
         await self.message.add_reaction('➡️')
         await self.message.add_reaction('⏹️')
