@@ -1227,7 +1227,7 @@ class Hybrid(commands.Cog):
                 f'**/{cmd.name}** – {cmd.help or "No description"}' for cmd in commands_in_cog
             )
             pages.append(embed)
-        paginator = paginator(bot, ctx, pages, self.handler)
+        paginator = Paginator(bot, ctx, pages, self.handler)
         await paginator.start()
     
     #
@@ -1398,7 +1398,7 @@ class Hybrid(commands.Cog):
         if not pages:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
-        paginator = paginator(bot, ctx, pages)
+        paginator = Paginator(bot, ctx, pages)
         await paginator.start()
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):
