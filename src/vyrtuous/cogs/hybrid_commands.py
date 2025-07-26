@@ -94,7 +94,7 @@ class Hybrid(commands.Cog):
         except (ValueError, AttributeError):
             return None
     
-    @commands.hybrid_command(name='coord', help='Grants coordinator access (alternative with string parsing).')
+    @commands.hybrid_command(name='coord', help='Grants coordinator access for a specific voice channel.')
     @commands.check(is_owner_developer)
     async def create_coordinator(
         self,
@@ -140,19 +140,28 @@ class Hybrid(commands.Cog):
             )
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO users (user_id, coordinator_channel_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[])
+                INSERT INTO users (user_id, coordinator_ids, coordinator_channel_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[], ARRAY[$3]::BIGINT[])
                 ON CONFLICT (user_id) DO UPDATE
-                SET coordinator_channel_ids = (
-                    SELECT ARRAY(
-                        SELECT DISTINCT unnest(
-                            COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || 
-                            EXCLUDED.coordinator_channel_ids
+                SET 
+                    coordinator_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(
+                                COALESCE(users.coordinator_ids, ARRAY[]::BIGINT[]) || 
+                                ARRAY[$2]::BIGINT[]
+                            )
                         )
-                    )
-                ),
-                updated_at = NOW()
-            ''', member_obj.id, channel_id)
+                    ),
+                    coordinator_channel_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(
+                                COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || 
+                                ARRAY[$3]::BIGINT[]
+                            )
+                        )
+                    ),
+                    updated_at = NOW()
+            ''', member_obj.id, ctx.guild.id, channel_id)
         await self.handler.send_message(
             ctx,
             content=f'✅ {member_obj.mention} has been granted coordinator rights in {channel_obj.mention}.'
@@ -183,14 +192,56 @@ class Hybrid(commands.Cog):
         if not member_object:
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
         async with self.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT coordinator_ids, coordinator_channel_ids FROM users WHERE user_id = $1",
+                member_object.id
+            )
+            if not row:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'❌ {member_object.mention} is not found in the coordinator database.'
+                )
+            current_guild_ids = row.get('coordinator_ids', []) or []
+            current_channel_ids = row.get('coordinator_channel_ids', []) or []
+            if ctx.guild.id not in current_guild_ids:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'❌ {member_object.mention} is not a coordinator in this guild.'
+                )
+            if channel.id not in current_channel_ids:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'❌ {member_object.mention} is not a coordinator in {channel.mention}.'
+                )
             await conn.execute('''
                 UPDATE users
                 SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2),
                     updated_at = NOW()
                 WHERE user_id = $1
             ''', member_object.id, channel.id)
-        await self.handler.send_message(ctx, content=f'✅ {member_object.mention}\'s coordinator access has been revoked from {channel.mention}.')
-
+            updated_row = await conn.fetchrow(
+                "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                member_object.id
+            )
+            remaining_channels = updated_row.get('coordinator_channel_ids', []) if updated_row else []
+            guild_voice_channel_ids = [vc.id for vc in ctx.guild.voice_channels]
+            has_remaining_guild_channels = any(ch_id in guild_voice_channel_ids for ch_id in remaining_channels)
+            if not has_remaining_guild_channels:
+                await conn.execute('''
+                    UPDATE users
+                    SET coordinator_ids = array_remove(coordinator_ids, $2),
+                        updated_at = NOW()
+                    WHERE user_id = $1
+                ''', member_object.id, ctx.guild.id)
+                await self.handler.send_message(
+                    ctx,
+                    content=f'✅ {member_object.mention}\'s coordinator access has been completely revoked from {channel.mention} and this guild (no remaining channels).'
+                )
+            else:
+                await self.handler.send_message(
+                    ctx,
+                    content=f'✅ {member_object.mention}\'s coordinator access has been revoked from {channel.mention}.'
+                )
 
     @commands.hybrid_command(name='coords', help='Lists coordinators for a specific voice channel.')
     @commands.check(is_owner_developer_coordinator)
@@ -348,19 +399,33 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content='Could not resolve a valid **voice** channel from your input.')
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO users (user_id, moderator_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[])
+                INSERT INTO users (user_id, moderator_ids, moderator_channel_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[], ARRAY[$3]::BIGINT[])
                 ON CONFLICT (user_id) DO UPDATE
-                SET moderator_ids = (
-                    SELECT ARRAY(
-                        SELECT DISTINCT unnest(u.moderator_ids || EXCLUDED.moderator_ids)
-                    )
-                    FROM users u WHERE u.user_id = EXCLUDED.user_id
-                ),
-                updated_at = NOW()
-            ''', member_object.id, resolved_channel.id)
-        await self.handler.send_message(ctx, content=f'{member_object.mention} has been granted VC moderator access in {resolved_channel.name}.')
-    
+                SET 
+                    moderator_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(
+                                COALESCE(users.moderator_ids, ARRAY[]::BIGINT[]) || 
+                                ARRAY[$2]::BIGINT[]
+                            )
+                        )
+                    ),
+                    moderator_channel_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(
+                                COALESCE(users.moderator_channel_ids, ARRAY[]::BIGINT[]) || 
+                                ARRAY[$3]::BIGINT[]
+                            )
+                        )
+                    ),
+                    updated_at = NOW()
+            ''', member_object.id, ctx.guild.id, resolved_channel.id)
+        await self.handler.send_message(
+            ctx,
+            content=f'{member_object.mention} has been granted VC moderator access in {resolved_channel.name}.'
+        )
+
     @commands.hybrid_command(name='xmod', help='Revokes a member\'s VC moderator role for a given channel.')
     @commands.check(is_owner_developer_coordinator)
     async def delete_moderator(
@@ -399,13 +464,56 @@ class Hybrid(commands.Cog):
         if not isinstance(resolved_channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content='Could not resolve a valid **voice** channel from your input.')
         async with self.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT moderator_ids, moderator_channel_ids FROM users WHERE user_id = $1",
+                member_object.id
+            )
+            if not row:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'{member_object.mention} is not found in the moderator database.'
+                )
+            current_guild_ids = row.get('moderator_ids', []) or []
+            current_channel_ids = row.get('moderator_channel_ids', []) or []
+            if ctx.guild.id not in current_guild_ids:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'{member_object.mention} is not a moderator in this guild.'
+                )
+            if resolved_channel.id not in current_channel_ids:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'{member_object.mention} is not a moderator in {resolved_channel.name}.'
+                )
             await conn.execute('''
                 UPDATE users
-                SET moderator_ids = array_remove(moderator_ids, $2),
+                SET moderator_channel_ids = array_remove(moderator_channel_ids, $2),
                     updated_at = NOW()
                 WHERE user_id = $1
             ''', member_object.id, resolved_channel.id)
-        await self.handler.send_message(ctx, content=f'{member_object.mention} has been revoked moderator access in {resolved_channel.name}.')
+            updated_row = await conn.fetchrow(
+                "SELECT moderator_channel_ids FROM users WHERE user_id = $1",
+                member_object.id
+            )
+            remaining_channels = updated_row.get('moderator_channel_ids', []) if updated_row else []
+            guild_voice_channel_ids = [vc.id for vc in ctx.guild.voice_channels]
+            has_remaining_guild_channels = any(ch_id in guild_voice_channel_ids for ch_id in remaining_channels)
+            if not has_remaining_guild_channels:
+                await conn.execute('''
+                    UPDATE users
+                    SET moderator_ids = array_remove(moderator_ids, $2),
+                        updated_at = NOW()
+                    WHERE user_id = $1
+                ''', member_object.id, ctx.guild.id)
+                await self.handler.send_message(
+                    ctx,
+                    content=f'{member_object.mention} has been completely revoked as moderator from {resolved_channel.name} and this guild (no remaining channels).'
+                )
+            else:
+                await self.handler.send_message(
+                    ctx,
+                    content=f'{member_object.mention} has been revoked moderator access in {resolved_channel.name}.'
+                )
 
     @commands.hybrid_command(name='mods', help='Lists moderators for a specific voice channel.')
     @commands.check(is_owner_developer_coordinator_moderator)
