@@ -5,7 +5,8 @@ DROP TABLE IF EXISTS mute_reasons;
 DROP TABLE IF EXISTS active_mutes;
 DROP TABLE IF EXISTS ban_reasons;
 DROP TABLE IF EXISTS active_bans;
-DROP TABLE IF EXISTS channel_roles;
+DROP TABLE IF EXISTS ban_roles;
+DROP TABLE IF EXISTS mute_roles;
 
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
@@ -75,7 +76,13 @@ CREATE TABLE IF NOT EXISTS ban_expirations (
     expires_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (user_id, channel_id)
 );
-CREATE TABLE IF NOT EXISTS channel_roles (
+CREATE TABLE IF NOT EXISTS ban_roles (
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    PRIMARY KEY (guild_id, channel_id)
+);
+CREATE TABLE IF NOT EXISTS mute_roles (
     guild_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,
