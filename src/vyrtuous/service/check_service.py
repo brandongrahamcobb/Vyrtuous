@@ -118,18 +118,6 @@ async def is_guild_owner(ctx):
     if ctx.guild.owner_id != ctx.author.id:
         raise NotGuildOwner()
     return True
-                                    
-async def is_moderator(ctx):
-    errors = []
-    for check in (is_moderator):
-        try:
-            if await check(ctx):
-                continue
-        except commands.CheckFailure as e:
-            errors.append(str(e))
-    if errors:
-        raise commands.CheckFailure("\n".join(f"❌ {e}" for e in errors))
-    return True
                     
 async def is_owner(ctx):
     errors = []
