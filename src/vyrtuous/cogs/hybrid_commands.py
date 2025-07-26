@@ -82,6 +82,15 @@ class Hybrid(commands.Cog):
                 logger.warning(f"❌ Exception while checking command '{command}': {e}")
         return available_commands
     
+    def resolve_voice_channel(guild: discord.Guild, value: str) -> Optional[discord.VoiceChannel]:
+        if value.isdigit():
+            channel = guild.get_channel(int(value))
+        elif value.startswith('<#') and value.endswith('>'):
+            channel = guild.get_channel(int(value.strip('<#>')))
+        else:
+            channel = discord.utils.get(guild.voice_channels, name=value)
+        return channel if isinstance(channel, discord.VoiceChannel) else None
+    
     @commands.hybrid_command(name='coord', help='Grants coordinator access to a user in a specific channel.')
     @commands.check(is_owner_developer)
     async def create_coordinator(
@@ -178,39 +187,14 @@ class Hybrid(commands.Cog):
         ctx,
         channel: str = commands.parameter(description='Voice channel ID, mention, or name.')
     ) -> None:
-        guild = ctx.guild
-        def resolve_channel(value: str) -> Optional[discord.VoiceChannel]:
-            if value.isdigit():
-                channel = guild.get_channel(int(value))
-            elif value.startswith('<#') and value.endswith('>'):
-                channel = guild.get_channel(int(value.strip('<#>')))
-            else:
-                channel = discord.utils.get(guild.voice_channels, name=value)
-            return channel if isinstance(channel, discord.VoiceChannel) else None
-        voice_channel = resolve_channel(channel)
-        if not voice_channel:
-            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
-        async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
-                SELECT user_id FROM users
-                WHERE $1 = ANY(coordinator_channel_ids)
-            ''', voice_channel.id)
-        if not rows:
-            return await self.handler.send_message(ctx, content=f'ℹ️ No coordinators found for <#{voice_channel.id}>.')
-        pages = []
-        for row in rows:
-            user_id = row['user_id']
-            user = guild.get_member(user_id)
-            name = user.display_name if user else f'User ID {user_id}'
-            embed = discord.Embed(
-                title=f'Coordinator: {name}',
-                description=f'Assigned to <#{voice_channel.id}>',
-                color=discord.Color.gold()
-            )
-            embed.set_footer(text=f'User ID: {user_id}')
-            pages.append(embed)
-        paginator = Paginator(self.bot, ctx, pages)
-        await paginator.start()
+        await self.list_role_members(
+            ctx=ctx,
+            channel_str=channel,
+            column_name="coordinator_channel_ids",
+            label="Coordinator",
+            color=discord.Color.gold()
+        )
+
 
 
     #
@@ -420,27 +404,41 @@ class Hybrid(commands.Cog):
         ctx,
         channel: str = commands.parameter(description='Voice channel ID, mention, or name.')
     ) -> None:
+        await self.list_role_members(
+            ctx=ctx,
+            channel_str=channel,
+            column_name="moderator_ids",
+            label="Moderator",
+            color=discord.Color.green()
+        )
+
+    async def list_role_members(
+        self,
+        ctx: commands.Context,
+        *,
+        channel_str: str,
+        column_name: str,
+        label: str,
+        color: discord.Color,
+    ) -> None:
         guild = ctx.guild
-        def resolve_channel(value: str) -> Optional[discord.VoiceChannel]:
-            if value.isdigit():
-                channel = guild.get_channel(int(value))
-            elif value.startswith('<#') and value.endswith('>'):
-                channel = guild.get_channel(int(value.strip('<#>')))
-            else:
-                channel = discord.utils.get(guild.voice_channels, name=value)
-            return channel if isinstance(channel, discord.VoiceChannel) else None
-        voice_channel = resolve_channel(channel)
+        voice_channel = self.resolve_voice_channel(guild, channel_str)
+    
         if not voice_channel:
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
-        channel_id = voice_channel.id
     
         async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
+            query = f'''
                 SELECT user_id FROM users
-                WHERE $1 = ANY(moderator_ids)
-            ''', channel_id)
+                WHERE $1 = ANY({column_name})
+            '''
+            rows = await conn.fetch(query, voice_channel.id)
+    
         if not rows:
-            return await self.handler.send_message(ctx, content=f'ℹ️ No moderators found for <#{channel_id}>.')
+            return await self.handler.send_message(
+                ctx, content=f'ℹ️ No {label.lower()}s found for <#{voice_channel.id}>.'
+            )
+    
         pages = []
         for row in rows:
             user_id = row['user_id']
@@ -448,16 +446,17 @@ class Hybrid(commands.Cog):
             display_name = user.display_name if user else f'User ID {user_id}'
     
             embed = discord.Embed(
-                title=f'Moderator for {voice_channel.name}',
+                title=f'{label} for {voice_channel.name}',
                 description=f'{display_name} (<@{user_id}>)',
-                color=discord.Color.green()
+                color=color
             )
             embed.set_footer(text=f'User ID: {user_id}')
             pages.append(embed)
+    
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
 
-        
+
     @commands.hybrid_command(
         name='flags',
         help='List users flagged in the database for a specific voice channel.'
