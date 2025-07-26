@@ -176,31 +176,12 @@ class EventListeners(commands.Cog):
             if ctx.command:
                 await self.bot.invoke(ctx)
                 
-    async def send_command_help(self, ctx: commands.Context, cmd: commands.Command) -> None:
-        embed = discord.Embed(
-            title=f'/{cmd.name}',
-            description=cmd.help or 'No description provided.',
-            color=discord.Color.blue()
-        )
-    
-        sig = inspect.signature(cmd.callback)
-        parameters = list(sig.parameters.items())[2:]  # Skip self and ctx
-    
-        for name, param in parameters:
-            is_optional = param.default != inspect.Parameter.empty
-            annotation = (
-                param.annotation.__name__
-                if hasattr(param.annotation, '__name__')
-                else str(param.annotation)
-            )
-            label = 'Optional' if is_optional else 'Required'
-            embed.add_field(
-                name=f'`{name}`',
-                value=f'Type: `{annotation}`\n{label}',
-                inline=False
-            )
-    
-        await ctx.send(embed=embed)
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            missing = error.param.name
+            await ctx.reply(f"❌ Missing required argument: `{missing}`")
+            return
     
 async def setup(bot: commands.Bot):
     await bot.add_cog(EventListeners(bot))

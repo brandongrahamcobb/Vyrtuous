@@ -1000,7 +1000,6 @@ class Hybrid(commands.Cog):
                         DO UPDATE SET reason = EXCLUDED.reason
                     ''', guild_id, member_object.id, static_channel_id, f"Unmuted: {reason}")
             except Exception as e:
-                print(f"DEBUG: Database error: {e}")
                 await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
                 raise
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
