@@ -1132,7 +1132,7 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content=f'{member_object.mention} has been unmuted in <#{static_channel_id}>.')
             else:
                 await self.handler.send_message(ctx, content=f'{member_object.mention} is no longer marked as muted in <#{static_channel_id}>.')
-        return unmute_command
+        return unmute_alias
     
 
     @commands.hybrid_command(
