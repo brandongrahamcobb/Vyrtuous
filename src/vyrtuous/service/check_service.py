@@ -63,7 +63,7 @@ async def has_command_alias(ctx) -> bool:
     guild_id = ctx.guild.id
     command_name = ctx.command.name.lower()       # e.g. 'vmute'
     invoked_name = ctx.invoked_with.lower()       # what the user actually typed
-    for alias_type in ("mute", "unmute"):
+    for alias_type in ("mute", "unmute", "ban", "unban"):
         alias_map = bot.command_aliases.get(guild_id, {}).get(alias_type, {})
         if command_name in alias_map:
             target_channel_id = alias_map[command_name]
@@ -77,7 +77,7 @@ async def is_channel_moderator(ctx):
     guild_id = ctx.guild.id
     command_name = ctx.invoked_with.lower()
     target_channel_id = None
-    for alias_type in ("mute", "unmute"):
+    for alias_type in ("mute", "unmute", "ban", "unban"):
         alias_map = bot.command_aliases.get(guild_id, {}).get(alias_type, {})
         if command_name in alias_map:
             target_channel_id = alias_map.get(command_name)
