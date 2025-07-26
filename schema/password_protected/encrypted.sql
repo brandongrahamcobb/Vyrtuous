@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS users (
     moderator_ids BIGINT[],
     coordinator_ids BIGINT[],
     developer_guild_ids BIGINT[],
-    flagged BOOLEAN DEFAULT FALSE,
     flagged_channel_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
