@@ -1418,20 +1418,58 @@ class Hybrid(commands.Cog):
             if not await cmd.can_run(ctx):
                 await self.handler.send_message(ctx, f'❌ You do not have permission to run `{command_name}`.')
                 return
-            # ... your existing command help embed code here ...
+            embed = discord.Embed(
+                title=f'/{cmd.name}',
+                description=cmd.help or 'No description provided.',
+                color=discord.Color.blue()
+            )
+            sig = inspect.signature(cmd.callback)
+            parameters = list(sig.parameters.items())[2:]
+            if parameters:
+                usage_parts = [f"/{cmd.name}"]
+                param_details = []
+                for name, param in parameters:
+                    is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY
+                    default = param.default
+                    description = (
+                        getattr(default, 'description', None)
+                        if isinstance(default, commands.Parameter)
+                        else None
+                    )
+                    annotation = (
+                        param.annotation.__name__
+                        if hasattr(param.annotation, '__name__')
+                        else str(param.annotation)
+                    )
+                    if is_optional:
+                        usage_parts.append(f"[{name}]")
+                    else:
+                        usage_parts.append(f"<{name}>")
+                    detail = f"**{name}** ({annotation})"
+                    if description:
+                        detail += f": {description}"
+                    param_details.append(detail)
+                embed.add_field(
+                    name="Usage",
+                    value=f"`{' '.join(usage_parts)}`",
+                    inline=False
+                )
+                if param_details:
+                    embed.add_field(
+                        name="Parameter Details",
+                        value="\n".join(param_details),
+                        inline=False
+                    )
+            await self.handler.send_message(ctx, embed=embed)
             return
-    
         all_commands = await self.get_available_commands(bot, ctx)
         if not all_commands:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
-    
         permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
         pages = []
-    
         user_highest = await self.get_user_highest_permission(bot, ctx)
         user_index = PERMISSION_ORDER.index(user_highest)
-    
         permission_order = [
             ('Owner', '`Owner` inherits `developer`.'),
             ('Developer', '`Developer` inherits `coordinator`.'),
@@ -1439,28 +1477,23 @@ class Hybrid(commands.Cog):
             ('Moderator', 'Moderators can use these commands.'),
             ('Everyone', 'Commands available to everyone.')
         ]
-    
         for i, (perm_level, description) in enumerate(permission_order):
             if i > user_index:
-                break  # Stop at user's highest permission
-    
+                break
             commands_in_level = sorted(permission_groups.get(perm_level, []), key=lambda c: c.name)
             if not commands_in_level:
                 continue
-    
             embed = discord.Embed(
                 title=f'{perm_level} Commands',
                 description=description,
                 color=self.get_permission_color(perm_level)
             )
-    
             cog_map = {}
             for command in commands_in_level:
                 if command.hidden:
                     continue
                 cog_name = command.cog_name or 'Uncategorized'
                 cog_map.setdefault(cog_name, []).append(command)
-    
             for cog_name in sorted(cog_map):
                 commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
                 command_list = '\n'.join(
@@ -1482,13 +1515,10 @@ class Hybrid(commands.Cog):
                         value=command_list,
                         inline=False
                     )
-    
             pages.append(embed)
-    
         if not pages:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
-    
         paginator = Paginator(bot, ctx, pages)
         await paginator.start()
     
