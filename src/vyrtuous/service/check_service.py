@@ -71,36 +71,23 @@ async def has_command_alias(ctx) -> bool:
             return True
     raise NoCommandAlias(f"Command alias `{command_name}` is not mapped to any target channel.")
 
-async def is_channel_moderator(ctx):
+async def is_moderator(ctx):
+    if ctx.guild is None:
+        raise NotModerator("Command must be used in a guild.")
+    
     bot = ctx.bot
-    user_id = ctx.author.id
     guild_id = ctx.guild.id
-    command_name = ctx.invoked_with.lower()
-    print("test")
-
-    target_channel_id = None
-    for alias_type in ("mute", "unmute", "ban", "unban"):
-        alias_map = bot.command_aliases.get(guild_id, {}).get(alias_type, {})
-        if command_name in alias_map:
-            target_channel_id = alias_map.get(command_name)
-            break
-
-    if not target_channel_id:
-        raise NotModerator("This command alias is not mapped to a target channel.")
+    user_id = ctx.author.id
 
     async with bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow("""
-            SELECT moderator_ids FROM users WHERE user_id = $1
-        """, user_id)
-
-    if not row:
-        raise NotModerator(f"You are not a VC moderator in <#{target_channel_id}>.")
-
-    moderator_ids = row.get("moderator_ids") or []
-    if target_channel_id not in moderator_ids:
-        raise NotModerator()
-
+        row = await conn.fetchrow(
+            "SELECT moderator_ids FROM users WHERE user_id = $1",
+            user_id
+        )
+    if not row or guild_id not in row.get("moderator_ids", []):
+        raise NotModerator("You are not a moderator in this guild.")
     return True
+
 
 
 async def is_coordinator(ctx):
@@ -134,7 +121,7 @@ async def is_guild_owner(ctx):
                                     
 async def is_moderator(ctx):
     errors = []
-    for check in (is_channel_moderator):
+    for check in (is_moderator):
         try:
             if await check(ctx):
                 continue
