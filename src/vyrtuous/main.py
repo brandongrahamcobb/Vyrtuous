@@ -37,8 +37,6 @@ async def start_bot(bot, name):
     try:
         if isinstance(bot, DiscordBot):
             await bot.start(bot.api_key)
-        elif isinstance(bot, TwitchBot):
-            await bot.start()
     except Exception as e:
         logger.error(f"Error running {name}: {e}")
 

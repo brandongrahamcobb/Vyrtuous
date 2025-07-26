@@ -62,8 +62,8 @@ class ScheduledTasks(commands.Cog):
         
     @commands.after_invoke
     async def after_invoke(self, ctx) -> None:
-        if hasattr(bot, 'db_pool'):
-            await bot.db_pool.close()
+        if hasattr(self.bot, 'db_pool'):
+            await self.bot.db_pool.close()
             
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
