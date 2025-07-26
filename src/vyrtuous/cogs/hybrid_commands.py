@@ -1149,18 +1149,48 @@ class Hybrid(commands.Cog):
             )
         self.bot.command_aliases[guild_id][alias_type.lower()].pop(alias_name, None)
         await self.handler.send_message(ctx, content=f'✅ Deleted alias `{alias_name}` from `{alias_type}`.')
-        
+
     @commands.hybrid_command(name='aliases', help='List all the aliases in the current guild, or filter by channel.')
     @commands.check(is_owner_developer_coordinator_moderator)
-    async def list_aliases(self, ctx, channel: discord.TextChannel = None) -> None:
+    async def list_aliases(self, ctx, channel: str = None) -> None:
         guild_id = ctx.guild.id
         aliases = self.bot.command_aliases.get(guild_id, {})
         if not aliases:
             await self.handler.send_message(ctx, content='No aliases defined in this guild.')
             return
+    
         pages = []
+    
         if channel:
-            channel_id = channel.id
+            # Parse channel from string (handle mentions like <#123456789> or plain IDs)
+            channel_obj = None
+            channel_id = None
+    
+            # Check if it's a channel mention
+            mention_match = re.match(r'<#(\d+)>', channel)
+            if mention_match:
+                channel_id = int(mention_match.group(1))
+            # Check if it's just a number (channel ID)
+            elif channel.isdigit():
+                channel_id = int(channel)
+            # Check if it's a channel name
+            else:
+                # Find channel by name
+                for ch in ctx.guild.text_channels:
+                    if ch.name.lower() == channel.lower():
+                        channel_id = ch.id
+                        break
+    
+            if channel_id:
+                channel_obj = ctx.guild.get_channel(channel_id)
+    
+            if not channel_obj:
+                await self.handler.send_message(
+                    ctx,
+                    content=f'Channel "{channel}" not found. Please use a channel mention, ID, or name.'
+                )
+                return
+    
             found_aliases = False
             for kind in ('mute', 'unmute', 'ban', 'unban', 'flag'):
                 entries = aliases.get(kind, {})
@@ -1170,7 +1200,7 @@ class Hybrid(commands.Cog):
                 if channel_entries:
                     found_aliases = True
                     embed = discord.Embed(
-                        title=f'{kind.capitalize()} Aliases for {channel.mention}',
+                        title=f'{kind.capitalize()} Aliases for {channel_obj.mention}',
                         description='\n'.join(f'`{name}` → <#{cid}>' for name, cid in channel_entries.items()),
                         color=discord.Color.blue()
                     )
@@ -1178,7 +1208,7 @@ class Hybrid(commands.Cog):
             if not found_aliases:
                 await self.handler.send_message(
                     ctx,
-                    content=f'No aliases found for {channel.mention}.'
+                    content=f'No aliases found for {channel_obj.mention}.'
                 )
                 return
         else:
@@ -1192,9 +1222,11 @@ class Hybrid(commands.Cog):
                     color=discord.Color.blue()
                 )
                 pages.append(embed)
+    
         if not pages:
             await self.handler.send_message(ctx, content='No aliases found.')
             return
+    
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
     
@@ -1286,6 +1318,42 @@ class Hybrid(commands.Cog):
     
         await self.handler.send_message(ctx, f"✅ Associated voice channel {channel.mention} with role {role.mention} for {function}.")
 
+    
+    @commands.hybrid_command(
+        name='xrole',
+        help='Remove the role association from a voice channel.'
+    )
+    @commands.check(is_owner_developer_coordinator)
+    async def delete_role(
+        self,
+        ctx: commands.Context,
+        function: str,
+        channel: discord.VoiceChannel
+    ):
+        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', function):
+            await self.handler.send_message(ctx, "❌ Invalid function name. Use only letters, numbers, and underscores.")
+            return
+        allowed_functions = {'ban', 'mute'}
+        if function not in allowed_functions:
+            await self.handler.send_message(ctx, f"❌ Function '{function}' is not allowed. Valid functions: {', '.join(allowed_functions)}")
+            return
+        guild_id = ctx.guild.id
+        table_name = f"{function}_roles"
+        async with self.bot.db_pool.acquire() as conn:
+            check_query = f'SELECT role_id FROM {table_name} WHERE guild_id = $1 AND channel_id = $2'
+            result = await conn.fetchrow(check_query, guild_id, channel.id)
+            if not result:
+                await self.handler.send_message(
+                    ctx,
+                    f"❌ No {function} role association found for {channel.mention}."
+                )
+                return
+            delete_query = f'DELETE FROM {table_name} WHERE guild_id = $1 AND channel_id = $2'
+            await conn.execute(delete_query, guild_id, channel.id)
+        await self.handler.send_message(
+            ctx,
+            f"✅ Removed {function} role association from {channel.mention}."
+        )
         
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
