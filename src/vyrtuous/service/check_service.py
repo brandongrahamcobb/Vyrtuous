@@ -110,6 +110,68 @@ async def is_moderator(ctx):
     permission_logger.debug(f"🔑 Moderator IDs from DB: {moderator_ids}")
     permission_logger.debug(f"📺 Moderator channels from DB: {moderator_channels}")
     
+async def is_coordinator(ctx):
+    user_id = ctx.author.id
+    guild_id = ctx.guild.id if ctx.guild else None
+    channel_id = ctx.channel.id
+    
+    permission_logger.debug(f"=== COORDINATOR CHECK START ===")
+    permission_logger.debug(f"User ID: {user_id}")
+    permission_logger.debug(f"Guild ID: {guild_id}")
+    permission_logger.debug(f"Channel ID: {channel_id}")
+    
+    if ctx.guild is None:
+        permission_logger.debug("❌ No guild context")
+        raise commands.CheckFailure("Command must be used in a guild.")
+    
+    bot = ctx.bot
+    
+    try:
+        async with bot.db_pool.acquire() as conn:
+            permission_logger.debug("📊 Executing database query...")
+            row = await conn.fetchrow(
+                "SELECT coordinator_ids, coordinator_channel_ids FROM users WHERE user_id = $1",
+                user_id
+            )
+            permission_logger.debug(f"📊 Database row result: {row}")
+            
+    except Exception as e:
+        permission_logger.error(f"❌ Database error: {e}")
+        raise commands.CheckFailure(f"Database error: {str(e)}")
+    
+    if not row:
+        permission_logger.debug("❌ User not found in database")
+        raise commands.CheckFailure("User not found in database.")
+    
+    coordinator_ids = row.get("coordinator_ids") if row else None
+    coordinator_channels = row.get("coordinator_channel_ids") if row else None
+    
+    permission_logger.debug(f"🔑 Coordinator IDs from DB: {coordinator_ids}")
+    permission_logger.debug(f"📺 Coordinator channels from DB: {coordinator_channels}")
+    
+    # Check guild permissions
+    if not coordinator_ids:
+        permission_logger.debug("❌ No coordinator_ids found for user")
+        raise commands.CheckFailure("You have no coordinator permissions configured.")
+    
+    if guild_id not in coordinator_ids:
+        permission_logger.debug(f"❌ Guild ID {guild_id} not in coordinator_ids {coordinator_ids}")
+        raise commands.CheckFailure("You are not a coordinator in this guild.")
+    
+    permission_logger.debug(f"✅ Guild permission check passed")
+    
+    # Check channel permissions
+    if not coordinator_channels:
+        permission_logger.debug("❌ No coordinator_channel_ids found for user")
+        raise commands.CheckFailure("You have no channel permissions configured.")
+    
+    if channel_id not in coordinator_channels:
+        permission_logger.debug(f"❌ Channel ID {channel_id} not in coordinator_channel_ids {coordinator_channels}")
+        raise commands.CheckFailure("You are not authorized to use commands in this channel.")
+    
+    permission_logger.debug(f"✅ Channel permission check passed")
+    permission_logger.debug("=== COORDINATOR CHECK SUCCESS ===")
+    return True
 async def is_developer(ctx):
     if ctx.guild is None:
         raise NotDeveloper("Command must be used in a guild.")
