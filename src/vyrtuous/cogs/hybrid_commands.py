@@ -1541,11 +1541,11 @@ class Hybrid(commands.Cog):
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):
         permission_groups = {level: [] for level in PERMISSION_ORDER}
-            perm_level = await self.get_command_permission_level(bot, ctx, command)
-            if perm_level in permission_groups:
-                permission_groups[perm_level].append(command)
-            else:
-                permission_groups['Everyone'].append(command)
+        perm_level = await self.get_command_permission_level(bot, ctx, command)
+        if perm_level in permission_groups:
+            permission_groups[perm_level].append(command)
+        else:
+            permission_groups['Everyone'].append(command)
     
         return permission_groups
     
