@@ -71,32 +71,42 @@ async def has_command_alias(ctx) -> bool:
             return True
     raise NoCommandAlias(f"Command alias `{command_name}` is not mapped to any target channel.")
 
-async def is_moderator(ctx):
+async def is_moderator(self, ctx):
     if ctx.guild is None:
-        raise NotModerator("Command must be used in a guild.")
-    
+        raise commands.CheckFailure("Command must be used in a guild.")
     bot = ctx.bot
-    guild_id = ctx.guild.id
     user_id = ctx.author.id
-
+    channel_id = ctx.channel.id
     async with bot.db_pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT moderator_ids FROM users WHERE user_id = $1",
+            "SELECT moderator_ids, moderator_channel_ids FROM users WHERE user_id = $1",
             user_id
         )
-    if not row or not row.get("moderator_ids") or guild_id not in row.get("moderator_ids", []):
-        raise NotModerator("You are not a moderator in this guild.")
+    moderator_ids = row.get("moderator_ids") if row else None
+    if not moderator_ids or ctx.guild.id not in moderator_ids:
+        raise commands.CheckFailure("You are not a moderator in this guild.")
+    moderator_channels = row.get("moderator_channel_ids") if row else None
+    if not moderator_channels or channel_id not in moderator_channels:
+        raise commands.CheckFailure("You are not authorized to use commands in this channel.")
     return True
 
-async def is_coordinator(ctx):
+async def is_coordinator(self, ctx):
     if ctx.guild is None:
-        raise NotCoordinator("Command must be used in a guild.")
-    async with ctx.bot.db_pool.acquire() as conn:
+        raise commands.CheckFailure("Command must be used in a guild.")
+    bot = ctx.bot
+    user_id = ctx.author.id
+    channel_id = ctx.channel.id
+    async with bot.db_pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT coordinator_ids FROM users WHERE user_id = $1", ctx.author.id
+            "SELECT coordinator_ids, coordinator_channel_ids FROM users WHERE user_id = $1",
+            user_id
         )
-    if not row or not row.get("coordinator_ids") or guild_id not in row.get("coordinator_ids", []):
-        raise NotCoordinator("You are not a coordinator in this guild.")
+    coordinator_ids = row.get("coordinator_ids") if row else None
+    if not coordinator_ids or ctx.guild.id not in coordinator_ids:
+        raise commands.CheckFailure("You are not a coordinator in this guild.")
+    coordinator_channels = row.get("coordinator_channel_ids") if row else None
+    if not coordinator_channels or channel_id not in coordinator_channels:
+        raise commands.CheckFailure("You are not authorized to use commands in this channel.")
     return True
     
 async def is_developer(ctx):
