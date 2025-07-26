@@ -1,14 +1,35 @@
 **The Vyrtuous Project** is a vegan-owned Discord bot written in Python. It brings together:
 
-* PostgreSQL database information about mutes.
 * Loading and unloading Cogs, the fundamental components of the Discord bot.
+* Permission scaling for server developers, channel coordinators and channel moderators.
+* PostgreSQL database information about ban, flags and mutes.
 
 ## Features
 
 Moderation Features
 
-• `Room Muting` — Mutes in Discord rooms only persist in the room itself, not the whole server.
+• `Room Ban` — Bans in Discord rooms only persist in the room itself, not the whole server.
+It includes ban durations including a permanent ban.
+It also includes an optional reason.
 
+• `Room Muting` — Mutes in Discord rooms only persist in the room itself, not the whole server.
+It also includes an optional reason.
+
+* `alias <alias_type> <alias_name> <channel>` - Creates a ban, flag, mute, unban or unmute alias for a specific channel
+* `aliases <channel>` - Lists all the aliases present in a channel.
+* `coord <channel> <member>`
+* `coords` - Lists coordinators in the server where the command was run.
+* `dev <member>` - Creates a developer in the server where the command was run.
+* `devs` - Lists developers in the server where the command was run.
+* `flags <channel>` - Lists members who are flagged in the channel.
+* `help <command>` - Interactive help command paginating commands for members.
+* `mod <channel> <member>` - Creates a moderator in the channel specified.
+* `mods <channel>` - Lists all mods in the channel specified.
+* `roleban <channel> <role>` - Syncs a channel's ban alias with an assigned moderated role.'
+* `xalias <alias_name>` - Deletes an alias.
+* `xcoord <channel> <member>` - Deletes a coordinator from a specified channel.
+* `xdev <member>` - Deletes a developer in the server it was run.
+* `xmod <channel> <member>` - Deletes a moderator in a channel.
 
 Lifecycle Features
 
@@ -53,6 +74,11 @@ source .venv/bin/activate
 ```bash
 ./.restart.sh
 ```
+8. Subsequent restarts should run start.sh
+Run restart.sh
+```bash
+./.start.sh
+```
 
 ## Configuration
 
@@ -81,18 +107,6 @@ Your settings are saved this in the container:
 Subsequent launches read from this file—no environment variables needed.
 
 The bot will load or create its config, connect to Discord, and register commands.
-
-## Commands
-
-Replace `<prefix>` with your configured prefix (default `?`).
-
-• `?help <command>` or `?help`
-
-• `?load <path-to-cog>`
-
-• `?reload <path-to-cog>`
-
-• `?sync <~|^|*|>` or `?sync`
 
 ## License
 
