@@ -133,7 +133,7 @@ async def is_guild_owner(ctx):
                                     
 async def is_moderator(ctx):
     errors = []
-    for check in (has_command_alias, is_channel_moderator):
+    for check in (is_channel_moderator):
         try:
             if await check(ctx):
                 continue

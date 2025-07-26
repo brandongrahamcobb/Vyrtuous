@@ -1510,7 +1510,6 @@ class Hybrid(commands.Cog):
     async def get_command_permission_level(self, bot, ctx, command):
         if not hasattr(command, 'checks') or not command.checks:
             return 'Everyone'
-        
         permission_levels = {
             'Owner': 4,
             'Developer': 3,
@@ -1518,15 +1517,10 @@ class Hybrid(commands.Cog):
             'Moderator': 1,
             'Everyone': 0
         }
-        
-        # Start with the lowest required permission level
-        lowest_required_level = 'Owner'  # Start with highest, work down
-        lowest_required_value = 4
-        
+        highest_level = 'Everyone'
+        highest_value = 0
         for check in command.checks:
             check_names = []
-        
-            # Collect all possible names for this check
             if hasattr(check, '__name__'):
                 check_names.append(check.__name__)
             if hasattr(check, '__wrapped__'):
@@ -1535,7 +1529,6 @@ class Hybrid(commands.Cog):
                     check_names.append(wrapped.__name__)
             if hasattr(check, 'predicate') and hasattr(check.predicate, '__name__'):
                 check_names.append(check.predicate.__name__)
-        
             check_str = str(check)
             if 'function' in check_str:
                 try:
@@ -1543,83 +1536,26 @@ class Hybrid(commands.Cog):
                     check_names.append(func_name)
                 except:
                     pass
-        
-            # Determine the minimum permission level for this check
             for check_name in check_names:
                 level = None
-        
-                # Map check names to their MINIMUM required permission level
                 if check_name == 'is_owner_developer_coordinator_moderator':
-                    level = 'Moderator'  # Minimum level: Moderator (includes Coord,     Dev, Owner)
+                    level = 'Moderator'
                 elif check_name == 'is_owner_developer_coordinator':
-                    level = 'Coordinator'  # Minimum level: Coordinator (includes     Dev, Owner)
+                    level = 'Coordinator'
                 elif check_name == 'is_owner_developer':
-                    level = 'Developer'  # Minimum level: Developer (includes Owner)
+                    level = 'Developer'
                 elif check_name in ['is_owner', 'is_guild_owner', 'is_system_owner']:
-                    level = 'Owner'  # Minimum level: Owner only
+                    level = 'Owner'
                 elif check_name == 'is_developer':
-                    level = 'Developer'  # Minimum level: Developer only
+                    level = 'Developer'
                 elif check_name == 'is_coordinator':
-                    level = 'Coordinator'  # Minimum level: Coordinator only
+                    level = 'Coordinator'
                 elif check_name in ['is_moderator', 'is_channel_moderator']:
-                    level = 'Moderator'  # Minimum level: Moderator only
-        
-                # Find the LOWEST permission level required (highest access)
-                if level and permission_levels[level] < lowest_required_value:
-                    lowest_required_level = level
-                    lowest_required_value = permission_levels[level]
-        
-        return lowest_required_level
-        
-#        async def get_command_permission_level(self, bot, ctx, command):
-#        if not hasattr(command, 'checks') or not command.checks:
-#            return 'Everyone'
-#        permission_levels = {
-#            'Owner': 4,
-#            'Developer': 3,
-#            'Coordinator': 2,
-#            'Moderator': 1,
-#            'Everyone': 0
-#        }
-#        highest_level = 'Everyone'
-#        highest_value = 0
-#        for check in command.checks:
-#            check_names = []
-#            if hasattr(check, '__name__'):
-#                check_names.append(check.__name__)
-#            if hasattr(check, '__wrapped__'):
-#                wrapped = check.__wrapped__
-#                if hasattr(wrapped, '__name__'):
-#                    check_names.append(wrapped.__name__)
-#            if hasattr(check, 'predicate') and hasattr(check.predicate, '__name__'):
-#                check_names.append(check.predicate.__name__)
-#            check_str = str(check)
-#            if 'function' in check_str:
-#                try:
-#                    func_name = check_str.split('function ')[1].split(' ')[0]
-#                    check_names.append(func_name)
-#                except:
-#                    pass
-#            for check_name in check_names:
-#                level = None
-#                if check_name == 'is_owner_developer_coordinator_moderator':
-#                    level = 'Moderator'
-#                elif check_name == 'is_owner_developer_coordinator':
-#                    level = 'Coordinator'
-#                elif check_name == 'is_owner_developer':
-#                    level = 'Developer'
-#                elif check_name in ['is_owner', 'is_guild_owner', 'is_system_owner']:
-#                    level = 'Owner'
-#                elif check_name == 'is_developer':
-#                    level = 'Developer'
-#                elif check_name == 'is_coordinator':
-#                    level = 'Coordinator'
-#                elif check_name in ['is_moderator', 'is_channel_moderator']:
-#                    level = 'Moderator'
-#                if level and permission_levels[level] > highest_value:
-#                    highest_level = level
-#                    highest_value = permission_levels[level]
-#        return highest_level
+                    level = 'Moderator'
+                if level and permission_levels[level] > highest_value:
+                    highest_level = level
+                    highest_value = permission_levels[level]
+        return highest_level
     
     def get_permission_color(self, perm_level):
         colors = {
