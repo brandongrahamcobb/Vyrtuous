@@ -525,7 +525,7 @@ class Hybrid(commands.Cog):
         await self.list_role_members(
             ctx=ctx,
             channel_str=channel,
-            column_name="moderator_ids",
+            column_name="moderator_channel_ids",
             label="Moderator",
             color=discord.Color.green()
         )
