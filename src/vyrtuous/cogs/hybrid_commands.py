@@ -1289,7 +1289,7 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(
         name='role',
-        help='Associate a voice channel with a role used for bans.'
+        help='Associate a voice channel with a role used for various aliases.'
     )
     @commands.check(is_owner_developer_coordinator)
     async def role(
