@@ -59,10 +59,6 @@ class Hybrid(commands.Cog):
                     cmd = self.create_ban_alias(alias_name)
                 elif alias_type == 'unban':
                     cmd = self.create_unban_alias(alias_name)
-                elif alias_type == 'role':
-                    cmd = self.create_role_alias(alias_name)
-                elif alias_type == 'unrole':
-                    cmd = self.create_unrole_alias(alias_name)
                 elif alias_type == 'flag':
                     cmd = self.create_flag_alias(alias_name)
                 self.bot.add_command(cmd)
@@ -924,6 +920,9 @@ class Hybrid(commands.Cog):
             reason: str = commands.parameter(default='N/A', description='Include a reason for the unmute.')
         ) -> None:
             guild_id = ctx.guild.id
+            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unmute', {}).get(command_name)
+            if not static_channel_id:
+                return await self.handler.send_message(ctx, content=f'❌ No unmute alias configured for `{command_name}`.')
             member_id = None
             member_object = None
             if member.isdigit():
@@ -936,38 +935,58 @@ class Hybrid(commands.Cog):
             if member_id:
                 member_object = ctx.guild.get_member(member_id)
             if not member_object:
-                return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
-            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unmute', {}).get(command_name)
-            async with self.db_pool.acquire() as conn:
-                row = await conn.fetchrow('''
-                    SELECT source FROM active_mutes
-                    WHERE user_id = $1 AND channel_id = $2
-                ''', member_object.id, static_channel_id)
-                if not row or row["source"] != "bot":
-                    return await self.handler.send_message(ctx, content=f"❌ {member_object.mention} was not muted by the bot in <#{static_channel_id}>.")
-                if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
-                    await member_object.edit(mute=False)
-                await conn.execute('''
-                    DELETE FROM active_mutes
-                    WHERE user_id = $1 AND channel_id = $2 AND source = 'bot'
-                ''', member_object.id, static_channel_id)
-                await conn.execute('''
-                    UPDATE users
-                    SET mute_channel_ids = array_remove(mute_channel_ids, $2),
-                        updated_at = NOW()
-                    WHERE user_id = $1
-                ''', member_object.id, static_channel_id)
-                await conn.execute('''
-                    INSERT INTO mute_reasons (guild_id, user_id, channel_id, reason)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT (guild_id, user_id, channel_id)
-                    DO UPDATE SET reason = EXCLUDED.reason
-                ''', guild_id, member_object.id, static_channel_id, reason)
+                return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
+            print(f"DEBUG: Member resolved: {member_object.name} ({member_object.id})")
+            try:
+                async with self.db_pool.acquire() as conn:
+                    row = await conn.fetchrow('''
+                        SELECT source, issuer_id FROM active_mutes
+                        WHERE user_id = $1 AND channel_id = $2
+                    ''', member_object.id, static_channel_id)
+                    print(f"DEBUG: Active mute row: {row}")
+                    if not row:
+                        return await self.handler.send_message(ctx, content=f"❌ {member_object.mention} is not muted in <#{static_channel_id}>.")
+                    if row["source"] == "owner":
+                        return await self.handler.send_message(ctx, content=f"❌ {member_object.mention} has a server mute in <#{static_channel_id}> that cannot be removed.")
+                    elif row["source"] not in ("bot", "manual"):
+                        return await self.handler.send_message(ctx, content=f"❌ {member_object.mention} was not muted by the bot in <#{static_channel_id}>.")
+                    if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
+                        print("DEBUG: Member is in voice channel, unmuting...")
+                        await member_object.edit(mute=False)
+                    await conn.execute('''
+                        DELETE FROM active_mutes
+                        WHERE user_id = $1 AND channel_id = $2 AND source IN ('bot', 'manual')
+                    ''', member_object.id, static_channel_id)
+                    if row["source"] == "bot":
+                        await conn.execute('''
+                            UPDATE users
+                            SET mute_channel_ids = array_remove(mute_channel_ids, $2),
+                                updated_at = NOW()
+                            WHERE user_id = $1
+                        ''', member_object.id, static_channel_id)
+                    elif row["source"] == "manual":
+                        await conn.execute('''
+                            UPDATE users
+                            SET manual_mute_channels = array_remove(manual_mute_channels, $2),
+                                updated_at = NOW()
+                            WHERE user_id = $1
+                        ''', member_object.id, static_channel_id)
+                    await conn.execute('''
+                        INSERT INTO mute_reasons (guild_id, user_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (guild_id, user_id, channel_id)
+                        DO UPDATE SET reason = EXCLUDED.reason
+                    ''', guild_id, member_object.id, static_channel_id, f"Unmuted: {reason}")
+            except Exception as e:
+                print(f"DEBUG: Database error: {e}")
+                await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
+                raise
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
-                await member_object.edit(mute=False)
-                await self.handler.send_message(ctx, content=f'{member_object.mention} has been unmuted in <#{static_channel_id}>.')
+                await self.handler.send_message(ctx, content=f'✅ {member_object.mention} has been unmuted in <#{static_channel_id}>.')
             else:
-                await self.handler.send_message(ctx, content=f'{member_object.mention} is no longer marked as muted in <#{static_channel_id}>.')
+                await self.handler.send_message(ctx, content=f'✅ {member_object.mention} is no longer marked as muted in <#{static_channel_id}>.')
+            print("DEBUG: Unmute command completed successfully")
+        
         return unmute_alias
         
     @commands.hybrid_command(name='xalias', help='Deletes an alias.')
@@ -1140,12 +1159,11 @@ class Hybrid(commands.Cog):
         @commands.check(is_owner_developer_coordinator_moderator)
         async def flag_alias(
             ctx,
-            user: str
+            user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
         ) -> None:
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
-            print("tezt")
             if not channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No flag alias configured for `{command_name}`.')
             if not user:
