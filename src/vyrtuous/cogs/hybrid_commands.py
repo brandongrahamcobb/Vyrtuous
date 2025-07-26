@@ -355,7 +355,7 @@ class Hybrid(commands.Cog):
         await self.handler.send_message(ctx, content=f'{member_object.mention} has been granted VC moderator access in {resolved_channel.name}.')
     
     @commands.hybrid_command(name='xmod', help='Revokes a member\'s VC moderator role for a given channel.')
-    @commands.check(is_owner_developer_coordinator_moderator)
+    @commands.check(is_owner_developer_coordinator)
     async def delete_moderator(
         self,
         ctx,
