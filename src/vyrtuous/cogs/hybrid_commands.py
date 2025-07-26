@@ -1541,8 +1541,6 @@ class Hybrid(commands.Cog):
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):
         permission_groups = {level: [] for level in PERMISSION_ORDER}
-    
-        for command in commands_list:
             perm_level = await self.get_command_permission_level(bot, ctx, command)
             if perm_level in permission_groups:
                 permission_groups[perm_level].append(command)
@@ -1614,6 +1612,7 @@ class Hybrid(commands.Cog):
         if not all_commands:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
+        current_text_channel_id = ctx.channel.id
         user_vc_id = ctx.author.voice.channel.id if ctx.author.voice and ctx.author.voice.channel else None
         guild_aliases = self.bot.command_aliases.get(ctx.guild.id, {})
         alias_to_channel_map = {}
@@ -1623,16 +1622,15 @@ class Hybrid(commands.Cog):
         contextual_commands = []
         for command in all_commands:
             alias_channel_id = alias_to_channel_map.get(command.name)
-        
             if alias_channel_id:
                 if current_text_channel_id == alias_channel_id:
                     contextual_commands.append(command)
             else:
-                # Always include regular commands
                 contextual_commands.append(command)
-                guild_aliases = self.bot.command_aliases.get(ctx.guild.id, {})
-        
-        permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
+        if not contextual_commands:
+            await self.handler.send_message(ctx, '❌ No commands available to you.')
+            return
+        permission_groups = await self.group_commands_by_permission(bot, ctx, contextual_commands)
         pages = []
         user_highest = await self.get_user_highest_permission(bot, ctx)
         user_index = PERMISSION_ORDER.index(user_highest)
@@ -1658,7 +1656,7 @@ class Hybrid(commands.Cog):
             for command in commands_in_level:
                 if command.hidden:
                     continue
-                cog_name = command.cog_name or 'Uncategorized'
+                cog_name = command.cog_name or 'Aliases'
                 cog_map.setdefault(cog_name, []).append(command)
             for cog_name in sorted(cog_map):
                 commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
