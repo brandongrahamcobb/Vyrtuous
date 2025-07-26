@@ -48,11 +48,7 @@ class Hybrid(commands.Cog):
                 alias_type = row['alias_type']
                 alias_name = row['alias_name']
                 channel_id = row['channel_id']
-    
-                # Use setdefault to initialize nested dictionaries safely
                 self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel_id
-    
-                # Create and add the command
                 cmd = None
                 if alias_type == 'mute':
                     cmd = self.create_mute_alias(alias_name)
@@ -784,7 +780,7 @@ class Hybrid(commands.Cog):
                         ON CONFLICT (user_id) DO UPDATE
                         SET server_mute_channel_ids = (
                             SELECT ARRAY(
-                                SELECT DISTINCT unnest(u.server_mute_channel_ids || ARRAY[$2])
+                                SELECT DISTINCT unnest(COALESCE(u.server_mute_channel_ids, '{}') || ARRAY[$2])
                             )
                             FROM users u WHERE u.user_id = EXCLUDED.user_id
                         ),
@@ -797,7 +793,7 @@ class Hybrid(commands.Cog):
                         ON CONFLICT (user_id) DO UPDATE
                         SET mute_channel_ids = (
                             SELECT ARRAY(
-                                SELECT DISTINCT unnest(u.mute_channel_ids || ARRAY[$2])
+                                SELECT DISTINCT unnest(COALESCE(u.mute_channel_ids, '{}') || ARRAY[$2])
                             )
                             FROM users u WHERE u.user_id = EXCLUDED.user_id
                         ),
@@ -876,7 +872,6 @@ class Hybrid(commands.Cog):
         ) -> None:
             guild_id = ctx.guild.id
             member_id = None
-    
             if member.isdigit():
                 member_id = int(member)
             elif member.startswith('<@') and member.endswith('>'):
@@ -884,16 +879,12 @@ class Hybrid(commands.Cog):
                     member_id = int(member.strip('<@!>'))
                 except ValueError:
                     pass
-    
             member_object = ctx.guild.get_member(member_id) if member_id else None
             if not member_object:
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
-    
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
-    
-            # NEW: Fetch the role_id from channel_roles instead of using the old 'role' alias type
             async with self.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
@@ -904,16 +895,13 @@ class Hybrid(commands.Cog):
                 )
             if not role_id:
                 return await self.handler.send_message(ctx, content=f'❌ No ban role found for <#{static_channel_id}>.')
-    
             role = ctx.guild.get_role(role_id)
             if not role:
                 return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
-    
             try:
                 await member_object.remove_roles(role, reason=f"Unbanned from <#{static_channel_id}>: {reason or 'No reason provided'}")
             except discord.Forbidden:
                 return await self.handler.send_message(ctx, content='❌ Missing permissions to remove ban role.')
-    
             async with self.db_pool.acquire() as conn:
                 await conn.execute('''
                     DELETE FROM active_bans
@@ -931,12 +919,10 @@ class Hybrid(commands.Cog):
                         updated_at = NOW()
                     WHERE user_id = $1
                 ''', member_object.id, static_channel_id)
-    
             await self.handler.send_message(
                 ctx,
                 content=f'🔊 {member_object.mention} has been unbanned from <#{static_channel_id}>.'
             )
-    
         return unban_alias
 
     
@@ -1202,7 +1188,6 @@ class Hybrid(commands.Cog):
                 user_id = int(user)
             else:
                 return await self.handler.send_message(ctx, content='❌ Invalid user ID or mention.')
-            print("test")
             select_sql = '''
                 SELECT 1 FROM users
                 WHERE user_id = $1 AND $2 = ANY(flagged_channel_ids)
