@@ -813,7 +813,7 @@ class Hybrid(commands.Cog):
     @commands.check(is_owner_developer_coordinator)
     async def list_mutes(
         ctx,
-        channel: Union[discord.VoiceChannel, str] = commands.parameter(description='Voice channel mention or ID.')
+        channel: str = commands.parameter(description='Voice channel mention or ID.')
     ) -> None:
         guild_id = ctx.guild.id
         try:
