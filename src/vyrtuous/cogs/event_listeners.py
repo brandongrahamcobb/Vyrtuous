@@ -81,7 +81,7 @@ class EventListeners(commands.Cog):
                 row = await conn.fetchrow("""
                     SELECT source, issuer_id FROM active_mutes
                     WHERE user_id = $1 AND channel_id = $2
-                """
+                """)
             if after_channel and before_channel != after_channel:
                 is_flagged = await conn.fetchval("""
                     SELECT flagged FROM users WHERE user_id = $1 AND flagged = TRUE
