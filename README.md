@@ -3,6 +3,8 @@
 * Loading and unloading Cogs, the fundamental components of the Discord bot.
 * Permission scaling for server developers, channel coordinators and channel moderators.
 * PostgreSQL database information about ban, flags and mutes.
+## Project Flow
+![Vyrtuous](resources/pictures/VyrtuousUML.svg)
 
 ## Features
 
