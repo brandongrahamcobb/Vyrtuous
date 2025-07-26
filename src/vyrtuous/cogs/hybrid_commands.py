@@ -1275,7 +1275,7 @@ class Hybrid(commands.Cog):
     
 
     @commands.hybrid_command(
-        name='banrole',
+        name='roleban',
         help='Associate a voice channel with a role used for bans.'
     )
     @commands.check(is_owner_developer_coordinator)
@@ -1297,28 +1297,28 @@ class Hybrid(commands.Cog):
             )
         await self.handler.send_message(ctx, f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
         
-    @commands.hybrid_command(
-        name='tmuterole',
-        help='Associate a voice channel with a role used for bans.'
-    )
-    @commands.check(is_owner_developer_coordinator)
-    async def mute_role(
-        self,
-        ctx: commands.Context,
-        channel: discord.VoiceChannel,
-        role: discord.Role
-    ):
-        guild_id = ctx.guild.id
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute(
-                '''
-                INSERT INTO mute_roles (guild_id, channel_id, role_id)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (guild_id, channel_id) DO UPDATE SET role_id = EXCLUDED.role_id
-                ''',
-                guild_id, channel.id, role.id
-            )
-        await self.handler.send_message(ctx, f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
+#    @commands.hybrid_command(
+#        name='roletm',
+#        help='Associate a voice channel with a role used for bans.'
+#    )
+#    @commands.check(is_owner_developer_coordinator)
+#    async def mute_role(
+#        self,
+#        ctx: commands.Context,
+#        channel: discord.VoiceChannel,
+#        role: discord.Role
+#    ):
+#        guild_id = ctx.guild.id
+#        async with self.bot.db_pool.acquire() as conn:
+#            await conn.execute(
+#                '''
+#                INSERT INTO mute_roles (guild_id, channel_id, role_id)
+#                VALUES ($1, $2, $3)
+#                ON CONFLICT (guild_id, channel_id) DO UPDATE SET role_id = EXCLUDED.role_id
+#                ''',
+#                guild_id, channel.id, role.id
+#            )
+#        await self.handler.send_message(ctx, f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
 
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
