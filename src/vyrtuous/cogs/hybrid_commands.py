@@ -50,7 +50,12 @@ class Hybrid(commands.Cog):
                 alias_type = row['alias_type']
                 alias_name = row['alias_name']
                 channel_id = row['channel_id']
-                self.bot.command_aliases[guild_id][alias_type][alias_name] = channel_id
+    
+                # Use setdefault to initialize nested dictionaries safely
+                self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel_id
+    
+                # Create and add the command
+                cmd = None
                 if alias_type == 'mute':
                     cmd = self.create_mute_alias(alias_name)
                 elif alias_type == 'unmute':
@@ -61,7 +66,9 @@ class Hybrid(commands.Cog):
                     cmd = self.create_unban_alias(alias_name)
                 elif alias_type == 'flag':
                     cmd = self.create_flag_alias(alias_name)
-                self.bot.add_command(cmd)
+    
+                if cmd:
+                    self.bot.add_command(cmd)
         
     #
     #  Help Command: helper method for the help command.
