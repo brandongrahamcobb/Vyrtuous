@@ -1379,13 +1379,13 @@ class Hybrid(commands.Cog):
     
     async def get_user_highest_permission(self, bot, ctx):
         # Example permission check functions — replace with your actual logic
-        if await self.is_owner(ctx):
+        if await is_owner(ctx):
             return 'Owner'
-        if await self.is_developer(ctx):
+        if await is_developer(ctx):
             return 'Developer'
-        if await self.is_coordinator(ctx):
+        if await is_coordinator(ctx):
             return 'Coordinator'
-        if await self.is_moderator(ctx):
+        if await is_moderator(ctx):
             return 'Moderator'
         return 'Everyone'
     

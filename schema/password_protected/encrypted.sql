@@ -75,12 +75,7 @@ CREATE TABLE IF NOT EXISTS ban_expirations (
     expires_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (user_id, channel_id)
 );
-CREATE TABLE IF NOT EXISTS channel_roles (
-    guild_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    role_id BIGINT NOT NULL,
-    PRIMARY KEY (guild_id, channel_id)
-);
+
 GRANT ALL PRIVILEGES ON DATABASE vyrtuous TO spawd;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO spawd;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO spawd;
