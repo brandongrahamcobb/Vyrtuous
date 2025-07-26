@@ -518,21 +518,36 @@ class Hybrid(commands.Cog):
         channel = resolve_channel(channel_id)
         if not channel or channel.type != discord.ChannelType.voice:
             return await self.handler.send_message(ctx, '❌ Could not resolve a valid voice channel.', ephemeral=True)
-        self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel.id
         async with self.db_pool.acquire() as conn:
+            existing_alias = await conn.fetchrow(
+                '''
+                SELECT channel_id FROM command_aliases 
+                WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3
+                ''',
+                guild_id, alias_type, alias_name
+            )
+            if existing_alias:
+                existing_channel = ctx.guild.get_channel(existing_alias['channel_id'])
+                channel_mention = existing_channel.mention if existing_channel else f"<#{existing_alias['channel_id']}>"
+                return await self.handler.send_message(
+                    ctx,
+                    f'❌ Alias `{alias_name}` ({alias_type}) already exists and is set to {channel_mention}.',
+                    ephemeral=True
+                )
+            if self.bot.get_command(alias_name):
+                return await self.handler.send_message(
+                    ctx,
+                    f'❌ A command named `{alias_name}` already exists.',
+                    ephemeral=True
+                )
             await conn.execute(
                 '''
                 INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
                 VALUES ($1, $2, $3, $4)
-                ON CONFLICT (guild_id, alias_type, alias_name)
-                DO UPDATE SET channel_id = EXCLUDED.channel_id
                 ''',
                 guild_id, alias_type, alias_name, channel.id
             )
-        await self.handler.send_message(
-            ctx,
-            content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
-        )
+        self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel.id
         if alias_type == 'mute':
             cmd = self.create_mute_alias(alias_name)
         elif alias_type == 'unmute':
@@ -544,6 +559,10 @@ class Hybrid(commands.Cog):
         elif alias_type == 'flag':
             cmd = self.create_flag_alias(alias_name)
         self.bot.add_command(cmd)
+        await self.handler.send_message(
+            ctx,
+            content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
+        )
             
     def create_ban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
@@ -1125,6 +1144,7 @@ class Hybrid(commands.Cog):
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
+            print("tezt")
             if not channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No flag alias configured for `{command_name}`.')
             if not user:
@@ -1135,6 +1155,7 @@ class Hybrid(commands.Cog):
                 user_id = int(user)
             else:
                 return await self.handler.send_message(ctx, content='❌ Invalid user ID or mention.')
+            print("test")
             select_sql = '''
                 SELECT 1 FROM users
                 WHERE user_id = $1 AND $2 = ANY(flagged_channel_ids)
@@ -1170,9 +1191,7 @@ class Hybrid(commands.Cog):
         *,
         command_name: str = commands.parameter(default=None, description='Include a command name')
     ) -> None:
-        print("text")
         bot = ctx.bot
-        print("text")
         if command_name:
             cmd = bot.get_command(command_name.lower())
             if not cmd:
