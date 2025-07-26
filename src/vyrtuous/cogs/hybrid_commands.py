@@ -34,14 +34,14 @@ class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
-        self.db_pool = bot.db_pool
+        self.bot.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
   
     #
     #   Helper method for loading aliases at runtime.
     #
     async def cog_load(self) -> None:
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             rows = await conn.fetch('SELECT guild_id, alias_type, alias_name, channel_id FROM command_aliases')
             for row in rows:
                 guild_id = row['guild_id']
@@ -87,37 +87,50 @@ class Hybrid(commands.Cog):
             channel = discord.utils.get(guild.voice_channels, name=value)
         return channel if isinstance(channel, discord.VoiceChannel) else None
     
-    @commands.hybrid_command(name='coord', help='Grants coordinator access to a user in a specific channel.')
+    @commands.hybrid_command(name='coord', help='Grants coordinator access (alternative with string parsing).')
     @commands.check(is_owner_developer)
-    async def create_coordinator(
+    async def create_coordinator_alt(
         self,
         ctx,
         member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
         channel: str = commands.parameter(description='Mention a channel or provide its ID.'),
     ) -> None:
         channel_id = None
-        member_id = None
-        member_object = None
+        channel_obj = None
         if channel.isdigit():
             channel_id = int(channel)
+            channel_obj = ctx.guild.get_channel(channel_id)
         elif channel.startswith('<#') and channel.endswith('>'):
             try:
-                channel_id = int(channel.strip('<#>'))
+                channel_id = int(channel[2:-1])
+                channel_obj = ctx.guild.get_channel(channel_id)
             except ValueError:
                 pass
-        if not channel_id:
-            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid channel from your input.')
+        else:
+            channel_obj = discord.utils.get(ctx.guild.voice_channels, name=channel)
+            if channel_obj:
+                channel_id = channel_obj.id
+        if not channel_obj or not isinstance(channel_obj, discord.VoiceChannel):
+            return await self.handler.send_message(
+                ctx,
+                content='❌ Could not find a valid voice channel from your input.'
+            )
+        member_id = None
+        member_obj = None
         if member.isdigit():
             member_id = int(member)
+            member_obj = ctx.guild.get_member(member_id)
         elif member.startswith('<@') and member.endswith('>'):
             try:
-                member_id = int(member.strip('<@!>'))
+                member_id = int(member[2:-1].lstrip('!'))
+                member_obj = ctx.guild.get_member(member_id)
             except ValueError:
                 pass
-        if member_id:
-            member_object = ctx.guild.get_member(member_id)
-        if not member_object:
-            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
+        if not member_obj:
+            return await self.handler.send_message(
+                ctx,
+                content='❌ Could not find a valid guild member from your input.'
+            )
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (user_id, coordinator_channel_ids)
@@ -125,17 +138,18 @@ class Hybrid(commands.Cog):
                 ON CONFLICT (user_id) DO UPDATE
                 SET coordinator_channel_ids = (
                     SELECT ARRAY(
-                        SELECT DISTINCT unnest(u.coordinator_channel_ids || EXCLUDED.coordinator_channel_ids)
-                        FROM users u WHERE u.user_id = EXCLUDED.user_id
+                        SELECT DISTINCT unnest(
+                            COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || 
+                            EXCLUDED.coordinator_channel_ids
+                        )
                     )
                 ),
                 updated_at = NOW()
-            ''', member_object.id, channel_id)
+            ''', member_obj.id, channel_id)
         await self.handler.send_message(
             ctx,
-            content=f'✅ {member_object.mention} has been granted coordinator rights in <#{channel_id}>.'
+            content=f'✅ {member_obj.mention} has been granted coordinator rights in {channel_obj.mention}.'
         )
-
 
     @commands.hybrid_command(
         name='xcoord',
@@ -150,7 +164,6 @@ class Hybrid(commands.Cog):
     ) -> None:
         member_id = None
         member_object = None
-    
         if member.isdigit():
             member_id = int(member)
         elif member.startswith('<@') and member.endswith('>'):
@@ -158,13 +171,10 @@ class Hybrid(commands.Cog):
                 member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
-    
         if member_id:
             member_object = ctx.guild.get_member(member_id)
-    
         if not member_object:
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
-    
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE users
@@ -172,7 +182,6 @@ class Hybrid(commands.Cog):
                     updated_at = NOW()
                 WHERE user_id = $1
             ''', member_object.id, channel.id)
-    
         await self.handler.send_message(ctx, content=f'✅ {member_object.mention}\'s coordinator access has been revoked from {channel.mention}.')
 
 
@@ -190,8 +199,6 @@ class Hybrid(commands.Cog):
             label="Coordinator",
             color=discord.Color.gold()
         )
-
-
 
     #
     # Developer Commands: creation
@@ -269,7 +276,7 @@ class Hybrid(commands.Cog):
     async def list_developers(self, ctx) -> None:
         guild = ctx.guild
         pages = []
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT user_id, developer_guild_ids
                 FROM users
@@ -332,7 +339,7 @@ class Hybrid(commands.Cog):
                     break
         if not isinstance(resolved_channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content='Could not resolve a valid **voice** channel from your input.')
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (user_id, moderator_ids)
                 VALUES ($1, ARRAY[$2]::BIGINT[])
@@ -384,7 +391,7 @@ class Hybrid(commands.Cog):
                     break
         if not isinstance(resolved_channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content='Could not resolve a valid **voice** channel from your input.')
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE users
                 SET moderator_ids = array_remove(moderator_ids, $2),
@@ -419,28 +426,23 @@ class Hybrid(commands.Cog):
     ) -> None:
         guild = ctx.guild
         voice_channel = self.resolve_voice_channel(guild, channel_str)
-    
         if not voice_channel:
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
-    
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             query = f'''
                 SELECT user_id FROM users
                 WHERE $1 = ANY({column_name})
             '''
             rows = await conn.fetch(query, voice_channel.id)
-    
         if not rows:
             return await self.handler.send_message(
                 ctx, content=f'ℹ️ No {label.lower()}s found for <#{voice_channel.id}>.'
             )
-    
         pages = []
         for row in rows:
             user_id = row['user_id']
             user = guild.get_member(user_id)
             display_name = user.display_name if user else f'User ID {user_id}'
-    
             embed = discord.Embed(
                 title=f'{label} for {voice_channel.name}',
                 description=f'{display_name} (<@{user_id}>)',
@@ -448,7 +450,6 @@ class Hybrid(commands.Cog):
             )
             embed.set_footer(text=f'User ID: {user_id}')
             pages.append(embed)
-    
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
 
@@ -481,7 +482,7 @@ class Hybrid(commands.Cog):
             WHERE $1 = ANY(flagged_channel_ids)
         '''
         try:
-            async with self.db_pool.acquire() as conn:
+            async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch(sql, channel_id)
             if not rows:
                 return await self.handler.send_message(ctx, content=f'✅ No users are flagged for <#{channel_id}>.')
@@ -526,7 +527,7 @@ class Hybrid(commands.Cog):
         channel = resolve_channel(channel_id)
         if not channel or channel.type != discord.ChannelType.voice:
             return await self.handler.send_message(ctx, '❌ Could not resolve a valid voice channel.', ephemeral=True)
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             existing_alias = await conn.fetchrow(
                 '''
                 SELECT channel_id FROM command_aliases 
@@ -610,7 +611,7 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
             role_id = None
             ban_channel_id = static_channel_id
-            async with self.db_pool.acquire() as conn:
+            async with self.bot.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
                     SELECT role_id FROM channel_roles
@@ -620,7 +621,7 @@ class Hybrid(commands.Cog):
                 )
                 if not role_id:
                     return await self.handler.send_message(ctx, content=f'❌ No ban role alias mapping found for `{command_name}`.')
-            async with self.db_pool.acquire() as conn:
+            async with self.bot.db_pool.acquire() as conn:
                 existing_ban = await conn.fetchval(
                     '''
                     SELECT 1 FROM active_bans
@@ -641,7 +642,7 @@ class Hybrid(commands.Cog):
             except discord.Forbidden:
                 return await self.handler.send_message(ctx, content='❌ Missing permissions to assign ban role.')
             try:
-                async with self.db_pool.acquire() as conn:
+                async with self.bot.db_pool.acquire() as conn:
                     await conn.execute(
                         '''
                         INSERT INTO active_bans (user_id, channel_id, expires_at)
@@ -678,7 +679,7 @@ class Hybrid(commands.Cog):
         
             if duration_hours > 0:
                 expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
-                async with self.db_pool.acquire() as conn:
+                async with self.bot.db_pool.acquire() as conn:
                     await conn.execute(
                         '''
                         INSERT INTO ban_expirations (user_id, channel_id, expires_at)
@@ -708,7 +709,7 @@ class Hybrid(commands.Cog):
                 pass
         if not channel_id or not guild.get_channel(channel_id):
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid channel.')
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             bans = await conn.fetch('''
                 SELECT ab.user_id, ab.expires_at, br.reason
                 FROM active_bans ab
@@ -766,7 +767,7 @@ class Hybrid(commands.Cog):
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('mute', {}).get(command_name)
             is_owner = await self.bot.is_owner(ctx.author)
             mute_source = 'owner' if is_owner else 'bot'
-            async with self.db_pool.acquire() as conn:
+            async with self.bot.db_pool.acquire() as conn:
                 await conn.execute('''
                     INSERT INTO active_mutes (user_id, channel_id, source, issuer_id)
                     VALUES ($1, $2, $3, $4)
@@ -836,7 +837,7 @@ class Hybrid(commands.Cog):
                 raise ValueError
         except ValueError:
             return await self.handler.send_message(ctx, content='❌ Invalid channel mention or ID.')
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             records = await conn.fetch('''
                 SELECT am.user_id, mr.reason, am.source
                 FROM active_mutes am
@@ -885,7 +886,7 @@ class Hybrid(commands.Cog):
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
-            async with self.db_pool.acquire() as conn:
+            async with self.bot.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
                     SELECT role_id FROM channel_roles
@@ -902,7 +903,7 @@ class Hybrid(commands.Cog):
                 await member_object.remove_roles(role, reason=f"Unbanned from <#{static_channel_id}>: {reason or 'No reason provided'}")
             except discord.Forbidden:
                 return await self.handler.send_message(ctx, content='❌ Missing permissions to remove ban role.')
-            async with self.db_pool.acquire() as conn:
+            async with self.bot.db_pool.acquire() as conn:
                 await conn.execute('''
                     DELETE FROM active_bans
                     WHERE user_id = $1 AND channel_id = $2
@@ -953,7 +954,7 @@ class Hybrid(commands.Cog):
             if not member_object:
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
             try:
-                async with self.db_pool.acquire() as conn:
+                async with self.bot.db_pool.acquire() as conn:
                     row = await conn.fetchrow('''
                         SELECT source, issuer_id FROM active_mutes
                         WHERE user_id = $1 AND channel_id = $2
@@ -1029,7 +1030,7 @@ class Hybrid(commands.Cog):
         if alias_name not in alias_map:
             await self.handler.send_message(ctx, f'❌ Alias `{alias_name}` not found in `{alias_type}` for guild `{guild_id}`.', ephemeral=True)
             return
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
                 'DELETE FROM command_aliases WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3',
                 guild_id, alias_type.lower(), alias_name
@@ -1109,7 +1110,7 @@ class Hybrid(commands.Cog):
             if not member_object:
                 return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unmute', {}).get(command_name)
-            async with self.db_pool.acquire() as conn:
+            async with self.bot.db_pool.acquire() as conn:
                 row = await conn.fetchrow('''
                     SELECT source FROM active_mutes
                     WHERE user_id = $1 AND channel_id = $2
@@ -1154,7 +1155,7 @@ class Hybrid(commands.Cog):
         role: discord.Role
     ):
         guild_id = ctx.guild.id
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
                 '''
                 INSERT INTO channel_roles (guild_id, channel_id, role_id)
@@ -1203,7 +1204,7 @@ class Hybrid(commands.Cog):
                 )
             '''
             try:
-                async with self.db_pool.acquire() as conn:
+                async with self.bot.db_pool.acquire() as conn:
                     already_flagged = await conn.fetchval(select_sql, user_id, channel_id)
                     if already_flagged:
                         return await self.handler.send_message(ctx, content=f'ℹ️ <@{user_id}> is already flagged for <#{channel_id}>.')
@@ -1325,7 +1326,7 @@ class Hybrid(commands.Cog):
             member_object = ctx.guild.get_member(member_id)
         if not member_object:
             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
-        async with self.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             mute_rows = await conn.fetch('''
                 SELECT channel_id, reason, action
                 FROM mute_reasons
@@ -1336,7 +1337,6 @@ class Hybrid(commands.Cog):
                 FROM ban_reasons
                 WHERE guild_id = $1 AND user_id = $2
             ''', guild_id, member_object.id)
-    
         if not mute_rows and not ban_rows:
             return await self.handler.send_message(ctx, content=f'ℹ️ No mute, unmute, ban, or unban history found for {member_object.mention}.')
         lines = []
