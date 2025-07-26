@@ -683,7 +683,7 @@ class Hybrid(commands.Cog):
         return ban_alias
         
     @commands.hybrid_command(name='bans', help='Lists all users banned from a specific channel.')
-    @commands.check(is_owner_developer)
+    @commands.check(is_owner_developer_coordinator_moderator)
     async def list_bans(
         self,
         ctx: commands.Context,
