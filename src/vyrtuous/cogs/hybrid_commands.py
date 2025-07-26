@@ -86,17 +86,26 @@ class Hybrid(commands.Cog):
                 logger.warning(f"❌ Exception while checking command '{command}': {e}")
         return available_commands
     
-    @commands.hybrid_command(name='coord', help='Grants coordinator access to a user in this guild.')
+    @commands.hybrid_command(name='coord', help='Grants coordinator access to a user in a specific channel.')
     @commands.check(is_owner_developer)
     async def create_coordinator(
         self,
         ctx,
         member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+        channel: str = commands.parameter(description='Mention a channel or provide its ID.'),
     ) -> None:
-        guild_id = ctx.guild.id
+        channel_id = None
         member_id = None
         member_object = None
-    
+        if channel.isdigit():
+            channel_id = int(channel)
+        elif channel.startswith('<#') and channel.endswith('>'):
+            try:
+                channel_id = int(channel.strip('<#>'))
+            except ValueError:
+                pass
+        if not channel_id:
+            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid channel from your input.')
         if member.isdigit():
             member_id = int(member)
         elif member.startswith('<@') and member.endswith('>'):
@@ -104,28 +113,28 @@ class Hybrid(commands.Cog):
                 member_id = int(member.strip('<@!>'))
             except ValueError:
                 pass
-    
         if member_id:
             member_object = ctx.guild.get_member(member_id)
-    
         if not member_object:
-            return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
-    
+            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO users (user_id, coordinator_ids)
+                INSERT INTO users (user_id, coordinator_channel_ids)
                 VALUES ($1, ARRAY[$2]::BIGINT[])
                 ON CONFLICT (user_id) DO UPDATE
-                SET coordinator_ids = (
+                SET coordinator_channel_ids = (
                     SELECT ARRAY(
-                        SELECT DISTINCT unnest(u.coordinator_ids || EXCLUDED.coordinator_ids)
+                        SELECT DISTINCT unnest(u.coordinator_channel_ids || EXCLUDED.coordinator_channel_ids)
+                        FROM users u WHERE u.user_id = EXCLUDED.user_id
                     )
-                    FROM users u WHERE u.user_id = EXCLUDED.user_id
                 ),
                 updated_at = NOW()
-            ''', member_object.id, guild_id)
-    
-        await self.handler.send_message(ctx, content=f'{member_object.mention} has been granted coordinator rights in this guild.')
+            ''', member_object.id, channel_id)
+        await self.handler.send_message(
+            ctx,
+            content=f'✅ {member_object.mention} has been granted coordinator rights in <#{channel_id}>.'
+        )
+
 
     @commands.hybrid_command(name='xcoord', help='Revokes coordinator access from a user in this guild.')
     @commands.check(is_owner_developer)
