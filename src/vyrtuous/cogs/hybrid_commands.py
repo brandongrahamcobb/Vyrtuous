@@ -1289,7 +1289,7 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(
         name='role',
-        help='Associate a voice channel with a role used for various aliases.'
+        help='Associate a voice channel with a role used for bans or mutes.'
     )
     @commands.check(is_owner_developer_coordinator)
     async def role(
@@ -1299,24 +1299,21 @@ class Hybrid(commands.Cog):
         channel: str,
         role: discord.Role
     ):
-        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', function):
-            await self.handler.send_message(ctx, "❌ Invalid function name. Use only letters, numbers, and underscores.")
-            return
-    
-        allowed_functions = {'ban', 'mute'}  # Add your allowed functions
+        # Validate function parameter
+        allowed_functions = {'ban', 'mute'}
         if function not in allowed_functions:
             await self.handler.send_message(ctx, f"❌ Function '{function}' is not allowed. Valid functions: {', '.join(allowed_functions)}")
             return
     
         # Parse the voice channel from string
-        try:
-            voice_channel = await resolve_voice_channel(ctx.guild, channel)
-        except commands.BadArgument as e:
-            await self.handler.send_message(ctx, f"❌ {str(e)}")
+        voice_channel = self.resolve_voice_channel(ctx.guild, channel)
+        if not voice_channel:
+            await self.handler.send_message(ctx, f"❌ Voice channel '{channel}' not found. Please use a voice channel mention, ID, or name.")
             return
     
         guild_id = ctx.guild.id
         table_name = f"{function}_roles"
+    
         async with self.bot.db_pool.acquire() as conn:
             query = f'''
                 INSERT INTO {table_name} (guild_id, channel_id, role_id)
@@ -1325,7 +1322,7 @@ class Hybrid(commands.Cog):
             '''
             await conn.execute(query, guild_id, voice_channel.id, role.id)
     
-        await self.handler.send_message(ctx, f"✅ Associated voice channel {voice_channel.mention} with role {role.mention} for {function}.")
+        await self.handler.send_message(ctx, f"✅ Associated voice channel {voice_channel.mention} with {function} role {role.mention}.")
     
     @commands.hybrid_command(
         name='xrole',
@@ -1338,33 +1335,34 @@ class Hybrid(commands.Cog):
         function: str,
         channel: str
     ):
-        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', function):
-            await self.handler.send_message(ctx, "❌ Invalid function name. Use only letters, numbers, and underscores.")
-            return
-    
+        # Validate function parameter
         allowed_functions = {'ban', 'mute'}
         if function not in allowed_functions:
             await self.handler.send_message(ctx, f"❌ Function '{function}' is not allowed. Valid functions: {', '.join(allowed_functions)}")
             return
     
         # Parse the voice channel from string
-        try:
-            voice_channel = await resolve_voice_channel(ctx.guild, channel)
-        except commands.BadArgument as e:
-            await self.handler.send_message(ctx, f"❌ {str(e)}")
+        voice_channel = self.resolve_voice_channel(ctx.guild, channel)
+        if not voice_channel:
+            await self.handler.send_message(ctx, f"❌ Voice channel '{channel}' not found. Please use a voice channel mention, ID, or name.")
             return
     
         guild_id = ctx.guild.id
         table_name = f"{function}_roles"
+    
         async with self.bot.db_pool.acquire() as conn:
+            # Check if the association exists
             check_query = f'SELECT role_id FROM {table_name} WHERE guild_id = $1 AND channel_id = $2'
             result = await conn.fetchrow(check_query, guild_id, voice_channel.id)
+    
             if not result:
                 await self.handler.send_message(
                     ctx,
                     f"❌ No {function} role association found for {voice_channel.mention}."
                 )
                 return
+    
+            # Delete the association
             delete_query = f'DELETE FROM {table_name} WHERE guild_id = $1 AND channel_id = $2'
             await conn.execute(delete_query, guild_id, voice_channel.id)
     
