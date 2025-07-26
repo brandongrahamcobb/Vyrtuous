@@ -1289,87 +1289,26 @@ class Hybrid(commands.Cog):
 
     @commands.hybrid_command(
         name='role',
-        help='Associate a voice channel with a role used for bans or mutes.'
+        help='Associate a voice channel with a role used for bans.'
     )
     @commands.check(is_owner_developer_coordinator)
     async def role(
         self,
         ctx: commands.Context,
-        function: str,
-        channel: str,
+        channel: discord.VoiceChannel,
         role: discord.Role
     ):
-        # Validate function parameter
-        allowed_functions = {'ban', 'mute'}
-        if function not in allowed_functions:
-            await self.handler.send_message(ctx, f"❌ Function '{function}' is not allowed. Valid functions: {', '.join(allowed_functions)}")
-            return
-    
-        # Parse the voice channel from string
-        voice_channel = self.resolve_voice_channel(ctx.guild, channel)
-        if not voice_channel:
-            await self.handler.send_message(ctx, f"❌ Voice channel '{channel}' not found. Please use a voice channel mention, ID, or name.")
-            return
-    
         guild_id = ctx.guild.id
-        table_name = f"{function}_roles"
-    
         async with self.bot.db_pool.acquire() as conn:
-            query = f'''
-                INSERT INTO {table_name} (guild_id, channel_id, role_id)
+            await conn.execute(
+                '''
+                INSERT INTO channel_roles (guild_id, channel_id, role_id)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (guild_id, channel_id) DO UPDATE SET role_id = EXCLUDED.role_id
-            '''
-            await conn.execute(query, guild_id, voice_channel.id, role.id)
-    
-        await self.handler.send_message(ctx, f"✅ Associated voice channel {voice_channel.mention} with {function} role {role.mention}.")
-    
-    @commands.hybrid_command(
-        name='xrole',
-        help='Remove the role association from a voice channel.'
-    )
-    @commands.check(is_owner_developer_coordinator)
-    async def delete_role(
-        self,
-        ctx: commands.Context,
-        function: str,
-        channel: str
-    ):
-        # Validate function parameter
-        allowed_functions = {'ban', 'mute'}
-        if function not in allowed_functions:
-            await self.handler.send_message(ctx, f"❌ Function '{function}' is not allowed. Valid functions: {', '.join(allowed_functions)}")
-            return
-    
-        # Parse the voice channel from string
-        voice_channel = self.resolve_voice_channel(ctx.guild, channel)
-        if not voice_channel:
-            await self.handler.send_message(ctx, f"❌ Voice channel '{channel}' not found. Please use a voice channel mention, ID, or name.")
-            return
-    
-        guild_id = ctx.guild.id
-        table_name = f"{function}_roles"
-    
-        async with self.bot.db_pool.acquire() as conn:
-            # Check if the association exists
-            check_query = f'SELECT role_id FROM {table_name} WHERE guild_id = $1 AND channel_id = $2'
-            result = await conn.fetchrow(check_query, guild_id, voice_channel.id)
-    
-            if not result:
-                await self.handler.send_message(
-                    ctx,
-                    f"❌ No {function} role association found for {voice_channel.mention}."
-                )
-                return
-    
-            # Delete the association
-            delete_query = f'DELETE FROM {table_name} WHERE guild_id = $1 AND channel_id = $2'
-            await conn.execute(delete_query, guild_id, voice_channel.id)
-    
-        await self.handler.send_message(
-            ctx,
-            f"✅ Removed {function} role association from {voice_channel.mention}."
-        )
+                ''',
+                guild_id, channel.id, role.id
+            )
+        await self.handler.send_message(ctx, f"✅ Associated voice channel {channel.mention} with role {role.mention}.")
 
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(

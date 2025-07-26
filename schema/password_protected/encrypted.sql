@@ -82,6 +82,13 @@ CREATE TABLE IF NOT EXISTS ban_roles (
     role_id BIGINT NOT NULL,
     PRIMARY KEY (guild_id, channel_id)
 );
+CREATE TABLE IF NOT EXISTS channel_roles (
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    PRIMARY KEY (guild_id, channel_id)
+);
+
 CREATE TABLE IF NOT EXISTS mute_roles (
     guild_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
