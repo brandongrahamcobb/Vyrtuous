@@ -1391,7 +1391,7 @@ class Hybrid(commands.Cog):
         permission_order = [
             ('Owner', '`Owner` inherits `developer`'),
             ('Developer', '`Developer` inherits `coordinator`.'),
-            ('Coordinator', '`Coordinator inherits `moderator`.'),
+            ('Coordinator', '`Coordinator` inherits `moderator`.'),
             ('Moderator', 'Moderators can use these commands.'),
             ('Everyone', 'No commands available.')
         ]
