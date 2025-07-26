@@ -71,7 +71,7 @@ async def has_command_alias(ctx) -> bool:
             return True
     raise NoCommandAlias(f"Command alias `{command_name}` is not mapped to any target channel.")
 
-async def is_moderator(self, ctx):
+async def is_moderator(ctx):
     if ctx.guild is None:
         raise commands.CheckFailure("Command must be used in a guild.")
     bot = ctx.bot
@@ -90,7 +90,7 @@ async def is_moderator(self, ctx):
         raise commands.CheckFailure("You are not authorized to use commands in this channel.")
     return True
 
-async def is_coordinator(self, ctx):
+async def is_coordinator(ctx):
     if ctx.guild is None:
         raise commands.CheckFailure("Command must be used in a guild.")
     bot = ctx.bot
