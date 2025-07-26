@@ -79,17 +79,24 @@ class Hybrid(commands.Cog):
         return available_commands
     
     def resolve_voice_channel(guild: discord.Guild, value: str) -> Optional[discord.VoiceChannel]:
-        if value.isdigit():
-            channel = guild.get_channel(int(value))
-        elif value.startswith('<#') and value.endswith('>'):
-            channel = guild.get_channel(int(value.strip('<#>')))
-        else:
-            channel = discord.utils.get(guild.voice_channels, name=value)
-        return channel if isinstance(channel, discord.VoiceChannel) else None
+        try:
+            if value.isdigit():
+                channel = guild.get_channel(int(value))
+            elif value.startswith('<#') and value.endswith('>'):
+                channel_id_str = value[2:-1]
+                if channel_id_str.isdigit():
+                    channel = guild.get_channel(int(channel_id_str))
+                else:
+                    return None
+            else:
+                channel = discord.utils.get(guild.voice_channels, name=value)
+            return channel if isinstance(channel, discord.VoiceChannel) else None
+        except (ValueError, AttributeError):
+            return None
     
     @commands.hybrid_command(name='coord', help='Grants coordinator access (alternative with string parsing).')
     @commands.check(is_owner_developer)
-    async def create_coordinator_alt(
+    async def create_coordinator(
         self,
         ctx,
         member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
