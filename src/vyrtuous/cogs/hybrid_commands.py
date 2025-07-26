@@ -1149,7 +1149,7 @@ class Hybrid(commands.Cog):
         self,
         ctx,
         *,
-        command_name: str = commands.parameter(description='Include a command name')
+        command_name: str = commands.parameter(default=None, description='Include a command name')
     ) -> None:
         print("text")
         bot = ctx.bot
@@ -1285,7 +1285,7 @@ class Hybrid(commands.Cog):
         self,
         ctx,
         *,
-        command_name: str = commands.parameter(description='Include a command name')
+        command_name: str = commands.parameter(default=None, description='Include a command name')
     ) -> None:
         bot = ctx.bot
         if command_name:
@@ -1343,6 +1343,7 @@ class Hybrid(commands.Cog):
                     )
             await self.handler.send_message(ctx, embed=embed)
             return
+        print("text")
         all_commands = await self.get_available_commands(bot, ctx)
         if not all_commands:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
@@ -1398,6 +1399,7 @@ class Hybrid(commands.Cog):
         if not pages:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
+        print("print")
         paginator = paginator(bot, ctx, pages)
         await paginator.start()
     
