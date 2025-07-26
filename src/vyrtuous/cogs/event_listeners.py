@@ -201,14 +201,7 @@ class EventListeners(commands.Cog):
             )
     
         await ctx.send(embed=embed)
-        
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error) -> None:
-#        if isinstance(error, commands.MissingRequiredArgument):
-#            await self.send_command_help(ctx, ctx.command)
-        if isinstance(error, commands.CheckFailure):
-            await self.handler.send_message(ctx, content=str(error))
-            
+    
 async def setup(bot: commands.Bot):
     await bot.add_cog(EventListeners(bot))
 
