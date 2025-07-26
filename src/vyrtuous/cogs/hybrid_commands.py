@@ -682,7 +682,7 @@ class Hybrid(commands.Cog):
                     )
         return ban_alias
         
-    @commands.hybrid_command(name='listbans', help='Lists all users banned from a specific channel.')
+    @commands.hybrid_command(name='bans', help='Lists all users banned from a specific channel.')
     @commands.check(is_owner_developer)
     async def list_bans(
         self,
@@ -807,7 +807,7 @@ class Hybrid(commands.Cog):
         return mute_alias
     
     @commands.hybrid_command(
-        name='listmutes',
+        name='mutes',
         help='Lists all users currently muted in a specific voice channel.'
     )
     @commands.check(is_owner_developer_coordinator)
