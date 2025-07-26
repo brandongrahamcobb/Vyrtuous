@@ -114,7 +114,7 @@ class EventListeners(commands.Cog):
 #                        except discord.Forbidden:
 #                            pass
 
-   @commands.Cog.listener()
+    @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
         if member.bot:
             return
