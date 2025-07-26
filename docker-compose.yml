@@ -3,8 +3,6 @@ services:
     image: postgres
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - ./schema/init/:/docker-entrypoint-initdb.d
   vyrtuous:
     build: .
     container_name: vyrtuous

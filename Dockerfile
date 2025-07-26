@@ -30,10 +30,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Set working directory
 WORKDIR /app
 COPY pyproject.toml poetry.lock* ./
+COPY /schema/init/ /docker-entrypoint-initdb.d
+
 # Install Poetry
 RUN pip install --no-cache-dir poetry
 
 RUN poetry install --no-root
-
 
 CMD ["python", "-u", "vyrtuous/main.py"] 

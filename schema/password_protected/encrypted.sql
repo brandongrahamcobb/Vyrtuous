@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     coordinator_ids BIGINT[],
     developer_guild_ids BIGINT[],
     flagged_channel_ids BIGINT[],
+    server_mute_channel_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -56,10 +57,12 @@ CREATE TABLE IF NOT EXISTS active_bans (
 );
 
 -- Currently active mutes
+
 CREATE TABLE IF NOT EXISTS active_mutes (
     user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    source TEXT CHECK (source IN ('bot', 'manual')),
+    source TEXT CHECK (source IN ('bot', 'manual', 'owner')),
+    issuer_id BIGINT,
     PRIMARY KEY (user_id, channel_id)
 );
 
