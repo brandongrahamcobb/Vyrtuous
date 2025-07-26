@@ -116,9 +116,8 @@ async def is_developer(ctx):
         row = await conn.fetchrow(
             "SELECT developer_guild_ids FROM users WHERE user_id = $1", ctx.author.id
         )
-    if not row or not row.get("developer_guild_ids") or guild_id not in row.get("developer_guild_ids", []):
+    if not row or not row.get("developer_guild_ids") or ctx.guild.id not in row.get("developer_guild_ids", []):
         raise NotDeveloper("You are not a developer in this guild.")
-    return True
     return True
                                     
 async def is_guild_owner(ctx):
