@@ -78,7 +78,7 @@ class Hybrid(commands.Cog):
                 logger.warning(f"❌ Exception while checking command '{command}': {e}")
         return available_commands
     
-    def resolve_voice_channel(guild: discord.Guild, value: str) -> Optional[discord.VoiceChannel]:
+    def resolve_voice_channel(self, guild: discord.Guild, value: str) -> Optional[discord.VoiceChannel]:
         try:
             if value.isdigit():
                 channel = guild.get_channel(int(value))
