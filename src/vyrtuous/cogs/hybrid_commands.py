@@ -1495,47 +1495,22 @@ class Hybrid(commands.Cog):
     async def get_command_permission_level(self, bot, ctx, command):
         if not hasattr(command, 'checks') or not command.checks:
             return 'Everyone'
-        permission_levels = {
-            'Owner': 4,
-            'Developer': 3,
-            'Coordinator': 2,
-            'Moderator': 1,
-            'Everyone': 0
-        }
-        highest_level = 'Everyone'
-        highest_value = 0
+        check_names = []
         for check in command.checks:
-            check_names = []
-            if hasattr(check, '__name__'):
-                check_names.append(check.__name__)
-            if hasattr(check, '__wrapped__'):
-                wrapped = check.__wrapped__
-                if hasattr(wrapped, '__name__'):
-                    check_names.append(wrapped.__name__)
-            if hasattr(check, 'predicate') and hasattr(check.predicate, '__name__'):
-                check_names.append(check.predicate.__name__)
-            check_str = str(check)
-            if 'function' in check_str:
-                try:
-                    func_name = check_str.split('function ')[1].split(' ')[0]
-                    check_names.append(func_name)
-                except:
-                    pass
-            for check_name in check_names:
-                level = None
-                if check_name == 'is_owner_developer_coordinator_moderator':
-                    level = 'Moderator'
-                    print("test")
-                elif check_name == 'is_owner_developer_coordinator':
-                    level = 'Coordinator'
-                elif check_name == 'is_owner_developer':
-                    level = 'Developer'
-                elif check_name in ['is_owner', 'is_guild_owner', 'is_system_owner']:
-                    level = 'Owner'
-                if level and permission_levels[level] > highest_value:
-                    highest_level = level
-                    highest_value = permission_levels[level]
-        return highest_level
+            func = check
+            if hasattr(func, '__wrapped__'): # Handles decorators
+                func = func.__wrapped__
+            if hasattr(func, '__name__'):
+                check_names.append(func.__name__)
+        if any(name in ['is_owner', 'is_guild_owner', 'is_system_owner'] for name in check_names):
+            return 'Owner'
+        if 'is_owner_developer' in check_names:
+            return 'Developer'
+        if 'is_owner_developer_coordinator' in check_names:
+            return 'Coordinator'
+        if 'is_owner_developer_coordinator_moderator' in check_names:
+            return 'Moderator'
+        return 'Everyone'
     
     def get_permission_color(self, perm_level):
         colors = {
