@@ -1611,8 +1611,8 @@ class Hybrid(commands.Cog):
             ('Everyone', 'Commands available to everyone.')
         ]
         for i, (perm_level, description) in enumerate(permission_order):
-            if i > user_index:
-                break
+            if i < user_index:
+                continue
             commands_in_level = sorted(permission_groups.get(perm_level, []), key=lambda c: c.name)
             if not commands_in_level:
                 continue
