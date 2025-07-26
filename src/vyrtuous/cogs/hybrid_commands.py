@@ -729,7 +729,7 @@ class Hybrid(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
-                    SELECT role_id FROM ban_roles
+                    SELECT role_id FROM channel_roles
                     WHERE guild_id = $1 AND channel_id = $2
                     ''',
                     guild_id, static_channel_id
@@ -1004,7 +1004,7 @@ class Hybrid(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
-                    SELECT role_id FROM ban_roles
+                    SELECT role_id FROM channel_roles
                     WHERE guild_id = $1 AND channel_id = $2
                     ''',
                     guild_id, static_channel_id
