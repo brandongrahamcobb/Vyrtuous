@@ -37,7 +37,9 @@ class EventListeners(commands.Cog):
         user_id = member.id
         before_channel = before.channel
         after_channel = after.channel
+        
         async with self.db_pool.acquire() as conn:
+            # Handle manual unmute (user unmuted themselves)
             if before.mute and not after.mute and before_channel:
                 row = await conn.fetchrow("""
                     SELECT source, issuer_id FROM active_mutes
@@ -54,6 +56,8 @@ class EventListeners(commands.Cog):
                             updated_at = NOW()
                         WHERE user_id = $1
                     """, user_id, before_channel.id)
+        
+            # Handle manual mute (user muted themselves)
             if not before.mute and after.mute and after_channel:
                 row = await conn.fetchrow("""
                     SELECT source, issuer_id FROM active_mutes
@@ -77,11 +81,15 @@ class EventListeners(commands.Cog):
                         ),
                         updated_at = NOW()
                     """, user_id, after_channel.id)
+        
+            # Enforce mutes when user joins a channel
             if after_channel:
                 row = await conn.fetchrow("""
                     SELECT source, issuer_id FROM active_mutes
                     WHERE user_id = $1 AND channel_id = $2
                 """)
+            
+            # Handle flagged user notifications when changing channels
             if after_channel and before_channel != after_channel:
                 is_flagged = await conn.fetchval("""
                     SELECT flagged FROM users WHERE user_id = $1 AND flagged = TRUE
