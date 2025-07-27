@@ -10,6 +10,8 @@ DROP TABLE IF EXISTS mute_roles;
 
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
+    heat INTEGER NOT NULL DEFAULT 0,
+    last_heat_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ban_channel_ids BIGINT[],
     mute_channel_ids BIGINT[],
     manual_mute_channels BIGINT[],

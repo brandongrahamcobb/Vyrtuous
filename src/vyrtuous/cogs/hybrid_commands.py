@@ -62,7 +62,20 @@ class Hybrid(commands.Cog):
                     cmd = self.create_flag_alias(alias_name)
                 if cmd:
                     self.bot.add_command(cmd)
-        
+                    
+    async def update_user_heat(self, user_id: int, heat_delta: float):
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT heat FROM users WHERE user_id = $1", user_id)
+            current_heat = row["heat"] if row else 0
+            new_heat = current_heat + heat_delta
+            await conn.execute("""
+                INSERT INTO users (user_id, heat, last_heat_time)
+                VALUES ($1, $2, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    heat = $2,
+                    last_heat_time = CASE WHEN $3 > 0 THEN CURRENT_TIMESTAMP ELSE users.last_heat_time END
+            """, user_id, new_heat, heat_delta)
+
     #
     #  Help Command: helper method for the help command.
     #
@@ -921,6 +934,7 @@ class Hybrid(commands.Cog):
                     ON CONFLICT (guild_id, user_id, channel_id)
                     DO UPDATE SET reason = EXCLUDED.reason
                 ''', guild_id, member_object.id, reason, static_channel_id)
+                await self.update_user_heat(member_object.id, 1.0)
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                 await member_object.edit(mute=True)
                 mute_type = "server muted" if is_owner else "muted"

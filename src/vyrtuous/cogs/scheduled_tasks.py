@@ -21,6 +21,7 @@ import os
 import pytz
 import subprocess
 from collections import defaultdict
+from datetime import timedelta, timezone
 from discord.ext import commands, tasks
 from vyrtuous.inc.helpers import *
 
@@ -31,6 +32,7 @@ class ScheduledTasks(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.check_expired_bans.start()
+        self.check_heat.start()
     
     def perform_backup(self, db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -55,6 +57,26 @@ class ScheduledTasks(commands.Cog):
         if result.returncode != 0:
             raise RuntimeError(f'Backup failed: {result.stderr}')
         return backup_file
+        
+    @tasks.loop(minutes=30)
+    async def check_heat(self):
+        now = datetime.datetime.now(timezone.utc)
+        async with self.bot.db_pool.acquire() as conn:
+            users = await conn.fetch("SELECT user_id, heat, last_heat_time FROM users WHERE heat > 0")
+            for user in users:
+                user_id = user["user_id"]
+                heat = user["heat"]
+                last_heat = user["last_heat_time"]
+                if (now - last_heat) >= timedelta(hours=6):
+                    hours_passed = (now - last_heat).total_seconds() // 3600
+                    decrement_steps = int(hours_passed // 6)
+                    new_heat = max(0, heat - decrement_steps)
+                    new_last_heat_time = last_heat + timedelta(hours=6 * decrement_steps)
+                    await conn.execute("""
+                        UPDATE users
+                        SET heat = $1, last_heat_time = $2
+                        WHERE user_id = $3
+                    """, new_heat, new_last_heat_time, user_id)
     
     def setup_backup_directory(self, backup_dir: str) -> str:
         os.makedirs(backup_dir, exist_ok=True)
@@ -94,7 +116,7 @@ class ScheduledTasks(commands.Cog):
                     ''',
                     user_id, channel_id
                 )
-
+    
     async def remove_ban_role(self, member: discord.Member, channel: discord.VoiceChannel):
         role_id = self.bot.command_aliases.get(member.guild.id, {}).get('role', {}).get(str(channel.id))
         if not role_id:
@@ -125,6 +147,10 @@ class ScheduledTasks(commands.Cog):
     @check_expired_bans.before_loop
     async def before_backup(self):
         await self.bot.wait_until_ready()
+        
+    def cog_unload(self):
+        self.backup_database.cancel()
+        self.check_heat.cancel()
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(ScheduledTasks(bot))

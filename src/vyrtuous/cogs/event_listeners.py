@@ -31,7 +31,30 @@ class EventListeners(commands.Cog):
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.db_pool)
+        
+    async def update_user_heat(self, user_id: int, heat_delta: float):
+        async with self.db_pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT heat FROM users WHERE user_id = $1", user_id)
+            current_heat = row["heat"] if row else 0
+            new_heat = current_heat + heat_delta
+            await conn.execute("""
+                INSERT INTO users (user_id, heat, last_heat_time)
+                VALUES ($1, $2, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id) DO UPDATE SET
+                    heat = $2,
+                    last_heat_time = CASE WHEN $3 > 0 THEN CURRENT_TIMESTAMP ELSE users.last_heat_time END
+            """, user_id, new_heat, heat_delta)
+            
+    async def clear_user_heat(self, user_id: int):
+        async with self.db_pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE users
+                SET heat = 0,
+                    last_heat_time = NULL
+                WHERE user_id = $1
+            """, user_id)
 
+        
     @commands.Cog.listener()
     async def on_voice_state_update(
         self,
@@ -84,6 +107,7 @@ class EventListeners(commands.Cog):
                         ),
                         updated_at = NOW()
                     """, user_id, after_channel.id)
+                    await self.update_user_heat(user_id, 1.0)
             if after_channel:
                 row = await conn.fetchrow("""
                     SELECT source FROM active_mutes
@@ -95,6 +119,7 @@ class EventListeners(commands.Cog):
                 else:
                     if after.mute:
                         await member.edit(mute=False)
+            
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
