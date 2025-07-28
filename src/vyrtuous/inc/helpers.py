@@ -18,7 +18,6 @@
 from os.path import dirname, abspath, expanduser, join
 
 import discord
-from vyrtuous.utils.setup_logging import logger
 
 
 def parse_comma_number(s):

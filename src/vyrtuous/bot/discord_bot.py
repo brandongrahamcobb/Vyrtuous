@@ -15,14 +15,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+import os
+from collections import defaultdict
+
 import asyncpg
 import discord
-import os
-
-from collections import defaultdict
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
+
 from vyrtuous.utils.setup_logging import logger
+
 
 class DiscordBot(commands.Bot):
     def __init__(self, *, config, db_pool: asyncpg.Pool, lock, oauth_token, **kwargs):

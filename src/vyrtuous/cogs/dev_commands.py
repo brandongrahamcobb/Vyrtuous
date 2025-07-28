@@ -15,12 +15,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from typing import Dict, List, Literal, Optional
+from typing import Literal, Optional
 
-import discord
-from discord.ext import commands, tasks
-from vyrtuous.service.check_service import *
 from vyrtuous.inc.helpers import *
+
+from vyrtuous.service.check_service import *
+
 
 class DevCommands(commands.Cog):
 

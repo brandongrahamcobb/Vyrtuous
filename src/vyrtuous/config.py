@@ -21,9 +21,10 @@ from typing import Any, Dict
 
 import yaml
 from vyrtuous.inc.helpers import *
+
 from vyrtuous.utils.load_yaml import load_yaml
 from vyrtuous.utils.prompt_for_values import prompt_for_values
-from vyrtuous.utils.setup_logging import logger
+
 
 class Config:
 

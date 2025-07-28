@@ -16,13 +16,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
+import asyncio
+import os
+
+import discord
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
-from vyrtuous.utils.setup_logging import logger
-
-import asyncio
-import discord
-import os
 
 os.makedirs(DIR_TEMP, exist_ok=True)
 

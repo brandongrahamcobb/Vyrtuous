@@ -15,17 +15,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from pathlib import Path
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.config import Config
-from vyrtuous.inc.helpers import *
-from vyrtuous.utils.increment_version import increment_version
-from vyrtuous.utils.setup_logging import setup_logging
-from vyrtuous.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
 import asyncio
-import asyncpg
 import os
 import sys
+from pathlib import Path
+
+import asyncpg
+from vyrtuous.inc.helpers import *
+
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.config import Config
+from vyrtuous.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
+from vyrtuous.utils.setup_logging import setup_logging
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PACKAGE_ROOT))

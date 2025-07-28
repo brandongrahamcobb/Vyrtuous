@@ -15,13 +15,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from datetime import datetime, timedelta
-from quart import Quart, request, redirect
-from vyrtuous.utils.setup_logging import logger
-
-import aiohttp
 import asyncio
 import os
+from datetime import datetime, timedelta
+
+import aiohttp
+from quart import Quart, request, redirect
+
+from vyrtuous.utils.setup_logging import logger
 
 discord_app = Quart(__name__)
 

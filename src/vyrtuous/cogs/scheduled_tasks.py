@@ -16,13 +16,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import datetime
-import discord
 import os
-import pytz
 import subprocess
-from collections import defaultdict
+
 from discord.ext import commands, tasks
 from vyrtuous.inc.helpers import *
+from vyrtuous.utils.setup_logging import logger
+
 
 class ScheduledTasks(commands.Cog):
 

@@ -15,13 +15,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext import commands
-from vyrtuous.service.discord_message_service import DiscordMessageService
-from vyrtuous.inc.helpers import *
-from vyrtuous.utils.setup_logging import logger
-
 import discord
-import inspect
+from discord.ext import commands
+from vyrtuous.inc.helpers import *
+
+from vyrtuous.service.discord_message_service import DiscordMessageService
 
 
 class EventListeners(commands.Cog):

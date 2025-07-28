@@ -16,9 +16,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 
-import discord
 from discord.ext import commands
-from vyrtuous.utils.setup_logging import logger
+
 from vyrtuous.config import Config  # adjust import path accordingly
 
 config = Config.get_config()

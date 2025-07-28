@@ -21,13 +21,13 @@ import logging
 import re
 from typing import Optional
 
-import discord
-from discord.ext import commands
 from discord.ext.commands import Command
 from vyrtuous.inc.helpers import *
+
 from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.utils.setup_logging import logger
+
 PERMISSION_ORDER = ['Owner', 'Developer', 'Coordinator', 'Moderator', 'Everyone']
 logger = logging.getLogger(__name__)
 class Hybrid(commands.Cog):
