@@ -645,10 +645,12 @@ class Hybrid(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             existing_alias = await conn.fetchrow(
                 '''
-                SELECT channel_id FROM command_aliases 
-                WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3
+                SELECT guild_id, channel_id
+                FROM command_aliases
+                WHERE alias_type = $1
+                  AND alias_name = $2
                 ''',
-                guild_id, alias_type, alias_name
+                alias_type, alias_name
             )
             if existing_alias:
                 existing_channel = ctx.guild.get_channel(existing_alias['channel_id'])
