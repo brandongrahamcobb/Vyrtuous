@@ -688,25 +688,22 @@ class Hybrid(commands.Cog):
             ctx,
             content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
         )
-            
-    def create_ban_alias(self, command_name: str) -> Command:
+
+    def create_unban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
-            help='Ban a user from a voice channel. Use 0 hours for permanent ban (coordinators only).'
+            help='Unban a user from a voice channel.'
         )
         @commands.check(is_owner_developer_coordinator_moderator)
-        async def ban_alias(
-            ctx,
-            member: str = commands.parameter(description='Mention or user ID of the member to ban.'),
-            duration_hours: Optional[int] = commands.parameter(default=24, description='Duration of ban in hours (0 = permanent).'),
-            *,
-            reason: str = commands.parameter(default='', description='Reason for ban (required for permanent).')
+        async def unban_alias(
+                ctx,
+                member: str = commands.parameter(description='Mention or user ID of the member to unban.'),
+                *,
+                reason: str = commands.parameter(default='N/A', description='Optional reason for unbanning.')
         ) -> None:
-            command_name = ctx.invoked_with
             guild_id = ctx.guild.id
-            logger.info(f"[{guild_id}] Ban command invoked: {command_name} by {ctx.author} (User ID: {ctx.author.id})")
             member_id = None
-            member_object = None
+
             if member.isdigit():
                 member_id = int(member)
             elif member.startswith('<@') and member.endswith('>'):
@@ -714,98 +711,175 @@ class Hybrid(commands.Cog):
                     member_id = int(member.strip('<@!>'))
                 except ValueError:
                     pass
+
             member_object = ctx.guild.get_member(member_id) if member_id else None
             if not member_object:
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
-            if duration_hours == 0:
-                if not await is_owner_developer_coordinator(ctx):
-                    return await self.handler.send_message(ctx, content='❌ Only coordinators can issue permanent bans.')
-                if not reason.strip():
-                    return await self.handler.send_message(ctx, content='❌ Reason is required for permanent bans.')
-            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
+
+            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
             if not static_channel_id:
-                return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
-            role_id = None
-            ban_channel_id = static_channel_id
+                return await self.handler.send_message(ctx,
+                                                       content=f'❌ No channel alias mapping found for `{command_name}`.')
+
             async with self.bot.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
-                    SELECT role_id FROM ban_roles
-                    WHERE guild_id = $1 AND channel_id = $2
+                    SELECT role_id
+                    FROM ban_roles
+                    WHERE guild_id = $1
+                      AND channel_id = $2
                     ''',
                     guild_id, static_channel_id
                 )
                 if not role_id:
-                    return await self.handler.send_message(ctx, content=f'❌ No ban role alias mapping found for `{command_name}`.')
-            async with self.bot.db_pool.acquire() as conn:
-                existing_ban = await conn.fetchval(
-                    '''
-                    SELECT 1 FROM active_bans
-                    WHERE user_id = $1 AND channel_id = $2
-                    ''',
-                    member_object.id, static_channel_id
-                )
-                if existing_ban:
-                    return await self.handler.send_message(
-                        ctx,
-                        content=f'ℹ️ {member_object.mention} is already banned from <#{static_channel_id}>.'
-                    )
+                    return await self.handler.send_message(ctx,
+                                                           content=f'❌ No ban role found for <#{static_channel_id}>.')
+
             role = ctx.guild.get_role(role_id)
             if not role:
                 return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
+
             try:
-                await member_object.add_roles(role, reason=f"Banned from <#{static_channel_id}>: {reason or 'No reason provided'}")
+                await member_object.remove_roles(role, reason=f"Unbanned from <#{static_channel_id}>: {reason}")
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content='❌ Missing permissions to assign ban role.')
-            try:
-                async with self.bot.db_pool.acquire() as conn:
-                    await conn.execute(
-                        '''
-                        INSERT INTO active_bans (user_id, channel_id, expires_at)
-                        VALUES ($1, $2, $3)
-                        ON CONFLICT (user_id, channel_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
-                        ''',
-                        member_object.id, static_channel_id,
-                        None if duration_hours == 0 else discord.utils.utcnow() + datetime.timedelta(hours=duration_hours)
-                    )
-                    await conn.execute(
-                        '''
-                        UPDATE users
-                        SET ban_channel_ids = array_append(ban_channel_ids, $2),
-                            updated_at = NOW()
-                        WHERE user_id = $1
-                        ''',
-                        member_object.id, static_channel_id
-                    )
-                    await conn.execute(
-                        '''
-                        INSERT INTO ban_reasons (guild_id, user_id, channel_id, reason)
-                        VALUES ($1, $2, $3, $4)
-                        ON CONFLICT (guild_id, user_id, channel_id)
-                        DO UPDATE SET reason = EXCLUDED.reason
-                        ''',
-                        guild_id, member_object.id, static_channel_id, reason or 'No reason provided'
-                    )
-            except Exception as e:
-                logger.warning(f"🔥 Database error occurred: {e}")
-            await self.handler.send_message(
-                ctx,
-                content=f'🔇 {member_object.mention} has been banned from <#{static_channel_id}> {"permanently" if duration_hours == 0 else f"for {duration_hours} hour(s)"}.'
-            )
-        
-            if duration_hours > 0:
-                expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
-                async with self.bot.db_pool.acquire() as conn:
-                    await conn.execute(
-                        '''
-                        INSERT INTO ban_expirations (user_id, channel_id, expires_at)
-                        VALUES ($1, $2, $3)
-                        ON CONFLICT (user_id, channel_id)
-                        DO UPDATE SET expires_at = EXCLUDED.expires_at
-                        ''',
-                        member_object.id, static_channel_id, expires_at
-                    )
-        return ban_alias
+                return await self.handler.send_message(ctx, content='❌ Missing permissions to remove ban role.')
+
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute('DELETE FROM active_bans WHERE user_id = $1 AND channel_id = $2', member_object.id,
+                                   static_channel_id)
+                await conn.execute('DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
+                                   member_object.id, static_channel_id)
+                await conn.execute(
+                    '''
+                    UPDATE users
+                    SET ban_channel_ids = array_remove(ban_channel_ids, $2),
+                        updated_at      = NOW()
+                    WHERE user_id = $1
+                    ''',
+                    member_object.id, static_channel_id
+                )
+
+            await self.handler.send_message(ctx, content=f'🔊 {member_object.mention} has been unbanned from <#{static_channel_id}>.')
+
+        return unban_alias
+    #
+    # def create_ban_alias(self, command_name: str) -> Command:
+    #     @commands.hybrid_command(
+    #         name=command_name,
+    #         help='Ban a user from a voice channel. Use 0 hours for permanent ban (coordinators only).'
+    #     )
+    #     @commands.check(is_owner_developer_coordinator_moderator)
+    #     async def ban_alias(
+    #         ctx,
+    #         member: str = commands.parameter(description='Mention or user ID of the member to ban.'),
+    #         duration_hours: Optional[int] = commands.parameter(default=24, description='Duration of ban in hours (0 = permanent).'),
+    #         *,
+    #         reason: str = commands.parameter(default='', description='Reason for ban (required for permanent).')
+    #     ) -> None:
+    #         command_name = ctx.invoked_with
+    #         guild_id = ctx.guild.id
+    #         logger.info(f"[{guild_id}] Ban command invoked: {command_name} by {ctx.author} (User ID: {ctx.author.id})")
+    #         member_id = None
+    #         member_object = None
+    #         if member.isdigit():
+    #             member_id = int(member)
+    #         elif member.startswith('<@') and member.endswith('>'):
+    #             try:
+    #                 member_id = int(member.strip('<@!>'))
+    #             except ValueError:
+    #                 pass
+    #         member_object = ctx.guild.get_member(member_id) if member_id else None
+    #         if not member_object:
+    #             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
+    #         if duration_hours == 0:
+    #             if not await is_owner_developer_coordinator(ctx):
+    #                 return await self.handler.send_message(ctx, content='❌ Only coordinators can issue permanent bans.')
+    #             if not reason.strip():
+    #                 return await self.handler.send_message(ctx, content='❌ Reason is required for permanent bans.')
+    #         static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
+    #         if not static_channel_id:
+    #             return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
+    #         role_id = None
+    #         ban_channel_id = static_channel_id
+    #         async with self.bot.db_pool.acquire() as conn:
+    #             role_id = await conn.fetchval(
+    #                 '''
+    #                 SELECT role_id FROM ban_roles
+    #                 WHERE guild_id = $1 AND channel_id = $2
+    #                 ''',
+    #                 guild_id, static_channel_id
+    #             )
+    #             if not role_id:
+    #                 return await self.handler.send_message(ctx, content=f'❌ No ban role alias mapping found for `{command_name}`.')
+    #         async with self.bot.db_pool.acquire() as conn:
+    #             existing_ban = await conn.fetchval(
+    #                 '''
+    #                 SELECT 1 FROM active_bans
+    #                 WHERE user_id = $1 AND channel_id = $2
+    #                 ''',
+    #                 member_object.id, static_channel_id
+    #             )
+    #             if existing_ban:
+    #                 return await self.handler.send_message(
+    #                     ctx,
+    #                     content=f'ℹ️ {member_object.mention} is already banned from <#{static_channel_id}>.'
+    #                 )
+    #         role = ctx.guild.get_role(role_id)
+    #         if not role:
+    #             return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
+    #         try:
+    #             await member_object.add_roles(role, reason=f"Banned from <#{static_channel_id}>: {reason or 'No reason provided'}")
+    #         except discord.Forbidden:
+    #             return await self.handler.send_message(ctx, content='❌ Missing permissions to assign ban role.')
+    #         try:
+    #             async with self.bot.db_pool.acquire() as conn:
+    #                 await conn.execute(
+    #                     '''
+    #                     INSERT INTO active_bans (user_id, channel_id, expires_at)
+    #                     VALUES ($1, $2, $3)
+    #                     ON CONFLICT (user_id, channel_id) DO UPDATE SET expires_at = EXCLUDED.expires_at
+    #                     ''',
+    #                     member_object.id, static_channel_id,
+    #                     None if duration_hours == 0 else discord.utils.utcnow() + datetime.timedelta(hours=duration_hours)
+    #                 )
+    #                 await conn.execute(
+    #                     '''
+    #                     UPDATE users
+    #                     SET ban_channel_ids = array_append(ban_channel_ids, $2),
+    #                         updated_at = NOW()
+    #                     WHERE user_id = $1
+    #                     ''',
+    #                     member_object.id, static_channel_id
+    #                 )
+    #                 await conn.execute(
+    #                     '''
+    #                     INSERT INTO ban_reasons (guild_id, user_id, channel_id, reason)
+    #                     VALUES ($1, $2, $3, $4)
+    #                     ON CONFLICT (guild_id, user_id, channel_id)
+    #                     DO UPDATE SET reason = EXCLUDED.reason
+    #                     ''',
+    #                     guild_id, member_object.id, static_channel_id, reason or 'No reason provided'
+    #                 )
+    #         except Exception as e:
+    #             logger.warning(f"🔥 Database error occurred: {e}")
+    #         await self.handler.send_message(
+    #             ctx,
+    #             content=f'🔇 {member_object.mention} has been banned from <#{static_channel_id}> {"permanently" if duration_hours == 0 else f"for {duration_hours} hour(s)"}.'
+    #         )
+    #
+    #         if duration_hours > 0:
+    #             expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
+    #             async with self.bot.db_pool.acquire() as conn:
+    #                 await conn.execute(
+    #                     '''
+    #                     INSERT INTO ban_expirations (user_id, channel_id, expires_at)
+    #                     VALUES ($1, $2, $3)
+    #                     ON CONFLICT (user_id, channel_id)
+    #                     DO UPDATE SET expires_at = EXCLUDED.expires_at
+    #                     ''',
+    #                     member_object.id, static_channel_id, expires_at
+    #                 )
+    #     return ban_alias
         
     @commands.hybrid_command(name='bans', help='Lists all users banned from a specific channel.')
     @commands.check(is_owner_developer_coordinator_moderator)
@@ -975,20 +1049,24 @@ class Hybrid(commands.Cog):
         )
         await self.handler.send_message(ctx, embed=embed)
 
-    def create_unban_alias(self, command_name: str) -> Command:
+    def create_ban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
-            help='Unban a user from a voice channel.'
+            help='Ban a user from a voice channel.'
         )
         @commands.check(is_owner_developer_coordinator_moderator)
-        async def unban_alias(
-            ctx,
-            member: str = commands.parameter(description='Mention or user ID of the member to unban.'),
-            *,
-            reason: str = commands.parameter(default='N/A', description='Optional reason for unbanning.')
+        async def ban_alias(
+                ctx,
+                member: str = commands.parameter(description='Mention or user ID of the member to ban.'),
+                duration_hours: Optional[int] = commands.parameter(default=24,
+                                                                   description='Duration of ban in hours (0 = permanent).'),
+                *,
+                reason: str = commands.parameter(default='', description='Reason for ban (required for permanent).')
         ) -> None:
+            command_name = ctx.invoked_with
             guild_id = ctx.guild.id
             member_id = None
+
             if member.isdigit():
                 member_id = int(member)
             elif member.startswith('<@') and member.endswith('>'):
@@ -996,51 +1074,156 @@ class Hybrid(commands.Cog):
                     member_id = int(member.strip('<@!>'))
                 except ValueError:
                     pass
+
             member_object = ctx.guild.get_member(member_id) if member_id else None
             if not member_object:
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
-            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
+
+            if duration_hours == 0 and (not await is_owner_developer_coordinator(ctx) or not reason.strip()):
+                return await self.handler.send_message(ctx,
+                                                       content='❌ Reason required and coordinator-only for permanent bans.')
+
+            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
             if not static_channel_id:
-                return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
+                return await self.handler.send_message(ctx,
+                                                       content=f'❌ No channel alias mapping found for `{command_name}`.')
+
             async with self.bot.db_pool.acquire() as conn:
                 role_id = await conn.fetchval(
                     '''
-                    SELECT role_id FROM ban_roles
-                    WHERE guild_id = $1 AND channel_id = $2
+                    SELECT role_id
+                    FROM ban_roles
+                    WHERE guild_id = $1
+                      AND channel_id = $2
                     ''',
                     guild_id, static_channel_id
                 )
-            if not role_id:
-                return await self.handler.send_message(ctx, content=f'❌ No ban role found for <#{static_channel_id}>.')
+                if not role_id:
+                    return await self.handler.send_message(ctx,
+                                                           content=f'❌ No ban role alias mapping found for `{command_name}`.')
+
             role = ctx.guild.get_role(role_id)
             if not role:
                 return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
+
             try:
-                await member_object.remove_roles(role, reason=f"Unbanned from <#{static_channel_id}>: {reason or 'No reason provided'}")
+                await member_object.add_roles(role,
+                                              reason=f"Banned from <#{static_channel_id}>: {reason or 'No reason provided'}")
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content='❌ Missing permissions to remove ban role.')
-            async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('''
-                    DELETE FROM active_bans
-                    WHERE user_id = $1 AND channel_id = $2
-                ''', member_object.id, static_channel_id)
-    
-                await conn.execute('''
-                    DELETE FROM ban_expirations
-                    WHERE user_id = $1 AND channel_id = $2
-                ''', member_object.id, static_channel_id)
-    
-                await conn.execute('''
-                    UPDATE users
-                    SET ban_channel_ids = array_remove(ban_channel_ids, $2),
-                        updated_at = NOW()
-                    WHERE user_id = $1
-                ''', member_object.id, static_channel_id)
+                return await self.handler.send_message(ctx, content='❌ Missing permissions to assign ban role.')
+
+            try:
+                async with self.bot.db_pool.acquire() as conn:
+                    await conn.execute(
+                        '''
+                        INSERT INTO active_bans (user_id, channel_id, expires_at)
+                        VALUES ($1, $2, $3) ON CONFLICT (user_id, channel_id)
+                        DO
+                        UPDATE SET expires_at = EXCLUDED.expires_at
+                        ''',
+                        member_object.id,
+                        static_channel_id,
+                        None if duration_hours == 0 else discord.utils.utcnow() + datetime.timedelta(
+                            hours=duration_hours)
+                    )
+                    await conn.execute(
+                        '''
+                        UPDATE users
+                        SET ban_channel_ids =
+                                CASE
+                                    WHEN NOT $2 = ANY (ban_channel_ids) THEN array_append(ban_channel_ids, $2)
+                                    ELSE ban_channel_ids
+                                    END,
+                            updated_at      = NOW()
+                        WHERE user_id = $1
+                        ''',
+                        member_object.id, static_channel_id
+                    )
+                    await conn.execute(
+                        '''
+                        INSERT INTO ban_reasons (guild_id, user_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, user_id, channel_id)
+                        DO
+                        UPDATE SET reason = EXCLUDED.reason
+                        ''',
+                        guild_id, member_object.id, static_channel_id, reason or 'No reason provided'
+                    )
+            except Exception as e:
+                logger.warning(f"🔥 Database error occurred: {e}")
+
             await self.handler.send_message(
                 ctx,
-                content=f'🔊 {member_object.mention} has been unbanned from <#{static_channel_id}>.'
+                content=f'🔇 {member_object.mention} has been banned from <#{static_channel_id}> {"permanently" if duration_hours == 0 else f"for {duration_hours} hour(s)"}.'
             )
-        return unban_alias
+
+        return ban_alias
+
+    # def create_unban_alias(self, command_name: str) -> Command:
+    #     @commands.hybrid_command(
+    #         name=command_name,
+    #         help='Unban a user from a voice channel.'
+    #     )
+    #     @commands.check(is_owner_developer_coordinator_moderator)
+    #     async def unban_alias(
+    #         ctx,
+    #         member: str = commands.parameter(description='Mention or user ID of the member to unban.'),
+    #         *,
+    #         reason: str = commands.parameter(default='N/A', description='Optional reason for unbanning.')
+    #     ) -> None:
+    #         guild_id = ctx.guild.id
+    #         member_id = None
+    #         if member.isdigit():
+    #             member_id = int(member)
+    #         elif member.startswith('<@') and member.endswith('>'):
+    #             try:
+    #                 member_id = int(member.strip('<@!>'))
+    #             except ValueError:
+    #                 pass
+    #         member_object = ctx.guild.get_member(member_id) if member_id else None
+    #         if not member_object:
+    #             return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
+    #         static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
+    #         if not static_channel_id:
+    #             return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
+    #         async with self.bot.db_pool.acquire() as conn:
+    #             role_id = await conn.fetchval(
+    #                 '''
+    #                 SELECT role_id FROM ban_roles
+    #                 WHERE guild_id = $1 AND channel_id = $2
+    #                 ''',
+    #                 guild_id, static_channel_id
+    #             )
+    #         if not role_id:
+    #             return await self.handler.send_message(ctx, content=f'❌ No ban role found for <#{static_channel_id}>.')
+    #         role = ctx.guild.get_role(role_id)
+    #         if not role:
+    #             return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
+    #         try:
+    #             await member_object.remove_roles(role, reason=f"Unbanned from <#{static_channel_id}>: {reason or 'No reason provided'}")
+    #         except discord.Forbidden:
+    #             return await self.handler.send_message(ctx, content='❌ Missing permissions to remove ban role.')
+    #         async with self.bot.db_pool.acquire() as conn:
+    #             await conn.execute('''
+    #                 DELETE FROM active_bans
+    #                 WHERE user_id = $1 AND channel_id = $2
+    #             ''', member_object.id, static_channel_id)
+    #
+    #             await conn.execute('''
+    #                 DELETE FROM ban_expirations
+    #                 WHERE user_id = $1 AND channel_id = $2
+    #             ''', member_object.id, static_channel_id)
+    #
+    #             await conn.execute('''
+    #                 UPDATE users
+    #                 SET ban_channel_ids = array_remove(ban_channel_ids, $2),
+    #                     updated_at = NOW()
+    #                 WHERE user_id = $1
+    #             ''', member_object.id, static_channel_id)
+    #         await self.handler.send_message(
+    #             ctx,
+    #             content=f'🔊 {member_object.mention} has been unbanned from <#{static_channel_id}>.'
+    #         )
+    #     return unban_alias
 
     
     def create_unmute_alias(self, command_name: str) -> Command:

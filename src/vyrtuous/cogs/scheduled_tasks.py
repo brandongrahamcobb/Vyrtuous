@@ -65,11 +65,73 @@ class ScheduledTasks(commands.Cog):
         if hasattr(self.bot, 'db_pool'):
             await self.bot.db_pool.close()
             
+    # @tasks.loop(minutes=5)
+    # async def check_expired_bans(self):
+    #     now = datetime.datetime.utcnow()
+    #     async with self.bot.db_pool.acquire() as conn:
+    #         rows = await conn.fetch(
+    #             '''
+    #             SELECT user_id, channel_id
+    #             FROM ban_expirations
+    #             WHERE expires_at <= $1
+    #             ''',
+    #             now
+    #         )
+    #         for row in rows:
+    #             user_id = row['user_id']
+    #             channel_id = row['channel_id']
+    #             channel = self.bot.get_channel(channel_id)
+    #             if not isinstance(channel, discord.VoiceChannel):
+    #                 continue
+    #             guild = channel.guild
+    #             member = guild.get_member(user_id)
+    #             if member and channel:
+    #                 await self.remove_ban_role(member, channel)
+    #             await conn.execute(
+    #                 '''
+    #                 DELETE FROM ban_expirations
+    #                 WHERE user_id = $1 AND channel_id = $2
+    #                 ''',
+    #                 user_id, channel_id
+    #             )
+    #
+    # async def remove_ban_role(self, member: discord.Member, channel: discord.VoiceChannel):
+    #     role_id = self.bot.command_aliases.get(member.guild.id, {}).get('role', {}).get(str(channel.id))
+    #     if not role_id:
+    #         return
+    #     role = member.guild.get_role(role_id)
+    #     if role and role in member.roles:
+    #         await member.remove_roles(role, reason='Ban expired')
+
+    async def remove_ban_role(self, member: discord.Member, channel: discord.VoiceChannel):
+        guild_id = member.guild.id
+        channel_id = channel.id
+
+        async with self.bot.db_pool.acquire() as conn:
+            role_id = await conn.fetchval(
+                '''
+                SELECT role_id
+                FROM ban_roles
+                WHERE guild_id = $1
+                  AND channel_id = $2
+                ''',
+                guild_id, channel_id
+            )
+        if not role_id:
+            return
+
+        role = member.guild.get_role(role_id)
+        if role and role in member.roles:
+            try:
+                await member.remove_roles(role, reason='Ban expired')
+            except discord.Forbidden:
+                logger.warning(f"❌ Missing permissions to remove role {role_id} from {member}.")
+
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
         now = datetime.datetime.utcnow()
         async with self.bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(
+            expired = await conn.fetch(
                 '''
                 SELECT user_id, channel_id
                 FROM ban_expirations
@@ -77,32 +139,41 @@ class ScheduledTasks(commands.Cog):
                 ''',
                 now
             )
-            for row in rows:
-                user_id = row['user_id']
-                channel_id = row['channel_id']
-                channel = self.bot.get_channel(channel_id)
-                if not isinstance(channel, discord.VoiceChannel):
-                    continue
-                guild = channel.guild
-                member = guild.get_member(user_id)
-                if member and channel:
-                    await self.remove_ban_role(member, channel)
+
+        for record in expired:
+            user_id = record['user_id']
+            channel_id = record['channel_id']
+
+            channel = self.bot.get_channel(channel_id)
+            if not isinstance(channel, discord.VoiceChannel):
+                continue
+
+            guild = channel.guild
+            member = guild.get_member(user_id)
+            if not member:
+                continue
+
+            await self.remove_ban_role(member, channel)
+
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute(
+                    'DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
+                    user_id, channel_id
+                )
+                await conn.execute(
+                    'DELETE FROM active_bans WHERE user_id = $1 AND channel_id = $2',
+                    user_id, channel_id
+                )
                 await conn.execute(
                     '''
-                    DELETE FROM ban_expirations
-                    WHERE user_id = $1 AND channel_id = $2
+                    UPDATE users
+                    SET ban_channel_ids = array_remove(ban_channel_ids, $2),
+                        updated_at      = NOW()
+                    WHERE user_id = $1
                     ''',
                     user_id, channel_id
                 )
 
-    async def remove_ban_role(self, member: discord.Member, channel: discord.VoiceChannel):
-        role_id = self.bot.command_aliases.get(member.guild.id, {}).get('role', {}).get(str(channel.id))
-        if not role_id:
-            return
-        role = member.guild.get_role(role_id)
-        if role and role in member.roles:
-            await member.remove_roles(role, reason='Ban expired')
-                
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
