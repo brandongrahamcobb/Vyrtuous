@@ -716,39 +716,51 @@ class Hybrid(commands.Cog):
             if not member_object:
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
 
+            # Try in-memory alias map first
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
+
+            # Fallback to DB if missing
             if not static_channel_id:
-                return await self.handler.send_message(ctx,
-                                                       content=f'❌ No channel alias mapping found for `{command_name}`.')
-
-            async with self.bot.db_pool.acquire() as conn:
-                role_id = await conn.fetchval(
-                    '''
-                    SELECT role_id
-                    FROM ban_roles
-                    WHERE guild_id = $1
-                      AND channel_id = $2
-                    ''',
-                    guild_id, static_channel_id
-                )
-                if not role_id:
+                async with self.bot.db_pool.acquire() as conn:
+                    static_channel_id = await conn.fetchval(
+                        '''
+                        SELECT channel_id
+                        FROM command_aliases
+                        WHERE guild_id = $1
+                          AND alias_type = 'unban'
+                          AND alias_name = $2
+                        ''',
+                        guild_id, command_name
+                    )
+                if not static_channel_id:
                     return await self.handler.send_message(ctx,
-                                                           content=f'❌ No ban role found for <#{static_channel_id}>.')
+                                                           content=f'❌ No channel alias mapping found for `{command_name}`.')
 
-            role = ctx.guild.get_role(role_id)
-            if not role:
-                return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
+            channel = ctx.guild.get_channel(static_channel_id)
+            if not channel or not isinstance(channel, discord.VoiceChannel):
+                return await self.handler.send_message(ctx,
+                                                       content=f'❌ Could not resolve a valid voice channel for <#{static_channel_id}>.')
 
             try:
-                await member_object.remove_roles(role, reason=f"Unbanned from <#{static_channel_id}>: {reason}")
+                # Remove any channel-specific permission overwrite to restore visibility
+                await channel.set_permissions(
+                    member_object,
+                    overwrite=None,
+                    reason=f"Unbanned from <#{channel.id}>: {reason or 'No reason provided'}"
+                )
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content='❌ Missing permissions to remove ban role.')
+                return await self.handler.send_message(ctx,
+                                                       content='❌ Missing permissions to update channel permissions.')
 
             async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('DELETE FROM active_bans WHERE user_id = $1 AND channel_id = $2', member_object.id,
-                                   static_channel_id)
-                await conn.execute('DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
-                                   member_object.id, static_channel_id)
+                await conn.execute(
+                    'DELETE FROM active_bans WHERE user_id = $1 AND channel_id = $2',
+                    member_object.id, channel.id
+                )
+                await conn.execute(
+                    'DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
+                    member_object.id, channel.id
+                )
                 await conn.execute(
                     '''
                     UPDATE users
@@ -756,12 +768,16 @@ class Hybrid(commands.Cog):
                         updated_at      = NOW()
                     WHERE user_id = $1
                     ''',
-                    member_object.id, static_channel_id
+                    member_object.id, channel.id
                 )
 
-            await self.handler.send_message(ctx, content=f'🔊 {member_object.mention} has been unbanned from <#{static_channel_id}>.')
+            await self.handler.send_message(
+                ctx,
+                content=f'🔊 {member_object.mention} has been unbanned from <#{channel.id}>.'
+            )
 
         return unban_alias
+
     #
     # def create_ban_alias(self, command_name: str) -> Command:
     #     @commands.hybrid_command(
@@ -1080,37 +1096,42 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
 
             if duration_hours == 0 and (not await is_owner_developer_coordinator(ctx) or not reason.strip()):
-                return await self.handler.send_message(ctx,
-                                                       content='❌ Reason required and coordinator-only for permanent bans.')
+                return await self.handler.send_message(
+                    ctx,
+                    content='❌ Reason required and coordinator-only for permanent bans.'
+                )
 
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('ban', {}).get(command_name)
             if not static_channel_id:
-                return await self.handler.send_message(ctx,
-                                                       content=f'❌ No channel alias mapping found for `{command_name}`.')
-
-            async with self.bot.db_pool.acquire() as conn:
-                role_id = await conn.fetchval(
-                    '''
-                    SELECT role_id
-                    FROM ban_roles
-                    WHERE guild_id = $1
-                      AND channel_id = $2
-                    ''',
-                    guild_id, static_channel_id
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'❌ No channel alias mapping found for `{command_name}`.'
                 )
-                if not role_id:
-                    return await self.handler.send_message(ctx,
-                                                           content=f'❌ No ban role alias mapping found for `{command_name}`.')
 
-            role = ctx.guild.get_role(role_id)
-            if not role:
-                return await self.handler.send_message(ctx, content=f'❌ Could not resolve role ID `{role_id}`.')
+            channel = ctx.guild.get_channel(static_channel_id)
+            if not channel or not isinstance(channel, discord.VoiceChannel):
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'❌ Could not resolve a valid voice channel for ID `{static_channel_id}`.'
+                )
 
             try:
-                await member_object.add_roles(role,
-                                              reason=f"Banned from <#{static_channel_id}>: {reason or 'No reason provided'}")
+                await channel.set_permissions(
+                    member_object,
+                    view_channel=False,
+                    reason=f"Banned from <#{channel.id}>: {reason or 'No reason provided'}"
+                )
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content='❌ Missing permissions to assign ban role.')
+                return await self.handler.send_message(ctx, content='❌ Missing permissions to deny channel access.')
+
+            # ✅ Kick user if currently in the channel
+            if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == channel.id:
+                try:
+                    await member_object.move_to(None, reason="Banned from this channel")
+                except discord.Forbidden:
+                    logger.warning(f"⚠️ Could not disconnect {member_object} from <#{channel.id}>.")
+                except Exception as e:
+                    logger.exception(f"⚠️ Unexpected error while disconnecting user: {e}")
 
             try:
                 async with self.bot.db_pool.acquire() as conn:
@@ -1122,7 +1143,7 @@ class Hybrid(commands.Cog):
                         UPDATE SET expires_at = EXCLUDED.expires_at
                         ''',
                         member_object.id,
-                        static_channel_id,
+                        channel.id,
                         None if duration_hours == 0 else discord.utils.utcnow() + datetime.timedelta(
                             hours=duration_hours)
                     )
@@ -1137,7 +1158,7 @@ class Hybrid(commands.Cog):
                             updated_at      = NOW()
                         WHERE user_id = $1
                         ''',
-                        member_object.id, static_channel_id
+                        member_object.id, channel.id
                     )
                     await conn.execute(
                         '''
@@ -1146,14 +1167,14 @@ class Hybrid(commands.Cog):
                         DO
                         UPDATE SET reason = EXCLUDED.reason
                         ''',
-                        guild_id, member_object.id, static_channel_id, reason or 'No reason provided'
+                        guild_id, member_object.id, channel.id, reason or 'No reason provided'
                     )
             except Exception as e:
                 logger.warning(f"🔥 Database error occurred: {e}")
 
             await self.handler.send_message(
                 ctx,
-                content=f'🔇 {member_object.mention} has been banned from <#{static_channel_id}> {"permanently" if duration_hours == 0 else f"for {duration_hours} hour(s)"}.'
+                content=f'🔇 {member_object.mention} has been banned from <#{channel.id}> {"permanently" if duration_hours == 0 else f"for {duration_hours} hour(s)"}'
             )
 
         return ban_alias
