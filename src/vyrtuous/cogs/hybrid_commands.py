@@ -1130,7 +1130,8 @@ class Hybrid(commands.Cog):
                 try:
                     await member_object.move_to(None, reason="Banned from this channel")
                 except discord.Forbidden:
-                    logger.warning(f"⚠️ Could not disconnect {member_object} from <#{channel.id}>.")
+                    await self.handler.send_message(
+                        ctx, f"⚠️ Could not disconnect {member_object} from <#{channel.id}>.")
                 except Exception as e:
                     logger.exception(f"⚠️ Unexpected error while disconnecting user: {e}")
 
