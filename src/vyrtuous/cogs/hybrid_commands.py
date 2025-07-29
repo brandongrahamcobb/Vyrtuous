@@ -683,8 +683,7 @@ class Hybrid(commands.Cog):
         elif alias_type == 'flag':
             cmd = self.create_flag_alias(alias_name)
         self.bot.add_command(cmd)
-        if self.bot.get_command(alias_name):
-            self.bot.remove_command(alias_name)
+        self.bot.add_command(cmd)
         await self.handler.send_message(
             ctx,
             content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
@@ -1149,6 +1148,8 @@ class Hybrid(commands.Cog):
                 'DELETE FROM command_aliases WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3',
                 guild_id, alias_type.lower(), alias_name
             )
+        if self.bot.get_command(alias_name):
+            self.bot.remove_command(alias_name)
         self.bot.command_aliases[guild_id][alias_type.lower()].pop(alias_name, None)
         await self.handler.send_message(ctx, content=f'✅ Deleted alias `{alias_name}` from `{alias_type}`.')
 
