@@ -683,7 +683,6 @@ class Hybrid(commands.Cog):
         elif alias_type == 'flag':
             cmd = self.create_flag_alias(alias_name)
         self.bot.add_command(cmd)
-        self.bot.add_command(cmd)
         await self.handler.send_message(
             ctx,
             content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
