@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS active_bans (
 CREATE TABLE IF NOT EXISTS active_mutes (
     user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    source TEXT CHECK (source IN ('bot', 'manual', 'owner')),
+    source TEXT CHECK (source IN ('bot', 'bot_owner', 'manual', 'owner')),
     issuer_id BIGINT,
     PRIMARY KEY (user_id, channel_id)
 );

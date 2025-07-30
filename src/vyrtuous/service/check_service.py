@@ -31,7 +31,7 @@ class NotModerator(commands.CheckFailure):
         super().__init__(message)
 
 class NotGuildOwner(commands.CheckFailure):
-    def __init__(self, message="You are not the guild owner."):
+    def __init__(self, message="You either selected the guild owner or you are the owner and cannot do this."):
         super().__init__(message)
 
 class NotSystemOwner(commands.CheckFailure):
@@ -158,16 +158,16 @@ async def is_owner(ctx):
     raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
 
 async def is_guild_owner_block(ctx, user_id: int):
-    if user_id != ctx.guild.owner.id:
+    if user_id == ctx.guild.owner.id:
         raise NotGuildOwner()
     return True
 
 async def is_owner_block(ctx, user_id: int):
     errors = []
-    for check in (lambda: is_guild_owner_blockc(ctx, user_id)):
+    for check in (is_guild_owner_block,):
         try:
-            if await check():
-                return True
+            await check(ctx, user_id)
+            return True
         except commands.CheckFailure as e:
             errors.append(str(e))
     raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))

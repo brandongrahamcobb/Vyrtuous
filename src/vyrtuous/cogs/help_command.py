@@ -1,4 +1,4 @@
-''' commands.py
+''' help_command.py
 
     Copyright (C) 2024  github.com/brandongrahamcobb
 
@@ -257,3 +257,7 @@ class Help(commands.Cog):
             return
         paginator = Paginator(bot, ctx, pages)
         await paginator.start()
+
+async def setup(bot: commands.Bot):
+    cog = Help(bot)
+    await bot.add_cog(cog)

@@ -54,6 +54,7 @@ DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
     'vyrtuous.cogs.dev_commands',
     'vyrtuous.cogs.event_listeners',
+    'vyrtuous.cogs.help_command',
     'vyrtuous.cogs.hybrid_commands',
     'vyrtuous.cogs.scheduled_tasks'
 ]

@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import datetime
+import discord
 import inspect
 import os
 import re
@@ -111,7 +112,7 @@ class Hybrid(commands.Cog):
             ctx,
             content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
         )
-    
+
     def create_ban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
@@ -125,8 +126,10 @@ class Hybrid(commands.Cog):
                 *,
                 reason: str = commands.parameter(default='', description='Reason for ban (required for permanent).')
         ) -> Coroutine[Any, Any, None]:
-            if is_owner_block(ctx, member):
-                return await self.handler.send_message(ctx, content='❌ You are not allowed to mute the owner.')
+            try:
+                await is_owner_block(ctx, member)
+            except commands.CheckFailure as e:
+                return await self.handler.send_message(ctx, content='❌ You are not allowed to ban the owner.')
             command_name = ctx.invoked_with
             guild_id = ctx.guild.id
             member_id = None
@@ -169,8 +172,7 @@ class Hybrid(commands.Cog):
                 try:
                     await member_object.move_to(None, reason="Banned from this channel")
                 except discord.Forbidden:
-                    await self.handler.send_dm(
-                        ctx, f"⚠️ Could not disconnect <@{member_object.id}> from <#{channel.id}>.")
+                    await ctx.send(f"⚠️ Could not disconnect <@{member_object.id}> from <#{channel.id}>.", allowed_mentions=discord.AllowedMentions.none())
                 except Exception as e:
                     logger.exception(f"⚠️ Unexpected error while disconnecting user: {e}")
             try:
@@ -211,10 +213,7 @@ class Hybrid(commands.Cog):
                     )
             except Exception as e:
                 logger.warning(f"🔥 Database error occurred: {e}")
-            await self.handler.send_dm(
-                ctx,
-                content=f'🔇 {member_object.mention} has been banned from <#{channel.id}> {"permanently" if duration_hours == 0 else f"for {duration_hours} hour(s)"}'
-            )
+            await ctx.send(f'🔇 {member_object.mention} has been banned from <#{channel.id}> {"permanently" if duration_hours == 0 else f"for {duration_hours} hour(s)"}', allowed_mentions=discord.AllowedMentions.none())
             if duration_hours > 0:
                 expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=duration_hours)
                 try:
@@ -301,9 +300,8 @@ class Hybrid(commands.Cog):
                     ),
                     updated_at = NOW()
             ''', member_obj.id, ctx.guild.id, channel_id)
-        await self.handler.send_dm(
-            ctx,
-            content=f'✅ {member_obj.mention} has been granted coordinator rights in {channel_obj.mention}.'
+        await ctx.send(f'✅ {member_obj.mention} has been granted coordinator rights in {channel_obj.mention}.',
+            allowed_mentions=discord.AllowedMentions.none()
         )
 
     
@@ -341,8 +339,9 @@ class Hybrid(commands.Cog):
                 ),
                 updated_at = NOW()
             ''', member_object.id, guild_id)
-        await self.handler.send_dm(ctx, content=f'{member_object.mention} has been granted developer rights in this guild.')
-        
+        await ctx.send(f'{member_object.mention} has been granted developer rights in this guild.',
+        allowed_mentions=discord.AllowedMentions.none())
+
     def create_flag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
@@ -350,47 +349,54 @@ class Hybrid(commands.Cog):
         )
         @commands.check(is_owner_developer_coordinator_moderator)
         async def flag_alias(
-            ctx,
-            user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
+                ctx,
+                user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
         ) -> Coroutine[Any, Any, None]:
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
             if not channel_id:
-                return await self.handler.send_message(ctx, content=f'❌ No flag alias configured for `{command_name}`.')
+                await self.handler.send_message(ctx, content=f'❌ No flag alias configured for `{command_name}`.')
+                return
             if not user:
-                return await self.handler.send_message(ctx, content='❌ You must provide a user ID or mention.')
+                await self.handler.send_message(ctx, content='❌ You must provide a user ID or mention.')
+                return
             if re.fullmatch(r'<@!?\d+>', user):
                 user_id = int(re.sub(r'\D', '', user))
             elif user.isdigit():
                 user_id = int(user)
             else:
-                return await self.handler.send_message(ctx, content='❌ Invalid user ID or mention.')
+                await self.handler.send_message(ctx, content='❌ Invalid user ID or mention.')
+                return
             select_sql = '''
-                SELECT 1 FROM users
-                WHERE user_id = $1 AND $2 = ANY(flagged_channel_ids)
-            '''
+                         SELECT 1 \
+                         FROM users
+                         WHERE user_id = $1 \
+                           AND $2 = ANY (flagged_channel_ids) \
+                         '''
             insert_sql = '''
-                INSERT INTO users (user_id, flagged_channel_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[])
-                ON CONFLICT (user_id)
-                DO UPDATE SET flagged_channel_ids = (
-                    SELECT ARRAY(
-                        SELECT DISTINCT unnest(users.flagged_channel_ids || EXCLUDED.flagged_channel_ids)
-                    )
-                )
-            '''
+                         INSERT INTO users (user_id, flagged_channel_ids)
+                         VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id)
+                         DO \
+                         UPDATE SET flagged_channel_ids = ( \
+                             SELECT ARRAY( \
+                             SELECT DISTINCT unnest(users.flagged_channel_ids || EXCLUDED.flagged_channel_ids) \
+                             ) \
+                             ) \
+                         '''
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     already_flagged = await conn.fetchval(select_sql, user_id, channel_id)
                     if already_flagged:
-                        return await self.handler.send_message(ctx, content=f'ℹ️ <@{user_id}> is already flagged for <#{channel_id}>.')
+                        await self.handler.send_message(ctx,content=f'ℹ️ <@{user_id}> is already flagged for <#{channel_id}>.')
+                        return
                     await conn.execute(insert_sql, user_id, channel_id)
-                    await self.handler.send_dm(ctx, content=f'✅ Flagged <@{user_id}> for channel <#{channel_id}>.')
+                    await ctx.send(f'✅ Flagged <@{user_id}> for channel <#{channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
                 raise
-        
+        return flag_alias
+
     @commands.hybrid_command(name='mod', help='Elevates a user\'s permission to VC moderator for a specific channel.')
     @commands.check(is_owner_developer_coordinator)
     async def create_moderator(
@@ -452,9 +458,8 @@ class Hybrid(commands.Cog):
                     ),
                     updated_at = NOW()
             ''', member_object.id, ctx.guild.id, resolved_channel.id)
-        await self.handler.send_dm(
-            ctx,
-            content=f'{member_object.mention} has been granted VC moderator access in {resolved_channel.name}.'
+        await ctx.send(f'{member_object.mention} has been granted VC moderator access in {resolved_channel.name}.',
+            allowed_mentions=discord.AllowedMentions.none()
         )
         
     def create_mute_alias(self, command_name: str) -> Command:
@@ -466,8 +471,10 @@ class Hybrid(commands.Cog):
             *,
             reason: str = commands.parameter(default='N/A', description='Optionally include a reason for the mute.')
         ) -> None:
-            if is_owner_block(ctx, member):
-                return await self.handler.send_message(ctx, content='❌ You are not allowed to mute the owner.')
+            try:
+                await is_owner_block(ctx, member)
+            except commands.CheckFailure as e:
+                return await self.handler.send_message(ctx, content='❌ You are not allowed to ban the owner.')
             guild_id = ctx.guild.id
             member_id = None
             member_object = None
@@ -534,10 +541,12 @@ class Hybrid(commands.Cog):
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                 await member_object.edit(mute=True)
                 mute_type = "server muted" if mute_source == "owner" else "muted"
-                await self.handler.send_dm(ctx, content=f'{member_object.mention} has been {mute_type} in <#{static_channel_id}> with reason {reason}.')
+                await ctx.send(f'{member_object.mention} has been {mute_type} in <#{static_channel_id}> with reason {reason}.'),
+                allowed_mentions=discord.AllowedMentions.none()
             else:
                 mute_type = "server muted" if mute_source == "owner" else "muted"
-                await self.handler.send_dm(ctx, content=f'{member_object.mention} has been {mute_type} in <#{static_channel_id}> with reason {reason}.')
+                await ctx.send(f'{member_object.mention} has been {mute_type} in <#{static_channel_id}> with reason {reason}.'),
+                allowed_mentions=discord.AllowedMentions.none()
         return mute_alias
     
     def create_unban_alias(self, command_name: str) -> Command:
@@ -608,11 +617,64 @@ class Hybrid(commands.Cog):
                     ''',
                     member_object.id, channel.id
                 )
-            await self.handler.send_dm(
-                ctx,
-                content=f'🔊 {member_object.mention} has been unbanned from <#{channel.id}>.'
+            await ctx.send(f'🔊 {member_object.mention} has been unbanned from <#{channel.id}>.',
+                allowed_mentions=discord.AllowedMentions.none()
             )
         return unban_alias
+        
+    def create_unflag_alias(self, command_name: str) -> Command:
+        @commands.hybrid_command(
+            name=command_name,
+            help='Unflag a user in the database for the voice channel mapped to this alias.'
+        )
+        @commands.check(is_owner_developer_coordinator_moderator)
+        async def unflag_alias(
+            ctx,
+            user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
+        ) -> Coroutine[Any, Any, None]:
+            guild_id = ctx.guild.id
+            flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
+            channel_id = flag_aliases.get(command_name)
+            if not channel_id:
+                await self.handler.send_message(ctx, content=f'❌ No unflag alias configured for `{command_name}`.')
+                return
+            if not user:
+                await self.handler.send_message(ctx, content='❌ You must provide a user ID or mention.')
+                return
+            if re.fullmatch(r'<@!?\d+>', user):
+                user_id = int(re.sub(r'\D', '', user))
+            elif user.isdigit():
+                user_id = int(user)
+            else:
+                await self.handler.send_message(ctx, content='❌ Invalid user ID or mention.')
+                return
+            select_sql = '''
+                SELECT 1
+                FROM users
+                WHERE user_id = $1
+                  AND $2 = ANY(flagged_channel_ids)
+            '''
+            update_sql = '''
+                UPDATE users
+                SET flagged_channel_ids = ARRAY(
+                    SELECT unnest(flagged_channel_ids)
+                    EXCEPT SELECT $2::BIGINT
+                )
+                WHERE user_id = $1
+            '''
+            try:
+                async with self.bot.db_pool.acquire() as conn:
+                    is_flagged = await conn.fetchval(select_sql, user_id, channel_id)
+                    if not is_flagged:
+                        await self.handler.send_message(ctx, content=f'ℹ️ <@{user_id}> is not flagged for <#{channel_id}>.')
+                        return
+                    await conn.execute(update_sql, user_id, channel_id)
+                    await ctx.send(f'✅ Unflagged <@{user_id}> for channel <#{channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
+            except Exception as e:
+                await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
+                raise
+        return unflag_alias
+
 
     def create_unmute_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(name=command_name, help='Unmutes a member in a specific VC.')
@@ -647,19 +709,19 @@ class Hybrid(commands.Cog):
                         WHERE user_id = $1 AND channel_id = $2
                     ''', member_object.id, static_channel_id)
                     if not row:
-                        return await self.handler.send_dm(ctx, content=f"❌ {member_object.mention} is not muted in <#{static_channel_id}>.")
+                        return await ctx.send(f"❌ {member_object.mention} is not muted in <#{static_channel_id}>.", allowed_mentions=discord.AllowedMentions.none())
                     bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
                     server_owner_id = ctx.guild.owner_id
                     command_author_id = ctx.author.id
                     if row["source"] == "owner":
                         if command_author_id == bot_owner_id:
-                            await self.handler.send_dm(ctx, content=f"⚠️ Overriding server mute for {member_object.mention} as bot owner.")
+                            await ctx.send(f"⚠️ Overriding server mute for {member_object.mention} as bot owner.", allowed_mentions=discord.AllowedMentions.none())
                         elif command_author_id == server_owner_id:
-                            return await self.handler.send_dm(ctx, content=f"❌ You cannot unmute {member_object.mention} — server mutes can't be overridden by the server owner.")
+                            return await ctx.send(f"❌ You cannot unmute {member_object.mention} — server mutes can't be overridden by the server owner.", allowed_mentions=discord.AllowedMentions.none())
                         else:
-                            return await self.handler.send_dm(ctx, content=f"❌ {member_object.mention} has a server mute in <#{static_channel_id}> that cannot be removed.")
+                            return await ctx.send(f"❌ {member_object.mention} has a server mute in <#{static_channel_id}> that cannot be removed.")
                     elif row["source"] not in ("bot", "manual", "bot_owner"):
-                        return await self.handler.send_dm(ctx, content=f"❌ {member_object.mention} was not muted by the bot in <#{static_channel_id}>.")
+                        return await ctx.send(f"❌ {member_object.mention} was not muted by the bot in <#{static_channel_id}>.", allowed_mentions=discord.AllowedMentions.none())
                     if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                         print("DEBUG: Member is in voice channel, unmuting...")
                         await member_object.edit(mute=False)
@@ -691,9 +753,9 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
                 raise
             if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
-                await self.handler.send_dm(ctx, content=f'✅ {member_object.mention} has been unmuted in <#{static_channel_id}>.')
+                await ctx.send(f'✅ {member_object.mention} has been unmuted in <#{static_channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
             else:
-                await self.handler.send_dm(ctx, content=f'✅ {member_object.mention} is no longer marked as muted in <#{static_channel_id}>.')
+                await ctx.send(f'✅ {member_object.mention} is no longer marked as muted in <#{static_channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
         return unmute_alias
         
     @commands.hybrid_command(name='xalias', help='Deletes an alias.')
@@ -762,21 +824,18 @@ class Hybrid(commands.Cog):
                 member_object.id
             )
             if not row:
-                return await self.handler.send_dm(
-                    ctx,
-                    content=f'❌ {member_object.mention} is not found in the coordinator database.'
+                return ctx.send(f'❌ {member_object.mention} is not found in the coordinator database.',
+                    allowed_mentions=discord.AllowedMentions.none()
                 )
             current_guild_ids = row.get('coordinator_ids', []) or []
             current_channel_ids = row.get('coordinator_channel_ids', []) or []
             if ctx.guild.id not in current_guild_ids:
-                return await self.handler.send_dm(
-                    ctx,
-                    content=f'❌ {member_object.mention} is not a coordinator in this guild.'
+                return ctx.send(f'❌ {member_object.mention} is not a coordinator in this guild.',
+                    allowed_mentions=discord.AllowedMentions.none()
                 )
             if channel.id not in current_channel_ids:
-                return await self.handler.send_dm(
-                    ctx,
-                    content=f'❌ {member_object.mention} is not a coordinator in {channel.mention}.'
+                return await ctx.send(f'❌ {member_object.mention} is not a coordinator in {channel.mention}.',
+                    allowed_mentions=discord.AllowedMentions.none()
                 )
             await conn.execute('''
                 UPDATE users
@@ -798,9 +857,9 @@ class Hybrid(commands.Cog):
                         updated_at = NOW()
                     WHERE user_id = $1
                 ''', member_object.id, ctx.guild.id)
-                await self.handler.send_dm(ctx, content=f'✅ {member_object.mention}\'s coordinator access has been completely revoked from {channel.mention} and this guild (no remaining channels).')
+                await ctx.send(f'✅ {member_object.mention}\'s coordinator access has been completely revoked from {channel.mention} and this guild (no remaining channels).', allowed_mentions=discord.AllowedMentions.none())
             else:
-                await self.handler.send_dm(ctx, content=f'✅ {member_object.mention}\'s coordinator access has been revoked from {channel.mention}.')
+                await ctx.send(f'✅ {member_object.mention}\'s coordinator access has been revoked from {channel.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     @commands.hybrid_command(name='xdev', help='Removes a developer.')
     @commands.check(is_owner)
@@ -830,7 +889,7 @@ class Hybrid(commands.Cog):
                     updated_at = NOW()
                 WHERE user_id = $1
             ''', member_object.id, guild_id)
-        await self.handler.send_dm(ctx, content=f'{member_object.mention}\'s developer access has been revoked in this guild.')
+        await ctx.send(f'{member_object.mention}\'s developer access has been revoked in this guild.', allowed_mentions=discord.AllowedMentions.none())
         
     @commands.hybrid_command(name='xmod', help='Revokes a member\'s VC moderator role for a given channel.')
     @commands.check(is_owner_developer_coordinator)
@@ -875,21 +934,18 @@ class Hybrid(commands.Cog):
                 member_object.id
             )
             if not row:
-                return await self.handler.send_dm(
-                    ctx,
-                    content=f'{member_object.mention} is not found in the moderator database.'
+                return await ctx.send(f'{member_object.mention} is not found in the moderator database.',
+                    allowed_mentions=discord.AllowedMentions.none()
                 )
             current_guild_ids = row.get('moderator_ids', []) or []
             current_channel_ids = row.get('moderator_channel_ids', []) or []
             if ctx.guild.id not in current_guild_ids:
-                return await self.handler.send_dm(
-                    ctx,
-                    content=f'{member_object.mention} is not a moderator in this guild.'
+                return await ctx.send(f'{member_object.mention} is not a moderator in this guild.',
+                    allowed_mentions=discord.AllowedMentions.none()
                 )
             if resolved_channel.id not in current_channel_ids:
-                return await self.handler.send_dm(
-                    ctx,
-                    content=f'{member_object.mention} is not a moderator in {resolved_channel.name}.'
+                return await ctx.send(f'{member_object.mention} is not a moderator in {resolved_channel.name}.',
+                    allowed_mentions=discord.AllowedMentions.none()
                 )
             await conn.execute('''
                 UPDATE users
@@ -911,14 +967,12 @@ class Hybrid(commands.Cog):
                         updated_at = NOW()
                     WHERE user_id = $1
                 ''', member_object.id, ctx.guild.id)
-                await self.handler.send_dm(
-                    ctx,
-                    content=f'{member_object.mention} has been completely revoked as moderator from {resolved_channel.name} and this guild (no remaining channels).'
+                await ctx.send(f'{member_object.mention} has been completely revoked as moderator from {resolved_channel.name} and this guild (no remaining channels).',
+                    allowed_mentions=discord.AllowedMentions.none()
                 )
             else:
-                await self.handler.send_dm(
-                    ctx,
-                    content=f'{member_object.mention} has been revoked moderator access in {resolved_channel.name}.'
+                await ctx.send(f'{member_object.mention} has been revoked moderator access in {resolved_channel.name}.',
+                    allowed_mentions=discord.AllowedMentions.none()
                 )
 
 
@@ -1114,7 +1168,7 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'✅ No users are flagged for <#{channel_id}>.')
             mentions = [f'<@{row["user_id"]}>' for row in rows]
             message = f'🚩 Users flagged for <#{channel_id}>:\n' + '\n'.join(mentions)
-            await self.handler.send_dm(ctx, content=message)
+            await ctx.send(message, allowed_mentions=discord.AllowedMentions.none())
         except Exception as e:
             await self.handler.send_message(ctx, content=f'❌ Database error: {e}')
             raise
@@ -1176,7 +1230,7 @@ class Hybrid(commands.Cog):
             description='\n'.join(description_lines),
             color=discord.Color.orange()
         )
-        await self.handler.send_dm(ctx, embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
     @commands.hybrid_command(name='reason', help='Get the reason for a mute, unmute, ban, or unban.')
     @commands.check(is_owner_developer_coordinator_moderator)
@@ -1211,7 +1265,7 @@ class Hybrid(commands.Cog):
                 WHERE guild_id = $1 AND user_id = $2
             ''', guild_id, member_object.id)
         if not mute_rows and not ban_rows:
-            return await self.handler.send_dm(ctx, content=f'ℹ️ No mute, unmute, ban, or unban history found for {member_object.mention}.')
+            return await ctx.send(f'ℹ️ No mute, unmute, ban, or unban history found for {member_object.mention}.', allowed_mentions=discord.AllowedMentions.none())
         lines = []
         def format_row(row, kind):
             channel_id = row['channel_id']
@@ -1221,7 +1275,7 @@ class Hybrid(commands.Cog):
         lines += [format_row(row, 'mute') for row in mute_rows]
         lines += [format_row(row, 'ban') for row in ban_rows]
         content = f'📄 Disciplinary reasons for {member_object.mention}:\n' + '\n'.join(lines)
-        await self.handler.send_dm(ctx, content=content)
+        await ctx.send(content, allowed_mentions=discord.AllowedMentions.none())
     
     async def cog_load(self) -> None:
         async with self.bot.db_pool.acquire() as conn:
