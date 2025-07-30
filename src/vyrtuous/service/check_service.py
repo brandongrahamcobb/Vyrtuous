@@ -157,6 +157,21 @@ async def is_owner(ctx):
             errors.append(str(e))
     raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
 
+async def is_guild_owner_block(ctx, user_id: int):
+    if user_id != ctx.guild.owner.id:
+        raise NotGuildOwner()
+    return True
+
+async def is_owner_block(ctx, user_id: int):
+    errors = []
+    for check in (lambda: is_guild_owner_blockc(ctx, user_id)):
+        try:
+            if await check():
+                return True
+        except commands.CheckFailure as e:
+            errors.append(str(e))
+    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
+
 async def is_owner_developer(ctx):
     errors = []
     for check in (is_developer, is_guild_owner, is_system_owner):
