@@ -70,14 +70,19 @@ class EventListeners(commands.Cog):
                 # Handle mute re-application when joining channel
                 if after_channel:
                     row = await conn.fetchrow("""
-                        SELECT source FROM active_mutes
+                        SELECT expires_at FROM active_mutes
                         WHERE user_id = $1 AND channel_id = $2
                     """, user_id, after_channel.id)
+                
                     if row:
-                        await member.edit(mute=True)
+                        # User has an active mute in this channel → ensure they're muted
+                        if not after.mute:
+                            await member.edit(mute=True)
                     else:
-                        if after.mute:
-                            await member.edit(mute=False)
+                        # User has no active mute in this channel → do nothing!
+                        # DO NOT unmute here — the mute might be applied just after, or incorrectly unset
+                        pass
+
         
                 try:
                     async with self.bot.db_pool.acquire() as conn:
