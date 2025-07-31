@@ -72,7 +72,7 @@ class EventListeners(commands.Cog):
                     row = await conn.fetchrow("""
                            SELECT source FROM active_mutes
                            WHERE user_id = $1 AND channel_id = $2
-                        """, user_id, after_channel.id)
+                    """, user_id, after_channel.id)
 
                     if row and row['source'] in ('bot', 'manual', 'owner'):
                        if not after.mute:
