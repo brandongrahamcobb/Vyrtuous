@@ -16,9 +16,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import discord
+import datetime
 import os
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
+from vyrtuous.utils.setup_logging import logger
 
 from vyrtuous.service.discord_message_service import DiscordMessageService
 
@@ -256,7 +258,7 @@ class EventListeners(commands.Cog):
                             return
                         if isinstance(after_channel, discord.VoiceChannel):
                             await after_channel.send(
-                            f'⚠️ <@{member.id}> has joined voice channel <#{channel.id}> and is flagged.',
+                            f'⚠️ <@{member.id}> has joined voice channel <#{after_channel.id}> and is flagged.',
                             allowed_mentions=discord.AllowedMentions.none()
                         )
                 except Exception as e:
