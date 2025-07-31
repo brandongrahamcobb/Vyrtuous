@@ -110,7 +110,7 @@ class Help(commands.Cog):
         current_chunk = []
         current_length = 0
         for cmd in commands_list:
-            cmd_line = f'**/{cmd.name}** – {cmd.help or "No description"}\n'
+            cmd_line = f'**{config['discord_command_prefix']}{cmd.name}** – {cmd.help or "No description"}\n'
             cmd_length = len(cmd_line)
             if current_length + cmd_length > max_length and current_chunk:
                 chunks.append('\n'.join(current_chunk))
@@ -138,14 +138,14 @@ class Help(commands.Cog):
                 await self.handler.send_message(ctx, f'❌ You do not have permission to run `{command_name}`.')
                 return
             embed = discord.Embed(
-                title=f'/{cmd.name}',
+                title=f'{config['discord_command_prefix']}{cmd.name}',
                 description=cmd.help or 'No description provided.',
                 color=discord.Color.blue()
             )
             sig = inspect.signature(cmd.callback)
             parameters = list(sig.parameters.items())[2:]
             if parameters:
-                usage_parts = [f"/{cmd.name}"]
+                usage_parts = [f"{config['discord_command_prefix']}{cmd.name}"]
                 param_details = []
                 for name, param in parameters:
                     is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY

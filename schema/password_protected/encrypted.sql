@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS active_mutes (
     channel_id BIGINT NOT NULL,
     source TEXT CHECK (source IN ('bot', 'bot_owner', 'manual', 'owner')),
     issuer_id BIGINT,
+    expires_at TIMESTAMPTZ,
     PRIMARY KEY (user_id, channel_id)
 );
 
