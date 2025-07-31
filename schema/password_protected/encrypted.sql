@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS command_aliases (
     guild_id BIGINT NOT NULL,
     alias_type TEXT NOT NULL CHECK (alias_type IN (
-        'mute', 'unmute', 'ban', 'unban', 'flag'
+        'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag'
     )),
     alias_name TEXT NOT NULL,
     channel_id BIGINT NOT NULL,
