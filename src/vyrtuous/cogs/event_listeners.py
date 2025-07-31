@@ -245,22 +245,21 @@ class EventListeners(commands.Cog):
                             except discord.HTTPException as e:
                                 logger.debug(f"Failed to unmute {member.display_name}: {e}")
                 try:
-                    async with self.bot.db_pool.acquire() as conn:
-                        is_flagged = await conn.fetchval(
-                            '''
-                            SELECT 1 FROM users
-                            WHERE user_id = $1
-                              AND $2 = ANY(flagged_channel_ids)
-                            ''',
-                            member.id, after_channel.id
-                        )
-                        if not is_flagged:
-                            return
-                        if isinstance(after_channel, discord.VoiceChannel):
-                            await after_channel.send(
-                            f'⚠️ <@{member.id}> has joined voice channel <#{after_channel.id}> and is flagged.',
-                            allowed_mentions=discord.AllowedMentions.none()
-                        )
+                    is_flagged = await conn.fetchval(
+                        '''
+                        SELECT 1 FROM users
+                        WHERE user_id = $1
+                          AND $2 = ANY(flagged_channel_ids)
+                        ''',
+                        member.id, after_channel.id
+                    )
+                    if not is_flagged:
+                        return
+                    if isinstance(after_channel, discord.VoiceChannel):
+                        await after_channel.send(
+                        f'⚠️ <@{member.id}> has joined voice channel <#{after_channel.id}> and is flagged.',
+                        allowed_mentions=discord.AllowedMentions.none()
+                    )
                 except Exception as e:
                     print(f"🔥 Error in on_voice_state_update: {e}")
 
