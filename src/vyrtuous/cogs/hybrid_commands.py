@@ -45,17 +45,19 @@ class Hybrid(commands.Cog):
     async def create_alias(
         self,
         ctx,
-        alias_type: str = commands.parameter(description='One of: `mute`, `unmute`, `ban`, `unban`, `flag`'),
+        alias_type: str = commands.parameter(description='One of: `mute`, `unmute`, `ban`, `unban`, `flag`, `unflag`'),
         alias_name: str = commands.parameter(description='Alias/Pseudonym'),
         channel_id: str = commands.parameter(description='Voice channel')
     ) -> None:
         alias_type = alias_type.lower()
         guild_id = ctx.guild.id
-        valid_types = {'mute', 'unmute', 'ban', 'unban', 'flag'}
+        valid_types = {'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag'}
         if alias_type not in valid_types:
-            return await self.handler.send_message(ctx, f'❌ Invalid alias type. Must be one of: {", ".join(valid_types)}', ephemeral=True)
+            await self.handler.send_message(ctx, f'❌ Invalid alias type. Must be one of: {", ".join(valid_types)}', ephemeral=True)
+            return
         if not alias_name.strip():
-            return await self.handler.send_message(ctx, '❌ Alias name cannot be empty.', ephemeral=True)
+            await self.handler.send_message(ctx, '❌ Alias name cannot be empty.', ephemeral=True)
+            return
         def resolve_channel(value: str):
             if value.isdigit():
                 return ctx.guild.get_channel(int(value))
@@ -98,7 +100,7 @@ class Hybrid(commands.Cog):
             )
         self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel.id
         if alias_type == 'mute':
-            cmd = self.create_mute_alias(alias_name)
+            cmd = self.create_voice_mute_alias(alias_name)
         elif alias_type == 'unmute':
             cmd = self.create_unmute_alias(alias_name)
         elif alias_type == 'ban':
@@ -107,6 +109,8 @@ class Hybrid(commands.Cog):
             cmd = self.create_unban_alias(alias_name)
         elif alias_type == 'flag':
             cmd = self.create_flag_alias(alias_name)
+        elif alias_type == 'unflag':
+            cmd = self.create_unflag_alias(alias_name)
         self.bot.add_command(cmd)
         await self.handler.send_message(
             ctx,
@@ -351,7 +355,7 @@ class Hybrid(commands.Cog):
         async def flag_alias(
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
-        ) -> Coroutine[Any, Any, None]:
+        ) -> None:
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
@@ -461,11 +465,11 @@ class Hybrid(commands.Cog):
         await ctx.send(f'{member_object.mention} has been granted VC moderator access in {resolved_channel.name}.',
             allowed_mentions=discord.AllowedMentions.none()
         )
-        
-    def create_mute_alias(self, command_name: str) -> Command:
+
+    def create_voice_mute_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(name=command_name, help='Mutes a member in a specific VC.')
         @commands.check(is_owner_developer_coordinator_moderator)
-        async def mute_alias(
+        async def voice_mute_alias(
             ctx,
             member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
             *,
@@ -547,7 +551,7 @@ class Hybrid(commands.Cog):
                 mute_type = "server muted" if mute_source == "owner" else "muted"
                 await ctx.send(f'{member_object.mention} has been {mute_type} in <#{static_channel_id}> with reason {reason}.'),
                 allowed_mentions=discord.AllowedMentions.none()
-        return mute_alias
+        return voice_mute_alias
     
     def create_unban_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
@@ -631,7 +635,7 @@ class Hybrid(commands.Cog):
         async def unflag_alias(
             ctx,
             user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
-        ) -> Coroutine[Any, Any, None]:
+        ) -> None:
             guild_id = ctx.guild.id
             flag_aliases = self.bot.command_aliases.get(guild_id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
@@ -684,7 +688,7 @@ class Hybrid(commands.Cog):
             member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
             *,
             reason: str = commands.parameter(default='N/A', description='Include a reason for the unmute.')
-        ) -> Coroutine[Any, Any, None]:
+        ) -> None:
             guild_id = ctx.guild.id
             static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unmute', {}).get(command_name)
             if not static_channel_id:
@@ -764,7 +768,7 @@ class Hybrid(commands.Cog):
         self,
         ctx,
         alias_name: str = commands.parameter(description='Includ an alias name')
-    ) -> Coroutine[Any, Any, None]:
+    ) -> None:
         if not alias_name.strip():
             await self.handler.send_message(ctx, '❌ `alias_name` cannot be empty.', ephemeral=True)
             return
@@ -1232,50 +1236,49 @@ class Hybrid(commands.Cog):
         )
         await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.hybrid_command(name='reason', help='Get the reason for a mute, unmute, ban, or unban.')
-    @commands.check(is_owner_developer_coordinator_moderator)
-    async def get_summary(
-        self,
-        ctx,
-        member: str = commands.parameter(description='Tag a user or include their snowflake ID.')
-    ) -> None:
-        guild_id = ctx.guild.id
-        member_id = None
-        member_object = None
-        if member.isdigit():
-            member_id = int(member)
-        elif member.startswith('<@') and member.endswith('>'):
-            try:
-                member_id = int(member.strip('<@!>'))
-            except ValueError:
-                pass
-        if member_id:
-            member_object = ctx.guild.get_member(member_id)
-        if not member_object:
-            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
-        async with self.bot.db_pool.acquire() as conn:
-            mute_rows = await conn.fetch('''
-                SELECT channel_id, reason, action
-                FROM mute_reasons
-                WHERE guild_id = $1 AND user_id = $2
-            ''', guild_id, member_object.id)
-            ban_rows = await conn.fetch('''
-                SELECT channel_id, reason, action
-                FROM ban_reasons
-                WHERE guild_id = $1 AND user_id = $2
-            ''', guild_id, member_object.id)
-        if not mute_rows and not ban_rows:
-            return await ctx.send(f'ℹ️ No mute, unmute, ban, or unban history found for {member_object.mention}.', allowed_mentions=discord.AllowedMentions.none())
-        lines = []
-        def format_row(row, kind):
-            channel_id = row['channel_id']
-            reason = row['reason'] or '*No reason provided*'
-            action = row.get('action', kind)
-            return f'• [{action}] <#{channel_id}>: `{reason}`'
-        lines += [format_row(row, 'mute') for row in mute_rows]
-        lines += [format_row(row, 'ban') for row in ban_rows]
-        content = f'📄 Disciplinary reasons for {member_object.mention}:\n' + '\n'.join(lines)
-        await ctx.send(content, allowed_mentions=discord.AllowedMentions.none())
+    # @commands.hybrid_command(name='reason', help='Get the reason for a mute, unmute, ban, or unban.')
+    # @commands.check(is_owner_developer_coordinator_moderator)
+    # async def get_summary(
+    #     ctx,
+    #     member: str = commands.parameter(description='Tag a user or include their snowflake ID.')
+    # ) -> None:
+    #     guild_id = ctx.guild.id
+    #     member_id = None
+    #     member_object = None
+    #     if member.isdigit():
+    #         member_id = int(member)
+    #     elif member.startswith('<@') and member.endswith('>'):
+    #         try:
+    #             member_id = int(member.strip('<@!>'))
+    #         except ValueError:
+    #             pass
+    #     if member_id:
+    #         member_object = ctx.guild.get_member(member_id)
+    #     if not member_object:
+    #         return await self.handler.send_message(ctx, content='❌ Could not resolve a valid guild member from your input.')
+    #     async with self.bot.db_pool.acquire() as conn:
+    #         mute_rows = await conn.fetch('''
+    #             SELECT channel_id, reason, action
+    #             FROM mute_reasons
+    #             WHERE guild_id = $1 AND user_id = $2
+    #         ''', guild_id, member_object.id)
+    #         ban_rows = await conn.fetch('''
+    #             SELECT channel_id, reason, action
+    #             FROM ban_reasons
+    #             WHERE guild_id = $1 AND user_id = $2
+    #         ''', guild_id, member_object.id)
+    #     if not mute_rows and not ban_rows:
+    #         return await ctx.send(f'ℹ️ No mute, unmute, ban, or unban history found for {member_object.mention}.', allowed_mentions=discord.AllowedMentions.none())
+    #     lines = []
+    #     def format_row(row, kind):
+    #         channel_id = row['channel_id']
+    #         reason = row['reason'] or '*No reason provided*'
+    #         action = row.get('action', kind)
+    #         return f'• [{action}] <#{channel_id}>: `{reason}`'
+    #     lines += [format_row(row, 'mute') for row in mute_rows]
+    #     lines += [format_row(row, 'ban') for row in ban_rows]
+    #     content = f'📄 Disciplinary reasons for {member_object.mention}:\n' + '\n'.join(lines)
+    #     await ctx.send(content, allowed_mentions=discord.AllowedMentions.none())
     
     async def cog_load(self) -> None:
         async with self.bot.db_pool.acquire() as conn:
@@ -1297,6 +1300,8 @@ class Hybrid(commands.Cog):
                     cmd = self.create_unban_alias(alias_name)
                 elif alias_type == 'flag':
                     cmd = self.create_flag_alias(alias_name)
+                elif alias_type == 'unflag':
+                    cmd = self.create_unflag_alias(alias_name)
                 if cmd:
                     self.bot.add_command(cmd)
                     
