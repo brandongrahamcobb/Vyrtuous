@@ -64,11 +64,12 @@ CREATE TABLE IF NOT EXISTS active_bans (
 CREATE TABLE IF NOT EXISTS active_mutes (
     user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    source TEXT CHECK (source IN ('bot', 'bot_owner', 'manual', 'owner')),
+    source TEXT CHECK (source IN ('bot', 'bot_owner', 'manual', 'owner', 'unmuted')),
     issuer_id BIGINT,
     expires_at TIMESTAMPTZ,
     PRIMARY KEY (user_id, channel_id)
 );
+
 
 -- Expiring bans
 CREATE TABLE IF NOT EXISTS ban_expirations (
