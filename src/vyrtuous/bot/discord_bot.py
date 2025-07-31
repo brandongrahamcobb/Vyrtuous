@@ -35,9 +35,10 @@ class DiscordBot(commands.Bot):
             self.db_pool = db_pool
             self.lock = lock
             self.oauth_token = oauth_token
-            self.api_key = os.getenv('DISCORD_API_KEY')
+            discord_api_config = config.get('api_keys', {}).get('Discord', {})
+            self.api_key = self.config.get('api_key') or os.getenv('DISCORD_API_KEY')
             self.command_aliases: dict[int, dict[str, dict[str, int]]] = defaultdict(
-                lambda: {"mute": {}, "unmute": {}, "ban": {}, "unban": {}, "role": {}, "unrole": {}}
+                lambda: {"mute": {}, "unmute": {}, "ban": {}, "unban": {}, "flag": {}, "unflag": {}}
             )
             self.testing_guild_id = self.config['discord_testing_guild_id']
         except Exception as e:

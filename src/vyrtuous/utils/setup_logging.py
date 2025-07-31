@@ -28,7 +28,8 @@ import logging.handlers
 logger = logging.getLogger(__name__)
 
 def setup_logging(config: Dict[str, Any], path_log) -> None:
-    logging_level = config['logging_level'].upper()
+#    logging_level = config['logging_level'].upper()
+    logging_level = 'INFO'
     logging.basicConfig(level=getattr(logging, logging_level))
     if not exists(dirname(path_log)):
         makedirs(dirname(path_log))

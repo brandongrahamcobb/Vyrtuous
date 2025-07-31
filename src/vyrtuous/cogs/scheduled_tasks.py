@@ -31,6 +31,7 @@ class ScheduledTasks(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.check_expired_bans.start()
+        self.check_expired_voice_mutes.start()
     
     def perform_backup(self, db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -139,22 +140,17 @@ class ScheduledTasks(commands.Cog):
                 ''',
                 now
             )
-
         for record in expired:
             user_id = record['user_id']
             channel_id = record['channel_id']
-
             channel = self.bot.get_channel(channel_id)
             if not isinstance(channel, discord.VoiceChannel):
                 continue
-
             guild = channel.guild
             member = guild.get_member(user_id)
             if not member:
                 continue
-
             await self.remove_ban_role(member, channel)
-
             async with self.bot.db_pool.acquire() as conn:
                 await conn.execute(
                     'DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
@@ -174,6 +170,57 @@ class ScheduledTasks(commands.Cog):
                     user_id, channel_id
                 )
 
+    @tasks.loop(minutes=5)
+    async def check_expired_voice_mutes(self):
+        now = datetime.datetime.utcnow()
+        async with self.bot.db_pool.acquire() as conn:
+            expired = await conn.fetch(
+                '''
+                SELECT user_id, channel_id
+                FROM active_mutes
+                WHERE expires_at IS NOT NULL
+                  AND expires_at <= $1
+                ''',
+                now
+            )
+        for record in expired:
+            user_id = record['user_id']
+            channel_id = record['channel_id']
+            channel = self.bot.get_channel(channel_id)
+            if not isinstance(channel, discord.VoiceChannel):
+                continue
+            guild = channel.guild
+            member = guild.get_member(user_id)
+            if not member:
+                continue
+            if member.voice and member.voice.channel and member.voice.channel.id == channel_id:
+                try:
+                    await member.edit(mute=False)
+                except discord.HTTPException:
+                    pass
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute(
+                    'DELETE FROM active_mutes WHERE user_id = $1 AND channel_id = $2',
+                    user_id, channel_id
+                )
+                await conn.execute(
+                    '''
+                    UPDATE users
+                    SET mute_channel_ids = array_remove(mute_channel_ids, $2),
+                        updated_at       = NOW()
+                    WHERE user_id = $1
+                    ''',
+                    user_id, channel_id
+                )
+                await conn.execute(
+                    '''
+                    UPDATE users
+                    SET server_mute_channel_ids = array_remove(server_mute_channel_ids, $2),
+                        updated_at              = NOW()
+                    WHERE user_id = $1
+                    ''',
+                    user_id, channel_id
+                )
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
@@ -194,6 +241,10 @@ class ScheduledTasks(commands.Cog):
         await self.bot.wait_until_ready()
         
     @check_expired_bans.before_loop
+    async def before_backup(self):
+        await self.bot.wait_until_ready()
+
+    @check_expired_voice_mutes.before_loop
     async def before_backup(self):
         await self.bot.wait_until_ready()
 

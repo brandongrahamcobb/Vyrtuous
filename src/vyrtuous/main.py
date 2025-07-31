@@ -26,7 +26,7 @@ from vyrtuous.inc.helpers import *
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
 from vyrtuous.sec.discord_oauth import discord_app, DiscordOAuth, setup_discord_routes
-from vyrtuous.utils.setup_logging import setup_logging
+from vyrtuous.utils.setup_logging import logger, setup_logging
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PACKAGE_ROOT))

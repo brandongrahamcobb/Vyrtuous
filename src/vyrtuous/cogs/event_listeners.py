@@ -48,7 +48,7 @@ class EventListeners(commands.Cog):
         guild = member.guild
         channel = after.channel
         channel_id = channel.id
-        if os.getenv("LOGGING_LEVEL") == "DEBUG":
+        if os.getenv("DEVELOPMENT") == "False":
             async with self.db_pool.acquire() as conn:
                 if before.mute and not after.mute and before_channel:
                     row = await conn.fetchrow("""

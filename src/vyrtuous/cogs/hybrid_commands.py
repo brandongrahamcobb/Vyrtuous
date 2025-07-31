@@ -112,9 +112,6 @@ class Hybrid(commands.Cog):
         elif alias_type == 'unflag':
             cmd = self.create_unflag_alias(alias_name)
         self.bot.add_command(cmd)
-        existing = self.bot.get_command(alias_name)
-        if existing:
-            self.bot.remove_command(alias_name)
         await self.handler.send_message(
             ctx,
             content=f'✅ Alias `{alias_name}` ({alias_type}) set to {channel.mention}.'
@@ -556,6 +553,80 @@ class Hybrid(commands.Cog):
                 allowed_mentions=discord.AllowedMentions.none()
         return voice_mute_alias
 
+    def create_unban_alias(self, command_name: str) -> Command:
+        @commands.hybrid_command(
+            name=command_name,
+            help='Unban a user from a voice channel.'
+        )
+        @commands.check(is_owner_developer_coordinator_moderator)
+        async def unban_alias(
+                ctx,
+                member: str = commands.parameter(description='Mention or user ID of the member to unban.'),
+                *,
+                reason: str = commands.parameter(default='N/A', description='Optional reason for unbanning.')
+        ) -> None:
+            guild_id = ctx.guild.id
+            member_id = None
+            if member.isdigit():
+                member_id = int(member)
+            elif member.startswith('<@') and member.endswith('>'):
+                try:
+                    member_id = int(member.strip('<@!>'))
+                except ValueError:
+                    pass
+            member_object = ctx.guild.get_member(member_id) if member_id else None
+            if not member_object:
+                return await self.handler.send_message(ctx, content='❌ Could not resolve a valid member.')
+            static_channel_id = self.bot.command_aliases.get(guild_id, {}).get('unban', {}).get(command_name)
+            if not static_channel_id:
+                async with self.bot.db_pool.acquire() as conn:
+                    static_channel_id = await conn.fetchval(
+                        '''
+                        SELECT channel_id
+                        FROM command_aliases
+                        WHERE guild_id = $1
+                          AND alias_type = 'unban'
+                          AND alias_name = $2
+                        ''',
+                        guild_id, command_name
+                    )
+                if not static_channel_id:
+                    return await self.handler.send_message(ctx, content=f'❌ No channel alias mapping found for `{command_name}`.')
+            channel = ctx.guild.get_channel(static_channel_id)
+            if not channel or not isinstance(channel, discord.VoiceChannel):
+                return await self.handler.send_message(ctx, content=f'❌ Could not resolve a valid voice channel for <#{static_channel_id}>.')
+            try:
+                await channel.set_permissions(
+                    member_object,
+                    overwrite=None,
+                    reason=f"Unbanned from <#{channel.id}>: {reason or 'No reason provided'}"
+                )
+            except discord.Forbidden:
+                return await self.handler.send_message(ctx, content='❌ Missing permissions to update channel permissions.')
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute(
+                    'DELETE FROM active_bans WHERE user_id = $1 AND channel_id = $2',
+                    member_object.id, channel.id
+                )
+                await conn.execute(
+                    'DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
+                    member_object.id, channel.id
+                )
+                await conn.execute(
+                    '''
+                    UPDATE users
+                    SET ban_channel_ids = array_remove(ban_channel_ids, $2),
+                        updated_at      = NOW()
+                    WHERE user_id = $1
+                    ''',
+                    member_object.id, channel.id
+                )
+            await ctx.send(f'🔊 {member_object.mention} has been unbanned from <#{channel.id}>.',
+                           allowed_mentions=discord.AllowedMentions.none()
+                           )
+
+        return unban_alias
+
     def create_unflag_alias(self, command_name: str) -> Command:
         @commands.hybrid_command(
             name=command_name,
@@ -656,7 +727,6 @@ class Hybrid(commands.Cog):
                     elif row["source"] not in ("bot", "manual", "bot_owner"):
                         return await ctx.send(f"❌ {member_object.mention} was not muted by the bot in <#{static_channel_id}>.", allowed_mentions=discord.AllowedMentions.none())
                     if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
-                        print("DEBUG: Member is in voice channel, unmuting...")
                         await member_object.edit(mute=False)
                     await conn.execute('''
                         DELETE FROM active_mutes
