@@ -717,14 +717,14 @@ class Hybrid(commands.Cog):
                     bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
                     server_owner_id = ctx.guild.owner_id
                     command_author_id = ctx.author.id
-                    if row["source"] == "owner":
-                        if command_author_id == bot_owner_id:
-                            await ctx.send(f"⚠️ Overriding server mute for {member_object.mention} as bot owner.", allowed_mentions=discord.AllowedMentions.none())
-                        elif command_author_id == server_owner_id:
-                            return await ctx.send(f"❌ You cannot unmute {member_object.mention} — server mutes can't be overridden by the server owner.", allowed_mentions=discord.AllowedMentions.none())
-                        else:
-                            return await ctx.send(f"❌ {member_object.mention} has a server mute in <#{static_channel_id}> that cannot be removed.")
-                    elif row["source"] not in ("bot", "manual", "bot_owner"):
+#                    if row["source"] == "owner":
+#                        if command_author_id == bot_owner_id:
+#                            await ctx.send(f"⚠️ Overriding server mute for {member_object.mention} as bot owner.", allowed_mentions=discord.AllowedMentions.none())
+#                        elif command_author_id == server_owner_id:
+#                            return await ctx.send(f"❌ You cannot unmute {member_object.mention} — server mutes can't be overridden by the server owner.", allowed_mentions=discord.AllowedMentions.none())
+#                        else:
+#                            return await ctx.send(f"❌ {member_object.mention} has a server mute in <#{static_channel_id}> that cannot be removed.")
+                    if row["source"] not in ("bot", "manual", "bot_owner"):
                         return await ctx.send(f"❌ {member_object.mention} was not muted by the bot in <#{static_channel_id}>.", allowed_mentions=discord.AllowedMentions.none())
                     if member_object.voice and member_object.voice.channel and member_object.voice.channel.id == static_channel_id:
                         await member_object.edit(mute=False)
