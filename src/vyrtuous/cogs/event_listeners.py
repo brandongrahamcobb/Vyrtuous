@@ -74,11 +74,11 @@ class EventListeners(commands.Cog):
                            WHERE user_id = $1 AND channel_id = $2
                         """, user_id, after_channel.id)
 
-                        if row and row['source'] in ('bot', 'manual', 'owner'):
-                           if not after.mute:
-                               await member.edit(mute=True)
-                        elif not row and after.mute:
-                           await member.edit(mute=False)
+                    if row and row['source'] in ('bot', 'manual', 'owner'):
+                       if not after.mute:
+                           await member.edit(mute=True)
+                    elif not row and after.mute:
+                       await member.edit(mute=False)
                 try:
                     async with self.bot.db_pool.acquire() as conn:
                         is_flagged = await conn.fetchval(
