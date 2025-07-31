@@ -1290,7 +1290,7 @@ class Hybrid(commands.Cog):
                 self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel_id
                 cmd = None
                 if alias_type == 'mute':
-                    cmd = self.create_mute_alias(alias_name)
+                    cmd = self.create_voice_mute_alias(alias_name)
                 elif alias_type == 'unmute':
                     cmd = self.create_unmute_alias(alias_name)
                 elif alias_type == 'ban':
