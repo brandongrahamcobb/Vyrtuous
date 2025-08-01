@@ -233,7 +233,7 @@ class Help(commands.Cog):
             for cog_name in sorted(cog_map):
                 commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
                 command_list = '\n'.join(
-                    f'**/{cmd.name}** – {cmd.help or "No description"}'
+                    f'**{config['discord_command_prefix']}{cmd.name}** – {cmd.help or "No description"}'
                     for cmd in commands_in_cog
                 )
                 if len(command_list) > 1024:
