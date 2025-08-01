@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     coordinator_channel_ids BIGINT[],
     developer_guild_ids BIGINT[],
     flagged_channel_ids BIGINT[],
+    server_mute_channel_ids BIGINT[],
     server_mute_guild_ids BIGINT[],
     server_muter_guild_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
