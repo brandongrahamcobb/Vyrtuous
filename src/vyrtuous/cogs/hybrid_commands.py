@@ -1358,7 +1358,7 @@ class Hybrid(commands.Cog):
         else:
             await ctx.send(f'{member_object.mention} has been server muted. They are not currently in a voice channel.')
 
-    @commands.hybrid_command(name='unsmute', help='Unmutes a member throughout the entire guild.')
+    @commands.hybrid_command(name='xsmute', help='Unmutes a member throughout the entire guild.')
     @commands.check(lambda ctx: ctx.bot.get_cog("Hybrid").can_server_mute(ctx))
     async def unsmute(
             self,
@@ -1394,7 +1394,7 @@ class Hybrid(commands.Cog):
 
         await ctx.send(f'{member_object.mention} has been server unmuted.')
 
-    @commands.hybrid_command(name='unadmin', help='Revokes server mute privileges from a user.')
+    @commands.hybrid_command(name='xadmin', help='Revokes server mute privileges from a user.')
     @commands.check(is_owner)
     async def revoke_server_muter(self, ctx, member: str):
         member_object = await commands.MemberConverter().convert(ctx, member)
