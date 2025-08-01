@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
     coordinator_channel_ids BIGINT[],
     developer_guild_ids BIGINT[],
     flagged_channel_ids BIGINT[],
-    server_mute_channel_ids BIGINT[],
+    server_mute_guild_ids BIGINT[],
+    server_muter_guild_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -64,7 +65,7 @@ CREATE TABLE IF NOT EXISTS active_bans (
 CREATE TABLE IF NOT EXISTS active_mutes (
     user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    source TEXT CHECK (source IN ('bot', 'bot_owner', 'manual', 'owner', 'unmuted')),
+    source TEXT CHECK (source IN ('bot', 'bot_owner', 'manual', 'owner')),
     issuer_id BIGINT,
     expires_at TIMESTAMPTZ,
     PRIMARY KEY (user_id, channel_id)
@@ -78,24 +79,12 @@ CREATE TABLE IF NOT EXISTS ban_expirations (
     expires_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (user_id, channel_id)
 );
-CREATE TABLE IF NOT EXISTS ban_roles (
-    guild_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    role_id BIGINT NOT NULL,
-    PRIMARY KEY (guild_id, channel_id)
-);
-CREATE TABLE IF NOT EXISTS channel_roles (
-    guild_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    role_id BIGINT NOT NULL,
-    PRIMARY KEY (guild_id, channel_id)
-);
 
-CREATE TABLE IF NOT EXISTS mute_roles (
+CREATE TABLE IF NOT EXISTS server_mute_reasons (
     guild_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    role_id BIGINT NOT NULL,
-    PRIMARY KEY (guild_id, channel_id)
+    user_id BIGINT NOT NULL,
+    reason TEXT,
+    PRIMARY KEY (guild_id, user_id)
 );
 GRANT ALL PRIVILEGES ON DATABASE vyrtuous TO spawd;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO spawd;

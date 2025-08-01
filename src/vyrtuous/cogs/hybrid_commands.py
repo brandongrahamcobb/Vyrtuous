@@ -20,6 +20,7 @@ import discord
 import inspect
 import os
 import re
+from collections import defaultdict
 from typing import Any, Coroutine, Optional
 
 from discord.ext.commands import Command
@@ -30,12 +31,15 @@ from vyrtuous.service.discord_message_service import DiscordMessageService, Pagi
 from vyrtuous.utils.setup_logging import logger
 
 PERMISSION_ORDER = ['Owner', 'Developer', 'Coordinator', 'Moderator', 'Everyone']
+
 class Hybrid(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
+        self.server_muters: dict[int, set[int]] = defaultdict(set)
+        self.bot.loop.create_task(self.load_server_muters())
   
     @commands.hybrid_command(
         name='alias',
@@ -1278,7 +1282,156 @@ class Hybrid(commands.Cog):
     #     lines += [format_row(row, 'ban') for row in ban_rows]
     #     content = f'📄 Disciplinary reasons for {member_object.mention}:\n' + '\n'.join(lines)
     #     await ctx.send(content, allowed_mentions=discord.AllowedMentions.none())
-    
+    @commands.hybrid_command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
+    @commands.check(is_owner)
+    async def grant_server_muter(self, ctx, member: str):
+        guild_id = ctx.guild.id
+        member_object = await commands.MemberConverter().convert(ctx, member)
+        if not member_object:
+            return await self.handler.send_message(ctx,
+                                                   content='Could not resolve a valid guild member from your input.')
+
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                               INSERT INTO users (user_id, server_muter_guild_ids)
+                               VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO
+                               UPDATE
+                                   SET server_muter_guild_ids = (
+                                   SELECT ARRAY(
+                                   SELECT DISTINCT unnest(COALESCE (u.server_muter_guild_ids, '{}') || ARRAY[$2])
+                                   )
+                                   FROM users u WHERE u.user_id = EXCLUDED.user_id
+                                   ),
+                                   updated_at = NOW()
+                               ''', member_object.id, guild_id)
+
+        # Update in-memory
+        self.server_muters.setdefault(guild_id, set()).add(member_object.id)
+
+        await ctx.send(f'{member_object.mention} has been granted server mute permissions.')
+
+    @commands.hybrid_command(name='smute', help='Mutes a member throughout the entire guild.')
+    @commands.check(lambda ctx: ctx.bot.get_cog("Hybrid").can_server_mute(ctx))
+    async def server_mute(
+            self,
+            ctx,
+            member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
+            *,
+            reason: str = commands.parameter(default='N/A', description='Optionally include a reason for the mute.')
+    ) -> None:
+        try:
+            await is_owner_block(ctx, member)
+        except commands.CheckFailure:
+            return await self.handler.send_message(ctx, content='❌ You are not allowed to mute the owner.')
+        guild_id = ctx.guild.id
+        member_object = await commands.MemberConverter().convert(ctx, member)
+        if not member_object:
+            return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
+        author_id = ctx.author.id
+        bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
+        server_owner_id = ctx.guild.owner_id
+        mute_source = "owner"
+        if author_id == bot_owner_id:
+            mute_source = "bot_owner"
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                               INSERT INTO users (user_id, server_mute_guild_ids)
+                               VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO
+                               UPDATE
+                                   SET server_mute_guild_ids = (
+                                   SELECT ARRAY(
+                                   SELECT DISTINCT unnest(COALESCE (u.server_mute_guild_ids, '{}') || ARRAY[$2])
+                                   )
+                                   FROM users u WHERE u.user_id = EXCLUDED.user_id
+                                   ),
+                                   updated_at = NOW()
+                               ''', member_object.id, guild_id)
+            await conn.execute('''
+                               INSERT INTO server_mute_reasons (guild_id, user_id, reason)
+                               VALUES ($1, $2, $3) ON CONFLICT (guild_id, user_id)
+                               DO
+                               UPDATE SET reason = EXCLUDED.reason
+                               ''', guild_id, member_object.id, reason)
+        if member_object.voice and member_object.voice.channel:
+            await member_object.edit(mute=True)
+            await ctx.send(f'{member_object.mention} has been server muted in <#{member_object.voice.channel.id}> for reason: {reason}')
+        else:
+            await ctx.send(f'{member_object.mention} has been server muted. They are not currently in a voice channel.')
+
+    @commands.hybrid_command(name='unsmute', help='Unmutes a member throughout the entire guild.')
+    @commands.check(lambda ctx: ctx.bot.get_cog("Hybrid").can_server_mute(ctx))
+    async def unsmute(
+            self,
+            ctx,
+            member: str = commands.parameter(description='Tag a user or include their snowflake ID.')
+    ) -> None:
+        member_object = await commands.MemberConverter().convert(ctx, member)
+        if not member_object:
+            return await self.handler.send_message(ctx,
+                                                   content='Could not resolve a valid guild member from your input.')
+
+        guild_id = ctx.guild.id
+
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                               UPDATE users
+                               SET server_mute_guild_ids = (SELECT ARRAY(
+                                                                       SELECT unnest(server_mute_guild_ids)
+                        EXCEPT SELECT $2
+                                                                   ))
+                               WHERE user_id = $1
+                               ''', member_object.id, guild_id)
+
+            await conn.execute('''
+                               DELETE
+                               FROM server_mute_reasons
+                               WHERE user_id = $1
+                                 AND guild_id = $2
+                               ''', member_object.id, guild_id)
+
+        if member_object.voice and member_object.voice.channel:
+            await member_object.edit(mute=False)
+
+        await ctx.send(f'{member_object.mention} has been server unmuted.')
+
+    @commands.hybrid_command(name='unadmin', help='Revokes server mute privileges from a user.')
+    @commands.check(is_owner)
+    async def revoke_server_muter(self, ctx, member: str):
+        member_object = await commands.MemberConverter().convert(ctx, member)
+        if not member_object:
+            return await self.handler.send_message(ctx,
+                                                   content='Could not resolve a valid guild member from your input.')
+
+        guild_id = ctx.guild.id
+
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                               UPDATE users
+                               SET server_muter_guild_ids = (SELECT ARRAY(
+                                                                        SELECT unnest(server_muter_guild_ids)
+                        EXCEPT SELECT $2
+                                                                    ))
+                               WHERE user_id = $1
+                               ''', member_object.id, guild_id)
+
+        # Update in-memory
+        self.server_muters.get(guild_id, set()).discard(member_object.id)
+
+        await ctx.send(f'{member_object.mention} no longer has server mute privileges.')
+
+    async def load_server_muters(self):
+        await self.bot.wait_until_ready()
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('SELECT user_id, server_muter_guild_ids FROM users WHERE server_muter_guild_ids IS NOT NULL')
+            for row in rows:
+                user_id = row['user_id']
+                for guild_id in row['server_muter_guild_ids']:
+                    self.server_muters[guild_id].add(user_id)
+
+    def can_server_mute(self, ctx):
+        cog = ctx.bot.get_cog('Hybrid')
+        return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
+
     async def cog_load(self) -> None:
         async with self.bot.db_pool.acquire() as conn:
             rows = await conn.fetch('SELECT guild_id, alias_type, alias_name, channel_id FROM command_aliases')
