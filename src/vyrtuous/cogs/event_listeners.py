@@ -53,23 +53,39 @@ class EventListeners(commands.Cog):
                                           WHERE user_id = $1
                                           """, user_id)
 
-                if row and row['server_mute_guild_ids']:
-                    if member.guild.id in row['server_mute_guild_ids']:
-                        if row:
-                            if row['source'] in ('manual', 'bot', 'owner', 'bot_owner') and not after.mute:
-                                try:
-                                    await member.edit(mute=True, reason=f"Enforcing mute in {after_channel.name}")
-                                except discord.Forbidden:
-                                    logger.debug(f"No permission to mute {member.display_name}")
-                                except discord.HTTPException as e:
-                                    logger.debug(f"Failed to mute {member.display_name}: {e}")
-                            elif row['source'] == 'unmuted' and after.mute:
-                                try:
-                                    await member.edit(mute=False, reason=f"Enforcing unmute in {after_channel.name}")
-                                except discord.Forbidden:
-                                    logger.debug(f"No permission to unmute {member.display_name}")
-                                except discord.HTTPException as e:
-                                    logger.debug(f"Failed to unmute {member.display_name}: {e}")
+                # Step 1: Fetch user mute guilds
+                user_row = await conn.fetchrow("""
+                                               SELECT server_mute_guild_ids
+                                               FROM users
+                                               WHERE user_id = $1
+                                               """, user_id)
+
+                # Step 2: Check if this guild is a server mute
+                if user_row and user_row['server_mute_guild_ids'] and member.guild.id in user_row[
+                    'server_mute_guild_ids']:
+                    # Step 3: Fetch the active mute record for this specific channel
+                    mute_row = await conn.fetchrow("""
+                                                   SELECT source
+                                                   FROM active_mutes
+                                                   WHERE user_id = $1
+                                                     AND channel_id = $2
+                                                   """, user_id, after_channel.id)
+
+                    if mute_row:
+                        if mute_row['source'] in ('manual', 'bot', 'owner', 'bot_owner') and not after.mute:
+                            try:
+                                await member.edit(mute=True, reason=f"Enforcing mute in {after_channel.name}")
+                            except discord.Forbidden:
+                                logger.debug(f"No permission to mute {member.display_name}")
+                            except discord.HTTPException as e:
+                                logger.debug(f"Failed to mute {member.display_name}: {e}")
+                        elif mute_row['source'] == 'unmuted' and after.mute:
+                            try:
+                                await member.edit(mute=False, reason=f"Enforcing unmute in {after_channel.name}")
+                            except discord.Forbidden:
+                                logger.debug(f"No permission to unmute {member.display_name}")
+                            except discord.HTTPException as e:
+                                logger.debug(f"Failed to unmute {member.display_name}: {e}")
                         else:
                             print(f"DEBUG: No active mute record found, checking user arrays")
                             # No active record - check user arrays for missing records
