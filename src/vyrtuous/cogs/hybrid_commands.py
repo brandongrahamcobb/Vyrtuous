@@ -57,10 +57,10 @@ class Hybrid(commands.Cog):
         guild_id = ctx.guild.id
         valid_types = {'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag'}
         if alias_type not in valid_types:
-            await self.handler.send_message(ctx, f'❌ Invalid alias type. Must be one of: {", ".join(valid_types)}', ephemeral=True)
+            await self.handler.send_message(ctx, content=f'❌ Invalid alias type. Must be one of: {", ".join(valid_types)}')
             return
         if not alias_name.strip():
-            await self.handler.send_message(ctx, '❌ Alias name cannot be empty.', ephemeral=True)
+            await self.handler.send_message(ctx, content='❌ Alias name cannot be empty.')
             return
         def resolve_channel(value: str):
             if value.isdigit():
@@ -70,7 +70,7 @@ class Hybrid(commands.Cog):
             return discord.utils.get(ctx.guild.voice_channels, name=value)
         channel = resolve_channel(channel_id)
         if not channel or channel.type != discord.ChannelType.voice:
-            return await self.handler.send_message(ctx, '❌ Could not resolve a valid voice channel.', ephemeral=True)
+            return await self.handler.send_message(ctx, content='❌ Could not resolve a valid voice channel.')
         async with self.bot.db_pool.acquire() as conn:
             existing_alias = await conn.fetchrow(
                 '''
@@ -86,14 +86,12 @@ class Hybrid(commands.Cog):
                 channel_mention = existing_channel.mention if existing_channel else f"<#{existing_alias['channel_id']}>"
                 return await self.handler.send_message(
                     ctx,
-                    f'❌ Alias `{alias_name}` ({alias_type}) already exists and is set to {channel_mention}.',
-                    ephemeral=True
+                    content=f'❌ Alias `{alias_name}` ({alias_type}) already exists and is set to {channel_mention}.'
                 )
             if self.bot.get_command(alias_name):
                 return await self.handler.send_message(
                     ctx,
-                    f'❌ A command named `{alias_name}` already exists.',
-                    ephemeral=True
+                    content=f'❌ A command named `{alias_name}` already exists.'
                 )
             await conn.execute(
                 '''
@@ -514,32 +512,18 @@ class Hybrid(commands.Cog):
                     ON CONFLICT (user_id, channel_id) DO UPDATE 
                     SET source = EXCLUDED.source, issuer_id = EXCLUDED.issuer_id
                 ''', member_object.id, static_channel_id, mute_source, author_id)
-                if mute_source == "owner":
-                    await conn.execute('''
-                        INSERT INTO users (user_id, server_mute_channel_ids)
-                        VALUES ($1, ARRAY[$2]::BIGINT[])
-                        ON CONFLICT (user_id) DO UPDATE
-                        SET server_mute_channel_ids = (
-                            SELECT ARRAY(
-                                SELECT DISTINCT unnest(COALESCE(u.server_mute_channel_ids, '{}') || ARRAY[$2])
-                            )
-                            FROM users u WHERE u.user_id = EXCLUDED.user_id
-                        ),
-                        updated_at = NOW()
-                    ''', member_object.id, static_channel_id)
-                else:
-                    await conn.execute('''
-                        INSERT INTO users (user_id, mute_channel_ids)
-                        VALUES ($1, ARRAY[$2]::BIGINT[])
-                        ON CONFLICT (user_id) DO UPDATE
-                        SET mute_channel_ids = (
-                            SELECT ARRAY(
-                                SELECT DISTINCT unnest(COALESCE(u.mute_channel_ids, '{}') || ARRAY[$2])
-                            )
-                            FROM users u WHERE u.user_id = EXCLUDED.user_id
-                        ),
-                        updated_at = NOW()
-                    ''', member_object.id, static_channel_id)
+                await conn.execute('''
+                    INSERT INTO users (user_id, mute_channel_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (user_id) DO UPDATE
+                    SET mute_channel_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(COALESCE(u.mute_channel_ids, '{}') || ARRAY[$2])
+                        )
+                        FROM users u WHERE u.user_id = EXCLUDED.user_id
+                    ),
+                    updated_at = NOW()
+                ''', member_object.id, static_channel_id)
                 await conn.execute('''
                     INSERT INTO mute_reasons (guild_id, user_id, reason, channel_id)
                     VALUES ($1, $2, $3, $4)
@@ -773,23 +757,23 @@ class Hybrid(commands.Cog):
         alias_name: str = commands.parameter(description='Includ an alias name')
     ) -> None:
         if not alias_name.strip():
-            await self.handler.send_message(ctx, '❌ `alias_name` cannot be empty.', ephemeral=True)
+            await self.handler.send_message(ctx, content='❌ `alias_name` cannot be empty.')
             return
         guild_id = ctx.guild.id
         alias_type = None
-        for candidate in ('mute', 'unmute', 'ban', 'unban', 'flag'):
+        for candidate in ('mute', 'unmute', 'ban', 'unban', 'flag', 'unflag'):
             if alias_name in self.bot.command_aliases.get(guild_id, {}).get(candidate, {}):
                 alias_type = candidate
                 break
-        if alias_type.lower() not in {'mute', 'unmute', 'ban', 'unban', 'flag'}:
-            await self.handler.send_message(ctx, '❌ `alias_type` must be either `mute`, `unmute`, `ban`, `unban`, or `flag`.', ephemeral=True)
+        if alias_type.lower() not in {'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag'}:
+            await self.handler.send_message(ctx, content='❌ `alias_type` must be either `mute`, `unmute`, `ban`, `unban`, or `flag`.')
             return
         if not alias_type:
-            await self.handler.send_message(ctx, f'❌ Alias `{alias_name}` not found.', ephemeral=True)
+            await self.handler.send_message(ctx, content=f'❌ Alias `{alias_name}` not found.')
             return
         alias_map = self.bot.command_aliases.get(guild_id, {}).get(alias_type.lower(), {})
         if alias_name not in alias_map:
-            await self.handler.send_message(ctx, f'❌ Alias `{alias_name}` not found in `{alias_type}` for guild `{guild_id}`.', ephemeral=True)
+            await self.handler.send_message(ctx, content=f'❌ Alias `{alias_name}` not found in `{alias_type}` for guild `{guild_id}`.')
             return
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
@@ -1014,7 +998,7 @@ class Hybrid(commands.Cog):
                 )
                 return
             found_aliases = False
-            for kind in ('mute', 'unmute', 'ban', 'unban', 'flag'):
+            for kind in ('mute', 'unmute', 'ban', 'unban', 'flag', 'unflag'):
                 entries = aliases.get(kind, {})
                 if not entries:
                     continue
@@ -1034,7 +1018,7 @@ class Hybrid(commands.Cog):
                 )
                 return
         else:
-            for kind in ('mute', 'unmute', 'ban', 'unban', 'flag'):
+            for kind in ('mute', 'unmute', 'ban', 'unban', 'flag', 'unflag'):
                 entries = aliases.get(kind, {})
                 if not entries:
                     continue
@@ -1288,8 +1272,7 @@ class Hybrid(commands.Cog):
         guild_id = ctx.guild.id
         member_object = await commands.MemberConverter().convert(ctx, member)
         if not member_object:
-            return await self.handler.send_message(ctx,
-                                                   content='Could not resolve a valid guild member from your input.')
+            return await self.handler.send_message(ctx, content='Could not resolve a valid guild member from your input.')
 
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -1358,7 +1341,7 @@ class Hybrid(commands.Cog):
         else:
             await ctx.send(f'{member_object.mention} has been server muted. They are not currently in a voice channel.')
 
-    @commands.hybrid_command(name='xsmute', help='Unmutes a member throughout the entire guild.')
+    @commands.hybrid_command(name='unsmute', help='Unmutes a member throughout the entire guild.')
     @commands.check(lambda ctx: ctx.bot.get_cog("Hybrid").can_server_mute(ctx))
     async def unsmute(
             self,

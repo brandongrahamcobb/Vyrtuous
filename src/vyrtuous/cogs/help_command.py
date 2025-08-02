@@ -143,7 +143,13 @@ class Help(commands.Cog):
                 color=discord.Color.blue()
             )
             sig = inspect.signature(cmd.callback)
-            parameters = list(sig.parameters.items())[2:]
+            parameters = list(sig.parameters.items())
+
+            # Remove leading 'self' and 'ctx' if they exist
+            if parameters and parameters[0][0] == 'self':
+                parameters.pop(0)
+            if parameters and parameters[0][0] == 'ctx':
+                parameters.pop(0)
             if parameters:
                 usage_parts = [f"{config['discord_command_prefix']}{cmd.name}"]
                 param_details = []
