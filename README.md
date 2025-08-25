@@ -86,23 +86,45 @@ git clone https://github.com/brandongrahamcobb/Vyrtuous.git
 ```
 2. Install Docker
 3. Install postgresql
-4. Run ```docker compose build vyrtuous``` from the root directory of the git repository.
-5. Run ```docker cp schema.sql vyrtuous:/.```
-6. Run ```docker exec -it vyrtuous /bin/bash```
-7. Run ```psql -U postgres```
-7. ```sql
+4. Run from the root directory of the git repository. 
+```sh
+docker compose build vyrtuous
+```
+5. Run 
+```sh
+docker cp schema.sql vyrtuous:/.
+```
+6. Run 
+```sh
+docker exec -it vyrtuous /bin/bash
+```
+7. Run
+```sh
+psql -U postgres
+```
+8. 
+```sql
 CREATE DATABASE vyrtuous;
 CREATE USER vyrtuous;
 ALTER USER vyrtuous WITH PASSWORD 'password';
 ```
-8. Exit psql.
-9. Run ```psql -U postgres -d vyrtuous -f schema.sql```
-10. Exit the exec back into the original shell.
-11. Run ```docker compose run vyrtuous```
-12. Answer the configuration setup (check to make sure its enabled in config.py, if not enable it for setup, then disable after config)
-13. Exit
-14. Run ```docker compose up vyrtuous -d```
-15. Profit
+9. Exit psql.
+10. Run 
+```sh
+psql -U postgres -d vyrtuous -f schema.sql
+```
+11. Exit the exec back into the original shell.
+12. Run 
+```sh
+docker compose run vyrtuous
+```
+13. Answer the configuration setup (check to make sure its enabled in config.py, if not enable it for setup, then disable after config)
+14. Exit
+15. Run
+```sh
+docker compose up vyrtuous -d
+```
+16. Profit
 
 ## Configuration
 
