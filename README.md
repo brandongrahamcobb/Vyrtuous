@@ -1,8 +1,12 @@
 **The Vyrtuous Project** is a vegan-owned Discord bot written in Python. It brings together:
 
 * Loading and unloading Cogs, the fundamental components of the Discord bot.
-* Permission scaling for server developers, channel coordinators and channel moderators.
+* Permission scaling for server mute admins, server developers, channel coordinators and channel moderators.
 * PostgreSQL database information about ban, flags and mutes.
+* Aliasing to enable room by room moderation.
+* Reengineered server mute as local mute.
+* Duration and expiration timers with reasons.
+
 ## Project Flow
 ![Vyrtuous](resources/images/VyrtuousUML.svg)
 
@@ -12,28 +16,50 @@ Moderation Features
 
 • `Room Ban` — Bans in Discord rooms only persist in the room itself, not the whole server.
 It includes ban durations including a permanent ban.
-It also includes an optional reason.
+Coordinators and above can use the permanent ban.
+It also includes an optional reason (non-optional if permanent).
 
 • `Room Muting` — Mutes in Discord rooms only persist in the room itself, not the whole server.
+It includes mute durations including a permanent mute.
+Coordinators and above can use the permanent ban.
 It also includes an optional reason.
 
-* `alias <alias_type> <alias_name> <channel>` - Creates a ban, flag, mute, unban or unmute alias for a specific channel
-* `aliases <channel>` - Lists all the aliases present in a channel.
-* `coord <channel> <member>`
-* `coords` - Lists coordinators in the server where the command was run.
-* `dev <member>` - Creates a developer in the server where the command was run.
+• `Text Muting` — Mutes in Discord text-channels only persist in the room itself, not the whole server.
+It includes mute durations including a permanent mute.
+Coordinators and above can use the permanent ban.
+It also includes an optional reason.
+
+## Static Commands
+* `admin <member>` - Creates a server muter. Requires an owner.
+* `alias <alias_type> <alias_name> <channel>` - Creates a ban, cow, flag, mute, unban , uncow or unmute alias for a specific channel.
+* `cmds <channel>` - Lists all the aliases present in a channel or use `all` to list all channels in a guild.
+* `coord <channel> <member>` - Creates a coordinator for a given channel. Permitted to use by developers.
+* `coords` - Lists coordinators in the server where the command was run or use `all` to list all coordinators in a guild.
+* `dev <member>` - Creates a developer in the server where the command was run. Requires bot owner or server owner permission.
 * `devs` - Lists developers in the server where the command was run.
-* `flags <channel>` - Lists members who are flagged in the channel.
+* `flags <channel>` - Lists members who are flagged in the channel or use `all` to list all flags in a guild.
 * `help <command>` - Interactive help command paginating commands for members.
-* `mod <channel> <member>` - Creates a moderator in the channel specified.
-* `mods <channel>` - Lists all mods in the channel specified.
-* `roleban <channel> <role>` - Syncs a channel's ban alias with an assigned moderated role.'
-* `xalias <alias_name>` - Deletes an alias.
-* `xcoord <channel> <member>` - Deletes a coordinator from a specified channel.
+* `mod <channel> <member>` - Creates a moderator in the channel specified requires a developer or above.
+* `mods <channel>` - Lists all mods in the channel specified or use `all` to list all moderators in a guild.
+* `xalias <alias_name>` - Deletes an alias. Requires a coordinator.
+* `xadmin <member>` - Deletes a server muter. Requires an owner.
+* `xcoord <channel> <member>` - Deletes a coordinator from a specified channel. Requires a developer or above.
 * `xdev <member>` - Deletes a developer in the server it was run.
 * `xmod <channel> <member>` - Deletes a moderator in a channel.
 
+## Alias Commands
+* `ban <member> <duration> <reason>` - Bans a member for a certain timeframe (24h by default) via 30m, 2h, 1d like strings for duration and an optional reason for moderaotrs. Permanent bans are set using 0 for duration and it requires a coordinator.
+* `flag <member> <reason>` - Flags a member. Requires a moderator.
+* `mute <member> <duration> <reason>` - Voice mutes a member for a certain timeframe (24h by default) via 30m, 2h, 1d like strings for duration and an optional reason for moderaotrs. Permanent voice mutes are set using 0 for duration and it requires a coordinator.
+* `tmute <member> <duration> <reason>` - Text mutes a member for a certain timeframe (24h by default) via 30m, 2h, 1d like strings for duration and an optional reason for moderaotrs. Permanent text-mutes are set using 0 for duration and it requires a coordinator.
+* `unban <member> - Unbans a member for a room. Requires moderator.
+* `unflag <member> - Unflags a member for a room. Requires moderator. 
+* `unmute <member> - Unvoicemutes a member for a room. Requires moderator. 
+* `untmute <member> - Untextmutes a member for a room. Requires moderator. 
+
 Lifecycle Features
+
+• `backup` — Creates an immediate backup and sends it over Discord.
 
 • `load <path-to-cog>` — Loads the bot's cogs after an unload.
 
@@ -58,29 +84,25 @@ Prerequisites:
 ```bash
 git clone https://github.com/brandongrahamcobb/Vyrtuous.git
 ```
-
-3. Install python
-
-4. Install pip
-
-5. Create & activate a virtual environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
+2. Install Docker
+3. Install postgresql
+4. Run ```docker compose build vyrtuous``` from the root directory of the git repository.
+5. Run ```docker cp schema.sql vyrtuous:/.```
+6. Run ```docker exec -it vyrtuous /bin/bash```
+7. Run ```psql -U postgres```
+7. ```sql
+CREATE DATABASE vyrtuous;
+CREATE USER vyrtuous;
+ALTER USER vyrtuous WITH PASSWORD 'password';
 ```
-
-6. Install Docker
-
-7. Run restart.sh
-```bash
-./.restart.sh
-```
-8. Subsequent restarts should run start.sh
-Run restart.sh
-```bash
-./.start.sh
-```
+8. Exit psql.
+9. Run ```psql -U postgres -d vyrtuous -f schema.sql```
+10. Exit the exec back into the original shell.
+11. Run ```docker compose run vyrtuous```
+12. Answer the configuration setup (check to make sure its enabled in config.py, if not enable it for setup, then disable after config)
+13. Exit
+14. Run ```docker compose up vyrtuous -d```
+15. Profit
 
 ## Configuration
 
