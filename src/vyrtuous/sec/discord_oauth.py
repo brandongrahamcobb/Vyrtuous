@@ -17,7 +17,7 @@
 '''
 import asyncio
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import aiohttp
 from quart import Quart, request, redirect
@@ -68,7 +68,7 @@ class DiscordOAuth:
             return False
         self.access_token = token_data['access_token']
         self.refresh_token = token_data.get('refresh_token')
-        self.expires_at = datetime.utcnow() + timedelta(seconds=token_data['expires_in'])
+        self.expires_at = datetime.utcnow() + datetime.timedelta(seconds=token_data['expires_in'])
         self.token_event.set()
         return True
 

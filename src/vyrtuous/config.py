@@ -35,12 +35,12 @@ class Config:
         if cls._config is None:
             if isfile(PATH_CONFIG_YAML):
                 config = load_yaml(PATH_CONFIG_YAML)
-                if input('Do you want to change any settings? (yes/no): ').strip().lower() in ['yes', 'y']:
-                    config['api_keys'] = config.get('api_keys', {})
-                    cls._modify_api_keys(config)
-                    config = cls._prompt_additional_config(config)
-                    with open(PATH_CONFIG_YAML, 'w') as file:
-                        yaml.dump(config, file, default_flow_style=False, allow_unicode=True, sort_keys=False)
+#                if input('Do you want to change any settings? (yes/no): ').strip().lower() in ['yes', 'y']:
+#                    config['api_keys'] = config.get('api_keys', {})
+#                    cls._modify_api_keys(config)
+#                    config = cls._prompt_additional_config(config)
+#                    with open(PATH_CONFIG_YAML, 'w') as file:
+#                        yaml.dump(config, file, default_flow_style=False, allow_unicode=True, sort_keys=False)
             else:
                 makedirs(dirname(PATH_CONFIG_YAML), exist_ok=True)
                 config = {

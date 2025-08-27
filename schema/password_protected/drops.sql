@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS text_mutes;
+DROP TABLE IF EXISTS command_aliases;
+DROP TABLE IF EXISTS mute_reasons;
+DROP TABLE IF EXISTS ban_reasons;
+DROP TABLE IF EXISTS active_bans;
+DROP TABLE IF EXISTS ban_roles;
+DROP TABLE IF EXISTS ban_expirations;
+DROP TABLE IF EXISTS server_mute_reasons;
+DROP TABLE IF EXISTS active_mutes;
+DROP TABLE IF EXISTS channel_roles;

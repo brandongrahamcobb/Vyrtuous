@@ -20,14 +20,14 @@ from typing import Literal, Optional
 from vyrtuous.inc.helpers import *
 
 from vyrtuous.service.check_service import *
-
+from vyrtuous.bot.discord_bot import DiscordBot
 
 class DevCommands(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot: DiscordBot):
         self.bot = bot
         
-    @commands.hybrid_command(name='load', hidden=True)
+    @commands.command(name='load', hidden=True)
     @commands.check(at_home)
     async def load(self, ctx: commands.Context, *, module: str):
         try:
@@ -37,7 +37,7 @@ class DevCommands(commands.Cog):
         else:
             await ctx.send('\N{OK HAND SIGN}')
                                     
-    @commands.hybrid_command(name='unload', hidden=True)
+    @commands.command(name='unload', hidden=True)
     @commands.check(at_home)
     async def unload(self, ctx: commands.Context, *, module: str):
         try:
@@ -48,7 +48,7 @@ class DevCommands(commands.Cog):
             await ctx.send('\N{OK HAND SIGN}')
 
 
-    @commands.hybrid_command(name='reload', hidden=True)
+    @commands.command(name='reload', hidden=True)
     @commands.check(at_home)
     async def reload(self, ctx: commands.Context, *, module: str):
         try:
@@ -89,6 +89,5 @@ class DevCommands(commands.Cog):
                 ret += 1
         await ctx.send(f'Synced the tree to {ret}/{len(guilds)}.')
 
-
-async def setup(bot: commands.bot):
+async def setup(bot: DiscordBot):
     await bot.add_cog(DevCommands(bot))

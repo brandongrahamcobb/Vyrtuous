@@ -53,7 +53,7 @@ async def main():
     discord_oauth = DiscordOAuth(config)
     setup_discord_routes(discord_app, discord_oauth)
 
-    discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=2592))
+    discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=3000))
     print("Please authenticate Discord by visiting the following URL:")
     print(discord_oauth.get_authorization_url())
 

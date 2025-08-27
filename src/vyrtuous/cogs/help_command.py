@@ -27,17 +27,18 @@ from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.utils.setup_logging import logger
+from vyrtuous.bot.discord_bot import DiscordBot
 
 PERMISSION_ORDER = ['Owner', 'Developer', 'Coordinator', 'Moderator', 'Everyone']
 
 class Help(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
-     
+
     async def get_available_commands(self, bot, ctx) -> list[commands.Command]:
         available_commands = []
         for command in bot.commands:
@@ -49,7 +50,7 @@ class Help(commands.Cog):
             except Exception as e:
                 logger.warning(f"❌ Exception while checking command '{command}': {e}")
         return available_commands
-        
+
     async def get_command_permission_level(self, bot, ctx, command):
         if not hasattr(command, 'checks') or not command.checks:
             return 'Everyone'
@@ -123,27 +124,30 @@ class Help(commands.Cog):
             chunks.append('\n'.join(current_chunk))
         return chunks
         
-    @commands.hybrid_command(name='help')
+    @commands.command(name='help')
     async def help(self, ctx, *, command_name: str = None):
         bot = ctx.bot
         if command_name:
             cmd = bot.get_command(command_name.lower())
             if not cmd:
-                await self.handler.send_message(ctx, f'❌ Command `{command_name}` not found.')
-                return
+                return await self.handler.send_message(ctx, f'❌ Command `{command_name}` not found.')
             if cmd.hidden:
-                await self.handler.send_message(ctx, f'❌ Command `{command_name}` is hidden.')
-                return
+                return await self.handler.send_message(ctx, f'❌ Command `{command_name}` is hidden.')
             if not await cmd.can_run(ctx):
-                await self.handler.send_message(ctx, f'❌ You do not have permission to run `{command_name}`.')
-                return
+                return await self.handler.send_message(ctx, f'❌ You do not have permission to run `{command_name}`.')
             embed = discord.Embed(
                 title=f'{config['discord_command_prefix']}{cmd.name}',
                 description=cmd.help or 'No description provided.',
                 color=discord.Color.blue()
             )
             sig = inspect.signature(cmd.callback)
-            parameters = list(sig.parameters.items())[2:]
+            parameters = list(sig.parameters.items())
+
+            # Remove leading 'self' and 'ctx' if they exist
+            if parameters and parameters[0][0] == 'self':
+                parameters.pop(0)
+            if parameters and parameters[0][0] == 'ctx':
+                parameters.pop(0)
             if parameters:
                 usage_parts = [f"{config['discord_command_prefix']}{cmd.name}"]
                 param_details = []
@@ -179,12 +183,10 @@ class Help(commands.Cog):
                         value="\n".join(param_details),
                         inline=False
                     )
-            await self.handler.send_message(ctx, embed=embed)
-            return
+            return await self.handler.send_message(ctx, embed=embed)
         all_commands = await self.get_available_commands(bot, ctx)
         if not all_commands:
-            await self.handler.send_message(ctx, '❌ No commands available to you.')
-            return
+            return await self.handler.send_message(ctx, '❌ No commands available to you.')
         current_text_channel_id = ctx.channel.id
         guild_aliases = self.bot.command_aliases.get(ctx.guild.id, {})
         alias_to_channel_map = {}
@@ -194,11 +196,24 @@ class Help(commands.Cog):
         contextual_commands = []
         for command in all_commands:
             alias_channel_id = alias_to_channel_map.get(command.name)
-            if alias_channel_id:
-                if current_text_channel_id == alias_channel_id:
+
+            # Command is aliased in this guild and must match the current channel
+            if alias_channel_id is not None:
+                if alias_channel_id == current_text_channel_id:
                     contextual_commands.append(command)
-            else:
-                contextual_commands.append(command)
+            # Command is not aliased in this guild at all — skip it
+            elif command.name not in alias_to_channel_map:
+                # Only include global commands (no alias binding anywhere)
+                is_global = True
+                for guild_id, alias_type_map in self.bot.command_aliases.items():
+                    for channel_map in alias_type_map.values():
+                        if command.name in channel_map:
+                            is_global = False
+                            break
+                    if not is_global:
+                        break
+                if is_global:
+                    contextual_commands.append(command)
         if not contextual_commands:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
@@ -253,11 +268,10 @@ class Help(commands.Cog):
                     )
             pages.append(embed)
         if not pages:
-            await self.handler.send_message(ctx, '❌ No commands available to you.')
-            return
+            return await self.handler.send_message(ctx, '❌ No commands available to you.')
         paginator = Paginator(bot, ctx, pages)
-        await paginator.start()
+        return await paginator.start()
 
-async def setup(bot: commands.Bot):
+async def setup(bot: DiscordBot):
     cog = Help(bot)
     await bot.add_cog(cog)

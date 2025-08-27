@@ -21,12 +21,13 @@ import os
 
 import discord
 from discord.ext import commands
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 
 os.makedirs(DIR_TEMP, exist_ok=True)
 
 class DiscordMessageService:
-    def __init__(self, bot, db_pool):
+    def __init__(self, bot: DiscordBot, db_pool):
         self.bot = bot
 
     async def send_dm(self, ctx: commands.Context, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
@@ -63,7 +64,7 @@ class DiscordMessageService:
         await send_func(**kwargs)
 
 class Paginator:
-    def __init__(self, bot, ctx, pages):
+    def __init__(self, bot: DiscordBot, ctx, pages):
         self.bot = bot
         self.ctx = ctx
         self.pages = pages
