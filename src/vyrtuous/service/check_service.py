@@ -89,18 +89,59 @@ async def has_command_alias(ctx) -> bool:
             return True
     raise NoCommandAlias(f"Command alias `{command_name}` is not mapped to any target channel.")
 
+async def is_coordinator(ctx):
+    if ctx.guild is None:
+        raise NotCoordinator("Command must be used in a guild.")
+    user_id = ctx.author.id
+    channel_id = ctx.channel.id
+    bot = ctx.bot
+    try:
+        async with bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                user_id
+            )
+    except Exception:
+        raise NotAValidDatabaseQuery("Failed to query coordinator permissions.")
+    if not row:
+        raise NotAValidDatabaseQuery("User not found in database.")
+    coordinator_channel_ids = row.get("coordinator_channel_ids") or []
+    if channel_id not in coordinator_channel_ids:
+        raise NotCoordinator("You are not a coordinator in this channel.")
+    return True
+
+
 async def is_moderator(ctx):
     if ctx.guild is None:
         raise NotInAGuild("Command must be used in a guild.")
     user_id = ctx.author.id
-    guild_id = ctx.guild.id
-    async with ctx.bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT moderator_ids FROM users WHERE user_id = $1", user_id
-        )
-    if not row or guild_id not in (row.get("moderator_ids") or []):
-        raise NotModerator("You are not a moderator in this guild.")
+    channel_id = ctx.channel.id
+    try:
+        async with ctx.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT moderator_channel_ids FROM users WHERE user_id = $1",
+                user_id
+            )
+    except Exception:
+        raise NotAValidDatabaseQuery("Failed to query moderator permissions.")
+    if not row:
+        raise NotAValidDatabaseQuery("User not found in database.")
+    moderator_channel_ids = row.get("moderator_channel_ids") or []
+    if channel_id not in moderator_channel_ids:
+        raise NotModerator("You are not a moderator in this channel.")
     return True
+    #async def is_moderator(ctx):
+#    if ctx.guild is None:
+#        raise NotInAGuild("Command must be used in a guild.")
+#    user_id = ctx.author.id
+#    guild_id = ctx.guild.id
+#    async with ctx.bot.db_pool.acquire() as conn:
+#        row = await conn.fetchrow(
+#            "SELECT moderator_ids FROM users WHERE user_id = $1", user_id
+#        )
+#    if not row or guild_id not in (row.get("moderator_ids") or []):
+#        raise NotModerator("You are not a moderator in this guild.")
+#    return True
 
     # if not row:
     #     raise NotAValidDatabaseQuery("User not found in database.")
@@ -114,26 +155,26 @@ async def is_moderator(ctx):
     #     raise NoInheritedPermissionsForRole("You have no channel permissions configured.")
     # return True
 
-async def is_coordinator(ctx):
-    if ctx.guild is None:
-        raise NotCoordinator("Command must be used in a guild.")
-    user_id = ctx.author.id
-    guild_id = ctx.guild.id
-    bot = ctx.bot
-    try:
-        async with bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT coordinator_ids FROM users WHERE user_id = $1",
-                user_id
-            )
-    except Exception:
-        raise NotAValidDatabaseQuery("Failed to query coordinator permissions.")
-    if not row:
-        raise NotAValidDatabaseQuery("User not found in database.")
-    coordinator_ids = row.get("coordinator_ids")
-    if not coordinator_ids or guild_id not in coordinator_ids:
-        raise NotCoordinator("You are not a coordinator in this guild.")
-    return True
+#async def is_coordinator(ctx):
+#    if ctx.guild is None:
+#        raise NotCoordinator("Command must be used in a guild.")
+#    user_id = ctx.author.id
+#    guild_id = ctx.guild.id
+#    bot = ctx.bot
+#    try:
+#        async with bot.db_pool.acquire() as conn:
+#            row = await conn.fetchrow(
+#                "SELECT coordinator_ids FROM users WHERE user_id = $1",
+#                user_id
+#            )
+#    except Exception:
+#        raise NotAValidDatabaseQuery("Failed to query coordinator permissions.")
+#    if not row:
+#        raise NotAValidDatabaseQuery("User not found in database.")
+#    coordinator_ids = row.get("coordinator_ids")
+#    if not coordinator_ids or guild_id not in coordinator_ids:
+#        raise NotCoordinator("You are not a coordinator in this guild.")
+#    return True
 # async def is_coordinator(ctx):
 #     if ctx.guild is None:
 #         raise NotCoordinator("Command must be used in a guild.")
