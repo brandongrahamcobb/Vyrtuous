@@ -167,18 +167,22 @@ def is_owner_developer():
 
 def is_owner_developer_coordinator_moderator(alias_type: Optional[str] = None):
     async def predicate(ctx: commands.Context):
-        # Get the target channel id from the alias in the DB
-        if not ctx.guild or not ctx.command:
-            raise commands.CheckFailure("Command must be used in a guild and be a valid command.")
-        async with ctx.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2",
-                ctx.guild.id,
-                ctx.command.name.lower()
-            )
-        if not row:
-            raise commands.CheckFailure("Could not find the channel for this command alias.")
-        target_channel_id = row["channel_id"]
+        target_channel_id = getattr(ctx, "_target_channel_id", None)
+
+        # If this command isn't an alias, skip DB checks
+        if not target_channel_id and ctx.guild and ctx.command:
+            async with ctx.bot.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2",
+                    ctx.guild.id,
+                    ctx.command.name.lower()
+                )
+            if row:
+                target_channel_id = row["channel_id"]
+
+        # If still no target channel, skip moderator/coord check
+        if not target_channel_id:
+            return True  # normal command, allow
 
         # Owner / developer short-circuit
         for check in (is_system_owner, is_guild_owner, is_developer):
@@ -211,17 +215,22 @@ def is_owner_developer_coordinator_moderator(alias_type: Optional[str] = None):
 
 def is_owner_developer_coordinator(alias_type: Optional[str] = None):
     async def predicate(ctx: commands.Context):
-        if not ctx.guild or not ctx.command:
-            raise commands.CheckFailure("Command must be used in a guild and be a valid command.")
-        async with ctx.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2",
-                ctx.guild.id,
-                ctx.command.name.lower()
-            )
-        if not row:
-            raise commands.CheckFailure("Could not find the channel for this command alias.")
-        target_channel_id = row["channel_id"]
+        target_channel_id = getattr(ctx, "_target_channel_id", None)
+
+        # Skip DB check if command isn't an alias
+        if not target_channel_id and ctx.guild and ctx.command:
+            async with ctx.bot.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2",
+                    ctx.guild.id,
+                    ctx.command.name.lower()
+                )
+            if row:
+                target_channel_id = row["channel_id"]
+
+        # If no alias, allow command to run
+        if not target_channel_id:
+            return True
 
         # Owner / developer short-circuit
         for check in (is_system_owner, is_guild_owner, is_developer):
