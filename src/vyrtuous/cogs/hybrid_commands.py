@@ -57,7 +57,7 @@ class Hybrid(commands.Cog):
         return random.choice(VEGAN_EMOJIS)
 
     @commands.command(name='alias', help='Set an alias for a cow, uncow, mute, unmute, ban, unban or flag action.')
-    @commands.check(is_owner_developer_coordinator)
+    @is_owner_developer_coordinator()
     async def create_alias(
             self,
             ctx,
@@ -136,7 +136,7 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Ban a user from a voice channel.'
         )
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("ban")
         async def ban_alias(
             ctx,
             member: str = commands.parameter(description='Mention or user ID of the member to ban.'),
@@ -262,7 +262,7 @@ class Hybrid(commands.Cog):
         return ban_alias
         
     @commands.command(name='coord', help='Grants coordinator access for a specific voice channel.')
-    @commands.check(is_owner_developer)
+    @is_owner_developer()
     async def create_coordinator(
         self,
         ctx,
@@ -313,7 +313,7 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Label a user as going vegan for tracking purposes.'
         )
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("cow")
         async def going_vegan_alias(
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
@@ -357,7 +357,7 @@ class Hybrid(commands.Cog):
         return going_vegan_alias
         
     @commands.command(name='dev', help='Elevates a user\'s permissions to a bot developer.')
-    @commands.check(is_owner)
+    @is_owner()
     async def create_developer(
         self,
         ctx,
@@ -389,7 +389,7 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Flag a user in the database for the voice channel mapped to this alias.'
         )
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("flag")
         async def flag_alias(
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
@@ -457,7 +457,7 @@ class Hybrid(commands.Cog):
         return flag_alias
         
     @commands.command(name='mod', help='Elevates a user\'s permission to VC moderator for a specific channel.')
-    @commands.check(is_owner_developer_coordinator)
+    @is_owner_developer_coordinator()
     async def create_moderator(
             self,
             ctx,
@@ -525,7 +525,7 @@ class Hybrid(commands.Cog):
 
     def create_text_mute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Text mutes a user in a specific text channel.')
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("tmute")
         async def text_mute_alias(
             ctx,
             member: str = commands.parameter(description='Tag a user or include their ID.'),
@@ -542,7 +542,7 @@ class Hybrid(commands.Cog):
             bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
             server_owner_id = ctx.guild.owner_id
             expires_at, duration_display = self.parse_duration(duration_hours)
-            if expires_at is None and (not await is_owner_developer_coordinator(ctx) or not reason.strip()):
+            if expires_at is None and (not await is_owner_developer_coordinator(ctx, "tmute") or not reason.strip()):
                 return await self.handler.send_message(
                     ctx,
                     content='\U0001F525 Reason required and coordinator-only for permanent text-mutes.'
@@ -626,7 +626,7 @@ class Hybrid(commands.Cog):
 
     def create_voice_mute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Mutes a member in a specific VC.')
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("mute")
         async def voice_mute_alias(
             ctx,
             member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
@@ -640,7 +640,7 @@ class Hybrid(commands.Cog):
                 logger.warning(e)
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to mute the owner.')
             expires_at, duration_display = self.parse_duration(duration_hours)
-            if expires_at is None and (not await is_owner_developer_coordinator(ctx) or not reason.strip()):
+            if expires_at is None and (not await is_owner_developer_coordinator(ctx, "mute") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent mutes.')
             member, _ = await self.get_channel_and_member(ctx, member)
             static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('mute', {}).get(command_name)
@@ -724,7 +724,7 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Unban a user from a voice channel.'
         )
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("unban")
         async def unban_alias(
                 ctx,
                 member: str = commands.parameter(description='Mention or user ID of the member to unban.'),
@@ -743,7 +743,7 @@ class Hybrid(commands.Cog):
                     member.id, static_channel_id
                 )
             if existing_ban and existing_ban['expires_at'] is None:
-                if not await is_owner_developer_coordinator(ctx):
+                if not await is_owner_developer_coordinator(ctx, "unban"):
                     return await self.handler.send_message(
                         ctx,
                         content=f'\U0001F525 {member.mention} is permanently banned from <#{static_channel_id}> and cannot be unbanned.'
@@ -805,7 +805,7 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Unlabel a user for tracking purposes.'
         )
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("uncow")
         async def no_longer_going_vegan_alias(
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
@@ -848,7 +848,7 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Unflag a user in the database for the voice channel mapped to this alias.'
         )
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("unflag")
         async def unflag_alias(
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
@@ -888,7 +888,7 @@ class Hybrid(commands.Cog):
 
     def create_unmute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Unmutes a member in a specific VC.')
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("unmute")
         async def unmute_alias(
             ctx,
             member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
@@ -953,7 +953,7 @@ class Hybrid(commands.Cog):
 
     def create_untextmute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Removes a text mute from a user in a specific text channel.')
-        @commands.check(is_owner_developer_coordinator_moderator)
+        @is_owner_developer_coordinator_moderator("untmute")
         async def untext_mute_alias(
                 ctx,
                 member: str = commands.parameter(description='Tag a user or include their ID.')
@@ -985,7 +985,7 @@ class Hybrid(commands.Cog):
         return untext_mute_alias
 
     @commands.command(name='xalias', help='Deletes an alias.', hidden=True)
-    @commands.check(is_owner_developer_coordinator)
+    @is_owner_developer_coordinator()
     async def delete_alias(self, ctx, alias_name: str = commands.parameter(description='Includ an alias name')) -> None:
         if not alias_name.strip():
             return await self.handler.send_message(ctx, content='\U0001F525 `alias_name` cannot be empty.')
@@ -1026,7 +1026,7 @@ class Hybrid(commands.Cog):
         name='xcoord',
         help='Revokes coordinator access from a user in a specific voice channel.'
     )
-    @commands.check(is_owner_developer)
+    @is_owner_developer()
     async def delete_coordinator(
         self,
         ctx,
@@ -1079,7 +1079,7 @@ class Hybrid(commands.Cog):
                 return await ctx.send(f'{self.get_random_emoji()} {member.mention}\'s coordinator access has been revoked from {channel.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name='xdev', help='Removes a developer.')
-    @commands.check(is_owner)
+    @is_owner()
     async def delete_developer(
         self,
         ctx,
@@ -1098,7 +1098,7 @@ class Hybrid(commands.Cog):
         return await ctx.send(f'{self.get_random_emoji()} {member.mention}\'s developer access has been revoked in this guild.', allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name='xmod', help='Revokes a member\'s VC moderator role for a given channel.')
-    @commands.check(is_owner_developer_coordinator)
+    @is_owner_developer_coordinator()
     async def delete_moderator(
         self,
         ctx,
@@ -1154,12 +1154,13 @@ class Hybrid(commands.Cog):
                 return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been completely revoked as moderator from {channel.name} and this guild (no remaining channels).', allowed_mentions=discord.AllowedMentions.none())
             else:
                 return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been revoked moderator access in {channel.name}.', allowed_mentions=discord.AllowedMentions.none())
-
+    
+ #   @is_owner_developer_coordinator_moderator()
     @commands.command(
         name='cmds',
         help='List command aliases. Optionally provide "all" or a specific channel.'
     )
-    @commands.check(is_owner_developer_coordinator_moderator)
+    @is_owner_developer_coordinator_moderator()
     async def list_room_commands(
             self,
             ctx,
@@ -1212,7 +1213,7 @@ class Hybrid(commands.Cog):
         hidden=True,
         help='Lists ban statistics.'
     )
-    @commands.check(is_owner_developer_coordinator_moderator)
+    @is_owner_developer_coordinator_moderator()
     async def list_bans(
             self,
             ctx: commands.Context,
@@ -1345,7 +1346,7 @@ class Hybrid(commands.Cog):
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a text channel or use "all".')
 
     @commands.command(name='coords', help='Lists coordinators for a specific voice channel or all.', hidden=True)
-    @commands.check(is_owner_developer_coordinator)
+    @is_owner_developer_coordinator()
     async def list_coordinators(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Voice channel name, mention, ID, or "all".')) -> None:
         pages = []
         member, channel = await self.get_channel_and_member(ctx, target)
@@ -1427,7 +1428,7 @@ class Hybrid(commands.Cog):
             raise
     
     @commands.command(name='devs', hidden=True, help='Lists all developers.')
-    @commands.check(is_owner_developer)
+    @is_owner_developer()
     async def list_developers(self, ctx) -> None:
         guild = ctx.guild
         pages = []
@@ -1456,7 +1457,7 @@ class Hybrid(commands.Cog):
         hidden=True,
         help='List flag statistics.'
     )
-    @commands.check(is_owner_developer_coordinator_moderator)
+    @is_owner_developer_coordinator_moderator()
     async def list_flags(
             self,
             ctx,
@@ -1549,7 +1550,7 @@ class Hybrid(commands.Cog):
         hidden=True,
         help='Lists moderator statistics.'
     )
-    @commands.check(is_owner_developer_coordinator_moderator)
+    @is_owner_developer_coordinator_moderator()
     async def list_moderators(
             self,
             ctx,
@@ -1659,7 +1660,7 @@ class Hybrid(commands.Cog):
         hidden=True,
         help='Lists mute statistics.'
     )
-    @commands.check(is_owner_developer_coordinator)
+    @is_owner_developer_coordinator()
     async def list_mutes(
             self,
             ctx,
@@ -1785,7 +1786,7 @@ class Hybrid(commands.Cog):
         name='ls',
         help='List users cowed as going vegan in this guild.'
     )
-    @commands.check(is_owner_developer_coordinator_moderator)
+    @is_owner_developer_coordinator_moderator()
     async def list_members(
         self,
         ctx,
@@ -1839,7 +1840,7 @@ class Hybrid(commands.Cog):
         hidden=True,
         help='Lists text-mute statistics.'
     )
-    @commands.check(is_owner_developer_coordinator)
+    @is_owner_developer_coordinator()
     async def list_text_mutes(
             self,
             ctx,
@@ -1948,7 +1949,7 @@ class Hybrid(commands.Cog):
                 return await paginator.start()
 
     # @commands.command(name='reason', help='Get the reason for a mute, unmute, ban, or unban.')
-    # @commands.check(is_owner_developer_coordinator_moderator)
+    # @is_owner_developer_coordinator_moderator()
     # async def get_summary(
     #     ctx,
     #     member: str = commands.parameter(description='Tag a user or include their snowflake ID.')
@@ -1995,7 +1996,7 @@ class Hybrid(commands.Cog):
         name='admins',
         help='Lists all members with server mute privileges in this guild.'
     )
-    @commands.check(is_owner)
+    @is_owner()
     async def list_admins(self, ctx) -> None:
         async with self.bot.db_pool.acquire() as conn:
             records = await conn.fetch('''
@@ -2028,7 +2029,7 @@ class Hybrid(commands.Cog):
         return await paginator.start()
 
     @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
-    @commands.check(is_owner)
+    @is_owner()
     async def grant_server_muter(self, ctx, member: str):
         member, _ = await self.get_channel_and_member(ctx, member)
         async with self.bot.db_pool.acquire() as conn:
@@ -2114,7 +2115,7 @@ class Hybrid(commands.Cog):
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name='xadmin', help='Revokes server mute privileges from a user.')
-    @commands.check(is_owner)
+    @is_owner()
     async def revoke_server_muter(self, ctx, member: str):
         member, _ = await self.get_channel_and_member(ctx, member)
         async with self.bot.db_pool.acquire() as conn:
@@ -2130,7 +2131,7 @@ class Hybrid(commands.Cog):
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} no longer has server mute privileges.', allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name="backup", description="Creates a backup of the database and uploads it")
-    @commands.check(is_owner_developer)
+    @is_owner_developer()
     async def backup(self, ctx: commands.Context):
         try:
             backup_dir = self.setup_backup_directory('/app/backups')

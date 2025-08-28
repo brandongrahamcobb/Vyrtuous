@@ -61,7 +61,7 @@ class DevCommands(commands.Cog):
             await ctx.send('\N{OK HAND SIGN}')
 
     @commands.command(name='sync', hidden=True)
-    @commands.check(is_owner)
+    @is_owner()
     async def sync(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None) -> None:
         if not guilds:
             if spec == '~':

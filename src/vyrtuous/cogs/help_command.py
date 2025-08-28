@@ -54,21 +54,14 @@ class Help(commands.Cog):
     async def get_command_permission_level(self, bot, ctx, command):
         if not hasattr(command, 'checks') or not command.checks:
             return 'Everyone'
-        check_names = []
+    
         for check in command.checks:
             func = check
-            if hasattr(func, '__wrapped__'):  # unwrap decorators
+            if hasattr(func, '__wrapped__'):
                 func = func.__wrapped__
-            if hasattr(func, '__name__'):
-                check_names.append(func.__name__)
-        if any(name in ['is_owner', 'is_guild_owner', 'is_system_owner'] for name in check_names):
-            return 'Owner'
-        if 'is_owner_developer' in check_names:
-            return 'Developer'
-        if 'is_owner_developer_coordinator' in check_names:
-            return 'Coordinator'
-        if 'is_owner_developer_coordinator_moderator' in check_names:
-            return 'Moderator'
+            if hasattr(func, '_permission_level'):
+                return func._permission_level
+    
         return 'Everyone'
         
     def get_permission_color(self, perm_level):
@@ -82,18 +75,48 @@ class Help(commands.Cog):
         return colors.get(perm_level, discord.Color.greyple())
     
     async def get_user_highest_permission(self, bot, ctx):
-        permission_checks = [
-            ('Owner', is_owner),
-            ('Developer', is_developer),
-            ('Coordinator', is_coordinator),
-            ('Moderator', is_moderator)
-        ]
-        for level, check in permission_checks:
-            try:
-                if await check(ctx):
-                    return level
-            except commands.CheckFailure:
-                continue
+        """Get the highest permission level for the user"""
+        try:
+            # Check system owner first
+            if await is_system_owner(ctx):
+                return 'Owner'
+        except commands.CheckFailure:
+            pass
+        
+        try:
+            # Check guild owner
+            if await is_guild_owner(ctx):
+                return 'Owner'
+        except commands.CheckFailure:
+            pass
+        
+        try:
+            # Check developer
+            if await is_developer(ctx):
+                return 'Developer'
+        except commands.CheckFailure:
+            pass
+        
+        # For coordinator and moderator, we need to check if they have ANY
+        # coordinator/moderator permissions in ANY channel
+        try:
+            if ctx.guild:
+                async with ctx.bot.db_pool.acquire() as conn:
+                    user_row = await conn.fetchrow(
+                        "SELECT coordinator_channel_ids, moderator_channel_ids FROM users WHERE user_id = $1",
+                        ctx.author.id
+                    )
+                    if user_row:
+                        coordinator_channel_ids = user_row.get("coordinator_channel_ids") or []
+                        moderator_channel_ids = user_row.get("moderator_channel_ids") or []
+        
+                        if coordinator_channel_ids:
+                            return 'Coordinator'
+                        if moderator_channel_ids:
+                            return 'Moderator'
+        except Exception as e:
+            logger.warning(f"Error checking coordinator/moderator permissions: {e}")
+    
         return 'Everyone'
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):

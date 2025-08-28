@@ -17,6 +17,7 @@
 '''
 
 from discord.ext import commands
+from typing import Optional, Tuple
 from vyrtuous.config import Config
 from vyrtuous.bot.discord_bot import DiscordBot# adjust import path accordingly
 import discord
@@ -89,120 +90,92 @@ async def has_command_alias(ctx) -> bool:
             return True
     raise NoCommandAlias(f"Command alias `{command_name}` is not mapped to any target channel.")
 
-async def is_coordinator(ctx):
+
+async def is_guild_owner_block(ctx, user_id: int):
+    if user_id == ctx.guild.owner.id:
+        raise CantChoseGuildOwner()
+    return True
+
+async def is_owner_block(ctx, user_id: int):
+    errors = []
+    for check in (is_guild_owner_block,):
+        try:
+            await check(ctx, user_id)
+            return True
+        except commands.CheckFailure as e:
+            errors.append(str(e))
+    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
+    
+async def send_check_failure_embed(ctx: commands.Context, error: commands.CheckFailure, *, title: str = "Permission Check Failed"):
+    embed = discord.Embed(
+        title=title,
+        description=error.args[0] if error.args else "An unknown error occurred.",
+        color=discord.Color.red()
+    )
+    embed.set_footer(text="Contact a bot admin if you think this is a mistake.")
+    await ctx.send(embed=embed)
+
+async def is_coordinator(ctx, alias_type: Optional[str] = None, alias_name: Optional[str] = None):
     if ctx.guild is None:
         raise NotCoordinator("Command must be used in a guild.")
+    guild_id = ctx.guild.id
     user_id = ctx.author.id
-    channel_id = ctx.channel.id
-    bot = ctx.bot
-    try:
-        async with bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
-                user_id
+    target_channel_id = None
+
+    async with ctx.bot.db_pool.acquire() as conn:
+        if alias_type and alias_name:
+            alias_row = await conn.fetchrow(
+                "SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3",
+                guild_id, alias_type, alias_name
             )
-    except Exception:
-        raise NotAValidDatabaseQuery("Failed to query coordinator permissions.")
-    if not row:
-        raise NotAValidDatabaseQuery("User not found in database.")
-    coordinator_channel_ids = row.get("coordinator_channel_ids") or []
-    if channel_id not in coordinator_channel_ids:
-        raise NotCoordinator("You are not a coordinator in this channel.")
+            if not alias_row:
+                raise NotAValidDatabaseQuery("Alias not found in database.")
+            target_channel_id = alias_row["channel_id"]
+        else:
+            target_channel_id = ctx.channel.id
+
+        user_row = await conn.fetchrow(
+            "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+            user_id
+        )
+        if not user_row:
+            raise NotAValidDatabaseQuery("User not found in database.")
+        coordinator_channel_ids = user_row.get("coordinator_channel_ids") or []
+
+    if target_channel_id not in coordinator_channel_ids:
+        raise NotCoordinator("You are not a coordinator in the target channel.")
     return True
 
-
-async def is_moderator(ctx):
+async def is_moderator(ctx, alias_type: Optional[str] = None, alias_name: Optional[str] = None):
     if ctx.guild is None:
         raise NotInAGuild("Command must be used in a guild.")
+    guild_id = ctx.guild.id
     user_id = ctx.author.id
-    channel_id = ctx.channel.id
-    try:
-        async with ctx.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT moderator_channel_ids FROM users WHERE user_id = $1",
-                user_id
+    target_channel_id = None
+
+    async with ctx.bot.db_pool.acquire() as conn:
+        if alias_type and alias_name:
+            alias_row = await conn.fetchrow(
+                "SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3",
+                guild_id, alias_type, alias_name
             )
-    except Exception:
-        raise NotAValidDatabaseQuery("Failed to query moderator permissions.")
-    if not row:
-        raise NotAValidDatabaseQuery("User not found in database.")
-    moderator_channel_ids = row.get("moderator_channel_ids") or []
-    if channel_id not in moderator_channel_ids:
-        raise NotModerator("You are not a moderator in this channel.")
+            if not alias_row:
+                raise NotAValidDatabaseQuery("Alias not found in database.")
+            target_channel_id = alias_row["channel_id"]
+        else:
+            target_channel_id = ctx.channel.id
+
+        user_row = await conn.fetchrow(
+            "SELECT moderator_channel_ids FROM users WHERE user_id = $1",
+            user_id
+        )
+        if not user_row:
+            raise NotAValidDatabaseQuery("User not found in database.")
+        moderator_channel_ids = user_row.get("moderator_channel_ids") or []
+
+    if target_channel_id not in moderator_channel_ids:
+        raise NotModerator("You are not a moderator in the target channel.")
     return True
-    #async def is_moderator(ctx):
-#    if ctx.guild is None:
-#        raise NotInAGuild("Command must be used in a guild.")
-#    user_id = ctx.author.id
-#    guild_id = ctx.guild.id
-#    async with ctx.bot.db_pool.acquire() as conn:
-#        row = await conn.fetchrow(
-#            "SELECT moderator_ids FROM users WHERE user_id = $1", user_id
-#        )
-#    if not row or guild_id not in (row.get("moderator_ids") or []):
-#        raise NotModerator("You are not a moderator in this guild.")
-#    return True
-
-    # if not row:
-    #     raise NotAValidDatabaseQuery("User not found in database.")
-    # moderator_ids = row.get("moderator_ids")
-    # moderator_channels = row.get("moderator_channel_ids")
-    # if not moderator_ids:
-    #     raise NoPermissionsForRoleSetup("There are no moderator permissions configured.")
-    # if guild_id not in moderator_ids:
-    #     raise NotModerator("You are not a moderator in this guild.")
-    # if not moderator_channels:
-    #     raise NoInheritedPermissionsForRole("You have no channel permissions configured.")
-    # return True
-
-#async def is_coordinator(ctx):
-#    if ctx.guild is None:
-#        raise NotCoordinator("Command must be used in a guild.")
-#    user_id = ctx.author.id
-#    guild_id = ctx.guild.id
-#    bot = ctx.bot
-#    try:
-#        async with bot.db_pool.acquire() as conn:
-#            row = await conn.fetchrow(
-#                "SELECT coordinator_ids FROM users WHERE user_id = $1",
-#                user_id
-#            )
-#    except Exception:
-#        raise NotAValidDatabaseQuery("Failed to query coordinator permissions.")
-#    if not row:
-#        raise NotAValidDatabaseQuery("User not found in database.")
-#    coordinator_ids = row.get("coordinator_ids")
-#    if not coordinator_ids or guild_id not in coordinator_ids:
-#        raise NotCoordinator("You are not a coordinator in this guild.")
-#    return True
-# async def is_coordinator(ctx):
-#     if ctx.guild is None:
-#         raise NotCoordinator("Command must be used in a guild.")
-#     user_id = ctx.author.id
-#     guild_id = ctx.guild.id
-#     channel_id = ctx.channel.id
-#     bot = ctx.bot
-#     try:
-#         async with bot.db_pool.acquire() as conn:
-#             row = await conn.fetchrow(
-#                 "SELECT coordinator_ids, coordinator_channel_ids FROM users WHERE user_id = $1",
-#                 user_id
-#             )
-#     except Exception as e:
-#         raise NotAValidDatabaseQuery()
-#     if not row:
-#         raise NotAValidDatabaseQuery()
-#     coordinator_ids = row.get("coordinator_ids")
-#     coordinator_channels = row.get("coordinator_channel_ids")
-#     if not coordinator_ids:
-#         raise NoPermissionsForRoleSetup("You have no coordinator permissions configured.")
-#     if guild_id not in coordinator_ids:
-#         raise NotCoordinator("You are not a coordinator in this guild.")
-#     if not coordinator_channels:
-#         raise NoInheritedPermissionsForRole("You have no channel permissions configured.")
-#     if channel_id not in coordinator_channels:
-#         raise NotCoordinator("You are not authorized to use coordinator commands in this channel or the specified channel.")
-#     return True
 
 async def is_developer(ctx):
     if ctx.guild is None:
@@ -222,109 +195,7 @@ async def is_guild_owner(ctx):
         raise NotGuildOwner()
     return True
 
-async def is_owner(ctx):
-    errors = []
-    for check in (is_guild_owner, is_system_owner):
-        try:
-            if await check(ctx):
-                return True
-        except commands.CheckFailure as e:
-            errors.append(str(e))
-    raise commands.CheckFailure("\n".join(f"🔥 {msg}" for msg in errors))
 
-async def is_coordinator_or_moderator_for_channel(ctx: commands.Context, channel: discord.abc.GuildChannel) -> bool:
-    user_id = ctx.author.id
-    guild_id = ctx.guild.id
-    channel_id = channel.id
-    async with ctx.bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT coordinator_channel_ids, moderator_ids, moderator_channel_ids FROM users WHERE user_id = $1",
-            user_id
-        )
-    if not row:
-        raise NotAValidDatabaseQuery("User not found in database.")
-    coordinator_channel_ids = set(row.get("coordinator_channel_ids") or [])
-    moderator_channel_ids = set(row.get("moderator_channel_ids") or [])
-    moderator_ids = set(row.get("moderator_ids") or [])
-    if channel_id in coordinator_channel_ids:
-        return True
-    if guild_id in moderator_ids and channel_id in moderator_channel_ids:
-        return True
-    raise NoInheritedPermissionsForRole("You are not a coordinator or moderator for this channel.")
-
-async def is_coordinator_for_channel(ctx: commands.Context, channel: discord.VoiceChannel) -> bool:
-    async with ctx.bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow('''
-            SELECT 1
-            FROM users
-            WHERE user_id = $1
-              AND $2 = ANY(coordinator_channel_ids)
-        ''', ctx.author.id, channel.id)
-    return row is not None
-
-async def is_moderator_for_channel(ctx, channel: discord.abc.GuildChannel):
-    user_id = ctx.author.id
-    guild_id = ctx.guild.id
-    channel_id = channel.id
-    async with ctx.bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT moderator_ids, moderator_channel_ids FROM users WHERE user_id = $1",
-            user_id
-        )
-    if not row:
-        raise NotAValidDatabaseQuery("User not found in database.")
-    moderator_ids = set(row.get("moderator_ids") or [])
-    channel_ids = set(row.get("moderator_channel_ids") or [])
-    if guild_id not in moderator_ids:
-        raise NotModerator("You are not a moderator in this guild.")
-    if channel_id not in channel_ids:
-        raise NotModerator("You are not a moderator in this channel.")
-    return True
-
-async def is_guild_owner_block(ctx, user_id: int):
-    if user_id == ctx.guild.owner.id:
-        raise CantChoseGuildOwner()
-    return True
-
-async def is_owner_block(ctx, user_id: int):
-    errors = []
-    for check in (is_guild_owner_block,):
-        try:
-            await check(ctx, user_id)
-            return True
-        except commands.CheckFailure as e:
-            errors.append(str(e))
-    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
-
-async def is_owner_developer(ctx):
-    errors = []
-    for check in (is_developer, is_guild_owner, is_system_owner):
-        try:
-            if await check(ctx):
-                return True
-        except commands.CheckFailure as e:
-            errors.append(str(e))
-    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
-
-async def is_owner_developer_coordinator(ctx):
-    errors = []
-    for check in (is_coordinator, is_developer, is_guild_owner, is_system_owner):
-        try:
-            if await check(ctx):
-                return True
-        except commands.CheckFailure as e:
-            errors.append(str(e))
-    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
-
-async def is_owner_developer_coordinator_moderator(ctx):
-    errors = []
-    for check in (is_moderator, is_coordinator, is_developer, is_guild_owner, is_system_owner):
-        try:
-            if await check(ctx):
-                return True
-        except commands.CheckFailure as e:
-            errors.append(str(e))
-    raise commands.CheckFailure("\n".join(f"❌ {msg}" for msg in errors))
 
 async def is_system_owner(ctx):
     system_owner_id = ctx.bot.config["discord_owner_id"]
@@ -332,37 +203,120 @@ async def is_system_owner(ctx):
         raise NotSystemOwner()
     return True
 
-async def check_owner_dev_coord_mod(ctx: commands.Context, channel: discord.abc.GuildChannel) -> tuple[bool, bool]:
-    is_owner_or_dev = False
-    has_any_permission = False
-    channel_obj = channel or ctx.channel
-    for check in (is_system_owner, is_guild_owner, is_developer):
-        try:
-            if await check(ctx):
-                is_owner_or_dev = True
-                has_any_permission = True
-                break
-        except commands.CheckFailure as e:
-            continue
-    if not has_any_permission:
-        try:
-            if await is_coordinator_for_channel(ctx, channel_obj):
-                has_any_permission = True
-        except commands.CheckFailure as e:
-            pass
-    if not has_any_permission:
-        try:
-            if await is_moderator_for_channel(ctx, channel_obj):
-                has_any_permission = True
-        except commands.CheckFailure as e:
-            pass
-    return has_any_permission, is_owner_or_dev
+def is_owner():
+    async def predicate(ctx: commands.Context):
+        for check in (is_system_owner, is_guild_owner):
+            try:
+                if await check(ctx):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise commands.CheckFailure("You are not system owner or guild owner.")
+    predicate._permission_level = "Owner"
+    return commands.check(predicate)
 
-async def send_check_failure_embed(ctx: commands.Context, error: commands.CheckFailure, *, title: str = "Permission Check Failed"):
-    embed = discord.Embed(
-        title=title,
-        description=error.args[0] if error.args else "An unknown error occurred.",
-        color=discord.Color.red()
-    )
-    embed.set_footer(text="Contact a bot admin if you think this is a mistake.")
-    await ctx.send(embed=embed)
+def is_owner_developer():
+    async def predicate(ctx: commands.Context):
+        for check in (is_system_owner, is_guild_owner, is_developer):
+            try:
+                if await check(ctx):
+                    return True
+            except commands.CheckFailure:
+                continue
+        raise commands.CheckFailure("You are not system owner, guild owner, or developer.")
+    predicate._permission_level = "Developer"
+    return commands.check(predicate)
+
+# Coordinator level (inherits developer)
+def is_owner_developer_coordinator(alias_type: Optional[str] = None):
+    async def predicate(ctx: commands.Context):
+        command_name = ctx.command.name.lower() if ctx.command else ""
+        for check in (is_system_owner, is_guild_owner, is_developer):
+            try:
+                if await check(ctx):
+                    return True
+            except commands.CheckFailure:
+                continue
+        if alias_type and ctx.command:
+            try:
+                if await is_coordinator(ctx, alias_type, command_name):
+                    return True
+            except commands.CheckFailure:
+                pass
+        raise commands.CheckFailure(
+            "You are not system owner, developer"
+            + (f", or coordinator for `{alias_type}`" if alias_type else "")
+        )
+    predicate._permission_level = "Coordinator"
+    return commands.check(predicate)
+
+# Moderator level (inherits coordinator)
+def is_owner_developer_coordinator_moderator(alias_type: Optional[str] = None):
+    async def predicate(ctx: commands.Context):
+        command_name = ctx.command.name.lower() if ctx.command else ""
+        for check in (is_system_owner, is_guild_owner, is_developer):
+            try:
+                if await check(ctx):
+                    return True
+            except commands.CheckFailure:
+                continue
+        if alias_type and ctx.command:
+            for check in (is_coordinator, is_moderator):
+                try:
+                    if await check(ctx, alias_type, command_name):
+                        return True
+                except commands.CheckFailure:
+                    continue
+        raise commands.CheckFailure(
+            "You are not system owner, guild owner, developer"
+            + (f", coordinator for `{alias_type}`" if alias_type else "")
+            + (f", or moderator for `{alias_type}`" if alias_type else "")
+        )
+    predicate._permission_level = "Moderator"
+    return commands.check(predicate)
+
+async def check_owner_dev_coord_mod(ctx: commands.Context, channel: Optional[discord.abc.GuildChannel] = None) -> Tuple[bool, bool]:
+    """
+    Returns:
+        is_owner_or_dev: True if user is system owner, guild owner, or developer
+        is_mod_or_coord: True if user is a coordinator or moderator in the given channel
+    """
+    is_owner_or_dev = False
+    is_mod_or_coord = False
+    guild_id = ctx.guild.id if ctx.guild else None
+    user_id = ctx.author.id
+    target_channel_id = getattr(channel, "id", None) or getattr(ctx, "_target_channel_id", None) or getattr(ctx.channel, "id", None)
+
+    # Check system owner / guild owner / developer
+    try:
+        if await is_system_owner(ctx):
+            is_owner_or_dev = True
+    except commands.CheckFailure:
+        if ctx.guild:
+            try:
+                if await is_guild_owner(ctx):
+                    is_owner_or_dev = True
+            except commands.CheckFailure:
+                if ctx.guild:
+                    try:
+                        if await is_developer(ctx):
+                            is_owner_or_dev = True
+                    except commands.CheckFailure:
+                        pass
+
+    # Check coordinator / moderator
+    if ctx.guild and target_channel_id:
+        async with ctx.bot.db_pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                "SELECT coordinator_channel_ids, moderator_channel_ids FROM users WHERE user_id = $1",
+                user_id
+            )
+        if user_row:
+            coordinator_ids = user_row.get("coordinator_channel_ids") or []
+            moderator_ids = user_row.get("moderator_channel_ids") or []
+            if target_channel_id in coordinator_ids:
+                is_mod_or_coord = True
+            elif target_channel_id in moderator_ids:
+                is_mod_or_coord = True
+
+    return is_owner_or_dev, is_mod_or_coord
