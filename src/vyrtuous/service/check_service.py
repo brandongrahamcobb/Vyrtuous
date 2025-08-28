@@ -82,7 +82,7 @@ async def has_command_alias(ctx) -> bool:
     bot = ctx.bot
     guild_id = ctx.guild.id
     command_name = ctx.command.name.lower()
-    for alias_type in ("mute", "unmute", "ban", "unban", "flag", "unflag", "tmute", "untmute"):
+    for alias_type in ("mute", "unmute", "ban", "unban", "flag", "unflag", "tmute", "untmute", "cow", "uncow"):
         alias_map = bot.command_aliases.get(guild_id, {}).get(alias_type, {})
         if command_name in alias_map:
             target_channel_id = alias_map[command_name]
