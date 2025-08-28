@@ -52,10 +52,10 @@ It also includes an optional reason.
 * `flag <member> <reason>` - Flags a member. Requires a moderator.
 * `mute <member> <duration> <reason>` - Voice mutes a member for a certain timeframe (24h by default) via 30m, 2h, 1d like strings for duration and an optional reason for moderaotrs. Permanent voice mutes are set using 0 for duration and it requires a coordinator.
 * `tmute <member> <duration> <reason>` - Text mutes a member for a certain timeframe (24h by default) via 30m, 2h, 1d like strings for duration and an optional reason for moderaotrs. Permanent text-mutes are set using 0 for duration and it requires a coordinator.
-* `unban <member> - Unbans a member for a room. Requires moderator.
-* `unflag <member> - Unflags a member for a room. Requires moderator. 
-* `unmute <member> - Unvoicemutes a member for a room. Requires moderator. 
-* `untmute <member> - Untextmutes a member for a room. Requires moderator. 
+* `unban <member>    - Unbans a member for a room. Requires moderator.
+* `unflag <member>   - Unflags a member for a room. Requires moderator. 
+* `unmute <member>   - Unvoicemutes a member for a room. Requires moderator. 
+* `untmute <member>  - Untextmutes a member for a room. Requires moderator. 
 
 Lifecycle Features
 
@@ -140,8 +140,11 @@ Enter api_key
 ```
 
 • Discord command prefix
+
 • Discord character limit (regular = 2000, nitro = 4000)
+
 • Discord owner ID
+
 • Discord test guild
 
 Your settings are saved this in the container:
