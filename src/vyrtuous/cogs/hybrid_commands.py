@@ -1155,7 +1155,6 @@ class Hybrid(commands.Cog):
             else:
                 return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been revoked moderator access in {channel.name}.', allowed_mentions=discord.AllowedMentions.none())
     
- #   @is_owner_developer_coordinator_moderator()
     @commands.command(
         name='cmds',
         help='List command aliases. Optionally provide "all" or a specific channel.'
