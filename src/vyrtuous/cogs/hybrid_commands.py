@@ -136,7 +136,6 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Ban a user from a voice channel.'
         )
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("ban")
         async def ban_alias(
             ctx,
@@ -314,14 +313,13 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Label a user as going vegan for tracking purposes.'
         )
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("cow")
         async def going_vegan_alias(
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
         ) -> None:
             cow_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('cow', {})
-            channel_id = cow_aliases.get(command_name)
+            channel_id = cow_aliases.get("cow")
             member, _ = await self.get_channel_and_member(ctx, user)
             select_sql = '''
                          SELECT 1
@@ -391,7 +389,6 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Flag a user in the database for the voice channel mapped to this alias.'
         )
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("flag")
         async def flag_alias(
                 ctx,
@@ -528,7 +525,6 @@ class Hybrid(commands.Cog):
 
     def create_text_mute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Text mutes a user in a specific text channel.')
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("tmute")
         async def text_mute_alias(
             ctx,
@@ -630,7 +626,6 @@ class Hybrid(commands.Cog):
 
     def create_voice_mute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Mutes a member in a specific VC.')
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("mute")
         async def voice_mute_alias(
             ctx,
@@ -729,7 +724,6 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Unban a user from a voice channel.'
         )
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("unban")
         async def unban_alias(
                 ctx,
@@ -811,7 +805,6 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Unlabel a user for tracking purposes.'
         )
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("uncow")
         async def no_longer_going_vegan_alias(
                 ctx,
@@ -855,7 +848,6 @@ class Hybrid(commands.Cog):
             name=command_name,
             help='Unflag a user in the database for the voice channel mapped to this alias.'
         )
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("unflag")
         async def unflag_alias(
                 ctx,
@@ -896,7 +888,6 @@ class Hybrid(commands.Cog):
 
     def create_unmute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Unmutes a member in a specific VC.')
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("unmute")
         async def unmute_alias(
             ctx,
@@ -962,7 +953,6 @@ class Hybrid(commands.Cog):
 
     def create_untextmute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Removes a text mute from a user in a specific text channel.')
-        @commands.check(has_command_alias)
         @is_owner_developer_coordinator_moderator("untmute")
         async def untext_mute_alias(
                 ctx,
