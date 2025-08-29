@@ -75,30 +75,21 @@ class Help(commands.Cog):
         return colors.get(perm_level, discord.Color.greyple())
     
     async def get_user_highest_permission(self, bot, ctx):
-        """Get the highest permission level for the user"""
         try:
-            # Check system owner first
             if await is_system_owner(ctx):
                 return 'Owner'
         except commands.CheckFailure:
             pass
-        
         try:
-            # Check guild owner
             if await is_guild_owner(ctx):
                 return 'Owner'
         except commands.CheckFailure:
             pass
-        
         try:
-            # Check developer
             if await is_developer(ctx):
                 return 'Developer'
         except commands.CheckFailure:
             pass
-        
-        # For coordinator and moderator, we need to check if they have ANY
-        # coordinator/moderator permissions in ANY channel
         try:
             if ctx.guild:
                 async with ctx.bot.db_pool.acquire() as conn:
@@ -116,7 +107,6 @@ class Help(commands.Cog):
                             return 'Moderator'
         except Exception as e:
             logger.warning(f"Error checking coordinator/moderator permissions: {e}")
-    
         return 'Everyone'
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):
@@ -165,8 +155,6 @@ class Help(commands.Cog):
             )
             sig = inspect.signature(cmd.callback)
             parameters = list(sig.parameters.items())
-
-            # Remove leading 'self' and 'ctx' if they exist
             if parameters and parameters[0][0] == 'self':
                 parameters.pop(0)
             if parameters and parameters[0][0] == 'ctx':
@@ -219,14 +207,10 @@ class Help(commands.Cog):
         contextual_commands = []
         for command in all_commands:
             alias_channel_id = alias_to_channel_map.get(command.name)
-
-            # Command is aliased in this guild and must match the current channel
             if alias_channel_id is not None:
                 if alias_channel_id == current_text_channel_id:
                     contextual_commands.append(command)
-            # Command is not aliased in this guild at all — skip it
             elif command.name not in alias_to_channel_map:
-                # Only include global commands (no alias binding anywhere)
                 is_global = True
                 for guild_id, alias_type_map in self.bot.command_aliases.items():
                     for channel_map in alias_type_map.values():

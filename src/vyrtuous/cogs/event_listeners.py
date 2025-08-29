@@ -34,25 +34,27 @@ class EventListeners(commands.Cog):
         self.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.db_pool)
 
-
-
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
         if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
             return
         if member.bot:
             return
-    
         after_channel = after.channel
         before_channel = before.channel
         user_id = member.id
         should_be_muted = False
         source = 'bot'
         just_manual_unmute = False
-    
         async with self.db_pool.acquire() as conn:
-            # Handle manual unmute (right-click or command)
-            if before.self_mute == after.self_mute and before.mute != after.mute:
+            user_data = await conn.fetchrow(
+                "SELECT server_mute_guild_ids FROM users WHERE user_id = $1",
+                user_id
+            )
+            server_mute_guild_ids = user_data['server_mute_guild_ids'] or [] if user_data else []
+            if member.guild.id in server_mute_guild_ids:
+                return
+            if before.mute != after.mute:
                 if before.mute and not after.mute and before_channel:
                     row = await conn.fetchrow("SELECT source FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, before_channel.id)
                     await conn.execute("DELETE FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, before_channel.id)
@@ -61,9 +63,7 @@ class EventListeners(commands.Cog):
                     else:
                         await conn.execute("UPDATE users SET manual_mute_channels = array_remove(manual_mute_channels, $2), mute_channel_ids = array_remove(mute_channel_ids, $2),     updated_at = NOW() WHERE user_id = $1", user_id, before_channel.id)
                         just_manual_unmute = True
-    
             if after_channel:
-                # Check for existing active mute and handle expiration
                 row = await conn.fetchrow("SELECT source, expires_at FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, after_channel.id)
                 if row:
                     if row['expires_at'] and row['expires_at'] <= datetime.now(timezone.utc):
@@ -75,8 +75,6 @@ class EventListeners(commands.Cog):
                             await conn.execute("UPDATE users SET manual_mute_channels = array_remove(manual_mute_channels, $2), mute_channel_ids = array_remove(mute_channel_ids, $2),     updated_at = NOW() WHERE user_id = $1", user_id, after_channel.id)
                         row = None
                         should_be_muted = False
-    
-                # Detect profile/manual mute applied while joining
                 if not before.mute and after.mute and after_channel:
                     existing_row = await conn.fetchrow("SELECT source FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, after_channel.id)
                     if not existing_row:
@@ -85,22 +83,16 @@ class EventListeners(commands.Cog):
                             "INSERT INTO users (user_id, manual_mute_channels) VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO UPDATE SET manual_mute_channels = (SELECT     ARRAY(SELECT DISTINCT unnest(COALESCE (u.manual_mute_channels, '{}') || ARRAY[$2])) FROM users u WHERE u.user_id = EXCLUDED.user_id), updated_at = NOW()",
                             user_id, after_channel.id
                         )
-    
-                # Check if user should be muted based on existing active mute record
                 mute_row = await conn.fetchrow("SELECT source FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, after_channel.id)
-    
                 if mute_row:
-                    # User has an active mute record for this channel - they should be muted
                     should_be_muted = True
                     source = mute_row['source']
                 else:
-                    # No active mute record - check user arrays
                     user_mute_data = await conn.fetchrow("SELECT mute_channel_ids, server_mute_guild_ids, manual_mute_channels FROM users WHERE user_id = $1", user_id)
                     if user_mute_data:
                         mute_channels = user_mute_data['mute_channel_ids'] or []
                         server_mute_guild_ids = user_mute_data['server_mute_guild_ids'] or []
                         manual_mute_channels = user_mute_data['manual_mute_channels'] or []
-    
                         if str(member.id) == os.getenv("DISCORD_OWNER_ID"):
                             should_be_muted = True
                             source = 'bot_owner'
@@ -113,12 +105,8 @@ class EventListeners(commands.Cog):
                         elif after_channel.id in mute_channels:
                             should_be_muted = True
                             source = 'bot'
-    
-                # Prevent remute if just manually unmuted
                 if just_manual_unmute:
                     should_be_muted = False
-    
-                # Enforce mute state
                 if should_be_muted and not after.mute:
                     await conn.execute("INSERT INTO active_mutes (user_id, channel_id, source, issuer_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, channel_id) DO NOTHING", user_id, after_channel.id, source, member.guild.owner_id)
                     try:
@@ -134,8 +122,6 @@ class EventListeners(commands.Cog):
                         logger.debug(f"No permission to unmute {member.display_name}")
                     except discord.HTTPException as e:
                         logger.debug(f"Failed to unmute {member.display_name}: {e}")
-    
-                # Flagged channel warning
                 if before.channel is None and after.channel is not None:
                     try:
                         is_flagged = await conn.fetchval("SELECT 1 FROM users WHERE user_id = $1 AND $2 = ANY (flagged_channel_ids)", member.id, after_channel.id)
@@ -145,329 +131,6 @@ class EventListeners(commands.Cog):
                             await after_channel.send(f'⚠️ <@{member.id}> has joined voice channel <#{after_channel.id}> and is flagged.', allowed_mentions=discord.AllowedMentions.none())
                     except Exception as e:
                         logger.exception("Error in on_voice_state_update", exc_info=e)
-#    @commands.Cog.listener()
-#    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
-#        if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute: return
-#        if member.bot: return
-#        after_channel = after.channel; before_channel = before.channel; user_id = member.id; should_be_muted = False; source = 'bot'; just_manual_unmute = False
-#        async with self.db_pool.acquire() as conn:
-#            # Handle manual unmute (right-click or command)
-#            if before.self_mute == after.self_mute and before.mute != after.mute:
-#                if before.mute and not after.mute and before_channel:
-#                    row = await conn.fetchrow("SELECT source FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, before_channel.id)
-#                    await conn.execute("DELETE FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, before_channel.id)
-#                    if row and row['source'] == 'bot_owner':
-#                        await conn.execute("UPDATE users SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2), updated_at = NOW() WHERE user_id = $1", user_id, member.guild.id)
-#                    else:
-#                        await conn.execute("UPDATE users SET manual_mute_channels = array_remove(manual_mute_channels, $2), mute_channel_ids = array_remove(mute_channel_ids, $2), updated_at = NOW() WHERE user_id = $1", user_id, before_channel.id)
-#                        just_manual_unmute = True
-#
-#            if after_channel:
-#                row = await conn.fetchrow("SELECT source, expires_at FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, after_channel.id)
-#                if row:
-#                    if row['expires_at'] and row['expires_at'] <= datetime.now(timezone.utc):
-#                        logger.debug(f"Mute expired for {member.display_name} in {after_channel.name}")
-#                        await conn.execute("DELETE FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, after_channel.id)
-#                        if row['source'] == 'owner':
-#                            await conn.execute("UPDATE users SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2), updated_at = NOW() WHERE user_id = $1", user_id, member.guild.id)
-#                        else:
-#                            await conn.execute("UPDATE users SET manual_mute_channels = array_remove(manual_mute_channels, $2), mute_channel_ids = array_remove(mute_channel_ids, $2), updated_at = NOW() WHERE user_id = $1", user_id, after_channel.id)
-#                        row = None
-#                        should_be_muted = False
-#
-#                # Detect profile/manual mute applied while joining
-#                if not before.mute and after.mute and after_channel:
-#                    row = await conn.fetchrow("SELECT source FROM active_mutes WHERE user_id = $1 AND channel_id = $2", user_id, after_channel.id)
-#                    if not row:
-#                        await conn.execute("INSERT INTO active_mutes (user_id, channel_id, source, issuer_id) VALUES ($1, $2, 'manual', $3) ON CONFLICT (user_id, channel_id) DO NOTHING", user_id, after_channel.id, member.guild.owner_id)
-#                        await conn.execute(
-#                            "INSERT INTO users (user_id, manual_mute_channels) VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO UPDATE SET manual_mute_channels = (SELECT ARRAY(SELECT DISTINCT unnest(COALESCE (u.manual_mute_channels, '{}') || ARRAY[$2])) FROM users u WHERE u.user_id = EXCLUDED.user_id), updated_at = NOW()",
-#                            user_id, after_channel.id
-#                        )
-#                    else:
-#                        should_be_muted = True
-#
-#                # Fetch arrays
-#                user_mute_data = await conn.fetchrow("SELECT mute_channel_ids, server_mute_guild_ids, manual_mute_channels FROM users WHERE user_id = $1", user_id)
-#                if user_mute_data:
-#                    mute_channels = user_mute_data['mute_channel_ids'] or []
-#                    server_mute_guild_ids = user_mute_data['server_mute_guild_ids'] or []
-#                    manual_mute_channels = user_mute_data['manual_mute_channels'] or []
-#                    if member.guild.owner_id == os.getenv("DISCORD_OWNER_ID"):
-#                        should_be_muted = True; source = 'bot_owner'
-#                    elif member.id in server_mute_guild_ids:
-#                        should_be_muted = True; source = 'owner'
-#                    elif after_channel.id in manual_mute_channels:
-#                        should_be_muted = True; source = 'manual'
-#                    elif after_channel.id in mute_channels:
-#                        should_be_muted = True; source = 'bot'
-#
-#                # Prevent remute if just manually unmuted
-#                if just_manual_unmute: should_be_muted = False
-#
-#                # Enforce mute
-#                if should_be_muted:
-#                    await conn.execute("INSERT INTO active_mutes (user_id, channel_id, source, issuer_id) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, channel_id) DO NOTHING", user_id, after_channel.id, source, member.guild.owner_id)
-#                    try: await member.edit(mute=True, reason=f"Enforcing mute in {after_channel.name} (found in arrays)")
-#                    except discord.Forbidden: logger.debug(f"No permission to mute {member.display_name}")
-#                    except discord.HTTPException as e: logger.debug(f"Failed to mute {member.display_name}: {e}")
-#                else:
-#                    try: await member.edit(mute=False, reason=f"Auto-unmuting in {after_channel.name} (no mute record)")
-#                    except discord.Forbidden: logger.debug(f"No permission to unmute {member.display_name}")
-#                    except discord.HTTPException as e: logger.debug(f"Failed to unmute {member.display_name}: {e}")
-#
-#                # Flagged channel warning
-#                if before.channel is None and after.channel is not None:
-#                    try:
-#                        is_flagged = await conn.fetchval("SELECT 1 FROM users WHERE user_id = $1 AND $2 = ANY (flagged_channel_ids)", member.id, after_channel.id)
-#                        if not is_flagged: return
-#                        if isinstance(after_channel, discord.VoiceChannel):
-#                            await after_channel.send(f'⚠️ <@{member.id}> has joined voice channel <#{after_channel.id}> and is flagged.', allowed_mentions=discord.AllowedMentions.none())
-#                    except Exception as e:
-#                        logger.exception("Error in on_voice_state_update", exc_info=e)
-        
-#    @commands.Cog.listener()
-#    async def on_voice_state_update(
-#            self,
-#            member: discord.Member,
-#            before: discord.VoiceState,
-#            after: discord.VoiceState
-#    ) -> None:
-#        if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
-#            return  # no relevant change, so skip all DB and API calls
-#
-#        if member.bot:
-#            return
-#
-#        environment = os.getenv("DEVELOPMENT")
-#        if environment != "False":
-#            return
-#
-#        after_channel = after.channel
-#        before_channel = before.channel
-#        user_id = member.id
-#
-#        async with self.db_pool.acquire() as conn:
-#            # ─── Handle mute state transitions ──────────────────────────────────
-#            if before.self_mute == after.self_mute and before.mute != after.mute:
-#                if before.mute and not after.mute and before_channel:
-#                    row = await conn.fetchrow("""
-#                                              SELECT source
-#                                              FROM active_mutes
-#                                              WHERE user_id = $1
-#                                                AND channel_id = $2
-#                                              """, user_id, before_channel.id)
-#                    if row:
-#                        await conn.execute("""
-#                                           DELETE
-#                                           FROM active_mutes
-#                                           WHERE user_id = $1
-#                                             AND channel_id = $2
-#                                           """, user_id, before_channel.id)
-#                        if row['source'] == 'owner':
-#                            await conn.execute("""
-#                                               UPDATE users
-#                                               SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2),
-#                                                   updated_at              = NOW()
-#                                               WHERE user_id = $1
-#                                               """, user_id, member.guild.id)
-#                        elif row['source'] == 'manual':
-#                            await conn.execute("""
-#                                               UPDATE users
-#                                               SET manual_mute_channels = array_remove(manual_mute_channels, $2),
-#                                                   updated_at           = NOW()
-#                                               WHERE user_id = $1
-#                                               """, user_id, before_channel.id)
-#                        else:
-#                            await conn.execute("""
-#                                               UPDATE users
-#                                               SET mute_channel_ids = array_remove(mute_channel_ids, $2),
-#                                                   updated_at       = NOW()
-#                                               WHERE user_id = $1
-#                                               """, user_id, before_channel.id)
-#
-#            if before.mute and not after.mute and before_channel:
-#                row = await conn.fetchrow("""
-#                                          SELECT source, expires_at
-#                                          FROM active_mutes
-#                                          WHERE user_id = $1
-#                                            AND channel_id = $2
-#                                          """, user_id, before_channel.id)
-#                if row and row['source'] == 'manual':
-#                    await conn.execute("""
-#                                       DELETE
-#                                       FROM active_mutes
-#                                       WHERE user_id = $1
-#                                         AND channel_id = $2
-#                                       """, user_id, before_channel.id)
-#                    await conn.execute("""
-#                                       UPDATE users
-#                                       SET manual_mute_channels = array_remove(manual_mute_channels, $2),
-#                                           updated_at           = NOW()
-#                                       WHERE user_id = $1
-#                                       """, user_id, before_channel.id)
-#
-#            if not before.mute and after.mute and after_channel:
-#                row = await conn.fetchrow("""
-#                                          SELECT source
-#                                          FROM active_mutes
-#                                          WHERE user_id = $1
-#                                            AND channel_id = $2
-#                                          """, user_id, after_channel.id)
-#                if not row:
-#                    await conn.execute("""
-#                                       INSERT INTO active_mutes (user_id, channel_id, source, issuer_id)
-#                                       VALUES ($1, $2, 'manual', $3) ON CONFLICT (user_id, channel_id) DO NOTHING
-#                                       """, user_id, after_channel.id, member.guild.owner_id)
-#                    await conn.execute("""
-#                                       INSERT INTO users (user_id, manual_mute_channels)
-#                                       VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO
-#                                       UPDATE
-#                                           SET manual_mute_channels = (
-#                                           SELECT ARRAY(
-#                                           SELECT DISTINCT unnest(COALESCE (u.manual_mute_channels, '{}') || ARRAY[$2])
-#                                           )
-#                                           FROM users u WHERE u.user_id = EXCLUDED.user_id
-#                                           ),
-#                                           updated_at = NOW()
-#                                       """, user_id, after_channel.id)
-#
-#            if after_channel:
-#                row = await conn.fetchrow("""
-#                                          SELECT source, expires_at
-#                                          FROM active_mutes
-#                                          WHERE user_id = $1
-#                                            AND channel_id = $2
-#                                          """, user_id, after_channel.id)
-#                if row and row['expires_at'] and row['expires_at'] <= datetime.utcnow():
-#                    print(f"DEBUG: Mute expired for {member.display_name} in {after_channel.name}")
-#                    await conn.execute("""
-#                                       DELETE
-#                                       FROM active_mutes
-#                                       WHERE user_id = $1
-#                                         AND channel_id = $2
-#                                       """, user_id, after_channel.id)
-#                    if row['source'] == 'owner':
-#                        await conn.execute("""
-#                                           UPDATE users
-#                                           SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2),
-#                                               updated_at              = NOW()
-#                                           WHERE user_id = $1
-#                                           """, user_id, member.guild.id)
-#                    elif row['source'] == 'manual':
-#                        await conn.execute("""
-#                                           UPDATE users
-#                                           SET manual_mute_channels = array_remove(manual_mute_channels, $2),
-#                                               updated_at           = NOW()
-#                                           WHERE user_id = $1
-#                                           """, user_id, after_channel.id)
-#                    else:
-#                        await conn.execute("""
-#                                           UPDATE users
-#                                           SET mute_channel_ids = array_remove(mute_channel_ids, $2),
-#                                               updated_at       = NOW()
-#                                           WHERE user_id = $1
-#                                           """, user_id, after_channel.id)
-#                    row = None
-#
-#                mute_row = await conn.fetchrow("""
-#                                               SELECT source
-#                                               FROM active_mutes
-#                                               WHERE user_id = $1
-#                                                 AND channel_id = $2
-#                                               """, user_id, after_channel.id)
-#
-#                if mute_row:
-#                    if mute_row['source'] in ('manual', 'bot', 'owner', 'bot_owner') and not after.mute:
-#                        try:
-#                            await member.edit(mute=True, reason=f"Enforcing mute in {after_channel.name}")
-#                        except discord.Forbidden:
-#                            logger.debug(f"No permission to mute {member.display_name}")
-#                        except discord.HTTPException as e:
-#                            logger.debug(f"Failed to mute {member.display_name}: {e}")
-#                    elif mute_row['source'] == 'unmuted' and after.mute:
-#                        try:
-#                            await member.edit(mute=False, reason=f"Enforcing unmute in {after_channel.name}")
-#                        except discord.Forbidden:
-#                            logger.debug(f"No permission to unmute {member.display_name}")
-#                        except discord.HTTPException as e:
-#                            logger.debug(f"Failed to unmute {member.display_name}: {e}")
-#                else:
-#                    user_mute_data = await conn.fetchrow("""
-#                                                         SELECT mute_channel_ids, server_mute_guild_ids, manual_mute_channels
-#                                                         FROM users
-#                                                         WHERE user_id = $1
-#                                                         """, user_id)
-#                    should_be_muted = False
-#                    source = 'bot'
-#                    if user_mute_data:
-#                        mute_channels = user_mute_data['mute_channel_ids'] or []
-#                        server_mute_guild_ids = user_mute_data['server_mute_guild_ids'] or []
-#                        manual_mute_channels = user_mute_data['manual_mute_channels'] or []
-#
-#                        if after_channel.id in server_mute_guild_ids:
-#                            should_be_muted = True
-#                            source = 'owner'
-#                        elif after_channel.id in manual_mute_channels:
-#                            should_be_muted = True
-#                            source = 'manual'
-#                        elif after_channel.id in mute_channels:
-#                            should_be_muted = True
-#                            source = 'bot'
-#
-#                    if should_be_muted:
-#                        await conn.execute("""
-#                                           INSERT INTO active_mutes (user_id, channel_id, source, issuer_id)
-#                                           VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, channel_id) DO NOTHING
-#                                           """, user_id, after_channel.id, source, member.guild.owner_id)
-#                        try:
-#                            await member.edit(mute=True, reason=f"Enforcing mute in {after_channel.name} (found in arrays)")
-#                        except discord.Forbidden:
-#                            logger.debug(f"No permission to mute {member.display_name}")
-#                        except discord.HTTPException as e:
-#                            logger.debug(f"Failed to mute {member.display_name}: {e}")
-#                    elif after.mute:
-#                        try:
-#                            await member.edit(mute=False, reason=f"Auto-unmuting in {after_channel.name} (no mute record)")
-#                        except discord.Forbidden:
-#                            logger.debug(f"No permission to unmute {member.display_name}")
-#                        except discord.HTTPException as e:
-#                            logger.debug(f"Failed to unmute {member.display_name}: {e}")
-#                user_row = await conn.fetchrow("""
-#                                               SELECT server_mute_guild_ids
-#                                               FROM users
-#                                               WHERE user_id = $1
-#                                               """, user_id)
-#
-#                if user_row and user_row['server_mute_guild_ids'] and member.guild.id in user_row[
-#                    'server_mute_guild_ids']:
-#                    try:
-#                        await member.edit(mute=True, reason=f"Enforcing mute in {after_channel.name} (found in arrays)")
-#                    except discord.Forbidden:
-#                        logger.debug(f"No permission to mute {member.display_name}")
-#                    except discord.HTTPException as e:
-#                        logger.debug(f"Failed to mute {member.display_name}: {e}")
-#                if before.channel is None and after.channel is not None:
-#                    try:
-#                        is_flagged = await conn.fetchval(
-#                            """
-#                            SELECT 1
-#                            FROM users
-#                            WHERE user_id = $1
-#                              AND $2 = ANY (flagged_channel_ids)
-#                            """,
-#                            member.id, after_channel.id
-#                        )
-#                        if not is_flagged:
-#                            return
-#                
-#                        if isinstance(after_channel, discord.VoiceChannel):
-#                            await after_channel.send(
-#                                f'⚠️ <@{member.id}> has joined voice channel <#{after_channel.id}> and is flagged.',
-#                                allowed_mentions=discord.AllowedMentions.none()
-#                            )
-#                    except Exception as e:
-#                        print(f"🔥 Error in on_voice_state_update: {e}")
                         
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:

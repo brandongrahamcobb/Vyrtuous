@@ -1946,50 +1946,6 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-
-    # @commands.command(name='reason', help='Get the reason for a mute, unmute, ban, or unban.')
-    # @is_owner_developer_coordinator_moderator()
-    # async def get_summary(
-    #     ctx,
-    #     member: str = commands.parameter(description='Tag a user or include their snowflake ID.')
-    # ) -> None:
-    #     guild_id = ctx.guild.id
-    #     member_id = None
-    #     member_object = None
-    #     if member.isdigit():
-    #         member_id = int(member)
-    #     elif member.startswith('<@') and member.endswith('>'):
-    #         try:
-    #             member_id = int(member.strip('<@!>'))
-    #         except ValueError:
-    #             pass
-    #     if member_id:
-    #         member_object = ctx.guild.get_member(member_id)
-    #     if not member_object:
-    #         return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid guild member from your input.')
-    #     async with self.bot.db_pool.acquire() as conn:
-    #         mute_rows = await conn.fetch('''
-    #             SELECT channel_id, reason, action
-    #             FROM mute_reasons
-    #             WHERE guild_id = $1 AND user_id = $2
-    #         ''', guild_id, member_object.id)
-    #         ban_rows = await conn.fetch('''
-    #             SELECT channel_id, reason, action
-    #             FROM ban_reasons
-    #             WHERE guild_id = $1 AND user_id = $2
-    #         ''', guild_id, member_object.id)
-    #     if not mute_rows and not ban_rows:
-    #         return await ctx.send(f'\U0001F525 No mute, unmute, ban, or unban history found for {member_object.mention}.', allowed_mentions=discord.AllowedMentions.none())
-    #     lines = []
-    #     def format_row(row, kind):
-    #         channel_id = row['channel_id']
-    #         reason = row['reason'] or '*No reason provided*'
-    #         action = row.get('action', kind)
-    #         return f'• [{action}] <#{channel_id}>: `{reason}`'
-    #     lines += [format_row(row, 'mute') for row in mute_rows]
-    #     lines += [format_row(row, 'ban') for row in ban_rows]
-    #     content = f'📄 Disciplinary reasons for {member_object.mention}:\n' + '\n'.join(lines)
-    #     await ctx.send(content, allowed_mentions=discord.AllowedMentions.none())
     
     @commands.hybrid_command(
         name='admins',
@@ -2228,7 +2184,6 @@ class Hybrid(commands.Cog):
                     cmd = self.create_text_mute_alias(alias_name)
                 elif alias_type == 'untmute':
                     cmd = self.create_untextmute_alias(alias_name)
-    
                 if cmd and not self.bot.get_command(alias_name):
                     self.bot.add_command(cmd)
                     self._loaded_aliases.add(alias_name)
