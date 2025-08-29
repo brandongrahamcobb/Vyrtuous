@@ -1109,7 +1109,7 @@ class Hybrid(commands.Cog):
         _, channel = await self.get_channel_and_member(ctx, channel)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            is_coord = await is_coordinator_for_channel(ctx, channel)
+            is_coord = await is_coordinator(ctx, channel)
             if not is_coord:
                 return await self.handler.send_message(ctx, content=f'\U0001F525 You are not a coordinator for {channel.mention}.')
         async with self.bot.db_pool.acquire() as conn:

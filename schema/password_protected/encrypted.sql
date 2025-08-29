@@ -8,6 +8,14 @@ DROP TABLE IF EXISTS ban_reasons;
 DROP TABLE IF EXISTS active_bans;
 DROP TABLE IF EXISTS ban_roles;
 DROP TABLE IF EXISTS mute_roles;
+DROP TABLE IF EXISTS moderation_logs;
+DROP TABLE IF EXISTS mute_reasons;
+DROP TABLE IF EXISTS server_mute_reasons;
+DROP TABLE IF EXISTS server_muter_ids;
+DROP TABLE IF EXISTS ban_expirations;
+DROP TABLE IF EXISTS text_mutes;
+
+
 
 CREATE TABLE IF NOT EXISTS users (
     user_id BIGINT PRIMARY KEY,
