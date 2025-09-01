@@ -1670,6 +1670,7 @@ class Hybrid(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
                                            SELECT am.channel_id,
+                                                  am.expires_at,
                                                   COALESCE(mr.reason, 'No reason provided') as reason
                                            FROM active_mutes am
                                                     LEFT JOIN mute_reasons mr
@@ -1691,7 +1692,10 @@ class Hybrid(commands.Cog):
                     channel_obj = ctx.guild.get_channel(record['channel_id'])
                     channel_mention = channel_obj.mention if channel_obj else f'`{record["channel_id"]}`'
                     reason = record['reason']
-                    description_lines.append(f'• {channel_mention} — {reason}')
+                    duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
+                        record['expires_at'], style='R'
+                    )
+                    description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
                 embed = discord.Embed(
                     title=f'Mute Records for {member.mention}',
                     description='\n'.join(description_lines),
@@ -1707,6 +1711,7 @@ class Hybrid(commands.Cog):
                             records = await conn.fetch('''
                                                        SELECT am.user_id,
                                                               am.channel_id,
+                                                              am.expires_at,
                                                               am.source,
                                                               COALESCE(mr.reason, 'No reason provided') as reason
                                                        FROM active_mutes am
@@ -1720,7 +1725,7 @@ class Hybrid(commands.Cog):
                             return await self.handler.send_message(ctx, content='\U0001F525 No users are currently muted in the server.')
                         grouped = defaultdict(list)
                         for record in records:
-                            grouped[record['channel_id']].append((record['user_id'], record['reason']))
+                            grouped[record['channel_id']].append(record)
                         pages = []
                         for channel_id, user_entries in sorted(grouped.items()):
                             channel = ctx.guild.get_channel(channel_id)
@@ -1729,22 +1734,26 @@ class Hybrid(commands.Cog):
                                 title=f'🔇 Active Mutes in {channel_name}',
                                 color=discord.Color.orange()
                             )
-                            for user_id, reason in user_entries:
+                            for record in user_entries:
+                                user_id = record['user_id']
                                 member = ctx.guild.get_member(user_id)
                                 name = member.display_name if member else f'User ID {user_id}'
                                 mention = member.mention if member else f'`{user_id}`'
+                                duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
+                                    record['expires_at'], style='R'
+                                )
                                 embed.add_field(
                                     name=name,
-                                    value=f'{mention}\nReason: {reason}',
+                                    value=f'{mention}\nReason: {record["reason"]}\nDuration: {duration_str}',
                                     inline=False
                                 )
                             pages.append(embed)
                         paginator = Paginator(self.bot, ctx, pages)
                         return await paginator.start()
-
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
                                            SELECT am.user_id,
+                                                  am.expires_at,
                                                   COALESCE(mr.reason, 'No reason provided') as reason,
                                                   am.source
                                            FROM active_mutes am
@@ -1763,7 +1772,10 @@ class Hybrid(commands.Cog):
                     if not member:
                         continue
                     name = member.display_name
-                    description_lines.append(f'• {name} — <@{uid}>')
+                    duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
+                        record['expires_at'], style='R'
+                    )
+                    description_lines.append(f'• {name} — <@{uid}> — {duration_str}')
                 if not description_lines:
                     return await ctx.send(f"\U0001F525 No muted users currently in {ctx.guild.name}.")
                 chunk_size = 18
@@ -1771,7 +1783,7 @@ class Hybrid(commands.Cog):
                 for i in range(0, len(description_lines), chunk_size):
                     chunk = description_lines[i:i + chunk_size]
                     embed = discord.Embed(
-                        title=f'Muted Users in {channel.mention}',
+                        title=f'\U0001F507 Muted Users in {channel.mention}',
                         color=discord.Color.orange()
                     )
                     embed.add_field(name="Muted Users", value='\n'.join(chunk), inline=False)
