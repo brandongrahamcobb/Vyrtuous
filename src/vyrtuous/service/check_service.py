@@ -72,7 +72,7 @@ class NotAtHome(commands.CheckFailure):
         super().__init__(message)
 
 async def at_home(ctx) -> bool:
-    if ctx.guild is not None and ctx.guild.id == config['discord_testing_guild_id']:
+    if ctx.guild is not None and ctx.guild.id == int(config['discord_testing_guild_id']):
         return True
     raise NotAtHome()
 
