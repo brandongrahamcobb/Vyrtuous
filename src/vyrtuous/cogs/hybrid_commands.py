@@ -149,18 +149,14 @@ class Hybrid(commands.Cog):
             except commands.CheckFailure as e:
                 logger.warning(e)
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to ban the owner.')
-    
             cmd = ctx.invoked_with
             member, _ = await self.get_channel_and_member(ctx, member)
             expires_at, duration_display = self.parse_duration(duration_hours)
-    
             if expires_at is None and (not is_owner_developer_coordinator("ban") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent bans.')
-    
             static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('ban', {}).get(cmd)
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'\U0001F525 No channel alias mapping found for `{cmd}`.')
-    
             async with self.bot.db_pool.acquire() as conn:
                 existing_ban = await conn.fetchrow(
                     '''
@@ -170,7 +166,6 @@ class Hybrid(commands.Cog):
                     ''',
                     member.id, static_channel_id
                 )
-    
             if existing_ban and not is_owner_developer_coordinator("ban"):
                 if existing_ban['expires_at'] is None:
                     return await self.handler.send_message(
@@ -185,11 +180,9 @@ class Hybrid(commands.Cog):
                             ctx,
                             content=f'\U0001F525 {member.mention} is already banned from <#{static_channel_id}> for another {hours_left}h.'
                         )
-    
             channel = ctx.guild.get_channel(static_channel_id)
             if not channel or not isinstance(channel, discord.VoiceChannel):
                 return await self.handler.send_message(ctx, content=f'\U0001F525 Could not resolve a valid voice channel for ID `{static_channel_id}`.')
-    
             try:
                 await channel.set_permissions(
                     member,
@@ -198,7 +191,6 @@ class Hybrid(commands.Cog):
                 )
             except discord.Forbidden:
                 return await self.handler.send_message(ctx, content='\U0001F525 Missing permissions to deny channel access.')
-    
             if member.voice and member.voice.channel and member.voice.channel.id == channel.id:
                 try:
                     await member.move_to(None, reason="Banned from this channel")
@@ -207,7 +199,6 @@ class Hybrid(commands.Cog):
                 except Exception as e:
                     logger.exception(f"Unexpected error while disconnecting user: {e}")
                     raise
-    
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     await conn.execute(
@@ -253,12 +244,10 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 logger.warning(f"Database error occurred: {e}")
                 raise
-    
             return await ctx.send(
                 f'{self.get_random_emoji()} {member.mention} has been banned from <#{channel.id}> {duration_display} because: {reason or "No reason provided"}',
                 allowed_mentions=discord.AllowedMentions.none()
             )
-    
         return ban_alias
         
     @commands.command(name='coord', help='Grants coordinator access for a specific voice channel.')
@@ -1344,91 +1333,98 @@ class Hybrid(commands.Cog):
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a text channel or use "all".')
 
-    @commands.command(name='coords', help='Lists coordinators for a specific voice channel, all, or a member.', hidden=True)
+    @commands.command(
+        name='coords',
+        help='Lists coordinators for a specific voice channel, all, or a member.',
+        hidden=True
+    )
     @is_owner_developer_coordinator()
-    async def list_coordinators(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Voice channel name, mention, ID, "all", or member ID.')) -> None:
-        pages = []
+    async def list_coordinators(
+        self,
+        ctx,
+        target: Optional[str] = commands.parameter(
+            default=None,
+            description='Voice channel name, mention, ID, "all", or member ID.'
+        )
+    ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+    
         if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
+            return await self.handler.send_message(
+                ctx,
+                content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}'
+            )
+    
+        # Case 1: all
         if target and target.lower() == 'all':
-            if is_owner_or_dev:
-                query = '''
-                    SELECT unnest(coordinator_channel_ids) AS channel_id, user_id
-                    FROM users
-                    WHERE coordinator_channel_ids IS NOT NULL
-                '''
-                try:
-                    async with self.bot.db_pool.acquire() as conn:
-                        rows = await conn.fetch(query)
-                    if not rows:
-                        return await self.handler.send_message(ctx, content='\U0001F525 No coordinators found in any voice channels.')
-                    channel_map = defaultdict(list)
-                    for row in rows:
-                        channel_map[row['channel_id']].append(row['user_id'])
-                    for ch_id, user_ids in sorted(channel_map.items()):
-                        vc = ctx.guild.get_channel(ch_id)
-                        vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-                        embed = discord.Embed(title=f'🧭 Coordinators for {vc_name}', color=discord.Color.gold())
-                        for uid in user_ids:
-                            member = ctx.guild.get_member(uid)
-                            name = member.display_name if member else f'User ID {uid}'
-                            embed.add_field(name='\u200b', value=f'• {name} (<@{uid}>)', inline=False)
-                        pages.append(embed)
-                except Exception as e:
-                    await self.handler.send_message(ctx, content=f'Database error: {e}')
-                    raise
-                if len(pages) == 1:
-                    return await ctx.send(embed=pages[0], allowed_mentions=discord.AllowedMentions.none())
-                else:
-                    paginator = Paginator(self.bot, ctx, pages)
-                    return await paginator.start()
-            else:
+            if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not authorized to list all coordinators.')
-        if target and (target.isdigit() or (len(ctx.message.mentions) > 0)):
-            target_member = None
-            if target.isdigit():
-                target_member = ctx.guild.get_member(int(target))
-            elif ctx.message.mentions:
-                target_member = ctx.message.mentions[0]
-            if not target_member:
-                return await ctx.send(f'\U0001F525 Could not find member for "{target}".')
+            query = '''
+                SELECT unnest(coordinator_channel_ids) AS channel_id, user_id
+                FROM users
+                WHERE coordinator_channel_ids IS NOT NULL
+            '''
+            async with self.bot.db_pool.acquire() as conn:
+                rows = await conn.fetch(query)
+            if not rows:
+                return await self.handler.send_message(ctx, content='\U0001F525 No coordinators found in any voice channels.')
+    
+            channel_map = defaultdict(list)
+            for row in rows:
+                channel_map[row['channel_id']].append(row['user_id'])
+    
+            pages = []
+            for ch_id, user_ids in sorted(channel_map.items()):
+                vc = ctx.guild.get_channel(ch_id)
+                vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
+                embed = discord.Embed(title=f'🧭 Coordinators for {vc_name}', color=discord.Color.gold())
+                for uid in user_ids:
+                    m = ctx.guild.get_member(uid)
+                    name = m.display_name if m else f'User ID {uid}'
+                    embed.add_field(name='\u200b', value=f'• {name} (<@{uid}>)', inline=False)
+                pages.append(embed)
+    
+            if len(pages) == 1:
+                return await ctx.send(embed=pages[0], allowed_mentions=discord.AllowedMentions.none())
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+    
+        # Case 2: Member
+        if member:
             query = '''
                 SELECT coordinator_channel_ids
                 FROM users
                 WHERE user_id = $1
             '''
-            try:
-                async with self.bot.db_pool.acquire() as conn:
-                    row = await conn.fetchrow(query, target_member.id)
-                if not row or not row['coordinator_channel_ids']:
-                    return await ctx.send(f'\U0001F525 {target_member.display_name} is not a coordinator in any channels.')
-                embeds = []
-                for ch_id in row['coordinator_channel_ids']:
-                    vc = ctx.guild.get_channel(ch_id)
-                    vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-                    embed = discord.Embed(
-                        title=f'🧭 {target_member.display_name} is a coordinator in:',
-                        description=f'• {vc_name}',
-                        color=discord.Color.gold()
-                    )
-                    embeds.append(embed)
+            async with self.bot.db_pool.acquire() as conn:
+                row = await conn.fetchrow(query, member.id)
+            if not row or not row['coordinator_channel_ids']:
+                return await ctx.send(f'\U0001F525 {member.display_name} is not a coordinator in any channels.')
     
-                if len(embeds) == 1:
-                    return await ctx.send(embed=embeds[0], allowed_mentions=discord.AllowedMentions.none())
-                else:
-                    paginator = Paginator(self.bot, ctx, embeds)
-                    return await paginator.start()
-            except Exception as e:
-                await self.handler.send_message(ctx, content=f'\U0001F525 Database error: {e}')
-                raise
-        query = '''
-            SELECT user_id
-            FROM users
-            WHERE $1 = ANY (coordinator_channel_ids)
-        '''
-        try:
+            embeds = []
+            for ch_id in row['coordinator_channel_ids']:
+                vc = ctx.guild.get_channel(ch_id)
+                vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
+                embed = discord.Embed(
+                    title=f'🧭 {member.display_name} is a coordinator in:',
+                    description=f'• {vc_name}',
+                    color=discord.Color.gold()
+                )
+                embeds.append(embed)
+    
+            if len(embeds) == 1:
+                return await ctx.send(embed=embeds[0], allowed_mentions=discord.AllowedMentions.none())
+            paginator = Paginator(self.bot, ctx, embeds)
+            return await paginator.start()
+    
+        # Case 3: Channel (explicit or default to ctx.channel)
+        if channel:
+            query = '''
+                SELECT user_id
+                FROM users
+                WHERE $1 = ANY (coordinator_channel_ids)
+            '''
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch(query, channel.id)
             if not rows:
@@ -1436,13 +1432,14 @@ class Hybrid(commands.Cog):
                     f'\U0001F525 No coordinators found for {channel.mention}.',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
+    
             lines = []
             for row in rows:
                 uid = row['user_id']
-                member = ctx.guild.get_member(uid)
-                if not member:
-                    continue
-                lines.append(f'• {member.display_name} — <@{uid}>')
+                m = ctx.guild.get_member(uid)
+                if m:
+                    lines.append(f'• {m.display_name} — <@{uid}>')
+    
             if not lines:
                 return await ctx.send(f'\U0001F525 No coordinators currently in {ctx.guild.name}.')
             chunk_size = 18
@@ -1457,9 +1454,8 @@ class Hybrid(commands.Cog):
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
-        except Exception as e:
-            await self.handler.send_message(ctx, content=f'\U0001F525 Database error: {e}')
-            raise
+        return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a voice channel, or use "all".')
+
 
     
     @commands.command(name='devs', hidden=True, help='Lists all developers.')
