@@ -30,18 +30,91 @@ from vyrtuous.service.discord_message_service import DiscordMessageService, Pagi
 from vyrtuous.utils.setup_logging import logger
 
 VEGAN_EMOJIS = [
-    "\U0001F42E",  # cow
-    "\U0001F437",  # pig
-    "\U0001F414",  # chicken
-    "\U0001F411",  # sheep
-    "\U0001F430",  # rabbit
-    "\U0001F986",  # duck
-    "\U0001F98B",  # butterfly
-    "\U0001F41D",  # bee
-    "\U0001F422",  # turtle
-    "\U0001F42C",  # dolphin
+    "\U0001F436",
+    "\U0001F431",
+    "\U0001F42D",
+    "\U0001F439",
+    "\U0001F430",
+    "\U0001F98A",
+    "\U0001F43B",
+    "\U0001F43C",
+    "\U0001F428",
+    "\U0001F42F",
+    "\U0001F981",
+    "\U0001F42E",
+    "\U0001F437",
+    "\U0001F43D",
+    "\U0001F438",
+    "\U0001F435",
+    "\U0001F412",
+    "\U0001F98D",
+    "\U0001F9A7",
+    "\U0001F414",
+    "\U0001F427",
+    "\U0001F426",
+    "\U0001F424",
+    "\U0001F423",
+    "\U0001F425",
+    "\U0001F986",
+    "\U0001F9A2",
+    "\U0001F989",
+    "\U0001F99A",
+    "\U0001F99C",
+    "\U0001F43A",
+    "\U0001F99D",
+    "\U0001F9A8",
+    "\U0001F9A1",
+    "\U0001F417",
+    "\U0001F434",
+    "\U0001F984",
+    "\U0001F41D",
+    "\U0001F41B",
+    "\U0001F98B",
+    "\U0001F40C",
+    "\U0001F41E",
+    "\U0001F40C",
+    "\U0001FAB2",
+    "\U0001F9F3",
+    "\U0001F997",
+    "\U0001F577",
+    "\U0001F982",
+    "\U0001F422",
+    "\U0001F40D",
+    "\U0001F98E",
+    "\U0001F996",
+    "\U0001F995",
+    "\U0001F419",
+    "\U0001F991",
+    "\U0001F990",
+    "\U0001F99E",
+    "\U0001F980",
+    "\U0001F421",
+    "\U0001F420",
+    "\U0001F41F",
+    "\U0001F42C",
+    "\U0001F988",
+    "\U0001F433",
+    "\U0001F40B",
+    "\U0001F9AD",
+    "\U0001F40A",
+    "\U0001F406",
+    "\U0001F405",
+    "\U0001F403",
+    "\U0001F402",
+    "\U0001F42B",
+    "\U0001F42A",
+    "\U0001F999",
+    "\U0001F992",
+    "\U0001F98F",
+    "\U0001F99B",
+    "\U0001F418",
+    "\U0001F998",
+    "\U0001F9A5",
+    "\U0001F9A6",
+    "\U0001F9A8",
+    "\U0001F9A9",
+    "\U0001F54A"
 ]
-
 PERMISSION_ORDER = ['Owner', 'Developer', 'Coordinator', 'Moderator', 'Everyone']
 
 class Hybrid(commands.Cog):
@@ -75,7 +148,7 @@ class Hybrid(commands.Cog):
         _, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            is_coord = await is_coordinator_for_channel(ctx, channel)
+            is_coord = await is_coordinator(ctx, channel)
             if not is_coord:
                 return await self.handler.send_message(ctx, content=f'\U0001F525 You are not a coordinator for {channel.mention}.')
         async with self.bot.db_pool.acquire() as conn:
@@ -391,8 +464,6 @@ class Hybrid(commands.Cog):
                     ctx,
                     content='\U0001F525 You are not allowed to flag the owner.'
                 )
-    
-            # Ensure the alias mapping exists
             flag_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('flag', {})
             channel_id = flag_aliases.get(command_name)
             if not channel_id:
@@ -400,9 +471,7 @@ class Hybrid(commands.Cog):
                     f'\U0001F525 No channel alias mapping found for `{command_name}`.',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
-    
             member, _ = await self.get_channel_and_member(ctx, user)
-    
             select_sql = '''
                 SELECT 1
                 FROM users
@@ -427,14 +496,12 @@ class Hybrid(commands.Cog):
                             f'\U0001F525 <@{member.id}> is already flagged for <#{channel_id}>.',
                             allowed_mentions=discord.AllowedMentions.none()
                         )
-    
                     await conn.execute(insert_sql, member.id, channel_id)
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id,
                                                      guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
                     ''', 'flag', member.id, ctx.author.id, ctx.guild.id, channel_id, 'Flagged a user')
-    
                 await ctx.send(
                     f'{self.get_random_emoji()} Flagged <@{member.id}> for channel <#{channel_id}>.',
                     allowed_mentions=discord.AllowedMentions.none()
@@ -442,7 +509,6 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 logger.exception(f"Database error in flag_alias: {e}")
                 return await self.handler.send_message(ctx, content=f'Database error: {e}')
-    
         return flag_alias
         
     @commands.command(name='mod', help='Elevates a user\'s permission to VC moderator for a specific channel.')
@@ -466,7 +532,6 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid channel from input.')
         if not member:
             return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid member from input.')
-
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
@@ -526,7 +591,6 @@ class Hybrid(commands.Cog):
                 await is_owner_block(ctx, member)
             except commands.CheckFailure:
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to mute the owner.')
-
             author_id = ctx.author.id
             bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
             server_owner_id = ctx.guild.owner_id
@@ -547,7 +611,6 @@ class Hybrid(commands.Cog):
                     ''',
                     member.id, static_channel_id
                 )
-            
             if existing_mute:
                 if existing_mute['expires_at'] is None:
                     return await self.handler.send_message(
@@ -574,12 +637,10 @@ class Hybrid(commands.Cog):
                 "bot_owner" if author_id == bot_owner_id else
                 "bot"
             )
-
             try:
                 await text_channel.set_permissions(member, send_messages=False, add_reactions=False)
             except discord.Forbidden:
                 return await self.handler.send_message(ctx, content='\U0001F525 The user\'s channel permissions were unable to be updated.')
-
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     await conn.execute('''
@@ -599,7 +660,6 @@ class Hybrid(commands.Cog):
                                        mute_source,
                                        expires_at
                     )
-
                     await conn.execute('''
                                        INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id, guild_id,
                                                                     channel_id, reason)
@@ -609,7 +669,6 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 logger.warning(f"DB insert failed: {e}")
                 return await self.handler.send_message(ctx, content=str(e))
-
             return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been text-muted in <#{static_channel_id}> {duration_display}.\nReason: {reason or "No reason provided"}', allowed_mentions=discord.AllowedMentions.none())
         return text_mute_alias
 
@@ -992,7 +1051,7 @@ class Hybrid(commands.Cog):
         channel = ctx.guild.get_channel(channel_id)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            is_coord = await is_coordinator_for_channel(ctx, channel)
+            is_coord = await is_coordinator(ctx, channel)
             if not is_coord:
                 return await self.handler.send_message(ctx, content=f'\U0001F525 You are not a coordinator for {channel.mention}.')
         async with self.bot.db_pool.acquire() as conn:
@@ -1148,7 +1207,6 @@ class Hybrid(commands.Cog):
         name='cmds',
         help='List command aliases. Optionally provide "all" or a specific channel.'
     )
-    @is_owner_developer_coordinator_moderator()
     async def list_room_commands(
             self,
             ctx,
@@ -1221,7 +1279,6 @@ class Hybrid(commands.Cog):
                         WHERE ab.guild_id = $1
                         ORDER BY ab.channel_id, ab.expires_at NULLS LAST
                     ''', ctx.guild.id)
-    
                 if not rows:
                     return await self.handler.send_message(ctx, content='\U0001F525 No active bans found in this server.')
                 grouped = defaultdict(list)
@@ -1259,11 +1316,9 @@ class Hybrid(commands.Cog):
                         AND br.guild_id = $2
                     WHERE ab.user_id = $1
                 ''', member.id, ctx.guild.id)
-    
             bans = [b for b in bans if ctx.guild.get_channel(b['channel_id'])]
             if not bans:
                 return await ctx.send(f'\U0001F525 {member.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
-    
             embed = discord.Embed(title=f'Ban Records', description=f"For {member.mention}", color=discord.Color.red())
             for record in bans:
                 channel_obj = ctx.guild.get_channel(record['channel_id'])
@@ -1312,12 +1367,9 @@ class Hybrid(commands.Cog):
                         time_left = f"{hours}h {minutes}m left"
                     else:
                         time_left = f"{minutes}m left"
-            
                 lines.append(f'• {name} — {time_left} — <@{uid}>')
-            
             if not lines:
                 return await ctx.send(f"\U0001F525 No active bans for users currently in {ctx.guild.name}.")
-            
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
@@ -1328,7 +1380,6 @@ class Hybrid(commands.Cog):
                     color=discord.Color.red()
                 )
                 pages.append(embed)
-            
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a text channel or use "all".')
@@ -1338,7 +1389,6 @@ class Hybrid(commands.Cog):
         help='Lists coordinators for a specific voice channel, all, or a member.',
         hidden=True
     )
-    @is_owner_developer_coordinator()
     async def list_coordinators(
         self,
         ctx,
@@ -1349,14 +1399,11 @@ class Hybrid(commands.Cog):
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-    
         if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(
                 ctx,
                 content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}'
             )
-    
-        # Case 1: all
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not authorized to list all coordinators.')
@@ -1369,11 +1416,9 @@ class Hybrid(commands.Cog):
                 rows = await conn.fetch(query)
             if not rows:
                 return await self.handler.send_message(ctx, content='\U0001F525 No coordinators found in any voice channels.')
-    
             channel_map = defaultdict(list)
             for row in rows:
                 channel_map[row['channel_id']].append(row['user_id'])
-    
             pages = []
             for ch_id, user_ids in sorted(channel_map.items()):
                 vc = ctx.guild.get_channel(ch_id)
@@ -1389,8 +1434,6 @@ class Hybrid(commands.Cog):
                 return await ctx.send(embed=pages[0], allowed_mentions=discord.AllowedMentions.none())
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
-    
-        # Case 2: Member
         if member:
             query = '''
                 SELECT coordinator_channel_ids
@@ -1401,7 +1444,6 @@ class Hybrid(commands.Cog):
                 row = await conn.fetchrow(query, member.id)
             if not row or not row['coordinator_channel_ids']:
                 return await ctx.send(f'\U0001F525 {member.display_name} is not a coordinator in any channels.')
-    
             embeds = []
             for ch_id in row['coordinator_channel_ids']:
                 vc = ctx.guild.get_channel(ch_id)
@@ -1417,8 +1459,6 @@ class Hybrid(commands.Cog):
                 return await ctx.send(embed=embeds[0], allowed_mentions=discord.AllowedMentions.none())
             paginator = Paginator(self.bot, ctx, embeds)
             return await paginator.start()
-    
-        # Case 3: Channel (explicit or default to ctx.channel)
         if channel:
             query = '''
                 SELECT user_id
@@ -1432,7 +1472,6 @@ class Hybrid(commands.Cog):
                     f'\U0001F525 No coordinators found for {channel.mention}.',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
-    
             lines = []
             for row in rows:
                 uid = row['user_id']
@@ -1577,12 +1616,9 @@ class Hybrid(commands.Cog):
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a voice channel, or use "all".')
 
     @commands.command(name='mods', hidden=True, help='Lists moderator statistics.')
-    @is_owner_developer_coordinator_moderator()
     async def list_moderators(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Voice channel name/mention/ID, "all", or member mention/ID.')) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-    
-        # Case 1: "all"
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not authorized to list all moderators.')
@@ -1616,8 +1652,6 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'Database error: {e}')
                 raise
-    
-        # Case 2: Member
         if member:
             query = '''
                 SELECT moderator_channel_ids
@@ -1646,11 +1680,8 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'\U0001F525 Database error: {e}')
                 raise
-    
-        # Case 3: Channel (explicit or default)
         if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
-    
         query = '''
             SELECT user_id
             FROM users
@@ -1685,10 +1716,7 @@ class Hybrid(commands.Cog):
         except Exception as e:
             await self.handler.send_message(ctx, content=f'\U0001F525 Database error: {e}')
             raise
-    
-        # Fallback
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a voice channel, or use "all".')
-
 
     @commands.command(
         name='mutes',
