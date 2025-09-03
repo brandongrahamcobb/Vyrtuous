@@ -1389,6 +1389,7 @@ class Hybrid(commands.Cog):
         help='Lists coordinators for a specific voice channel, all, or a member.',
         hidden=True
     )
+    @is_owner_developer_coordinator_moderator()
     async def list_coordinators(
         self,
         ctx,
@@ -1399,11 +1400,6 @@ class Hybrid(commands.Cog):
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(
-                ctx,
-                content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}'
-            )
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not authorized to list all coordinators.')
@@ -1616,6 +1612,7 @@ class Hybrid(commands.Cog):
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a voice channel, or use "all".')
 
     @commands.command(name='mods', hidden=True, help='Lists moderator statistics.')
+    @is_owner_developer_coordinator_moderator()
     async def list_moderators(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Voice channel name/mention/ID, "all", or member mention/ID.')) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
@@ -1680,8 +1677,6 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'\U0001F525 Database error: {e}')
                 raise
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
         query = '''
             SELECT user_id
             FROM users
