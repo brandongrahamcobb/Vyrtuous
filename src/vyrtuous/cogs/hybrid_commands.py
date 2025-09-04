@@ -225,7 +225,7 @@ class Hybrid(commands.Cog):
             cmd = ctx.invoked_with
             member, _ = await self.get_channel_and_member(ctx, member)
             expires_at, duration_display = self.parse_duration(duration_hours)
-            if expires_at is None and (not is_owner_developer_coordinator("ban") or not reason.strip()):
+            if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("ban") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent bans.')
             static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('ban', {}).get(cmd)
             if not static_channel_id:
@@ -595,7 +595,7 @@ class Hybrid(commands.Cog):
             bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
             server_owner_id = ctx.guild.owner_id
             expires_at, duration_display = self.parse_duration(duration_hours)
-            if expires_at is None and (not is_owner_developer_coordinator("tmute") or not reason.strip()):
+            if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("tmute") or not reason.strip()):
                 return await self.handler.send_message(
                     ctx,
                     content='\U0001F525 Reason required and coordinator-only for permanent text-mutes.'
@@ -688,7 +688,7 @@ class Hybrid(commands.Cog):
                 logger.warning(e)
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to mute the owner.')
             expires_at, duration_display = self.parse_duration(duration_hours)
-            if expires_at is None and (not is_owner_developer_coordinator("mute") or not reason.strip()):
+            if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("mute") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent mutes.')
             member, _ = await self.get_channel_and_member(ctx, member)
             static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('mute', {}).get(command_name)
