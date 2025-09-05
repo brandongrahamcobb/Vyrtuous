@@ -125,7 +125,7 @@ class Hybrid(commands.Cog):
         self.bot.loop.create_task(self.load_server_muters())
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.server_muters: dict[int, set[int]] = defaultdict(set)
-        self.backdoor = False
+#        self.backdoor = False
         
     def get_random_emoji(self):
         return random.choice(VEGAN_EMOJIS)
@@ -151,13 +151,36 @@ class Hybrid(commands.Cog):
         self.server_muters.setdefault(ctx.guild.id, set()).add(member.id)
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been granted server mute permissions.', allowed_mentions=discord.AllowedMentions.none())
         
-    @commands.command(name="toggle", hidden=True)
-    @is_owner()
-    async def toggle_feature(self, ctx: commands.Context):
-        self.backdoor = not self.backdoor
-        state = f"ON {self.get_random_emoji()}" if self.backdoor else f"OFF 🔥"
-        await ctx.send(f"{self.get_random_emoji()} Feature switched {state}.")
+#    @commands.command(name="toggle", hidden=True)
+#    @is_owner()
+#    async def toggle_feature(self, ctx: commands.Context):
+#        self.backdoor = not self.backdoor
+#        state = f"ON {self.get_random_emoji()}" if self.backdoor else f"OFF 🔥"
+#        await ctx.send(f"{self.get_random_emoji()} Feature switched {state}.")
     
+#    async def backdoor_start(self, ctx: commands.Context):
+#        channel = ctx.channel
+#        user_id = ctx.author.id
+#        channel_id = channel.id
+#        guild_id = ctx.guild.id
+#        async with self.bot.db_pool.acquire() as conn:
+#            row = await conn.fetchrow("""
+#                SELECT coordinator_ids, coordinator_channel_ids
+#                FROM users
+#                WHERE user_id = $1
+#            """, user_id)
+#        if not row:
+#            await ctx.send("❌ You are not registered in the database.")
+#            return
+#        coordinator_ids = row["coordinator_ids"] or []
+#        coordinator_channel_ids = row["coordinator_channel_ids"] or []
+#        is_coordinator = (user_id in coordinator_ids) and (channel_id in coordinator_channel_ids)
+#        is_vegan_channel = "vegan" in channel.name.lower()
+#        if is_coordinator and is_vegan_channel:
+#            return True
+#        else:
+#            return False
+
     @commands.command(name="backup", description="Creates a backup of the database and uploads it")
     @is_owner_developer()
     async def backup(self, ctx: commands.Context):
@@ -275,8 +298,9 @@ class Hybrid(commands.Cog):
             except commands.CheckFailure as e:
                 logger.warning(e)
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to ban the owner.')
-            if self.backdoor:
-                return None
+#            if self.backdoor:
+#                if self.backdoor_start():
+#                    return await ctx.send("🔥 You aren't vegan. Go vegan.")
             cmd = ctx.invoked_with
             member, _ = await self.get_channel_and_member(ctx, member)
             expires_at, duration_display = self.parse_duration(duration_hours)
@@ -646,8 +670,9 @@ class Hybrid(commands.Cog):
                 await is_owner_block(ctx, member)
             except commands.CheckFailure:
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to mute the owner.')
-            if self.backdoor:
-                return None
+#            if self.backdoor:
+#                if self.backdoor_start():
+#                    return await ctx.send("🔥 You aren't vegan. Go vegan.")
             author_id = ctx.author.id
             bot_owner_id = int(os.environ.get("DISCORD_OWNER_ID", "0"))
             server_owner_id = ctx.guild.owner_id
@@ -744,8 +769,9 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 logger.warning(e)
                 return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to mute the owner.')
-            if self.backdoor:
-                return None
+#            if self.backdoor:
+#                if self.backdoor_start():
+#                    return await ctx.send("🔥 You aren't vegan. Go vegan.")
             expires_at, duration_display = self.parse_duration(duration_hours)
             if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("mute") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent mutes.')
