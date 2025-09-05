@@ -196,9 +196,14 @@ class Hybrid(commands.Cog):
         _, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            is_coord = await is_coordinator(ctx, channel)
-            if not is_coord:
-                return await self.handler.send_message(ctx, content=f'\U0001F525 You are not a coordinator for {channel.mention}.')
+            ctx._target_channel_id = channel.id
+            try:
+                await is_coordinator_in_channel.predicate(ctx)
+            except commands.CheckFailure:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F525 You do not have permission for {channel.mention}.'
+                )
         async with self.bot.db_pool.acquire() as conn:
             existing_alias = await conn.fetchrow(
                 '''
@@ -1105,9 +1110,14 @@ class Hybrid(commands.Cog):
         channel = ctx.guild.get_channel(channel_id)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            is_coord = await is_coordinator(ctx, channel)
-            if not is_coord:
-                return await self.handler.send_message(ctx, content=f'\U0001F525 You are not a coordinator for {channel.mention}.')
+            ctx._target_channel_id = channel.id
+            try:
+                await is_coordinator_in_channel.predicate(ctx)
+            except commands.CheckFailure:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F525 You do not have permission for {channel.mention}.'
+                )
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
                 'DELETE FROM command_aliases WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3',
@@ -1211,9 +1221,14 @@ class Hybrid(commands.Cog):
         _, channel = await self.get_channel_and_member(ctx, channel)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            is_coord = await is_coordinator(ctx, channel)
-            if not is_coord:
-                return await self.handler.send_message(ctx, content=f'\U0001F525 You are not a coordinator for {channel.mention}.')
+            ctx._target_channel_id = channel.id
+            try:
+                await is_coordinator_in_channel.predicate(ctx)
+            except commands.CheckFailure:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F525 You do not have permission for {channel.mention}.'
+                )
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT moderator_ids, moderator_channel_ids FROM users WHERE user_id = $1",
@@ -2574,6 +2589,18 @@ class Hybrid(commands.Cog):
     def can_server_mute(ctx):
         cog = ctx.bot.get_cog('Hybrid')
         return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
+        
+    def coord_mod_check_with_channel(channel_arg: str, alias_type: Optional[str] = None):
+        def decorator(func):
+            async def wrapper(ctx, *args, **kwargs):
+                channel = kwargs.get(channel_arg) if channel_arg in kwargs else None
+                if channel is None and args:
+                    channel = args[0] if channel_arg == "channel" else None
+                if channel:
+                    ctx._target_channel_id = channel.id if hasattr(channel, "id") else int(channel)
+                return await func(ctx, *args, **kwargs)
+            return wrapper
+        return lambda f: is_owner_developer_coordinator_moderator(alias_type)(wrapper)
 
 async def setup(bot: DiscordBot):
     cog = Hybrid(bot)

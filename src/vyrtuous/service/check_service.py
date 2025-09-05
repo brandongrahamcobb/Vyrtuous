@@ -76,6 +76,7 @@ async def at_home(ctx) -> bool:
         return True
     raise NotAtHome()
 
+
 async def has_command_alias(ctx) -> bool:
     if not ctx.guild or not ctx.command:
         raise NoCommandAlias("Command must be used in a guild and must be a valid command.")
@@ -333,6 +334,19 @@ async def is_moderator(ctx, target_channel_id: int):
     if target_channel_id not in moderator_channel_ids:
         raise NotModerator("You are not a moderator in the target channel.")
     return True
+    
+def is_coordinator_in_channel(channel_id: int):
+    async def predicate(ctx: commands.Context):
+        ctx._target_channel_id = channel_id
+        async with ctx.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                ctx.author.id
+            )
+        if row and channel_id in (row.get("coordinator_channel_ids") or []):
+            return True
+        raise commands.CheckFailure("You are not a coordinator in this channel.")
+    return commands.check(predicate)
 
 #def is_owner_developer_coordinator_moderator(alias_type: Optional[str] = None):
 #    async def predicate(ctx: commands.Context):
