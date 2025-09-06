@@ -219,9 +219,9 @@ class Hybrid(commands.Cog):
         _, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            ctx._target_channel_id = channel.id
+            predicate = is_coordinator_in_channel(channel.id)
             try:
-                await is_coordinator_in_channel.predicate(ctx)
+                await predicate(ctx)
             except commands.CheckFailure:
                 return await self.handler.send_message(
                     ctx,
@@ -713,7 +713,6 @@ class Hybrid(commands.Cog):
                             content=f'\U0001F525 {member.mention} is already text-muted in <#{static_channel_id}> for another {duration_str}.'
                         )
             text_channel = ctx.guild.get_channel(static_channel_id)
-
             mute_source = (
                 "owner" if author_id == server_owner_id else
                 "bot_owner" if author_id == bot_owner_id else
@@ -1136,9 +1135,9 @@ class Hybrid(commands.Cog):
         channel = ctx.guild.get_channel(channel_id)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            ctx._target_channel_id = channel.id
+            predicate = is_coordinator_in_channel(channel.id)
             try:
-                await is_coordinator_in_channel.predicate(ctx)
+                await predicate(ctx)
             except commands.CheckFailure:
                 return await self.handler.send_message(
                     ctx,
@@ -1247,9 +1246,9 @@ class Hybrid(commands.Cog):
         _, channel = await self.get_channel_and_member(ctx, channel)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            ctx._target_channel_id = channel.id
+            predicate = is_coordinator_in_channel(channel.id)
             try:
-                await is_coordinator_in_channel.predicate(ctx)
+                await predicate(ctx)
             except commands.CheckFailure:
                 return await self.handler.send_message(
                     ctx,
