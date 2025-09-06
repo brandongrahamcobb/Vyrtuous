@@ -337,7 +337,6 @@ async def is_moderator(ctx, target_channel_id: int):
     
 def is_coordinator_in_channel(channel_id: int):
     async def predicate(ctx: commands.Context):
-        ctx._target_channel_id = channel_id
         async with ctx.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",

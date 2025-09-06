@@ -219,10 +219,12 @@ class Hybrid(commands.Cog):
         _, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            predicate = is_coordinator_in_channel(channel.id)
-            try:
-                await predicate(ctx)
-            except commands.CheckFailure:
+            async with ctx.bot.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                    ctx.author.id
+                )
+            if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
                 return await self.handler.send_message(
                     ctx,
                     content=f'\U0001F525 You do not have permission for {channel.mention}.'
@@ -1135,10 +1137,12 @@ class Hybrid(commands.Cog):
         channel = ctx.guild.get_channel(channel_id)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            predicate = is_coordinator_in_channel(channel.id)
-            try:
-                await predicate(ctx)
-            except commands.CheckFailure:
+            async with ctx.bot.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                    ctx.author.id
+                )
+            if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
                 return await self.handler.send_message(
                     ctx,
                     content=f'\U0001F525 You do not have permission for {channel.mention}.'
@@ -1246,10 +1250,12 @@ class Hybrid(commands.Cog):
         _, channel = await self.get_channel_and_member(ctx, channel)
         is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
-            predicate = is_coordinator_in_channel(channel.id)
-            try:
-                await predicate(ctx)
-            except commands.CheckFailure:
+            async with ctx.bot.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                    ctx.author.id
+                )
+            if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
                 return await self.handler.send_message(
                     ctx,
                     content=f'\U0001F525 You do not have permission for {channel.mention}.'
