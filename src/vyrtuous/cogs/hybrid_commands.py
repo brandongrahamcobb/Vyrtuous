@@ -271,7 +271,9 @@ class Hybrid(commands.Cog):
                 VALUES ($1, $2, $3, $4, $5, $6)
             ''', 'create_alias', None, ctx.author.id, ctx.guild.id, channel.id if channel else None, f'Created an alias: {alias_name}')
         if alias_type in ('role', 'unrole'):
-            self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = int(target)
+            is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
+            if is_owner_or_dev:
+                self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = int(target)
         else:
             self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = channel.id
         if alias_type == 'ban':
