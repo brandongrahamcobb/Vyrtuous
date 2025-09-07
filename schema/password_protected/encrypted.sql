@@ -47,10 +47,10 @@ CREATE TABLE text_mutes (
 CREATE TABLE IF NOT EXISTS command_aliases (
     guild_id BIGINT NOT NULL,
     alias_type TEXT NOT NULL CHECK (alias_type IN (
-        'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'
+        'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'
     )),
     alias_name TEXT NOT NULL,
-    channel_id BIGINT NOT NULL,
+    channel_id BIGINT,
     role_id BIGINT,
     PRIMARY KEY (guild_id, alias_type, alias_name)
 );

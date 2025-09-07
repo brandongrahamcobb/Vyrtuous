@@ -74,7 +74,6 @@ VEGAN_EMOJIS = [
     "\U0001F41E",
     "\U0001F40C",
     "\U0001FAB2",
-    "\U0001F9F3",
     "\U0001F997",
     "\U0001F577",
     "\U0001F982",
@@ -200,39 +199,40 @@ class Hybrid(commands.Cog):
             await ctx.send(f"❌ Failed to create backup: {e}")
 
 
-    @commands.command(name='alias', help='Set an alias for a cow, uncow, mute, unmute, ban, unban or flag action.')
+    @commands.command(name='alias', help='Set an alias for a cow, uncow, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, or unrole action.')
     @is_owner_developer_coordinator()
     async def create_alias(
-            self,
-            ctx,
-            alias_type: str = commands.parameter(description='One of: `cow`, `uncow`, `mute`, `unmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`'),
-            alias_name: str = commands.parameter(description='Alias/Pseudonym'),
-            target: str = commands.parameter(description='Voice channel')
+        self,
+        ctx,
+        alias_type: str = commands.parameter(description='One of: `cow`, `uncow`, `mute`, `unmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
+        alias_name: str = commands.parameter(description='Alias/Pseudonym'),
+        target: str = commands.parameter(description='Channel or Role ID')
     ) -> None:
         cmd = None
         alias_type = alias_type.lower()
-        valid_types = {'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'}
+        valid_types = {'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'}
         if alias_type not in valid_types:
             return await self.handler.send_message(ctx, content=f'\U0001F525 Invalid alias type. Must be one of: {", ".join(valid_types)}')
         if not alias_name.strip():
             return await self.handler.send_message(ctx, content='\U0001F525 Alias name cannot be empty.')
         _, channel = await self.get_channel_and_member(ctx, target)
-        is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev:
-            async with ctx.bot.db_pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
-                    ctx.author.id
-                )
-            if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
-                return await self.handler.send_message(
-                    ctx,
-                    content=f'\U0001F525 You do not have permission for {channel.mention}.'
-                )
+        if channel and alias_type not in ('role', 'unrole'):
+            is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
+            if not is_owner_or_dev:
+                async with ctx.bot.db_pool.acquire() as conn:
+                    row = await conn.fetchrow(
+                        "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                        ctx.author.id
+                    )
+                if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
+                    return await self.handler.send_message(
+                        ctx,
+                        content=f'\U0001F525 You do not have permission for {channel.mention}.'
+                    )
         async with self.bot.db_pool.acquire() as conn:
             existing_alias = await conn.fetchrow(
                 '''
-                SELECT guild_id, channel_id
+                SELECT guild_id, channel_id, role_id
                 FROM command_aliases
                 WHERE alias_type = $1
                   AND alias_name = $2
@@ -240,29 +240,46 @@ class Hybrid(commands.Cog):
                 alias_type, alias_name
             )
             if existing_alias:
-                existing_channel = ctx.guild.get_channel(existing_alias['channel_id'])
-                channel_mention = existing_channel.mention if existing_channel else f"<#{existing_alias['channel_id']}>"
-                return await ctx.send(f'\U0001F525 Alias `{alias_name}` ({alias_type}) already exists and is set to {channel_mention}.', allowed_mentions=discord.AllowedMentions.none())
+                existing_channel = ctx.guild.get_channel(existing_alias['channel_id']) if existing_alias['channel_id'] else None
+                existing_role = ctx.guild.get_role(existing_alias['role_id']) if existing_alias['role_id'] else None
+                mention = existing_channel.mention if existing_channel else (existing_role.mention if existing_role else "unknown")
+                return await ctx.send(f'\U0001F525 Alias `{alias_name}` ({alias_type}) already exists and is set to {mention}.', allowed_mentions=discord.AllowedMentions.none())
             if self.bot.get_command(alias_name):
                 return await self.handler.send_message(ctx, content=f'\U0001F525 A command named `{alias_name}` already exists.')
-            await conn.execute(
-                '''
-                INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
-                VALUES ($1, $2, $3, $4)
-                ''',
-                ctx.guild.id, alias_type, alias_name, channel.id
-            )
+            if alias_type in ('role', 'unrole'):
+                try:
+                    role_id = int(target.replace('<@&', '').replace('>', ''))
+                except ValueError:
+                    return await self.handler.send_message(ctx, content=f'⚠️ Invalid role ID: {target}')
+                await conn.execute(
+                    '''
+                    INSERT INTO command_aliases (guild_id, alias_type, alias_name, role_id)
+                    VALUES ($1, $2, $3, $4)
+                    ''',
+                    ctx.guild.id, alias_type, alias_name, role_id
+                )
+            else:
+                await conn.execute(
+                    '''
+                    INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id)
+                    VALUES ($1, $2, $3, $4)
+                    ''',
+                    ctx.guild.id, alias_type, alias_name, channel.id
+                )
             await conn.execute('''
-                               INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id, guild_id,
-                                                            channel_id, reason)
-                               VALUES ($1, $2, $3, $4, $5, $6)
-                               ''', 'create_alias', None, ctx.author.id, ctx.guild.id, channel.id,
-                               f'Created an alias: {alias_name}')
-        self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault(alias_type, {})[alias_name] = channel.id
+                INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id, guild_id, channel_id, reason)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            ''', 'create_alias', None, ctx.author.id, ctx.guild.id, channel.id if channel else None, f'Created an alias: {alias_name}')
+        if alias_type in ('role', 'unrole'):
+            self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = int(target)
+        else:
+            self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = channel.id
         if alias_type == 'ban':
             cmd = self.create_ban_alias(alias_name)
         elif alias_type == 'flag':
             cmd = self.create_flag_alias(alias_name)
+        elif alias_type == 'unflag':
+            cmd = self.create_unflag_alias(alias_name)
         elif alias_type == 'mute':
             cmd = self.create_voice_mute_alias(alias_name)
         elif alias_type == 'tmute':
@@ -279,8 +296,17 @@ class Hybrid(commands.Cog):
             cmd = self.create_unmute_alias(alias_name)
         elif alias_type == 'untmute':
             cmd = self.create_untextmute_alias(alias_name)
+        elif alias_type == 'role':
+            cmd = self.create_role_alias(alias_name)
+        elif alias_type == 'unrole':
+            cmd = self.create_unrole_alias(alias_name)
         self.bot.add_command(cmd)
-        return await ctx.send(f'{self.get_random_emoji()} Alias `{alias_name}` ({alias_type}) set to {channel.mention}.')
+        if alias_type in ('role', 'unrole'):
+            role = ctx.guild.get_role(int(target))
+            mention = role.mention if role else f'<@&{target}>'
+        else:
+            mention = channel.mention if channel else f'<#{target}>'
+        return await ctx.send(f'{self.get_random_emoji()} Alias `{alias_name}` ({alias_type}) set to {mention}.')
 
     def create_ban_alias(self, command_name: str) -> Command:
         @commands.command(
@@ -308,7 +334,13 @@ class Hybrid(commands.Cog):
             expires_at, duration_display = self.parse_duration(duration_hours)
             if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("ban") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent bans.')
-            static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('ban', {}).get(cmd)
+            static_channel_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('ban', {})
+                    .get(command_name)
+            )
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'\U0001F525 No channel alias mapping found for `{cmd}`.')
             async with self.bot.db_pool.acquire() as conn:
@@ -461,8 +493,13 @@ class Hybrid(commands.Cog):
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
         ) -> None:
-            cow_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('cow', {})
-            channel_id = cow_aliases.get("cow")
+            channel_id = (
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('cow', {})
+                    .get(command_name)
+            )
             member, _ = await self.get_channel_and_member(ctx, user)
             select_sql = '''
                          SELECT 1
@@ -545,8 +582,13 @@ class Hybrid(commands.Cog):
                     ctx,
                     content='\U0001F525 You are not allowed to flag the owner.'
                 )
-            flag_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('flag', {})
-            channel_id = flag_aliases.get(command_name)
+            channel_id = (
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('flag', {})
+                    .get(command_name)
+            )
             if not channel_id:
                 return await ctx.send(
                     f'\U0001F525 No channel alias mapping found for `{command_name}`.',
@@ -658,6 +700,32 @@ class Hybrid(commands.Cog):
                                'Created a moderator')
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been granted VC moderator access in {channel.name}.', allowed_mentions=discord.AllowedMentions.none())
 
+    def create_role_alias(self, command_name: str) -> Command:
+        @commands.command(name=command_name, help=f'Gives a specific role to a user.')
+        @is_owner_developer_coordinator("role")
+        async def role_alias(
+            ctx,
+            member: str = commands.parameter(description='Tag a user or include their ID.')
+        ) -> None:
+            member, _ = await self.get_channel_and_member(ctx, member)
+            if not member:
+                return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid member from input.')
+            static_role_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('role_aliases', {})
+                    .get('role', {})
+                    .get(command_name)
+            )
+            role = ctx.guild.get_role(static_role_id)
+            if not role:
+                return await ctx.send(f'⚠️ Could not resolve role with ID `{role_id}`.')
+            if role in member.roles:
+                return await ctx.send(f'{member.mention} already has {role.mention}.')
+            await member.add_roles(role, reason=f'Alias-based role command: {command_name}')
+            return await ctx.send(f'{self.get_random_emoji()} {member.mention} was given {role.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        return role_alias
+    
     def create_text_mute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Text mutes a user in a specific text channel.')
         @is_owner_developer_coordinator_moderator("tmute")
@@ -685,7 +753,13 @@ class Hybrid(commands.Cog):
                     content='\U0001F525 Reason required and coordinator-only for permanent text-mutes.'
                 )
             member, _ = await self.get_channel_and_member(ctx, member)
-            static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('tmute', {}).get(command_name)
+            static_channel_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('tmute', {})
+                    .get(command_name)
+            )
             async with self.bot.db_pool.acquire() as conn:
                 existing_mute = await conn.fetchrow(
                     '''
@@ -777,7 +851,13 @@ class Hybrid(commands.Cog):
             if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("mute") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent mutes.')
             member, _ = await self.get_channel_and_member(ctx, member)
-            static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('mute', {}).get(command_name)
+            static_channel_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('mute', {})
+                    .get(command_name)
+            )
             async with self.bot.db_pool.acquire() as conn:
                 existing_mute = await conn.fetchrow(
                     '''
@@ -866,7 +946,13 @@ class Hybrid(commands.Cog):
                 reason: str = commands.parameter(default='N/A', description='Optional reason for unbanning.')
         ) -> None:
             member, _ = await self.get_channel_and_member(ctx, member)
-            static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('unban', {}).get(command_name)
+            static_channel_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('unban', {})
+                    .get(command_name)
+            )
             async with self.bot.db_pool.acquire() as conn:
                 existing_ban = await conn.fetchrow(
                     '''
@@ -944,9 +1030,14 @@ class Hybrid(commands.Cog):
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
         ) -> None:
-            uncow_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('uncow', {})
+            static_channel_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('uncow', {})
+                    .get(command_name)
+            )
             member, _ = await self.get_channel_and_member(ctx, user)
-            channel_id = uncow_aliases.get(command_name)
             select_sql = '''
                          SELECT 1
                          FROM users
@@ -960,16 +1051,16 @@ class Hybrid(commands.Cog):
                          '''
             try:
                 async with self.bot.db_pool.acquire() as conn:
-                    is_flagged = await conn.fetchval(select_sql, member.id, channel_id)
+                    is_flagged = await conn.fetchval(select_sql, member.id, static_channel_id)
                     if not is_flagged:
                         return await self.handler.send_message(ctx, content=f'\U0001F525 <@{member.id}> is not flagged for <#{channel_id}>.')
-                    await conn.execute(update_sql, member.id, channel_id)
+                    await conn.execute(update_sql, member.id, static_channel_id)
                     await conn.execute('''
                                        INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id,
                                                                     guild_id,
                                                                     channel_id, reason)
                                        VALUES ($1, $2, $3, $4, $5, $6)
-                                       ''', 'uncow', member.id, ctx.author.id, ctx.guild.id, channel_id,
+                                       ''', 'uncow', member.id, ctx.author.id, ctx.guild.id, static_channel_id,
                                        'Uncowed a user')
                     await ctx.send(f'👽 <@{member.id}> is no longer going vegan.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
@@ -987,38 +1078,51 @@ class Hybrid(commands.Cog):
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
         ) -> None:
-            flag_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('unflag', {})
+            static_channel_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('unflag', {})
+                    .get(command_name)
+            )
             member, _ = await self.get_channel_and_member(ctx, user)
-            channel_id = flag_aliases.get(command_name)
+            if not member:
+                return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid member.')
             select_sql = '''
-                         SELECT 1
-                         FROM users
-                         WHERE user_id = $1
-                           AND $2 = ANY (flagged_channel_ids) \
-                         '''
+                SELECT 1
+                FROM users
+                WHERE user_id = $1
+                  AND $2 = ANY (flagged_channel_ids)
+            '''
             update_sql = '''
-                         UPDATE users
-                         SET flagged_channel_ids = array_remove(flagged_channel_ids, $2)
-                         WHERE user_id = $1 \
-                         '''
+                UPDATE users
+                SET flagged_channel_ids = array_remove(flagged_channel_ids, $2)
+                WHERE user_id = $1
+            '''
             try:
                 async with self.bot.db_pool.acquire() as conn:
-                    is_flagged = await conn.fetchval(select_sql, member.id, channel_id)
+                    is_flagged = await conn.fetchval(select_sql, member.id, static_channel_id)
                     if not is_flagged:
-                        return await self.handler.send_message(ctx, content=f'\U0001F525 <@{member.id}> is not flagged for <#{channel_id}>.')
-                    await conn.execute(update_sql, member.id, channel_id)
+                        return await self.handler.send_message(
+                            ctx,
+                            content=f'\U0001F525 <@{member.id}> is not flagged for <#{static_channel_id}>.'
+                        )
+                    await conn.execute(update_sql, member.id, static_channel_id)
                     await conn.execute('''
-                                       INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id,
-                                                                    guild_id,
-                                                                    channel_id, reason)
-                                       VALUES ($1, $2, $3, $4, $5, $6)
-                                       ''', 'unflag', member.id, ctx.author.id, ctx.guild.id, channel_id,
-                                       'Unflagged a user')
-                    await ctx.send(f'{self.get_random_emoji()} Unflagged <@{member.id}> for channel <#{channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
+                        INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id,
+                                                     guild_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                    ''', 'unflag', member.id, ctx.author.id, ctx.guild.id, static_channel_id, 'Unflagged a user')
+    
+                    await ctx.send(
+                        f'{self.get_random_emoji()} Unflagged <@{member.id}> for channel <#{static_channel_id}>.',
+                        allowed_mentions=discord.AllowedMentions.none()
+                    )
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'Database error: {e}')
                 raise
         return unflag_alias
+
 
     def create_unmute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Unmutes a member in a specific VC.')
@@ -1029,7 +1133,13 @@ class Hybrid(commands.Cog):
             *,
             reason: str = commands.parameter(default='N/A', description='Include a reason for the unmute.')
         ) -> None:
-            static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('unmute', {}).get(command_name)
+            static_channel_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('unmute', {})
+                    .get(command_name)
+            )
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'\U0001F525 No unmute alias configured for {command_name}.')
             member, _ = await self.get_channel_and_member(ctx, member)
@@ -1085,6 +1195,32 @@ class Hybrid(commands.Cog):
                 return await ctx.send(f'{self.get_random_emoji()} {member.mention} is no longer marked as muted in <#{static_channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
         return unmute_alias
 
+    def create_unrole_alias(self, command_name: str) -> Command:
+        @commands.command(name=command_name, help=f'Removes a specific role from a user.')
+        @is_owner_developer_coordinator("unrole")
+        async def unrole_alias(
+            ctx,
+            member: str = commands.parameter(description='Tag a user or include their ID.')
+        ) -> None:
+            member, _ = await self.get_channel_and_member(ctx, member)
+            if not member:
+                return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid member from input.')
+            static_role_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('role_aliases', {})
+                    .get('unrole', {})
+                    .get(command_name)
+            )
+            role = ctx.guild.get_role(static_role_id)
+            if not role:
+                return await ctx.send(f'⚠️ Could not resolve role with ID `{role_id}`.')
+            if role not in member.roles:
+                return await ctx.send(f'{member.mention} does not have {role.mention}.')
+            await member.remove_roles(role, reason=f'Alias-based unrole command: {command_name}')
+            return await ctx.send(f'{self.get_random_emoji()} {member.mention} had {role.mention} removed.', allowed_mentions=discord.AllowedMentions.none())
+        return unrole_alias
+        
     def create_untextmute_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Removes a text mute from a user in a specific text channel.')
         @is_owner_developer_coordinator_moderator("untmute")
@@ -1095,7 +1231,13 @@ class Hybrid(commands.Cog):
             member, _ = await self.get_channel_and_member(ctx, member)
             if not member:
                 return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid member from input.')
-            static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('untmute', {}).get(command_name)
+            static_channel_id = int(
+                self.bot.command_aliases
+                    .get(ctx.guild.id, {})
+                    .get('channel_aliases', {})
+                    .get('untmute', {})
+                    .get(command_name)
+            )
             text_channel = ctx.guild.get_channel(static_channel_id)
             try:
                 await text_channel.set_permissions(member, send_messages=None)
@@ -1120,47 +1262,59 @@ class Hybrid(commands.Cog):
 
     @commands.command(name='xalias', help='Deletes an alias.', hidden=True)
     @is_owner_developer_coordinator()
-    async def delete_alias(self, ctx, alias_name: str = commands.parameter(description='Includ an alias name')) -> None:
+    async def delete_alias(self, ctx, alias_name: str = commands.parameter(description='Include an alias name')) -> None:
         if not alias_name.strip():
             return await self.handler.send_message(ctx, content='\U0001F525 `alias_name` cannot be empty.')
+        guild_aliases = self.bot.command_aliases.get(ctx.guild.id, {})
         alias_type = None
+        alias_dict = None
         for candidate in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'):
-            if alias_name in self.bot.command_aliases.get(ctx.guild.id, {}).get(candidate, {}):
+            if alias_name in guild_aliases.get('channel_aliases', {}).get(candidate, {}):
                 alias_type = candidate
+                alias_dict = 'channel_aliases'
                 break
         if not alias_type:
+            for candidate in ('role', 'unrole'):
+                if alias_name in guild_aliases.get('role_aliases', {}).get(candidate, {}):
+                    alias_type = candidate
+                    alias_dict = 'role_aliases'
+                    break
+        if not alias_type:
             return await self.handler.send_message(ctx, content=f'\U0001F525 Alias `{alias_name}` not found.')
-        alias_entry = self.bot.command_aliases[ctx.guild.id][alias_type].get(alias_name)
-        channel_id = alias_entry.get('channel_id') if isinstance(alias_entry, dict) else alias_entry
-        if not channel_id:
-            return await self.handler.send_message(ctx, content='\U0001F525 Alias is not tied to a valid channel.')
-        channel = ctx.guild.get_channel(channel_id)
-        is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev:
-            async with ctx.bot.db_pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
-                    ctx.author.id
-                )
-            if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
-                return await self.handler.send_message(
-                    ctx,
-                    content=f'\U0001F525 You do not have permission for {channel.mention}.'
-                )
+        if alias_dict == 'channel_aliases':
+            channel_id = guild_aliases['channel_aliases'][alias_type][alias_name]
+            channel = ctx.guild.get_channel(channel_id)
+            if channel:
+                is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, channel)
+                if not is_owner_or_dev:
+                    async with ctx.bot.db_pool.acquire() as conn:
+                        row = await conn.fetchrow(
+                            "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                            ctx.author.id
+                        )
+                    if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
+                        return await self.handler.send_message(
+                            ctx,
+                            content=f'\U0001F525 You do not have permission for {channel.mention}.'
+                        )
+        else:
+            role_id = guild_aliases['role_aliases'][alias_type][alias_name]
+            channel = None
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
                 'DELETE FROM command_aliases WHERE guild_id = $1 AND alias_type = $2 AND alias_name = $3',
                 ctx.guild.id, alias_type, alias_name
             )
             await conn.execute('''
-                               INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id, guild_id,
-                                                            channel_id, reason)
-                               VALUES ($1, $2, $3, $4, $5, $6)
-                               ''', 'delete_alias', None, ctx.author.id, ctx.guild.id, channel.id,
-                               f'Deleted alias {alias_name}')
+                INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id, guild_id, channel_id, reason)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            ''', 'delete_alias', None, ctx.author.id, ctx.guild.id, channel.id if channel else None, f'Deleted alias {alias_name}')
         if self.bot.get_command(alias_name):
             self.bot.remove_command(alias_name)
-        self.bot.command_aliases[ctx.guild.id][alias_type].pop(alias_name, None)
+        if alias_dict == 'channel_aliases':
+            guild_aliases['channel_aliases'][alias_type].pop(alias_name, None)
+        else:
+            guild_aliases['role_aliases'].pop(alias_name, None)
         return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Deleted alias `{alias_name}` from `{alias_type}`.')
             
     @commands.command(
@@ -1353,57 +1507,62 @@ class Hybrid(commands.Cog):
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
         if target and target.lower() == 'all':
-            if is_owner_or_dev:
-                async with self.bot.db_pool.acquire() as conn:
-                    rows = await conn.fetch('''
-                        SELECT ab.user_id, ab.channel_id, ab.expires_at, br.reason
-                        FROM active_bans ab
-                                 LEFT JOIN ban_reasons br ON ab.user_id = br.user_id
-                            AND ab.channel_id = br.channel_id
-                            AND br.guild_id = $1
-                        WHERE ab.guild_id = $1
-                        ORDER BY ab.channel_id, ab.expires_at NULLS LAST
-                    ''', ctx.guild.id)
-                if not rows:
-                    return await self.handler.send_message(ctx, content='\U0001F525 No active bans found in this server.')
-                grouped = defaultdict(list)
-                for row in rows:
-                    grouped[row['channel_id']].append(row)
-                embeds = []
-                for ch_id, records in grouped.items():
-                    ch = ctx.guild.get_channel(ch_id)
-                    ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
-                    embed = discord.Embed(title=f'⛔ Bans in {ch_name}', color=discord.Color.red())
-                    for record in records:
-                        user = ctx.guild.get_member(record['user_id'])
-                        reason = record['reason'] or 'No reason provided'
-                        duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
-                            record['expires_at'], style='R'
-                        )
-                        mention = user.mention if user else f"`{record['user_id']}`"
-                        embed.add_field(
-                            name="User",
-                            value=f"{mention}\nReason: {reason}\nDuration: {duration_str}",
-                            inline=False
-                        )
-                    embeds.append(embed)
-                paginator = Paginator(self.bot, ctx, embeds)
-                return await paginator.start()
-            else:
-                return await self.handler.send_message(ctx, content='\U0001F525 Only owners or developers can list all bans across the server.')
+            if not is_owner_or_dev:
+                return await self.handler.send_message(
+                    ctx,
+                    content='\U0001F525 Only owners or developers can list all bans across the server.'
+                )
+            async with self.bot.db_pool.acquire() as conn:
+                rows = await conn.fetch('''
+                    SELECT ab.user_id, ab.channel_id, ab.expires_at, br.reason
+                    FROM active_bans ab
+                             LEFT JOIN ban_reasons br ON ab.user_id = br.user_id
+                                AND ab.channel_id = br.channel_id
+                                AND br.guild_id = $1
+                    ORDER BY ab.channel_id, ab.expires_at NULLS LAST
+                ''', ctx.guild.id)
+            if not rows:
+                return await self.handler.send_message(ctx, content='\U0001F525 No active bans found in this server.')
+            grouped = defaultdict(list)
+            for row in rows:
+                grouped[row['channel_id']].append(row)
+            embeds = []
+            for ch_id, records in grouped.items():
+                ch = ctx.guild.get_channel(ch_id)
+                ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
+                embed = discord.Embed(title=f'⛔ Bans in {ch_name}', color=discord.Color.red())
+                for record in records:
+                    user = ctx.guild.get_member(record['user_id'])
+                    reason = record['reason'] or 'No reason provided'
+                    duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
+                        record['expires_at'], style='R'
+                    )
+                    mention = user.mention if user else f"`{record['user_id']}`"
+                    embed.add_field(
+                        name="User",
+                        value=f"{mention}\nReason: {reason}\nDuration: {duration_str}",
+                        inline=False
+                    )
+                embeds.append(embed)
+    
+            paginator = Paginator(self.bot, ctx, embeds)
+            return await paginator.start()
         if member:
             async with self.bot.db_pool.acquire() as conn:
                 bans = await conn.fetch('''
                     SELECT ab.channel_id, ab.expires_at, br.reason
                     FROM active_bans ab
                              LEFT JOIN ban_reasons br ON ab.user_id = br.user_id
-                        AND ab.channel_id = br.channel_id
-                        AND br.guild_id = $2
+                                AND ab.channel_id = br.channel_id
+                                AND br.guild_id = $2
                     WHERE ab.user_id = $1
                 ''', member.id, ctx.guild.id)
             bans = [b for b in bans if ctx.guild.get_channel(b['channel_id'])]
             if not bans:
-                return await ctx.send(f'\U0001F525 {member.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await ctx.send(
+                    f'\U0001F525 {member.mention} is not banned in any channels.',
+                    allowed_mentions=discord.AllowedMentions.none()
+                )
             embed = discord.Embed(title=f'Ban Records', description=f"For {member.mention}", color=discord.Color.red())
             for record in bans:
                 channel_obj = ctx.guild.get_channel(record['channel_id'])
@@ -1424,8 +1583,8 @@ class Hybrid(commands.Cog):
                     SELECT ab.user_id, ab.expires_at, br.reason
                     FROM active_bans ab
                              LEFT JOIN ban_reasons br ON ab.user_id = br.user_id
-                        AND ab.channel_id = br.channel_id
-                        AND br.guild_id = $1
+                                AND ab.channel_id = br.channel_id
+                                AND br.guild_id = $1
                     WHERE ab.channel_id = $2
                     ORDER BY ab.expires_at NULLS LAST
                 ''', ctx.guild.id, channel.id)
@@ -1434,10 +1593,10 @@ class Hybrid(commands.Cog):
             lines = []
             for record in bans:
                 uid = record['user_id']
-                member = ctx.guild.get_member(uid)
-                if not member:
+                member_obj = ctx.guild.get_member(uid)
+                if not member_obj:
                     continue
-                name = member.display_name
+                name = member_obj.display_name
                 if record['expires_at'] is None:
                     time_left = "Permanent"
                 else:
@@ -1468,58 +1627,92 @@ class Hybrid(commands.Cog):
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F525 You must specify a member, a text channel or use "all".')
-
     
     @commands.command(
         name='cmds',
-        help='List command aliases. Optionally provide "all" or a specific channel.'
+        help='List command aliases. Optionally provide "all" or a specific channel or role.'
     )
     async def list_room_commands(
             self,
             ctx,
-            target: Optional[str] = commands.parameter(default=None, description='Channel name, mention, ID, or "all"')
+            target: Optional[str] = commands.parameter(default=None, description='Channel name, mention, ID, "all", or role mention/ID')
     ) -> None:
         aliases = self.bot.command_aliases.get(ctx.guild.id, {})
-        if not aliases:
+        has_aliases = any(
+            entries
+            for type_dict in aliases.values()
+            for entries in type_dict.values()
+        )
+        if not has_aliases:
             return await self.handler.send_message(ctx, content='No aliases defined in this guild.')
-        _, channel = await self.get_channel_and_member(ctx, target)
+        role = None
+        is_role_query = False
+        if target:
+            try:
+                rid = int(target.strip('<@&>'))
+                role = ctx.guild.get_role(rid)
+                if role:
+                    is_role_query = True
+            except ValueError:
+                pass
+        _, channel = await self.get_channel_and_member(ctx, target) if not is_role_query else (None, None)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if is_owner_or_dev and target and target.lower() == "all":
-            pages = []
-            for kind in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'):
-                entries = aliases.get(kind, {})
-                if not entries:
-                    continue
+        if not is_owner_or_dev and not is_mod_or_coord and not is_role_query:
+            return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permission to use this command here.')
+        lines = []
+        found_aliases = False
+        if target and target.lower() == "all" and is_owner_or_dev:
+            for kind, entries in aliases.get("channel_aliases", {}).items():
+                if entries:
+                    found_aliases = True
+                    embed = discord.Embed(
+                        title=f'{kind.capitalize()} Aliases for {ctx.guild.name}',
+                        description='\n'.join(f'`{name}` → <#{cid}>' for name, cid in entries.items()),
+                        color=discord.Color.blue()
+                    )
+                    await ctx.send(embed=embed)
+            for kind, entries in aliases.get("role_aliases", {}).items():
+                if entries:
+                    found_aliases = True
+                    lines.append(f'**{kind.capitalize()}**')
+                    for name, rid in entries.items():
+                        r = ctx.guild.get_role(rid)
+                        mention = r.mention if r else f'<@&{rid}>'
+                        lines.append(f'`{name}` → {mention}')
+            if lines:
                 embed = discord.Embed(
-                    title=f'{kind.capitalize()} Aliases for {ctx.guild.name}',
-                    description='\n'.join(f'`{name}` → <#{cid}>' for name, cid in entries.items()),
+                    title=f'Role Aliases for {ctx.guild.name}',
+                    description='\n'.join(lines),
                     color=discord.Color.blue()
                 )
-                pages.append(embed)
-            if not pages:
-                return await self.handler.send_message(ctx, content='No aliases found.')
-            paginator = Paginator(self.bot, ctx, pages)
-            return await paginator.start()
-        _, channel = await self.get_channel_and_member(ctx, target)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
-        found_aliases = False
+                await ctx.send(embed=embed)
+            if not found_aliases:
+                return await self.handler.send_message(ctx, content='No aliases found in this guild.')
+            return
+        if channel:
+            for kind, entries in aliases.get("channel_aliases", {}).items():
+                channel_entries = {name: cid for name, cid in entries.items() if cid == channel.id}
+                if channel_entries:
+                    found_aliases = True
+                    lines.append(f'**{kind.capitalize()}**')
+                    lines.extend(f'`{name}` → <#{cid}>' for name, cid in channel_entries.items())
+        if is_role_query and role:
+            for kind, entries in aliases.get("role_aliases", {}).items():
+                role_matches = {name: rid for name, rid in entries.items() if rid == role.id}
+                if role_matches:
+                    found_aliases = True
+                    lines.append(f'**{kind.capitalize()}**')
+                    for name, rid in role_matches.items():
+                        lines.append(f'`{name}` → {role.mention}')
+        if not found_aliases:
+            target_name = role.name if is_role_query and role else (channel.mention if channel else target)
+            return await self.handler.send_message(ctx, content=f'\U0001F525 No aliases found for {target_name}.')
         embed = discord.Embed(
-            title=f'Aliases for {channel.mention}',
+            title=f'Aliases for {role.name if is_role_query else channel.mention if channel else target}',
+            description='\n'.join(lines),
             color=discord.Color.blue()
         )
-        lines = []
-        for kind in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute'):
-            entries = aliases.get(kind, {})
-            channel_entries = {name: cid for name, cid in entries.items() if cid == channel.id}
-            if channel_entries:
-                found_aliases = True
-                lines.append(f'**{kind.capitalize()}**')
-                lines.extend(f'`{name}` → <#{cid}>' for name, cid in channel_entries.items())
-        if not found_aliases:
-            return await self.handler.send_message(ctx, content=f'\U0001F525 No aliases found for {channel.mention}.')
-        embed.description = '\n'.join(lines)
-        return await self.handler.send_message(ctx, embed=embed)
+        await self.handler.send_message(ctx, embed=embed)
 
     @commands.command(
         name='coords',
@@ -2438,16 +2631,25 @@ class Hybrid(commands.Cog):
             self._loaded_aliases = set()
         async with self.bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
-                'SELECT guild_id, alias_type, alias_name, channel_id FROM command_aliases'
+                'SELECT guild_id, alias_type, alias_name, channel_id, role_id FROM command_aliases'
             )
             for row in rows:
                 guild_id = row['guild_id']
                 alias_type = row['alias_type']
                 alias_name = row['alias_name']
-                channel_id = row['channel_id']
-                if channel_id is None:
-                    continue
-                self.bot.command_aliases.setdefault(guild_id, {}).setdefault(alias_type, {})[alias_name] = channel_id
+                target_id = None
+                if alias_type in ("role", "unrole"):
+                    role_id = row['role_id']
+                    if role_id is None:
+                        continue
+                    target_id = role_id
+                    self.bot.command_aliases.setdefault(guild_id, {}).setdefault("role_aliases", {}).setdefault(alias_type, {})[alias_name] = target_id
+                else:
+                    channel_id = row['channel_id']
+                    if channel_id is None:
+                        continue
+                    target_id = channel_id
+                    self.bot.command_aliases.setdefault(guild_id, {}).setdefault("channel_aliases", {}).setdefault(alias_type, {})[alias_name] = target_id
                 if alias_name in self._loaded_aliases:
                     continue
                 cmd = None
@@ -2471,10 +2673,13 @@ class Hybrid(commands.Cog):
                     cmd = self.create_text_mute_alias(alias_name)
                 elif alias_type == 'untmute':
                     cmd = self.create_untextmute_alias(alias_name)
+                elif alias_type == 'role':
+                    cmd = self.create_role_alias(alias_name)
+                elif alias_type == 'unrole':
+                    cmd = self.create_unrole_alias(alias_name)
                 if cmd and not self.bot.get_command(alias_name):
                     self.bot.add_command(cmd)
                     self._loaded_aliases.add(alias_name)
-
 
     async def get_channel_and_member(self, ctx: commands.Context, value: Optional[Union[str, discord.TextChannel, discord.VoiceChannel, discord.Member]]) -> tuple[Optional[discord.Member], Optional[Union[discord.TextChannel, discord.VoiceChannel]]]:
         member = None
@@ -2620,18 +2825,6 @@ class Hybrid(commands.Cog):
     def can_server_mute(ctx):
         cog = ctx.bot.get_cog('Hybrid')
         return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
-        
-    def coord_mod_check_with_channel(channel_arg: str, alias_type: Optional[str] = None):
-        def decorator(func):
-            async def wrapper(ctx, *args, **kwargs):
-                channel = kwargs.get(channel_arg) if channel_arg in kwargs else None
-                if channel is None and args:
-                    channel = args[0] if channel_arg == "channel" else None
-                if channel:
-                    ctx._target_channel_id = channel.id if hasattr(channel, "id") else int(channel)
-                return await func(ctx, *args, **kwargs)
-            return wrapper
-        return lambda f: is_owner_developer_coordinator_moderator(alias_type)(wrapper)
 
 async def setup(bot: DiscordBot):
     cog = Hybrid(bot)
