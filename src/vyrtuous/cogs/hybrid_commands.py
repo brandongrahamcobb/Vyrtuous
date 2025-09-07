@@ -308,7 +308,7 @@ class Hybrid(commands.Cog):
             mention = role.mention if role else f'<@&{target}>'
         else:
             mention = channel.mention if channel else f'<#{target}>'
-        return await ctx.send(f'{self.get_random_emoji()} Alias `{alias_name}` ({alias_type}) set to {mention}.')
+        return await ctx.send(f'{self.get_random_emoji()} Alias `{alias_name}` ({alias_type}) set to {mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     def create_ban_alias(self, command_name: str) -> Command:
         @commands.command(
