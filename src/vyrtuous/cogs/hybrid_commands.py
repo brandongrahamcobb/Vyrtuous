@@ -333,6 +333,8 @@ class Hybrid(commands.Cog):
 #                    return await ctx.send("🔥 You aren't vegan. Go vegan.")
             cmd = ctx.invoked_with
             member, _ = await self.get_channel_and_member(ctx, member)
+            if member.bot:
+                return
             expires_at, duration_display = self.parse_duration(duration_hours)
             if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("ban") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent bans.')
@@ -453,6 +455,8 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to make the owner a coordinator.')
         _, channel = await self.get_channel_and_member(ctx, channel)
         member, _ = await self.get_channel_and_member(ctx, member)
+        if member.bot:
+                return
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (user_id, coordinator_ids, coordinator_channel_ids)
@@ -503,6 +507,8 @@ class Hybrid(commands.Cog):
                     .get(command_name)
             )
             member, _ = await self.get_channel_and_member(ctx, user)
+            if member.bot:
+                return
             select_sql = '''
                          SELECT 1
                          FROM users
@@ -551,6 +557,8 @@ class Hybrid(commands.Cog):
             logger.warning(e)
             return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to make the owner a developer.')
         member, _ = await self.get_channel_and_member(ctx, member)
+        if member.bot:
+            return
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (user_id, developer_guild_ids)
@@ -578,6 +586,8 @@ class Hybrid(commands.Cog):
         ) -> None:
             try:
                 await is_owner_block(ctx, user)
+                if ctx.author.bot:
+                    return
             except commands.CheckFailure as e:
                 logger.warning(e)
                 return await self.handler.send_message(
@@ -597,6 +607,8 @@ class Hybrid(commands.Cog):
                     allowed_mentions=discord.AllowedMentions.none()
                 )
             member, _ = await self.get_channel_and_member(ctx, user)
+            if member.bot:
+                return
             select_sql = '''
                 SELECT 1
                 FROM users
@@ -650,6 +662,8 @@ class Hybrid(commands.Cog):
             logger.warning(e)
             return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to make the owner a moderator.')
         member, _ = await self.get_channel_and_member(ctx, member)
+        if member.bot:
+                return
         _, channel = await self.get_channel_and_member(ctx, channel)
         if not channel:
             channel = ctx.channel
@@ -657,6 +671,8 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid channel from input.')
         if not member:
             return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid member from input.')
+        if member.bot:
+            return
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(ctx, content=f'\U0001F525 You do not have permissions to use this command in {channel.mention}')
@@ -710,6 +726,8 @@ class Hybrid(commands.Cog):
             member: str = commands.parameter(description='Tag a user or include their ID.')
         ) -> None:
             member, _ = await self.get_channel_and_member(ctx, member)
+            if member.bot:
+                return
             if not member:
                 return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid member from input.')
             static_role_id = int(
@@ -755,6 +773,8 @@ class Hybrid(commands.Cog):
                     content='\U0001F525 Reason required and coordinator-only for permanent text-mutes.'
                 )
             member, _ = await self.get_channel_and_member(ctx, member)
+            if member.bot:
+                return
             static_channel_id = int(
                 self.bot.command_aliases
                     .get(ctx.guild.id, {})
@@ -853,6 +873,8 @@ class Hybrid(commands.Cog):
             if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator("mute") or not reason.strip()):
                 return await self.handler.send_message(ctx, content='\U0001F525 Reason required and coordinator-only for permanent mutes.')
             member, _ = await self.get_channel_and_member(ctx, member)
+            if member.bot:
+                return
             static_channel_id = int(
                 self.bot.command_aliases
                     .get(ctx.guild.id, {})
@@ -1088,6 +1110,8 @@ class Hybrid(commands.Cog):
                     .get(command_name)
             )
             member, _ = await self.get_channel_and_member(ctx, user)
+            if member.bot:
+                return
             if not member:
                 return await self.handler.send_message(ctx, content='\U0001F525 Could not resolve a valid member.')
             select_sql = '''
@@ -2360,6 +2384,8 @@ class Hybrid(commands.Cog):
         except commands.CheckFailure:
             return await self.handler.send_message(ctx, content='\U0001F525 You are not allowed to mute the owner.')
         member, _ = await self.get_channel_and_member(ctx, member)
+        if member.bot:
+                return
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                                INSERT INTO users (user_id, server_mute_guild_ids)
