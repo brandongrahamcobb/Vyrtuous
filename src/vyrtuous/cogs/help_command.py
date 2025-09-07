@@ -199,14 +199,19 @@ class Help(commands.Cog):
         if not all_commands:
             return await self.handler.send_message(ctx, '❌ No commands available to you.')
         current_text_channel_id = ctx.channel.id
-        guild_aliases = self.bot.command_aliases.get(ctx.guild.id, {})
+        current_guild_id = ctx.guild.id if ctx.guild else None
         alias_to_channel_map = {}
-        for alias_type, type_map in guild_aliases.get("channel_aliases", {}).items():
+        guild_aliases = self.bot.command_aliases.get(current_guild_id, {})
+        guild_channel_aliases = guild_aliases.get("channel_aliases", {})
+        guild_role_aliases = guild_aliases.get("role_aliases", {})
+        for alias_type, type_map in guild_channel_aliases.items():
             for alias_name, channel_id in type_map.items():
                 if channel_id == current_text_channel_id:
                     alias_to_channel_map[alias_name] = channel_id
-        for alias_type, type_map in guild_aliases.get("role_aliases", {}).items():
+        for alias_type, type_map in guild_role_aliases.items():
             for alias_name, data in type_map.items():
+                if data.get("guild_id") != current_guild_id:
+                    continue
                 channel_id = data.get("channel_id")
                 if channel_id == current_text_channel_id:
                     alias_to_channel_map[alias_name] = channel_id
@@ -214,14 +219,18 @@ class Help(commands.Cog):
         for command in all_commands:
             if command.name in alias_to_channel_map:
                 contextual_commands.append(command)
-            elif not any(
+                continue
+            is_channel_alias_in_guild = any(
                 command.name in type_map
-                for type_map in guild_aliases.get("channel_aliases", {}).values()
-            ) and not any(
+                for type_map in guild_channel_aliases.values()
+            )
+            is_role_alias_in_guild = any(
                 command.name in data
-                for type_map in guild_aliases.get("role_aliases", {}).values()
+                for type_map in guild_role_aliases.values()
                 for data in type_map.values()
-            ):
+                if data.get("guild_id") == current_guild_id
+            )
+            if not is_channel_alias_in_guild and not is_role_alias_in_guild:
                 contextual_commands.append(command)
         if not contextual_commands:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
