@@ -1698,36 +1698,78 @@ class Hybrid(commands.Cog):
     
     @commands.command(
         name='cmds',
-        help='List command aliases routed to the current channel.'
+        help='List command aliases routed to a specific channel or all channels if "all" is provided.'
     )
-    async def list_room_commands(self, ctx) -> None:
+    async def list_room_commands(self, ctx, target: Optional[str] = commands.parameter(
+            default=None,
+            description='Voice/text channel name, mention, ID, "all" or leave empty for current channel'
+        )) -> None:
         aliases = self.bot.command_aliases.get(ctx.guild.id, {})
         if not aliases:
             return await self.handler.send_message(ctx, content='No aliases defined in this guild.')
-        current_channel_id = ctx.channel.id
         lines = []
         found_aliases = False
-        for kind, type_map in aliases.get("channel_aliases", {}).items():
-            channel_entries = {name: cid for name, cid in type_map.items() if cid == current_channel_id}
-            if channel_entries:
-                found_aliases = True
-                lines.append(f'**{kind.capitalize()}**')
-                lines.extend(f'`{name}` → <#{cid}>' for name, cid in channel_entries.items())
-        for kind, type_map in aliases.get("role_aliases", {}).items():
-            role_entries = {name: data for name, data in type_map.items()
-                            if isinstance(data, dict) and data.get("channel_id") == current_channel_id}
-            if role_entries:
-                found_aliases = True
-                lines.append(f'**{kind.capitalize()} Role Aliases**')
-                for name, data in role_entries.items():
-                    rid = data.get("role_id")
-                    role = ctx.guild.get_role(rid)
-                    mention = role.mention if role else f'<@&{rid}>'
-                    lines.append(f'`{name}` → {mention}')
+        if target and target.lower() == "all":
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, None)
+            if not is_owner_or_dev:
+                return await self.handler.send_message(
+                    ctx,
+                    content='\U0001F6AB Only owners or developers can list all aliases across the server.'
+                )
+            for kind, type_map in aliases.get("channel_aliases", {}).items():
+                grouped_by_channel = defaultdict(list)
+                for name, cid in type_map.items():
+                    grouped_by_channel[cid].append(name)
+                for ch_id, names in grouped_by_channel.items():
+                    ch = ctx.guild.get_channel(ch_id)
+                    ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
+                    lines.append(f'**{kind.capitalize()} in {ch_name}**')
+                    lines.extend(f'`{name}` → <#{ch_id}>' for name in names)
+                    found_aliases = True
+            for kind, type_map in aliases.get("role_aliases", {}).items():
+                grouped_by_channel = defaultdict(list)
+                for name, data in type_map.items():
+                    if isinstance(data, dict) and "channel_id" in data:
+                        grouped_by_channel[data["channel_id"]].append((name, data.get("role_id")))
+                for ch_id, entries in grouped_by_channel.items():
+                    ch = ctx.guild.get_channel(ch_id)
+                    ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
+                    lines.append(f'**{kind.capitalize()} Role Aliases in {ch_name}**')
+                    for name, rid in entries:
+                        role = ctx.guild.get_role(rid)
+                        mention = role.mention if role else f'<@&{rid}>'
+                        lines.append(f'`{name}` → {mention}')
+                    found_aliases = True
+        else:
+            channel = await self.get_channel(ctx, target) if target else ctx.channel
+            if not channel:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB Channel `{target}` not found.')
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+            channel_id = channel.id
+            for kind, type_map in aliases.get("channel_aliases", {}).items():
+                channel_entries = {name: cid for name, cid in type_map.items() if cid == channel_id}
+                if channel_entries:
+                    found_aliases = True
+                    lines.append(f'**{kind.capitalize()}**')
+                    lines.extend(f'`{name}` → <#{cid}>' for name, cid in channel_entries.items())
+            for kind, type_map in aliases.get("role_aliases", {}).items():
+                role_entries = {name: data for name, data in type_map.items()
+                                if isinstance(data, dict) and data.get("channel_id") == channel_id}
+                if role_entries:
+                    found_aliases = True
+                    lines.append(f'**{kind.capitalize()} Role Aliases**')
+                    for name, data in role_entries.items():
+                        rid = data.get("role_id")
+                        role = ctx.guild.get_role(rid)
+                        mention = role.mention if role else f'<@&{rid}>'
+                        lines.append(f'`{name}` → {mention}')
         if not found_aliases:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB No aliases routed to this channel.')
+            return await self.handler.send_message(
+                ctx, content='\U0001F6AB No aliases found for the specified channel or server-wide.'
+            )
+        embed_title = 'All Aliases in Server' if target and target.lower() == 'all' else f'Aliases for {channel.mention}'
         embed = discord.Embed(
-            title=f'Aliases for {ctx.channel.mention}',
+            title=embed_title,
             description='\n'.join(lines),
             color=discord.Color.blue()
         )
