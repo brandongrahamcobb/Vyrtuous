@@ -1741,7 +1741,16 @@ class Hybrid(commands.Cog):
                         lines.append(f'`{name}` → {mention}')
                     found_aliases = True
         else:
-            channel = await self.get_channel(ctx, target) if target else ctx.channel
+            channel = None
+            if target:
+                target_clean = target.strip('<#>')
+                try:
+                    channel_id = int(target_clean)
+                    channel = ctx.guild.get_channel(channel_id)
+                except ValueError:
+                    channel = discord.utils.get(ctx.guild.channels, name=target_clean)
+            else:
+                channel = ctx.channel
             if not channel:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB Channel `{target}` not found.')
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
