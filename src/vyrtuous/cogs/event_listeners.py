@@ -33,7 +33,41 @@ class EventListeners(commands.Cog):
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.db_pool)
+        
+    async def fetch_active_mutes(conn, user_id: int, guild_id: int):
+        return await conn.fetch(
+            """
+            SELECT channel_id, expires_at
+            FROM active_mutes
+            WHERE user_id = $1
+              AND (expires_at IS NULL OR expires_at > NOW())
+            """,
+            user_id,
+        )
+    
+    async def fetch_active_bans(conn, user_id: int, guild_id: int):
+        return await conn.fetch(
+            """
+            SELECT channel_id, expires_at
+            FROM active_bans
+            WHERE user_id = $1
+              AND (expires_at IS NULL OR expires_at > NOW())
+            """,
+            user_id,
+        )
 
+    async def fetch_text_mutes(conn, user_id: int, guild_id: int):
+        return await conn.fetch(
+            """
+            SELECT channel_id
+            FROM text_mutes
+            WHERE discord_snowflake = $1
+              AND guild_id = $2
+            """,
+            user_id,
+            guild_id,
+        )
+        
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
         if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
@@ -137,27 +171,49 @@ class EventListeners(commands.Cog):
         user_id = member.id
         guild = member.guild
         async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT channel_id, expires_at
-                FROM active_bans
-                WHERE user_id = $1
-            """, user_id)
-        for row in rows:
-            channel_id = row['channel_id']
-            expires_at = row['expires_at']
-            if expires_at and expires_at < datetime.now(timezone.utc):
-                continue
-            channel = guild.get_channel(channel_id)
+            bans = await fetch_active_bans(conn, user_id, guild.id)
+            mutes = await fetch_active_mutes(conn, user_id, guild.id)
+            text_mutes = await fetch_text_mutes(conn, user_id, guild.id)
+        for row in bans:
+            channel = guild.get_channel(row["channel_id"])
             if not channel or not isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
+                continue
+            if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
                 continue
             try:
                 overwrite = channel.overwrites_for(member)
                 overwrite.view_channel = False
                 await channel.set_permissions(member, overwrite=overwrite, reason="Reinstating active channel ban")
             except discord.Forbidden:
-                print(f"Missing permissions to ban in channel {channel_id}")
+                print(f"Missing permissions to ban in channel {channel.id}")
             except discord.HTTPException as e:
-                print(f"Failed to apply ban for {member} in {channel_id}: {e}")
+                print(f"Failed to apply ban for {member} in {channel.id}: {e}")
+        for row in mutes:
+            channel = guild.get_channel(row["channel_id"])
+            if not channel or not isinstance(channel, discord.TextChannel):
+                continue
+            if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
+                continue
+            try:
+                overwrite = channel.overwrites_for(member)
+                overwrite.send_messages = False
+                await channel.set_permissions(member, overwrite=overwrite, reason="Reinstating active mute")
+            except discord.Forbidden:
+                print(f"Missing permissions to mute in channel {channel.id}")
+            except discord.HTTPException as e:
+                print(f"Failed to apply mute for {member} in {channel.id}: {e}")
+        for row in text_mutes:
+            channel = guild.get_channel(row["channel_id"])
+            if not channel or not isinstance(channel, discord.TextChannel):
+                continue
+            try:
+                overwrite = channel.overwrites_for(member)
+                overwrite.send_messages = False
+                await channel.set_permissions(member, overwrite=overwrite, reason="Reinstating text mute")
+            except discord.Forbidden:
+                print(f"Missing permissions to text mute in channel {channel.id}")
+            except discord.HTTPException as e:
+                print(f"Failed to apply text mute for {member} in {channel.id}: {e}")
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -167,7 +223,6 @@ class EventListeners(commands.Cog):
             ctx = await self.bot.get_context(after)
             if ctx.command:
                 await self.bot.invoke(ctx)
-
                 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):

@@ -1766,7 +1766,7 @@ class Hybrid(commands.Cog):
                                 if isinstance(data, dict) and data.get("channel_id") == channel_id}
                 if role_entries:
                     found_aliases = True
-                    lines.append(f'**{kind.capitalize()} Role Aliases**')
+                    lines.append(f'**{kind.capitalize()}**')
                     for name, data in role_entries.items():
                         rid = data.get("role_id")
                         role = ctx.guild.get_role(rid)
