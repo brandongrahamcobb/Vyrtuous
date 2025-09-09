@@ -33,17 +33,6 @@ class EventListeners(commands.Cog):
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.db_pool)
-        
-    async def fetch_active_mutes(conn, user_id: int, guild_id: int):
-        return await conn.fetch(
-            """
-            SELECT channel_id, expires_at
-            FROM active_mutes
-            WHERE user_id = $1
-              AND (expires_at IS NULL OR expires_at > NOW())
-            """,
-            user_id,
-        )
     
     async def fetch_active_bans(conn, user_id: int, guild_id: int):
         return await conn.fetch(
@@ -172,7 +161,6 @@ class EventListeners(commands.Cog):
         guild = member.guild
         async with self.db_pool.acquire() as conn:
             bans = await fetch_active_bans(conn, user_id, guild.id)
-            mutes = await fetch_active_mutes(conn, user_id, guild.id)
             text_mutes = await fetch_text_mutes(conn, user_id, guild.id)
         for row in bans:
             channel = guild.get_channel(row["channel_id"])
@@ -188,20 +176,6 @@ class EventListeners(commands.Cog):
                 print(f"Missing permissions to ban in channel {channel.id}")
             except discord.HTTPException as e:
                 print(f"Failed to apply ban for {member} in {channel.id}: {e}")
-        for row in mutes:
-            channel = guild.get_channel(row["channel_id"])
-            if not channel or not isinstance(channel, discord.TextChannel):
-                continue
-            if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
-                continue
-            try:
-                overwrite = channel.overwrites_for(member)
-                overwrite.send_messages = False
-                await channel.set_permissions(member, overwrite=overwrite, reason="Reinstating active mute")
-            except discord.Forbidden:
-                print(f"Missing permissions to mute in channel {channel.id}")
-            except discord.HTTPException as e:
-                print(f"Failed to apply mute for {member} in {channel.id}: {e}")
         for row in text_mutes:
             channel = guild.get_channel(row["channel_id"])
             if not channel or not isinstance(channel, discord.TextChannel):
