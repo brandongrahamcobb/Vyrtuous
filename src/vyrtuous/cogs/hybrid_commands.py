@@ -1574,6 +1574,17 @@ class Hybrid(commands.Cog):
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev:
+            async with ctx.bot.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
+                    ctx.author.id
+                )
+            if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
+                )
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(
@@ -1700,6 +1711,7 @@ class Hybrid(commands.Cog):
         name='cmds',
         help='List command aliases routed to a specific channel or all channels if "all" is provided.'
     )
+    @is_owner_developer_coordinator_moderator()
     async def list_room_commands(self, ctx, target: Optional[str] = commands.parameter(
             default=None,
             description='Voice/text channel name, mention, ID, "all" or leave empty for current channel'
@@ -1707,6 +1719,14 @@ class Hybrid(commands.Cog):
         aliases = self.bot.command_aliases.get(ctx.guild.id, {})
         if not aliases:
             return await self.handler.send_message(ctx, content='No aliases defined in this guild.')
+        _, channel = await self.get_channel_and_member(ctx, target)
+        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev:
+            if not is_mod_or_coord:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
+                )
         lines = []
         found_aliases = False
         if target and target.lower() == "all":
@@ -1800,6 +1820,12 @@ class Hybrid(commands.Cog):
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev:
+            if not is_mod_or_coord:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
+                )
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all coordinators.')
@@ -1931,6 +1957,12 @@ class Hybrid(commands.Cog):
         guild = ctx.guild
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev:
+            if not is_mod_or_coord:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
+                )
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Only owners or developers can list flags across all channels.')
@@ -2012,6 +2044,12 @@ class Hybrid(commands.Cog):
     async def list_moderators(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Voice channel name/mention/ID, "all", or member mention/ID.')) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev:
+            if not is_mod_or_coord:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
+                )
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
@@ -2121,6 +2159,13 @@ class Hybrid(commands.Cog):
             target: Optional[str] = commands.parameter(default=None, description='Voice channel, "all", or user mention/ID.')
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
+        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev:
+            if not is_mod_or_coord:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
+                )
         if member:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
@@ -2260,11 +2305,15 @@ class Hybrid(commands.Cog):
             target: Optional[str] = commands.parameter(default=None, description='Optional: "all", channel name/ID/mention, or user mention/ID.')
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
+        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev:
+            if not is_mod_or_coord:
+                return await self.handler.send_message(
+                    ctx,
+                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
+                )
         if not member and not channel:
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid text channel or user.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permissions to use this command in {channel.mention}')
         if target:
             if is_owner_or_dev:
                 if target.lower() == 'all':
