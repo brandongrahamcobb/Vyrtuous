@@ -225,36 +225,58 @@ class ScheduledTasks(commands.Cog):
                 ''',
                 now
             )
-        for record in expired:
-            user_id = record['user_id']
-            channel_id = record['channel_id']
-            channel = self.bot.get_channel(channel_id)
-            if not isinstance(channel, discord.TextChannel):
-                continue
-            guild = channel.guild
-            member = guild.get_member(user_id)
-            if not member:
-                continue
-            try:
-                await channel.set_permissions(member, overwrite=None)
-            except discord.Forbidden:
-                logger.warning(f'No permission to remove text mute override for user {user_id} in channel {channel_id}.')
-            except discord.HTTPException as e:
-                logger.error(f'Failed to remove text mute permission override: {e}')
-            async with self.bot.db_pool.acquire() as conn:
-                await conn.execute(
-                    'DELETE FROM text_mutes WHERE user_id = $1 AND channel_id = $2',
-                    user_id, channel_id
-                )
-                await conn.execute(
-                    '''
-                    UPDATE users
-                    SET text_mute_channel_ids = array_remove(text_mute_channel_ids, $2),
-                        updated_at             = NOW()
-                    WHERE user_id = $1
-                    ''',
-                    user_id, channel_id
-                )
+            if not expired:
+                return
+            logger.info(f'Found {len(expired)} expired text mutes.')
+    
+            async with conn.transaction():
+                for record in expired:
+                    user_id = record['user_id']
+                    channel_id = record['channel_id']
+    
+                    channel = self.bot.get_channel(channel_id)
+                    if channel is None:
+                        try:
+                            channel = await self.bot.fetch_channel(channel_id)
+                        except discord.NotFound:
+                            logger.warning(f'Channel {channel_id} not found. Skipping user {user_id}.')
+                            continue
+    
+                    if not isinstance(channel, discord.TextChannel):
+                        logger.warning(f'Channel {channel_id} is not a TextChannel. Skipping user {user_id}.')
+                        continue
+    
+                    guild = channel.guild
+                    member = guild.get_member(user_id)
+                    if member is None:
+                        try:
+                            member = await guild.fetch_member(user_id)
+                        except discord.NotFound:
+                            logger.warning(f'Member {user_id} not found in guild {guild.id}.')
+                            continue
+    
+                    try:
+                        await channel.set_permissions(member, overwrite=None)
+                        logger.info(f'Removed text mute for user {user_id} in channel {channel_id}.')
+                    except discord.Forbidden:
+                        logger.warning(f'No permission to remove text mute override for user {user_id} in channel {channel_id}.')
+                    except discord.HTTPException as e:
+                        logger.error(f'Failed to remove text mute permission override for user {user_id}: {e}')
+    
+                    await conn.execute(
+                        'DELETE FROM text_mutes WHERE user_id = $1 AND channel_id = $2',
+                        user_id, channel_id
+                    )
+                    await conn.execute(
+                        '''
+                        UPDATE users
+                        SET text_mute_channel_ids = array_remove(text_mute_channel_ids, $2),
+                            updated_at             = NOW()
+                        WHERE user_id = $1
+                        ''',
+                        user_id, channel_id
+                    )
+
 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
