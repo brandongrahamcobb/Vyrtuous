@@ -2315,106 +2315,76 @@ class Hybrid(commands.Cog):
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev:
-            if not is_mod_or_coord:
-                return await self.handler.send_message(
-                    ctx,
-                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
-                )
+        if not is_owner_or_dev and not is_mod_or_coord:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention if channel else "this channel"}.')
         if not member and not channel:
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid text channel or user.')
-        if target:
-            if is_owner_or_dev:
-                if target.lower() == 'all':
-                    async with self.bot.db_pool.acquire() as conn:
-                        records = await conn.fetch('''
-                                                   SELECT user_id, channel_id, reason, source
-                                                   FROM text_mutes
-                                                   WHERE guild_id = $1
-                                                   ''', ctx.guild.id)
-                    if not records:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB No users are currently text-muted in this server.')
-                    grouped = defaultdict(list)
-                    for record in records:
-                        grouped[record['channel_id']].append(record)
-                    pages = []
-                    for channel_id, entries in sorted(grouped.items()):
-                        channel = ctx.guild.get_channel(channel_id)
-                        ch_name = channel.mention if channel else f'Unknown Channel ({channel_id})'
-                        embed = discord.Embed(
-                            title=f'🔇 Text Mutes in {ch_name}',
-                            color=discord.Color.orange()
-                        )
-                        for entry in entries:
-                            user = ctx.guild.get_member(entry['user_id'])
-                            mention = user.mention if user else f'`{entry["user_id"]}`'
-                            reason = entry['reason']
-                            source = entry['source']
-                            embed.add_field(
-                                name=mention,
-                                value=f'Reason: {reason}\nSource: `{source}`',
-                                inline=False
-                            )
-                        pages.append(embed)
-                    paginator = Paginator(self.bot, ctx, pages)
-                    return await paginator.start()
-            else:
-                return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to specify a target. This command defaults to the current channel.')
         async with self.bot.db_pool.acquire() as conn:
-            if channel and not member:
+            if target and target.lower() == 'all' and is_owner_or_dev:
                 records = await conn.fetch('''
-                                           SELECT user_id, reason, source
-                                           FROM text_mutes
-                                           WHERE channel_id = $1
-                                             AND guild_id = $2
-                                           ''', channel.id, ctx.guild.id)
+                    SELECT user_id, channel_id, reason, source, expires_at
+                    FROM text_mutes
+                    WHERE guild_id = $1
+                ''', ctx.guild.id)
                 if not records:
-                    return await ctx.send(f'\U0001F6AB No users are currently text-muted in {channel.mention}.', allowed_mentions=discord.AllowedMentions.none())
-                lines = []
-                for record in records:
-                    uid = record['user_id']
-                    mention = f"<@{uid}>"
-                    lines.append(f'• {mention} — {record["reason"]} (via `{record["source"]}`)')
-                chunk_size = 18
+                    return await self.handler.send_message(ctx, content='\U0001F6AB No users are currently text-muted in this server.')
+                grouped = defaultdict(list)
+                for r in records: grouped[r['channel_id']].append(r)
                 pages = []
-                for i in range(0, len(lines), chunk_size):
-                    chunk = lines[i:i + chunk_size]
-                    embed = discord.Embed(
-                        title=f'Text-Muted Users in {channel.mention}',
-                        description='\n'.join(chunk),
-                        color=discord.Color.orange()
-                    )
+                for ch_id, entries in sorted(grouped.items()):
+                    ch = ctx.guild.get_channel(ch_id)
+                    ch_name = ch.mention if ch else f'Unknown Channel ({ch_id})'
+                    embed = discord.Embed(title=f'🔇 Text Mutes in {ch_name}', color=discord.Color.orange())
+                    for e in entries:
+                        user = ctx.guild.get_member(e['user_id'])
+                        mention = user.mention if user else f'`{e["user_id"]}`'
+                        duration_str = "Permanent" if not e['expires_at'] else discord.utils.format_dt(e['expires_at'], style='R')
+                        embed.add_field(name=mention, value=f'Reason: {e["reason"]}\nSource: `{e["source"]}`\nDuration: {duration_str}', inline=False)
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-            elif member:
+            if member:
                 records = await conn.fetch('''
-                                           SELECT channel_id, reason, source
-                                           FROM text_mutes
-                                           WHERE user_id = $1
-                                             AND guild_id = $2
-                                           ''', member.id, ctx.guild.id)
+                    SELECT channel_id, reason, source, expires_at
+                    FROM text_mutes
+                    WHERE user_id = $1 AND guild_id = $2
+                ''', member.id, ctx.guild.id)
                 if not records:
                     return await ctx.send(f'\U0001F6AB {member.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
-                for record in records:
-                    channel_id = record['channel_id']
-                    ch = ctx.guild.get_channel(channel_id)
-                    if not ch:
-                        continue
-                    ch_mention = f'<#{channel_id}>'
-                    lines.append(f'• {ch_mention} — {record["reason"]} (via `{record["source"]}`)')
-                if not lines:
-                    return await ctx.send(f"\U0001F6AB No text mute records found for {member.mention}.")
+                for r in records:
+                    ch = ctx.guild.get_channel(r['channel_id'])
+                    if not ch: continue
+                    ch_mention = f'<#{r["channel_id"]}>'
+                    duration_str = "Permanent" if not r['expires_at'] else discord.utils.format_dt(r['expires_at'], style='R')
+                    lines.append(f'• {ch_mention} — {r["reason"]} (via `{r["source"]}`) — {duration_str}')
                 chunk_size = 18
                 pages = []
                 for i in range(0, len(lines), chunk_size):
                     chunk = lines[i:i + chunk_size]
-                    embed = discord.Embed(
-                        title=f'Text Mute Records for {member.mention}',
-                        description='\n'.join(chunk),
-                        color=discord.Color.orange()
-                    )
+                    embed = discord.Embed(title=f'Text Mute Records for {member.mention}', description='\n'.join(chunk), color=discord.Color.orange())
+                    pages.append(embed)
+                paginator = Paginator(self.bot, ctx, pages)
+                return await paginator.start()
+            if channel:
+                records = await conn.fetch('''
+                    SELECT user_id, reason, source, expires_at
+                    FROM text_mutes
+                    WHERE channel_id = $1 AND guild_id = $2
+                ''', channel.id, ctx.guild.id)
+                if not records:
+                    return await ctx.send(f'\U0001F6AB No users are currently text-muted in {channel.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                lines = []
+                for r in records:
+                    user = ctx.guild.get_member(r['user_id'])
+                    if not user: continue
+                    duration_str = "Permanent" if not r['expires_at'] else discord.utils.format_dt(r['expires_at'], style='R')
+                    lines.append(f'• {user.mention} — {r["reason"]} (via `{r["source"]}`) — {duration_str}')
+                chunk_size = 18
+                pages = []
+                for i in range(0, len(lines), chunk_size):
+                    chunk = lines[i:i + chunk_size]
+                    embed = discord.Embed(title=f'Text-Muted Users in {channel.mention}', description='\n'.join(chunk), color=discord.Color.orange())
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
