@@ -210,28 +210,36 @@ class Help(commands.Cog):
                     alias_to_channel_map[alias_name] = channel_id
         for alias_type, type_map in guild_role_aliases.items():
             for alias_name, data in type_map.items():
-                if data.get("guild_id") != current_guild_id:
-                    continue
-                channel_id = data.get("channel_id")
-                if channel_id == current_text_channel_id:
-                    alias_to_channel_map[alias_name] = channel_id
+                ch_id = data.get("channel_id")
+                if ch_id is not None and ch_id == current_text_channel_id:
+                    alias_to_channel_map[alias_name] = ch_id
         contextual_commands = []
+        
+        # Flatten all channel alias names
+        all_channel_aliases = set()
+        for type_map in guild_channel_aliases.values():
+            all_channel_aliases.update(type_map.keys())
+        
+        # Flatten all role alias names mapped to current channel
+        all_role_aliases_in_channel = set()
+        for type_map in guild_role_aliases.values():
+            for alias_name, data in type_map.items():
+                if data.get("channel_id") == current_text_channel_id:
+                    all_role_aliases_in_channel.add(alias_name)
+        
         for command in all_commands:
+            # Include command if mapped to this channel
             if command.name in alias_to_channel_map:
                 contextual_commands.append(command)
                 continue
-            is_channel_alias_in_guild = any(
-                command.name in type_map
-                for type_map in guild_channel_aliases.values()
-            )
-            is_role_alias_in_guild = any(
-                command.name in data
-                for type_map in guild_role_aliases.values()
-                for data in type_map.values()
-                if data.get("guild_id") == current_guild_id
-            )
-            if not is_channel_alias_in_guild and not is_role_alias_in_guild:
+            # Include role aliases for this channel
+            if command.name in all_role_aliases_in_channel:
                 contextual_commands.append(command)
+                continue
+            # Include normal commands (not present in any alias)
+            if command.name not in all_channel_aliases and command.name not in {k for type_map in guild_role_aliases.values() for k in type_map}:
+                contextual_commands.append(command)
+
         if not contextual_commands:
             await self.handler.send_message(ctx, '❌ No commands available to you.')
             return
