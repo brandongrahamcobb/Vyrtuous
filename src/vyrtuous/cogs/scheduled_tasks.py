@@ -227,56 +227,40 @@ class ScheduledTasks(commands.Cog):
             )
             if not expired:
                 return
-            logger.info(f'Found {len(expired)} expired text mutes.')
-    
             async with conn.transaction():
                 for record in expired:
                     user_id = record['user_id']
                     channel_id = record['channel_id']
-    
                     channel = self.bot.get_channel(channel_id)
                     if channel is None:
                         try:
                             channel = await self.bot.fetch_channel(channel_id)
                         except discord.NotFound:
-                            logger.warning(f'Channel {channel_id} not found. Skipping user {user_id}.')
                             continue
-    
-                    if not isinstance(channel, discord.TextChannel):
-                        logger.warning(f'Channel {channel_id} is not a TextChannel. Skipping user {user_id}.')
-                        continue
-    
                     guild = channel.guild
                     member = guild.get_member(user_id)
                     if member is None:
                         try:
                             member = await guild.fetch_member(user_id)
                         except discord.NotFound:
-                            logger.warning(f'Member {user_id} not found in guild {guild.id}.')
                             continue
-    
                     try:
-                        await channel.set_permissions(member, overwrite=None)
-                        logger.info(f'Removed text mute for user {user_id} in channel {channel_id}.')
+                        await channel.set_permissions(member, send_messages=None)
                     except discord.Forbidden:
-                        logger.warning(f'No permission to remove text mute override for user {user_id} in channel {channel_id}.')
+                        pass
                     except discord.HTTPException as e:
-                        logger.error(f'Failed to remove text mute permission override for user {user_id}: {e}')
-    
+                        pass
                     await conn.execute(
                         'DELETE FROM text_mutes WHERE user_id = $1 AND channel_id = $2',
                         user_id, channel_id
                     )
-                    await conn.execute(
-                        '''
-                        UPDATE users
-                        SET text_mute_channel_ids = array_remove(text_mute_channel_ids, $2),
-                            updated_at             = NOW()
+                    await conn.execute('''
+                        DELETE
+                        FROM text_mutes
                         WHERE user_id = $1
-                        ''',
-                        user_id, channel_id
-                    )
-
+                              AND channel_id = $2
+                              AND guild_id = $3
+                        ''', member.id, channel_id, guild.id)
 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
