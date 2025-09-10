@@ -124,7 +124,7 @@ class Hybrid(commands.Cog):
         self.bot.loop.create_task(self.load_server_muters())
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.server_muters: dict[int, set[int]] = defaultdict(set)
-#        self.backdoor = False
+        self.backdoor = False
         
     def get_random_emoji(self):
         return random.choice(VEGAN_EMOJIS)
@@ -150,35 +150,45 @@ class Hybrid(commands.Cog):
         self.server_muters.setdefault(ctx.guild.id, set()).add(member.id)
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been granted server mute permissions.', allowed_mentions=discord.AllowedMentions.none())
         
-#    @commands.command(name="toggle", hidden=True)
-#    @is_owner()
-#    async def toggle_feature(self, ctx: commands.Context):
-#        self.backdoor = not self.backdoor
-#        state = f"ON {self.get_random_emoji()}" if self.backdoor else f"OFF \U0001F6AB"
-#        await ctx.send(f"{self.get_random_emoji()} Feature switched {state}.")
+    @commands.command(name="toggle", hidden=True)
+    @is_owner()
+    async def toggle_feature(self, ctx: commands.Context):
+        self.backdoor = not self.backdoor
+        state = f"ON {self.get_random_emoji()}" if self.backdoor else f"OFF \U0001F6AB"
+        await ctx.send(f"{self.get_random_emoji()} Feature switched {state}.")
+        if not self.backdoor:
+            for channel in ctx.guild.channels:
+                if "vegan" in channel.name.lower():
+                    await self.unrestrict(ctx.guild, channel)
     
-#    async def backdoor_start(self, ctx: commands.Context):
-#        channel = ctx.channel
-#        user_id = ctx.author.id
-#        channel_id = channel.id
-#        guild_id = ctx.guild.id
-#        async with self.bot.db_pool.acquire() as conn:
-#            row = await conn.fetchrow("""
-#                SELECT coordinator_ids, coordinator_channel_ids
-#                FROM users
-#                WHERE user_id = $1
-#            """, user_id)
-#        if not row:
-#            await ctx.send("❌ You are not registered in the database.")
-#            return
-#        coordinator_ids = row["coordinator_ids"] or []
-#        coordinator_channel_ids = row["coordinator_channel_ids"] or []
-#        is_coordinator = (user_id in coordinator_ids) and (channel_id in coordinator_channel_ids)
-#        is_vegan_channel = "vegan" in channel.name.lower()
-#        if is_coordinator and is_vegan_channel:
-#            return True
-#        else:
-#            return False
+    async def unrestrict(self, guild, vegan_channel):
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT user_id FROM users
+                WHERE $1 = ANY(coordinator_channel_ids) OR $1 = ANY(coordinator_ids)
+            """, vegan_channel.id)
+        for uid in [row["user_id"] for row in rows]:
+            member = guild.get_member(uid)
+            if not member:
+                continue
+            async with self.bot.db_pool.acquire() as conn:
+                ban_rows = await conn.fetch("SELECT channel_id FROM active_bans WHERE user_id=$1", uid)
+                mute_rows = await conn.fetch("SELECT channel_id FROM active_mutes WHERE user_id=$1", uid)
+                text_rows = await conn.fetch("SELECT channel_id FROM text_mutes WHERE user_id=$1", uid)
+            for r in ban_rows:
+                try: await guild.unban(discord.Object(id=uid), reason="Toggle OFF")
+                except: pass
+            for r in mute_rows:
+                ch = guild.get_channel(r["channel_id"])
+                if ch and member.voice and member.voice.mute: await member.edit(mute=False)
+            for r in text_rows:
+                ch = guild.get_channel(r["channel_id"])
+                text_mute_role = discord.utils.get(guild.roles, name="TextMuted")
+                if ch and text_mute_role and text_mute_role in member.roles: await member.remove_roles(text_mute_role)
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute("DELETE FROM active_bans WHERE user_id=$1", uid)
+                await conn.execute("DELETE FROM active_mutes WHERE user_id=$1", uid)
+                await conn.execute("DELETE FROM text_mutes WHERE user_id=$1", uid)
 
     @commands.command(name="backup", description="Creates a backup of the database and uploads it")
     @is_owner_developer()
