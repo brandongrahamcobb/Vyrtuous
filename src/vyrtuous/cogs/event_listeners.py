@@ -50,7 +50,7 @@ class EventListeners(commands.Cog):
             """
             SELECT channel_id
             FROM text_mutes
-            WHERE discord_snowflake = $1
+            WHERE user_id = $1
               AND guild_id = $2
             """,
             user_id,

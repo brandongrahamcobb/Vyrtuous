@@ -421,19 +421,19 @@ class Hybrid(commands.Cog):
                         channel.id,
                         expires_at
                     )
-                    await conn.execute(
-                        '''
-                        UPDATE users
-                        SET ban_channel_ids =
-                                CASE
-                                    WHEN NOT $2 = ANY (ban_channel_ids) THEN array_append(ban_channel_ids, $2)
-                                    ELSE ban_channel_ids
-                                    END,
-                            updated_at = NOW()
-                        WHERE user_id = $1
-                        ''',
-                        member.id, channel.id
-                    )
+#                    await conn.execute(
+#                        '''
+#                        UPDATE users
+#                        SET ban_channel_ids =
+#                                CASE
+#                                    WHEN NOT $2 = ANY (ban_channel_ids) THEN array_append(ban_channel_ids, $2)
+#                                    ELSE ban_channel_ids
+#                                    END,
+#                            updated_at = NOW()
+#                        WHERE user_id = $1
+#                        ''',
+#                        member.id, channel.id
+#                    )
                     await conn.execute(
                         '''
                         INSERT INTO ban_reasons (guild_id, user_id, channel_id, reason)
@@ -1049,15 +1049,15 @@ class Hybrid(commands.Cog):
                     'DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
                     member.id, channel.id
                 )
-                await conn.execute(
-                    '''
-                    UPDATE users
-                    SET ban_channel_ids = array_remove(ban_channel_ids, $2),
-                        updated_at      = NOW()
-                    WHERE user_id = $1
-                    ''',
-                    member.id, channel.id
-                )
+#                await conn.execute(
+#                    '''
+#                    UPDATE users
+#                    SET ban_channel_ids = array_remove(ban_channel_ids, $2),
+#                        updated_at      = NOW()
+#                    WHERE user_id = $1
+#                    ''',
+#                    member.id, channel.id
+#                )
                 await conn.execute('''
                                    INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id, guild_id,
                                                                 channel_id, reason)
