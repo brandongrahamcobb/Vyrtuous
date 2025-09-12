@@ -1045,10 +1045,10 @@ class Hybrid(commands.Cog):
                     'DELETE FROM active_bans WHERE user_id = $1 AND channel_id = $2',
                     member.id, channel.id
                 )
-                await conn.execute(
-                    'DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
-                    member.id, channel.id
-                )
+#                await conn.execute(
+#                    'DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2',
+#                    member.id, channel.id
+#                )
 #                await conn.execute(
 #                    '''
 #                    UPDATE users

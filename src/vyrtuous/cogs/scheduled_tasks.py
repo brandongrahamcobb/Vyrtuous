@@ -81,7 +81,7 @@ class ScheduledTasks(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             expired = await conn.fetch('''
                 SELECT user_id, channel_id
-                FROM ban_expirations
+                FROM active_bans
                 WHERE expires_at <= $1
             ''', now)
         for record in expired:
