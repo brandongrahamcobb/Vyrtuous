@@ -382,7 +382,7 @@ class Hybrid(commands.Cog):
                         content=f'\U0001F6AB {member.mention} is already permanently banned from <#{static_channel_id}>.'
                     )
                 else:
-                    remaining = existing_ban['expires_at'] - datetime.now(timezone.utc)
+                    remaining = existing_ban['expires_at'] -  discord.utils.utcnow()
                     if remaining.total_seconds() > 0:
                         hours_left = round(remaining.total_seconds() / 3600, 1)
                         return await self.handler.send_message(
@@ -815,7 +815,7 @@ class Hybrid(commands.Cog):
                         content=f'\U0001F6AB {member.mention} is already permanently text-muted in <#{static_channel_id}>.'
                     )
                 else:
-                    remaining = existing_mute['expires_at'] - datetime.now(timezone.utc)
+                    remaining = existing_mute['expires_at'] -  discord.utils.utcnow()
                     if remaining.total_seconds() > 0:
                         if remaining.total_seconds() > 1800:  # more than 30 minutes
                             remaining_hours = round(remaining.total_seconds() / 3600, 1)
@@ -921,7 +921,7 @@ class Hybrid(commands.Cog):
                             content=f'\U0001F6AB {member.mention} is already permanently voice-muted in <#{static_channel_id}>.'
                         )
                     else:
-                        remaining = existing_mute['expires_at'] - datetime.now(timezone.utc)
+                        remaining = existing_mute['expires_at'] -  discord.utils.utcnow()
                         if remaining.total_seconds() > 0:
                             if remaining.total_seconds() > 1800:
                                 remaining_hours = round(remaining.total_seconds() / 3600, 1)
@@ -948,18 +948,18 @@ class Hybrid(commands.Cog):
                                        mute_source,
                                        author_id,
                                        expires_at)
-                    await conn.execute('''
-                                       INSERT INTO users (user_id, mute_channel_ids)
-                                       VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO
-                                       UPDATE
-                                           SET mute_channel_ids = (
-                                               SELECT ARRAY(
-                                                   SELECT DISTINCT unnest(COALESCE(u.mute_channel_ids, '{}') || ARRAY[$2])
-                                               )
-                                               FROM users u WHERE u.user_id = EXCLUDED.user_id
-                                           ),
-                                           updated_at = NOW()
-                                       ''', member.id, static_channel_id)
+#                    await conn.execute('''
+#                                       INSERT INTO users (user_id, mute_channel_ids)
+#                                       VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (user_id) DO
+#                                       UPDATE
+#                                           SET mute_channel_ids = (
+#                                               SELECT ARRAY(
+#                                                   SELECT DISTINCT unnest(COALESCE(u.mute_channel_ids, '{}') || ARRAY[$2])
+#                                               )
+#                                               FROM users u WHERE u.user_id = EXCLUDED.user_id
+#                                           ),
+#                                           updated_at = NOW()
+#                                       ''', member.id, static_channel_id)
                     await conn.execute('''
                                        INSERT INTO mute_reasons (guild_id, user_id, reason, channel_id)
                                        VALUES ($1, $2, $3, $4) ON CONFLICT (guild_id, user_id, channel_id)
@@ -1600,7 +1600,7 @@ class Hybrid(commands.Cog):
                     if record['expires_at'] is None:
                         duration_str = "Permanent"
                     else:
-                        now = datetime.now(timezone.utc)
+                        now =  discord.utils.utcnow()
                         delta = record['expires_at'] - now
                         if delta.total_seconds() <= 0:
                             duration_str = "Expired"
@@ -1635,7 +1635,7 @@ class Hybrid(commands.Cog):
                 if record['expires_at'] is None:
                     duration_str = "Permanent"
                 else:
-                    now = datetime.now(timezone.utc)
+                    now =  discord.utils.utcnow()
                     delta = record['expires_at'] - now
                     if delta.total_seconds() <= 0:
                         duration_str = "Expired"
@@ -1669,7 +1669,7 @@ class Hybrid(commands.Cog):
                 if record['expires_at'] is None:
                     time_left = "Permanent"
                 else:
-                    now = datetime.now(timezone.utc)
+                    now =  discord.utils.utcnow()
                     delta = record['expires_at'] - now
                     if delta.total_seconds() <= 0:
                         time_left = "Expired"
@@ -2141,7 +2141,7 @@ class Hybrid(commands.Cog):
         def fmt_duration(expires_at):
             if expires_at is None:
                 return "Permanent"
-            now = datetime.now(timezone.utc)
+            now =  discord.utils.utcnow()
             delta = expires_at - now
             if delta.total_seconds() <= 0:
                 return "Expired"
@@ -2248,7 +2248,7 @@ class Hybrid(commands.Cog):
         def fmt_duration(expires_at):
             if not expires_at:
                 return "Permanent"
-            now = datetime.now(timezone.utc)
+            now =  discord.utils.utcnow()
             delta = expires_at - now
             if delta.total_seconds() <= 0:
                 return "Expired"
@@ -2795,25 +2795,25 @@ class Hybrid(commands.Cog):
     def parse_duration(self, duration: Optional[str]) -> tuple[Optional[datetime], str]:
         if duration is None:
             delta = timedelta(hours=24)
-            return datetime.now(timezone.utc) + delta, "for 24 hour(s)"
+            return  discord.utils.utcnow() + delta, "for 24 hour(s)"
         duration = duration.strip().lower()
         if duration in ("0", "0h", "0d", "0m"):
             return None, "permanently"
         if duration.endswith("d"):
             days = int(duration[:-1])
             delta = timedelta(days=days)
-            return datetime.now(timezone.utc) + delta, f"for {days} day(s)"
+            return  discord.utils.utcnow() + delta, f"for {days} day(s)"
         if duration.endswith("h"):
             hours = int(duration[:-1])
             delta = timedelta(hours=hours)
-            return datetime.now(timezone.utc) + delta, f"for {hours} hour(s)"
+            return  discord.utils.utcnow() + delta, f"for {hours} hour(s)"
         if duration.endswith("m"):
             minutes = int(duration[:-1])
             delta = timedelta(minutes=minutes)
-            return datetime.now(timezone.utc) + delta, f"for {minutes} minute(s)"
+            return  discord.utils.utcnow() + delta, f"for {minutes} minute(s)"
         hours = int(duration)
         delta = timedelta(hours=hours)
-        return datetime.now(timezone.utc) + delta, f"for {hours} hour(s)"
+        return  discord.utils.utcnow() + delta, f"for {hours} hour(s)"
 
     def perform_backup(self, db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
