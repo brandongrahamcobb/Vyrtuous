@@ -2795,25 +2795,25 @@ class Hybrid(commands.Cog):
     def parse_duration(self, duration: Optional[str]) -> tuple[Optional[datetime], str]:
         if duration is None:
             delta = timedelta(hours=24)
-            return  discord.utils.utcnow() + delta, "for 24 hour(s)"
+            return datetime.now(timezone.utc) + delta, "for 24 hour(s)"
         duration = duration.strip().lower()
         if duration in ("0", "0h", "0d", "0m"):
             return None, "permanently"
         if duration.endswith("d"):
             days = int(duration[:-1])
             delta = timedelta(days=days)
-            return  discord.utils.utcnow() + delta, f"for {days} day(s)"
+            return datetime.now(timezone.utc) + delta, f"for {days} day(s)"
         if duration.endswith("h"):
             hours = int(duration[:-1])
             delta = timedelta(hours=hours)
-            return  discord.utils.utcnow() + delta, f"for {hours} hour(s)"
+            return datetime.now(timezone.utc) + delta, f"for {hours} hour(s)"
         if duration.endswith("m"):
             minutes = int(duration[:-1])
             delta = timedelta(minutes=minutes)
-            return  discord.utils.utcnow() + delta, f"for {minutes} minute(s)"
+            return datetime.now(timezone.utc) + delta, f"for {minutes} minute(s)"
         hours = int(duration)
         delta = timedelta(hours=hours)
-        return  discord.utils.utcnow() + delta, f"for {hours} hour(s)"
+        return datetime.now(timezone.utc) + delta, f"for {hours} hour(s)"
 
     def perform_backup(self, db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
