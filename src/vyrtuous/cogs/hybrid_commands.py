@@ -382,7 +382,7 @@ class Hybrid(commands.Cog):
                         content=f'\U0001F6AB {member.mention} is already permanently banned from <#{static_channel_id}>.'
                     )
                 else:
-                    remaining = existing_ban['expires_at'] - discord.utils.utcnow()
+                    remaining = existing_ban['expires_at'] - datetime.now(timezone.utc)
                     if remaining.total_seconds() > 0:
                         hours_left = round(remaining.total_seconds() / 3600, 1)
                         return await self.handler.send_message(
@@ -815,7 +815,7 @@ class Hybrid(commands.Cog):
                         content=f'\U0001F6AB {member.mention} is already permanently text-muted in <#{static_channel_id}>.'
                     )
                 else:
-                    remaining = existing_mute['expires_at'] - discord.utils.utcnow()
+                    remaining = existing_mute['expires_at'] - datetime.now(timezone.utc)
                     if remaining.total_seconds() > 0:
                         if remaining.total_seconds() > 1800:  # more than 30 minutes
                             remaining_hours = round(remaining.total_seconds() / 3600, 1)
@@ -921,7 +921,7 @@ class Hybrid(commands.Cog):
                             content=f'\U0001F6AB {member.mention} is already permanently voice-muted in <#{static_channel_id}>.'
                         )
                     else:
-                        remaining = existing_mute['expires_at'] - discord.utils.utcnow()
+                        remaining = existing_mute['expires_at'] - datetime.now(timezone.utc)
                         if remaining.total_seconds() > 0:
                             if remaining.total_seconds() > 1800:
                                 remaining_hours = round(remaining.total_seconds() / 3600, 1)
@@ -1562,36 +1562,19 @@ class Hybrid(commands.Cog):
         paginator = Paginator(self.bot, ctx, pages)
         return await paginator.start()
 
-    @commands.command(
-        name='bans',
-        hidden=True,
-        help='Lists ban statistics.'
-    )
+    @commands.command(name='bans', hidden=True, help='Lists ban statistics.')
     @is_owner_developer_coordinator_moderator()
-    async def list_bans(
-            self,
-            ctx: commands.Context,
-            target: Optional[str] = commands.parameter(default=None, description='Text channel, "all", or user mention/ID.')
-    ) -> None:
+    async def list_bans(self, ctx: commands.Context, target: Optional[str] = commands.parameter(default=None, description='Text channel, "all", or user mention/ID.')) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev:
             async with ctx.bot.db_pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT coordinator_channel_ids FROM users WHERE user_id = $1",
-                    ctx.author.id
-                )
+                row = await conn.fetchrow("SELECT coordinator_channel_ids FROM users WHERE user_id = $1", ctx.author.id)
             if not row or channel.id not in (row.get("coordinator_channel_ids") or []):
-                return await self.handler.send_message(
-                    ctx,
-                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
-                )
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
-                return await self.handler.send_message(
-                    ctx,
-                    content='\U0001F6AB Only owners or developers can list all bans across the server.'
-                )
+                return await self.handler.send_message(ctx, content='\U0001F6AB Only owners or developers can list all bans across the server.')
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('''
                     SELECT ab.user_id, ab.channel_id, ab.expires_at, br.reason
@@ -1614,17 +1597,21 @@ class Hybrid(commands.Cog):
                 for record in records:
                     user = ctx.guild.get_member(record['user_id'])
                     reason = record['reason'] or 'No reason provided'
-                    duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
-                        record['expires_at'], style='R'
-                    )
+                    if record['expires_at'] is None:
+                        duration_str = "Permanent"
+                    else:
+                        now = datetime.now(timezone.utc)
+                        delta = record['expires_at'] - now
+                        if delta.total_seconds() <= 0:
+                            duration_str = "Expired"
+                        else:
+                            days, seconds = delta.days, delta.seconds
+                            hours = seconds // 3600
+                            minutes = (seconds % 3600) // 60
+                            duration_str = f"{days}d {hours}h left" if days > 0 else f"{hours}h {minutes}m left" if hours > 0 else f"{minutes}m left"
                     mention = user.mention if user else f"`{record['user_id']}`"
-                    embed.add_field(
-                        name="User",
-                        value=f"{mention}\nReason: {reason}\nDuration: {duration_str}",
-                        inline=False
-                    )
+                    embed.add_field(name="User", value=f"{mention}\nReason: {reason}\nDuration: {duration_str}", inline=False)
                 embeds.append(embed)
-    
             paginator = Paginator(self.bot, ctx, embeds)
             return await paginator.start()
         if member:
@@ -1639,23 +1626,25 @@ class Hybrid(commands.Cog):
                 ''', member.id, ctx.guild.id)
             bans = [b for b in bans if ctx.guild.get_channel(b['channel_id'])]
             if not bans:
-                return await ctx.send(
-                    f'\U0001F6AB {member.mention} is not banned in any channels.',
-                    allowed_mentions=discord.AllowedMentions.none()
-                )
+                return await ctx.send(f'\U0001F6AB {member.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
             embed = discord.Embed(title=f'Ban Records', description=f"For {member.mention}", color=discord.Color.red())
             for record in bans:
                 channel_obj = ctx.guild.get_channel(record['channel_id'])
                 channel_mention = channel_obj.mention if channel_obj else f'Channel ID `{record["channel_id"]}`'
                 reason = record['reason'] or 'No reason provided'
-                duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
-                    record['expires_at'], style='R'
-                )
-                embed.add_field(
-                    name=channel_mention,
-                    value=f"Reason: {reason}\nDuration: {duration_str}",
-                    inline=False
-                )
+                if record['expires_at'] is None:
+                    duration_str = "Permanent"
+                else:
+                    now = datetime.now(timezone.utc)
+                    delta = record['expires_at'] - now
+                    if delta.total_seconds() <= 0:
+                        duration_str = "Expired"
+                    else:
+                        days, seconds = delta.days, delta.seconds
+                        hours = seconds // 3600
+                        minutes = (seconds % 3600) // 60
+                        duration_str = f"{days}d {hours}h left" if days > 0 else f"{hours}h {minutes}m left" if hours > 0 else f"{minutes}m left"
+                embed.add_field(name=channel_mention, value=f"Reason: {reason}\nDuration: {duration_str}", inline=False)
             return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         if channel:
             async with self.bot.db_pool.acquire() as conn:
@@ -1682,15 +1671,13 @@ class Hybrid(commands.Cog):
                 else:
                     now = datetime.now(timezone.utc)
                     delta = record['expires_at'] - now
-                    days, seconds = delta.days, delta.seconds
-                    hours = seconds // 3600
-                    minutes = (seconds % 3600) // 60
-                    if days > 0:
-                        time_left = f"{days}d {hours}h left"
-                    elif hours > 0:
-                        time_left = f"{hours}h {minutes}m left"
+                    if delta.total_seconds() <= 0:
+                        time_left = "Expired"
                     else:
-                        time_left = f"{minutes}m left"
+                        days, seconds = delta.days, delta.seconds
+                        hours = seconds // 3600
+                        minutes = (seconds % 3600) // 60
+                        time_left = f"{days}d {hours}h left" if days > 0 else f"{hours}h {minutes}m left" if hours > 0 else f"{minutes}m left"
                 lines.append(f'• {name} — {time_left} — <@{uid}>')
             if not lines:
                 return await ctx.send(f"\U0001F6AB No active bans for users currently in {ctx.guild.name}.")
@@ -1698,11 +1685,7 @@ class Hybrid(commands.Cog):
             pages = []
             for i in range(0, len(lines), chunk_size):
                 chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(
-                    title=f'⛔ Active Bans in {channel.mention}',
-                    description='\n'.join(chunk),
-                    color=discord.Color.red()
-                )
+                embed = discord.Embed(title=f'⛔ Active Bans in {channel.mention}', description='\n'.join(chunk), color=discord.Color.red())
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
@@ -2148,169 +2131,131 @@ class Hybrid(commands.Cog):
             raise
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel, or use "all".')
 
-    @commands.command(
-        name='mutes',
-        hidden=True,
-        help='Lists mute statistics.'
-    )
+    @commands.command(name='mutes', hidden=True, help='Lists mute statistics.')
     @is_owner_developer_coordinator()
-    async def list_mutes(
-            self,
-            ctx,
-            target: Optional[str] = commands.parameter(default=None, description='Voice channel, "all", or user mention/ID.')
-    ) -> None:
+    async def list_mutes(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Voice channel, "all", or user mention/ID.')) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev:
-            if not is_mod_or_coord:
-                return await self.handler.send_message(
-                    ctx,
-                    content=f'\U0001F6AB You do not have permission for {channel.mention}.'
-                )
+        if not is_owner_or_dev and not is_mod_or_coord:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
+        def fmt_duration(expires_at):
+            if expires_at is None:
+                return "Permanent"
+            now = datetime.now(timezone.utc)
+            delta = expires_at - now
+            if delta.total_seconds() <= 0:
+                return "Expired"
+            days, seconds = delta.days, delta.seconds
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            return f"{days}d {hours}h left" if days > 0 else f"{hours}h {minutes}m left" if hours > 0 else f"{minutes}m left"
         if member:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
-                                           SELECT am.channel_id,
-                                                  am.expires_at,
-                                                  COALESCE(mr.reason, 'No reason provided') as reason
-                                           FROM active_mutes am
-                                                    LEFT JOIN mute_reasons mr
-                                                              ON am.user_id = mr.user_id
-                                                                  AND am.channel_id = mr.channel_id
-                                                                  AND mr.guild_id = $2
-                                           WHERE am.user_id = $1
-                                           ''', member.id, ctx.guild.id)
-                guild_records = []
-                for record in records:
-                    channel_obj = ctx.guild.get_channel(record['channel_id'])
-                    if channel_obj:
-                        guild_records.append(record)
-                records = guild_records
-                if not records:
-                    return await ctx.send(f'\U0001F6AB {member.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
-                description_lines = []
-                for record in records:
-                    channel_obj = ctx.guild.get_channel(record['channel_id'])
-                    channel_mention = channel_obj.mention if channel_obj else f'`{record["channel_id"]}`'
-                    reason = record['reason']
-                    duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
-                        record['expires_at'], style='R'
-                    )
-                    description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
-                embed = discord.Embed(
-                    title=f'Mute Records for {member.mention}',
-                    description='\n'.join(description_lines),
-                    color=discord.Color.orange()
-                )
-                return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+                    SELECT am.channel_id, am.expires_at, COALESCE(mr.reason, 'No reason provided') as reason
+                    FROM active_mutes am
+                             LEFT JOIN mute_reasons mr ON am.user_id = mr.user_id
+                                AND am.channel_id = mr.channel_id
+                                AND mr.guild_id = $2
+                    WHERE am.user_id = $1
+                ''', member.id, ctx.guild.id)
+            records = [r for r in records if ctx.guild.get_channel(r['channel_id'])]
+            if not records:
+                return await ctx.send(f'\U0001F6AB {member.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
+            description_lines = []
+            for record in records:
+                channel_obj = ctx.guild.get_channel(record['channel_id'])
+                channel_mention = channel_obj.mention if channel_obj else f'`{record["channel_id"]}`'
+                reason = record['reason']
+                duration_str = fmt_duration(record['expires_at'])
+                description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
+            embed = discord.Embed(title=f'Mute Records for {member.mention}', description='\n'.join(description_lines), color=discord.Color.orange())
+            return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         if channel:
-            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-            if target:
-                if target.lower() == 'all':
-                    if is_owner_or_dev:
-                        async with self.bot.db_pool.acquire() as conn:
-                            records = await conn.fetch('''
-                                                       SELECT am.user_id,
-                                                              am.channel_id,
-                                                              am.expires_at,
-                                                              am.source,
-                                                              COALESCE(mr.reason, 'No reason provided') as reason
-                                                       FROM active_mutes am
-                                                                LEFT JOIN mute_reasons mr
-                                                                          ON am.user_id = mr.user_id
-                                                                              AND am.channel_id = mr.channel_id
-                                                                              AND mr.guild_id = $1
-                                                       ORDER BY am.channel_id, am.user_id
-                                                       ''', ctx.guild.id)
-                        if not records:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB No users are currently muted in the server.')
-                        grouped = defaultdict(list)
-                        for record in records:
-                            grouped[record['channel_id']].append(record)
-                        pages = []
-                        for channel_id, user_entries in sorted(grouped.items()):
-                            channel = ctx.guild.get_channel(channel_id)
-                            channel_name = channel.mention if channel else f'Unknown Channel ({channel_id})'
-                            embed = discord.Embed(
-                                title=f'🔇 Active Mutes in {channel_name}',
-                                color=discord.Color.orange()
-                            )
-                            for record in user_entries:
-                                user_id = record['user_id']
-                                member = ctx.guild.get_member(user_id)
-                                name = member.display_name if member else f'User ID {user_id}'
-                                mention = member.mention if member else f'`{user_id}`'
-                                duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
-                                    record['expires_at'], style='R'
-                                )
-                                embed.add_field(
-                                    name=name,
-                                    value=f'{mention}\nReason: {record["reason"]}\nDuration: {duration_str}',
-                                    inline=False
-                                )
-                            pages.append(embed)
-                        paginator = Paginator(self.bot, ctx, pages)
-                        return await paginator.start()
+            if target and target.lower() == 'all':
+                if is_owner_or_dev:
+                    async with self.bot.db_pool.acquire() as conn:
+                        records = await conn.fetch('''
+                            SELECT am.user_id, am.channel_id, am.expires_at, am.source, COALESCE(mr.reason, 'No reason provided') as reason
+                            FROM active_mutes am
+                                     LEFT JOIN mute_reasons mr ON am.user_id = mr.user_id
+                                        AND am.channel_id = mr.channel_id
+                                        AND mr.guild_id = $1
+                            ORDER BY am.channel_id, am.user_id
+                        ''', ctx.guild.id)
+                    if not records:
+                        return await self.handler.send_message(ctx, content='\U0001F6AB No users are currently muted in the server.')
+                    grouped = defaultdict(list)
+                    for record in records:
+                        grouped[record['channel_id']].append(record)
+                    pages = []
+                    for channel_id, user_entries in sorted(grouped.items()):
+                        channel = ctx.guild.get_channel(channel_id)
+                        channel_name = channel.mention if channel else f'Unknown Channel ({channel_id})'
+                        embed = discord.Embed(title=f'🔇 Active Mutes in {channel_name}', color=discord.Color.orange())
+                        for record in user_entries:
+                            user_id = record['user_id']
+                            member = ctx.guild.get_member(user_id)
+                            name = member.display_name if member else f'User ID {user_id}'
+                            mention = member.mention if member else f'`{user_id}`'
+                            duration_str = fmt_duration(record['expires_at'])
+                            embed.add_field(name=name, value=f'{mention}\nReason: {record["reason"]}\nDuration: {duration_str}', inline=False)
+                        pages.append(embed)
+                    paginator = Paginator(self.bot, ctx, pages)
+                    return await paginator.start()
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
-                                           SELECT am.user_id,
-                                                  am.expires_at,
-                                                  COALESCE(mr.reason, 'No reason provided') as reason,
-                                                  am.source
-                                           FROM active_mutes am
-                                                    LEFT JOIN mute_reasons mr
-                                                              ON am.user_id = mr.user_id
-                                                                  AND am.channel_id = mr.channel_id
-                                                                  AND mr.guild_id = $2
-                                           WHERE am.channel_id = $1
-                                           ''', channel.id, ctx.guild.id)
-                if not records:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are currently muted in {channel.mention}.')
-                description_lines = []
-                for record in records:
-                    uid = record['user_id']
-                    member = ctx.guild.get_member(uid)
-                    if not member:
-                        continue
-                    name = member.display_name
-                    duration_str = "Permanent" if record['expires_at'] is None else discord.utils.format_dt(
-                        record['expires_at'], style='R'
-                    )
-                    description_lines.append(f'• {name} — <@{uid}> — {duration_str}')
-                if not description_lines:
-                    return await ctx.send(f"\U0001F6AB No muted users currently in {ctx.guild.name}.")
-                chunk_size = 18
-                pages = []
-                for i in range(0, len(description_lines), chunk_size):
-                    chunk = description_lines[i:i + chunk_size]
-                    embed = discord.Embed(
-                        title=f'\U0001F507 Muted Users in {channel.mention}',
-                        color=discord.Color.orange()
-                    )
-                    embed.add_field(name="Muted Users", value='\n'.join(chunk), inline=False)
-                    pages.append(embed)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
-        else:
-            return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel or be connected to a voice channel.')
+                    SELECT am.user_id, am.expires_at, COALESCE(mr.reason, 'No reason provided') as reason, am.source
+                    FROM active_mutes am
+                             LEFT JOIN mute_reasons mr ON am.user_id = mr.user_id
+                                AND am.channel_id = mr.channel_id
+                                AND mr.guild_id = $2
+                    WHERE am.channel_id = $1
+                ''', channel.id, ctx.guild.id)
+            if not records:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are currently muted in {channel.mention}.')
+            description_lines = []
+            for record in records:
+                uid = record['user_id']
+                member = ctx.guild.get_member(uid)
+                if not member:
+                    continue
+                name = member.display_name
+                duration_str = fmt_duration(record['expires_at'])
+                description_lines.append(f'• {name} — <@{uid}> — {duration_str}')
+            if not description_lines:
+                return await ctx.send(f"\U0001F6AB No muted users currently in {ctx.guild.name}.")
+            chunk_size = 18
+            pages = []
+            for i in range(0, len(description_lines), chunk_size):
+                chunk = description_lines[i:i + chunk_size]
+                embed = discord.Embed(title=f'\U0001F507 Muted Users in {channel.mention}', color=discord.Color.orange())
+                embed.add_field(name="Muted Users", value='\n'.join(chunk), inline=False)
+                pages.append(embed)
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+        return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel or be connected to a voice channel.')
             
-    @commands.command(
-        name='tmutes',
-        hidden=True,
-        help='Lists text-mute statistics.'
-    )
+    @commands.command(name='tmutes', hidden=True, help='Lists text-mute statistics.')
     @is_owner_developer_coordinator()
-    async def list_text_mutes(
-            self,
-            ctx,
-            target: Optional[str] = commands.parameter(default=None, description='Optional: "all", channel name/ID/mention, or user mention/ID.')
-    ) -> None:
+    async def list_text_mutes(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Optional: "all", channel name/ID/mention, or user mention/ID.')) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention if channel else "this channel"}.')
         if not member and not channel:
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid text channel or user.')
+        def fmt_duration(expires_at):
+            if not expires_at:
+                return "Permanent"
+            now = datetime.now(timezone.utc)
+            delta = expires_at - now
+            if delta.total_seconds() <= 0:
+                return "Expired"
+            days, seconds = delta.days, delta.seconds
+            hours = seconds // 3600
+            minutes = (seconds % 3600) // 60
+            return f"{days}d {hours}h left" if days > 0 else f"{hours}h {minutes}m left" if hours > 0 else f"{minutes}m left"
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower() == 'all' and is_owner_or_dev:
                 records = await conn.fetch('''
@@ -2330,7 +2275,7 @@ class Hybrid(commands.Cog):
                     for e in entries:
                         user = ctx.guild.get_member(e['user_id'])
                         mention = user.mention if user else f'`{e["user_id"]}`'
-                        duration_str = "Permanent" if not e['expires_at'] else discord.utils.format_dt(e['expires_at'], style='R')
+                        duration_str = fmt_duration(e['expires_at'])
                         embed.add_field(name=mention, value=f'Reason: {e["reason"]}\nSource: `{e["source"]}`\nDuration: {duration_str}', inline=False)
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
@@ -2348,7 +2293,7 @@ class Hybrid(commands.Cog):
                     ch = ctx.guild.get_channel(r['channel_id'])
                     if not ch: continue
                     ch_mention = f'<#{r["channel_id"]}>'
-                    duration_str = "Permanent" if not r['expires_at'] else discord.utils.format_dt(r['expires_at'], style='R')
+                    duration_str = fmt_duration(r['expires_at'])
                     lines.append(f'• {ch_mention} — {r["reason"]} (via `{r["source"]}`) — {duration_str}')
                 chunk_size = 18
                 pages = []
@@ -2370,7 +2315,7 @@ class Hybrid(commands.Cog):
                 for r in records:
                     user = ctx.guild.get_member(r['user_id'])
                     if not user: continue
-                    duration_str = "Permanent" if not r['expires_at'] else discord.utils.format_dt(r['expires_at'], style='R')
+                    duration_str = fmt_duration(r['expires_at'])
                     lines.append(f'• {user.mention} — {r["reason"]} (via `{r["source"]}`) — {duration_str}')
                 chunk_size = 18
                 pages = []
