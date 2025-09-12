@@ -35,15 +35,25 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE TABLE text_mutes (
+    guild_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    guild_id BIGINT NOT NULL,
     issuer_id BIGINT NOT NULL,
     reason TEXT NOT NULL,
     source TEXT NOT NULL,
     expires_at TIMESTAMPTZ,
-    PRIMARY KEY (user_id, channel_id)
+    PRIMARY KEY (guild_id, user_id, channel_id)
 );
+-- CREATE TABLE text_mutes (
+   -- user_id BIGINT NOT NULL,
+   -- channel_id BIGINT NOT NULL,
+   -- issuer_id BIGINT NOT NULL,
+   -- reason TEXT NOT NULL,
+   -- source TEXT NOT NULL,
+   -- expires_at TIMESTAMPTZ,
+   -- PRIMARY KEY (user_id, channel_id)
+--);
+
 CREATE TABLE IF NOT EXISTS command_aliases (
     guild_id BIGINT NOT NULL,
     alias_type TEXT NOT NULL CHECK (alias_type IN (

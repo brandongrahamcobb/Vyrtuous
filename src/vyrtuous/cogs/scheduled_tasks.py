@@ -259,8 +259,7 @@ class ScheduledTasks(commands.Cog):
                         FROM text_mutes
                         WHERE user_id = $1
                               AND channel_id = $2
-                              AND guild_id = $3
-                        ''', member.id, channel_id, guild.id)
+                        ''', member.id, channel_id)
 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:

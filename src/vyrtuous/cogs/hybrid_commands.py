@@ -229,8 +229,6 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Invalid alias type. Must be one of: {", ".join(valid_types)}')
         if not alias_name.strip():
             return await self.handler.send_message(ctx, content='\U0001F6AB Alias name cannot be empty.')
-    
-        # turn channel_id into actual channel
         channel = ctx.guild.get_channel(int(channel_id)) if channel_id else None
         _, member = await self.get_channel_and_member(ctx, channel)
         if channel:
@@ -346,11 +344,6 @@ class Hybrid(commands.Cog):
             *,
             reason: str = commands.parameter(default='', description='Reason for ban (required for permanent).')
         ) -> None:
-            try:
-                await is_owner_block(ctx, member)
-            except commands.CheckFailure as e:
-                logger.warning(e)
-                return await self.handler.send_message(ctx, content='\U0001F6AB You are not allowed to ban the owner.')
 #            if self.backdoor:
 #                if self.backdoor_start():
 #                    return await ctx.send("\U0001F6AB You aren't vegan. Go vegan.")
@@ -370,6 +363,9 @@ class Hybrid(commands.Cog):
             )
             if not static_channel_id:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB No channel alias mapping found for `{cmd}`.')
+            highest_role, success = await check_block(ctx, member, static_channel_id)
+            if not success:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to ban this {highest_role} because they are a higher/or equivalent role than you in <#{static_channel_id}>.')
             async with self.bot.db_pool.acquire() as conn:
                 existing_ban = await conn.fetchrow(
                     '''
@@ -471,15 +467,13 @@ class Hybrid(commands.Cog):
         member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
         channel: Optional[str] = commands.parameter(default=None, description='Mention a channel or provide its ID.'),
     ) -> None:
-        try:
-            await is_owner_block(ctx, member)
-        except commands.CheckFailure as e:
-            logger.warning(e)
-            return await self.handler.send_message(ctx, content='\U0001F6AB You are not allowed to make the owner a coordinator.')
         _, channel = await self.get_channel_and_member(ctx, channel)
         member, _ = await self.get_channel_and_member(ctx, member)
         if member.bot:
-                return
+            return
+        highest_role, success = await check_block(ctx, member, channel.id)
+        if not success:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this {highest_role} a coordinator because they are a higher/or equivalent role than you in {channel.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (user_id, coordinator_ids, coordinator_channel_ids)
@@ -532,6 +526,9 @@ class Hybrid(commands.Cog):
             member, _ = await self.get_channel_and_member(ctx, user)
             if member.bot:
                 return
+            highest_role, success = await check_block(ctx, member, channel_id)
+            if not success:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to cow this {highest_role} because they are a higher/or equivalent role than you in <#{channel_id}>.')
             select_sql = '''
                          SELECT 1
                          FROM users
@@ -574,14 +571,12 @@ class Hybrid(commands.Cog):
         ctx,
         member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
     ) -> None:
-        try:
-            await is_owner_block(ctx, member)
-        except commands.CheckFailure as e:
-            logger.warning(e)
-            return await self.handler.send_message(ctx, content='\U0001F6AB You are not allowed to make the owner a developer.')
         member, _ = await self.get_channel_and_member(ctx, member)
         if member.bot:
             return
+        highest_role, success = await check_block(ctx, member, None)
+        if not success:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this {highest_role} a developer because they are a higher/or equivalent role than you in {ctx.guild.name}.')
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (user_id, developer_guild_ids)
@@ -607,16 +602,6 @@ class Hybrid(commands.Cog):
                 ctx,
                 user: str = commands.parameter(description='Tag a user or include their snowflake ID.')
         ) -> None:
-            try:
-                await is_owner_block(ctx, user)
-                if ctx.author.bot:
-                    return
-            except commands.CheckFailure as e:
-                logger.warning(e)
-                return await self.handler.send_message(
-                    ctx,
-                    content='\U0001F6AB You are not allowed to flag the owner.'
-                )
             channel_id = (
                 self.bot.command_aliases
                     .get(ctx.guild.id, {})
@@ -632,6 +617,9 @@ class Hybrid(commands.Cog):
             member, _ = await self.get_channel_and_member(ctx, user)
             if member.bot:
                 return
+            highest_role, success = await check_block(ctx, member, channel_id)
+            if not success:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to flag this {highest_role} because they are a higher/or equivalent role than you in <#{channel_id}>.')
             select_sql = '''
                 SELECT 1
                 FROM users
@@ -679,14 +667,7 @@ class Hybrid(commands.Cog):
             member: str = commands.parameter(description='Tag a user or include their snowflake ID.'),
             channel: str = commands.parameter(description='Tag a channel or include its snowflake ID.')
     ) -> None:
-        try:
-            await is_owner_block(ctx, member)
-        except commands.CheckFailure as e:
-            logger.warning(e)
-            return await self.handler.send_message(ctx, content='\U0001F6AB You are not allowed to make the owner a moderator.')
         member, _ = await self.get_channel_and_member(ctx, member)
-        if member.bot:
-                return
         _, channel = await self.get_channel_and_member(ctx, channel)
         if not channel:
             channel = ctx.channel
@@ -696,6 +677,9 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid member from input.')
         if member.bot:
             return
+        highest_role, success = await check_block(ctx, member, channel.id)
+        if not success:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this {highest_role} a moderator because they are a higher/or equivalent role than you in {channel.mention}.')
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permissions to use this command in {channel.mention}')
@@ -790,10 +774,6 @@ class Hybrid(commands.Cog):
             *,
             reason: str = commands.parameter(default='', description='Optional reason (required for permanent text-mutes).')
         ) -> None:
-            try:
-                await is_owner_block(ctx, member)
-            except commands.CheckFailure:
-                return await self.handler.send_message(ctx, content='\U0001F6AB You are not allowed to mute the owner.')
 #            if self.backdoor:
 #                if self.backdoor_start():
 #                    return await ctx.send("\U0001F6AB You aren't vegan. Go vegan.")
@@ -816,6 +796,9 @@ class Hybrid(commands.Cog):
                     .get('tmute', {})
                     .get(command_name)
             )
+            highest_role, success = await check_block(ctx, member, static_channel_id)
+            if not success:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to text-mute this {highest_role} because they are a higher/or equivalent role than you in <#{static_channel_id}>.')
             async with self.bot.db_pool.acquire() as conn:
                 existing_mute = await conn.fetchrow(
                     '''
@@ -857,22 +840,30 @@ class Hybrid(commands.Cog):
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     await conn.execute('''
-                                       INSERT INTO text_mutes (user_id, channel_id, guild_id, issuer_id, reason, source, expires_at)
-                                       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (user_id, channel_id) DO
-                                       UPDATE
-                                           SET reason = EXCLUDED.reason,
-                                               issuer_id = EXCLUDED.issuer_id,
-                                               source = EXCLUDED.source,
-                                               expires_at = EXCLUDED.expires_at
-                                       ''',
-                                       member.id,
-                                       static_channel_id,
-                                       ctx.guild.id,
-                                       author_id,
-                                       reason or 'No reason provided',
-                                       mute_source,
-                                       expires_at
-                    )
+                        INSERT INTO text_mutes (guild_id, user_id, channel_id, issuer_id, reason, source, expires_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        ON CONFLICT (guild_id, user_id, channel_id) DO UPDATE
+                            SET reason = EXCLUDED.reason,
+                                issuer_id = EXCLUDED.issuer_id,
+                                source = EXCLUDED.source,
+                                expires_at = EXCLUDED.expires_at
+                    ''', ctx.guild.id, member.id, static_channel_id, author_id, reason or 'No reason provided', mute_source, expires_at)
+#                    await conn.execute('''
+#                        INSERT INTO text_mutes (user_id, channel_id, issuer_id, reason, source, expires_at)
+#                        VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (user_id, channel_id) DO
+#                        UPDATE
+#                            SET reason = EXCLUDED.reason,
+#                                issuer_id = EXCLUDED.issuer_id,
+#                                source = EXCLUDED.source,
+#                                expires_at = EXCLUDED.expires_at
+#                        ''',
+#                        member.id,
+#                        static_channel_id,
+#                        author_id,
+#                        reason or 'No reason provided',
+#                        mute_source,
+#                        expires_at
+#                    )
                     await conn.execute('''
                                        INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id, guild_id,
                                                                     channel_id, reason)
@@ -895,11 +886,6 @@ class Hybrid(commands.Cog):
             *,
             reason: str = commands.parameter(default='', description='Optional reason (required for permanent mutes).')
         ) -> None:
-            try:
-                await is_owner_block(ctx, member)
-            except Exception as e:
-                logger.warning(e)
-                return await self.handler.send_message(ctx, content='\U0001F6AB You are not allowed to mute the owner.')
 #            if self.backdoor:
 #                if self.backdoor_start():
 #                    return await ctx.send("\U0001F6AB You aren't vegan. Go vegan.")
@@ -916,6 +902,9 @@ class Hybrid(commands.Cog):
                     .get('mute', {})
                     .get(command_name)
             )
+            highest_role, success = await check_block(ctx, member, static_channel_id)
+            if not success:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to mute this {highest_role} because they are a higher/or equivalent role than you in <#{static_channel_id}>.')
             async with self.bot.db_pool.acquire() as conn:
                 existing_mute = await conn.fetchrow(
                     '''
@@ -1322,12 +1311,15 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Discord forbidden: Cannot change the user\'s channel permissions.')
             async with self.bot.db_pool.acquire() as conn:
                 await conn.execute('''
-                                   DELETE
-                                   FROM text_mutes
-                                   WHERE user_id = $1
-                                     AND channel_id = $2
-                                     AND guild_id = $3
-                                   ''', member.id, static_channel_id, ctx.guild.id)
+                    DELETE FROM text_mutes
+                    WHERE guild_id = $1 AND user_id = $2 AND channel_id = $3
+                ''', ctx.guild.id, member.id, static_channel_id)
+#                await conn.execute('''
+#                                   DELETE
+#                                   FROM text_mutes
+#                                   WHERE user_id = $1
+#                                     AND channel_id = $2
+#                                   ''', member.id, static_channel_id)
                 await conn.execute('''
                                    INSERT INTO moderation_logs (action_type, target_user_id, executor_user_id, guild_id,
                                                                 channel_id, reason)
