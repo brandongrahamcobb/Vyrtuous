@@ -397,10 +397,12 @@ async def check_block(ctx: commands.Context, member: discord.Member, channel_id:
         if row.get("developer_guild_ids") and ctx.guild and ctx.guild.id in row["developer_guild_ids"]:
             target_roles.append("Developer")
     if ctx.guild:
-        if member.id == ctx.guild.owner_id:
-            target_roles.append("Owner")
+        if member.id == ctx.author.id:
+            if "Owner" in author_roles:
+                return "Owner", True
+            return target_highest, False
     if member.id == int(bot.config["discord_owner_id"]):
         target_roles.append("Owner")
     target_highest = max(target_roles, key=lambda r: role_hierarchy.index(r)) if target_roles else "Everyone"
-    success = role_hierarchy.index(target_highest) <= role_hierarchy.index(author_highest)
+    success = role_hierarchy.index(target_highest) > role_hierarchy.index(author_highest)
     return target_highest, success
