@@ -318,7 +318,7 @@ class Hybrid(commands.Cog):
         async def ban_alias(
             ctx,
             member: str = commands.parameter(description='Mention or user ID of the member to ban.'),
-            duration_hours: Optional[str] = commands.parameter(default='24', description='Duration of ban in hours. Example 0 (permanent), 30m, 2h, 5d.'),
+            duration: Optional[str] = commands.parameter(default='24', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default'),
             *,
             reason: str = commands.parameter(default='', description='Reason for ban (required for permanent).')
         ) -> None:
@@ -326,12 +326,6 @@ class Hybrid(commands.Cog):
             member, _ = await self.get_channel_and_member(ctx, member)
             if member.bot:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot ban the bot.')
-            expires_at, duration_display = self.parse_duration(duration_hours)
-            if (
-                expires_at is None
-                or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7)
-            ) and (not is_owner_developer_coordinator('ban') or not reason.strip()):
-                return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for bans longer than 7 days.')
             static_channel_id = int(
                 self.bot.command_aliases
                     .get(ctx.guild.id, {})
@@ -350,6 +344,19 @@ class Hybrid(commands.Cog):
                     FROM active_bans
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
+                base_time = None
+                if existing_ban:
+                    base_time = existing_ban['expires_at']
+                expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                if duration:
+                    stripped = duration.strip()
+                    if (stripped.startswith('-') or stripped.startswith('+')) and not is_owner_developer_coordinator('ban'):
+                        return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can modify an existing ban duration.')
+                if (
+                    expires_at is None
+                    or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7)
+                ) and (not is_owner_developer_coordinator('ban') or not reason.strip()):
+                    return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for bans longer than 7 days.')
                 if existing_ban and not is_owner_developer_coordinator('ban'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
@@ -665,19 +672,13 @@ class Hybrid(commands.Cog):
         async def text_mute_alias(
             ctx,
             member: str = commands.parameter(default=None, description='Tag a user or include their ID.'),
-            duration_hours: Optional[str] = commands.parameter(default='8', description='Duration of mute. Example: 0 (permanent), 30m, 2h, 3d.'),
+            duration: Optional[str] = commands.parameter(default='8', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 8h - default'),
             *,
             reason: str = commands.parameter(default='', description='Optional reason (required for permanent text-mutes).')
         ) -> None:
             author_id = ctx.author.id
             bot_owner_id = int(os.environ.get('DISCORD_OWNER_ID', '0'))
             server_owner_id = ctx.guild.owner_id
-            expires_at, duration_display = self.parse_duration(duration_hours)
-            if (
-                expires_at is None
-                or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7)
-            ) and (not is_owner_developer_coordinator('tmute') or not reason.strip()):
-                return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for text-mutes longer than 7 days.')
             member, _ = await self.get_channel_and_member(ctx, member)
             if member.bot:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot text-mute the bot.')
@@ -697,6 +698,19 @@ class Hybrid(commands.Cog):
                     FROM active_text_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
+                base_time = None
+                if existing_text_mute:
+                    base_time = existing_text_mute['expires_at']
+                expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                if duration:
+                    stripped = duration.strip()
+                    if (stripped.startswith('-') or stripped.startswith('+')) and not is_owner_developer_coordinator('tmute'):
+                        return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can modify an existing text mute duration.')
+                if (
+                    expires_at is None
+                    or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7)
+                ) and (not is_owner_developer_coordinator('tmute') or not reason.strip()):
+                    return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for text mutes longer than 7 days.')
                 if existing_text_mute and not is_owner_developer_coordinator('tmute'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
@@ -738,16 +752,10 @@ class Hybrid(commands.Cog):
         async def voice_mute_alias(
             ctx,
             member: str = commands.parameter(default=None, description='Tag a user or include their snowflake ID.'),
-            duration_hours: Optional[str] = commands.parameter(default='8', description='Duration of mute in hours. Example 0 (permanent), 30m, 2h, 5d.'),
+            duration: Optional[str] = commands.parameter(default='8', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 8h - default'),
             *,
             reason: str = commands.parameter(default='', description='Optional reason (required for permanent mutes).')
         ) -> None:
-            expires_at, duration_display = self.parse_duration(duration_hours)
-            if (
-                expires_at is None
-                or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7)
-            ) and (not is_owner_developer_coordinator('mute') or not reason.strip()):
-                return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for mutes longer than 7 days.')
             member, _ = await self.get_channel_and_member(ctx, member)
             if member.bot:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot mute a bot.')
@@ -767,6 +775,19 @@ class Hybrid(commands.Cog):
                     FROM active_voice_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
+                base_time = None
+                if existing_mute:
+                    base_time = existing_mute['expires_at']
+                expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                if duration:
+                    stripped = duration.strip()
+                    if (stripped.startswith('-') or stripped.startswith('+')) and not is_owner_developer_coordinator('mute'):
+                        return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can modify an existing mute duration.')
+                if (
+                    expires_at is None
+                    or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7)
+                ) and (not is_owner_developer_coordinator('mute') or not reason.strip()):
+                    return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for permanent mutes or those longer than 7 days.')
                 if existing_mute and not is_owner_developer_coordinator('mute'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
@@ -1980,14 +2001,14 @@ class Hybrid(commands.Cog):
         self,
         ctx,
         target: Optional[str] = commands.parameter(default=None, description='Channel ID.'),
-        duration_hours: Optional[str] = commands.parameter(default='8', description='Duration of mute in hours. Example 0 (permanent), 30m, 2h, 5d.'),
+        duration: Optional[str] = commands.parameter(default='8', description='Duration of mute in hours. Example 0 (permanent), 30m, 2h, 5d.'),
         *,
         reason: str = commands.parameter(default='', description='Optional reason (required for permanent mutes).')
     ) -> None:
         _, channel = await self.get_channel_and_member(ctx, target)
         if not isinstance(channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content='\U0001F6AB This command only works with voice channels.')
-        expires_at, duration_display = self.parse_duration(duration_hours)
+        expires_at, duration_display = self.parse_duration(duration)
         if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator('mute') or not reason.strip()):
             return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for permanent mutes.')
         bot_owner_id = int(os.environ.get('DISCORD_OWNER_ID', '0'))
