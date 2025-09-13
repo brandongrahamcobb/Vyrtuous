@@ -882,7 +882,7 @@ class Hybrid(commands.Cog):
                 async with self.bot.db_pool.acquire() as conn:
                     is_flagged = await conn.fetchval(select_sql, ctx.guild.id, member.id, static_channel_id)
                     if not is_flagged:
-                        return await self.handler.send_message(ctx, content=f'\U0001F6AB <@{member.id}> is not flagged for <#{static_channel_id}>.')
+                        return await self.handler.send_message(ctx, content=f'\U0001F6AB <@{member.id}> is not cowed for <#{static_channel_id}>.')
                     await conn.execute(update_sql, ctx.guild.id, member.id, static_channel_id)
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -1982,7 +1982,6 @@ class Hybrid(commands.Cog):
         member, _ = await self.get_channel_and_member(ctx, member)
         if member.bot:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot server mute the bot.')
-        print("success")
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (discord_snowflake, server_mute_guild_ids)
