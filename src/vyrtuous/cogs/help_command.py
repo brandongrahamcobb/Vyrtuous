@@ -48,20 +48,18 @@ class Help(commands.Cog):
             except commands.CheckFailure:
                 continue
             except Exception as e:
-                logger.warning(f"❌ Exception while checking command '{command}': {e}")
+                logger.warning(f'\U0001F6AB Exception while checking command \'{command}\': {e}')
         return available_commands
 
     async def get_command_permission_level(self, bot, ctx, command):
         if not hasattr(command, 'checks') or not command.checks:
             return 'Everyone'
-    
         for check in command.checks:
             func = check
             if hasattr(func, '__wrapped__'):
                 func = func.__wrapped__
             if hasattr(func, '_permission_level'):
                 return func._permission_level
-    
         return 'Everyone'
         
     def get_permission_color(self, perm_level):
@@ -94,19 +92,19 @@ class Help(commands.Cog):
             if ctx.guild:
                 async with ctx.bot.db_pool.acquire() as conn:
                     user_row = await conn.fetchrow(
-                        "SELECT coordinator_channel_ids, moderator_channel_ids FROM users WHERE user_id = $1",
+                        'SELECT coordinator_channel_ids, moderator_channel_ids FROM users WHERE discord_snowflake = $1',
                         ctx.author.id
                     )
                     if user_row:
-                        coordinator_channel_ids = user_row.get("coordinator_channel_ids") or []
-                        moderator_channel_ids = user_row.get("moderator_channel_ids") or []
+                        coordinator_channel_ids = user_row.get('coordinator_channel_ids') or []
+                        moderator_channel_ids = user_row.get('moderator_channel_ids') or []
         
                         if coordinator_channel_ids:
                             return 'Coordinator'
                         if moderator_channel_ids:
                             return 'Moderator'
         except Exception as e:
-            logger.warning(f"Error checking coordinator/moderator permissions: {e}")
+            logger.warning(f'Error checking coordinator/moderator permissions: {e}')
         return 'Everyone'
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):
@@ -124,7 +122,7 @@ class Help(commands.Cog):
         current_chunk = []
         current_length = 0
         for cmd in commands_list:
-            cmd_line = f'**{config['discord_command_prefix']}{cmd.name}** – {cmd.help or "No description"}\n'
+            cmd_line = f'**{config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}\n'
             cmd_length = len(cmd_line)
             if current_length + cmd_length > max_length and current_chunk:
                 chunks.append('\n'.join(current_chunk))
@@ -143,11 +141,11 @@ class Help(commands.Cog):
         if command_name:
             cmd = bot.get_command(command_name.lower())
             if not cmd:
-                return await self.handler.send_message(ctx, f'❌ Command `{command_name}` not found.')
+                return await self.handler.send_message(ctx, f'\U0001F6AB Command `{command_name}` not found.')
             if cmd.hidden:
-                return await self.handler.send_message(ctx, f'❌ Command `{command_name}` is hidden.')
+                return await self.handler.send_message(ctx, f'\U0001F6AB Command `{command_name}` is hidden.')
             if not await cmd.can_run(ctx):
-                return await self.handler.send_message(ctx, f'❌ You do not have permission to run `{command_name}`.')
+                return await self.handler.send_message(ctx, f'\U0001F6AB You do not have permission to run `{command_name}`.')
             embed = discord.Embed(
                 title=f'{config['discord_command_prefix']}{cmd.name}',
                 description=cmd.help or 'No description provided.',
@@ -160,7 +158,7 @@ class Help(commands.Cog):
             if parameters and parameters[0][0] == 'ctx':
                 parameters.pop(0)
             if parameters:
-                usage_parts = [f"{config['discord_command_prefix']}{cmd.name}"]
+                usage_parts = [f'{config['discord_command_prefix']}{cmd.name}']
                 param_details = []
                 for name, param in parameters:
                     is_optional = param.kind == inspect.Parameter.KEYWORD_ONLY
@@ -176,72 +174,58 @@ class Help(commands.Cog):
                         else str(param.annotation)
                     )
                     if is_optional:
-                        usage_parts.append(f"[{name}]")
+                        usage_parts.append(f'[{name}]')
                     else:
-                        usage_parts.append(f"<{name}>")
-                    detail = f"**{name}** ({annotation})"
+                        usage_parts.append(f'<{name}>')
+                    detail = f'**{name}** ({annotation})'
                     if description:
-                        detail += f": {description}"
+                        detail += f': {description}'
                     param_details.append(detail)
                 embed.add_field(
-                    name="Usage",
-                    value=f"`{' '.join(usage_parts)}`",
+                    name='Usage',
+                    value=f'`{' '.join(usage_parts)}`',
                     inline=False
                 )
                 if param_details:
                     embed.add_field(
-                        name="Parameter Details",
-                        value="\n".join(param_details),
+                        name='Parameter Details',
+                        value='\n'.join(param_details),
                         inline=False
                     )
             return await self.handler.send_message(ctx, embed=embed)
         all_commands = await self.get_available_commands(bot, ctx)
         if not all_commands:
-            return await self.handler.send_message(ctx, '❌ No commands available to you.')
+            return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         current_text_channel_id = ctx.channel.id
         current_guild_id = ctx.guild.id if ctx.guild else None
-        alias_to_channel_map = {}
         guild_aliases = self.bot.command_aliases.get(current_guild_id, {})
-        guild_channel_aliases = guild_aliases.get("channel_aliases", {})
-        guild_role_aliases = guild_aliases.get("role_aliases", {})
-        for alias_type, type_map in guild_channel_aliases.items():
-            for alias_name, channel_id in type_map.items():
-                if channel_id == current_text_channel_id:
-                    alias_to_channel_map[alias_name] = channel_id
-        for alias_type, type_map in guild_role_aliases.items():
-            for alias_name, data in type_map.items():
-                ch_id = data.get("channel_id")
-                if ch_id is not None and ch_id == current_text_channel_id:
-                    alias_to_channel_map[alias_name] = ch_id
-        contextual_commands = []
-        
-        # Flatten all channel alias names
-        all_channel_aliases = set()
+        guild_channel_aliases = guild_aliases.get('channel_aliases', {})
+        guild_role_aliases = guild_aliases.get('role_aliases', {})
+        current_guild_alias_commands = set()
         for type_map in guild_channel_aliases.values():
-            all_channel_aliases.update(type_map.keys())
-        
-        # Flatten all role alias names mapped to current channel
-        all_role_aliases_in_channel = set()
+            current_guild_alias_commands.update(type_map.keys())
         for type_map in guild_role_aliases.values():
-            for alias_name, data in type_map.items():
-                if data.get("channel_id") == current_text_channel_id:
-                    all_role_aliases_in_channel.add(alias_name)
-        
+            current_guild_alias_commands.update(type_map.keys())
+        all_alias_commands = set()
+        for guild_id, guild_data in self.bot.command_aliases.items():
+            for type_map in guild_data.get('channel_aliases', {}).values():
+                all_alias_commands.update(type_map.keys())
+            for type_map in guild_data.get('role_aliases', {}).values():
+                all_alias_commands.update(type_map.keys())
+        contextual_commands = []
         for command in all_commands:
-            # Include command if mapped to this channel
-            if command.name in alias_to_channel_map:
+            in_channel = any(
+                command.name in type_map and type_map[command.name] == current_text_channel_id
+                for type_map in guild_channel_aliases.values()
+            )
+            in_role = any(
+                command.name in type_map and type_map[command.name].get('channel_id') == current_text_channel_id
+                for type_map in guild_role_aliases.values()
+            )
+            if in_channel or in_role or command.name not in all_alias_commands:
                 contextual_commands.append(command)
-                continue
-            # Include role aliases for this channel
-            if command.name in all_role_aliases_in_channel:
-                contextual_commands.append(command)
-                continue
-            # Include normal commands (not present in any alias)
-            if command.name not in all_channel_aliases and command.name not in {k for type_map in guild_role_aliases.values() for k in type_map}:
-                contextual_commands.append(command)
-
         if not contextual_commands:
-            await self.handler.send_message(ctx, '❌ No commands available to you.')
+            await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
             return
         permission_groups = await self.group_commands_by_permission(bot, ctx, contextual_commands)
         pages = []
@@ -274,7 +258,7 @@ class Help(commands.Cog):
             for cog_name in sorted(cog_map):
                 commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
                 command_list = '\n'.join(
-                    f'**{config['discord_command_prefix']}{cmd.name}** – {cmd.help or "No description"}'
+                    f'**{config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}'
                     for cmd in commands_in_cog
                 )
                 if len(command_list) > 1024:
@@ -294,7 +278,7 @@ class Help(commands.Cog):
                     )
             pages.append(embed)
         if not pages:
-            return await self.handler.send_message(ctx, '❌ No commands available to you.')
+            return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         paginator = Paginator(bot, ctx, pages)
         return await paginator.start()
 

@@ -52,9 +52,8 @@ class ScheduledTasks(commands.Cog):
             '-F', 'p',
             '-f', backup_file,
         ]
-        # Pass PGPASSWORD via environment for security
         env = os.environ.copy()
-        env["PGPASSWORD"] = db_password
+        env['PGPASSWORD'] = db_password
         result = subprocess.run(
             dump_command,
             capture_output=True,
@@ -80,17 +79,17 @@ class ScheduledTasks(commands.Cog):
         now = datetime.now(timezone.utc)
         async with self.bot.db_pool.acquire() as conn:
             expired = await conn.fetch('''
-                SELECT user_id, channel_id
+                SELECT guild_id, discord_snowflake, channel_id
                 FROM active_bans
                 WHERE expires_at <= $1
             ''', now)
         for record in expired:
-            user_id = record['user_id']
+            user_id = record['discord_snowflake']
             channel_id = record['channel_id']
             channel = self.bot.get_channel(channel_id)
             if not channel:
                 continue
-            guild = channel.guild
+            guild = self.bot.get_guild(record['guild_id'])
             member = guild.get_member(user_id)
             if member:
                 try:
@@ -100,35 +99,28 @@ class ScheduledTasks(commands.Cog):
                 except discord.HTTPException as e:
                     logger.error(f'Failed to remove permission override: {e}')
             async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('DELETE FROM ban_expirations WHERE user_id = $1 AND channel_id = $2', user_id, channel_id)
-                await conn.execute('DELETE FROM active_bans WHERE user_id = $1 AND channel_id = $2', user_id, channel_id)
-#                await conn.execute('''
-#                    UPDATE users
-#                    SET ban_channel_ids = array_remove(ban_channel_ids, $2),
-#                        updated_at      = NOW()
-#                    WHERE user_id = $1
-#                ''', user_id, channel_id)
+                await conn.execute('''
+                    DELETE FROM active_bans
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', guild.id, user_id, channel_id)
 
     @tasks.loop(minutes=1)
     async def check_expired_voice_mutes(self):
         now = datetime.now(timezone.utc)
         async with self.bot.db_pool.acquire() as conn:
-            expired = await conn.fetch(
-                '''
-                SELECT user_id, channel_id
-                FROM active_mutes
+            expired = await conn.fetch('''
+                SELECT guild_id, discord_snowflake, channel_id
+                FROM active_voice_mutes
                 WHERE expires_at IS NOT NULL
-                  AND expires_at <= $1
-                ''',
-                now
-            )
+                AND expires_at <= $1
+            ''', now)
         for record in expired:
-            user_id = record['user_id']
+            user_id = record['discord_snowflake']
             channel_id = record['channel_id']
             channel = self.bot.get_channel(channel_id)
             if not isinstance(channel, discord.VoiceChannel):
                 continue
-            guild = channel.guild
+            guild = self.bot.get_guild(record['guild_id'])
             member = guild.get_member(user_id)
             if not member:
                 continue
@@ -138,25 +130,16 @@ class ScheduledTasks(commands.Cog):
                 except discord.HTTPException:
                     pass
             async with self.bot.db_pool.acquire() as conn:
-                await conn.execute(
-                    'DELETE FROM active_mutes WHERE user_id = $1 AND channel_id = $2',
-                    user_id, channel_id
-                )
-                await conn.execute(
-                    '''
-                    UPDATE users
-                    SET mute_channel_ids = array_remove(mute_channel_ids, $2),
-                        updated_at       = NOW()
-                    WHERE user_id = $1
-                    ''',
-                    user_id, channel_id
-                )
+                await conn.execute('''
+                    DELETE FROM active_voice_mutes
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', guild.id, user_id, channel_id)
                 await conn.execute(
                     '''
                     UPDATE users
                     SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2),
                         updated_at              = NOW()
-                    WHERE user_id = $1
+                    WHERE discord_snowflake = $1
                     ''',
                     user_id, channel_id
                 )
@@ -165,28 +148,22 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_text_mutes(self):
         now = datetime.now(timezone.utc)
         async with self.bot.db_pool.acquire() as conn:
-            expired = await conn.fetch(
-                '''
-                SELECT user_id, channel_id
-                FROM text_mutes
+            expired = await conn.fetch('''
+                SELECT guild_id, discord_snowflake, channel_id
+                FROM active_text_mutes
                 WHERE expires_at IS NOT NULL
                   AND expires_at <= $1
-                ''',
-                now
-            )
+            ''', now)
             if not expired:
                 return
             async with conn.transaction():
                 for record in expired:
-                    user_id = record['user_id']
+                    user_id = record['discord_snowflake']
                     channel_id = record['channel_id']
                     channel = self.bot.get_channel(channel_id)
                     if channel is None:
-                        try:
-                            channel = await self.bot.fetch_channel(channel_id)
-                        except discord.NotFound:
-                            continue
-                    guild = channel.guild
+                        continue
+                    guild = self.bot.get_guild(record['guild_id'])
                     member = guild.get_member(user_id)
                     if member is None:
                         try:
@@ -204,21 +181,19 @@ class ScheduledTasks(commands.Cog):
                         user_id, channel_id
                     )
                     await conn.execute('''
-                        DELETE
-                        FROM text_mutes
-                        WHERE user_id = $1
-                              AND channel_id = $2
-                        ''', member.id, channel_id)
+                        DELETE FROM active_text_mutes
+                        WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                    ''', guild.id, member.id, channel_id)
 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
             backup_dir = self.setup_backup_directory('/app/backups')
             backup_file = self.perform_backup(
-                db_user=os.getenv("POSTGRES_USER"),
-                db_name=os.getenv("POSTGRES_DATABASE"),
-                db_host=os.getenv("POSTGRES_HOST"),
-                db_password=os.getenv("POSTGRES_PASSWORD"),
+                db_user=os.getenv('POSTGRES_USER'),
+                db_name=os.getenv('POSTGRES_DATABASE'),
+                db_host=os.getenv('POSTGRES_HOST'),
+                db_password=os.getenv('POSTGRES_PASSWORD'),
                 backup_dir=backup_dir
             )
             logger.info(f'Backup completed successfully: {backup_file}')

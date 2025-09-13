@@ -15,44 +15,24 @@ DROP TABLE IF EXISTS server_muter_ids;
 DROP TABLE IF EXISTS ban_expirations;
 DROP TABLE IF EXISTS text_mutes;
 
-
-
 CREATE TABLE IF NOT EXISTS users (
-    user_id BIGINT PRIMARY KEY,
-    ban_channel_ids BIGINT[],
-    mute_channel_ids BIGINT[],
-    manual_mute_channels BIGINT[],
-    moderator_ids BIGINT[],
+    discord_snowflake BIGINT PRIMARY KEY,
     moderator_channel_ids BIGINT[],
-    coordinator_ids BIGINT[],
     coordinator_channel_ids BIGINT[],
     developer_guild_ids BIGINT[],
-    flagged_channel_ids BIGINT[],
-    going_vegan_channel_ids BIGINT[],
     server_mute_guild_ids BIGINT[],
     server_muter_guild_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE TABLE text_mutes (
+CREATE TABLE active_text_mutes (
     guild_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
+    discord_snowflake BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
-    issuer_id BIGINT NOT NULL,
-    reason TEXT NOT NULL,
-    source TEXT NOT NULL,
+    reason TEXT,
     expires_at TIMESTAMPTZ,
-    PRIMARY KEY (guild_id, user_id, channel_id)
+    PRIMARY KEY (guild_id, discord_snowflake, channel_id)
 );
--- CREATE TABLE text_mutes (
-   -- user_id BIGINT NOT NULL,
-   -- channel_id BIGINT NOT NULL,
-   -- issuer_id BIGINT NOT NULL,
-   -- reason TEXT NOT NULL,
-   -- source TEXT NOT NULL,
-   -- expires_at TIMESTAMPTZ,
-   -- PRIMARY KEY (user_id, channel_id)
---);
 
 CREATE TABLE IF NOT EXISTS command_aliases (
     guild_id BIGINT NOT NULL,
@@ -65,75 +45,60 @@ CREATE TABLE IF NOT EXISTS command_aliases (
     PRIMARY KEY (guild_id, alias_type, alias_name)
 );
 
-CREATE TABLE IF NOT EXISTS mute_reasons (
-    guild_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    reason TEXT,
-    PRIMARY KEY (guild_id, user_id, channel_id)
-);
-
-
-CREATE TABLE IF NOT EXISTS ban_reasons (
-    guild_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    reason TEXT,
-    PRIMARY KEY (guild_id, user_id, channel_id)
-);
-
 -- Currently active bans
 CREATE TABLE IF NOT EXISTS active_bans (
-    user_id BIGINT NOT NULL,
+    guild_id BIGINT NOT NULL,
+    discord_snowflake BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,
     expires_at TIMESTAMPTZ,
-    PRIMARY KEY (user_id, channel_id)
+    reason TEXT,
+    PRIMARY KEY (guild_id, discord_snowflake, channel_id)
 );
 
+CREATE TABLE IF NOT EXISTS active_server_voice_mutes (
+    guild_id BIGINT NOT NULL,
+    discord_snowflake BIGINT NOT NULL,
+    expires_at TIMESTAMPTZ,
+    reason TEXT,
+    PRIMARY KEY (guild_id, discord_snowflake)
+);
+
+CREATE TABLE IF NOT EXISTS active_cows (
+    guild_id BIGINT NOT NULL,
+    discord_snowflake BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    PRIMARY KEY (guild_id, discord_snowflake, channel_id)
+);
+
+CREATE TABLE IF NOT EXISTS active_flags (
+    guild_id BIGINT NOT NULL,
+    discord_snowflake BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    expires_at TIMESTAMPTZ,
+    reason TEXT,
+    PRIMARY KEY (guild_id, discord_snowflake, channel_id)
+);
 -- Currently active mutes
 
-CREATE TABLE IF NOT EXISTS active_mutes (
-    user_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    source TEXT CHECK (source IN ('bot', 'bot_owner', 'manual', 'owner')),
-    issuer_id BIGINT,
-    expires_at TIMESTAMPTZ,
-    PRIMARY KEY (user_id, channel_id)
-);
-
-
--- Expiring bans
-CREATE TABLE IF NOT EXISTS ban_expirations (
-    user_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    expires_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (user_id, channel_id)
-);
-
-CREATE TABLE IF NOT EXISTS server_mute_reasons (
+CREATE TABLE IF NOT EXISTS active_voice_mutes (
     guild_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
+    discord_snowflake BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    expires_at TIMESTAMPTZ,
     reason TEXT,
-    PRIMARY KEY (guild_id, user_id)
+    PRIMARY KEY (guild_id, discord_snowflake, channel_id)
 );
+
 CREATE TABLE moderation_logs (
     id BIGSERIAL PRIMARY KEY,
     action_type TEXT NOT NULL,
-    target_user_id BIGINT,
-    executor_user_id BIGINT NOT NULL,
+    target_discord_snowflake BIGINT,
+    executor_discord_snowflake BIGINT NOT NULL,
     guild_id BIGINT NOT NULL,
     channel_id BIGINT,
     reason TEXT,
     metadata JSONB DEFAULT '{}'::jsonb,                
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE mute_reasons (
-    guild_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    reason TEXT NOT NULL,
-    PRIMARY KEY (guild_id, user_id, channel_id)
 );
 
 GRANT ALL PRIVILEGES ON DATABASE vyrtuous TO spawd;
