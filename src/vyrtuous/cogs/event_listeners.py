@@ -124,8 +124,8 @@ class EventListeners(commands.Cog):
         user_id = member.id
         guild = member.guild
         async with self.db_pool.acquire() as conn:
-            bans = await fetch_active_bans(conn, user_id)
-            text_mutes = await fetch_active_text_mutes(conn, user_id)
+            bans = await self.fetch_active_bans(conn, user_id)
+            text_mutes = await self.fetch_active_text_mutes(conn, user_id)
             for row in bans:
                 channel = guild.get_channel(row['channel_id'])
                 if not channel or not isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
