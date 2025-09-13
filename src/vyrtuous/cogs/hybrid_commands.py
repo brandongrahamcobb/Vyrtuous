@@ -1800,15 +1800,18 @@ class Hybrid(commands.Cog):
                     for channel_id, user_entries in sorted(grouped.items()):
                         channel = ctx.guild.get_channel(channel_id)
                         channel_name = channel.mention if channel else f'Unknown Channel ({channel_id})'
-                        embed = discord.Embed(title=f'🔇 Active Mutes in {channel_name}', color=discord.Color.orange())
-                        for record in user_entries:
-                            user_id = record['discord_snowflake']
-                            member = ctx.guild.get_member(discord_snowflake)
-                            name = member.display_name if member else f'User ID {user_id}'
-                            mention = member.mention if member else f'`{user_id}`'
-                            duration_str = self.fmt_duration(record['expires_at'])
-                            embed.add_field(name=name, value=f'{mention}\nReason: {record['reason']}\nDuration: {duration_str}', inline=False)
-                        pages.append(embed)
+                        chunk_size = 18
+                        for i in range(0, len(user_entries), chunk_size):
+                            embed = discord.Embed(title=f'🔇 Active Mutes in {channel_name}', color=discord.Color.orange())
+                            for record in user_entries[i:i + chunk_size]:
+                                user_id = record['discord_snowflake']
+                                member = ctx.guild.get_member(user_id)
+                                name = member.display_name if member else f'User ID {user_id}'
+                                mention = member.mention if member else f'`{user_id}`'
+                                reason = record['reason'] or 'No reason provided'
+                                duration_str = self.fmt_duration(record['expires_at'])
+                                embed.add_field(name=name, value=f'{mention}\nReason: {reason}\nDuration: {duration_str}', inline=False)
+                            pages.append(embed)
                     paginator = Paginator(self.bot, ctx, pages)
                     return await paginator.start()
             async with self.bot.db_pool.acquire() as conn:
@@ -1863,16 +1866,19 @@ class Hybrid(commands.Cog):
                 grouped = defaultdict(list)
                 for r in records: grouped[r['channel_id']].append(r)
                 pages = []
+                chunk_size = 18
                 for ch_id, entries in sorted(grouped.items()):
                     ch = ctx.guild.get_channel(ch_id)
                     ch_name = ch.mention if ch else f'Unknown Channel ({ch_id})'
-                    embed = discord.Embed(title=f'🔇 Text Mutes in {ch_name}', color=discord.Color.orange())
-                    for e in entries:
-                        user = ctx.guild.get_member(e['discord_snowflake'])
-                        mention = user.mention if user else f'`{e['discord_snowflake']}`'
-                        duration_str = self.fmt_duration(e['expires_at'])
-                        embed.add_field(name=mention, value=f'Reason: {e['reason']}`\nDuration: {duration_str}', inline=False)
-                    pages.append(embed)
+                    for i in range(0, len(entries), chunk_size):
+                        embed = discord.Embed(title=f'🔇 Text Mutes in {ch_name}', color=discord.Color.orange())
+                        for e in entries[i:i + chunk_size]:
+                            user = ctx.guild.get_member(e['discord_snowflake'])
+                            mention = user.mention if user else f'`{e['discord_snowflake']}`'
+                            duration_str = self.fmt_duration(e['expires_at'])
+                            reason = e['reason'] or 'No reason provided'
+                            embed.add_field(name=mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
+                        pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             if member:
