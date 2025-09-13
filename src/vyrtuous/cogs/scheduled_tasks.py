@@ -176,10 +176,6 @@ class ScheduledTasks(commands.Cog):
                         pass
                     except discord.HTTPException as e:
                         pass
-                    await conn.execute(
-                        'DELETE FROM text_mutes WHERE user_id = $1 AND channel_id = $2',
-                        user_id, channel_id
-                    )
                     await conn.execute('''
                         DELETE FROM active_text_mutes
                         WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
