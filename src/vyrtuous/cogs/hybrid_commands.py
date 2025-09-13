@@ -1943,7 +1943,7 @@ class Hybrid(commands.Cog):
                     WHERE guild_id = $1 AND channel_id = $2
                 ''', ctx.guild.id, channel.id)
             if not rows:
-                return await self.handler.send_message(ctx, content='\U0001F6AB No users are flagged as going vegan in this channel.')
+                return await self.handler.send_message(ctx, content='\U0001F6AB No users are cowed in this channel.')
             lines = []
             for row in rows:
                 uid = row['discord_snowflake']
