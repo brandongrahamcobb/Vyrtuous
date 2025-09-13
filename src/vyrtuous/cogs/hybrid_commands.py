@@ -2366,7 +2366,7 @@ class Hybrid(commands.Cog):
         cog = ctx.bot.get_cog('Hybrid')
         return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
 
-    def fmt_duration(expires_at):
+    def fmt_duration(self, expires_at):
         if not expires_at:
             return 'Permanent'
         now =  discord.utils.utcnow()
