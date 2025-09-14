@@ -833,7 +833,7 @@ class Hybrid(commands.Cog):
                     SELECT expires_at FROM active_bans
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
-                if row and row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'ban')(ctx):
+                if row and row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent bans.')
             if not static_channel_id:
                 async with self.bot.db_pool.acquire() as conn:
@@ -958,7 +958,7 @@ class Hybrid(commands.Cog):
                    ''', ctx.guild.id, member.id, static_channel_id)
                    if not row:
                        return await ctx.send(f'\U0001F6AB {member.mention} is not muted in <#{static_channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
-                   if row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'vmute')(ctx):
+                   if row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'vmute'):
                        return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
                    if member.voice and member.voice.channel and member.voice.channel.id == static_channel_id:
                        await member.edit(mute=False)
@@ -1024,7 +1024,7 @@ class Hybrid(commands.Cog):
                     SELECT expires_at FROM active_text_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
-                if expires_at is None and not await is_owner_developer_coordinator_via_alias(ctx, 'tmute')(ctx):
+                if expires_at is None and not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent text mutes.')
                 try:
                     await text_channel.set_permissions(member, send_messages=None)
