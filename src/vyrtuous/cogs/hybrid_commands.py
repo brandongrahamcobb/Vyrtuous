@@ -350,14 +350,14 @@ class Hybrid(commands.Cog):
                 expires_at, duration_display = self.parse_duration(duration, base=base_time)
                 if duration:
                     stripped = duration.strip()
-                    if (stripped.startswith('-') or stripped.startswith('+')) and not is_owner_developer_coordinator_via_alias(ctx, 'ban'):
+                    if (stripped.startswith('-') or stripped.startswith('+')) and not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can modify an existing ban duration.')
                 if expires_at is None or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7):
                     if not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can ban permanently or longer than 7 days.')
                     if not reason.strip():
                         return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent bans or those longer than 7 days.')
-                if existing_ban and not is_owner_developer_coordinator_via_alias(ctx, 'ban'):
+                if existing_ban and not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
                     if not is_relative:
@@ -704,14 +704,14 @@ class Hybrid(commands.Cog):
                 expires_at, duration_display = self.parse_duration(duration, base=base_time)
                 if duration:
                     stripped = duration.strip()
-                    if (stripped.startswith('-') or stripped.startswith('+')) and not is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
+                    if (stripped.startswith('-') or stripped.startswith('+')) and not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can modify an existing text mute duration.')
                 if expires_at is None or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7):
                     if not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can text mute permanently or longer than 7 days.')
                     if not reason.strip():
                         return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent text mutes or those longer than 7 days.')
-                if existing_text_mute and not is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
+                if existing_text_mute and not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
                     if not is_relative:
@@ -781,14 +781,14 @@ class Hybrid(commands.Cog):
                 expires_at, duration_display = self.parse_duration(duration, base=base_time)
                 if duration:
                     stripped = duration.strip()
-                    if (stripped.startswith('-') or stripped.startswith('+')) and not is_owner_developer_coordinator_via_alias(ctx, 'mute'):
+                    if (stripped.startswith('-') or stripped.startswith('+')) and not await is_owner_developer_coordinator_via_alias(ctx, 'mute'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can modify an existing mute duration.')
                 if expires_at is None or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7):
                     if not await is_owner_developer_coordinator_via_alias(ctx, 'mute'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can mute permanently or longer than 7 days.')
                     if not reason.strip():
                         return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent mutes or those longer than 7 days.')
-                if existing_mute and not is_owner_developer_coordinator_via_alias(ctx, 'mute'):
+                if existing_mute and not await is_owner_developer_coordinator_via_alias(ctx, 'mute'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
                     if not is_relative:
@@ -833,7 +833,7 @@ class Hybrid(commands.Cog):
                     SELECT expires_at FROM active_bans
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
-                if row and row['expires_at'] is None and not is_owner_developer_coordinator_via_alias(ctx, 'ban')(ctx):
+                if row and row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'ban')(ctx):
                     return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent bans.')
             if not static_channel_id:
                 async with self.bot.db_pool.acquire() as conn:
@@ -958,7 +958,7 @@ class Hybrid(commands.Cog):
                    ''', ctx.guild.id, member.id, static_channel_id)
                    if not row:
                        return await ctx.send(f'\U0001F6AB {member.mention} is not muted in <#{static_channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
-                   if row['expires_at'] is None and not is_owner_developer_coordinator_via_alias(ctx, 'vmute')(ctx):
+                   if row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'vmute')(ctx):
                        return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
                    if member.voice and member.voice.channel and member.voice.channel.id == static_channel_id:
                        await member.edit(mute=False)
@@ -1024,7 +1024,7 @@ class Hybrid(commands.Cog):
                     SELECT expires_at FROM active_text_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
-                if expires_at is None and not is_owner_developer_coordinator_via_alias(ctx, 'tmute')(ctx):
+                if expires_at is None and not await is_owner_developer_coordinator_via_alias(ctx, 'tmute')(ctx):
                     return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent text mutes.')
                 try:
                     await text_channel.set_permissions(member, send_messages=None)
@@ -2009,7 +2009,7 @@ class Hybrid(commands.Cog):
         if not isinstance(channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content='\U0001F6AB This command only works with voice channels.')
         expires_at, duration_display = self.parse_duration(duration)
-        if (expires_at == '0' or expires_at is None) and (not is_owner_developer_coordinator_via_alias(ctx, 'mute') or not reason.strip()):
+        if (expires_at == '0' or expires_at is None) and (not await is_owner_developer_coordinator_via_alias(ctx, 'mute') or not reason.strip()):
             return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for permanent mutes.')
         bot_owner_id = int(os.environ.get('DISCORD_OWNER_ID', '0'))
         author_id = ctx.author.id
