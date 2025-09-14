@@ -138,7 +138,7 @@ async def is_system_owner(ctx):
         raise NotSystemOwner()
     return True
 
-def is_owner():
+def is_owner_predicator():
     async def predicate(ctx: commands.Context):
         for check in (is_system_owner, is_guild_owner):
             try:
@@ -150,7 +150,7 @@ def is_owner():
     predicate._permission_level = 'Owner'
     return commands.check(predicate)
 
-def is_owner_developer():
+def is_owner_developer_predicator():
     async def predicate(ctx: commands.Context):
         for check in (is_system_owner, is_guild_owner, is_developer):
             try:
@@ -162,59 +162,18 @@ def is_owner_developer():
     predicate._permission_level = 'Developer'
     return commands.check(predicate)
 
-def is_owner_developer_coordinator_moderator(alias_type: Optional[str] = None):
-    async def predicate(ctx: commands.Context):
-        target_channel_id = None
-        if alias_type and ctx.guild:
-            guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(ctx.guild.id, {})
-            alias_data = guild_aliases.get('role_aliases', {}).get(alias_type, {})
-            target_channel_id = alias_data.get('channel_id')
-        if not target_channel_id and ctx.guild and ctx.command:
-            async with ctx.bot.db_pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    'SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2',
-                    ctx.guild.id,
-                    ctx.command.name.lower()
-                )
-            if row:
-                target_channel_id = row['channel_id']
-        if not target_channel_id:
-            return True
-        for check in (is_system_owner, is_guild_owner, is_developer):
-            try:
-                if await check(ctx):
-                    return True
-            except commands.CheckFailure:
-                continue
-        async with ctx.bot.db_pool.acquire() as conn:
-            user_row = await conn.fetchrow(
-                'SELECT coordinator_channel_ids, moderator_channel_ids FROM users WHERE discord_snowflake = $1',
-                ctx.author.id
-            )
-        if user_row:
-            if target_channel_id in (user_row.get('coordinator_channel_ids') or []):
-                return True
-            if target_channel_id in (user_row.get('moderator_channel_ids') or []):
-                return True
-        raise commands.CheckFailure(
-            'You are not system owner, guild owner, developer'
-            + (', coordinator' if alias_type else '')
-            + (', or moderator' if alias_type else '')
-        )
-    predicate._permission_level = 'Moderator'
-    return commands.check(predicate)
-
-
-def is_owner_developer_coordinator(alias_type: Optional[str] = None):
+def is_owner_developer_coordinator_moderator_predicator(alias_type: Optional[str] = None):
     async def predicate(ctx: commands.Context):
         target_channel_id = None
         current_channel_id = getattr(ctx.channel, 'id', None)
         if alias_type and ctx.guild:
             guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(ctx.guild.id, {})
-            alias_data = guild_aliases.get('role_aliases', {}).get(alias_type, {})
-            alias_channel_id = alias_data.get('channel_id')
-            if alias_channel_id and alias_channel_id == current_channel_id:
-                target_channel_id = alias_channel_id
+            alias_data_role = guild_aliases.get('role_aliases', {}).get(alias_type, {})
+            alias_data_chan = guild_aliases.get('channel_aliases', {}).get(alias_type, {})
+            for alias_data in (alias_data_role, alias_data_chan):
+                if alias_data and alias_data.get('channel_id') == current_channel_id:
+                    target_channel_id = alias_data['channel_id']
+                    break
         if not target_channel_id and ctx.guild and ctx.command:
             async with ctx.bot.db_pool.acquire() as conn:
                 row = await conn.fetchrow(
@@ -228,22 +187,56 @@ def is_owner_developer_coordinator(alias_type: Optional[str] = None):
             return True
         for check in (is_system_owner, is_guild_owner, is_developer):
             try:
-                if await check(ctx):
-                    return True
-            except commands.CheckFailure:
-                continue
+                if await check(ctx): return True
+            except commands.CheckFailure: continue
+        async with ctx.bot.db_pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                'SELECT coordinator_channel_ids, moderator_channel_ids FROM users WHERE discord_snowflake = $1',
+                ctx.author.id
+            )
+        if user_row:
+            if target_channel_id in (user_row.get('coordinator_channel_ids') or []): return True
+            if target_channel_id in (user_row.get('moderator_channel_ids') or []): return True
+        raise commands.CheckFailure('You are not system owner, guild owner, developer' + (', coordinator' if alias_type else '') + (', or moderator' if alias_type else ''))
+    predicate._permission_level = 'Moderator'
+    return commands.check(predicate)
+
+
+def is_owner_developer_coordinator_predicator(alias_type: Optional[str] = None):
+    async def predicate(ctx: commands.Context):
+        target_channel_id = None
+        current_channel_id = getattr(ctx.channel, 'id', None)
+        if alias_type and ctx.guild:
+            guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(ctx.guild.id, {})
+            alias_data_role = guild_aliases.get('role_aliases', {}).get(alias_type, {})
+            alias_data_chan = guild_aliases.get('channel_aliases', {}).get(alias_type, {})
+            for alias_data in (alias_data_role, alias_data_chan):
+                if alias_data and alias_data.get('channel_id') == current_channel_id:
+                    target_channel_id = alias_data['channel_id']
+                    break
+        if not target_channel_id and ctx.guild and ctx.command:
+            async with ctx.bot.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    'SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2',
+                    ctx.guild.id,
+                    ctx.command.name.lower()
+                )
+            if row and row['channel_id'] == current_channel_id:
+                target_channel_id = row['channel_id']
+        if not target_channel_id:
+            return True
+        for check in (is_system_owner, is_guild_owner, is_developer):
+            try:
+                if await check(ctx): return True
+            except commands.CheckFailure: continue
         async with ctx.bot.db_pool.acquire() as conn:
             user_row = await conn.fetchrow(
                 'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1',
                 ctx.author.id
             )
-        if user_row:
-            coordinator_ids = user_row.get('coordinator_channel_ids') or []
-            if target_channel_id in coordinator_ids:
-                return True
-        raise commands.CheckFailure(
-            'You are not system owner, guild owner, developer, or coordinator in this channel'
-        )
+        if user_row and target_channel_id in (user_row.get('coordinator_channel_ids') or []):
+            return True
+        raise commands.CheckFailure('You are not system owner, guild owner, developer, or coordinator in this channel')
     predicate._permission_level = 'Coordinator'
     return commands.check(predicate)
 
@@ -404,3 +397,38 @@ async def check_block(ctx: commands.Context, member: discord.Member, channel_id:
     target_highest = max(target_roles, key=lambda r: role_hierarchy.index(r)) if target_roles else 'Everyone'
     success = role_hierarchy.index(target_highest) < role_hierarchy.index(author_highest)
     return target_highest, success
+    
+async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_type: Optional[str] = None) -> bool:
+    target_channel_id = None
+    current_channel_id = getattr(ctx.channel, 'id', None)
+    if alias_type and ctx.guild:
+        guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(ctx.guild.id, {})
+        alias_data_role = guild_aliases.get('role_aliases', {}).get(alias_type, {})
+        alias_data_chan = guild_aliases.get('channel_aliases', {}).get(alias_type, {})
+        for alias_data in (alias_data_role, alias_data_chan):
+            if alias_data and alias_data.get('channel_id') == current_channel_id:
+                target_channel_id = alias_data['channel_id']
+                break
+    if not target_channel_id and ctx.guild and ctx.command:
+        async with ctx.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2',
+                ctx.guild.id,
+                ctx.command.name.lower()
+            )
+        if row and row['channel_id'] == current_channel_id:
+            target_channel_id = row['channel_id']
+    if not target_channel_id:
+        return True
+    for check in (is_system_owner, is_guild_owner, is_developer):
+        try:
+            if await check(ctx): return True
+        except commands.CheckFailure: continue
+    async with ctx.bot.db_pool.acquire() as conn:
+        user_row = await conn.fetchrow(
+            'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1',
+            ctx.author.id
+        )
+    if user_row and target_channel_id in (user_row.get('coordinator_channel_ids') or []):
+        return True
+    return False
