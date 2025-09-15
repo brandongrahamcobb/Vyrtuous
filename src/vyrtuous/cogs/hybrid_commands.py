@@ -716,12 +716,12 @@ class Hybrid(commands.Cog):
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
                     if not is_relative:
                         if existing_text_mute['expires_at'] is None:
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is already permanently banned from <#{static_channel_id}>.')
+                            return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is already permanently text muted from <#{static_channel_id}>.')
                         else:
                             remaining = existing_text_mute['expires_at'] - discord.utils.utcnow()
                             if remaining.total_seconds() > 0:
                                 hours_left = round(remaining.total_seconds() / 3600, 1)
-                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is already banned from <#{static_channel_id}> for another {hours_left}h.')
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is already text muted from <#{static_channel_id}> for another {hours_left}h.')
             text_channel = ctx.guild.get_channel(static_channel_id)
             try:
                 await text_channel.set_permissions(member, send_messages=False, add_reactions=False)
@@ -793,12 +793,12 @@ class Hybrid(commands.Cog):
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
                     if not is_relative:
                         if existing_mute['expires_at'] is None:
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is already permanently banned from <#{static_channel_id}>.')
+                            return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is already permanently muted from <#{static_channel_id}>.')
                         else:
                             remaining = existing_mute['expires_at'] - discord.utils.utcnow()
                             if remaining.total_seconds() > 0:
                                 hours_left = round(remaining.total_seconds() / 3600, 1)
-                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is already banned from <#{static_channel_id}> for another {hours_left}h.')
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is already muted from <#{static_channel_id}> for another {hours_left}h.')
             bot_owner_id = int(os.environ.get('DISCORD_OWNER_ID', '0'))
             author_id = ctx.author.id
             try:
