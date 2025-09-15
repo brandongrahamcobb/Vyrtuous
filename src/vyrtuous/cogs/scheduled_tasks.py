@@ -91,6 +91,11 @@ class ScheduledTasks(commands.Cog):
                 continue
             guild = self.bot.get_guild(record['guild_id'])
             member = guild.get_member(user_id)
+            if member is None:
+                try:
+                    member = await guild.fetch_member(user_id)
+                except discord.NotFound:
+                    continue
             if member:
                 try:
                     await channel.set_permissions(member, overwrite=None)
@@ -122,8 +127,11 @@ class ScheduledTasks(commands.Cog):
                 continue
             guild = self.bot.get_guild(record['guild_id'])
             member = guild.get_member(user_id)
-            if not member:
-                continue
+            if member is None:
+                try:
+                    member = await guild.fetch_member(user_id)
+                except discord.NotFound:
+                    continue
             if member.voice and member.voice.channel and member.voice.channel.id == channel_id:
                 try:
                     await member.edit(mute=False)
@@ -134,15 +142,15 @@ class ScheduledTasks(commands.Cog):
                     DELETE FROM active_voice_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', guild.id, user_id, channel_id)
-                await conn.execute(
-                    '''
-                    UPDATE users
-                    SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2),
-                        updated_at              = NOW()
-                    WHERE discord_snowflake = $1
-                    ''',
-                    user_id, channel_id
-                )
+#                await conn.execute(
+#                    '''
+#                    UPDATE users
+#                    SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2),
+#                        updated_at              = NOW()
+#                    WHERE discord_snowflake = $1
+#                    ''',
+#                    user_id, channel_id
+#                )
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):

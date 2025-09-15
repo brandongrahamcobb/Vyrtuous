@@ -133,7 +133,7 @@ async def is_guild_owner(ctx):
     return True
 
 async def is_system_owner(ctx):
-    system_owner_id = ctx.bot.config['discord_owner_id']
+    system_owner_id = int(ctx.bot.config['discord_owner_id'])
     if ctx.author.id != system_owner_id:
         raise NotSystemOwner()
     return True

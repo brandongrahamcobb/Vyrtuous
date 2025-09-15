@@ -324,7 +324,7 @@ class Hybrid(commands.Cog):
         ) -> None:
             cmd = ctx.invoked_with
             member, _ = await self.get_channel_and_member(ctx, member)
-            if member.bot:
+            if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot ban the bot.')
             static_channel_id = int(
                 self.bot.command_aliases
@@ -357,7 +357,7 @@ class Hybrid(commands.Cog):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can ban permanently or longer than 7 days.')
                     if not reason.strip():
                         return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent bans or those longer than 7 days.')
-                if existing_ban and not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
+                if existing_ban and await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
                     if not is_relative:
@@ -418,7 +418,7 @@ class Hybrid(commands.Cog):
     ) -> None:
         _, channel = await self.get_channel_and_member(ctx, channel)
         member, _ = await self.get_channel_and_member(ctx, member)
-        if member.bot:
+        if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a coordinator.')
         highest_role, success = await check_block(ctx, member, channel.id)
         if not success:
@@ -433,12 +433,12 @@ class Hybrid(commands.Cog):
                         SELECT ARRAY(
                             SELECT DISTINCT unnest(
                                 COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || 
-                                ARRAY[$3]::BIGINT[]
+                                ARRAY[$2]::BIGINT[]
                             )
                         )
                     ),
                     updated_at = NOW()
-            ''', member.id, ctx.guild.id, channel.id)
+            ''', member.id, channel.id)
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1, $2, $3, $4, $5, $6)
@@ -460,7 +460,7 @@ class Hybrid(commands.Cog):
                     .get(command_name)
             )
             member, _ = await self.get_channel_and_member(ctx, user)
-            if member.bot:
+            if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot cow the bot.')
             highest_role, success = await check_block(ctx, member, channel_id)
             if not success:
@@ -500,7 +500,7 @@ class Hybrid(commands.Cog):
         member: str = commands.parameter(default=None, description='Tag a user or include their snowflake ID.'),
     ) -> None:
         member, _ = await self.get_channel_and_member(ctx, member)
-        if member.bot:
+        if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a developer.')
         highest_role, success = await check_block(ctx, member, None)
         if not success:
@@ -537,7 +537,7 @@ class Hybrid(commands.Cog):
             if not channel_id:
                 return await ctx.send(f'\U0001F6AB No channel alias mapping found for `{command_name}`.', allowed_mentions=discord.AllowedMentions.none())
             member, _ = await self.get_channel_and_member(ctx, user)
-            if member.bot:
+            if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot flag the bot.')
             highest_role, success = await check_block(ctx, member, channel_id)
             if not success:
@@ -587,7 +587,7 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid channel from input.')
         if not member:
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid member from input.')
-        if member.bot:
+        if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a moderator.')
         highest_role, success = await check_block(ctx, member, channel.id)
         if not success:
@@ -615,12 +615,12 @@ class Hybrid(commands.Cog):
                         SELECT ARRAY(
                             SELECT DISTINCT unnest(
                                 COALESCE(users.moderator_channel_ids, ARRAY[]::BIGINT[]) ||
-                                ARRAY[$3]::BIGINT[]
+                                ARRAY[$2]::BIGINT[]
                             )
                         )
                     ),
                     updated_at = NOW()
-            ''', member.id, ctx.guild.id, channel.id)
+            ''', member.id, channel.id)
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1, $2, $3, $4, $5, $6)
@@ -635,7 +635,7 @@ class Hybrid(commands.Cog):
             member: str = commands.parameter(default=None, description='Tag a user or include their ID.')
         ) -> None:
             member, _ = await self.get_channel_and_member(ctx, member)
-            if member.bot:
+            if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot give the bot a role.')
             if not member:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid member from input.')
@@ -680,7 +680,7 @@ class Hybrid(commands.Cog):
             bot_owner_id = int(os.environ.get('DISCORD_OWNER_ID', '0'))
             server_owner_id = ctx.guild.owner_id
             member, _ = await self.get_channel_and_member(ctx, member)
-            if member.bot:
+            if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot text-mute the bot.')
             static_channel_id = int(
                 self.bot.command_aliases
@@ -711,7 +711,7 @@ class Hybrid(commands.Cog):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can text mute permanently or longer than 7 days.')
                     if not reason.strip():
                         return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent text mutes or those longer than 7 days.')
-                if existing_text_mute and not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
+                if existing_text_mute and await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
                     if not is_relative:
@@ -757,7 +757,7 @@ class Hybrid(commands.Cog):
             reason: str = commands.parameter(default='', description='Optional reason (required for permanent mutes).')
         ) -> None:
             member, _ = await self.get_channel_and_member(ctx, member)
-            if member.bot:
+            if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot mute a bot.')
             static_channel_id = int(
                 self.bot.command_aliases
@@ -788,7 +788,7 @@ class Hybrid(commands.Cog):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can mute permanently or longer than 7 days.')
                     if not reason.strip():
                         return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent mutes or those longer than 7 days.')
-                if existing_mute and not await is_owner_developer_coordinator_via_alias(ctx, 'mute'):
+                if existing_mute and await is_owner_developer_coordinator_via_alias(ctx, 'mute'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
                     if not is_relative:
@@ -833,7 +833,7 @@ class Hybrid(commands.Cog):
                     SELECT expires_at FROM active_bans
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
-                if row and row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
+                if row and row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'unban'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent bans.')
             if not static_channel_id:
                 async with self.bot.db_pool.acquire() as conn:
@@ -912,7 +912,7 @@ class Hybrid(commands.Cog):
                     .get(command_name)
             )
             member, _ = await self.get_channel_and_member(ctx, user)
-            if member.bot:
+            if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot unflag the bot.')
             if not member:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid member.')
@@ -948,7 +948,7 @@ class Hybrid(commands.Cog):
        async def unmute_alias(ctx, member: str = commands.parameter(default=None, description='Tag a user or include their snowflake ID.')) -> None:
            static_channel_id = int(self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('unmute', {}).get(command_name))
            if not static_channel_id:
-               return await self.handler.send_message(ctx, content=f'\U0001F6AB No unmute alias configured for {command_name}.')
+               return await self.handler.send_message(ctx, content=f'\U0001F6AB No voice unmute alias configured for {command_name}.')
            member, _ = await self.get_channel_and_member(ctx, member)
            try:
                async with self.bot.db_pool.acquire() as conn:
@@ -958,7 +958,7 @@ class Hybrid(commands.Cog):
                    ''', ctx.guild.id, member.id, static_channel_id)
                    if not row:
                        return await ctx.send(f'\U0001F6AB {member.mention} is not muted in <#{static_channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
-                   if row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'vmute'):
+                   if row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'unmute'):
                        return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
                    if member.voice and member.voice.channel and member.voice.channel.id == static_channel_id:
                        await member.edit(mute=False)
@@ -1024,15 +1024,15 @@ class Hybrid(commands.Cog):
                     SELECT expires_at FROM active_text_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
-                if expires_at is None and not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
+                if expires_at is None and not await is_owner_developer_coordinator_via_alias(ctx, 'untmute'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent text mutes.')
                 try:
                     await text_channel.set_permissions(member, send_messages=None)
                 except discord.Forbidden:
                     return await self.handler.send_message(ctx, content='\U0001F6AB Discord forbidden: Cannot change the user\'s channel permissions.')
                 await conn.execute('DELETE FROM active_text_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', ctx.guild.id, member.id, static_channel_id)
-                await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1, $2, $3, $4, $5, $6)', 'untextmute', member.id, ctx.author.id, ctx.guild.id, static_channel_id, 'Untextmuted a user')
-            return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been unmuted in <#{static_channel_id}>.', allowed_mentions=discord.AllowedMentions.none())
+                await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1, $2, $3, $4, $5, $6)', 'untfmute', member.id, ctx.author.id, ctx.guild.id, static_channel_id, 'Untextmuted a user')
+            return await ctx.send(f'{self.get_random_emoji()} {member.mention}\'s text muted in <#{static_channel_id}> has been removed.', allowed_mentions=discord.AllowedMentions.none())
         return untext_mute_alias
 
     @commands.command(name='xalias', help='Deletes an alias.')
@@ -1967,7 +1967,7 @@ class Hybrid(commands.Cog):
             reason: str = commands.parameter(default='', description='Optionally include a reason for the mute.')
     ) -> None:
         member, _ = await self.get_channel_and_member(ctx, member)
-        if member.bot:
+        if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot server mute the bot.')
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -2009,7 +2009,8 @@ class Hybrid(commands.Cog):
         if not isinstance(channel, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content='\U0001F6AB This command only works with voice channels.')
         expires_at, duration_display = self.parse_duration(duration)
-        if (expires_at == '0' or expires_at is None) and (not await is_owner_developer_coordinator_via_alias(ctx, 'mute') or not reason.strip()):
+        is_owner_or_dev, is_coord = await check_owner_dev_coord(ctx, channel)
+        if (expires_at == '0' or expires_at is None) and (not is_coord or not reason.strip()):
             return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for permanent mutes.')
         bot_owner_id = int(os.environ.get('DISCORD_OWNER_ID', '0'))
         author_id = ctx.author.id
@@ -2247,7 +2248,7 @@ class Hybrid(commands.Cog):
                     member = discord.utils.find(
                         lambda m: m.name.lower() == value.lower() or (m.nick and m.nick.lower() == value.lower()),
                         ctx.guild.members)
-            if channel is None:
+            if channel is None and isinstance(ctx.channel, (discord.TextChannel, discord.VoiceChannel)):
                 channel = ctx.channel
             if member is None and channel is None:
                 await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid guild channel or member from your input.')
