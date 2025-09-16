@@ -263,19 +263,26 @@ class Hybrid(commands.Cog):
     ):
         lines, found_caps = [], False
         if target and target.lower() == 'all':
-            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, None)
+            is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, None)
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Only owners or developers can list all caps.')
             async with self.bot.db_pool.acquire() as conn:
-                rows = await conn.fetch(
-                    "SELECT channel_id, moderation_type, duration FROM active_caps WHERE guild_id=$1",
-                    ctx.guild.id
-                )
+                rows = await conn.fetch("SELECT channel_id, moderation_type, duration FROM active_caps WHERE guild_id=$1", ctx.guild.id)
             for row in rows:
                 ch = ctx.guild.get_channel(row["channel_id"])
                 ch_name = ch.mention if ch else f'Channel ID `{row["channel_id"]}`'
                 lines.append(f'**{row["moderation_type"]} in {ch_name}** → `{row["duration"]}`')
                 found_caps = True
+            if not found_caps:
+                return await self.handler.send_message(ctx, content='\U0001F6AB No caps found server-wide.')
+            chunk_size = 18
+            pages = []
+            for i in range(0, len(lines), chunk_size):
+                chunk = lines[i:i + chunk_size]
+                embed = discord.Embed(title='All Active Caps in Server', description='\n'.join(chunk), color=discord.Color.red())
+                pages.append(embed)
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
         else:
             channel = None
             if target:
