@@ -34,6 +34,13 @@ CREATE TABLE active_text_mutes (
     PRIMARY KEY (guild_id, discord_snowflake, channel_id)
 );
 
+CREATE TABLE active_caps (
+    guild_id   BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    moderation_type   TEXT   NOT NULL,  -- 'ban', 'mute', or 'tmute'
+    duration   TEXT   NOT NULL,  -- parsed duration string, e.g. '24h'
+    PRIMARY KEY (guild_id, channel_id, moderation_type)
+);
 CREATE TABLE IF NOT EXISTS command_aliases (
     guild_id BIGINT NOT NULL,
     alias_type TEXT NOT NULL CHECK (alias_type IN (
