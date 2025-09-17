@@ -1624,13 +1624,17 @@ class Hybrid(commands.Cog):
                 row = await conn.fetchrow(query, member.id)
             if not row or not row['coordinator_channel_ids']:
                 return await ctx.send(f'\U0001F6AB {member.display_name} is not a coordinator in any channels.')
-            embeds = []
+            channel_mentions = []
             for ch_id in row['coordinator_channel_ids']:
                 vc = ctx.guild.get_channel(ch_id)
-                vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
+                channel_mentions.append(vc.mention if vc else f'Unknown Channel ({ch_id})')
+            chunk_size = 18
+            embeds = []
+            for i in range(0, len(channel_mentions), chunk_size):
+                chunk = channel_mentions[i:i+chunk_size]
                 embed = discord.Embed(
                     title=f'🧭 {member.display_name} is a coordinator in:',
-                    description=f'• {vc_name}',
+                    description='\n'.join(f'• {ch}' for ch in chunk),
                     color=discord.Color.gold()
                 )
                 embeds.append(embed)
@@ -1851,13 +1855,17 @@ class Hybrid(commands.Cog):
                     row = await conn.fetchrow(query, member.id)
                 if not row or not row['moderator_channel_ids']:
                     return await ctx.send(f'\U0001F6AB {member.display_name} is not a moderator in any channels.')
-                embeds = []
+                channel_mentions = []
                 for ch_id in row['moderator_channel_ids']:
                     vc = ctx.guild.get_channel(ch_id)
-                    vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
+                    channel_mentions.append(vc.mention if vc else f'Unknown Channel ({ch_id})')
+                chunk_size = 18
+                embeds = []
+                for i in range(0, len(channel_mentions), chunk_size):
+                    chunk = channel_mentions[i:i+chunk_size]
                     embed = discord.Embed(
                         title=f'🛡️ {member.display_name} moderates:',
-                        description=f'• {vc_name}',
+                        description='\n'.join(f'• {ch}' for ch in chunk),
                         color=discord.Color.magenta()
                     )
                     embeds.append(embed)
