@@ -1582,9 +1582,6 @@ class Hybrid(commands.Cog):
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev:
-            if not is_mod_or_coord:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all coordinators.')
@@ -1615,6 +1612,9 @@ class Hybrid(commands.Cog):
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
         if member:
+            if member.id != ctx.author.id:
+                if not is_owner_or_dev:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to list coordinator rooms for {member.mention}.')
             query = '''
                 SELECT coordinator_channel_ids
                 FROM users
@@ -1665,38 +1665,47 @@ class Hybrid(commands.Cog):
                 chunk = lines[i:i + chunk_size]
                 embed = discord.Embed(
                     title=f'🧭 Coordinators for {channel.name}',
+                    description='\n'.join(chunk),
                     color=discord.Color.gold()
                 )
-                embed.add_field(name='Coordinators', value='\n'.join(chunk), inline=False)
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel, or use "all".')
     
-    @commands.command(name='devs', hidden=True, help='Lists all developers.')
+    @commands.command(name='devs', hidden=True, help='Lists developers.')
     @is_owner_developer_predicator()
-    async def list_developers(self, ctx) -> None:
-        guild = ctx.guild
-        pages = []
+    async def list_developers(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Guild ID, "all", or user mention/ID.')) -> None:
+        guild, pages = ctx.guild, []
+        member, channel = await self.get_channel_and_member(ctx, target)
         async with self.bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
-                SELECT discord_snowflake, developer_guild_ids
-                FROM users
-                WHERE $1 = ANY(developer_guild_ids)
-            ''', guild.id)
-            if not rows:
-                return await self.handler.send_message(ctx, content='\U0001F6AB No developers are configured in this guild.')
-            for row in rows:
-                user_id = row['discord_snowflake']
-                user = guild.get_member(user_id)
-                name = user.display_name if user else f'User ID {user_id}'
-                embed = discord.Embed(
-                    title=f'Developer: {name}',
-                    color=discord.Color.blurple()
-                )
+            if target is None:
+                rows = await conn.fetch('SELECT discord_snowflake FROM users WHERE $1 = ANY(developer_guild_ids)', guild.id)
+                if not rows: return await self.handler.send_message(ctx, content='\U0001F6AB No developers are configured in this guild.')
+                for row in rows:
+                    user = guild.get_member(row['discord_snowflake'])
+                    name = user.display_name if user else f'User ID {row["discord_snowflake"]}'
+                    embed = discord.Embed(title=f'Developer: {name}', color=discord.Color.blurple())
+                    pages.append(embed)
+            elif target.lower() == 'all':
+                rows = await conn.fetch('SELECT discord_snowflake, developer_guild_ids FROM users WHERE array_length(developer_guild_ids, 1) > 0')
+                if not rows: return await self.handler.send_message(ctx, content='\U0001F6AB No developers are configured.')
+                for row in rows:
+                    user = self.bot.get_user(row['discord_snowflake'])
+                    name = user.name if user else f'User ID {row["discord_snowflake"]}'
+                    guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
+                    embed = discord.Embed(title=f'Developer: {name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
+                    pages.append(embed)
+            else:
+                if member.id != ctx.author.id:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to list developer guilds for {member.mention}.')
+                row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member.id)
+                if not row or not row['developer_guild_ids']: return await self.handler.send_message(ctx, content=f'\U0001F6AB {member.mention} is not a developer in any guilds.')
+                guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
+                embed = discord.Embed(title=f'Developer guilds for {member.display_name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
                 pages.append(embed)
-            paginator = Paginator(self.bot, ctx, pages)
-            return await paginator.start()
+        paginator = Paginator(self.bot, ctx, pages)
+        return await paginator.start()
 
     @commands.command(name='flags', help='List flag statistics.')
     @is_owner_developer_coordinator_moderator_predicator()
@@ -1795,9 +1804,6 @@ class Hybrid(commands.Cog):
     async def list_moderators(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Voice channel name/mention/ID, "all", or member mention/ID.')) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev:
-            if not is_mod_or_coord:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
@@ -1832,6 +1838,9 @@ class Hybrid(commands.Cog):
                 await self.handler.send_message(ctx, content=f'Database error: {e}')
                 raise
         if member:
+            if member.id != ctx.author.id:
+                if not is_owner_or_dev:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to list the moderator rooms for {member.mention}.')
             query = '''
                 SELECT moderator_channel_ids
                 FROM users
