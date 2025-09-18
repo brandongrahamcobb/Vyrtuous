@@ -136,21 +136,12 @@ class ScheduledTasks(commands.Cog):
                 try:
                     await member.edit(mute=False)
                 except discord.HTTPException:
-                    pass
+                    logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}.')
             async with self.bot.db_pool.acquire() as conn:
                 await conn.execute('''
                     DELETE FROM active_voice_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', guild.id, user_id, channel_id)
-#                await conn.execute(
-#                    '''
-#                    UPDATE users
-#                    SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2),
-#                        updated_at              = NOW()
-#                    WHERE discord_snowflake = $1
-#                    ''',
-#                    user_id, channel_id
-#                )
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
@@ -164,30 +155,29 @@ class ScheduledTasks(commands.Cog):
             ''', now)
             if not expired:
                 return
-            async with conn.transaction():
-                for record in expired:
-                    user_id = record['discord_snowflake']
-                    channel_id = record['channel_id']
-                    channel = self.bot.get_channel(channel_id)
-                    if channel is None:
-                        continue
-                    guild = self.bot.get_guild(record['guild_id'])
-                    member = guild.get_member(user_id)
-                    if member is None:
-                        try:
-                            member = await guild.fetch_member(user_id)
-                        except discord.NotFound:
-                            continue
+            for record in expired:
+                user_id = record['discord_snowflake']
+                channel_id = record['channel_id']
+                channel = self.bot.get_channel(channel_id)
+                if channel is None:
+                    continue
+                guild = self.bot.get_guild(record['guild_id'])
+                member = guild.get_member(user_id)
+                if member is None:
                     try:
-                        await channel.set_permissions(member, send_messages=None)
-                    except discord.Forbidden:
-                        pass
-                    except discord.HTTPException as e:
-                        pass
-                    await conn.execute('''
-                        DELETE FROM active_text_mutes
-                        WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                    ''', guild.id, member.id, channel_id)
+                        member = await guild.fetch_member(user_id)
+                    except discord.NotFound:
+                        continue
+                try:
+                    await channel.set_permissions(member, send_messages=None)
+                except discord.Forbidden:
+                    logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}.')
+                except discord.HTTPException as e:
+                    logger.error(f'Failed to remove permission override: {e}')
+                await conn.execute('''
+                    DELETE FROM active_text_mutes
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', guild.id, member.id, channel_id)
 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
