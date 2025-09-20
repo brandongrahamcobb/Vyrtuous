@@ -233,7 +233,7 @@ class Hybrid(commands.Cog):
             await ctx.send(file=discord.File(backup_file))
         except Exception as e:
             logger.error(f'Error during database backup: {e}')
-            await ctx.send(f'❌ Failed to create backup: {e}')
+            await ctx.send(f'\U0001F6AB Failed to create backup: {e}')
 
     @commands.command(name='cap', help='Set a duration limit for bans, mutes and text mutes.')
     @is_owner_developer_predicator()
@@ -250,7 +250,7 @@ class Hybrid(commands.Cog):
         if moderation_type not in valid_types:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Invalid moderation type. Must be one of: {', '.join(valid_types)}')
         expires_at, duration_str = self.parse_duration(duration)
-        original_duration = self.get_cap(channel.id, ctx.guild.id, moderation_type)
+        original_duration = await self.get_cap(channel.id, ctx.guild.id, moderation_type)
         await self.set_cap(channel.id, ctx.guild.id, moderation_type, duration)
         if original_duration:
             return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap changed on {channel.mention} for {moderation_type} from {duration} to {duration_str}.')
