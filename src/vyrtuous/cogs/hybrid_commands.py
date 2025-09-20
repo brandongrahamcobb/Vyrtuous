@@ -156,7 +156,6 @@ class Hybrid(commands.Cog):
                    DO UPDATE SET duration=EXCLUDED.duration''',
                 guild_id, channel_id, moderation_type, duration
             )
-
         
     @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
     @is_owner_predicator()
@@ -251,8 +250,12 @@ class Hybrid(commands.Cog):
         if moderation_type not in valid_types:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Invalid moderation type. Must be one of: {', '.join(valid_types)}')
         expires_at, duration_str = self.parse_duration(duration)
+        original_duration = self.get_cap(channel.id, ctx.guild.id, moderation_type)
         await self.set_cap(channel.id, ctx.guild.id, moderation_type, duration)
-        return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap set on {channel.mention} for {moderation_type} {duration_str}.')
+        if original_duration:
+            return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap changed on {channel.mention} for {moderation_type} from {duration} to {duration_str}.')
+        else:
+            return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap set on {channel.mention} for {moderation_type} {duration_str}.')
 
     @commands.command(name='caps', help='List active caps for a channel or all channels if "all" is provided.')
     @is_owner_developer_coordinator_moderator_predicator()

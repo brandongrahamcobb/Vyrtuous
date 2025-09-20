@@ -34,7 +34,7 @@ class EventListeners(commands.Cog):
         self.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.db_pool)
     
-    async def fetch_active_bans(conn, guild_id: int, user_id: int):
+    async def fetch_active_bans(self, conn, guild_id: int, user_id: int):
         return await conn.fetch('''
             SELECT channel_id, expires_at
             FROM active_bans
@@ -42,7 +42,7 @@ class EventListeners(commands.Cog):
               AND (expires_at IS NULL OR expires_at > NOW())
         ''', guild_id, user_id)
 
-    async def fetch_active_text_mutes(conn, guild_id: int, user_id: int):
+    async def fetch_active_text_mutes(self, conn, guild_id: int, user_id: int):
         return await conn.fetch('''
             SELECT channel_id
             FROM active_text_mutes
