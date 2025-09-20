@@ -103,3 +103,45 @@ class Paginator:
             except asyncio.TimeoutError:
                 await self.message.clear_reactions()
                 break
+
+class ChannelPaginator:
+    def __init__(self, bot: DiscordBot, channel: discord.TextChannel, pages, user: discord.Member = None):
+        self.bot = bot
+        self.channel = channel
+        self.pages = pages
+        self.current_page = 0
+        self.message = None
+        self.user = user  # Optional, only allow this user to control reactions
+
+    async def start(self):
+        if not self.pages:
+            await self.channel.send('There are no pages to display.')
+            return
+        self.message = await self.channel.send(embed=self.pages[self.current_page])
+        await self.message.add_reaction('⬅️')
+        await self.message.add_reaction('➡️')
+        await self.message.add_reaction('⏹️')
+
+        def check(reaction, user):
+            return (
+                (self.user is None or user == self.user)
+                and reaction.message.id == self.message.id
+                and str(reaction.emoji) in ['⬅️', '➡️', '⏹️']
+            )
+
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                if str(reaction.emoji) == '⬅️' and self.current_page > 0:
+                    self.current_page -= 1
+                    await self.message.edit(embed=self.pages[self.current_page])
+                elif str(reaction.emoji) == '➡️' and self.current_page < len(self.pages) - 1:
+                    self.current_page += 1
+                    await self.message.edit(embed=self.pages[self.current_page])
+                elif str(reaction.emoji) == '⏹️':
+                    await self.message.clear_reactions()
+                    break
+                await self.message.remove_reaction(reaction.emoji, user)
+            except asyncio.TimeoutError:
+                await self.message.clear_reactions()
+                break
