@@ -127,9 +127,69 @@ class Hybrid(commands.Cog):
         self.log_channels: dict[int, list[dict]] = {}
         self.server_muters: dict[int, set[int]] = defaultdict(set)
 #        self.super = False
-        
-    def get_random_emoji(self):
-        return random.choice(VEGAN_EMOJIS)
+
+    async def cog_load(self) -> None:
+        if not hasattr(self, '_loaded_aliases'):
+            self._loaded_aliases = set()
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                'SELECT guild_id, alias_type, alias_name, channel_id, role_id FROM command_aliases'
+            )
+            for row in rows:
+                guild_id = row['guild_id']
+                alias_type = row['alias_type']
+                alias_name = row['alias_name']
+                if alias_type in ('role', 'unrole'):
+                    role_id = row['role_id']
+                    channel_id = row['channel_id']
+                    if role_id is None:
+                        continue
+                    self.bot.command_aliases \
+                        .setdefault(guild_id, {}) \
+                        .setdefault('role_aliases', {}) \
+                        .setdefault(alias_type, {})[alias_name] = {
+                            'role_id': int(role_id),
+                            'channel_id': int(channel_id) if channel_id else None
+                        }
+                else:
+                    channel_id = row['channel_id']
+                    if channel_id is None:
+                        continue
+                    self.bot.command_aliases \
+                        .setdefault(guild_id, {}) \
+                        .setdefault('channel_aliases', {}) \
+                        .setdefault(alias_type, {})[alias_name] = int(channel_id)
+                if alias_name in self._loaded_aliases:
+                    continue
+                cmd = None
+                if alias_type == 'mute':
+                    cmd = self.create_voice_mute_alias(alias_name)
+                elif alias_type == 'unmute':
+                    cmd = self.create_unmute_alias(alias_name)
+                elif alias_type == 'ban':
+                    cmd = self.create_ban_alias(alias_name)
+                elif alias_type == 'unban':
+                    cmd = self.create_unban_alias(alias_name)
+                elif alias_type == 'cow':
+                    cmd = self.create_cow_alias(alias_name)
+                elif alias_type == 'uncow':
+                    cmd = self.create_uncow_alias(alias_name)
+                elif alias_type == 'flag':
+                    cmd = self.create_flag_alias(alias_name)
+                elif alias_type == 'unflag':
+                    cmd = self.create_unflag_alias(alias_name)
+                elif alias_type == 'tmute':
+                    cmd = self.create_text_mute_alias(alias_name)
+                elif alias_type == 'untmute':
+                    cmd = self.create_untextmute_alias(alias_name)
+                elif alias_type == 'role':
+                    cmd = self.create_role_alias(alias_name)
+                elif alias_type == 'unrole':
+                    cmd = self.create_unrole_alias(alias_name)
+                if cmd and not self.bot.get_command(alias_name):
+                    self.bot.add_command(cmd)
+                    self._loaded_aliases.add(alias_name)
+            await self.load_log_channels()
     
     async def load_log_channels(self):
         async with self.bot.db_pool.acquire() as conn:
@@ -138,82 +198,6 @@ class Hybrid(commands.Cog):
             for r in rows:
                 log_channels.setdefault(r['guild_id'], []).append(r['channel_id'])
             self.log_channels = log_channels
-
-
-            
-    async def get_cap(self, channel_id: int, guild_id: int, moderation_type: str) -> Optional[str]:
-        async with self.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow(
-                'SELECT duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3',
-                guild_id, channel_id, moderation_type
-            )
-            return row['duration'] if row else None
-            
-    async def get_caps_for_channel(self, guild_id: int, channel_id: int) -> list[tuple[str,str]]:
-        async with self.bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                'SELECT moderation_type, duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2',
-                guild_id, channel_id
-            )
-            return [(r['moderation_type'], r['duration']) for r in rows]
-
-
-    async def set_cap(self, channel_id: int, guild_id: int, moderation_type: str, duration: str):
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute(
-                '''INSERT INTO active_caps (guild_id, channel_id, moderation_type, duration)
-                   VALUES ($1,$2,$3,$4)
-                   ON CONFLICT (guild_id, channel_id, moderation_type)
-                   DO UPDATE SET duration=EXCLUDED.duration''',
-                guild_id, channel_id, moderation_type, duration
-            )
-        
-    @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
-    @is_owner_predicator()
-    async def grant_server_muter(self, ctx, member: str):
-        member, _ = await self.get_channel_and_member(ctx, member)
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO users (discord_snowflake, server_muter_guild_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (discord_snowflake) DO
-                UPDATE
-                    SET server_muter_guild_ids = (
-                        SELECT ARRAY(
-                            SELECT DISTINCT unnest(COALESCE (u.server_muter_guild_ids, '{}') || ARRAY[$2])
-                        )
-                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
-                     ),
-                    updated_at = NOW()
-            ''', member.id, ctx.guild.id)
-        self.server_muters.setdefault(ctx.guild.id, set()).add(member.id)
-        return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been granted server mute permissions.', allowed_mentions=discord.AllowedMentions.none())
-        
-    @commands.command()
-    async def log(self, ctx, channel: str = commands.parameter(description='Channel ID or mention')):
-        _, channel = await self.get_channel_and_member(ctx, channel)
-        if channel is None:
-            await ctx.send('Invalid channel.')
-            return
-    
-        guild_id = ctx.guild.id
-        current = self.log_channels.get(guild_id, [])
-    
-        async with self.bot.db_pool.acquire() as conn:
-            if channel.id in current:
-                # Remove channel
-                await conn.execute('DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;', guild_id, channel.id)
-                self.log_channels[guild_id] = [c for c in current if c != channel.id]
-                await ctx.send(f'Log channel {channel.mention} toggled **off**.')
-            else:
-                # Add channel
-                await conn.execute(
-                    'INSERT INTO log_channels (guild_id, channel_id) VALUES ($1, $2);',
-                    guild_id, channel.id
-                )
-                current.append(channel.id)
-                self.log_channels[guild_id] = current
-                await ctx.send(f'Log channel {channel.mention} toggled **on**.')
-
 
 #    @commands.command(name='toggle', hidden=True)
 #    @is_owner_predicator()
@@ -272,338 +256,28 @@ class Hybrid(commands.Cog):
         except Exception as e:
             logger.error(f'Error during database backup: {e}')
             await ctx.send(f'\U0001F6AB Failed to create backup: {e}')
-    
-    def create_ban_log_pages(
-        self,
-        member: discord.Member,
-        channel: discord.VoiceChannel,
-        duration_display: str,
-        reason: str,
-        executor: discord.Member,
-        expires_at: Optional[datetime],
-        command_used: str,
-        was_in_channel: bool = False,
-        is_modification: bool = False,
-        guild: discord.Guild = None,
-        highest_role: str = ''
-    ):
-        # Decide color & type
-        if expires_at is None:
-            color = 0xDC143C
-            ban_type = '🔒 Permanent'
-            duration_emoji = '♾️'
-        elif (expires_at - datetime.now(timezone.utc)).days >= 7:
-            color = 0xFF6B35
-            ban_type = '⏰ Extended'
-            duration_emoji = '📅'
-        else:
-            color = 0xFF8C00
-            ban_type = '⏱️ Temporary'
-            duration_emoji = '⏰'
-    
-        title = '🔄 Ban Modified' if is_modification else '🔨 User Banned'
-    
-        # Page 1: Target user + channel
-        embed1 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        embed1.description = f'{member.mention} has been banned from {channel.mention}'
-        user_info = f'**Display Name:** {member.display_name}\n**Username:** {member.name}\n**User ID:** `{member.id}`\n'
-        user_info += f'**Account Created:** <t:{int(member.created_at.timestamp())}:R>\n'
-        user_info += f'**Joined Server:** <t:{int(member.joined_at.timestamp())}:R>' if member.joined_at else '**Joined Server:** Unknown'
-        embed1.add_field(name='👤 Target User', value=user_info, inline=True)
-        channel_info = f'**Channel:** {channel.mention}\n**Channel Name:** #{channel.name}\n**Channel ID:** `{channel.id}`\n'
-        channel_info += f'**Category:** {channel.category.name if channel.category else 'None'}\n**User Limit:** {channel.user_limit or 'Unlimited'}'
-        embed1.add_field(name='🔊 Voice Channel', value=channel_info, inline=True)
-    
-        # Page 2: Duration + reason
-        embed2 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        if expires_at:
-            time_left = expires_at - datetime.now(timezone.utc)
-            hours_left = round(time_left.total_seconds() / 3600, 1)
-            days_left = time_left.days
-            duration_info = f'**Type:** {ban_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Expires In:**     <t:{int(expires_at.timestamp())}:R>\n'
-            duration_info += f'**Time Left:** {days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'**Time Left:** {hours_left}h'
-        else:
-            duration_info = f'**Type:** {ban_type}\n**Duration:** {duration_display}\n**Expires:** Never\n**Status:** Permanent Ban'
-        embed2.add_field(name=f'{duration_emoji} Duration Info', value=duration_info, inline=False)
-    
-        # Paginate long reason
-        reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] or ['No reason provided']
-        embeds = [embed1, embed2]
-        for i, chunk in enumerate(reason_chunks):
-            e = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-            e.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
-            embeds.append(e)
-    
-        # Page 3: Moderator + action + context
-        embed3 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        mod_info = f'**Name:** {executor.display_name}\n**Username:** {executor.name}\n**Moderator ID:** `{executor.id}`\n**Top Role:** {highest_role}'
-        embed3.add_field(name='👮‍♂️ Executed By', value=mod_info, inline=True)
-        action_info = f'**Command Used:** `{command_used}`\n**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else     'New Ban'}\n**Server:** {guild.name if guild else 'Unknown'}'
-        embed3.add_field(name='⚙️ Action Details', value=action_info, inline=True)
-        context_info = f'**Guild ID:** `{guild.id if guild else 'Unknown'}`\n**Total Members:** {guild.member_count if guild else 'Unknown'}\n**Log Time:**     <t:{int(datetime.now(timezone.utc).timestamp())}:F>'
-        embed3.add_field(name='📊 Context', value=context_info, inline=False)
-        embed3.set_footer(text=f'Ban Reference: {member.id}-{channel.id} | Logged from {guild.name if guild else 'Unknown Server'}', icon_url=guild.icon.url if guild and guild.icon     else None)
-        embed3.set_thumbnail(url=member.display_avatar.url)
-        embed3.set_author(name=f'Ban executed by {executor.display_name}', icon_url=executor.display_avatar.url)
-        embeds.append(embed3)
-    
-        return embeds
-    
-    
-    def create_text_mute_log_pages(
-        self,
-        member: discord.Member,
-        channel: discord.VoiceChannel,
-        duration_display: str,
-        reason: str,
-        executor: discord.Member,
-        expires_at: Optional[datetime],
-        command_used: str,
-        was_in_channel: bool = False,
-        is_modification: bool = False,
-        guild: discord.Guild = None,
-        highest_role: str = ''
-    ):
-        # Color & type
-        if expires_at is None:
-            color = 0xDC143C
-            mute_type = '🔒 Permanent'
-            duration_emoji = '♾️'
-        elif (expires_at - datetime.now(timezone.utc)).days >= 7:
-            color = 0xFF6B35
-            mute_type = '⏰ Extended'
-            duration_emoji = '📅'
-        else:
-            color = 0xFF8C00
-            mute_type = '⏱️ Temporary'
-            duration_emoji = '⏰'
-    
-        title = '🔄 Text Mute Modified' if is_modification else '🔨 User Text Muted'
-    
-        # Page 1: Target user + channel
-        embed1 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        embed1.description = f'{member.mention} has been text muted in {channel.mention}'
-        user_info = f'**Display Name:** {member.display_name}\n**Username:** {member.name}\n**User ID:** `{member.id}`\n'
-        user_info += f'**Account Created:** <t:{int(member.created_at.timestamp())}:R>\n'
-        user_info += f'**Joined Server:** <t:{int(member.joined_at.timestamp())}:R>' if member.joined_at else '**Joined Server:** Unknown'
-        embed1.add_field(name='👤 Target User', value=user_info, inline=True)
-        channel_info = f'**Channel:** {channel.mention}\n**Channel Name:** #{channel.name}\n**Channel ID:** `{channel.id}`\n'
-        channel_info += f'**Category:** {channel.category.name if channel.category else 'None'}\n**User Limit:** {channel.user_limit or 'Unlimited'}'
-        embed1.add_field(name='🔊 Voice Channel', value=channel_info, inline=True)
-    
-        # Page 2: Duration + reason (split reason if long)
-        embed2 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        if expires_at:
-            time_left = expires_at - datetime.now(timezone.utc)
-            hours_left = round(time_left.total_seconds() / 3600, 1)
-            days_left = time_left.days
-            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Expires In:**     <t:{int(expires_at.timestamp())}:R>\n'
-            duration_info += f'**Time Left:** {days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'**Time Left:** {hours_left}h'
-        else:
-            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** Never\n**Status:** Permanent Text Mute'
-        embed2.add_field(name=f'{duration_emoji} Duration Info', value=duration_info, inline=False)
-    
-        reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] or ['No reason provided']
-        embeds = [embed1, embed2]
-        for i, chunk in enumerate(reason_chunks):
-            e = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-            e.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
-            embeds.append(e)
-    
-        # Page 3: Moderator + action + context
-        embed3 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        mod_info = f'**Name:** {executor.display_name}\n**Username:** {executor.name}\n**Moderator ID:** `{executor.id}`\n**Top Role:** {highest_role}'
-        embed3.add_field(name='👮‍♂️ Executed By', value=mod_info, inline=True)
-        action_info = f'**Command Used:** `{command_used}`\n**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else     'New Text Mute'}\n**Server:** {guild.name if guild else 'Unknown'}'
-        embed3.add_field(name='⚙️ Action Details', value=action_info, inline=True)
-        context_info = f'**Guild ID:** `{guild.id if guild else 'Unknown'}`\n**Total Members:** {guild.member_count if guild else 'Unknown'}\n**Log Time:**     <t:{int(datetime.now(timezone.utc).timestamp())}:F>'
-        embed3.add_field(name='📊 Context', value=context_info, inline=False)
-        embed3.set_footer(text=f'Text Mute Reference: {member.id}-{channel.id} | Logged from {guild.name if guild else 'Unknown Server'}', icon_url=guild.icon.url if guild and     guild.icon else None)
-        embed3.set_thumbnail(url=member.display_avatar.url)
-        embed3.set_author(name=f'Text mute executed by {executor.display_name}', icon_url=executor.display_avatar.url)
-        embeds.append(embed3)
-    
-        return embeds
-
+            
         
-    def create_voice_mute_log_pages(
-        self,
-        member: discord.Member,
-        channel: discord.VoiceChannel,
-        duration_display: str,
-        reason: str,
-        executor: discord.Member,
-        expires_at: Optional[datetime],
-        command_used: str,
-        was_in_channel: bool = False,
-        is_modification: bool = False,
-        guild: discord.Guild = None,
-        highest_role: str = ''
-    ):
-        # Color & type
-        if expires_at is None:
-            color = 0xDC143C
-            mute_type = '🔒 Permanent'
-            duration_emoji = '♾️'
-        elif (expires_at - datetime.now(timezone.utc)).days >= 7:
-            color = 0xFF6B35
-            mute_type = '⏰ Extended'
-            duration_emoji = '📅'
-        else:
-            color = 0xFF8C00
-            mute_type = '⏱️ Temporary'
-            duration_emoji = '⏰'
-    
-        title = '🔄 Voice Mute Modified' if is_modification else '🔨 User Voice Muted'
-    
-        # Page 1: User + channel info
-        embed1 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        embed1.description = f'{member.mention} has been voice muted in {channel.mention}'
-        user_info = f'**Display Name:** {member.display_name}\n**Username:** {member.name}\n**User ID:** `{member.id}`\n'
-        user_info += f'**Account Created:** <t:{int(member.created_at.timestamp())}:R>\n'
-        user_info += f'**Joined Server:** <t:{int(member.joined_at.timestamp())}:R>' if member.joined_at else '**Joined Server:** Unknown'
-        embed1.add_field(name='👤 Target User', value=user_info, inline=True)
-        channel_info = f'**Channel:** {channel.mention}\n**Channel Name:** #{channel.name}\n**Channel ID:** `{channel.id}`\n'
-        channel_info += f'**Category:** {channel.category.name if channel.category else 'None'}\n**User Limit:** {channel.user_limit or 'Unlimited'}'
-        embed1.add_field(name='🔊 Voice Channel', value=channel_info, inline=True)
-    
-        # Page 2: Duration + reason (split reason if long)
-        embed2 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        if expires_at:
-            time_left = expires_at - datetime.now(timezone.utc)
-            hours_left = round(time_left.total_seconds() / 3600, 1)
-            days_left = time_left.days
-            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Expires In:**     <t:{int(expires_at.timestamp())}:R>\n'
-            duration_info += f'**Time Left:** {days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'**Time Left:** {hours_left}h'
-        else:
-            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** Never\n**Status:** Permanent Voice Mute'
-        embed2.add_field(name=f'{duration_emoji} Duration Info', value=duration_info, inline=False)
-    
-        reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] or ['No reason provided']
-        embeds = [embed1, embed2]
-        for i, chunk in enumerate(reason_chunks):
-            e = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-            e.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
-            embeds.append(e)
-    
-        # Page 3: Moderator + action + context
-        embed3 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
-        mod_info = f'**Name:** {executor.display_name}\n**Username:** {executor.name}\n**Moderator ID:** `{executor.id}`\n**Top Role:** {highest_role or executor.top_role.mention}'
-        embed3.add_field(name='👮‍♂️ Executed By', value=mod_info, inline=True)
-        action_info = f'**Command Used:** `{command_used}`\n**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else     'New Voice Mute'}\n**Server:** {guild.name if guild else 'Unknown'}'
-        embed3.add_field(name='⚙️ Action Details', value=action_info, inline=True)
-        context_info = f'**Guild ID:** `{guild.id if guild else 'Unknown'}`\n**Total Members:** {guild.member_count if guild else 'Unknown'}\n**Log Time:**     <t:{int(datetime.now(timezone.utc).timestamp())}:F>'
-        embed3.add_field(name='📊 Context', value=context_info, inline=False)
-        embed3.set_footer(text=f'Voice Mute Reference: {member.id}-{channel.id} | Logged from {guild.name if guild else 'Unknown Server'}', icon_url=guild.icon.url if guild and     guild.icon else None)
-        embed3.set_thumbnail(url=member.display_avatar.url)
-        embed3.set_author(name=f'Voice mute executed by {executor.display_name}', icon_url=executor.display_avatar.url)
-        embeds.append(embed3)
-    
-        return embeds
+    @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
+    @is_owner_predicator()
+    async def create_administrator(self, ctx, member: str):
+        member, _ = await self.get_channel_and_member(ctx, member)
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO users (discord_snowflake, server_muter_guild_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (discord_snowflake) DO
+                UPDATE
+                    SET server_muter_guild_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(COALESCE (u.server_muter_guild_ids, '{}') || ARRAY[$2])
+                        )
+                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
+                     ),
+                    updated_at = NOW()
+            ''', member.id, ctx.guild.id)
+        self.server_muters.setdefault(ctx.guild.id, set()).add(member.id)
+        return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been granted server mute permissions.', allowed_mentions=discord.AllowedMentions.none())
 
-    
-    async def send_log(
-        self,
-        ctx,
-        moderation_type: str,
-        member: discord.Member,
-        channel: discord.VoiceChannel,
-        duration_display: str,
-        reason: str,
-        executor: discord.Member,
-        expires_at: Optional[datetime],
-        command_used: str,
-        was_in_channel: bool = False,
-        is_modification: bool = False,
-        highest_role: str = 'Everyone'
-    ):
-        guild_id = ctx.guild.id
-        if guild_id not in self.log_channels:
-            print(f"No log channels for guild {guild_id}")
-            return
-        for channel_id in self.log_channels[guild_id]:
-            log_channel = self.bot.get_channel(channel_id)
-            if not log_channel:
-                continue
-            if moderation_type == "ban":
-                pages = self.create_ban_log_pages(
-                    member=member, channel=channel, duration_display=duration_display, reason=reason,
-                    executor=executor, expires_at=expires_at, command_used=command_used,
-                    was_in_channel=was_in_channel, is_modification=is_modification,
-                    highest_role=highest_role
-                )
-            elif moderation_type == "tmute":
-                pages = self.create_text_mute_log_pages(
-                    member=member, channel=channel, duration_display=duration_display, reason=reason,
-                    executor=executor, expires_at=expires_at, command_used=command_used,
-                    was_in_channel=was_in_channel, is_modification=is_modification,
-                    highest_role=highest_role
-                )
-            elif moderation_type == "vmute":
-                pages = self.create_voice_mute_log_pages(
-                    member=member, channel=channel, duration_display=duration_display, reason=reason,
-                    executor=executor, expires_at=expires_at, command_used=command_used,
-                    was_in_channel=was_in_channel, is_modification=is_modification,
-                    highest_role=highest_role
-                )
-            paginator = ChannelPaginator(self.bot, log_channel, pages)
-            await paginator.start()
-
-    @commands.command(name='caps', help='List active caps for a channel or all channels if "all" is provided.')
-    @is_owner_developer_coordinator_moderator_predicator()
-    async def list_caps(
-        self,
-        ctx,
-        target: Optional[str] = commands.parameter(default=None, description='Channel ID, mention, name, or "all" for server-wide')
-    ):
-        lines, found_caps = [], False
-        if target and target.lower() == 'all':
-            is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, None)
-            if not is_owner_or_dev:
-                return await self.handler.send_message(ctx, content='\U0001F6AB Only owners or developers can list all caps.')
-            async with self.bot.db_pool.acquire() as conn:
-                rows = await conn.fetch("SELECT channel_id, moderation_type, duration FROM active_caps WHERE guild_id=$1", ctx.guild.id)
-            for row in rows:
-                ch = ctx.guild.get_channel(row["channel_id"])
-                ch_name = ch.mention if ch else f'Channel ID `{row["channel_id"]}`'
-                lines.append(f'**{row["moderation_type"]} in {ch_name}** → `{row["duration"]}`')
-                found_caps = True
-            if not found_caps:
-                return await self.handler.send_message(ctx, content='\U0001F6AB No caps found server-wide.')
-            chunk_size = 18
-            pages = []
-            for i in range(0, len(lines), chunk_size):
-                chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(title='All Active Caps in Server', description='\n'.join(chunk), color=discord.Color.red())
-                pages.append(embed)
-            paginator = Paginator(self.bot, ctx, pages)
-            return await paginator.start()
-        else:
-            channel = None
-            if target:
-                target_clean = target.strip('<#>')
-                try:
-                    channel_id = int(target_clean)
-                    channel = ctx.guild.get_channel(channel_id)
-                except ValueError:
-                    channel = discord.utils.get(ctx.guild.channels, name=target_clean)
-            else:
-                channel = ctx.channel
-            if not channel:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB Channel `{target}` not found.')
-            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-            if not is_owner_or_dev and not is_mod_or_coord:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
-            caps = await self.get_caps_for_channel(ctx.guild.id, channel.id)
-            for moderation_type, duration in caps:
-                lines.append(f'**{moderation_type} in {channel.mention}** → `{duration}`')
-                found_caps = True
-        if not found_caps:
-            return await self.handler.send_message(ctx, content='\U0001F6AB No caps found for the specified channel or server-wide.')
-        embed_title = 'All Active Caps in Server' if target and target.lower() == 'all' else f'Active Caps for {channel.mention}'
-        embed = discord.Embed(title=embed_title, description='\n'.join(lines), color=discord.Color.red())
-        await self.handler.send_message(ctx, embed=embed)
-        
     @commands.command(name='alias', help='Set an alias for a cow, uncow, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, or unrole action.')
     @is_owner_developer_coordinator_predicator()
     async def create_alias(
@@ -866,6 +540,61 @@ class Hybrid(commands.Cog):
             ''', 'create_coordinator', member.id, ctx.author.id, ctx.guild.id, channel.id, 'Created a coordinator')
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been granted coordinator rights in {channel.mention}.', allowed_mentions=discord.AllowedMentions.none())
     
+    @commands.command(name='caps', help='List active caps for a channel or all channels if "all" is provided.')
+    @is_owner_developer_coordinator_moderator_predicator()
+    async def list_caps(
+        self,
+        ctx,
+        target: Optional[str] = commands.parameter(default=None, description='Channel ID, mention, name, or "all" for server-wide')
+    ):
+        lines, found_caps = [], False
+        if target and target.lower() == 'all':
+            is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, None)
+            if not is_owner_or_dev:
+                return await self.handler.send_message(ctx, content='\U0001F6AB Only owners or developers can list all caps.')
+            async with self.bot.db_pool.acquire() as conn:
+                rows = await conn.fetch("SELECT channel_id, moderation_type, duration FROM active_caps WHERE guild_id=$1", ctx.guild.id)
+            for row in rows:
+                ch = ctx.guild.get_channel(row["channel_id"])
+                ch_name = ch.mention if ch else f'Channel ID `{row["channel_id"]}`'
+                lines.append(f'**{row["moderation_type"]} in {ch_name}** → `{row["duration"]}`')
+                found_caps = True
+            if not found_caps:
+                return await self.handler.send_message(ctx, content='\U0001F6AB No caps found server-wide.')
+            chunk_size = 18
+            pages = []
+            for i in range(0, len(lines), chunk_size):
+                chunk = lines[i:i + chunk_size]
+                embed = discord.Embed(title='All Active Caps in Server', description='\n'.join(chunk), color=discord.Color.red())
+                pages.append(embed)
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+        else:
+            channel = None
+            if target:
+                target_clean = target.strip('<#>')
+                try:
+                    channel_id = int(target_clean)
+                    channel = ctx.guild.get_channel(channel_id)
+                except ValueError:
+                    channel = discord.utils.get(ctx.guild.channels, name=target_clean)
+            else:
+                channel = ctx.channel
+            if not channel:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB Channel `{target}` not found.')
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+            if not is_owner_or_dev and not is_mod_or_coord:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
+            caps = await self.get_caps_for_channel(ctx.guild.id, channel.id)
+            for moderation_type, duration in caps:
+                lines.append(f'**{moderation_type} in {channel.mention}** → `{duration}`')
+                found_caps = True
+        if not found_caps:
+            return await self.handler.send_message(ctx, content='\U0001F6AB No caps found for the specified channel or server-wide.')
+        embed_title = 'All Active Caps in Server' if target and target.lower() == 'all' else f'Active Caps for {channel.mention}'
+        embed = discord.Embed(title=embed_title, description='\n'.join(lines), color=discord.Color.red())
+        await self.handler.send_message(ctx, embed=embed)
+        
     def create_cow_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Label a user as going vegan for tracking purposes.')
         @is_owner_developer_coordinator_moderator_predicator('cow')
@@ -2442,44 +2171,29 @@ class Hybrid(commands.Cog):
             await self.handler.send_message(ctx, content=f'Database error: {e}')
             raise
             
-    @commands.command(name='smute', help='Mutes a member throughout the entire guild.')
-    @commands.check(lambda ctx: ctx.bot.get_cog('Hybrid').can_server_mute(ctx))
-    async def server_mute(
-            self,
-            ctx,
-            member: str = commands.parameter(default=None, description='Tag a user or include their snowflake ID.'),
-            *,
-            reason: str = commands.parameter(default='', description='Optionally include a reason for the mute.')
-    ) -> None:
-        member, _ = await self.get_channel_and_member(ctx, member)
-        if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
-            return await self.handler.send_message(ctx, content='\U0001F6AB You cannot server mute the bot.')
+    @commands.command(name='log', help='Establishes a channel to send channel logs towards.')
+    @is_owner_developer_predicator()
+    async def log(self, ctx, channel: str = commands.parameter(description='Channel ID or mention')):
+        _, channel = await self.get_channel_and_member(ctx, channel)
+        if channel is None:
+            await ctx.send('Invalid channel.')
+            return
+        guild_id = ctx.guild.id
+        current = self.log_channels.get(guild_id, [])
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO users (discord_snowflake, server_mute_guild_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (discord_snowflake) DO
-                UPDATE
-                    SET server_mute_guild_ids = (
-                        SELECT ARRAY(
-                            SELECT DISTINCT unnest(COALESCE (u.server_mute_guild_ids, '{}') || ARRAY[$2])
-                        )
-                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
-                    ),
-                    updated_at = NOW()
-            ''', member.id, ctx.guild.id)
-            
-            await conn.execute('''
-                INSERT INTO active_server_voice_mutes (guild_id, discord_snowflake, reason)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (guild_id, discord_snowflake) DO UPDATE
-                SET reason = EXCLUDED.reason
-            ''', ctx.guild.id, member.id, reason or 'No reason provided')
-        if member.voice and member.voice.channel:
-            await member.edit(mute=True)
-            return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server muted in <#{member.voice.channel.id}> for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
-        else:
-            return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server muted. They are not currently in a voice channel.', allowed_mentions=discord.AllowedMentions.none())
-
+            if channel.id in current:
+                await conn.execute('DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;', guild_id, channel.id)
+                self.log_channels[guild_id] = [c for c in current if c != channel.id]
+                await ctx.send(f'Log channel {channel.mention} toggled **off**.')
+            else:
+                await conn.execute(
+                    'INSERT INTO log_channels (guild_id, channel_id) VALUES ($1, $2);',
+                    guild_id, channel.id
+                )
+                current.append(channel.id)
+                self.log_channels[guild_id] = current
+                await ctx.send(f'Log channel {channel.mention} toggled **on**.')
+    
     @commands.hybrid_command(name='rmute', help='Mutes the whole room (except yourself).')
     @is_owner_predicator()
     async def room_mute(
@@ -2608,6 +2322,44 @@ class Hybrid(commands.Cog):
         self.server_muters.get(ctx.guild.id, set()).discard(member.id)
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} no longer has server mute privileges.', allowed_mentions=discord.AllowedMentions.none())
         
+    @commands.command(name='smute', help='Mutes a member throughout the entire guild.')
+    @commands.check(lambda ctx: ctx.bot.get_cog('Hybrid').can_server_mute(ctx))
+    async def server_mute(
+            self,
+            ctx,
+            member: str = commands.parameter(default=None, description='Tag a user or include their snowflake ID.'),
+            *,
+            reason: str = commands.parameter(default='', description='Optionally include a reason for the mute.')
+    ) -> None:
+        member, _ = await self.get_channel_and_member(ctx, member)
+        if member.bot and ctx.author.id != int(ctx.bot.config['discord_owner_id']):
+            return await self.handler.send_message(ctx, content='\U0001F6AB You cannot server mute the bot.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO users (discord_snowflake, server_mute_guild_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (discord_snowflake) DO
+                UPDATE
+                    SET server_mute_guild_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(COALESCE (u.server_mute_guild_ids, '{}') || ARRAY[$2])
+                        )
+                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
+                    ),
+                    updated_at = NOW()
+            ''', member.id, ctx.guild.id)
+            
+            await conn.execute('''
+                INSERT INTO active_server_voice_mutes (guild_id, discord_snowflake, reason)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (guild_id, discord_snowflake) DO UPDATE
+                SET reason = EXCLUDED.reason
+            ''', ctx.guild.id, member.id, reason or 'No reason provided')
+        if member.voice and member.voice.channel:
+            await member.edit(mute=True)
+            return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server muted in <#{member.voice.channel.id}> for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
+        else:
+            return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server muted. They are not currently in a voice channel.', allowed_mentions=discord.AllowedMentions.none())
+        
     @commands.command(name='xsmute', help='Unmutes a member throughout the entire guild.')
     @commands.check(lambda ctx: ctx.bot.get_cog('Hybrid').can_server_mute(ctx))
     async def unsmute(
@@ -2633,69 +2385,237 @@ class Hybrid(commands.Cog):
             await member.edit(mute=False)
         return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
 
-    async def cog_load(self) -> None:
-        if not hasattr(self, '_loaded_aliases'):
-            self._loaded_aliases = set()
+
+    @staticmethod
+    def can_server_mute(ctx):
+        cog = ctx.bot.get_cog('Hybrid')
+        return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
+        
+    def create_ban_log_pages(
+        self,
+        member: discord.Member,
+        channel: discord.VoiceChannel,
+        duration_display: str,
+        reason: str,
+        executor: discord.Member,
+        expires_at: Optional[datetime],
+        command_used: str,
+        was_in_channel: bool = False,
+        is_modification: bool = False,
+        guild: discord.Guild = None,
+        highest_role: str = ''
+    ):
+        if expires_at is None:
+            color = 0xDC143C
+            ban_type = '🔒 Permanent'
+            duration_emoji = '♾️'
+        elif (expires_at - datetime.now(timezone.utc)).days >= 7:
+            color = 0xFF6B35
+            ban_type = '⏰ Extended'
+            duration_emoji = '📅'
+        else:
+            color = 0xFF8C00
+            ban_type = '⏱️ Temporary'
+            duration_emoji = '⏰'
+        title = '🔄 Ban Modified' if is_modification else '🔨 User Banned'
+        embed1 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        embed1.description = f'{member.mention} has been banned from {channel.mention}'
+        user_info = f'**Display Name:** {member.display_name}\n**Username:** {member.name}\n**User ID:** `{member.id}`\n'
+        user_info += f'**Account Created:** <t:{int(member.created_at.timestamp())}:R>\n'
+        user_info += f'**Joined Server:** <t:{int(member.joined_at.timestamp())}:R>' if member.joined_at else '**Joined Server:** Unknown'
+        embed1.add_field(name='👤 Target User', value=user_info, inline=True)
+        channel_info = f'**Channel:** {channel.mention}\n**Channel Name:** #{channel.name}\n**Channel ID:** `{channel.id}`\n'
+        channel_info += f'**Category:** {channel.category.name if channel.category else 'None'}\n**User Limit:** {channel.user_limit or 'Unlimited'}'
+        embed1.add_field(name='🔊 Voice Channel', value=channel_info, inline=True)
+        embed2 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        if expires_at:
+            time_left = expires_at - datetime.now(timezone.utc)
+            hours_left = round(time_left.total_seconds() / 3600, 1)
+            days_left = time_left.days
+            duration_info = f'**Type:** {ban_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Expires In:**     <t:{int(expires_at.timestamp())}:R>\n'
+            duration_info += f'**Time Left:** {days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'**Time Left:** {hours_left}h'
+        else:
+            duration_info = f'**Type:** {ban_type}\n**Duration:** {duration_display}\n**Expires:** Never\n**Status:** Permanent Ban'
+        embed2.add_field(name=f'{duration_emoji} Duration Info', value=duration_info, inline=False)
+        reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] or ['No reason provided']
+        embeds = [embed1, embed2]
+        for i, chunk in enumerate(reason_chunks):
+            e = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+            e.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
+            embeds.append(e)
+        embed3 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        mod_info = f'**Name:** {executor.display_name}\n**Username:** {executor.name}\n**Moderator ID:** `{executor.id}`\n**Top Role:** {highest_role}'
+        embed3.add_field(name='👮‍♂️ Executed By', value=mod_info, inline=True)
+        action_info = f'**Command Used:** `{command_used}`\n**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else     'New Ban'}\n**Server:** {guild.name if guild else 'Unknown'}'
+        embed3.add_field(name='⚙️ Action Details', value=action_info, inline=True)
+        context_info = f'**Guild ID:** `{guild.id if guild else 'Unknown'}`\n**Total Members:** {guild.member_count if guild else 'Unknown'}\n**Log Time:**     <t:{int(datetime.now(timezone.utc).timestamp())}:F>'
+        embed3.add_field(name='📊 Context', value=context_info, inline=False)
+        embed3.set_footer(text=f'Ban Reference: {member.id}-{channel.id} | Logged from {guild.name if guild else 'Unknown Server'}', icon_url=guild.icon.url if guild and guild.icon     else None)
+        embed3.set_thumbnail(url=member.display_avatar.url)
+        embed3.set_author(name=f'Ban executed by {executor.display_name}', icon_url=executor.display_avatar.url)
+        embeds.append(embed3)
+        return embeds
+    
+    
+    def create_text_mute_log_pages(
+        self,
+        member: discord.Member,
+        channel: discord.VoiceChannel,
+        duration_display: str,
+        reason: str,
+        executor: discord.Member,
+        expires_at: Optional[datetime],
+        command_used: str,
+        was_in_channel: bool = False,
+        is_modification: bool = False,
+        guild: discord.Guild = None,
+        highest_role: str = ''
+    ):
+        if expires_at is None:
+            color = 0xDC143C
+            mute_type = '🔒 Permanent'
+            duration_emoji = '♾️'
+        elif (expires_at - datetime.now(timezone.utc)).days >= 7:
+            color = 0xFF6B35
+            mute_type = '⏰ Extended'
+            duration_emoji = '📅'
+        else:
+            color = 0xFF8C00
+            mute_type = '⏱️ Temporary'
+            duration_emoji = '⏰'
+        title = '🔄 Text Mute Modified' if is_modification else '🔨 User Text Muted'
+        embed1 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        embed1.description = f'{member.mention} has been text muted in {channel.mention}'
+        user_info = f'**Display Name:** {member.display_name}\n**Username:** {member.name}\n**User ID:** `{member.id}`\n'
+        user_info += f'**Account Created:** <t:{int(member.created_at.timestamp())}:R>\n'
+        user_info += f'**Joined Server:** <t:{int(member.joined_at.timestamp())}:R>' if member.joined_at else '**Joined Server:** Unknown'
+        embed1.add_field(name='👤 Target User', value=user_info, inline=True)
+        channel_info = f'**Channel:** {channel.mention}\n**Channel Name:** #{channel.name}\n**Channel ID:** `{channel.id}`\n'
+        channel_info += f'**Category:** {channel.category.name if channel.category else 'None'}\n**User Limit:** {channel.user_limit or 'Unlimited'}'
+        embed1.add_field(name='🔊 Voice Channel', value=channel_info, inline=True)
+        embed2 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        if expires_at:
+            time_left = expires_at - datetime.now(timezone.utc)
+            hours_left = round(time_left.total_seconds() / 3600, 1)
+            days_left = time_left.days
+            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Expires In:**     <t:{int(expires_at.timestamp())}:R>\n'
+            duration_info += f'**Time Left:** {days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'**Time Left:** {hours_left}h'
+        else:
+            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** Never\n**Status:** Permanent Text Mute'
+        embed2.add_field(name=f'{duration_emoji} Duration Info', value=duration_info, inline=False)
+        reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] or ['No reason provided']
+        embeds = [embed1, embed2]
+        for i, chunk in enumerate(reason_chunks):
+            e = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+            e.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
+            embeds.append(e)
+        embed3 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        mod_info = f'**Name:** {executor.display_name}\n**Username:** {executor.name}\n**Moderator ID:** `{executor.id}`\n**Top Role:** {highest_role}'
+        embed3.add_field(name='👮‍♂️ Executed By', value=mod_info, inline=True)
+        action_info = f'**Command Used:** `{command_used}`\n**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else     'New Text Mute'}\n**Server:** {guild.name if guild else 'Unknown'}'
+        embed3.add_field(name='⚙️ Action Details', value=action_info, inline=True)
+        context_info = f'**Guild ID:** `{guild.id if guild else 'Unknown'}`\n**Total Members:** {guild.member_count if guild else 'Unknown'}\n**Log Time:**     <t:{int(datetime.now(timezone.utc).timestamp())}:F>'
+        embed3.add_field(name='📊 Context', value=context_info, inline=False)
+        embed3.set_footer(text=f'Text Mute Reference: {member.id}-{channel.id} | Logged from {guild.name if guild else 'Unknown Server'}', icon_url=guild.icon.url if guild and     guild.icon else None)
+        embed3.set_thumbnail(url=member.display_avatar.url)
+        embed3.set_author(name=f'Text mute executed by {executor.display_name}', icon_url=executor.display_avatar.url)
+        embeds.append(embed3)
+        return embeds
+
+        
+    def create_voice_mute_log_pages(
+        self,
+        member: discord.Member,
+        channel: discord.VoiceChannel,
+        duration_display: str,
+        reason: str,
+        executor: discord.Member,
+        expires_at: Optional[datetime],
+        command_used: str,
+        was_in_channel: bool = False,
+        is_modification: bool = False,
+        guild: discord.Guild = None,
+        highest_role: str = ''
+    ):
+        if expires_at is None:
+            color = 0xDC143C
+            mute_type = '🔒 Permanent'
+            duration_emoji = '♾️'
+        elif (expires_at - datetime.now(timezone.utc)).days >= 7:
+            color = 0xFF6B35
+            mute_type = '⏰ Extended'
+            duration_emoji = '📅'
+        else:
+            color = 0xFF8C00
+            mute_type = '⏱️ Temporary'
+            duration_emoji = '⏰'
+        title = '🔄 Voice Mute Modified' if is_modification else '🔨 User Voice Muted'
+        embed1 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        embed1.description = f'{member.mention} has been voice muted in {channel.mention}'
+        user_info = f'**Display Name:** {member.display_name}\n**Username:** {member.name}\n**User ID:** `{member.id}`\n'
+        user_info += f'**Account Created:** <t:{int(member.created_at.timestamp())}:R>\n'
+        user_info += f'**Joined Server:** <t:{int(member.joined_at.timestamp())}:R>' if member.joined_at else '**Joined Server:** Unknown'
+        embed1.add_field(name='👤 Target User', value=user_info, inline=True)
+        channel_info = f'**Channel:** {channel.mention}\n**Channel Name:** #{channel.name}\n**Channel ID:** `{channel.id}`\n'
+        channel_info += f'**Category:** {channel.category.name if channel.category else 'None'}\n**User Limit:** {channel.user_limit or 'Unlimited'}'
+        embed1.add_field(name='🔊 Voice Channel', value=channel_info, inline=True)
+        embed2 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        if expires_at:
+            time_left = expires_at - datetime.now(timezone.utc)
+            hours_left = round(time_left.total_seconds() / 3600, 1)
+            days_left = time_left.days
+            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Expires In:**     <t:{int(expires_at.timestamp())}:R>\n'
+            duration_info += f'**Time Left:** {days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'**Time Left:** {hours_left}h'
+        else:
+            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** Never\n**Status:** Permanent Voice Mute'
+        embed2.add_field(name=f'{duration_emoji} Duration Info', value=duration_info, inline=False)
+        reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] or ['No reason provided']
+        embeds = [embed1, embed2]
+        for i, chunk in enumerate(reason_chunks):
+            e = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+            e.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
+            embeds.append(e)
+        embed3 = discord.Embed(title=title, color=color, timestamp=datetime.now(timezone.utc))
+        mod_info = f'**Name:** {executor.display_name}\n**Username:** {executor.name}\n**Moderator ID:** `{executor.id}`\n**Top Role:** {highest_role or executor.top_role.mention}'
+        embed3.add_field(name='👮‍♂️ Executed By', value=mod_info, inline=True)
+        action_info = f'**Command Used:** `{command_used}`\n**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else     'New Voice Mute'}\n**Server:** {guild.name if guild else 'Unknown'}'
+        embed3.add_field(name='⚙️ Action Details', value=action_info, inline=True)
+        context_info = f'**Guild ID:** `{guild.id if guild else 'Unknown'}`\n**Total Members:** {guild.member_count if guild else 'Unknown'}\n**Log Time:**     <t:{int(datetime.now(timezone.utc).timestamp())}:F>'
+        embed3.add_field(name='📊 Context', value=context_info, inline=False)
+        embed3.set_footer(text=f'Voice Mute Reference: {member.id}-{channel.id} | Logged from {guild.name if guild else 'Unknown Server'}', icon_url=guild.icon.url if guild and     guild.icon else None)
+        embed3.set_thumbnail(url=member.display_avatar.url)
+        embed3.set_author(name=f'Voice mute executed by {executor.display_name}', icon_url=executor.display_avatar.url)
+        embeds.append(embed3)
+        return embeds
+    
+    def fmt_duration(self, expires_at):
+        if not expires_at:
+            return 'Permanent'
+        now =  discord.utils.utcnow()
+        delta = expires_at - now
+        if delta.total_seconds() <= 0:
+            return 'Expired'
+        days, seconds = delta.days, delta.seconds
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        return f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
+        
+    async def get_cap(self, channel_id: int, guild_id: int, moderation_type: str) -> Optional[str]:
+        async with self.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3',
+                guild_id, channel_id, moderation_type
+            )
+            return row['duration'] if row else None
+            
+    async def get_caps_for_channel(self, guild_id: int, channel_id: int) -> list[tuple[str,str]]:
         async with self.bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
-                'SELECT guild_id, alias_type, alias_name, channel_id, role_id FROM command_aliases'
+                'SELECT moderation_type, duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2',
+                guild_id, channel_id
             )
-            for row in rows:
-                guild_id = row['guild_id']
-                alias_type = row['alias_type']
-                alias_name = row['alias_name']
-                if alias_type in ('role', 'unrole'):
-                    role_id = row['role_id']
-                    channel_id = row['channel_id']
-                    if role_id is None:
-                        continue
-                    self.bot.command_aliases \
-                        .setdefault(guild_id, {}) \
-                        .setdefault('role_aliases', {}) \
-                        .setdefault(alias_type, {})[alias_name] = {
-                            'role_id': int(role_id),
-                            'channel_id': int(channel_id) if channel_id else None
-                        }
-                else:
-                    channel_id = row['channel_id']
-                    if channel_id is None:
-                        continue
-                    self.bot.command_aliases \
-                        .setdefault(guild_id, {}) \
-                        .setdefault('channel_aliases', {}) \
-                        .setdefault(alias_type, {})[alias_name] = int(channel_id)
-                if alias_name in self._loaded_aliases:
-                    continue
-                cmd = None
-                if alias_type == 'mute':
-                    cmd = self.create_voice_mute_alias(alias_name)
-                elif alias_type == 'unmute':
-                    cmd = self.create_unmute_alias(alias_name)
-                elif alias_type == 'ban':
-                    cmd = self.create_ban_alias(alias_name)
-                elif alias_type == 'unban':
-                    cmd = self.create_unban_alias(alias_name)
-                elif alias_type == 'cow':
-                    cmd = self.create_cow_alias(alias_name)
-                elif alias_type == 'uncow':
-                    cmd = self.create_uncow_alias(alias_name)
-                elif alias_type == 'flag':
-                    cmd = self.create_flag_alias(alias_name)
-                elif alias_type == 'unflag':
-                    cmd = self.create_unflag_alias(alias_name)
-                elif alias_type == 'tmute':
-                    cmd = self.create_text_mute_alias(alias_name)
-                elif alias_type == 'untmute':
-                    cmd = self.create_untextmute_alias(alias_name)
-                elif alias_type == 'role':
-                    cmd = self.create_role_alias(alias_name)
-                elif alias_type == 'unrole':
-                    cmd = self.create_unrole_alias(alias_name)
-                if cmd and not self.bot.get_command(alias_name):
-                    self.bot.add_command(cmd)
-                    self._loaded_aliases.add(alias_name)
-            await self.load_log_channels()
-
+            return [(r['moderation_type'], r['duration']) for r in rows]
+    
     async def get_channel_and_member(self, ctx: commands.Context, value: Optional[Union[str, discord.TextChannel, discord.VoiceChannel, discord.Member]]) -> tuple[Optional[discord.Member], Optional[Union[discord.TextChannel, discord.VoiceChannel]]]:
         member = None
         channel = None
@@ -2741,6 +2661,9 @@ class Hybrid(commands.Cog):
             return None, None
         return member, channel
 
+    def get_random_emoji(self):
+        return random.choice(VEGAN_EMOJIS)
+    
     async def load_server_muters(self):
         await self.bot.wait_until_ready()
         async with self.bot.db_pool.acquire() as conn:
@@ -2819,6 +2742,63 @@ class Hybrid(commands.Cog):
         if result.returncode != 0:
             raise RuntimeError(f'Backup failed: {result.stderr}')
         return backup_file
+        
+    async def send_log(
+        self,
+        ctx,
+        moderation_type: str,
+        member: discord.Member,
+        channel: discord.VoiceChannel,
+        duration_display: str,
+        reason: str,
+        executor: discord.Member,
+        expires_at: Optional[datetime],
+        command_used: str,
+        was_in_channel: bool = False,
+        is_modification: bool = False,
+        highest_role: str = 'Everyone'
+    ):
+        guild_id = ctx.guild.id
+        if guild_id not in self.log_channels:
+            print(f"No log channels for guild {guild_id}")
+            return
+        for channel_id in self.log_channels[guild_id]:
+            log_channel = self.bot.get_channel(channel_id)
+            if not log_channel:
+                continue
+            if moderation_type == "ban":
+                pages = self.create_ban_log_pages(
+                    member=member, channel=channel, duration_display=duration_display, reason=reason,
+                    executor=executor, expires_at=expires_at, command_used=command_used,
+                    was_in_channel=was_in_channel, is_modification=is_modification,
+                    highest_role=highest_role
+                )
+            elif moderation_type == "tmute":
+                pages = self.create_text_mute_log_pages(
+                    member=member, channel=channel, duration_display=duration_display, reason=reason,
+                    executor=executor, expires_at=expires_at, command_used=command_used,
+                    was_in_channel=was_in_channel, is_modification=is_modification,
+                    highest_role=highest_role
+                )
+            elif moderation_type == "vmute":
+                pages = self.create_voice_mute_log_pages(
+                    member=member, channel=channel, duration_display=duration_display, reason=reason,
+                    executor=executor, expires_at=expires_at, command_used=command_used,
+                    was_in_channel=was_in_channel, is_modification=is_modification,
+                    highest_role=highest_role
+                )
+            paginator = ChannelPaginator(self.bot, log_channel, pages)
+            await paginator.start()
+
+    async def set_cap(self, channel_id: int, guild_id: int, moderation_type: str, duration: str):
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute(
+                '''INSERT INTO active_caps (guild_id, channel_id, moderation_type, duration)
+                   VALUES ($1,$2,$3,$4)
+                   ON CONFLICT (guild_id, channel_id, moderation_type)
+                   DO UPDATE SET duration=EXCLUDED.duration''',
+                guild_id, channel_id, moderation_type, duration
+            )
 
     def setup_backup_directory(self, backup_dir: str) -> str:
         os.makedirs(backup_dir, exist_ok=True)
@@ -2845,23 +2825,6 @@ class Hybrid(commands.Cog):
             return True
         else:
             return False
-
-    @staticmethod
-    def can_server_mute(ctx):
-        cog = ctx.bot.get_cog('Hybrid')
-        return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
-
-    def fmt_duration(self, expires_at):
-        if not expires_at:
-            return 'Permanent'
-        now =  discord.utils.utcnow()
-        delta = expires_at - now
-        if delta.total_seconds() <= 0:
-            return 'Expired'
-        days, seconds = delta.days, delta.seconds
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        return f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
         
 async def setup(bot: DiscordBot):
     cog = Hybrid(bot)
