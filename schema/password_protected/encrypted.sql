@@ -107,7 +107,12 @@ CREATE TABLE moderation_logs (
     metadata JSONB DEFAULT '{}'::jsonb,                
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+CREATE TABLE IF NOT EXISTS log_channels (
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    type TEXT,
+    PRIMARY KEY (guild_id, channel_id)
+);
 GRANT ALL PRIVILEGES ON DATABASE vyrtuous TO spawd;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO spawd;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO spawd;
