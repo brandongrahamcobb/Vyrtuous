@@ -499,7 +499,7 @@ class Hybrid(commands.Cog):
                 raise
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been banned from <#{channel.id}> {duration_display} because: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
                         
-            highest_role, success = await check_block(ctx, ctx.author, channel.id)
+            highest_role = await self.get_highest_role(ctx, ctx.author, channel.id)
             await self.send_log(ctx, 'ban', member, channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return ban_alias
         
@@ -862,7 +862,7 @@ class Hybrid(commands.Cog):
                 logger.warning(f'DB insert failed: {e}')
                 return await self.handler.send_message(ctx, content=str(e))
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been text-muted in <#{static_channel_id}> {duration_display}.\nReason: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
-            highest_role, success = await check_block(ctx, ctx.author, text_channel.id)
+            highest_role = await self.get_highest_role(ctx, ctx.author, text_channel.id)
             await self.send_log(ctx, 'tmute', member, text_channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, True, is_modification, highest_role)
         return text_mute_alias
 
@@ -959,7 +959,7 @@ class Hybrid(commands.Cog):
             if member.voice and member.voice.channel and member.voice.channel.id == static_channel_id:
                 is_in_channel = True
                 await member.edit(mute=True)
-            highest_role, success = await check_block(ctx, ctx.author, channel.id)
+            highest_role = await self.get_highest_role(ctx, ctx.author, channel.id)
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been voice-muted in <#{static_channel_id}> {duration_display}.\nReason: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
             await self.send_log(ctx, 'vmute', member, channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return voice_mute_alias
@@ -1841,6 +1841,29 @@ class Hybrid(commands.Cog):
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel, or use "all".')
 
+    @commands.command(name='logs', help='Lists log channels for this guild or a specified guild ID.')
+    @is_owner_developer_predicator()
+    async def list_logs(self, ctx, guild_id: Optional[int] = None):
+        guild_id = guild_id or (ctx.guild.id if ctx.guild else None)
+        if not guild_id:
+            await ctx.send('\U0001F6AB No guild context or ID provided.')
+            return
+        channels = self.log_channels.get(guild_id, [])
+        if not channels:
+            await ctx.send('\U0001F6AB No log channels configured for this guild.')
+            return
+        mentions = []
+        for cid in channels:
+            channel = self.bot.get_channel(cid)
+            mentions.append(channel.mention if channel else f'`{cid}`')
+        embed = discord.Embed(
+            title=f'{self.get_random_emoji()} Log Channels',
+            description='\n'.join(mentions),
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text=f'Guild ID: {guild_id}')
+        return await self.handler.send_message(ctx, embed=embed)
+
     @commands.command(name='mods', help='Lists moderator statistics.')
     @is_owner_developer_coordinator_moderator_predicator()
     async def list_moderators(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Voice channel name/mention/ID, "all", or member mention/ID.')) -> None:
@@ -2088,29 +2111,6 @@ class Hybrid(commands.Cog):
         except Exception as e:
             await self.handler.send_message(ctx, content=f'Database error: {e}')
             raise
-            
-    @commands.command(name='log', help='Establishes a channel to send channel logs towards.')
-    @is_owner_developer_predicator()
-    async def log(self, ctx, channel: str = commands.parameter(description='Channel ID or mention')):
-        _, channel = await self.get_channel_and_member(ctx, channel)
-        if channel is None:
-            await ctx.send('Invalid channel.')
-            return
-        guild_id = ctx.guild.id
-        current = self.log_channels.get(guild_id, [])
-        async with self.bot.db_pool.acquire() as conn:
-            if channel.id in current:
-                await conn.execute('DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;', guild_id, channel.id)
-                self.log_channels[guild_id] = [c for c in current if c != channel.id]
-                await ctx.send(f'Log channel {channel.mention} toggled **off**.')
-            else:
-                await conn.execute(
-                    'INSERT INTO log_channels (guild_id, channel_id) VALUES ($1, $2);',
-                    guild_id, channel.id
-                )
-                current.append(channel.id)
-                self.log_channels[guild_id] = current
-                await ctx.send(f'Log channel {channel.mention} toggled **on**.')
     
     @commands.command(name='tmutes', help='Lists text-mute statistics.')
     @is_owner_developer_coordinator_predicator()
@@ -2186,9 +2186,30 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-    
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify "all", a member, or a text channel.')
-
+        
+    @commands.command(name='log', help='Establishes a channel to send channel logs towards.')
+    @is_owner_developer_predicator()
+    async def log(self, ctx, channel: str = commands.parameter(description='Channel ID or mention')):
+        _, channel = await self.get_channel_and_member(ctx, channel)
+        if channel is None:
+            await ctx.send('\U0001F6AB Invalid channel.')
+            return
+        guild_id = ctx.guild.id
+        current = self.log_channels.get(guild_id, [])
+        async with self.bot.db_pool.acquire() as conn:
+            if channel.id in current:
+                await conn.execute('DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;', guild_id, channel.id)
+                self.log_channels[guild_id] = [c for c in current if c != channel.id]
+                await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel.mention} toggled **off**.')
+            else:
+                await conn.execute(
+                    'INSERT INTO log_channels (guild_id, channel_id) VALUES ($1, $2);',
+                    guild_id, channel.id
+                )
+                current.append(channel.id)
+                self.log_channels[guild_id] = current
+                await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel.mention} toggled **on**.')
 
     @commands.hybrid_command(name='rmute', help='Mutes the whole room (except yourself).')
     @is_owner_predicator()
@@ -2754,6 +2775,29 @@ class Hybrid(commands.Cog):
             logger.warning(e)
             return None, None
         return member, channel
+
+    async def get_highest_role(self, ctx: commands.Context, member: discord.Member, channel_id: int) -> str:
+        bot = ctx.bot
+        role_hierarchy = ['Everyone', 'Moderator', 'Coordinator', 'Developer', 'Owner']
+        member_roles = []
+        async with bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT coordinator_channel_ids, moderator_channel_ids, developer_guild_ids FROM users WHERE discord_snowflake = $1',
+                member.id
+            )
+        if row:
+            if row.get('moderator_channel_ids') and channel_id in row['moderator_channel_ids']:
+                member_roles.append('Moderator')
+            if row.get('coordinator_channel_ids') and channel_id in row['coordinator_channel_ids']:
+                member_roles.append('Coordinator')
+            if row.get('developer_guild_ids') and ctx.guild and ctx.guild.id in row['developer_guild_ids']:
+                member_roles.append('Developer')
+        if ctx.guild and member.id == ctx.guild.owner_id:
+            member_roles.append('Owner')
+        if member.id == int(bot.config['discord_owner_id']):
+            member_roles.append('Owner')
+        return max(member_roles, key=lambda r: role_hierarchy.index(r)) if member_roles else 'Everyone'
+
 
     def get_random_emoji(self):
         return random.choice(VEGAN_EMOJIS)
