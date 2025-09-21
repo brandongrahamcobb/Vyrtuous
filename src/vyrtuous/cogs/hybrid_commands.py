@@ -1399,7 +1399,7 @@ class Hybrid(commands.Cog):
                 embeds.append(embed)
             paginator = Paginator(self.bot, ctx, embeds)
             return await paginator.start()
-        if member:
+        if is_owner_or_dev and member:
             async with self.bot.db_pool.acquire() as conn:
                 bans = await conn.fetch('''
                     SELECT channel_id, expires_at, reason
@@ -1428,7 +1428,7 @@ class Hybrid(commands.Cog):
                         duration_str = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
                 embed.add_field(name=channel_mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
             return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        if channel:
+        elif (is_mod_or_coord or is_owner_or_dev) and channel:
             async with self.bot.db_pool.acquire() as conn:
                 bans = await conn.fetch('''
                     SELECT discord_snowflake, expires_at, reason
@@ -1649,7 +1649,7 @@ class Hybrid(commands.Cog):
                 return await ctx.send(embed=pages[0], allowed_mentions=discord.AllowedMentions.none())
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
-        if member:
+        if is_owner_or_dev and member:
             if member.id != ctx.author.id:
                 if not is_owner_or_dev:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to list coordinator rooms for {member.mention}.')
@@ -1680,7 +1680,7 @@ class Hybrid(commands.Cog):
                 return await ctx.send(embed=embeds[0], allowed_mentions=discord.AllowedMentions.none())
             paginator = Paginator(self.bot, ctx, embeds)
             return await paginator.start()
-        if channel:
+        elif (is_mod_or_coord or is_owner_or_dev) and channel:
             query = '''
                 SELECT discord_snowflake
                 FROM users
@@ -1791,7 +1791,7 @@ class Hybrid(commands.Cog):
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
-        if member:
+        if is_owner_or_dev and member:
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('''
                     SELECT channel_id
@@ -1808,7 +1808,7 @@ class Hybrid(commands.Cog):
                 color=discord.Color.orange()
             )
             return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.all())
-        if channel:
+        elif (is_mod_or_coord or is_owner_or_dev) and channel:
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('''
                     SELECT discord_snowflake
@@ -1879,7 +1879,7 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'Database error: {e}')
                 raise
-        if member:
+        if is_owner_or_dev and member:
             if member.id != ctx.author.id:
                 if not is_owner_or_dev:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to list the moderator rooms for {member.mention}.')
@@ -1914,40 +1914,41 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'\U0001F6AB Database error: {e}')
                 raise
-        query = '''
-            SELECT discord_snowflake
-            FROM users
-            WHERE $1 = ANY (moderator_channel_ids)
-        '''
-        try:
-            async with self.bot.db_pool.acquire() as conn:
-                rows = await conn.fetch(query, channel.id)
-            if not rows:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators found for {channel.mention}.')
-            lines = []
-            for row in rows:
-                uid = row['discord_snowflake']
-                m = ctx.guild.get_member(uid)
-                if not m:
-                    continue
-                lines.append(f'• {m.display_name} — <@{uid}>')
-            if not lines:
-                return await ctx.send(f'\U0001F6AB No moderators currently in {ctx.guild.name}.')
-            chunk_size = 18
-            pages = []
-            for i in range(0, len(lines), chunk_size):
-                chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(
-                    title=f'🛡️ Moderators for {channel.name}',
-                    description='\n'.join(chunk),
-                    color=discord.Color.magenta()
-                )
-                pages.append(embed)
-            paginator = Paginator(self.bot, ctx, pages)
-            return await paginator.start()
-        except Exception as e:
-            await self.handler.send_message(ctx, content=f'\U0001F6AB Database error: {e}')
-            raise
+        elif (is_mod_or_coord or is_owner_or_dev) and channel:
+            query = '''
+                SELECT discord_snowflake
+                FROM users
+                WHERE $1 = ANY (moderator_channel_ids)
+            '''
+            try:
+                async with self.bot.db_pool.acquire() as conn:
+                    rows = await conn.fetch(query, channel.id)
+                if not rows:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators found for {channel.mention}.')
+                lines = []
+                for row in rows:
+                    uid = row['discord_snowflake']
+                    m = ctx.guild.get_member(uid)
+                    if not m:
+                        continue
+                    lines.append(f'• {m.display_name} — <@{uid}>')
+                if not lines:
+                    return await ctx.send(f'\U0001F6AB No moderators currently in {ctx.guild.name}.')
+                chunk_size = 18
+                pages = []
+                for i in range(0, len(lines), chunk_size):
+                    chunk = lines[i:i + chunk_size]
+                    embed = discord.Embed(
+                        title=f'🛡️ Moderators for {channel.name}',
+                        description='\n'.join(chunk),
+                        color=discord.Color.magenta()
+                    )
+                    pages.append(embed)
+                paginator = Paginator(self.bot, ctx, pages)
+                return await paginator.start()
+            except Exception as e:
+                await self.handler.send_message(ctx, content=f'\U0001F6AB Database error: {e}')
+                raise
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel, or use "all".')
 
     @commands.command(name='mutes', help='Lists mute statistics.')
@@ -1957,7 +1958,7 @@ class Hybrid(commands.Cog):
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
-        if member:
+        if is_owner_or_dev and member:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
                     SELECT guild_id, channel_id, expires_at, reason
@@ -1976,39 +1977,39 @@ class Hybrid(commands.Cog):
                 description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
             embed = discord.Embed(title=f'Mute Records for {member.mention}', description='\n'.join(description_lines), color=discord.Color.orange())
             return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        if channel:
-            if target and target.lower() == 'all':
-                if is_owner_or_dev:
-                    async with self.bot.db_pool.acquire() as conn:
-                        records = await conn.fetch('''
-                            SELECT discord_snowflake, channel_id, expires_at, COALESCE(reason, 'No reason provided') AS reason
-                            FROM active_voice_mutes
-                            WHERE guild_id = $1
-                            ORDER BY channel_id, discord_snowflake
-                        ''', ctx.guild.id)
-                    if not records:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB No users are currently muted in the server.')
-                    grouped = defaultdict(list)
-                    for record in records:
-                        grouped[record['channel_id']].append(record)
-                    pages = []
-                    for channel_id, user_entries in sorted(grouped.items()):
-                        channel = ctx.guild.get_channel(channel_id)
-                        channel_name = channel.mention if channel else f'Unknown Channel ({channel_id})'
-                        chunk_size = 18
-                        for i in range(0, len(user_entries), chunk_size):
-                            embed = discord.Embed(title=f'🔇 Active Mutes in {channel_name}', color=discord.Color.orange())
-                            for record in user_entries[i:i + chunk_size]:
-                                user_id = record['discord_snowflake']
-                                member = ctx.guild.get_member(user_id)
-                                name = member.display_name if member else f'User ID {user_id}'
-                                mention = member.mention if member else f'`{user_id}`'
-                                reason = record['reason'] or 'No reason provided'
-                                duration_str = self.fmt_duration(record['expires_at'])
-                                embed.add_field(name=name, value=f'{mention}\nReason: {reason}\nDuration: {duration_str}', inline=False)
-                            pages.append(embed)
-                    paginator = Paginator(self.bot, ctx, pages)
-                    return await paginator.start()
+        if target and target.lower() == 'all':
+            if is_owner_or_dev:
+                async with self.bot.db_pool.acquire() as conn:
+                    records = await conn.fetch('''
+                        SELECT discord_snowflake, channel_id, expires_at, COALESCE(reason, 'No reason provided') AS reason
+                        FROM active_voice_mutes
+                        WHERE guild_id = $1
+                        ORDER BY channel_id, discord_snowflake
+                    ''', ctx.guild.id)
+                if not records:
+                    return await self.handler.send_message(ctx, content='\U0001F6AB No users are currently muted in the server.')
+                grouped = defaultdict(list)
+                for record in records:
+                    grouped[record['channel_id']].append(record)
+                pages = []
+                for channel_id, user_entries in sorted(grouped.items()):
+                    channel = ctx.guild.get_channel(channel_id)
+                    channel_name = channel.mention if channel else f'Unknown Channel ({channel_id})'
+                    chunk_size = 18
+                    for i in range(0, len(user_entries), chunk_size):
+                        embed = discord.Embed(title=f'🔇 Active Mutes in {channel_name}', color=discord.Color.orange())
+                        for record in user_entries[i:i + chunk_size]:
+                            user_id = record['discord_snowflake']
+                            member = ctx.guild.get_member(user_id)
+                            name = member.display_name if member else f'User ID {user_id}'
+                            mention = member.mention if member else f'`{user_id}`'
+                            reason = record['reason'] or 'No reason provided'
+                            duration_str = self.fmt_duration(record['expires_at'])
+                            embed.add_field(name=name, value=f'{mention}\nReason: {reason}\nDuration: {duration_str}', inline=False)
+                        pages.append(embed)
+                paginator = Paginator(self.bot, ctx, pages)
+                return await paginator.start()
+        elif (is_mod_or_coord or is_owner_or_dev) and channel:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
                     SELECT discord_snowflake, expires_at, COALESCE(reason, 'No reason provided') AS reason
@@ -2038,89 +2039,6 @@ class Hybrid(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel or be connected to a voice channel.')
-            
-    @commands.command(name='tmutes', help='Lists text-mute statistics.')
-    @is_owner_developer_coordinator_predicator()
-    async def list_text_mutes(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Optional: "all", channel name/ID/mention, or user mention/ID.')) -> None:
-        member, channel = await self.get_channel_and_member(ctx, target)
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention if channel else 'this channel'}.')
-        if not member and not channel:
-            return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid text channel or user.')
-        async with self.bot.db_pool.acquire() as conn:
-            if target and target.lower() == 'all' and is_owner_or_dev:
-                records = await conn.fetch('''
-                    SELECT discord_snowflake, channel_id, reason, expires_at
-                    FROM active_text_mutes
-                    WHERE guild_id = $1
-                    ORDER BY channel_id, discord_snowflake
-                ''', ctx.guild.id)
-                if not records:
-                    return await self.handler.send_message(ctx, content='\U0001F6AB No users are currently text-muted in this server.')
-                grouped = defaultdict(list)
-                for r in records: grouped[r['channel_id']].append(r)
-                pages = []
-                chunk_size = 18
-                for ch_id, entries in sorted(grouped.items()):
-                    ch = ctx.guild.get_channel(ch_id)
-                    ch_name = ch.mention if ch else f'Unknown Channel ({ch_id})'
-                    for i in range(0, len(entries), chunk_size):
-                        embed = discord.Embed(title=f'🔇 Text Mutes in {ch_name}', color=discord.Color.orange())
-                        for e in entries[i:i + chunk_size]:
-                            user = ctx.guild.get_member(e['discord_snowflake'])
-                            mention = user.mention if user else f'`{e['discord_snowflake']}`'
-                            duration_str = self.fmt_duration(e['expires_at'])
-                            reason = e['reason'] or 'No reason provided'
-                            embed.add_field(name=mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
-                        pages.append(embed)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
-            if member:
-                records = await conn.fetch('''
-                    SELECT channel_id, reason, expires_at
-                    FROM active_text_mutes
-                    WHERE discord_snowflake = $1 AND guild_id = $2
-                ''', member.id, ctx.guild.id)
-                if not records:
-                    return await ctx.send(f'\U0001F6AB {member.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
-                lines = []
-                for r in records:
-                    ch = ctx.guild.get_channel(r['channel_id'])
-                    if not ch: continue
-                    ch_mention = f'<#{r['channel_id']}>'
-                    duration_str = self.fmt_duration(r['expires_at'])
-                    lines.append(f'• {ch_mention} — {r['reason']} — {duration_str}')
-                chunk_size = 18
-                pages = []
-                for i in range(0, len(lines), chunk_size):
-                    chunk = lines[i:i + chunk_size]
-                    embed = discord.Embed(title=f'Text Mute Records for {member.mention}', description='\n'.join(chunk), color=discord.Color.orange())
-                    pages.append(embed)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
-            if channel:
-                records = await conn.fetch('''
-                    SELECT discord_snowflake, reason, expires_at
-                    FROM active_text_mutes
-                    WHERE channel_id = $1 AND guild_id = $2
-                ''', channel.id, ctx.guild.id)
-                if not records:
-                    return await ctx.send(f'\U0001F6AB No users are currently text-muted in {channel.mention}.', allowed_mentions=discord.AllowedMentions.none())
-                lines = []
-                for r in records:
-                    user = ctx.guild.get_member(r['discord_snowflake'])
-                    if not user: continue
-                    duration_str = self.fmt_duration(r['expires_at'])
-                    lines.append(f'• {user.mention} — {r['reason']} — {duration_str}')
-                chunk_size = 18
-                pages = []
-                for i in range(0, len(lines), chunk_size):
-                    chunk = lines[i:i + chunk_size]
-                    embed = discord.Embed(title=f'Text-Muted Users in {channel.mention}', description='\n'.join(chunk), color=discord.Color.orange())
-                    pages.append(embed)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
 
     @commands.command(name='ls', help='List users cowed as going vegan in this guild.')
     @is_owner_developer_coordinator_moderator_predicator()
@@ -2194,6 +2112,84 @@ class Hybrid(commands.Cog):
                 self.log_channels[guild_id] = current
                 await ctx.send(f'Log channel {channel.mention} toggled **on**.')
     
+    @commands.command(name='tmutes', help='Lists text-mute statistics.')
+    @is_owner_developer_coordinator_predicator()
+    async def list_text_mutes(self, ctx, target: Optional[str] = commands.parameter(default=None, description='Optional: "all", channel name/ID/mention, or user mention/ID.')) -> None:
+        member, channel = await self.get_channel_and_member(ctx, target)
+        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev and not is_mod_or_coord:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention if channel else "this channel"}.')
+        async with self.bot.db_pool.acquire() as conn:
+            if target and target.lower() == 'all' and is_owner_or_dev:
+                records = await conn.fetch('''
+                    SELECT discord_snowflake, channel_id, reason, expires_at
+                    FROM active_text_mutes
+                    WHERE guild_id = $1
+                    ORDER BY channel_id, discord_snowflake
+                ''', ctx.guild.id)
+                if not records:
+                    return await self.handler.send_message(ctx, content='\U0001F6AB No users are currently text-muted in this server.')
+                grouped = defaultdict(list)
+                for r in records: grouped[r['channel_id']].append(r)
+                pages, chunk_size = [], 18
+                for ch_id, entries in sorted(grouped.items()):
+                    ch = ctx.guild.get_channel(ch_id)
+                    ch_name = ch.mention if ch else f'Unknown Channel ({ch_id})'
+                    for i in range(0, len(entries), chunk_size):
+                        embed = discord.Embed(title=f'🔇 Text Mutes in {ch_name}', color=discord.Color.orange())
+                        for e in entries[i:i + chunk_size]:
+                            user = ctx.guild.get_member(e['discord_snowflake'])
+                            mention = user.mention if user else f'`{e["discord_snowflake"]}`'
+                            reason = e['reason'] or 'No reason provided'
+                            duration_str = self.fmt_duration(e['expires_at'])
+                            embed.add_field(name=mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
+                        pages.append(embed)
+                paginator = Paginator(self.bot, ctx, pages)
+                return await paginator.start()
+            if member and is_owner_or_dev:
+                records = await conn.fetch('''
+                    SELECT channel_id, reason, expires_at
+                    FROM active_text_mutes
+                    WHERE discord_snowflake = $1 AND guild_id = $2
+                ''', member.id, ctx.guild.id)
+                if not records:
+                    return await ctx.send(f'\U0001F6AB {member.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                lines = []
+                for r in records:
+                    ch = ctx.guild.get_channel(r['channel_id'])
+                    if not ch: continue
+                    duration_str = self.fmt_duration(r['expires_at'])
+                    lines.append(f'• {ch.mention} — {r["reason"]} — {duration_str}')
+                pages, chunk_size = [], 18
+                for i in range(0, len(lines), chunk_size):
+                    embed = discord.Embed(title=f'Text Mute Records for {member.mention}', description='\n'.join(lines[i:i+chunk_size]), color=discord.Color.orange())
+                    pages.append(embed)
+                paginator = Paginator(self.bot, ctx, pages)
+                return await paginator.start()
+            if (is_owner_or_dev or is_mod_or_coord) and channel:
+                records = await conn.fetch('''
+                    SELECT discord_snowflake, reason, expires_at
+                    FROM active_text_mutes
+                    WHERE channel_id = $1 AND guild_id = $2
+                ''', channel.id, ctx.guild.id)
+                if not records:
+                    return await ctx.send(f'\U0001F6AB No users are currently text-muted in {channel.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                lines = []
+                for r in records:
+                    user = ctx.guild.get_member(r['discord_snowflake'])
+                    if not user: continue
+                    duration_str = self.fmt_duration(r['expires_at'])
+                    lines.append(f'• {user.mention} — {r["reason"]} — {duration_str}')
+                pages, chunk_size = [], 18
+                for i in range(0, len(lines), chunk_size):
+                    embed = discord.Embed(title=f'Text-Muted Users in {channel.mention}', description='\n'.join(lines[i:i+chunk_size]), color=discord.Color.orange())
+                    pages.append(embed)
+                paginator = Paginator(self.bot, ctx, pages)
+                return await paginator.start()
+    
+        return await self.handler.send_message(ctx, content='\U0001F6AB You must specify "all", a member, or a text channel.')
+
+
     @commands.hybrid_command(name='rmute', help='Mutes the whole room (except yourself).')
     @is_owner_predicator()
     async def room_mute(
