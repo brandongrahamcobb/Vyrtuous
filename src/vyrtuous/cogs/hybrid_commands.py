@@ -497,7 +497,6 @@ class Hybrid(commands.Cog):
             except Exception as e:
                 logger.warning(f'Database error occurred: {e}')
                 raise
-            highest_role, success = await check_block(ctx, member, channel.id)
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been banned from <#{channel.id}> {duration_display} because: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
                         
             await self.send_log(ctx, 'ban', member, channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
@@ -858,7 +857,6 @@ class Hybrid(commands.Cog):
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
                     ''', 'textmute', member.id, ctx.author.id, ctx.guild.id, static_channel_id, 'Textmuted a user')
-                highest_role, success = await check_block(ctx, member, text_channel.id)
             except Exception as e:
                 logger.warning(f'DB insert failed: {e}')
                 return await self.handler.send_message(ctx, content=str(e))
@@ -959,7 +957,6 @@ class Hybrid(commands.Cog):
             if member.voice and member.voice.channel and member.voice.channel.id == static_channel_id:
                 is_in_channel = True
                 await member.edit(mute=True)
-            highest_role, success = await check_block(ctx, member, channel.id)
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been voice-muted in <#{static_channel_id}> {duration_display}.\nReason: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
             await self.send_log(ctx, 'vmute', member, channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return voice_mute_alias
