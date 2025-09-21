@@ -499,6 +499,7 @@ class Hybrid(commands.Cog):
                 raise
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been banned from <#{channel.id}> {duration_display} because: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
                         
+            highest_role, success = await check_block(ctx, ctx.author, channel.id)
             await self.send_log(ctx, 'ban', member, channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return ban_alias
         
@@ -861,6 +862,7 @@ class Hybrid(commands.Cog):
                 logger.warning(f'DB insert failed: {e}')
                 return await self.handler.send_message(ctx, content=str(e))
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been text-muted in <#{static_channel_id}> {duration_display}.\nReason: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
+            highest_role, success = await check_block(ctx, ctx.author, text_channel.id)
             await self.send_log(ctx, 'tmute', member, text_channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, True, is_modification, highest_role)
         return text_mute_alias
 
@@ -957,6 +959,7 @@ class Hybrid(commands.Cog):
             if member.voice and member.voice.channel and member.voice.channel.id == static_channel_id:
                 is_in_channel = True
                 await member.edit(mute=True)
+            highest_role, success = await check_block(ctx, ctx.author, channel.id)
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been voice-muted in <#{static_channel_id}> {duration_display}.\nReason: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
             await self.send_log(ctx, 'vmute', member, channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return voice_mute_alias
