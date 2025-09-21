@@ -1848,20 +1848,33 @@ class Hybrid(commands.Cog):
         if not guild_id:
             await ctx.send('\U0001F6AB No guild context or ID provided.')
             return
-        channels = self.log_channels.get(guild_id, [])
-        if not channels:
+        entries = self.log_channels.get(guild_id, [])
+        if not entries:
             await ctx.send('\U0001F6AB No log channels configured for this guild.')
             return
-        mentions = []
-        for cid in channels:
-            channel = self.bot.get_channel(cid)
-            mentions.append(channel.mention if channel else f'`{cid}`')
         embed = discord.Embed(
             title=f'{self.get_random_emoji()} Log Channels',
-            description='\n'.join(mentions),
             color=discord.Color.blue()
         )
         embed.set_footer(text=f'Guild ID: {guild_id}')
+        for entry in entries:
+            cid = entry["channel_id"] if isinstance(entry, dict) else entry
+            channel = self.bot.get_channel(cid) if not isinstance(entry, dict) else self.bot.get_channel(entry["channel_id"])
+            mention = channel.mention if channel else f'`{cid}`'
+            if isinstance(entry, dict):
+                log_type = entry.get("type") or "general"
+                snowflakes = entry.get("snowflakes") or []
+                if log_type == "general":
+                    detail = "Logs all events in this guild"
+                elif log_type == "channel":
+                    detail = f"Logs only events from channels: {', '.join([f'<#{s}>' for s in snowflakes])}"
+                elif log_type == "member":
+                    detail = f"Logs only events for members: {', '.join([f'<@{s}>' for s in snowflakes])}"
+                else:
+                    detail = "Unknown filter"
+                embed.add_field(name=mention, value=f"Type: **{log_type}**\n{detail}", inline=False)
+            else:
+                embed.add_field(name=mention, value="Type: **legacy** (no filter info)", inline=False)
         return await self.handler.send_message(ctx, embed=embed)
 
     @commands.command(name='mods', help='Lists moderator statistics.')
@@ -2190,7 +2203,9 @@ class Hybrid(commands.Cog):
         
     @commands.command(name='log', help='Establishes a channel to send channel logs towards.')
     @is_owner_developer_predicator()
-    async def log(self, ctx, channel: str = commands.parameter(description='Channel ID or mention')):
+    async def log(self, ctx, channel: str = commands.parameter(description='Channel ID or mention'),
+                  log_type: Optional[str] = commands.parameter(default=None, description='Type of logs: member, channel, etc.'),
+                  *snowflakes: int):
         _, channel = await self.get_channel_and_member(ctx, channel)
         if channel is None:
             await ctx.send('\U0001F6AB Invalid channel.')
@@ -2198,18 +2213,22 @@ class Hybrid(commands.Cog):
         guild_id = ctx.guild.id
         current = self.log_channels.get(guild_id, [])
         async with self.bot.db_pool.acquire() as conn:
-            if channel.id in current:
+            existing = await conn.fetchrow(
+                'SELECT * FROM log_channels WHERE guild_id=$1 AND channel_id=$2;',
+                guild_id, channel.id
+            )
+            if existing:
                 await conn.execute('DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;', guild_id, channel.id)
-                self.log_channels[guild_id] = [c for c in current if c != channel.id]
+                self.log_channels[guild_id] = [c for c in current if c["channel_id"] != channel.id]
                 await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel.mention} toggled **off**.')
             else:
                 await conn.execute(
-                    'INSERT INTO log_channels (guild_id, channel_id) VALUES ($1, $2);',
-                    guild_id, channel.id
+                    'INSERT INTO log_channels (guild_id, channel_id, type, snowflakes) VALUES ($1, $2, $3, $4);',
+                    guild_id, channel.id, log_type, snowflakes if snowflakes else None
                 )
-                current.append(channel.id)
+                current.append({"channel_id": channel.id, "type": log_type, "snowflakes": snowflakes})
                 self.log_channels[guild_id] = current
-                await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel.mention} toggled **on**.')
+                await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel.mention} toggled **on** with type `{log_type or "general"}`.')
 
     @commands.hybrid_command(name='rmute', help='Mutes the whole room (except yourself).')
     @is_owner_predicator()
@@ -2886,7 +2905,7 @@ class Hybrid(commands.Cog):
         ctx,
         moderation_type: str,
         member: discord.Member,
-        channel: discord.VoiceChannel,
+        channel: Optional[discord.VoiceChannel],
         duration_display: str,
         reason: str,
         executor: discord.Member,
@@ -2897,35 +2916,43 @@ class Hybrid(commands.Cog):
         highest_role: str = 'Everyone'
     ):
         guild_id = ctx.guild.id
-        guild = ctx.guild;
+        guild = ctx.guild
         if guild_id not in self.log_channels:
             print(f"No log channels for guild {guild_id}")
             return
-        for channel_id in self.log_channels[guild_id]:
-            log_channel = self.bot.get_channel(channel_id)
+        for entry in self.log_channels[guild_id]:
+            log_channel = self.bot.get_channel(entry["channel_id"])
             if not log_channel:
                 continue
+            log_type = entry.get("type")
+            snowflakes = entry.get("snowflakes") or []
+            if log_type == "member" and member.id not in snowflakes:
+                continue
+            if log_type == "channel" and channel and channel.id not in snowflakes:
+                continue
             if moderation_type == "ban":
-                pages = self.create_ban_log_pages(ctx=ctx,
-                    member=member, channel=channel, duration_display=duration_display, reason=reason,
-                    executor=executor, expires_at=expires_at, command_used=command_used,
-                    was_in_channel=was_in_channel, is_modification=is_modification, guild=guild,
-                    highest_role=highest_role
+                pages = self.create_ban_log_pages(
+                    ctx=ctx, member=member, channel=channel, duration_display=duration_display,
+                    reason=reason, executor=executor, expires_at=expires_at,
+                    command_used=command_used, was_in_channel=was_in_channel,
+                    is_modification=is_modification, guild=guild, highest_role=highest_role
                 )
             elif moderation_type == "tmute":
-                pages = self.create_text_mute_log_pages(ctx=ctx,
-                    member=member, channel=channel, duration_display=duration_display, reason=reason,
-                    executor=executor, expires_at=expires_at, command_used=command_used,
-                    was_in_channel=was_in_channel, is_modification=is_modification, guild=guild,
-                    highest_role=highest_role
+                pages = self.create_text_mute_log_pages(
+                    ctx=ctx, member=member, channel=channel, duration_display=duration_display,
+                    reason=reason, executor=executor, expires_at=expires_at,
+                    command_used=command_used, was_in_channel=was_in_channel,
+                    is_modification=is_modification, guild=guild, highest_role=highest_role
                 )
             elif moderation_type == "vmute":
-                pages = self.create_voice_mute_log_pages(ctx=ctx,
-                    member=member, channel=channel, duration_display=duration_display, reason=reason,
-                    executor=executor, expires_at=expires_at, command_used=command_used, guild=guild,
-                    was_in_channel=was_in_channel, is_modification=is_modification,
-                    highest_role=highest_role
+                pages = self.create_voice_mute_log_pages(
+                    ctx=ctx, member=member, channel=channel, duration_display=duration_display,
+                    reason=reason, executor=executor, expires_at=expires_at,
+                    command_used=command_used, guild=guild, was_in_channel=was_in_channel,
+                    is_modification=is_modification, highest_role=highest_role
                 )
+            else:
+                continue
             paginator = ChannelPaginator(self.bot, log_channel, pages)
             await paginator.start()
 
