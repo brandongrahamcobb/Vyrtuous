@@ -1133,11 +1133,11 @@ class Hybrid(commands.Cog):
             static_channel_id = int(self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('untmute', {}).get(command_name))
             text_channel = ctx.guild.get_channel(static_channel_id)
             async with self.bot.db_pool.acquire() as conn:
-                expires_at = await conn.fetchval('''
+                row = await conn.fetchrow('''
                     SELECT expires_at FROM active_text_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member.id, static_channel_id)
-                if expires_at is None and not await is_owner_developer_coordinator_via_alias(ctx, 'untmute'):
+                if row and row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'untmute'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent text mutes.')
                 try:
                     await text_channel.set_permissions(member, send_messages=None)
@@ -1804,41 +1804,44 @@ class Hybrid(commands.Cog):
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel, or use "all".')
 
-    @commands.command(name='logs', help='Lists log channels for this guild or a specified guild ID.')
+    @commands.command(name='list_logs', help='Lists log channels for this guild or a specified guild ID.')
     @is_owner_developer_predicator()
     async def list_logs(self, ctx, guild_id: Optional[int] = None):
         guild_id = guild_id or (ctx.guild.id if ctx.guild else None)
         if not guild_id:
-            await ctx.send('\U0001F6AB No guild context or ID provided.')
+            await self.handler.send_message(ctx, content='\U0001F6AB No guild context or ID provided.')
             return
         entries = self.log_channels.get(guild_id, [])
         if not entries:
-            await ctx.send('\U0001F6AB No log channels configured for this guild.')
+            await self.handler.send_message(ctx, content='\U0001F6AB No log channels configured for this guild.')
             return
         embed = discord.Embed(
             title=f'{self.get_random_emoji()} Log Channels',
             color=discord.Color.blue()
         )
         embed.set_footer(text=f'Guild ID: {guild_id}')
-        for entry in entries:
-            cid = entry["channel_id"] if isinstance(entry, dict) else entry
-            channel = self.bot.get_channel(cid) if not isinstance(entry, dict) else self.bot.get_channel(entry["channel_id"])
-            mention = channel.mention if channel else f'`{cid}`'
-            if isinstance(entry, dict):
-                log_type = entry.get("type") or "general"
-                snowflakes = entry.get("snowflakes") or []
-                if log_type == "general":
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('SELECT * FROM log_channels WHERE guild_id=$1;', guild_id)
+            for row in rows:
+                channel = self.bot.get_channel(row['channel_id'])
+                mention = channel.mention if channel else f'`{row["channel_id"]}`'
+                enabled = row.get('enabled', False)
+                log_type = row.get('type') or 'general'
+                snowflakes = row.get('snowflakes') or []
+                if log_type == 'general':
                     detail = "Logs all events in this guild"
-                elif log_type == "channel":
-                    detail = f"Logs only events from channels: {', '.join([f'<#{s}>' for s in snowflakes])}"
-                elif log_type == "member":
-                    detail = f"Logs only events for members: {', '.join([f'<@{s}>' for s in snowflakes])}"
+                elif log_type == 'channel':
+                    detail = f"Logs only events from channels: {', '.join(f'<#{s}>' for s in snowflakes)}"
+                elif log_type == 'member':
+                    detail = f"Logs only events for members: {', '.join(f'<@{s}>' for s in snowflakes)}"
                 else:
                     detail = "Unknown filter"
-                embed.add_field(name=mention, value=f"Type: **{log_type}**\n{detail}", inline=False)
-            else:
-                embed.add_field(name=mention, value="Type: **legacy** (no filter info)", inline=False)
-        return await self.handler.send_message(ctx, embed=embed)
+                embed.add_field(
+                    name=f"{mention} {'✅' if enabled else '❌'}",
+                    value=f"Type: **{log_type}**\n{detail}",
+                    inline=False
+                )
+        await self.handler.send_message(ctx, embed=embed)
 
     @commands.command(name='mods', help='Lists moderator statistics.')
     @is_owner_developer_coordinator_moderator_predicator()
@@ -2166,35 +2169,52 @@ class Hybrid(commands.Cog):
                 return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify "all", a member, or a text channel.')
         
-    @commands.command(name='log', help='Establishes a channel to send channel logs towards.')
-    @is_owner_developer_predicator()
-    async def log(self, ctx, channel: str = commands.parameter(description='Channel ID or mention'),
-                  log_type: Optional[str] = commands.parameter(default=None, description='Type of logs: member, channel, etc.'),
-                  *snowflakes: int):
-        _, channel = await self.get_channel_and_member(ctx, channel)
-        if channel is None:
-            await ctx.send('\U0001F6AB Invalid channel.')
+    @commands.command(name='mlog', help='Create, modify, or delete a log channel.')
+    async def modify_log(
+        self,
+        ctx,
+        channel: str = commands.parameter(description='Channel ID or mention'),
+        action: str = commands.parameter(description='create | modify | delete'),
+        log_type: Optional[str] = commands.parameter(default=None, description='Type of logs: member, channel, etc.'),
+        *snowflakes: int
+    ):
+        sf = [int(s) for s in snowflakes] if snowflakes else []
+        _, channel_obj = await self.get_channel_and_member(ctx, channel)
+        if channel_obj is None:
+            await self.handler.send_message(ctx, content='\U0001F6AB Invalid channel.')
             return
         guild_id = ctx.guild.id
-        current = self.log_channels.get(guild_id, [])
+        current_channels = self.log_channels.setdefault(guild_id, [])
         async with self.bot.db_pool.acquire() as conn:
+            if action.lower() == 'delete':
+                await conn.execute(
+                    'DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;',
+                    guild_id, channel_obj.id
+                )
+                if channel_obj.id in current_channels:
+                    current_channels.remove(channel_obj.id)
+                await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel_obj.mention} deleted.')
+                return
             existing = await conn.fetchrow(
                 'SELECT * FROM log_channels WHERE guild_id=$1 AND channel_id=$2;',
-                guild_id, channel.id
+                guild_id, channel_obj.id
             )
             if existing:
-                await conn.execute('DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;', guild_id, channel.id)
-                self.log_channels[guild_id] = [c for c in current if c["channel_id"] != channel.id]
-                await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel.mention} toggled **off**.')
+                await conn.execute(
+                    'UPDATE log_channels SET type=$1, snowflakes=$2, enabled=TRUE WHERE guild_id=$3 AND channel_id=$4;',
+                    log_type, sf if sf else None, guild_id, channel_obj.id
+                )
+                msg = f'{self.get_random_emoji()} Log channel {channel_obj.mention} updated with type `{log_type or "general"}`.'
             else:
                 await conn.execute(
-                    'INSERT INTO log_channels (guild_id, channel_id, type, snowflakes) VALUES ($1, $2, $3, $4);',
-                    guild_id, channel.id, log_type, snowflakes if snowflakes else None
+                    'INSERT INTO log_channels (guild_id, channel_id, type, snowflakes, enabled) VALUES ($1, $2, $3, $4, TRUE);',
+                    guild_id, channel_obj.id, log_type, sf if sf else None
                 )
-                current.append({"channel_id": channel.id, "type": log_type, "snowflakes": snowflakes})
-                self.log_channels[guild_id] = current
-                await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel.mention} toggled **on** with type `{log_type or "general"}`.')
-
+                current_channels.append(channel_obj.id)
+                msg = f'{self.get_random_emoji()} Log channel {channel_obj.mention} created with type `{log_type or "general"}`.'
+        self.log_channels[guild_id] = current_channels
+        await self.handler.send_message(ctx, content=msg)
+        
     @commands.hybrid_command(name='rmute', help='Mutes the whole room (except yourself).')
     @is_owner_predicator()
     async def room_mute(
@@ -2360,6 +2380,41 @@ class Hybrid(commands.Cog):
             return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server muted in <#{member.voice.channel.id}> for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
         else:
             return await ctx.send(f'{self.get_random_emoji()} {member.mention} has been server muted. They are not currently in a voice channel.', allowed_mentions=discord.AllowedMentions.none())
+        
+    @commands.command(name='log', help='Toggle logging for a channel on or off.')
+    @is_owner_developer_coordinator_moderator_predicator()
+    async def toggle_log(self, ctx, channel: str = commands.parameter(description='Channel ID or mention')):
+        _, channel_obj = await self.get_channel_and_member(ctx, channel)
+        if channel_obj is None:
+            await self.handler.send_message(ctx, content='\U0001F6AB Invalid channel.')
+            return
+        target_role, allowed = await check_block(ctx, ctx.author, channel_obj.id)
+        if not allowed:
+            await self.handler.send_message(ctx, content=f'❌ You must be {target_role} or higher to toggle logging for this channel.')
+            return
+        guild_id = ctx.guild.id
+        current_channels = self.log_channels.setdefault(guild_id, [])
+        async with self.bot.db_pool.acquire() as conn:
+            existing = await conn.fetchrow(
+                'SELECT * FROM log_channels WHERE guild_id=$1 AND channel_id=$2;',
+                guild_id, channel_obj.id
+            )
+            if existing:
+                new_status = not existing['enabled']
+                await conn.execute(
+                    'UPDATE log_channels SET enabled=$1 WHERE guild_id=$2 AND channel_id=$3;',
+                    new_status, guild_id, channel_obj.id
+                )
+                msg = f'{self.get_random_emoji()} Logging for {channel_obj.mention} toggled {"on" if new_status else "off"}.'
+            else:
+                await conn.execute(
+                    'INSERT INTO log_channels (guild_id, channel_id, enabled) VALUES ($1, $2, TRUE);',
+                    guild_id, channel_obj.id
+                )
+                current_channels.append(channel_obj.id)
+                msg = f'{self.get_random_emoji()} Logging for {channel_obj.mention} enabled.'
+        self.log_channels[guild_id] = current_channels
+        await self.handler.send_message(ctx, content=msg)
         
     @commands.command(name='xsmute', help='Unmutes a member throughout the entire guild.')
     @commands.check(lambda ctx: ctx.bot.get_cog('Hybrid').can_server_mute(ctx))
