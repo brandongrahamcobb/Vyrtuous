@@ -399,31 +399,37 @@ async def check_block(ctx: commands.Context, member: discord.Member, channel_id:
     return target_highest, success
     
 async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_type: Optional[str] = None) -> bool:
-    target_channel_id = None
     current_channel_id = getattr(ctx.channel, 'id', None)
-    if alias_type and ctx.guild:
-        guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(ctx.guild.id, {})
-        alias_data_role = guild_aliases.get('role_aliases', {}).get(alias_type, {})
-        alias_data_chan = guild_aliases.get('channel_aliases', {}).get(alias_type, {})
-        for alias_data in (alias_data_role, alias_data_chan):
-            if alias_data and alias_data.get('channel_id') == current_channel_id:
-                target_channel_id = alias_data['channel_id']
+    guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(ctx.guild.id, {})
+    alias_data_role = dict(guild_aliases.get('role_aliases', {}).get(alias_type, {}))
+    alias_data_chan = dict(guild_aliases.get('channel_aliases', {}).get(alias_type, {}))
+    target_channel_id = None
+    for source, is_role in ((alias_data_role, True), (alias_data_chan, False)):
+        for alias_name, alias_data in source.items():
+            if is_role:
+                channel_id = alias_data.get('channel_id')
+            else:
+                channel_id = alias_data  # already an int
+            if channel_id and int(channel_id) == current_channel_id:
+                target_channel_id = int(channel_id)
                 break
+        if target_channel_id:
+            break
     if not target_channel_id and ctx.guild and ctx.command:
         async with ctx.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 'SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2',
-                ctx.guild.id,
-                ctx.command.name.lower()
+                ctx.guild.id, ctx.command.name.lower()
             )
-        if row and row['channel_id'] == current_channel_id:
-            target_channel_id = row['channel_id']
+        if row and int(row['channel_id']) == current_channel_id:
+            target_channel_id = int(row['channel_id'])
     if not target_channel_id:
-        return True
+        return False
     for check in (is_system_owner, is_guild_owner, is_developer):
         try:
             if await check(ctx): return True
-        except commands.CheckFailure: continue
+        except commands.CheckFailure:
+            continue
     async with ctx.bot.db_pool.acquire() as conn:
         user_row = await conn.fetchrow(
             'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1',
@@ -432,3 +438,4 @@ async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_
     if user_row and target_channel_id in (user_row.get('coordinator_channel_ids') or []):
         return True
     return False
+

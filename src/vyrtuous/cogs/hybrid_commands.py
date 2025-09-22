@@ -427,27 +427,15 @@ class Hybrid(commands.Cog):
                     if cap_expires_at is None or cap_expires_at > now:
                         if expires_at is None or (cap_expires_at and expires_at > cap_expires_at):
                             if not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
-                                return await self.handler.send_message(
-                                    ctx,
-                                    content=f'\U0001F6AB Only coordinators can create bans longer than the channel cap ({active_cap[1]}).'
-                                )
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create bans longer than the channel cap ({active_cap[1]}).')
                             if not reason.strip():
-                                return await self.handler.send_message(
-                                    ctx,
-                                    content=f'\U0001F6AB A reason is required for bans longer than the channel cap ({active_cap[1]}).'
-                                )
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for bans longer than the channel cap ({active_cap[1]}).')
                 else:
                     if expires_at is None or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7):
                         if not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
-                            return await self.handler.send_message(
-                                ctx,
-                                content='\U0001F6AB Only coordinators can ban permanently or longer than 7 days.'
-                            )
+                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can ban permanently or longer than 7 days.')
                         if not reason.strip():
-                            return await self.handler.send_message(
-                                ctx,
-                                content='\U0001F6AB A reason is required for permanent bans or those longer than 7 days.'
-                            )
+                            return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent bans or those longer than 7 days.')
                 if existing_ban and await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
@@ -498,7 +486,6 @@ class Hybrid(commands.Cog):
                 logger.warning(f'Database error occurred: {e}')
                 raise
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been banned from <#{channel.id}> {duration_display} because: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
-                        
             highest_role = await self.get_highest_role(ctx, ctx.author, channel.id)
             await self.send_log(ctx, 'ban', member, channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return ban_alias
@@ -808,27 +795,15 @@ class Hybrid(commands.Cog):
                     if cap_expires_at is None or cap_expires_at > now:
                         if expires_at is None or (cap_expires_at and expires_at > cap_expires_at):
                             if not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
-                                return await self.handler.send_message(
-                                    ctx,
-                                    content=f'\U0001F6AB Only coordinators can create text mutes longer than the channel cap ({active_cap[1]}).'
-                                )
+                                return await self.handler.send_message(ctx,content=f'\U0001F6AB Only coordinators can create text mutes longer than the channel cap ({active_cap[1]}).')
                             if not reason.strip():
-                                return await self.handler.send_message(
-                                    ctx,
-                                    content=f'\U0001F6AB A reason is required for text mutes longer than the channel cap ({active_cap[1]}).'
-                                )
+                                return await self.handler.send_message(ctx,content=f'\U0001F6AB A reason is required for text mutes longer than the channel cap ({active_cap[1]}).')
                 else:
                     if expires_at is None or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7):
                         if not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
-                            return await self.handler.send_message(
-                                ctx,
-                                content='\U0001F6AB Only coordinators can text mute permanently or longer than 7 days.'
-                            )
+                            return await self.handler.send_message(ctx,content='\U0001F6AB Only coordinators can text mute permanently or longer than 7 days.')
                         if not reason.strip():
-                            return await self.handler.send_message(
-                                ctx,
-                                content='\U0001F6AB A reason is required for permanent text mutes or those longer than 7 days.'
-                            )
+                            return await self.handler.send_message(ctx,content='\U0001F6AB A reason is required for permanent text mutes or those longer than 7 days.')
                 if existing_text_mute and await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
                     duration_str = duration.strip().lower() if duration else None
                     is_relative = duration_str and (duration_str.startswith('+') or duration_str.startswith('-') or duration_str in ('0','0h','0d','0m'))
@@ -910,15 +885,10 @@ class Hybrid(commands.Cog):
                     if cap_expires_at is None or cap_expires_at > now:
                         if expires_at is None or (cap_expires_at and expires_at > cap_expires_at):
                             if not await is_owner_developer_coordinator_via_alias(ctx, 'mute'):
-                                return await self.handler.send_message(
-                                    ctx,
-                                    content=f'\U0001F6AB Only coordinators can create mutes longer than the channel cap ({active_cap[1]}).'
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create mutes longer than the channel cap ({active_cap[1]}).'
                                 )
                             if not reason.strip():
-                                return await self.handler.send_message(
-                                    ctx,
-                                    content=f'\U0001F6AB A reason is required for mutes longer than the channel cap ({active_cap[1]}).'
-                                )
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for mutes longer than the channel cap ({active_cap[1]}).')
                 else:
                     if expires_at is None or (expires_at - datetime.now(timezone.utc)) > timedelta(days=7):
                         if not await is_owner_developer_coordinator_via_alias(ctx, 'mute'):
@@ -963,6 +933,7 @@ class Hybrid(commands.Cog):
             await ctx.send(f'{self.get_random_emoji()} {member.mention} has been voice-muted in <#{static_channel_id}> {duration_display}.\nReason: {reason or 'No reason provided'}', allowed_mentions=discord.AllowedMentions.none())
             await self.send_log(ctx, 'vmute', member, channel, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return voice_mute_alias
+
 
     def create_unban_alias(self, command_name: str) -> Command:
         @commands.command(name=command_name, help='Unban a user from a voice channel.')
