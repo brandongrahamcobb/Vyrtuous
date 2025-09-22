@@ -2189,35 +2189,31 @@ class Hybrid(commands.Cog):
             await self.handler.send_message(ctx, content='\U0001F6AB Invalid channel.')
             return
         guild_id = ctx.guild.id
-        current_channels = self.log_channels.setdefault(guild_id, [])
+        current_entries = self.log_channels.setdefault(guild_id, [])
         async with self.bot.db_pool.acquire() as conn:
             if action.lower() == 'delete':
-                await conn.execute(
-                    'DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;',
-                    guild_id, channel_obj.id
-                )
-                if channel_obj.id in current_channels:
-                    current_channels.remove(channel_obj.id)
+                await conn.execute('DELETE FROM log_channels WHERE guild_id=$1 AND channel_id=$2;', guild_id, channel_obj.id)
+                current_entries[:] = [e for e in current_entries if e['channel_id'] != channel_obj.id]
                 await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Log channel {channel_obj.mention} deleted.')
                 return
-            existing = await conn.fetchrow(
-                'SELECT * FROM log_channels WHERE guild_id=$1 AND channel_id=$2;',
-                guild_id, channel_obj.id
-            )
+            existing = await conn.fetchrow('SELECT * FROM log_channels WHERE guild_id=$1 AND channel_id=$2;', guild_id, channel_obj.id)
             if existing:
-                await conn.execute(
-                    'UPDATE log_channels SET type=$1, snowflakes=$2, enabled=TRUE WHERE guild_id=$3 AND channel_id=$4;',
-                    log_type, sf if sf else None, guild_id, channel_obj.id
-                )
+                await conn.execute('UPDATE log_channels SET type=$1, snowflakes=$2, enabled=TRUE WHERE guild_id=$3 AND channel_id=$4;', log_type, sf if sf else None, guild_id,     channel_obj.id)
+                for e in current_entries:
+                    if e['channel_id'] == channel_obj.id:
+                        e.update({'type': log_type, 'snowflakes': sf if sf else None, 'enabled': True})
                 msg = f'{self.get_random_emoji()} Log channel {channel_obj.mention} updated with type `{log_type or "general"}`.'
             else:
-                await conn.execute(
-                    'INSERT INTO log_channels (guild_id, channel_id, type, snowflakes, enabled) VALUES ($1, $2, $3, $4, TRUE);',
-                    guild_id, channel_obj.id, log_type, sf if sf else None
-                )
-                current_channels.append(channel_obj.id)
+                await conn.execute('INSERT INTO log_channels (guild_id, channel_id, type, snowflakes, enabled) VALUES ($1, $2, $3, $4, TRUE);', guild_id, channel_obj.id, log_type, sf     if sf else None)
+                current_entries.append({
+                    'guild_id': guild_id,
+                    'channel_id': channel_obj.id,
+                    'type': log_type,
+                    'snowflakes': sf if sf else None,
+                    'enabled': True
+                })
                 msg = f'{self.get_random_emoji()} Log channel {channel_obj.mention} created with type `{log_type or "general"}`.'
-        self.log_channels[guild_id] = current_channels
+        self.log_channels[guild_id] = current_entries
         await self.handler.send_message(ctx, content=msg)
         
     @commands.hybrid_command(name='rmute', help='Mutes the whole room (except yourself).')
