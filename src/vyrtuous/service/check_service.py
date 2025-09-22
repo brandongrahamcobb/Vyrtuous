@@ -134,6 +134,7 @@ async def is_guild_owner(ctx):
 
 async def is_system_owner(ctx):
     system_owner_id = int(ctx.bot.config['discord_owner_id'])
+    print(system_owner_id)
     if ctx.author.id != system_owner_id:
         raise NotSystemOwner()
     return True
@@ -409,7 +410,7 @@ async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_
             if is_role:
                 channel_id = alias_data.get('channel_id')
             else:
-                channel_id = alias_data  # already an int
+                channel_id = alias_data
             if channel_id and int(channel_id) == current_channel_id:
                 target_channel_id = int(channel_id)
                 break
@@ -423,8 +424,6 @@ async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_
             )
         if row and int(row['channel_id']) == current_channel_id:
             target_channel_id = int(row['channel_id'])
-    if not target_channel_id:
-        return False
     for check in (is_system_owner, is_guild_owner, is_developer):
         try:
             if await check(ctx): return True
