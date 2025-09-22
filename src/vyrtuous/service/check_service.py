@@ -20,6 +20,7 @@ from discord.ext import commands
 from typing import Optional, Tuple
 from vyrtuous.config import Config
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.setup_logging import logger
 import discord
 config = Config.get_config()
       
@@ -134,7 +135,6 @@ async def is_guild_owner(ctx):
 
 async def is_system_owner(ctx):
     system_owner_id = int(ctx.bot.config['discord_owner_id'])
-    print(system_owner_id)
     if ctx.author.id != system_owner_id:
         raise NotSystemOwner()
     return True
@@ -401,40 +401,41 @@ async def check_block(ctx: commands.Context, member: discord.Member, channel_id:
     
 async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_type: Optional[str] = None) -> bool:
     current_channel_id = getattr(ctx.channel, 'id', None)
-    guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(ctx.guild.id, {})
-    alias_data_role = dict(guild_aliases.get('role_aliases', {}).get(alias_type, {}))
-    alias_data_chan = dict(guild_aliases.get('channel_aliases', {}).get(alias_type, {}))
+    guild_id = getattr(getattr(ctx, 'guild', None), 'id', None)
+    guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(guild_id, {}) if guild_id else {}
+    alias_data_role = guild_aliases.get('role_aliases', {}).get(alias_type, {}) or {}
+    alias_data_chan = guild_aliases.get('channel_aliases', {}).get(alias_type, {}) or {}
     target_channel_id = None
     for source, is_role in ((alias_data_role, True), (alias_data_chan, False)):
         for alias_name, alias_data in source.items():
-            if is_role:
-                channel_id = alias_data.get('channel_id')
-            else:
-                channel_id = alias_data
-            if channel_id and int(channel_id) == current_channel_id:
+            channel_id = alias_data.get('channel_id') if is_role and isinstance(alias_data, dict) else alias_data
+            if channel_id:
                 target_channel_id = int(channel_id)
                 break
-        if target_channel_id:
-            break
-    if not target_channel_id and ctx.guild and ctx.command:
+        if target_channel_id: break
+    if not target_channel_id and guild_id and ctx.command:
         async with ctx.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 'SELECT channel_id FROM command_aliases WHERE guild_id = $1 AND alias_name = $2',
-                ctx.guild.id, ctx.command.name.lower()
+                guild_id, ctx.command.name.lower()
             )
-        if row and int(row['channel_id']) == current_channel_id:
+        if row:
             target_channel_id = int(row['channel_id'])
     for check in (is_system_owner, is_guild_owner, is_developer):
         try:
-            if await check(ctx): return True
+            if await check(ctx):
+                return True
+            else:
+                logger.debug(f"Permission check {check.__name__} returned False")
         except commands.CheckFailure:
+            logger.debug(f"Permission check {check.__name__} raised CheckFailure")
             continue
     async with ctx.bot.db_pool.acquire() as conn:
         user_row = await conn.fetchrow(
             'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1',
             ctx.author.id
         )
-    if user_row and target_channel_id in (user_row.get('coordinator_channel_ids') or []):
+    user_channels = user_row['coordinator_channel_ids'] if user_row else []
+    if target_channel_id and target_channel_id in (user_channels or []):
         return True
     return False
-
