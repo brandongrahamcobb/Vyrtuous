@@ -193,10 +193,15 @@ class Hybrid(commands.Cog):
     
     async def load_log_channels(self):
         async with self.bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('SELECT guild_id, channel_id FROM log_channels;')
-            log_channels: dict[int, list[int]] = {}
+            rows = await conn.fetch('SELECT guild_id, channel_id, type, snowflakes, enabled FROM log_channels;')
+            log_channels: dict[int, list[dict]] = {}
             for r in rows:
-                log_channels.setdefault(r['guild_id'], []).append(r['channel_id'])
+                log_channels.setdefault(r['guild_id'], []).append({
+                    "channel_id": r['channel_id'],
+                    "type": r['type'] or "general",
+                    "snowflakes": r['snowflakes'] or [],
+                    "enabled": r['enabled']
+                })
             self.log_channels = log_channels
 
 #    @commands.command(name='toggle', hidden=True)
@@ -1505,7 +1510,7 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content='No aliases defined in this guild.')
         _, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
-        if not is_owner_or_dev or not is_mod_or_coord:
+        if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
         lines = []
         found_aliases = False
@@ -1804,7 +1809,7 @@ class Hybrid(commands.Cog):
             return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel, or use "all".')
 
-    @commands.command(name='list_logs', help='Lists log channels for this guild or a specified guild ID.')
+    @commands.command(name='logs', help='Lists log channels for this guild or a specified guild ID.')
     @is_owner_developer_predicator()
     async def list_logs(self, ctx, guild_id: Optional[int] = None):
         guild_id = guild_id or (ctx.guild.id if ctx.guild else None)
