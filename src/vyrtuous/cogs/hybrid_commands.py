@@ -811,7 +811,7 @@ class Hybrid(commands.Cog):
                 expires_at, duration_display = self.parse_duration(duration, base=base_time)
                 if duration:
                     stripped = duration.strip()
-                    if (stripped.startswith('-') or stripped.startswith('+')) and not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
+                    if (stripped.startswith('-') or stripped.startswith('+')) and not await is_owner_developer_coordinator_via_alias(ctx, 'tmute'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can modify an existing ban duration.')
                 caps = await self.get_caps_for_channel(ctx.guild.id, static_channel_id)
                 active_cap = next((c for c in caps if c[0] == 'tmute'), None)
@@ -901,7 +901,7 @@ class Hybrid(commands.Cog):
                 expires_at, duration_display = self.parse_duration(duration, base=base_time)
                 if duration:
                     stripped = duration.strip()
-                    if (stripped.startswith('-') or stripped.startswith('+')) and not await is_owner_developer_coordinator_via_alias(ctx, 'ban'):
+                    if (stripped.startswith('-') or stripped.startswith('+')) and not await is_owner_developer_coordinator_via_alias(ctx, 'mute'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can modify an existing ban duration.')
                 caps = await self.get_caps_for_channel(ctx.guild.id, static_channel_id)
                 active_cap = next((c for c in caps if c[0] == 'mute'), None)
