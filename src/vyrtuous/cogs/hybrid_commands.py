@@ -261,7 +261,28 @@ class Hybrid(commands.Cog):
         except Exception as e:
             logger.error(f'Error during database backup: {e}')
             await ctx.send(f'\U0001F6AB Failed to create backup: {e}')
-            
+    
+    @commands.command(name='cap', help='Set a duration limit for bans, mutes and text mutes.')
+    @is_owner_developer_predicator()
+    async def cap(
+        self,
+        ctx,
+        channel: str = commands.parameter(description='Channel ID or mention'),
+        moderation_type: str = commands.parameter(description='One of: `mute`, `ban`, `tmute`'),
+        *,
+        duration: Optional[str] = commands.parameter(default='24', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default')
+    ):
+        _, channel = await self.get_channel_and_member(ctx, channel)
+        valid_types = {'mute', 'ban', 'tmute'}
+        if moderation_type not in valid_types:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Invalid moderation type. Must be one of: {', '.join(valid_types)}')
+        expires_at, duration_str = self.parse_duration(duration)
+        original_duration = await self.get_cap(channel.id, ctx.guild.id, moderation_type)
+        await self.set_cap(channel.id, ctx.guild.id, moderation_type, duration)
+        if original_duration:
+            return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap changed on {channel.mention} for {moderation_type} from {duration} to {duration_str}.')
+        else:
+            return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap set on {channel.mention} for {moderation_type} {duration_str}.')
         
     @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
     @is_owner_predicator()
@@ -1592,6 +1613,8 @@ class Hybrid(commands.Cog):
     ) -> None:
         member, channel = await self.get_channel_and_member(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
+        if not is_owner_or_dev and not is_mod_or_coord:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all coordinators.')
@@ -1685,7 +1708,8 @@ class Hybrid(commands.Cog):
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
-        return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel, or use "all".')
+        else:
+            return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel, or use "all, or are not a moderator or above".')
     
     @commands.command(name='devs', hidden=True, help='Lists developers.')
     @is_owner_developer_predicator()
@@ -2175,6 +2199,7 @@ class Hybrid(commands.Cog):
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify "all", a member, or a text channel.')
         
     @commands.command(name='mlog', help='Create, modify, or delete a log channel.')
+    @is_owner_developer_predicator()
     async def modify_log(
         self,
         ctx,
