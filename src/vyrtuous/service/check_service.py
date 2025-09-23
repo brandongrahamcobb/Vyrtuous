@@ -400,20 +400,20 @@ async def check_block(ctx: commands.Context, member: discord.Member, channel_id:
     return target_highest, success
     
 async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_type: Optional[str] = None) -> bool:
-    print("test")
     current_channel_id = getattr(ctx.channel, 'id', None)
     guild_id = getattr(getattr(ctx, 'guild', None), 'id', None)
     guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(guild_id, {}) if guild_id else {}
     alias_data_role = guild_aliases.get('role_aliases', {}).get(alias_type, {}) or {}
     alias_data_chan = guild_aliases.get('channel_aliases', {}).get(alias_type, {}) or {}
     target_channel_id = None
-    for source, is_role in ((alias_data_role, True), (alias_data_chan, False)):
-        for alias_name, alias_data in source.items():
-            channel_id = alias_data.get('channel_id') if is_role and isinstance(alias_data, dict) else alias_data
-            if channel_id:
-                target_channel_id = int(channel_id)
-                break
-        if target_channel_id: break
+    if alias_data_role and alias_type in alias_data_role:
+        alias_data = alias_data_role[alias_type]
+        if isinstance(alias_data, dict) and 'channel_id' in alias_data:
+            target_channel_id = int(alias_data['channel_id'])
+    elif alias_data_chan and alias_type in alias_data_chan:
+        channel_id = alias_data_chan[alias_type]
+        if channel_id:
+            target_channel_id = int(channel_id)
     if not target_channel_id and guild_id and ctx.command:
         async with ctx.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -427,9 +427,9 @@ async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_
             if await check(ctx):
                 return True
             else:
-                logger.info(f"Permission check {check.__name__} returned False")
+                logger.debug(f"Permission check {check.__name__} returned False")
         except commands.CheckFailure:
-            logger.info(f"Permission check {check.__name__} raised CheckFailure")
+            logger.debug(f"Permission check {check.__name__} raised CheckFailure")
             continue
     async with ctx.bot.db_pool.acquire() as conn:
         user_row = await conn.fetchrow(
