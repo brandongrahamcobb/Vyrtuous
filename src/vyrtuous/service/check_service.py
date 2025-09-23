@@ -426,9 +426,9 @@ async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_
             if await check(ctx):
                 return True
             else:
-                logger.debug(f"Permission check {check.__name__} returned False")
+                logger.info(f"Permission check {check.__name__} returned False")
         except commands.CheckFailure:
-            logger.debug(f"Permission check {check.__name__} raised CheckFailure")
+            logger.info(f"Permission check {check.__name__} raised CheckFailure")
             continue
     async with ctx.bot.db_pool.acquire() as conn:
         user_row = await conn.fetchrow(
