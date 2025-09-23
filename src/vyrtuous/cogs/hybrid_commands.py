@@ -1393,7 +1393,8 @@ class Hybrid(commands.Cog):
                 embeds.append(embed)
             paginator = Paginator(self.bot, ctx, embeds)
             return await paginator.start()
-        if is_owner_or_dev and member:
+        _, is_coord = await check_owner_dev_coord(ctx, channel)
+        if (is_owner_or_dev or is_coord) and member:
             async with self.bot.db_pool.acquire() as conn:
                 bans = await conn.fetch('''
                     SELECT channel_id, expires_at, reason
@@ -1783,7 +1784,8 @@ class Hybrid(commands.Cog):
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
-        if is_owner_or_dev and member:
+        _, is_coord = await check_owner_dev_coord(ctx, channel)
+        if (is_owner_or_dev or is_coord) and member:
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('''
                     SELECT channel_id
@@ -1991,7 +1993,8 @@ class Hybrid(commands.Cog):
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel)
         if not is_owner_or_dev and not is_mod_or_coord:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission for {channel.mention}.')
-        if is_owner_or_dev and member:
+        _, is_coord = await check_owner_dev_coord(ctx, channel)
+        if (is_owner_or_dev or is_coord) and member:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
                     SELECT guild_id, channel_id, expires_at, reason
@@ -2156,7 +2159,8 @@ class Hybrid(commands.Cog):
                         pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-            if member and is_owner_or_dev:
+            _, is_coord = await check_owner_dev_coord(ctx, channel)
+            if member and (is_owner_or_dev or is_coord):
                 records = await conn.fetch('''
                     SELECT channel_id, reason, expires_at
                     FROM active_text_mutes
