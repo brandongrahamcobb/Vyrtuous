@@ -400,6 +400,7 @@ async def check_block(ctx: commands.Context, member: discord.Member, channel_id:
     return target_highest, success
     
 async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_type: Optional[str] = None) -> bool:
+    print("test")
     current_channel_id = getattr(ctx.channel, 'id', None)
     guild_id = getattr(getattr(ctx, 'guild', None), 'id', None)
     guild_aliases = getattr(ctx.bot, 'command_aliases', {}).get(guild_id, {}) if guild_id else {}
