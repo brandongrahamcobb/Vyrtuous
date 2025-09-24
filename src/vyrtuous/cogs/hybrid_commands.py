@@ -713,7 +713,7 @@ class Hybrid(commands.Cog):
                         VALUES ($1, $2, $3, $4, $5, $6)
                     ''', 'flag', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, reason if reason else 'No reason provided')
                 await ctx.send(
-                    f'{self.get_random_emoji()} Flagged {member_obj.mention} for channel {channel_obj.mention} for reason: {reason if reason else 'No reason provided'}.',
+                    f'{self.get_random_emoji()} Flagged {member_obj.mention} for channel {channel_obj.mention} for reason: {reason if reason else "No reason provided"}.',
                     allowed_mentions=discord.AllowedMentions.none()
                 )
             except Exception as e:
