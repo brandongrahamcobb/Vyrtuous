@@ -693,7 +693,7 @@ class Hybrid(commands.Cog):
             if not success:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to flag this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
             select_sql = '''
-                SELECT 1
+                SELECT reason
                 FROM active_flags
                 WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
             '''
@@ -704,7 +704,7 @@ class Hybrid(commands.Cog):
             '''
             try:
                 async with self.bot.db_pool.acquire() as conn:
-                    already_flagged = await conn.fetchval(select_sql, ctx.guild.id, member_obj.id, channel_obj.id)
+                    already_flagged = await conn.fetchrow(select_sql, ctx.guild.id, member_obj.id, channel_obj.id)
                     if already_flagged:
                         return await ctx.send(f'\U0001F6AB {member_obj.mention} is already flagged in {channel_obj.mention} for {already_flagged["reason"]}.', allowed_mentions=discord.AllowedMentions.none())
                     await conn.execute(insert_sql, ctx.guild.id, member_obj.id, channel_obj.id, reason if reason else 'No reason provided')
