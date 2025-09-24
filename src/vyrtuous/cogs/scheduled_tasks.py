@@ -119,28 +119,28 @@ class ScheduledTasks(commands.Cog):
                 WHERE expires_at IS NOT NULL
                 AND expires_at <= $1
             ''', now)
-        for record in expired:
-            user_id = record['discord_snowflake']
-            channel_id = record['channel_id']
-            channel = self.bot.get_channel(channel_id)
-            if not isinstance(channel, discord.VoiceChannel):
-                continue
-            guild = self.bot.get_guild(record['guild_id'])
-            member = guild.get_member(user_id)
-            if member is None:
-                try:
-                    member = await guild.fetch_member(user_id)
-                except discord.NotFound:
+            for record in expired:
+                guild = self.bot.get_guild(record['guild_id'])
+                if guild is None:
                     continue
-            await conn.execute('''
-                DELETE FROM active_voice_mutes
-                WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-            ''', guild.id, user_id, channel_id)
-            if member.voice and member.voice.channel and member.voice.channel.id == channel_id:
-                try:
-                    await member.edit(mute=False)
-                except discord.HTTPException:
-                    logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}.')
+                channel = guild.get_channel(record['channel_id'])
+                if not isinstance(channel, discord.VoiceChannel):
+                    continue
+                member = guild.get_member(record['discord_snowflake'])
+                if member is None:
+                    try:
+                        member = await guild.fetch_member(record['discord_snowflake'])
+                    except discord.NotFound:
+                        continue
+                await conn.execute('''
+                    DELETE FROM active_voice_mutes
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', guild.id, record['discord_snowflake'], record['channel_id'])
+                if member.voice and member.voice.channel and member.voice.channel.id == record['channel_id']:
+                    try:
+                        await member.edit(mute=False)
+                    except discord.HTTPException:
+                        logger.warning(f'No permission to unmute user {record["discord_snowflake"]} in channel {record["channel_id"]}.')
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
