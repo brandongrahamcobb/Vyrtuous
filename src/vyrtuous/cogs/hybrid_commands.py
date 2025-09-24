@@ -812,7 +812,7 @@ class Hybrid(commands.Cog):
                 return await ctx.send(f'⚠️ Could not resolve role with ID `{static_role_id}`.')
             if role_obj in member_obj.roles:
                 return await ctx.send(f'{member_obj.mention} already has {role_obj.mention}.')
-            await member_obj.add_roles(role, reason=f'Added role')
+            await member_obj.add_roles(role_obj, reason=f'Added role')
             return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         return role_alias
     
