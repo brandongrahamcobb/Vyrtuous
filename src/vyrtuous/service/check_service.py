@@ -138,6 +138,12 @@ async def is_system_owner(ctx):
     if ctx.author.id != system_owner_id:
         raise NotSystemOwner()
     return True
+    
+async def is_owner(ctx: commands.Context, member_id: int):
+    system_owner_id = int(ctx.bot.config['discord_owner_id'])
+    if ctx.guild.owner_id == member_id or system_owner_id == member_id:
+        return True
+    return False
 
 def is_owner_predicator():
     async def predicate(ctx: commands.Context):
@@ -185,7 +191,14 @@ def is_owner_developer_coordinator_moderator_predicator(alias_type: Optional[str
             if row and row['channel_id'] == current_channel_id:
                 target_channel_id = row['channel_id']
         if not target_channel_id:
-            return True
+            async with ctx.bot.db_pool.acquire() as conn:
+                user_row = await conn.fetchrow(
+                    'SELECT coordinator_channel_ids, moderator_channel_ids FROM users WHERE discord_snowflake = $1',
+                    ctx.author.id
+                )
+            if user_row:
+                if current_channel_id in (user_row.get('coordinator_channel_ids') or []): return True
+                if current_channel_id in (user_row.get('moderator_channel_ids') or []): return True
         for check in (is_system_owner, is_guild_owner, is_developer):
             try:
                 if await check(ctx): return True
@@ -225,7 +238,13 @@ def is_owner_developer_coordinator_predicator(alias_type: Optional[str] = None):
             if row and row['channel_id'] == current_channel_id:
                 target_channel_id = row['channel_id']
         if not target_channel_id:
-            return True
+             async with ctx.bot.db_pool.acquire() as conn:
+                 user_row = await conn.fetchrow(
+                     'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1',
+                     ctx.author.id
+                 )
+             if user_row:
+                 if current_channel_id in (user_row.get('coordinator_channel_ids') or []): return True
         for check in (is_system_owner, is_guild_owner, is_developer):
             try:
                 if await check(ctx): return True
@@ -353,8 +372,9 @@ def is_coordinator_in_channel(channel_id: int):
         raise commands.CheckFailure('You are not a coordinator in this channel.')
     return commands.check(predicate)
 
-async def check_block(ctx: commands.Context, member: discord.Member, channel_id: int):
+async def check_block(ctx: commands.Context, member: discord.Member, channel: Optional[discord.abc.GuildChannel] = None):
     bot = ctx.bot
+    channel_id = channel.id if channel else ctx.channel.id
     role_hierarchy = ['Everyone', 'Moderator', 'Coordinator', 'Developer', 'Owner']
     author_roles = []
     async with bot.db_pool.acquire() as conn:
