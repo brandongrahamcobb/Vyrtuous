@@ -1933,8 +1933,8 @@ class Hybrid(commands.Cog):
                 formatted_lines = []
                 for record in chunk:
                     uid = record['discord_snowflake']
-                    member = guild.get_member(uid)
-                    if not member:
+                    member_obj = guild.get_member(uid)
+                    if not member_obj:
                         continue
                     formatted_lines.append(f'• {member_obj.display_name} — <@{uid}>')
                 if formatted_lines:
