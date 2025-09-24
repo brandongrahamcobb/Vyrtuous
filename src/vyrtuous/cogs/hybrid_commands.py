@@ -801,7 +801,7 @@ class Hybrid(commands.Cog):
             if not channel_obj:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid channel from the alias.')
             if not is_owner_or_dev and not is_coord:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`{command_name}`)in {channel_obj.mention}')
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`{command_name}`) in {channel_obj.mention}')
             if member_obj.bot and not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot give the bot a role.')
             highest_role, success = await check_block(ctx, member_obj, channel_obj)
@@ -810,7 +810,7 @@ class Hybrid(commands.Cog):
             role_obj = ctx.guild.get_role(static_role_id)
             if not role_obj:
                 return await ctx.send(f'⚠️ Could not resolve role with ID `{static_role_id}`.')
-            if role in member_obj.roles:
+            if role_obj in member_obj.roles:
                 return await ctx.send(f'{member_obj.mention} already has {role_obj.mention}.')
             await member_obj.add_roles(role, reason=f'Added role')
             return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
