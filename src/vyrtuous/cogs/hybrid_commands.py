@@ -493,6 +493,9 @@ class Hybrid(commands.Cog):
                             if remaining.total_seconds() > 0:
                                 hours_left = round(remaining.total_seconds() / 3600, 1)
                                 return await ctx.send(f'\U0001F6AB {member_obj.mention} is already banned from {channel_obj.mention} for another {hours_left}h.')
+                elif existing_ban:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already banned from {channel_obj.mention}.')
+                
             try:
                 await channel_obj.set_permissions(
                     member_obj,
@@ -507,7 +510,7 @@ class Hybrid(commands.Cog):
                 try:
                     await member_obj.move_to(None, reason=f'{reason or "No reason provided"}')
                 except discord.Forbidden:
-                    await ctx.send(f'🔥️ Could not disconnect {member_obj.mention} from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    await ctx.send(f'\U0001F6AB Could not disconnect {member_obj.mention} from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 except Exception as e:
                     logger.exception(f'Unexpected error while disconnecting user: {e}')
                     raise
@@ -890,6 +893,8 @@ class Hybrid(commands.Cog):
                             if remaining.total_seconds() > 0:
                                 hours_left = round(remaining.total_seconds() / 3600, 1)
                                 return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already text muted from {channel_obj.mention} for another {hours_left}h.')
+                elif existing_text_mute:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already text muted in {channel_obj.mention}.')
             try:
                 await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False)
             except discord.Forbidden:
@@ -990,6 +995,8 @@ class Hybrid(commands.Cog):
                             if remaining.total_seconds() > 0:
                                 hours_left = round(remaining.total_seconds() / 3600, 1)
                                 return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted from {channel_obj.mention} for another {hours_left}h.')
+                elif existing_mute:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention}.')
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     await conn.execute('''
