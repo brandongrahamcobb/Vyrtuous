@@ -2202,8 +2202,8 @@ class Hybrid(commands.Cog):
                 description_lines = []
                 for record in records:
                     uid = record['discord_snowflake']
-                    member = ctx.guild.get_member(uid)
-                    if not member:
+                    member_obj = ctx.guild.get_member(uid)
+                    if not member_obj:
                         continue
                     name = member_obj.display_name
                     duration_str = self.fmt_duration(record['expires_at'])
