@@ -109,7 +109,7 @@ class ScheduledTasks(commands.Cog):
                 logger.error(f'Failed to remove permission override: {e}')
 
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self):
         now = datetime.now(timezone.utc)
         async with self.bot.db_pool.acquire() as conn:
@@ -141,6 +141,23 @@ class ScheduledTasks(commands.Cog):
                         await member.edit(mute=False)
                     except discord.HTTPException:
                         logger.warning(f'No permission to unmute user {record["discord_snowflake"]} in channel {record["channel_id"]}.')
+            for guild in self.bot.guilds:
+                for member in guild.members:
+                    if member.voice and member.voice.mute:
+                        has_server_record = await conn.fetchval('''
+                            SELECT 1 FROM active_server_voice_mutes
+                            WHERE guild_id = $1 AND discord_snowflake = $2
+                        ''', guild.id, member.id)
+                        has_channel_record = await conn.fetchval('''
+                            SELECT 1 FROM active_voice_mutes
+                            WHERE guild_id = $1 AND discord_snowflake = $2
+                            AND channel_id = $3
+                        ''', guild.id, member.id, member.voice.channel.id if member.voice.channel else None)
+                        if not has_server_record and not has_channel_record:
+                            try:
+                                await member.edit(mute=False)
+                            except discord.HTTPException:
+                                logger.warning(f'No permission to unmute stray-muted user {member.id} in guild {guild.id}.')
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
