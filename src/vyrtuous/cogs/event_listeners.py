@@ -137,7 +137,7 @@ class EventListeners(commands.Cog):
                             return
                         embeds = []
                         embed = discord.Embed(
-                            title=f'\u26A0\uFE0F Flags for {member.display_name}',
+                            title=f'\u26A0\uFE0F {member.display_name} is flagged',
                             color=discord.Color.red()
                         )
                         embed.set_thumbnail(url=member.display_avatar.url)
@@ -157,7 +157,7 @@ class EventListeners(commands.Cog):
                             ch = member.guild.get_channel(ch_id)
                             ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
                             embed = discord.Embed(
-                                title=f'\u26A0\uFE0F Flags for {member.display_name} in {ch_name}',
+                                title=f'\u26A0\uFE0F {member.display_name} is flagged in {ch_name}',
                                 color=discord.Color.red()
                             )
                             embed.set_thumbnail(url=member.display_avatar.url)
