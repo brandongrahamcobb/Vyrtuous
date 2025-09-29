@@ -120,7 +120,7 @@ class EventListeners(commands.Cog):
                         logger.debug(f'No permission to unmute {member.display_name}')
                     except discord.HTTPException as e:
                         logger.debug(f'Failed to unmute {member.display_name}: {e}')
-                if before.channel is None and after_channel is not None:
+                if after_channel is not None and after_channel != before.channel:
                     try:
                         rows = await conn.fetch('''
                             SELECT channel_id, discord_snowflake, reason
