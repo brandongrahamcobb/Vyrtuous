@@ -132,13 +132,15 @@ class EventListeners(commands.Cog):
                         grouped = {}
                         for row in rows:
                             grouped.setdefault(row['channel_id'], []).append(row)
+                        context_records = grouped.get(after_channel.id)
+                        if not context_records:
+                            return
                         embeds = []
                         embed = discord.Embed(
                             title=f'\u26A0\uFE0F Flags for {member.display_name}',
                             color=discord.Color.red()
                         )
                         embed.set_thumbnail(url=member.display_avatar.url)
-                        context_records = grouped.get(after_channel.id, [])
                         for record in context_records:
                             reason = record['reason'] or 'No reason provided'
                             embed.add_field(name=f'Channel: {after_channel.mention}', value=f'Reason: {reason}', inline=False)
@@ -148,7 +150,7 @@ class EventListeners(commands.Cog):
                             for ch_id in other_channels:
                                 ch = member.guild.get_channel(ch_id)
                                 ch_mentions.append(ch.mention if ch else f'Channel ID `{ch_id}`')
-                            embed.add_field(name='Other channels', value='\n'.join(ch_mentions), inline=False)
+                            embed.add_field(name='Other flagged channels', value='\n'.join(ch_mentions), inline=False)
                         embeds.append(embed)
                         for ch_id in other_channels:
                             records = grouped[ch_id]
@@ -165,6 +167,7 @@ class EventListeners(commands.Cog):
                             embeds.append(embed)
                         paginator = ChannelPaginator(self.bot, after_channel, embeds)
                         await paginator.start()
+
                     except Exception as e:
                         logger.exception('Error in on_voice_state_update', exc_info=e)
                         
