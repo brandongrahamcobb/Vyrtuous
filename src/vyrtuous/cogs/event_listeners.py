@@ -22,7 +22,7 @@ from discord.ext import commands
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
-from vyrtuous.service.discord_message_service import DiscordMessageService
+from vyrtuous.service.discord_message_service import DiscordMessageService, ChannelPaginator
 from vyrtuous.bot.discord_bot import DiscordBot
 import asyncio
 
@@ -122,13 +122,49 @@ class EventListeners(commands.Cog):
                         logger.debug(f'Failed to unmute {member.display_name}: {e}')
                 if before.channel is None and after_channel is not None:
                     try:
-                        is_flagged = await conn.fetchval('''
-                            SELECT 1
+                        rows = await conn.fetch('''
+                            SELECT channel_id, discord_snowflake, reason
                             FROM active_flags
-                            WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                        ''', member.guild.id, user_id, after_channel.id)
-                        if is_flagged and isinstance(after_channel, discord.VoiceChannel):
-                            await after_channel.send(f'⚠️ <@{user_id}> has joined voice channel <#{after_channel.id}> and is flagged.', allowed_mentions=discord.AllowedMentions.none())
+                            WHERE guild_id = $1 AND discord_snowflake = $2
+                        ''', member.guild.id, user_id)
+                        if not rows:
+                            return
+                        grouped = {}
+                        for row in rows:
+                            grouped.setdefault(row['channel_id'], []).append(row)
+                        embeds = []
+                        embed = discord.Embed(
+                            title=f'\u26A0\uFE0F Flags for {member.display_name}',
+                            color=discord.Color.red()
+                        )
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                        context_records = grouped.get(after_channel.id, [])
+                        for record in context_records:
+                            reason = record['reason'] or 'No reason provided'
+                            embed.add_field(name=f'Channel: {after_channel.mention}', value=f'Reason: {reason}', inline=False)
+                        other_channels = [ch_id for ch_id in grouped.keys() if ch_id != after_channel.id]
+                        if other_channels:
+                            ch_mentions = []
+                            for ch_id in other_channels:
+                                ch = member.guild.get_channel(ch_id)
+                                ch_mentions.append(ch.mention if ch else f'Channel ID `{ch_id}`')
+                            embed.add_field(name='Other channels', value='\n'.join(ch_mentions), inline=False)
+                        embeds.append(embed)
+                        for ch_id in other_channels:
+                            records = grouped[ch_id]
+                            ch = member.guild.get_channel(ch_id)
+                            ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
+                            embed = discord.Embed(
+                                title=f'\u26A0\uFE0F Flags for {member.display_name} in {ch_name}',
+                                color=discord.Color.red()
+                            )
+                            embed.set_thumbnail(url=member.display_avatar.url)
+                            for record in records:
+                                reason = record['reason'] or 'No reason provided'
+                                embed.add_field(name='Channel', value=f'{ch_name}\nReason: {reason}', inline=False)
+                            embeds.append(embed)
+                        paginator = ChannelPaginator(self.bot, after_channel, embeds)
+                        await paginator.start()
                     except Exception as e:
                         logger.exception('Error in on_voice_state_update', exc_info=e)
                         
@@ -179,7 +215,7 @@ class EventListeners(commands.Cog):
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument):
             missing = error.param.name
-            await ctx.reply(f'❌ Missing required argument: `{missing}`')
+            await ctx.reply(f'\U0001F6AB Missing required argument: `{missing}`')
             return
         if isinstance(error, commands.CheckFailure):
             return await send_check_failure_embed(ctx, error)
