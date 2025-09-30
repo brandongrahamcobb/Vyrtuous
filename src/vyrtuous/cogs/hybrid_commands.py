@@ -453,71 +453,99 @@ class Hybrid(commands.Cog):
             if not success:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to ban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
             async with self.bot.db_pool.acquire() as conn:
-                existing_ban = await conn.fetchrow('''
-                    SELECT expires_at, reason
-                    FROM active_bans
-                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                ''', ctx.guild.id, member_obj.id, channel_obj.id)
-                is_modification = existing_ban is not None
-                base_time = existing_ban['expires_at'] if existing_ban else None
-                stripped = duration.strip() if duration else ''
-                if stripped in ('+', '-', '='):
-                    expires_at = base_time
-                    duration_display = self.fmt_duration(base_time)
-                else:
-                    expires_at, duration_display = self.parse_duration(duration, base=base_time)
-                is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'ban')
-                is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
-                is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
-                is_reason_set = stripped.startswith('=')
-                is_reason_delete = stripped == '-'
-                updated_reason = existing_ban['reason'] if existing_ban else None
-                if existing_ban and (is_reason_append or is_reason_set or is_reason_delete):
-                    if is_reason_append:
-                        new_text = reason.strip() if reason else ''
-                        if not new_text:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
-                        updated_reason = f"{updated_reason}\n{new_text}" if updated_reason else new_text
-                    elif is_reason_set:
+                async with self.bot.db_pool.acquire() as conn:
+                    existing_ban = await conn.fetchrow('''
+                        SELECT expires_at, reason
+                        FROM active_bans
+                        WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                    ''', ctx.guild.id, member_obj.id, channel_obj.id)
+                    stripped = duration.strip() if duration else ''
+                    is_modification = (
+                        (existing_ban is not None and stripped in ('+', '-', '=')) or
+                        (duration in ('0', '0h', '0hr', '0hrs', '0hour', '0hours',
+                                      '0m', '0min', '0mins', '0minute', '0minutes',
+                                      '0d', '0day', '0days'))
+                    )
+                    base_time = existing_ban['expires_at'] if existing_ban else None
+                    if not existing_ban and stripped in ('+', '-', '='):
+                        return await self.handler.send_message(ctx,content='\U0001F6AB There is no existing ban to modify.')
+                    is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'ban')
+                    if stripped in ('+', '-', '='):
+                        expires_at = base_time
+                        duration_display = self.fmt_duration(base_time)
+                    else:
+                        expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                    is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
+                    is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
+                    is_reason_set = stripped.startswith('=')
+                    is_reason_delete = stripped == '-'
+                    updated_reason = existing_ban['reason'] if existing_ban else reason
+                    if existing_ban and (is_reason_append or is_reason_set or is_reason_delete):
+                        if is_reason_append:
+                            new_text = reason.strip() if reason else ''
+                            if not new_text:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
+                            updated_reason = f"{updated_reason}\n{new_text}" if updated_reason else new_text
+                        elif is_reason_set:
+                            if not is_coordinator:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset ban reasons.')
+                            updated_reason = reason.strip() if reason else ''
+                            if not updated_reason:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
+                        elif is_reason_delete:
+                            if not is_coordinator:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can delete ban reasons.')
+                            updated_reason = None
+                    if is_modification and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
                         if not is_coordinator:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset ban reasons.')
-                        updated_reason = reason.strip() if reason else ''
-                        if not updated_reason:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
-                    elif is_reason_delete:
+                            allowed = False
+                            if expires_at and existing_ban['expires_at']:
+                                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                                active_cap = next((c for c in caps if c[0] == 'ban'), None)
+                                cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+                                if expires_at < existing_ban['expires_at'] and expires_at <= cap_expires_at:
+                                    allowed = True
+                            if not allowed:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing ban with an absolute duration.')
+                    caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                    active_cap = next((c for c in caps if c[0] == 'ban'), None)
+                    now = datetime.now(timezone.utc)
+                    if active_cap:
+                        cap_expires_at, _ = self.parse_duration(active_cap[1])
+                        if cap_expires_at is None or (expires_at and expires_at > cap_expires_at):
+                            if not is_coordinator:
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create bans longer than the channel cap ({active_cap[1]}).')
+                            if not reason.strip() and not is_reason_set:
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for bans longer than the channel cap ({active_cap[1]}).')
+                    if expires_at is None or (expires_at - now) > timedelta(days=7):
                         if not is_coordinator:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset ban reasons.')
-                        updated_reason = None
-                if is_modification and not is_coordinator and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
-                    return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing ban with an absolute duration.')
-                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
-                active_cap = next((c for c in caps if c[0] == 'ban'), None)
-                now = datetime.now(timezone.utc)
-                if active_cap:
-                    cap_expires_at, _ = self.parse_duration(active_cap[1])
-                    if cap_expires_at is None or (expires_at and expires_at > cap_expires_at):
-                        if not is_coordinator:
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create bans longer than the channel cap ({active_cap[1]}).')
+                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can ban permanently or longer than 7 days.')
                         if not reason.strip() and not is_reason_set:
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for bans longer than the channel cap ({active_cap[1]}).')
-                elif expires_at is None or (expires_at - now) > timedelta(days=7):
-                    if not is_coordinator:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can ban permanently or longer than 7 days.')
-                    if not reason.strip() and not is_reason_set:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent bans or those longer than 7 days.')
-                    if existing_ban and (is_relative_duration or is_coordinator) and not (is_reason_append or is_reason_set or is_reason_delete):
-                        duration_str = stripped.lower()
-                        valid_relative = duration_str in ('0','0h','0d','0m') or (duration_str.startswith('+') and duration_str[1].isdigit()) or duration_str.startswith('-')
-                        if not valid_relative:
-                            if existing_ban['expires_at'] is None:
-                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already permanently banned in {channel_obj.mention}.')
-                            else:
-                                remaining = existing_ban['expires_at'] - discord.utils.utcnow()
-                                if remaining.total_seconds() > 0:
+                            return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent bans or those longer than 7 days.')
+                    if existing_ban and (is_reason_append or is_reason_set or is_reason_delete):
+                        expires_at = existing_ban['expires_at']
+                    else:
+                        if existing_ban:
+                            if not is_coordinator and is_relative_duration:
+                                pass
+                            elif not is_coordinator and expires_at and existing_ban['expires_at']:
+                                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                                active_cap = next((c for c in caps if c[0] == 'tmute'), None)
+                                cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+                                if expires_at < existing_ban['expires_at'] and expires_at <= cap_expires_at:
+                                    pass
+                                else:
+                                    remaining = existing_ban['expires_at'] - discord.utils.utcnow()
                                     hours_left = round(remaining.total_seconds() / 3600, 1)
-                                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already banned from {channel_obj.mention} for another {hours_left}h.')
-                elif existing_ban:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already banned in {channel_obj.mention}.')
+                                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already banned in {channel_obj.mention} for another {hours_left}h.')
+                            elif is_coordinator:
+                                pass
+                            else:
+                                remaining = existing_text_mute['expires_at'] - discord.utils.utcnow()
+                                hours_left = round(remaining.total_seconds() / 3600, 1)
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already banned in {channel_obj.mention} for another {hours_left}h.')
+                    if expires_at and expires_at <= now:
+                        return await self.handler.send_message(ctx, content='\U0001F6AB You cannot reduce a ban below the current time.')
             try:
                 await channel_obj.set_permissions(
                     member_obj,
@@ -544,12 +572,11 @@ class Hybrid(commands.Cog):
                         ON CONFLICT (guild_id, discord_snowflake, channel_id) DO UPDATE
                         SET expires_at = EXCLUDED.expires_at,
                             reason = EXCLUDED.reason
-                    ''', ctx.guild.id, member_obj.id, channel_obj.id, expires_at, reason or 'No reason provided')
-                    await conn.execute(
-                    '''
+                    ''', ctx.guild.id, member_obj.id, channel_obj.id, expires_at, updated_reason or 'No reason provided')
+                    await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
-                    ''', 'ban', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, reason or 'No reason provided')
+                    ''', 'ban', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, updated_reason or 'No reason provided')
             except Exception as e:
                 logger.warning(f'Database error occurred: {e}')
                 raise
@@ -560,7 +587,21 @@ class Hybrid(commands.Cog):
             )
             await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             highest_role = await self.get_highest_role(ctx, ctx.author, channel_obj)
-            await self.send_log(ctx, 'ban', member_obj, channel_obj, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
+            logger.info(
+                f"DEBUG send_log parameters:\n"
+                f"action: 'ban'\n"
+                f"member_obj: {member_obj} ({member_obj.id})\n"
+                f"channel_obj: {channel_obj} ({channel_obj.id})\n"
+                f"duration_display: {duration_display}\n"
+                f"updated_reason: {updated_reason or 'No reason provided'}\n"
+                f"executor (ctx.author): {ctx.author} ({ctx.author.id})\n"
+                f"expires_at: {expires_at}\n"
+                f"command_name: {command_name}\n"
+                f"is_in_channel: {is_in_channel}\n"
+                f"is_modification: {is_modification}\n"
+                f"highest_role: {highest_role}"
+            )
+            await self.send_log(ctx, 'ban', member_obj, channel_obj, duration_display, updated_reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return ban_alias
         
     @commands.command(name='coord', help='Grants coordinator access for a specific voice channel.')
@@ -915,20 +956,27 @@ class Hybrid(commands.Cog):
                     FROM active_text_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member_obj.id, channel_obj.id)
-                is_modification = existing_text_mute is not None
-                base_time = existing_text_mute['expires_at'] if existing_text_mute else None
                 stripped = duration.strip() if duration else ''
+                is_modification = (
+                    (existing_text_mute is not None and stripped in ('+', '-', '=')) or
+                    (duration in ('0', '0h', '0hr', '0hrs', '0hour', '0hours',
+                                '0m', '0min', '0mins', '0minute', '0minutes',
+                                '0d', '0day', '0days'))
+                )
+                base_time = existing_text_mute['expires_at'] if existing_text_mute else None
+                if not existing_text_mute and stripped in ('+', '-', '='):
+                    return await self.handler.send_message(ctx,content='\U0001F6AB There is no existing text mute to modify.')
+                is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'tmute')
                 if stripped in ('+', '-', '='):
                     expires_at = base_time
                     duration_display = self.fmt_duration(base_time)
                 else:
                     expires_at, duration_display = self.parse_duration(duration, base=base_time)
-                is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'tmute')
                 is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
                 is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                 is_reason_set = stripped.startswith('=')
                 is_reason_delete = stripped == '-'
-                updated_reason = existing_text_mute['reason'] if existing_text_mute else None
+                updated_reason = existing_text_mute['reason'] if existing_text_mute else reason
                 if existing_text_mute and (is_reason_append or is_reason_set or is_reason_delete):
                     if is_reason_append:
                         new_text = reason.strip() if reason else ''
@@ -943,10 +991,19 @@ class Hybrid(commands.Cog):
                             return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
                     elif is_reason_delete:
                         if not is_coordinator:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset text mute reasons.')
+                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can delete text mute reasons.')
                         updated_reason = None
-                if is_modification and not is_coordinator and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
-                    return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing text mute with an absolute duration.')
+                if is_modification and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
+                   if not is_coordinator:
+                       allowed = False
+                       if expires_at and existing_text_mute['expires_at']:
+                           caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                           active_cap = next((c for c in caps if c[0] == 'tmute'), None)
+                           cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+                           if expires_at < existing_text_mute['expires_at'] and expires_at <= cap_expires_at:
+                               allowed = True
+                       if not allowed:
+                           return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing text mute with an absolute duration.')
                 caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
                 active_cap = next((c for c in caps if c[0] == 'tmute'), None)
                 now = datetime.now(timezone.utc)
@@ -957,24 +1014,35 @@ class Hybrid(commands.Cog):
                             return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create text mutes longer than the channel cap ({active_cap[1]}).')
                         if not reason.strip() and not is_reason_set:
                             return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for text mutes longer than the channel cap ({active_cap[1]}).')
-                elif expires_at is None or (expires_at - now) > timedelta(days=7):
+                if expires_at is None or (expires_at - now) > timedelta(days=7):
                     if not is_coordinator:
                         return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can text mute permanently or longer than 7 days.')
                     if not reason.strip() and not is_reason_set:
                         return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent text mutes or those longer than 7 days.')
-                    if existing_text_mute and (is_relative_duration or is_coordinator) and not (is_reason_append or is_reason_set or is_reason_delete):
-                        duration_str = stripped.lower()
-                        valid_relative = duration_str in ('0','0h','0d','0m') or (duration_str.startswith('+') and duration_str[1].isdigit()) or duration_str.startswith('-')
-                        if not valid_relative:
-                            if existing_text_mute['expires_at'] is None:
-                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already permanently text muted in {channel_obj.mention}.')
+                if existing_text_mute and (is_reason_append or is_reason_set or is_reason_delete):
+                    expires_at = existing_text_mute['expires_at']
+                else:
+                    if existing_text_mute:
+                        if not is_coordinator and is_relative_duration:
+                            pass
+                        elif not is_coordinator and expires_at and existing_text_mute['expires_at']:
+                            caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                            active_cap = next((c for c in caps if c[0] == 'tmute'), None)
+                            cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+                            if expires_at < existing_text_mute['expires_at'] and expires_at <= cap_expires_at:
+                                pass
                             else:
                                 remaining = existing_text_mute['expires_at'] - discord.utils.utcnow()
-                                if remaining.total_seconds() > 0:
-                                    hours_left = round(remaining.total_seconds() / 3600, 1)
-                                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already text muted from {channel_obj.mention} for another {hours_left}h.')
-                elif existing_text_mute:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already text muted in {channel_obj.mention}.')
+                                hours_left = round(remaining.total_seconds() / 3600, 1)
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already text muted in {channel_obj.mention} for another {hours_left}h.')
+                        elif is_coordinator:
+                            pass
+                        else:
+                            remaining = existing_text_mute['expires_at'] - discord.utils.utcnow()
+                            hours_left = round(remaining.total_seconds() / 3600, 1)
+                            return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already text muted in {channel_obj.mention} for another {hours_left}h.')
+                if expires_at and expires_at <= now:
+                    return await self.handler.send_message(ctx, content='\U0001F6AB You cannot reduce a mute below the current time.')
                 try:
                     await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False)
                 except discord.Forbidden:
@@ -1038,71 +1106,99 @@ class Hybrid(commands.Cog):
             if not success:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
             async with self.bot.db_pool.acquire() as conn:
-                existing_mute = await conn.fetchrow('''
-                    SELECT expires_at, reason
-                    FROM active_voice_mutes
-                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                ''', ctx.guild.id, member_obj.id, channel_obj.id)
-                is_modification = existing_mute is not None
-                base_time = existing_mute['expires_at'] if existing_mute else None
-                stripped = duration.strip() if duration else ''
-                if stripped in ('+', '-', '='):
-                    expires_at = base_time
-                    duration_display = self.fmt_duration(base_time)
-                else:
-                    expires_at, duration_display = self.parse_duration(duration, base=base_time)
-                is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'mute')
-                is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
-                is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
-                is_reason_set = stripped.startswith('=')
-                is_reason_delete = stripped == '-'
-                updated_reason = existing_mute['reason'] if existing_mute else None
-                if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
-                    if is_reason_append:
-                        new_text = reason.strip() if reason else ''
-                        if not new_text:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
-                        updated_reason = f"{updated_reason}\n{new_text}" if updated_reason else new_text
-                    elif is_reason_set:
+                async with self.bot.db_pool.acquire() as conn:
+                    existing_mute = await conn.fetchrow('''
+                        SELECT expires_at, reason
+                        FROM active_voice_mutes
+                        WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                    ''', ctx.guild.id, member_obj.id, channel_obj.id)
+                    stripped = duration.strip() if duration else ''
+                    is_modification = (
+                        (existing_mute is not None and stripped in ('+', '-', '=')) or
+                        (duration in ('0', '0h', '0hr', '0hrs', '0hour', '0hours',
+                                        '0m', '0min', '0mins', '0minute', '0minutes',
+                                        '0d', '0day', '0days'))
+                    )
+                    base_time = existing_mute['expires_at'] if existing_mute else None
+                    if not existing_mute and stripped in ('+', '-', '='):
+                         return await self.handler.send_message(ctx,content='\U0001F6AB There is no existing voice mute to modify.')
+                    is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'mute')
+                    if stripped in ('+', '-', '='):
+                        expires_at = base_time
+                        duration_display = self.fmt_duration(base_time)
+                    else:
+                        expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                    is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
+                    is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
+                    is_reason_set = stripped.startswith('=')
+                    is_reason_delete = stripped == '-'
+                    updated_reason = existing_mute['reason'] if existing_mute else reason
+                    if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
+                        if is_reason_append:
+                            new_text = reason.strip() if reason else ''
+                            if not new_text:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
+                            updated_reason = f"{updated_reason}\n{new_text}" if updated_reason else new_text
+                        elif is_reason_set:
+                            if not is_coordinator:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset mute reasons.')
+                            updated_reason = reason.strip() if reason else ''
+                            if not updated_reason:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
+                        elif is_reason_delete:
+                            if not is_coordinator:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can delete voice mute reasons.')
+                            updated_reason = None
+                    if is_modification and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
                         if not is_coordinator:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset mute reasons.')
-                        updated_reason = reason.strip() if reason else ''
-                        if not updated_reason:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
-                    elif is_reason_delete:
+                            allowed = False
+                            if expires_at and existing_mute['expires_at']:
+                                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                                active_cap = next((c for c in caps if c[0] == 'mute'), None)
+                                cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+                                if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
+                                    allowed = True
+                            if not allowed:
+                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing mute with an absolute duration.')
+                    caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                    active_cap = next((c for c in caps if c[0] == 'mute'), None)
+                    now = datetime.now(timezone.utc)
+                    if active_cap:
+                        cap_expires_at, _ = self.parse_duration(active_cap[1])
+                        if cap_expires_at is None or (expires_at and expires_at > cap_expires_at):
+                            if not is_coordinator:
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create voice mutes longer than the channel cap ({active_cap[1]}).')
+                            if not reason.strip() and not is_reason_set:
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for voice mutes longer than the channel cap ({active_cap[1]}).')
+                    if expires_at is None or (expires_at - now) > timedelta(days=7):
                         if not is_coordinator:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset voice mute reasons.')
-                        updated_reason = None
-                if is_modification and not is_coordinator and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
-                    return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing voice mute with an absolute duration.')
-                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
-                active_cap = next((c for c in caps if c[0] == 'mute'), None)
-                now = datetime.now(timezone.utc)
-                if active_cap:
-                    cap_expires_at, _ = self.parse_duration(active_cap[1])
-                    if cap_expires_at is None or (expires_at and expires_at > cap_expires_at):
-                        if not is_coordinator:
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create voice mutes longer than the channel cap ({active_cap[1]}).')
+                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can voice mute permanently or longer than 7 days.')
                         if not reason.strip() and not is_reason_set:
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for voice mutes longer than the channel cap ({active_cap[1]}).')
-                elif expires_at is None or (expires_at - now) > timedelta(days=7):
-                    if not is_coordinator:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can ban permanently or longer than 7 days.')
-                    if not reason.strip() and not is_reason_set:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent voice mutes or those longer than 7 days.')
-                    if existing_mute and (is_relative_duration or is_coordinator) and not (is_reason_append or is_reason_set or is_reason_delete):
-                        duration_str = stripped.lower()
-                        valid_relative = duration_str in ('0','0h','0d','0m') or (duration_str.startswith('+') and duration_str[1].isdigit()) or duration_str.startswith('-')
-                        if not valid_relative:
-                            if existing_mute['expires_at'] is None:
-                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already permanently banned in {channel_obj.mention}.')
+                            return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent voice mutes or those longer than 7 days.')
+                if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
+                    expires_at = existing_mute['expires_at']
+                else:
+                    if existing_mute:
+                        if not is_coordinator and is_relative_duration:
+                            pass
+                        elif not is_coordinator and expires_at and existing_mute['expires_at']:
+                            caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                            active_cap = next((c for c in caps if c[0] == 'mute'), None)
+                            cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+                            if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
+                                pass
                             else:
                                 remaining = existing_mute['expires_at'] - discord.utils.utcnow()
-                                if remaining.total_seconds() > 0:
-                                    hours_left = round(remaining.total_seconds() / 3600, 1)
-                                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
-                elif existing_mute:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention}.')
+                                hours_left = round(remaining.total_seconds() / 3600, 1)
+                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
+                        elif is_coordinator:
+                            pass
+                        else:
+                            remaining = existing_mute['expires_at'] - discord.utils.utcnow()
+                            hours_left = round(remaining.total_seconds() / 3600, 1)
+                            return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
+                    if expires_at and expires_at <= now:
+                        return await self.handler.send_message(ctx, content='\U0001F6AB You cannot reduce a voice mute below the current time.')
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     await conn.execute('''
@@ -1111,7 +1207,7 @@ class Hybrid(commands.Cog):
                         ON CONFLICT (guild_id, discord_snowflake, channel_id) DO UPDATE
                         SET expires_at = EXCLUDED.expires_at,
                             reason = EXCLUDED.reason
-                    ''', ctx.guild.id, member_obj.id, channel_obj.id, expires_at, reason or 'No reason provided')
+                    ''', ctx.guild.id, member_obj.id, channel_obj.id, expires_at, updated_reason or 'No reason provided')
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
@@ -1130,7 +1226,7 @@ class Hybrid(commands.Cog):
                 )
             await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             highest_role = await self.get_highest_role(ctx, ctx.author, channel_obj)
-            await self.send_log(ctx, 'vmute', member_obj, channel_obj, duration_display, reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
+            await self.send_log(ctx, 'vmute', member_obj, channel_obj, duration_display, updated_reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return voice_mute_alias
 
 
@@ -2817,76 +2913,22 @@ class Hybrid(commands.Cog):
         cog = ctx.bot.get_cog('Hybrid')
         return cog and ctx.author.id in cog.server_muters.get(ctx.guild.id, set())
         
-    def create_ban_log_pages(
-        self,
-        ctx: commands.Context,
-        member: discord.Member,
-        channel: discord.VoiceChannel,
-        duration_display: Optional[str],
-        reason: Optional[str],
-        executor: discord.Member,
-        expires_at: Optional[datetime],
-        command_used: Optional[str],
-        was_in_channel: bool = False,
-        is_modification: bool = False,
-        guild: discord.Guild = None,
-        highest_role: Optional[str] = ''
-    ):
-        # Duration-based styling
-        if expires_at is None:
-            color = 0xDC143C
-            ban_type = '🔒 Permanent'
-            duration_emoji = '♾️'
-        elif (expires_at - datetime.now(timezone.utc)).days >= 7:
-            color = 0xFF6B35
-            ban_type = '⏰ Extended'
-            duration_emoji = '📅'
-        else:
-            color = 0xFF8C00
-            ban_type = '⏱️ Temporary'
-            duration_emoji = '⏰'
-
+    def create_ban_log_pages(self, ctx: commands.Context, member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, guild: discord.Guild = None, highest_role: Optional[str] = ''):
+        if expires_at is None: color, ban_type, duration_emoji = 0xDC143C, '🔒 Permanent', '♾️'
+        elif (expires_at - datetime.now(timezone.utc)).days >= 7: color, ban_type, duration_emoji = 0xFF6B35, '⏰ Extended', '📅'
+        else: color, ban_type, duration_emoji = 0xFF8C00, '⏱️ Temporary', '⏰'
         title = '🔄 Ban Modified' if is_modification else '🔨 User Banned'
         guild = guild or ctx.guild
-        
-        # PRIORITY EMBED 1: User Identity & Images (Highest Priority)
         embed_user = discord.Embed(title=f"{title} - User Identity", color=color, timestamp=datetime.now(timezone.utc))
         embed_user.description = f"**Target:** {member.mention} banned from {channel.mention}"
-        
-        # High priority user info - Discord IGNs and snowflakes
-        user_priority = f"**Display Name:** {member.display_name}\n"
-        user_priority += f"**Username:** @{member.name}\n"
-        user_priority += f"**User ID:** `{member.id}`\n"
-        user_priority += f"**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
-        if member.joined_at:
-            user_priority += f"\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
-        
-        embed_user.add_field(name='👤 Target User (Priority Info)', value=user_priority, inline=False)
-        
-        # Set user avatar as main image (high priority)
-        embed_user.set_image(url=member.display_avatar.url)
         embed_user.set_thumbnail(url=executor.display_avatar.url)
-        
-        # Executor priority info
-        exec_priority = f"**Moderator:** {executor.display_name} (@{executor.name})\n"
-        exec_priority += f"**Mod ID:** `{executor.id}`\n"
-        exec_priority += f"**Top Role:** {highest_role or executor.top_role.mention}"
+        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
+        if member.joined_at: user_priority += f"\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
+        embed_user.add_field(name='👤 Target User (Priority Info)', value=user_priority, inline=False)
+        exec_priority = f"**Moderator:** {executor.display_name} (@{executor.name})\n**Mod ID:** `{executor.id}`\n**Top Role:** {highest_role or executor.top_role.mention}"
         embed_user.add_field(name='👮‍♂️ Executed By', value=exec_priority, inline=True)
-        
-        # Command context reference
-        ctx_info = f"**Original Message ID:** `{ctx.message.id}`\n"
-        ctx_info += f"**Command Channel:** {ctx.channel.mention}\n"
-        ctx_info += f"**Command Used:** `{command_used}`"
+        ctx_info = f"**Original Message ID:** `{ctx.message.id}`\n**Message Link:** [Jump to Message]({ctx.message.jump_url})\n**Command Channel:** {ctx.channel.mention}\n**Command Used:** `{command_used}`"
         embed_user.add_field(name='📱 Command Context', value=ctx_info, inline=True)
-        
-        embed_user.set_footer(
-            text=f"Ban Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}",
-            icon_url=guild.icon.url if guild and guild.icon else None
-        )
-
-        # PRIORITY EMBED 2: Duration & Action Details
-        embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
-        
         if expires_at:
             time_left = expires_at - datetime.now(timezone.utc)
             hours_left = round(time_left.total_seconds() / 3600, 1)
@@ -2895,222 +2937,113 @@ class Hybrid(commands.Cog):
             duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
         else:
             duration_info = f'**Type:** {ban_type}\n**Duration:** {duration_display}\n**Status:** Permanent Ban'
-        
+        embed_user.add_field(name=f'{duration_emoji} Ban Duration', value=duration_info, inline=False)
+        embed_user.add_field(name='📝 Reason', value=f'```{reason if reason else "No reason provided"}```', inline=False)
+        embed_user.set_footer(text=f"Ban Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
+        embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
         embed_duration.add_field(name=f'{duration_emoji} Ban Duration', value=duration_info, inline=False)
-        
-        # Action details
-        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n"
-        action_details += f"**Action Type:** {'Modification' if is_modification else 'New Ban'}\n"
-        action_details += f"**Server:** {guild.name} (`{guild.id}`)"
+        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else 'New Ban'}\n**Server:** {guild.name} (`{guild.id}`)"
         embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
-        
-        # Minimal channel info (lower priority)
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
         embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
-
-        # Start with priority embeds
         embeds = [embed_user, embed_duration]
-        
-        # REASON EMBEDS: Split long reasons
-        reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] if reason else ['No reason provided']
-        for i, chunk in enumerate(reason_chunks):
-            reason_embed = discord.Embed(title=f"{title} - Reason", color=color, timestamp=datetime.now(timezone.utc))
-            reason_embed.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
-            embeds.append(reason_embed)
-        
+        if reason:
+            reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)]
+            if len(reason_chunks) > 1:
+                for i, chunk in enumerate(reason_chunks):
+                    reason_embed = discord.Embed(title=f"{title} - Reason (cont.)", color=color, timestamp=datetime.now(timezone.utc))
+                    reason_embed.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
+                    embeds.append(reason_embed)
         return embeds
-
-
-    def create_text_mute_log_pages(
-            self,
-            ctx: commands.Context,
-            member: discord.Member,
-            channel: discord.VoiceChannel,
-            duration_display: Optional[str],
-            reason: Optional[str],
-            executor: discord.Member,
-            expires_at: Optional[datetime],
-            command_used: Optional[str],
-            was_in_channel: bool = False,
-            is_modification: bool = False,
-            guild: discord.Guild = None,
-            highest_role: Optional[str] = ''
-        ):
-            # Duration-based styling
-            if expires_at is None:
-                color = 0xDC143C
-                mute_type = '🔒 Permanent'
-                duration_emoji = '♾️'
-            elif (expires_at - datetime.now(timezone.utc)).days >= 7:
-                color = 0xFF6B35
-                mute_type = '⏰ Extended'
-                duration_emoji = '📅'
-            else:
-                color = 0xFF8C00
-                mute_type = '⏱️ Temporary'
-                duration_emoji = '⏰'
+        
+    def create_text_mute_log_pages(self, ctx: commands.Context, member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, guild: discord.Guild = None, highest_role: Optional[str] = ''):
+        if expires_at is None: color, mute_type, duration_emoji = 0xDC143C, '🔒 Permanent', '♾️'
+        elif (expires_at - datetime.now(timezone.utc)).days >= 7: color, mute_type, duration_emoji = 0xFF6B35, '⏰ Extended', '📅'
+        else: color, mute_type, duration_emoji = 0xFF8C00, '⏱️ Temporary', '⏰'
+        title = '🔄 Text Mute Modified' if is_modification else '🔇 User Text Muted'
+        guild = guild or ctx.guild
+        embed_user = discord.Embed(title=f"{title} - User Identity", color=color, timestamp=datetime.now(timezone.utc))
+        embed_user.description = f"**Target:** {member.mention} text muted in {channel.mention}"
+        embed_user.set_thumbnail(url=executor.display_avatar.url)
+        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
+        if member.joined_at: user_priority += f"\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
+        embed_user.add_field(name='👤 Target User (Priority Info)', value=user_priority, inline=False)
+        exec_priority = f"**Moderator:** {executor.display_name} (@{executor.name})\n**Mod ID:** `{executor.id}`\n**Top Role:** {highest_role or executor.top_role.mention}"
+        embed_user.add_field(name='👮‍♂️ Executed By', value=exec_priority, inline=True)
+        ctx_info = f"**Original Message ID:** `{ctx.message.id}`\n**Message Link:** [Jump to Message]({ctx.message.jump_url})\n**Command Channel:** {ctx.channel.mention}\n**Command Used:** `{command_used}`"
+        embed_user.add_field(name='📱 Command Context', value=ctx_info, inline=True)
+        if expires_at:
+            time_left = expires_at - datetime.now(timezone.utc)
+            hours_left = round(time_left.total_seconds() / 3600, 1)
+            days_left = time_left.days
+            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
+            duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
+        else:
+            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Status:** Permanent Text Mute'
+        embed_user.add_field(name=f'{duration_emoji} Text Mute Duration', value=duration_info, inline=False)
+        embed_user.add_field(name='📝 Reason', value=f'```{reason if reason else "No reason provided"}```', inline=False)
+        embed_user.set_footer(text=f"Text Mute Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
+        embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
+        embed_duration.add_field(name=f'{duration_emoji} Text Mute Duration', value=duration_info, inline=False)
+        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else 'New Text Mute'}\n**Server:** {guild.name} (`{guild.id}`)"
+        embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
+        channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
+        embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
+        embeds = [embed_user, embed_duration]
+        if reason:
+            reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)]
+            if len(reason_chunks) > 1:
+                for i, chunk in enumerate(reason_chunks):
+                    reason_embed = discord.Embed(title=f"{title} - Reason (cont.)", color=color, timestamp=datetime.now(timezone.utc))
+                    reason_embed.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
+                    embeds.append(reason_embed)
+        return embeds
     
-            title = '🔄 Text Mute Modified' if is_modification else '🔨 User Text Muted'
-            guild = guild or ctx.guild
-    
-            # PRIORITY EMBED 1: User Identity & Images
-            embed_user = discord.Embed(title=f"{title} - User Identity", color=color, timestamp=datetime.now(timezone.utc))
-            embed_user.description = f"**Target:** {member.mention} text muted in {channel.mention}"
-    
-            user_priority = f"**Display Name:** {member.display_name}\n"
-            user_priority += f"**Username:** @{member.name}\n"
-            user_priority += f"**User ID:** `{member.id}`\n"
-            user_priority += f"**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
-            if member.joined_at:
-                user_priority += f"\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
-    
-            embed_user.add_field(name='👤 Target User (Priority Info)', value=user_priority, inline=False)
-            embed_user.set_image(url=member.display_avatar.url)
-            embed_user.set_thumbnail(url=executor.display_avatar.url)
-    
-            exec_priority = f"**Moderator:** {executor.display_name} (@{executor.name})\n"
-            exec_priority += f"**Mod ID:** `{executor.id}`\n"
-            exec_priority += f"**Top Role:** {highest_role or executor.top_role.mention}"
-            embed_user.add_field(name='👮‍♂️ Executed By', value=exec_priority, inline=True)
-    
-            ctx_info = f"**Original Message ID:** `{ctx.message.id}`\n"
-            ctx_info += f"**Command Channel:** {ctx.channel.mention}\n"
-            ctx_info += f"**Command Used:** `{command_used}`"
-            embed_user.add_field(name='📱 Command Context', value=ctx_info, inline=True)
-    
-            embed_user.set_footer(
-                text=f"Text Mute Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}",
-                icon_url=guild.icon.url if guild and guild.icon else None
-            )
-    
-            # PRIORITY EMBED 2: Duration & Action Details
-            embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
-    
-            if expires_at:
-                time_left = expires_at - datetime.now(timezone.utc)
-                hours_left = round(time_left.total_seconds() / 3600, 1)
-                days_left = time_left.days
-                duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
-                duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
-            else:
-                duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Status:** Permanent Text Mute'
-    
-            embed_duration.add_field(name=f'{duration_emoji} Mute Duration', value=duration_info, inline=False)
-    
-            action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n"
-            action_details += f"**Action Type:** {'Modification' if is_modification else 'New Text Mute'}\n"
-            action_details += f"**Server:** {guild.name} (`{guild.id}`)"
-            embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
-    
-            channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
-            embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
-    
-            embeds = [embed_user, embed_duration]
-    
-            # REASON EMBEDS
-            reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] if reason else ['No reason provided']
-            for i, chunk in enumerate(reason_chunks):
-                reason_embed = discord.Embed(title=f"{title} - Reason", color=color, timestamp=datetime.now(timezone.utc))
-                reason_embed.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
-                embeds.append(reason_embed)
-    
-            return embeds
-    
-    
-    def create_voice_mute_log_pages(
-            self,
-            ctx: commands.Context,
-            member: discord.Member,
-            channel: discord.VoiceChannel,
-            duration_display: Optional[str],
-            reason: Optional[str],
-            executor: discord.Member,
-            expires_at: Optional[datetime],
-            command_used: Optional[str],
-            was_in_channel: bool = False,
-            is_modification: bool = False,
-            guild: discord.Guild = None,
-            highest_role: Optional[str] = ''
-        ):
-            # Duration-based styling
-            if expires_at is None:
-                color = 0xDC143C
-                mute_type = '🔒 Permanent'
-                duration_emoji = '♾️'
-            elif (expires_at - datetime.now(timezone.utc)).days >= 7:
-                color = 0xFF6B35
-                mute_type = '⏰ Extended'
-                duration_emoji = '📅'
-            else:
-                color = 0xFF8C00
-                mute_type = '⏱️ Temporary'
-                duration_emoji = '⏰'
-    
-            title = '🔄 Voice Mute Modified' if is_modification else '🔨 User Voice Muted'
-            guild = guild or ctx.guild
-    
-            # PRIORITY EMBED 1: User Identity & Images
-            embed_user = discord.Embed(title=f"{title} - User Identity", color=color, timestamp=datetime.now(timezone.utc))
-            embed_user.description = f"**Target:** {member.mention} voice muted in {channel.mention}"
-    
-            user_priority = f"**Display Name:** {member.display_name}\n"
-            user_priority += f"**Username:** @{member.name}\n"
-            user_priority += f"**User ID:** `{member.id}`\n"
-            user_priority += f"**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
-            if member.joined_at:
-                user_priority += f"\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
-    
-            embed_user.add_field(name='👤 Target User (Priority Info)', value=user_priority, inline=False)
-            embed_user.set_image(url=member.display_avatar.url)
-            embed_user.set_thumbnail(url=executor.display_avatar.url)
-    
-            exec_priority = f"**Moderator:** {executor.display_name} (@{executor.name})\n"
-            exec_priority += f"**Mod ID:** `{executor.id}`\n"
-            exec_priority += f"**Top Role:** {highest_role or executor.top_role.mention}"
-            embed_user.add_field(name='👮‍♂️ Executed By', value=exec_priority, inline=True)
-    
-            ctx_info = f"**Original Message ID:** `{ctx.message.id}`\n"
-            ctx_info += f"**Command Channel:** {ctx.channel.mention}\n"
-            ctx_info += f"**Command Used:** `{command_used}`"
-            embed_user.add_field(name='📱 Command Context', value=ctx_info, inline=True)
-    
-            embed_user.set_footer(
-                text=f"Voice Mute Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}",
-                icon_url=guild.icon.url if guild and guild.icon else None
-            )
-    
-            # PRIORITY EMBED 2: Duration & Action Details
-            embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
-    
-            if expires_at:
-                time_left = expires_at - datetime.now(timezone.utc)
-                hours_left = round(time_left.total_seconds() / 3600, 1)
-                days_left = time_left.days
-                duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
-                duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
-            else:
-                duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Status:** Permanent Voice Mute'
-    
-            embed_duration.add_field(name=f'{duration_emoji} Mute Duration', value=duration_info, inline=False)
-    
-            action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n"
-            action_details += f"**Action Type:** {'Modification' if is_modification else 'New Voice Mute'}\n"
-            action_details += f"**Server:** {guild.name} (`{guild.id}`)"
-            embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
-    
-            channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
-            embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
-    
-            embeds = [embed_user, embed_duration]
-    
-            # REASON EMBEDS
-            reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)] if reason else ['No reason provided']
-            for i, chunk in enumerate(reason_chunks):
-                reason_embed = discord.Embed(title=f"{title} - Reason", color=color, timestamp=datetime.now(timezone.utc))
-                reason_embed.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
-                embeds.append(reason_embed)
-    
-            return embeds
+    def create_voice_mute_log_pages(self, ctx: commands.Context, member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, guild: discord.Guild = None, highest_role: Optional[str] = ''):
+        if expires_at is None:
+            color, mute_type, duration_emoji = 0xDC143C, '🔒 Permanent', '♾️'
+        elif (expires_at - datetime.now(timezone.utc)).days >= 7:
+            color, mute_type, duration_emoji = 0xFF6B35, '⏰ Extended', '📅'
+        else:
+            color, mute_type, duration_emoji = 0xFF8C00, '⏱️ Temporary', '⏰'
+        title = '🔄 Voice Mute Modified' if is_modification else '🎙️ User Voice Muted'
+        guild = guild or ctx.guild
+        embed_user = discord.Embed(title=f"{title} - User Identity", color=color, timestamp=datetime.now(timezone.utc))
+        embed_user.description = f"**Target:** {member.mention} voice muted in {channel.mention}"
+        embed_user.set_thumbnail(url=executor.display_avatar.url)
+        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
+        if member.joined_at:
+            user_priority += f"\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
+        embed_user.add_field(name='👤 Target User (Priority Info)', value=user_priority, inline=False)
+        exec_priority = f"**Moderator:** {executor.display_name} (@{executor.name})\n**Mod ID:** `{executor.id}`\n**Top Role:** {highest_role or executor.top_role.mention}"
+        embed_user.add_field(name='👮‍♂️ Executed By', value=exec_priority, inline=True)
+        ctx_info = f"**Original Message ID:** `{ctx.message.id}`\n**Message Link:** [Jump to Message]({ctx.message.jump_url})\n**Command Channel:** {ctx.channel.mention}\n**Command Used:** `{command_used}`"
+        embed_user.add_field(name='📱 Command Context', value=ctx_info, inline=True)
+        if expires_at:
+            time_left = expires_at - datetime.now(timezone.utc)
+            hours_left, days_left = round(time_left.total_seconds() / 3600, 1), time_left.days
+            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
+            duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
+        else:
+            duration_info = f'**Type:** {mute_type}\n**Duration:** {duration_display}\n**Status:** Permanent Voice Mute'
+        embed_user.add_field(name=f'{duration_emoji} Voice Mute Duration', value=duration_info, inline=False)
+        embed_user.add_field(name='📝 Reason', value=f'```{reason if reason else "No reason provided"}```', inline=False)
+        embed_user.set_footer(text=f"Voice Mute Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
+        embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
+        embed_duration.add_field(name=f'{duration_emoji} Voice Mute Duration', value=duration_info, inline=False)
+        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else 'New Voice Mute'}\n**Server:** {guild.name} (`{guild.id}`)"
+        embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
+        channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
+        embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
+        embeds = [embed_user, embed_duration]
+        if reason:
+            reason_chunks = [reason[i:i+1000] for i in range(0, len(reason), 1000)]
+            if len(reason_chunks) > 1:
+                for i, chunk in enumerate(reason_chunks):
+                    reason_embed = discord.Embed(title=f"{title} - Reason (cont.)", color=color, timestamp=datetime.now(timezone.utc))
+                    reason_embed.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
+                    embeds.append(reason_embed)
+        return embeds
     
     def fmt_duration(self, expires_at: Optional[datetime], base: Optional[datetime] = None) -> str:
         if not expires_at:
