@@ -581,8 +581,8 @@ class Hybrid(commands.Cog):
                 logger.warning(f'Database error occurred: {e}')
                 raise
             embed = discord.Embed(
-                title=f"{self.get_random_emoji()} {member_obj.mention} has been banned",
-                description=f"**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
+                title=f"{self.get_random_emoji()} {member_obj.display_name} has been banned",
+                description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                 color=discord.Color.orange()
             )
             await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
@@ -1051,8 +1051,8 @@ class Hybrid(commands.Cog):
                     logger.warning(f'DB insert failed: {e}')
                     return await self.handler.send_message(ctx, content=str(e))
                 embed = discord.Embed(
-                    title=f"{self.get_random_emoji()} {member_obj.mention} is text-muted",
-                    description=f"**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
+                    title=f"{self.get_random_emoji()} {member_obj.display_name} is text-muted",
+                    description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                     color=discord.Color.orange()
                 )
                 await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
@@ -1208,8 +1208,8 @@ class Hybrid(commands.Cog):
                 is_in_channel = True
                 await member_obj.edit(mute=True)
             embed = discord.Embed(
-                    title=f"{self.get_random_emoji()} {member_obj.mention} is voice muted",
-                    description=f"**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
+                    title=f"{self.get_random_emoji()} {member_obj.display_name} is voice muted",
+                    description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                     color=discord.Color.orange()
                 )
             await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
