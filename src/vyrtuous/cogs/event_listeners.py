@@ -80,7 +80,12 @@ class EventListeners(commands.Cog):
                 if not before.mute and after.mute and after_channel:
                     existing_row = await conn.fetchrow('SELECT guild_id FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
                     if not existing_row:
-                        await conn.execute('INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id) VALUES ($1, $2, $3) ON CONFLICT (guild_id, discord_snowflake, channel_id) DO NOTHING', member.guild.id, user_id, after_channel.id)
+                        await conn.execute('''
+                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at)
+                        VALUES ($1, $2, $3, NOW() + interval '1 hour')
+                        ON CONFLICT (guild_id, discord_snowflake, channel_id) DO UPDATE
+                        SET expires_at = EXCLUDED.expires_at
+                    ''', member.guild.id, user_id, after_channel.id)
                 mute_row = await conn.fetchrow('''
                     SELECT expires_at
                     FROM active_voice_mutes

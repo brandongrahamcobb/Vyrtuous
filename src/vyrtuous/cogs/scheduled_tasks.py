@@ -108,7 +108,6 @@ class ScheduledTasks(commands.Cog):
             except discord.HTTPException as e:
                 logger.error(f'Failed to remove permission override: {e}')
 
-
     @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self):
         now = datetime.now(timezone.utc)

@@ -581,26 +581,12 @@ class Hybrid(commands.Cog):
                 logger.warning(f'Database error occurred: {e}')
                 raise
             embed = discord.Embed(
-                title=f"{self.get_random_emoji()} {member_obj.display_name} has been banned",
+                title=f"{self.get_random_emoji()} {member_obj.mention} has been banned",
                 description=f"**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                 color=discord.Color.orange()
             )
             await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
             highest_role = await self.get_highest_role(ctx, ctx.author, channel_obj)
-            logger.info(
-                f"DEBUG send_log parameters:\n"
-                f"action: 'ban'\n"
-                f"member_obj: {member_obj} ({member_obj.id})\n"
-                f"channel_obj: {channel_obj} ({channel_obj.id})\n"
-                f"duration_display: {duration_display}\n"
-                f"updated_reason: {updated_reason or 'No reason provided'}\n"
-                f"executor (ctx.author): {ctx.author} ({ctx.author.id})\n"
-                f"expires_at: {expires_at}\n"
-                f"command_name: {command_name}\n"
-                f"is_in_channel: {is_in_channel}\n"
-                f"is_modification: {is_modification}\n"
-                f"highest_role: {highest_role}"
-            )
             await self.send_log(ctx, 'ban', member_obj, channel_obj, duration_display, updated_reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return ban_alias
         
@@ -682,21 +668,23 @@ class Hybrid(commands.Cog):
                 WHERE discord_snowflake = $1
                 AND channel_id = $2
             '''
-            insert_sql = '''
-                INSERT INTO active_cows (guild_id, discord_snowflake, channel_id)
-                VALUES ($1, $2, $3)
+            insert_cow_sql = '''
+                INSERT INTO active_cows (guild_id, discord_snowflake, channel_id, created_at)
+                VALUES ($1, $2, $3, $4)
                 ON CONFLICT (guild_id, discord_snowflake, channel_id) DO NOTHING
+            '''
+            insert_log_sql = '''
+                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING created_at
             '''
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     already_cowed = await conn.fetchval(select_sql, member_obj.id, channel_obj.id)
                     if already_cowed:
                         return await ctx.send(f'\U0001F6AB {member_obj.mention} is already going vegan.', allowed_mentions=discord.AllowedMentions.none())
-                    await conn.execute(insert_sql, ctx.guild.id, member_obj.id, channel_obj.id)
-                    await conn.execute('''
-                        INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                        VALUES ($1, $2, $3, $4, $5, $6)
-                    ''', 'cow', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Cowed a user')
+                    created_at = await conn.fetchval(insert_log_sql, 'cow', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Cowed a user')
+                    await conn.execute(insert_cow_sql, ctx.guild.id, member_obj.id, channel_obj.id, created_at)
                     await ctx.send(f'\U0001F525 {member_obj.mention} is going vegan!!! \U0001F525', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 return await self.handler.send_message(ctx, content=f'Database error: {e}')
@@ -1063,7 +1051,7 @@ class Hybrid(commands.Cog):
                     logger.warning(f'DB insert failed: {e}')
                     return await self.handler.send_message(ctx, content=str(e))
                 embed = discord.Embed(
-                    title=f"{self.get_random_emoji()} {member_obj.display_name} is text-muted",
+                    title=f"{self.get_random_emoji()} {member_obj.mention} is text-muted",
                     description=f"**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                     color=discord.Color.orange()
                 )
@@ -1130,7 +1118,7 @@ class Hybrid(commands.Cog):
                         expires_at, duration_display = self.parse_duration(duration, base=base_time)
                     is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
                     is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
-                    is_reason_set = stripped.startswith('=')
+                    is_reason_set = stripped == '='
                     is_reason_delete = stripped == '-'
                     updated_reason = existing_mute['reason'] if existing_mute else reason
                     if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
@@ -1220,7 +1208,7 @@ class Hybrid(commands.Cog):
                 is_in_channel = True
                 await member_obj.edit(mute=True)
             embed = discord.Embed(
-                    title=f"{self.get_random_emoji()} {member_obj.display_name} is voice muted",
+                    title=f"{self.get_random_emoji()} {member_obj.mention} is voice muted",
                     description=f"**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                     color=discord.Color.orange()
                 )
@@ -2207,6 +2195,79 @@ class Hybrid(commands.Cog):
                 )
         await self.handler.send_message(ctx, embed=embed)
 
+    @commands.command(name='ls', help='List users cowed as going vegan in this guild.')
+    @is_owner_developer_coordinator_moderator_predicator(None)
+    async def list_members(
+        self,
+        ctx: commands.Context,
+        target: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+    ) -> None:
+        member_obj = await self.resolve_member(ctx, target)
+        if member_obj:
+            target = None
+        channel_obj = await self.resolve_channel(ctx, target)
+        if not channel_obj and not member_obj:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
+        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if not is_owner_or_dev and not is_mod_or_coord:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`ls`) in {channel_obj.mention}.')
+        guild = ctx.guild
+        try:
+            async with self.bot.db_pool.acquire() as conn:
+                if member_obj:
+                    rows = await conn.fetch('''
+                        SELECT channel_id, created_at
+                        FROM active_cows
+                        WHERE guild_id = $1 AND discord_snowflake = $2
+                    ''', guild.id, member_obj.id)
+                    if not rows:
+                        return await ctx.send(f'\U0001F6AB {member_obj.mention} is not cowed in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                    lines = []
+                    for r in rows:
+                        ch = guild.get_channel(r['channel_id'])
+                        ch_name = ch.mention if ch else f'`{r["channel_id"]}`'
+                        created_at = discord.utils.format_dt(r['created_at'], style='R') if r['created_at'] else ''
+                        lines.append(f'• {ch_name} — {created_at}')
+                    embed = discord.Embed(
+                        title=f'🐮 {member_obj.display_name}',
+                        description='\n'.join(lines),
+                        color=discord.Color.green()
+                    )
+                    return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.all())
+                elif channel_obj:
+                    rows = await conn.fetch('''
+                        SELECT discord_snowflake, created_at
+                        FROM active_cows
+                        WHERE guild_id = $1 AND channel_id = $2
+                    ''', guild.id, channel_obj.id)
+                    if not rows:
+                        return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are cowed in {channel_obj.mention}.')
+                    lines = []
+                    for row in rows:
+                        uid = row['discord_snowflake']
+                        m = guild.get_member(uid)
+                        if not m:
+                            continue
+                        created_at = discord.utils.format_dt(row['created_at'], style='R') if row['created_at'] else ''
+                        lines.append(f'• {m.display_name} — <@{uid}> — {created_at}')
+                    if not lines:
+                        return await ctx.send(f'\U0001F6AB No new vegans currently in {guild.name}.')
+                    chunk_size = 18
+                    pages = []
+                    for i in range(0, len(lines), chunk_size):
+                        chunk = lines[i:i + chunk_size]
+                        embed = discord.Embed(
+                            title=f'🐮 New Vegans in {channel_obj.mention}',
+                            description='\n'.join(chunk),
+                            color=discord.Color.green()
+                        )
+                        pages.append(embed)
+                    paginator = Paginator(self.bot, ctx, pages)
+                    return await paginator.start()
+        except Exception as e:
+            await logger.warning(ctx, content=f'Database error: {e}')
+            raise
+    
     @commands.command(name='mods', help='Lists moderator statistics.')
     @is_owner_developer_coordinator_moderator_predicator(None)
     async def list_moderators(
@@ -2427,77 +2488,6 @@ class Hybrid(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel or be connected to a voice channel.')
-
-    @commands.command(name='ls', help='List users cowed as going vegan in this guild.')
-    @is_owner_developer_coordinator_moderator_predicator(None)
-    async def list_members(
-        self,
-        ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
-    ) -> None:
-        member_obj = await self.resolve_member(ctx, target)
-        if member_obj:
-            target = None
-        channel_obj = await self.resolve_channel(ctx, target)
-        if not channel_obj and not member_obj:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`ls`) in {channel_obj.mention}.')
-        guild = ctx.guild
-        try:
-            async with self.bot.db_pool.acquire() as conn:
-                if member_obj:
-                    rows = await conn.fetch('''
-                        SELECT channel_id
-                        FROM active_cows
-                        WHERE guild_id = $1 AND discord_snowflake = $2
-                    ''', guild.id, member_obj.id)
-                    if not rows:
-                        return await ctx.send(f'\U0001F6AB {member_obj.mention} is not cowed in any channels.', allowed_mentions=discord.AllowedMentions.none())
-                    lines = []
-                    for r in rows:
-                        ch = guild.get_channel(r['channel_id'])
-                        ch_name = ch.mention if ch else f'`{r["channel_id"]}`'
-                        lines.append(f'• {ch_name}')
-                    embed = discord.Embed(
-                        title=f'🐮 {member_obj.display_name}',
-                        description='\n'.join(lines),
-                        color=discord.Color.green()
-                    )
-                    return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.all())
-                elif channel_obj:
-                    rows = await conn.fetch('''
-                        SELECT discord_snowflake
-                        FROM active_cows
-                        WHERE guild_id = $1 AND channel_id = $2
-                    ''', guild.id, channel_obj.id)
-                    if not rows:
-                        return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are cowed in {channel_obj.mention}.')
-                    lines = []
-                    for row in rows:
-                        uid = row['discord_snowflake']
-                        m = guild.get_member(uid)
-                        if not m:
-                            continue
-                        lines.append(f'• {m.display_name} — <@{uid}>')
-                    if not lines:
-                        return await ctx.send(f'\U0001F6AB No new vegans currently in {guild.name}.')
-                    chunk_size = 18
-                    pages = []
-                    for i in range(0, len(lines), chunk_size):
-                        chunk = lines[i:i + chunk_size]
-                        embed = discord.Embed(
-                            title=f'🐮 New Vegans in {channel_obj.mention}',
-                            description='\n'.join(chunk),
-                            color=discord.Color.green()
-                        )
-                        pages.append(embed)
-                    paginator = Paginator(self.bot, ctx, pages)
-                    return await paginator.start()
-        except Exception as e:
-            await logger.warning(ctx, content=f'Database error: {e}')
-            raise
             
     @commands.hybrid_command(name='rms', help='Lists all members with server mute privileges in this guild.')
     @is_owner_predicator()
