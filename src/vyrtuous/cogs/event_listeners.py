@@ -89,9 +89,9 @@ class EventListeners(commands.Cog):
                         SET expires_at = EXCLUDED.expires_at
                     ''', member.guild.id, user_id, after_channel.id)
                 should_be_muted = False
-                if existing_mute_row:
-                    if not existing_mute_row['expires_at'] or existing_mute_row['expires_at'] > datetime.now(timezone.utc):
-                        should_be_muted = True
+#                if existing_mute_row:
+#                    if not existing_mute_row['expires_at'] or existing_mute_row['expires_at'] > datetime.now(timezone.utc):
+#                        should_be_muted = True
                 if just_manual_unmute:
                     should_be_muted = False
                 if should_be_muted and not after.mute:

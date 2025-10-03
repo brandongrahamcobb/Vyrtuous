@@ -800,14 +800,14 @@ class Hybrid(commands.Cog):
                     else:
                         return await ctx.send(f'\U0001F6AB {member_obj.mention} is already flagged in {channel_obj.mention} for {existing_flag["reason"]}.', allowed_mentions=discord.AllowedMentions.none())
                     embed = discord.Embed(color=discord.Color.orange())
-                    embed.set_author(name=f"{member_obj.mention} is flagged", icon_url=member_obj.display_avatar.url)
-                    embed.add_field(name="Channel", value=channel_obj.mention, inline=True)
+                    embed.set_author(name=f"{member_obj.display_name} is flagged", icon_url=member_obj.display_avatar.url)
+                    embed.add_field(name="User", value=member_obj.mention, inline=True)
+                    embed.add_field(name="Channel", value=channel_obj.mention, inline=False)
                     embed.add_field(name="Reason", value=updated_reason or 'No reason provided', inline=False)
                     await ctx.send(embed=embed)
             except Exception as e:
                 logger.exception(f'Database error in flag_alias: {e}')
                 raise
-    
         return flag_alias
         
     @commands.command(name='mod', help='Elevates a user\'s permission to VC moderator for a specific channel.')
