@@ -244,8 +244,11 @@ class EventListeners(commands.Cog):
                                 reason = record['reason'] or 'No reason provided'
                                 embed.add_field(name='Channel', value=f'{ch_name}\nReason: {reason}', inline=False)
                             embeds.append(embed)
-                        paginator = ChannelPaginator(self.bot, after_channel, embeds)
-                        await paginator.start()
+                        if embeds.len(embeds == 1):
+                            await after_channel.send(embed=embeds[0])
+                        else:
+                            paginator = ChannelPaginator(self.bot, after_channel, embeds)
+                            await paginator.start()
 
                     except Exception as e:
                         logger.exception('Error in on_voice_state_update', exc_info=e)
