@@ -71,10 +71,82 @@ class EventListeners(commands.Cog):
                     await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, before_channel.id)
                     just_manual_unmute = True
             if after_channel:
-                existing_mute_row = await conn.fetchrow(
-                    'SELECT expires_at FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3',
-                    member.guild.id, user_id, after_channel.id
-                )
+                row = await conn.fetchrow('SELECT expires_at FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
+                if row:
+                    if row['expires_at'] and row['expires_at'] <= datetime.now(timezone.utc):
+                        await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
+                        row = None
+                        should_be_muted = False
+                if not before.mute and after.mute and after_channel:
+                    existing_row = await conn.fetchrow('SELECT guild_id FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
+                    if not existing_row:
+                        await conn.execute('INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id) VALUES ($1, $2, $3) ON CONFLICT (guild_id, discord_snowflake, channel_id) DO NOTHING', member.guild.id, user_id, after_channel.id)
+                        existing_mute_row = await conn.fetchrow(
+                            'SELECT expires_at FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3',
+                            member.guild.id, user_id, after_channel.id
+                        )
+                mute_row = await conn.fetchrow('''
+                    SELECT expires_at
+                    FROM active_voice_mutes
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', member.guild.id, user_id, after_channel.id)
+                should_be_muted = False
+                if mute_row:
+                    if not mute_row['expires_at'] or mute_row['expires_at'] > datetime.now(timezone.utc):
+                        should_be_muted = True
+                if just_manual_unmute:
+                    should_be_muted = False
+                if should_be_muted and not after.mute:
+                    expires_at = mute_row['expires_at'] if mute_row else None
+                    if expires_at:
+                        await conn.execute('''
+                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at)
+                            VALUES ($1, $2, $3, $4)
+                            ON CONFLICT (guild_id, discord_snowflake, channel_id)
+                            DO UPDATE SET expires_at = EXCLUDED.expires_at
+                        ''', member.guild.id, user_id, after_channel.id, expires_at)
+                    else:
+                        await conn.execute('''
+                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id)
+                            VALUES ($1, $2, $3)
+                            ON CONFLICT (guild_id, discord_snowflake, channel_id) DO NOTHING
+                        ''', member.guild.id, user_id, after_channel.id)
+                    try:
+                        await member.edit(mute=True, reason=f'Enforcing mute in {after_channel.name} (found in arrays)')
+                    except discord.Forbidden:
+                        logger.debug(f'No permission to mute {member.display_name}')
+                    except discord.HTTPException as e:
+                        logger.debug(f'Failed to mute {member.display_name}: {e}')
+                elif not should_be_muted and after.mute:
+                    try:
+                        await member.edit(mute=False, reason=f'Auto-unmuting in {after_channel.name} (no mute record)')
+                    except discord.Forbidden:
+                        logger.debug(f'No permission to unmute {member.display_name}')
+                    except discord.HTTPException as e:
+                        logger.debug(f'Failed to unmute {member.display_name}: {e}')
+                        
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
+        if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
+            return
+        if member.bot:
+            return
+        after_channel = after.channel
+        before_channel = before.channel
+        user_id = member.id
+        should_be_muted = False
+        just_manual_unmute = False
+        async with self.db_pool.acquire() as conn:
+            user_data = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', user_id)
+            server_mute_guild_ids = user_data['server_mute_guild_ids'] or [] if user_data else []
+            if member.guild.id in server_mute_guild_ids:
+                return
+            if before.mute != after.mute:
+                if before.mute and not after.mute and before_channel:
+                    await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, before_channel.id)
+                    just_manual_unmute = True
+            if after_channel:
+                existing_mute_row = await conn.fetchrow('SELECT expires_at FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
                 if existing_mute_row:
                     if existing_mute_row['expires_at'] and existing_mute_row['expires_at'] <= datetime.now(timezone.utc):
                         await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
@@ -88,10 +160,15 @@ class EventListeners(commands.Cog):
                         ON CONFLICT (guild_id, discord_snowflake, channel_id) DO UPDATE
                         SET expires_at = EXCLUDED.expires_at
                     ''', member.guild.id, user_id, after_channel.id)
+                existing_mute_row = await conn.fetchrow('''
+                    SELECT expires_at
+                    FROM active_voice_mutes
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', member.guild.id, user_id, after_channel.id)
                 should_be_muted = False
-#                if existing_mute_row:
-#                    if not existing_mute_row['expires_at'] or existing_mute_row['expires_at'] > datetime.now(timezone.utc):
-#                        should_be_muted = True
+                if existing_mute_row:
+                    if not existing_mute_row['expires_at'] or existing_mute_row['expires_at'] > datetime.now(timezone.utc):
+                        should_be_muted = True
                 if just_manual_unmute:
                     should_be_muted = False
                 if should_be_muted and not after.mute:
@@ -99,10 +176,10 @@ class EventListeners(commands.Cog):
                     if expires_at:
                         await conn.execute('''
                             INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at)
-                            VALUES ($1, $2, $3, $4)
-                            ON CONFLICT (guild_id, discord_snowflake, channel_id)
-                            DO UPDATE SET expires_at = EXCLUDED.expires_at
-                        ''', member.guild.id, user_id, after_channel.id, expires_at)
+                            VALUES ($1, $2, $3, NOW() + interval '1 hour')
+                            ON CONFLICT (guild_id, discord_snowflake, channel_id) DO UPDATE
+                            SET expires_at = EXCLUDED.expires_at
+                        ''', member.guild.id, user_id, after_channel.id)
                     else:
                         await conn.execute('''
                             INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id)
