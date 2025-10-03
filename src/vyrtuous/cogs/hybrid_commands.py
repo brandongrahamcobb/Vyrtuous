@@ -770,7 +770,7 @@ class Hybrid(commands.Cog):
                 async with self.bot.db_pool.acquire() as conn:
                     existing_flag = await conn.fetchrow(select_sql, ctx.guild.id, member_obj.id, channel_obj.id)
                     is_modification = existing_flag is not None
-                    updated_reason = existing_flag['reason'] if existing_flag else None
+                    updated_reason = reason
                     stripped = reason.strip() if reason else ''
                     is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                     is_reason_set = stripped.startswith('=')
@@ -780,7 +780,7 @@ class Hybrid(commands.Cog):
                             new_text = reason.strip() if reason else ''
                             if not new_text:
                                 return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
-                            updated_reason = f"{updated_reason}\n{new_text}" if updated_reason else new_text
+                            updated_reason = f"{existing_flag['reason']}\n{new_text}" if updated_reason else new_text
                         elif is_reason_set:
                             is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'flag')
                             if not is_coordinator:
@@ -964,13 +964,13 @@ class Hybrid(commands.Cog):
                 is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                 is_reason_set = stripped.startswith('=')
                 is_reason_delete = stripped == '-'
-                updated_reason = existing_text_mute['reason'] if existing_text_mute else reason
+                updated_reason = reason
                 if existing_text_mute and (is_reason_append or is_reason_set or is_reason_delete):
                     if is_reason_append:
                         new_text = reason.strip() if reason else ''
                         if not new_text:
                             return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
-                        updated_reason = f"{updated_reason}\n{new_text}" if updated_reason else new_text
+                        updated_reason = f"{existing_text_mute['reason']}\n{new_text}" if updated_reason else new_text
                     elif is_reason_set:
                         if not is_coordinator:
                             return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset text mute reasons.')
@@ -1094,99 +1094,98 @@ class Hybrid(commands.Cog):
             if not success:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
             async with self.bot.db_pool.acquire() as conn:
-                async with self.bot.db_pool.acquire() as conn:
-                    existing_mute = await conn.fetchrow('''
-                        SELECT expires_at, reason
-                        FROM active_voice_mutes
-                        WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                    ''', ctx.guild.id, member_obj.id, channel_obj.id)
-                    stripped = duration.strip() if duration else ''
-                    is_modification = (
-                        (existing_mute is not None and stripped in ('+', '-', '=')) or
-                        (duration in ('0', '0h', '0hr', '0hrs', '0hour', '0hours',
-                                        '0m', '0min', '0mins', '0minute', '0minutes',
-                                        '0d', '0day', '0days'))
-                    )
-                    base_time = existing_mute['expires_at'] if existing_mute else None
-                    if not existing_mute and stripped in ('+', '-', '='):
-                         return await self.handler.send_message(ctx,content='\U0001F6AB There is no existing voice mute to modify.')
-                    is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'mute')
-                    if stripped in ('+', '-', '='):
-                        expires_at = base_time
-                        duration_display = self.fmt_duration(base_time)
-                    else:
-                        expires_at, duration_display = self.parse_duration(duration, base=base_time)
-                    is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
-                    is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
-                    is_reason_set = stripped == '='
-                    is_reason_delete = stripped == '-'
-                    updated_reason = existing_mute['reason'] if existing_mute else reason
-                    if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
-                        if is_reason_append:
-                            new_text = reason.strip() if reason else ''
-                            if not new_text:
-                                return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
-                            updated_reason = f"{updated_reason}\n{new_text}" if updated_reason else new_text
-                        elif is_reason_set:
-                            if not is_coordinator:
-                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset mute reasons.')
-                            updated_reason = reason.strip() if reason else ''
-                            if not updated_reason:
-                                return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
-                        elif is_reason_delete:
-                            if not is_coordinator:
-                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can delete voice mute reasons.')
-                            updated_reason = None
-                    if is_modification and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
-                        if not is_coordinator:
-                            allowed = False
-                            if expires_at and existing_mute['expires_at']:
-                                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
-                                active_cap = next((c for c in caps if c[0] == 'mute'), None)
-                                cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
-                                if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
-                                    allowed = True
-                            if not allowed:
-                                return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing mute with an absolute duration.')
-                    caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
-                    active_cap = next((c for c in caps if c[0] == 'mute'), None)
-                    now = datetime.now(timezone.utc)
-                    if active_cap:
-                        cap_expires_at, _ = self.parse_duration(active_cap[1])
-                        if cap_expires_at is None or (expires_at and expires_at > cap_expires_at):
-                            if not is_coordinator:
-                                return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create voice mutes longer than the channel cap ({active_cap[1]}).')
-                            if not reason.strip() and not is_reason_set:
-                                return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for voice mutes longer than the channel cap ({active_cap[1]}).')
-                    if expires_at is None or (expires_at - now) > timedelta(days=7):
-                        if not is_coordinator:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can voice mute permanently or longer than 7 days.')
-                        if not reason.strip() and not is_reason_set:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent voice mutes or those longer than 7 days.')
-                if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
-                    expires_at = existing_mute['expires_at']
+                existing_mute = await conn.fetchrow('''
+                    SELECT expires_at, reason
+                    FROM active_voice_mutes
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', ctx.guild.id, member_obj.id, channel_obj.id)
+                stripped = duration.strip() if duration else ''
+                is_modification = (
+                    (existing_mute is not None and stripped in ('+', '-', '=')) or
+                    (duration in ('0', '0h', '0hr', '0hrs', '0hour', '0hours',
+                                    '0m', '0min', '0mins', '0minute', '0minutes',
+                                    '0d', '0day', '0days'))
+                )
+                base_time = existing_mute['expires_at'] if existing_mute else None
+                if not existing_mute and stripped in ('+', '-', '='):
+                    return await self.handler.send_message(ctx,content='\U0001F6AB There is no existing voice mute to modify.')
+                is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'mute')
+                if stripped in ('+', '-', '='):
+                    expires_at = base_time
+                    duration_display = self.fmt_duration(base_time)
                 else:
-                    if existing_mute:
-                        if not is_coordinator and is_relative_duration:
-                            pass
-                        elif not is_coordinator and expires_at and existing_mute['expires_at']:
+                    expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
+                is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
+                is_reason_set = stripped == '='
+                is_reason_delete = stripped == '-'
+                updated_reason = reason
+                if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
+                    if is_reason_append:
+                        new_text = reason.strip() if reason else ''
+                        if not new_text:
+                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
+                        updated_reason = f"{existing_mute['reason']}\n{new_text}" if updated_reason else new_text
+                    elif is_reason_set:
+                        if not is_coordinator:
+                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset mute reasons.')
+                        updated_reason = reason.strip() if reason else ''
+                        if not updated_reason:
+                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
+                    elif is_reason_delete:
+                        if not is_coordinator:
+                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can delete voice mute reasons.')
+                        updated_reason = None
+                if is_modification and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
+                    if not is_coordinator:
+                        allowed = False
+                        if expires_at and existing_mute['expires_at']:
                             caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
                             active_cap = next((c for c in caps if c[0] == 'mute'), None)
                             cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
                             if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
-                                pass
-                            else:
-                                remaining = existing_mute['expires_at'] - discord.utils.utcnow()
-                                hours_left = round(remaining.total_seconds() / 3600, 1)
-                                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
-                        elif is_coordinator:
+                                allowed = True
+                        if not allowed:
+                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing mute with an absolute duration.')
+                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                active_cap = next((c for c in caps if c[0] == 'mute'), None)
+                now = datetime.now(timezone.utc)
+                if active_cap:
+                    cap_expires_at, _ = self.parse_duration(active_cap[1])
+                    if cap_expires_at is None or (expires_at and expires_at > cap_expires_at):
+                        if not is_coordinator:
+                            return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create voice mutes longer than the channel cap ({active_cap[1]}).')
+                        if not reason.strip() and not is_reason_set:
+                            return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for voice mutes longer than the channel cap ({active_cap[1]}).')
+                if expires_at is None or (expires_at - now) > timedelta(days=7):
+                    if not is_coordinator:
+                        return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can voice mute permanently or longer than 7 days.')
+                    if not reason.strip() and not is_reason_set:
+                        return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent voice mutes or those longer than 7 days.')
+            if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
+                expires_at = existing_mute['expires_at']
+            else:
+                if existing_mute:
+                    if not is_coordinator and is_relative_duration:
+                        pass
+                    elif not is_coordinator and expires_at and existing_mute['expires_at']:
+                        caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+                        active_cap = next((c for c in caps if c[0] == 'mute'), None)
+                        cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+                        if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
                             pass
                         else:
                             remaining = existing_mute['expires_at'] - discord.utils.utcnow()
                             hours_left = round(remaining.total_seconds() / 3600, 1)
                             return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
-                    if expires_at and expires_at <= now:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB You cannot reduce a voice mute below the current time.')
+                    elif is_coordinator:
+                        pass
+                    else:
+                        remaining = existing_mute['expires_at'] - discord.utils.utcnow()
+                        hours_left = round(remaining.total_seconds() / 3600, 1)
+                        return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
+                if expires_at and expires_at <= now:
+                    return await self.handler.send_message(ctx, content='\U0001F6AB You cannot reduce a voice mute below the current time.')
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     await conn.execute('''
