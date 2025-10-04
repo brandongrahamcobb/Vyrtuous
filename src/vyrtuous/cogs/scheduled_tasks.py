@@ -76,74 +76,42 @@ class ScheduledTasks(commands.Cog):
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
-        logger.info("Starting expired bans check task")
         now = datetime.now(timezone.utc)
-    
-        try:
+        async with self.bot.db_pool.acquire() as conn:
+            expired = await conn.fetch('''
+                SELECT guild_id, discord_snowflake, channel_id
+                FROM active_bans
+                WHERE expires_at <= $1
+            ''', now)
+        for record in expired:
+            user_id = record['discord_snowflake']
+            guild = self.bot.get_guild(record['guild_id'])
+            if guild is None:
+                continue
+            channel_id = record['channel_id']
+            channel = self.bot.get_channel(channel_id)
+            if not channel:
+                try:
+                    channel = await guild.fetch_channel(channel_id)
+                except discord.NotFound:
+                    continue
+            member = guild.get_member(user_id)
+            if member is None:
+                try:
+                    member = await guild.fetch_member(user_id)
+                except discord.NotFound:
+                    continue
             async with self.bot.db_pool.acquire() as conn:
-                expired = await conn.fetch('''
-                    SELECT guild_id, discord_snowflake, channel_id
-                    FROM active_bans
-                    WHERE expires_at <= $1
-                ''', now)
-    
-            logger.info(f"Found {len(expired)} expired ban(s) to process")
-    
-            for record in expired:
-                user_id = record['discord_snowflake']
-                channel_id = record['channel_id']
-                guild_id = record['guild_id']
-    
-                logger.debug(f"Processing expired ban for user {user_id} in channel {channel_id} (guild {guild_id})")
-    
-                channel = self.bot.get_channel(channel_id)
-                if not channel:
-                    logger.warning(f"Channel {channel_id} not found, skipping ban removal for user {user_id}")
-                    continue
-    
-                guild = self.bot.get_guild(guild_id)
-                if not guild:
-                    logger.warning(f"Guild {guild_id} not found, skipping ban removal for user {user_id}")
-                    continue
-    
-                member = guild.get_member(user_id)
-                if member is None:
-                    logger.debug(f"Member {user_id} not in cache, attempting to fetch from API")
-                    try:
-                        member = await guild.fetch_member(user_id)
-                        logger.debug(f"Successfully fetched member {user_id}")
-                    except discord.NotFound:
-                        logger.warning(f"Member {user_id} not found in guild {guild_id}, skipping")
-                        continue
-                    except discord.HTTPException as e:
-                        logger.error(f"Failed to fetch member {user_id}: {e}")
-                        continue
-    
-                # Remove from database
-                try:
-                    async with self.bot.db_pool.acquire() as conn:
-                        await conn.execute('''
-                            DELETE FROM active_bans
-                            WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                        ''', guild.id, user_id, channel_id)
-                    logger.info(f"Removed ban record from database for user {user_id} in channel {channel_id}")
-                except Exception as e:
-                    logger.error(f"Failed to delete ban record from database: {e}")
-                    continue
-    
-                # Remove channel permissions
-                try:
-                    await channel.set_permissions(member, overwrite=None)
-                    logger.info(f"Successfully removed channel ban for user {user_id} ({member}) in #{channel.name} ({channel_id})")
-                except discord.Forbidden:
-                    logger.warning(f"No permission to remove ban override for user {user_id} in channel {channel_id}")
-                except discord.HTTPException as e:
-                    logger.error(f"Failed to remove permission override for user {user_id} in channel {channel_id}: {e}")
-    
-            logger.info("Expired bans check task completed successfully")
-    
-        except Exception as e:
-            logger.error(f"Unexpected error in check_expired_bans task: {e}", exc_info=True)
+                await conn.execute('''
+                    DELETE FROM active_bans
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', guild.id, user_id, channel_id)
+            try:
+                await channel.set_permissions(member, overwrite=None)
+            except discord.Forbidden:
+                logger.warning(f'No permission to remove ban override for user {user_id} in channel {channel_id}.')
+            except discord.HTTPException as e:
+                logger.error(f'Failed to remove permission override: {e}')
 
     @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self):
@@ -159,7 +127,12 @@ class ScheduledTasks(commands.Cog):
                 guild = self.bot.get_guild(record['guild_id'])
                 if guild is None:
                     continue
-                channel = guild.get_channel(record['channel_id'])
+                channel = self.bot.get_channel(record['channel_id'])
+                if not channel:
+                    try:
+                        channel = await guild.fetch_channel(record['channel_id'])
+                    except discord.NotFound:
+                        continue
                 if not isinstance(channel, discord.VoiceChannel):
                     continue
                 member = guild.get_member(record['discord_snowflake'])
@@ -209,13 +182,17 @@ class ScheduledTasks(commands.Cog):
                 return
             for record in expired:
                 user_id = record['discord_snowflake']
+                guild = self.bot.get_guild(record['guild_id'])
+                if guild is None:
+                    continue
                 channel_id = record['channel_id']
                 channel = self.bot.get_channel(channel_id)
-                if channel is None:
-                    continue
-                guild = self.bot.get_guild(record['guild_id'])
+                if not channel:
+                    try:
+                        channel = await guild.fetch_channel(channel_id)
+                    except discord.NotFound:
+                        continue
                 member = guild.get_member(user_id)
-                
                 if member is None:
                     try:
                         member = await guild.fetch_member(user_id)
