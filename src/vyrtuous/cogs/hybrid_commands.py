@@ -424,7 +424,7 @@ class Hybrid(commands.Cog):
         async def ban_alias(
             ctx: commands.Context,
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-            duration: Optional[str] = commands.parameter(default='24', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default'),
+            duration: Optional[str] = commands.parameter(default='24', description='(+|-)duration(m|h|d) \n 0 - permanent / 24h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
             *,
             reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
         ) -> None:
@@ -722,13 +722,13 @@ class Hybrid(commands.Cog):
         return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} has been granted developer rights in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
 
     def create_flag_alias(self, command_name: Optional[str]) -> Command:
-        @commands.command(name=command_name, help='Flag a user in the database for the channel mapped to this alias.')
+        @commands.command(name=command_name, help='Flag a user for the channel mapped to this alias.')
         @is_owner_developer_coordinator_moderator_predicator('flag')
         async def flag_alias(
             ctx: commands.Context,
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
             *,
-            reason: Optional[str] = commands.parameter(default='', description='Optional reason')
+            reason: Optional[str] = commands.parameter(default='', description='An optional reason. For modifications, `+` to append the reason, `=` to overwrite the reason, `-` to delete the reason')
         ) -> None:
             channel_id = (
                 self.bot.command_aliases
@@ -913,7 +913,7 @@ class Hybrid(commands.Cog):
         async def text_mute_alias(
             ctx: commands.Context,
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-            duration: Optional[str] = commands.parameter(default='8', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 8h - default'),
+            duration: Optional[str] = commands.parameter(default='8', description='(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
             *,
             reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
         ) -> None:
@@ -1068,7 +1068,7 @@ class Hybrid(commands.Cog):
         async def voice_mute_alias(
             ctx: commands.Context,
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-            duration: Optional[str] = commands.parameter(default='8', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 8h - default'),
+            duration: Optional[str] = commands.parameter(default='8', description='(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
             *,
             reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
         ) -> None:
@@ -1682,7 +1682,7 @@ class Hybrid(commands.Cog):
             for ch_id, records in grouped.items():
                 ch = ctx.guild.get_channel(ch_id)
                 ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
-                embed = discord.Embed(title=f'⛔ Bans in {ch_name}', color=discord.Color.red())
+                embed = discord.Embed(title=f'\u26D4 Ban records for {ch_name}', color=discord.Color.red())
                 for record in records:
                     user = ctx.guild.get_member(record['discord_snowflake'])
                     reason = record['reason'] or 'No reason provided'
@@ -1714,7 +1714,7 @@ class Hybrid(commands.Cog):
             bans = [b for b in bans if ctx.guild.get_channel(b['channel_id'])]
             if not bans:
                 return await ctx.send(f'\U0001F6AB {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
-            embed = discord.Embed(title=f'Ban Records', description=f'For {member_obj.mention}', color=discord.Color.red())
+            embed = discord.Embed(title=f'\u26D4 Ban records for {member_obj.display_name}', color=discord.Color.red())
             for record in bans:
                 channel_obj = ctx.guild.get_channel(record['channel_id'])
                 channel_mention = channel_obj.mention if channel_obj else f'Channel ID `{record['channel_id']}`'
@@ -1769,7 +1769,7 @@ class Hybrid(commands.Cog):
             pages = []
             for i in range(0, len(lines), chunk_size):
                 chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(title=f'⛔ Active Bans in {channel_obj.mention}', description='\n'.join(chunk), color=discord.Color.red())
+                embed = discord.Embed(title=f'\u26D4 Ban records for {channel_obj.name}', description='\n'.join(chunk), color=discord.Color.red())
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
@@ -1936,7 +1936,7 @@ class Hybrid(commands.Cog):
                 for uid in user_ids:
                     m = ctx.guild.get_member(uid)
                     name = m.display_name if m else f'User ID {uid}'
-                    embed.add_field(name='\u200b', value=f'• {name} (<@{uid}>)', inline=False)
+                    embed.add_field(name=f'{ctx.guild.name}', value=f'• {name} (<@{uid}>)', inline=False)
                 pages.append(embed)
             if len(pages) == 1:
                 return await ctx.send(embed=pages[0], allowed_mentions=discord.AllowedMentions.none())
@@ -2084,11 +2084,11 @@ class Hybrid(commands.Cog):
             for ch_id, user_ids in sorted(channel_map.items()):
                 ch = guild.get_channel(ch_id)
                 ch_name = ch.mention if ch else f'Unknown Channel ({ch_id})'
-                embed = discord.Embed(title=f'🚩 Flagged Users in {ch_name}', color=discord.Color.yellow())
+                embed = discord.Embed(title=f'\U0001F6A9 Flag records for {ch_name}', color=discord.Color.yellow())
                 for uid in user_ids:
                     m = guild.get_member(uid)
                     mention = m.mention if m else f'<@{uid}>'
-                    embed.add_field(name='\u200b', value=f'• {mention}', inline=False)
+                    embed.add_field(name=f'{ctx.guild.name}', value=f'• {mention}', inline=False)
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
@@ -2100,7 +2100,6 @@ class Hybrid(commands.Cog):
                     FROM active_flags
                     WHERE guild_id = $1 AND discord_snowflake = $2
                 ''', ctx.guild.id, member_obj.id)
-                
                 rows = [r for r in rows if guild.get_channel(r['channel_id'])]
                 if not rows:
                     return await ctx.send(
@@ -2113,9 +2112,8 @@ class Hybrid(commands.Cog):
                     ch_name = ch.mention if ch else f'`{r["channel_id"]}`'
                     reason = r['reason'] or "No reason given"
                     lines.append(f'• {ch_name} — {reason}')
-                
                 embed = discord.Embed(
-                    title=f'🚩 Channels Where {member_obj.display_name} is Flagged',
+                    title=f'\U0001F6A9 Flag records for {member_obj.display_name}',
                     description='\n'.join(lines),
                     color=discord.Color.orange()
                 )
@@ -2142,10 +2140,10 @@ class Hybrid(commands.Cog):
                     formatted_lines.append(f'• {member_obj.display_name} — <@{uid}>')
                 if formatted_lines:
                     embed = discord.Embed(
-                        title=f'🚩 Flagged Users in {channel_obj.mention}',
+                        title=f'\U0001F6A9 Flag records for {channel_obj.name}',
                         color=discord.Color.red()
                     )
-                    embed.add_field(name='\u200b', value='\n'.join(formatted_lines), inline=False)
+                    embed.add_field(name=f'{ctx.guild.name}', value='\n'.join(formatted_lines), inline=False)
                     pages.append(embed)
             if not pages:
                 return await ctx.send(f'\U0001F6AB No flagged users currently in {guild.name}.')
@@ -2258,7 +2256,7 @@ class Hybrid(commands.Cog):
                     for i in range(0, len(lines), chunk_size):
                         chunk = lines[i:i + chunk_size]
                         embed = discord.Embed(
-                            title=f'🐮 New Vegans in {channel_obj.mention}',
+                            title=f'🐮 Vegan records for {channel_obj.name}',
                             description='\n'.join(chunk),
                             color=discord.Color.green()
                         )
@@ -2305,11 +2303,11 @@ class Hybrid(commands.Cog):
                 for ch_id, user_ids in sorted(channel_map.items()):
                     vc = ctx.guild.get_channel(ch_id)
                     vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-                    embed = discord.Embed(title=f'🛡️ Moderators for {vc_name}', color=discord.Color.magenta())
+                    embed = discord.Embed(title=f'\U0001F6E1 Moderators for {vc_name}', color=discord.Color.magenta())
                     for uid in user_ids:
                         m = ctx.guild.get_member(uid)
                         name = m.display_name if m else f'User ID {uid}'
-                        embed.add_field(name='\u200b', value=f'• {name} (<@{uid}>)', inline=False)
+                        embed.add_field(name=f'{ctx.guild.name}', value=f'• {name} (<@{uid}>)', inline=False)
                     pages.append(embed)
                 if len(pages) == 1:
                     return await ctx.send(embed=pages[0], allowed_mentions=discord.AllowedMentions.none())
@@ -2379,7 +2377,7 @@ class Hybrid(commands.Cog):
                 for i in range(0, len(lines), chunk_size):
                     chunk = lines[i:i + chunk_size]
                     embed = discord.Embed(
-                        title=f'🛡️ Moderators for {channel_obj.name}',
+                        title=f'\U0001F6E1 Moderators for {channel_obj.name}',
                         description='\n'.join(chunk),
                         color=discord.Color.magenta()
                     )
@@ -2427,7 +2425,7 @@ class Hybrid(commands.Cog):
                     channel_name = channel_obj.mention if channel else f'Unknown Channel ({channel_id})'
                     chunk_size = 18
                     for i in range(0, len(user_entries), chunk_size):
-                        embed = discord.Embed(title=f'🔇 Active Mutes in {channel_name}', color=discord.Color.orange())
+                        embed = discord.Embed(title=f'\U0001F507 Mutes records for {channel_name}', color=discord.Color.orange())
                         for record in user_entries[i:i + chunk_size]:
                             user_id = record['discord_snowflake']
                             member = ctx.guild.get_member(user_id)
@@ -2457,7 +2455,7 @@ class Hybrid(commands.Cog):
                 reason = record['reason']
                 duration_str = self.fmt_duration(record['expires_at'])
                 description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
-            embed = discord.Embed(title=f'Mute Records for {member_obj.mention}', description='\n'.join(description_lines), color=discord.Color.orange())
+            embed = discord.Embed(title=f'\U0001F507 Mute records for {member_obj.display_name}', description='\n'.join(description_lines), color=discord.Color.orange())
             return await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         elif (is_mod_or_coord or is_owner_or_dev) and channel_obj:
             async with self.bot.db_pool.acquire() as conn:
@@ -2483,8 +2481,8 @@ class Hybrid(commands.Cog):
                 pages = []
                 for i in range(0, len(description_lines), chunk_size):
                     chunk = description_lines[i:i + chunk_size]
-                    embed = discord.Embed(title=f'\U0001F507 Muted Users in {channel_obj.mention}', color=discord.Color.orange())
-                    embed.add_field(name='Muted Users', value='\n'.join(chunk), inline=False)
+                    embed = discord.Embed(title=f'\U0001F507 Mute records for {channel_obj.name}', color=discord.Color.orange())
+                    embed.add_field(name=f'{ctx.guild.name}', value='\n'.join(chunk), inline=False)
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
@@ -2561,7 +2559,7 @@ class Hybrid(commands.Cog):
                     ch = ctx.guild.get_channel(ch_id)
                     ch_name = ch.mention if ch else f'Unknown Channel ({ch_id})'
                     for i in range(0, len(entries), chunk_size):
-                        embed = discord.Embed(title=f'🔇 Text Mutes in {ch_name}', color=discord.Color.orange())
+                        embed = discord.Embed(title=f'\U0001F4DA Text-mute records for {ch_name}', color=discord.Color.orange())
                         for e in entries[i:i + chunk_size]:
                             user = ctx.guild.get_member(e['discord_snowflake'])
                             mention = user.mention if user else f'`{e["discord_snowflake"]}`'
@@ -2588,7 +2586,7 @@ class Hybrid(commands.Cog):
                     lines.append(f'• {ch.mention} — {r["reason"]} — {duration_str}')
                 pages, chunk_size = [], 18
                 for i in range(0, len(lines), chunk_size):
-                    embed = discord.Embed(title=f'Text Mute Records for {member_obj.mention}', description='\n'.join(lines[i:i+chunk_size]), color=discord.Color.orange())
+                    embed = discord.Embed(title=f'\U0001F4DA Text-mute records for {member_obj.display_name}', description='\n'.join(lines[i:i+chunk_size]), color=discord.Color.orange())
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
@@ -2608,7 +2606,7 @@ class Hybrid(commands.Cog):
                     lines.append(f'• {user.mention} — {r["reason"]} — {duration_str}')
                 pages, chunk_size = [], 18
                 for i in range(0, len(lines), chunk_size):
-                    embed = discord.Embed(title=f'Text-Muted Users in {channel_obj.mention}', description='\n'.join(lines[i:i+chunk_size]), color=discord.Color.orange())
+                    embed = discord.Embed(title=f'\U0001F4DA Text-mute records for {channel_obj.name}', description='\n'.join(lines[i:i+chunk_size]), color=discord.Color.orange())
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
