@@ -770,24 +770,26 @@ class Hybrid(commands.Cog):
                 async with self.bot.db_pool.acquire() as conn:
                     existing_flag = await conn.fetchrow(select_sql, ctx.guild.id, member_obj.id, channel_obj.id)
                     is_modification = existing_flag is not None
-                    updated_reason = reason
                     stripped = reason.strip() if reason else ''
-                    is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
+                    is_reason_append = stripped.startswith('+') and not stripped[1].isdigit()
                     is_reason_set = stripped.startswith('=')
-                    is_reason_delete = stripped == '-'
+                    is_reason_delete = stripped.startswith('-')
+                    cleaned_reason = stripped[1:].strip() if (is_reason_append or is_reason_set or is_reason_delete) else stripped
+                    updated_reason = cleaned_reason
+                    if not is_modification and (is_reason_append or is_reason_set or is_reason_delete):
+                        return await self.handler.send_message(ctx, content='\U0001F6AB Cannot modify a flag that does not exist. Use a plain reason to create one.')
                     if is_modification and (is_reason_append or is_reason_set or is_reason_delete):
                         if is_reason_append:
-                            new_text = reason.strip() if reason else ''
-                            if not new_text:
+                            if not cleaned_reason:
                                 return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
-                            updated_reason = f"{existing_flag['reason']}\n{new_text}" if updated_reason else new_text
+                            updated_reason = f"{existing_flag['reason']}\n{cleaned_reason}" if existing_flag['reason'] else cleaned_reason
                         elif is_reason_set:
                             is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'flag')
                             if not is_coordinator:
                                 return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset flag reasons.')
-                            updated_reason = reason.strip() if reason else ''
-                            if not updated_reason:
+                            if not cleaned_reason:
                                 return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
+                            updated_reason = cleaned_reason
                         elif is_reason_delete:
                             is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'flag')
                             if not is_coordinator:
@@ -795,8 +797,8 @@ class Hybrid(commands.Cog):
                             updated_reason = None
                         await conn.execute(update_sql, ctx.guild.id, member_obj.id, channel_obj.id, updated_reason)
                     elif not is_modification:
-                        await conn.execute(insert_sql, ctx.guild.id, member_obj.id, channel_obj.id, reason if reason else 'No reason provided')
-                        updated_reason = reason if reason else 'No reason provided'
+                        updated_reason = cleaned_reason if cleaned_reason else 'No reason provided'
+                        await conn.execute(insert_sql, ctx.guild.id, member_obj.id, channel_obj.id, updated_reason)
                     else:
                         return await ctx.send(f'\U0001F6AB {member_obj.mention} is already flagged in {channel_obj.mention} for {existing_flag["reason"]}.', allowed_mentions=discord.AllowedMentions.none())
                     embed = discord.Embed(color=discord.Color.orange())
