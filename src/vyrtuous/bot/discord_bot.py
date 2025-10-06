@@ -36,7 +36,7 @@ class DiscordBot(commands.Bot):
             self.lock = lock
 #            self.oauth_token = oauth_token
             discord_api_config = config.get('api_keys', {}).get('Discord', {})
-            self.api_key = self.config.get('api_key') or os.getenv('DISCORD_API_KEY')
+            self.api_key = discord_api_config.get('api_key') or os.getenv('DISCORD_API_KEY')
             self.command_aliases: dict[int, dict[str, dict[str, dict[str, int]]]] = defaultdict(
                 lambda: {
                     "channel_aliases": {"mute": {}, "unmute": {}, "ban": {}, "unban": {}, "flag": {}, "unflag": {}, "cow": {}, "uncow": {}},
