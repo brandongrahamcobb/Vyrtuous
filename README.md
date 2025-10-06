@@ -88,41 +88,25 @@ git clone https://github.com/brandongrahamcobb/Vyrtuous.git
 3. Install postgresql
 4. Run from the root directory of the git repository. 
 ```sh
-docker compose build vyrtuous
-```
-5. Run 
-```sh
-docker cp schema.sql vyrtuous:/.
-```
-6. Run 
-```sh
-docker exec -it vyrtuous /bin/bash
-```
-7. Run
-```sh
+sudo docker compose build vyrtuous --no-cache
+sudo docker compose up db
+sudo docker cp schema/password_protected/schema.sql vyrtuous-db-1:/.
+sudo docker exec -it vyrtuous-db-1 /bin/bash
 psql -U postgres
-```
-8. 
-```sql
 CREATE DATABASE vyrtuous;
-CREATE USER vyrtuous;
-ALTER USER vyrtuous WITH PASSWORD 'password';
-```
-9. Exit psql.
-10. Run 
-```sh
-psql -U postgres -d vyrtuous -f schema.sql
-```
-11. Exit the exec back into the original shell.
-12. Run 
-```sh
-docker compose run vyrtuous
-```
-13. Answer the configuration setup (check to make sure its enabled in config.py, if not enable it for setup, then disable after config)
-14. Exit
-15. Run
-```sh
-docker compose up vyrtuous -d
+CREATE USER vyrtuous WITH PASSWORD 'password';
+\q
+psql -U vyrtuous -d vyrtuous -f schema.sql
+\q
+export POSTGRES_PASSWORD="password"
+docker compose run --service-ports vyrtuous
+Enter API key for 'Discord' []: 
+Discord command prefix? [!]: 
+Discord developer channel? []:
+Discord testing guild id []:
+Logging level [INFO]:
+exit
+sudo docker compose up vyrtuous -d
 ```
 16. Profit
 
@@ -130,24 +114,13 @@ docker compose up vyrtuous -d
 
 On first run, The Vyrtuous Project will prompt you to enter and confirm:
 
-• Discord bot token
-
-```txt
-How many api keys do you want to make?
-1
-"Discord"
-Enter api_key
-```
-
 • Discord command prefix
-
-• Discord character limit (regular = 2000, nitro = 4000)
 
 • Discord owner ID
 
-• Discord test guild
+• Discord testing guild
 
-Your settings are saved this in the container:
+Your settings are saved here in the container:
 
 ```txt
 ~/.config/vyrtuous/config.yml

@@ -65,10 +65,10 @@ class Config:
             while key_name in config['api_keys']:
                 key_name = prompt_for_values(f'Enter a unique name for API key {i}', f'api_key_{i}')
             config['api_keys'][key_name] = {
-#                'api_key': prompt_for_values(f'Enter API key for \'{key_name}\'', ''),
-                'client_id': prompt_for_values(f'Enter client ID for \'{key_name}\'', ''),
-                'client_secret': prompt_for_values(f'Enter client secret for \'{key_name}\'', ''),
-                'redirect_uri': prompt_for_values(f'Enter redirect URI for \'{key_name}\'', '')
+                'api_key': prompt_for_values(f'Enter API key for \'{key_name}\'', ''),
+#                'client_id': prompt_for_values(f'Enter client ID for \'{key_name}\'', ''),
+#                'client_secret': prompt_for_values(f'Enter client secret for \'{key_name}\'', ''),
+#                'redirect_uri': prompt_for_values(f'Enter redirect URI for \'{key_name}\'', '')
             }
 
     @staticmethod

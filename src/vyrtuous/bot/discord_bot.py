@@ -27,14 +27,14 @@ from vyrtuous.utils.setup_logging import logger
 
 
 class DiscordBot(commands.Bot):
-    def __init__(self, *, config, db_pool: asyncpg.Pool, lock, oauth_token, **kwargs):
+    def __init__(self, *, config, db_pool: asyncpg.Pool, lock, **kwargs): # oauth_token, 
         try:
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'], help_command=None, intents=intents, **kwargs)
             self.config = config
             self.db_pool = db_pool
             self.lock = lock
-            self.oauth_token = oauth_token
+#            self.oauth_token = oauth_token
             discord_api_config = config.get('api_keys', {}).get('Discord', {})
             self.api_key = self.config.get('api_key') or os.getenv('DISCORD_API_KEY')
             self.command_aliases: dict[int, dict[str, dict[str, dict[str, int]]]] = defaultdict(

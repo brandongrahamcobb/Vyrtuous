@@ -22,9 +22,12 @@ services:
     expose:
       - "8080"
     volumes:
-      - ~/.config/vyrtuous:/root/.config/vyrtuous
+      - vyrtuous-backups:/app/backups
+      - vyrtuous-config:/root/.config/vyrtuous
       - ./src/vyrtuous:/app/vyrtuous
-      - ./backups:/app/backups
     command: python -u vyrtuous/main.py
     stdin_open: true  # Keep stdin open (like -i)
     tty: true
+volumes:
+  vyrtuous-config:
+  vyrtuous-backups:

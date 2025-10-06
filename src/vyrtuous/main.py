@@ -50,24 +50,24 @@ async def main():
 
     lock = asyncio.Lock()
 
-    discord_oauth = DiscordOAuth(config)
-    setup_discord_routes(discord_app, discord_oauth)
+#    discord_oauth = DiscordOAuth(config)
+#    setup_discord_routes(discord_app, discord_oauth)
 
-    discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=3000))
-    print("Please authenticate Discord by visiting the following URL:")
-    print(discord_oauth.get_authorization_url())
+#    discord_quart = asyncio.create_task(discord_app.run_task(host="0.0.0.0", port=3000))
+#    print("Please authenticate Discord by visiting the following URL:")
+#    print(discord_oauth.get_authorization_url())
 
     discord_bot = DiscordBot(
         config=config,
         db_pool=db_pool,
-        lock=lock,
-        oauth_token=discord_oauth.access_token,
+        lock=lock
+#        oauth_token=discord_oauth.access_token,
     )
 
 
     tasks = [
         asyncio.create_task(start_bot(discord_bot, "DiscordBot")),
-        discord_quart,
+#        discord_quart,
     ]
 
     await asyncio.gather(*tasks)

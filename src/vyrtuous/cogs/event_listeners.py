@@ -18,6 +18,7 @@
 import discord
 from datetime import datetime, timezone
 import os
+import time
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
@@ -25,6 +26,7 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService, ChannelPaginator
 from vyrtuous.bot.discord_bot import DiscordBot
 import asyncio
+from typing import defaultdict
 
 class EventListeners(commands.Cog):
 
@@ -33,6 +35,7 @@ class EventListeners(commands.Cog):
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.db_pool)
+        self.join_log = defaultdict(list)
     
     async def fetch_active_bans(self, conn, guild_id: int, user_id: int):
         return await conn.fetch('''
@@ -49,81 +52,6 @@ class EventListeners(commands.Cog):
             WHERE guild_id = $1 AND discord_snowflake = $2
               AND (expires_at IS NULL OR expires_at > NOW())
         ''', guild_id, user_id)
-        
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
-        if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
-            return
-        if member.bot:
-            return
-        after_channel = after.channel
-        before_channel = before.channel
-        user_id = member.id
-        should_be_muted = False
-        just_manual_unmute = False
-        async with self.db_pool.acquire() as conn:
-            user_data = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', user_id)
-            server_mute_guild_ids = user_data['server_mute_guild_ids'] or [] if user_data else []
-            if member.guild.id in server_mute_guild_ids:
-                return
-            if before.mute != after.mute:
-                if before.mute and not after.mute and before_channel:
-                    await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, before_channel.id)
-                    just_manual_unmute = True
-            if after_channel:
-                row = await conn.fetchrow('SELECT expires_at FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
-                if row:
-                    if row['expires_at'] and row['expires_at'] <= datetime.now(timezone.utc):
-                        await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
-                        row = None
-                        should_be_muted = False
-                if not before.mute and after.mute and after_channel:
-                    existing_row = await conn.fetchrow('SELECT guild_id FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', member.guild.id, user_id, after_channel.id)
-                    if not existing_row:
-                        await conn.execute('INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id) VALUES ($1, $2, $3) ON CONFLICT (guild_id, discord_snowflake, channel_id) DO NOTHING', member.guild.id, user_id, after_channel.id)
-                        existing_mute_row = await conn.fetchrow(
-                            'SELECT expires_at FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3',
-                            member.guild.id, user_id, after_channel.id
-                        )
-                mute_row = await conn.fetchrow('''
-                    SELECT expires_at
-                    FROM active_voice_mutes
-                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                ''', member.guild.id, user_id, after_channel.id)
-                should_be_muted = False
-                if mute_row:
-                    if not mute_row['expires_at'] or mute_row['expires_at'] > datetime.now(timezone.utc):
-                        should_be_muted = True
-                if just_manual_unmute:
-                    should_be_muted = False
-                if should_be_muted and not after.mute:
-                    expires_at = mute_row['expires_at'] if mute_row else None
-                    if expires_at:
-                        await conn.execute('''
-                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at)
-                            VALUES ($1, $2, $3, $4)
-                            ON CONFLICT (guild_id, discord_snowflake, channel_id)
-                            DO UPDATE SET expires_at = EXCLUDED.expires_at
-                        ''', member.guild.id, user_id, after_channel.id, expires_at)
-                    else:
-                        await conn.execute('''
-                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id)
-                            VALUES ($1, $2, $3)
-                            ON CONFLICT (guild_id, discord_snowflake, channel_id) DO NOTHING
-                        ''', member.guild.id, user_id, after_channel.id)
-                    try:
-                        await member.edit(mute=True, reason=f'Enforcing mute in {after_channel.name} (found in arrays)')
-                    except discord.Forbidden:
-                        logger.debug(f'No permission to mute {member.display_name}')
-                    except discord.HTTPException as e:
-                        logger.debug(f'Failed to mute {member.display_name}: {e}')
-                elif not should_be_muted and after.mute:
-                    try:
-                        await member.edit(mute=False, reason=f'Auto-unmuting in {after_channel.name} (no mute record)')
-                    except discord.Forbidden:
-                        logger.debug(f'No permission to unmute {member.display_name}')
-                    except discord.HTTPException as e:
-                        logger.debug(f'Failed to unmute {member.display_name}: {e}')
                         
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
@@ -228,6 +156,8 @@ class EventListeners(commands.Cog):
                             ch_mentions = []
                             for ch_id in other_channels:
                                 ch = member.guild.get_channel(ch_id)
+                                if not ch:
+                                    ch = await member.guild.fetch_channel(ch_id)
                                 ch_mentions.append(ch.mention if ch else f'Channel ID `{ch_id}`')
                             embed.add_field(name='Other flagged channels', value='\n'.join(ch_mentions), inline=False)
                         embeds.append(embed)
@@ -244,11 +174,16 @@ class EventListeners(commands.Cog):
                                 reason = record['reason'] or 'No reason provided'
                                 embed.add_field(name='Channel', value=f'{ch_name}\nReason: {reason}', inline=False)
                             embeds.append(embed)
-                        if len(embeds) == 1:
-                            await after_channel.send(embed=embeds[0])
-                        else:
-                            paginator = ChannelPaginator(self.bot, after_channel, embeds)
-                            await paginator.start()
+                        now = time.time()
+                        self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
+                        if len(self.join_log[member.id]) < 3:
+                            self.join_log[member.id].append(now)
+                            if len(embeds) == 1:
+                                await after_channel.send(embed=embeds[0])
+                            else:
+                                paginator = ChannelPaginator(self.bot, after_channel, embeds)
+                                await paginator.start()
+                        count += 1
                     except Exception as e:
                         logger.exception('Error in on_voice_state_update', exc_info=e)
                         
