@@ -2324,7 +2324,7 @@ class Hybrid(commands.Cog):
         _, is_coord = await check_owner_dev_coord(ctx, channel_obj)
         if is_owner_or_dev and member_obj:
             if member_obj.id != ctx.author.id:
-                if not is_coord:
+                if not is_coord and not is_owner_or_dev:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`mods`) for {member_obj.mention}.')
             query = '''
                 SELECT moderator_channel_ids

@@ -289,7 +289,6 @@ async def check_owner_dev_coord_mod(ctx: commands.Context, channel: Optional[dis
                 is_mod_or_coord = True
             elif target_channel_id in moderator_ids:
                 is_mod_or_coord = True
-
     return is_owner_or_dev, is_mod_or_coord
 
 async def check_owner_dev_coord(ctx: commands.Context, channel: Optional[discord.abc.GuildChannel] = None) -> Tuple[bool, bool]:
