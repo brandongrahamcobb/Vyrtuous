@@ -284,7 +284,7 @@ class Hybrid(commands.Cog):
         if original_duration:
             return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap changed on {channel_obj.mention} for {moderation_type} from {duration} to {duration_str}.')
         else:
-            return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap set on {channel_obj.mention} for {moderation_type} {duration_str}.')
+            return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Cap set on {channel_obj.mention} for {moderation_type} for {duration_str}.')
         
     @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
     @is_owner_predicator()
@@ -900,7 +900,7 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` have a role because they are a higher/or equivalent role than you in {channel_obj.mention}.')
             role_obj = ctx.guild.get_role(static_role_id)
             if not role_obj:
-                return await ctx.send(f'⚠️ Could not resolve role with ID `{static_role_id}`.')
+                return await ctx.send(f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
             if role_obj in member_obj.roles:
                 return await ctx.send(f'{member_obj.mention} already has {role_obj.mention}.')
             await member_obj.add_roles(role_obj, reason=f'Added role')
@@ -1097,7 +1097,7 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
             async with self.bot.db_pool.acquire() as conn:
                 existing_mute = await conn.fetchrow('''
-                    SELECT expires_at, reason
+                    SELECT expires_at, reason, target
                     FROM active_voice_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
                 ''', ctx.guild.id, member_obj.id, channel_obj.id)
@@ -1191,12 +1191,13 @@ class Hybrid(commands.Cog):
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     await conn.execute('''
-                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, reason)
-                        VALUES ($1, $2, $3, $4, $5)
-                        ON CONFLICT (guild_id, discord_snowflake, channel_id) DO UPDATE
+                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, reason, target)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                        ON CONFLICT (guild_id, discord_snowflake, channel_id, target) DO UPDATE
                         SET expires_at = EXCLUDED.expires_at,
-                            reason = EXCLUDED.reason
-                    ''', ctx.guild.id, member_obj.id, channel_obj.id, expires_at, updated_reason or 'No reason provided')
+                            reason = EXCLUDED.reason,
+                            target = EXCLUDED.target
+                    ''', ctx.guild.id, member_obj.id, channel_obj.id, expires_at, updated_reason or 'No reason provided', 'user')
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
@@ -1398,8 +1399,12 @@ class Hybrid(commands.Cog):
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     row = await conn.fetchrow('''
-                        SELECT expires_at FROM active_voice_mutes
-                        WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                        SELECT expires_at
+                        FROM active_voice_mutes
+                        WHERE guild_id = $1
+                          AND discord_snowflake = $2
+                          AND channel_id = $3
+                          AND target = 'user'
                     ''', ctx.guild.id, member_obj.id, channel_obj.id)
                     if not row:
                         return await ctx.send(f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
@@ -1407,7 +1412,7 @@ class Hybrid(commands.Cog):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
                     if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                         await member_obj.edit(mute=False)
-                    await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', ctx.guild.id, member_obj.id,  channel_obj.id)
+                    await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4', ctx.guild.id, member_obj.id,  channel_obj.id, 'user')
                     await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,  $2, $3, $4, $5, $6)', 'unmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Unmuted a member')
             except Exception as e:
                 logger.warning(f'\U0001F6AB Database error: {e}')
@@ -1451,7 +1456,7 @@ class Hybrid(commands.Cog):
             static_role_id = int(alias_data.get('role_id'))
             role_obj = ctx.guild.get_role(static_role_id)
             if not role_obj:
-                return await ctx.send(f'⚠️ Could not resolve role with ID `{static_role_id}`.')
+                return await ctx.send(f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
             if role_obj not in member_obj.roles:
                 return await ctx.send(f'{member_obj.mention} does not have {role_obj.mention}.')
             await member_obj.remove_roles(role_obj)
@@ -2188,7 +2193,7 @@ class Hybrid(commands.Cog):
                 else:
                     detail = "Unknown filter"
                 embed.add_field(
-                    name=f"{mention} {'✅' if enabled else '❌'}",
+                    name=f"{mention} {'✅' if enabled else '\U0001F6AB'}",
                     value=f"Type: **{log_type}**\n{detail}",
                     inline=False
                 )
@@ -2412,6 +2417,7 @@ class Hybrid(commands.Cog):
                         SELECT discord_snowflake, channel_id, expires_at, COALESCE(reason, 'No reason provided') AS reason
                         FROM active_voice_mutes
                         WHERE guild_id = $1
+                          AND target = 'user'
                         ORDER BY channel_id, discord_snowflake
                     ''', ctx.guild.id)
                 if not records:
@@ -2443,7 +2449,9 @@ class Hybrid(commands.Cog):
                 records = await conn.fetch('''
                     SELECT guild_id, channel_id, expires_at, reason
                     FROM active_voice_mutes
-                    WHERE discord_snowflake = $1 AND guild_id = $2
+                    WHERE discord_snowflake = $1
+                      AND guild_id = $2
+                      AND target = 'user'
                 ''', member_obj.id, ctx.guild.id)
             records = [r for r in records if ctx.guild.get_channel(r['channel_id'])]
             if not records:
@@ -2460,9 +2468,11 @@ class Hybrid(commands.Cog):
         elif (is_mod_or_coord or is_owner_or_dev) and channel_obj:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
-                    SELECT discord_snowflake, expires_at, COALESCE(reason, 'No reason provided') AS reason
+                    SELECT guild_id, channel_id, expires_at, reason
                     FROM active_voice_mutes
-                    WHERE channel_id = $1 AND guild_id = $2
+                    WHERE channel_id = $1
+                      AND guild_id = $2
+                      AND target = 'user'
                 ''', channel_obj.id, ctx.guild.id)
                 if not records:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are currently muted in {channel_obj.mention}.')
@@ -2525,7 +2535,88 @@ class Hybrid(commands.Cog):
                 pages.append(embed)
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
-            
+    
+    @commands.command(name='stages', help='Lists stage mute statistics.')
+    @is_owner_developer_coordinator_predicator(None)
+    async def list_stages(self, ctx: commands.Context, target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention')):
+        channel_obj = await self.resolve_channel(ctx, target)
+        async with self.bot.db_pool.acquire() as conn:
+            if target and target.lower() == 'all':
+                is_owner_or_dev, _ = await check_owner_dev_coord_mod(ctx, None)
+                if not is_owner_or_dev:
+                    return await self.handler.send_message(ctx, content='\U0001F6AB Only owners/devs can view all stages.')
+                stages = await conn.fetch('''
+                    SELECT s.channel_id, s.initiator_id, s.expires_at, COUNT(v.discord_snowflake) AS active_mutes
+                    FROM active_stages s
+                    LEFT JOIN active_voice_mutes v
+                        ON s.guild_id=v.guild_id AND s.channel_id=v.channel_id AND v.target='room'
+                    WHERE s.guild_id=$1
+                    GROUP BY s.channel_id, s.initiator_id, s.expires_at
+                    ORDER BY s.channel_id
+                ''', ctx.guild.id)
+                if not stages:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No active stages in {ctx.guild.name}.')
+                pages, chunk_size = [], 8
+                for i in range(0, len(stages), chunk_size):
+                    embed = discord.Embed(title=f'\U0001F4DA Active Stages in {ctx.guild.name}', color=discord.Color.purple())
+                    for s in stages[i:i+chunk_size]:
+                        ch = ctx.guild.get_channel(s['channel_id'])
+                        ch_name = ch.mention if ch else f'Unknown Channel ({s["channel_id"]})'
+                        embed.add_field(name=ch_name, value=f'Active stage mutes: {s["active_mutes"]}', inline=False)
+                    pages.append(embed)
+                paginator = Paginator(self.bot, ctx, pages)
+                return await paginator.start()
+            if not channel_obj:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from input: {target}.')
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+            if not (is_owner_or_dev or is_mod_or_coord):
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to view stages in {channel_obj.mention}.')
+            stage = await conn.fetchrow('''
+                SELECT initiator_id, expires_at
+                FROM active_stages
+                WHERE guild_id=$1 AND channel_id=$2
+            ''', ctx.guild.id, channel_obj.id)
+            if not stage:
+                return await ctx.send(f'\U0001F6AB No active stage in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            mutes = await conn.fetch('''
+                SELECT discord_snowflake, expires_at, reason
+                FROM active_voice_mutes
+                WHERE guild_id=$1 AND channel_id=$2 AND target='room'
+            ''', ctx.guild.id, channel_obj.id)
+            coordinators = await conn.fetch('''
+                SELECT discord_snowflake
+                FROM stage_coordinators
+                WHERE guild_id=$1 AND channel_id=$2
+            ''', ctx.guild.id, channel_obj.id)
+            coordinator_mentions = []
+            for c in coordinators:
+                member = ctx.guild.get_member(c['discord_snowflake'])
+                if member:
+                    coordinator_mentions.append(member.mention)
+            coordinator_str = ', '.join(coordinator_mentions) if coordinator_mentions else 'No coordinators'
+            initiator = ctx.guild.get_member(stage['initiator_id'])
+            initiator_name = initiator.mention if initiator else f'`{stage["initiator_id"]}`'
+            expires = self.fmt_duration(stage['expires_at']) if stage['expires_at'] else 'No expiration'
+            lines = []
+            for m in mutes:
+                user = ctx.guild.get_member(m['discord_snowflake'])
+                if not user: continue
+                duration_str = self.fmt_duration(m['expires_at']) if m['expires_at'] else 'No expiration'
+                reason = m['reason'] or 'No reason provided'
+                lines.append(f'• {user.mention} — {reason} — {duration_str}')
+            description = (
+                f'Initiator: {initiator_name}\n'
+                f'Stage Expires: {expires}\n'
+                f'Coordinators: {coordinator_str}\n'
+                f'Active stage mutes: {len(lines)}\n\n' + '\n'.join(lines)
+            )
+            pages, chunk_size = [], 18
+            for i in range(0, len(description.splitlines()), chunk_size):
+                embed = discord.Embed(title=f'\U0001F399 Stage info for {channel_obj.mention}', description='\n'.join(description.splitlines()[i:i+chunk_size]), color=discord.Color.purple())
+                pages.append(embed)
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+        
     @commands.command(name='tmutes', help='Lists text-mute statistics.')
     @is_owner_developer_coordinator_predicator(None)
     async def list_text_mutes(
@@ -2654,55 +2745,162 @@ class Hybrid(commands.Cog):
         self.log_channels[guild_id] = current_entries
         await self.handler.send_message(ctx, content=msg)
         
-    @commands.hybrid_command(name='rmute', help='Mutes the whole room (except yourself).')
-    @is_owner_predicator()
-    async def room_mute(
-        self,
-        ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
-        duration: Optional[str] = commands.parameter(default='8', description='Duration of mute in hours. Example 0 (permanent), 30m, 2h, 5d'),
-        *,
-        reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
-    ) -> None:
+    @commands.hybrid_command(name='cstage', help='Create a stage in the current or specified channel.')
+    @is_owner_developer_predicator()
+    async def stage_create(self, ctx: commands.Context, *, channel: Optional[str] = None, duration: Optional[str] = '1') -> None:
+        guild_id, author = ctx.guild.id, ctx.author
         channel_obj = await self.resolve_channel(ctx, channel)
-        if not channel_obj or not channel:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from input: {channel}.')
+        if not channel_obj:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid channel.')
         expires_at, duration_display = self.parse_duration(duration)
-        is_owner_or_dev, is_coord = await check_owner_dev_coord(ctx, channel_obj)
-        if (expires_at == '0' or expires_at is None) and (not is_coord or not reason.strip()):
-            return await self.handler.send_message(ctx, content='\U0001F6AB Reason required and coordinator-only for permanent mutes.')
-        skipped_members = []
-        muted_members = []
-        failed_members = []
+        skipped, muted, failed = [], [], []
         async with self.bot.db_pool.acquire() as conn:
-            for member_obj in channel_obj.members:
-                if await is_owner(ctx, member_obj.id):
-                    skipped_members.append(member_obj)
+            await conn.execute('''
+                INSERT INTO active_stages (guild_id, channel_id, initiator_id, expires_at)
+                VALUES ($1,$2,$3,$4)
+                ON CONFLICT (guild_id, channel_id)
+                DO UPDATE SET expires_at=EXCLUDED.expires_at, initiator_id=EXCLUDED.initiator_id
+            ''', guild_id, channel_obj.id, author.id, expires_at)
+            await conn.execute('''
+                INSERT INTO stage_coordinators (guild_id, channel_id, discord_snowflake)
+                VALUES ($1,$2,$3)
+                ON CONFLICT DO NOTHING
+            ''', guild_id, channel_obj.id, author.id)
+            for user in channel_obj.members:
+                if await is_owner_member(user, ctx.bot) or await is_developer_member(user, ctx.bot) or await is_coordinator_via_objects(user, channel_obj) or await is_moderator_via_objects(user, channel_obj) or user.id == author.id:
+                    skipped.append(user)
                     continue
                 try:
                     await conn.execute('''
-                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, reason)
-                        VALUES ($1, $2, $3, $4, $5)
-                        ON CONFLICT (guild_id, discord_snowflake, channel_id) DO UPDATE
-                        SET expires_at = EXCLUDED.expires_at,
-                            reason = EXCLUDED.reason
-                    ''', ctx.guild.id, member_obj.id, channel_obj.id, expires_at, reason or 'No reason provided')
-                    await conn.execute('''
-                        INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                        VALUES ($1, $2, $3, $4, $5, $6)
-                    ''', 'voice_mute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, reason or 'No reason provided')
-                    if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
-                        await member_obj.edit(mute=True)
-                    muted_members.append(member_obg)
+                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, reason, target)
+                        VALUES ($1,$2,$3,$4,$5,$6)
+                        ON CONFLICT (guild_id, discord_snowflake, channel_id, target)
+                        DO UPDATE SET expires_at=EXCLUDED.expires_at
+                    ''', guild_id, user.id, channel_obj.id, expires_at, 'Stage active', 'room')
+                    if user.voice and user.voice.channel.id == channel_obj.id:
+                        await user.edit(mute=True)
+                    muted.append(user)
                 except Exception as e:
-                    logger.warning(f'Failed to mute {member_obj.name}: {e}')
-                    failed_members.append(member_obj)
-        summary = f'{self.get_random_emoji()} Muted {len(muted_members)} member(s) in {channel_obj.mention} for {duration_display}.\nReason: {reason or 'No reason provided'}'
-        if skipped_members:
-            summary += f'\n Skipped {len(skipped_members)}.'
-        if failed_members:
-            summary += f'\n\U0001F6AB Failed to mute {len(failed_members)} member(s).'
-        return await ctx.send(summary, allowed_mentions=discord.AllowedMentions.none())
+                    logger.warning(f'Failed to mute {user.name}: {e}')
+                    failed.append(user)
+        msg = f'{self.get_random_emoji()} Stage created for {duration_display} in {channel_obj.mention}.\nMuted {len(muted)} user(s). Skipped {len(skipped)}.'
+        if failed:
+            msg += f'\n\U000026A0\U0000FE0F Failed: {len(failed)}.'
+        await self.handler.send_message(ctx, content=msg)
+    
+    @commands.hybrid_command(name='mstage', help='Mute/unmute a member in the active stage.')
+    @is_owner_developer_coordinator_moderator_predicator()
+    async def stage_mute(self, ctx: commands.Context, target: str) -> None:
+        guild_id, author = ctx.guild.id, ctx.author
+        member = await self.resolve_member(ctx, target)
+        if not member:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Invalid member.')
+        stage_channel = member.voice.channel if member.voice else await self.resolve_channel(ctx, None)
+        if not stage_channel:
+            return await self.handler.send_message(ctx, content='\U000026A0\U0000FE0F No stage channel found.')
+        is_owner_or_dev, _ = await check_owner_dev_coord(ctx, stage_channel)
+        highest_role, success = await check_block(ctx, member, stage_channel)
+        async with self.bot.db_pool.acquire() as conn:
+            stage = await conn.fetchrow(
+                'SELECT initiator_id FROM active_stages WHERE guild_id=$1 AND channel_id=$2',
+                guild_id, stage_channel.id
+            )
+            if not stage:
+                return await self.handler.send_message(ctx, content='\U000026A0\U0000FE0F No active stage found.')
+            if member.id == stage['initiator_id']:
+                return await self.handler.send_message(ctx, content='\U0001F6AB You cannot mute the stage initiator.')
+            is_coordinator = await conn.fetchval('''
+                SELECT 1 FROM stage_coordinators
+                WHERE guild_id=$1 AND channel_id=$2 AND discord_snowflake=$3
+            ''', guild_id, stage_channel.id, author.id)
+            if not is_coordinator and not is_owner_or_dev:
+                return await self.handler.send_message(ctx, content='\U0001F6AB Only stage coordinators can use this command.')
+            try:
+                await member.edit(mute=not member.voice.mute)
+                await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member.mention} has been {"muted" if member.voice.mute else "unmuted"}.')
+            except Exception as e:
+                logger.warning(f'Failed to toggle mute: {e}')
+                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Failed to toggle mute for {member.display_name}.')
+                
+    @commands.hybrid_command(name='pstage', help='Promote/demote a member as stage coordinator.')
+    @is_owner_developer_coordinator_moderator_predicator()
+    async def stage_promote(self, ctx: commands.Context, target: str) -> None:
+        guild_id, author = ctx.guild.id, ctx.author
+        member = await self.resolve_member(ctx, target)
+        if not member:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Invalid member.')
+        async with self.bot.db_pool.acquire() as conn:
+            stage = await conn.fetchrow('SELECT initiator_id, channel_id FROM active_stages WHERE guild_id=$1', guild_id)
+            if not stage:
+                return await self.handler.send_message(ctx, content='\U000026A0\U0000FE0F No active stage found.')
+            channel_obj = ctx.guild.get_channel(stage['channel_id'])
+            is_owner_or_dev, is_coord_or_mod = await check_owner_dev_coord_mod(ctx, channel_obj)
+            if not is_owner_or_dev or is_coord_or_mod:
+                return await ctx.send('\U0001F6AB {member.mention} does not have permission to moderate a stage in this channel')
+            highest_role, success = await check_block(ctx, member, channel_obj)
+            if member.id == stage['initiator_id']:
+                return await self.handler.send_message(ctx, content='\U0001F6AB Cannot change initiator role.')
+            is_coordinator = await conn.fetchval('''
+                SELECT 1 FROM stage_coordinators
+                WHERE guild_id=$1 AND channel_id=$2 AND discord_snowflake=$3
+            ''', guild_id, channel_obj.id, member.id)
+            try:
+                if is_coordinator:
+                    await conn.execute('''
+                        DELETE FROM stage_coordinators WHERE guild_id=$1 AND channel_id=$2 AND discord_snowflake=$3
+                    ''', guild_id, channel_obj.id, member.id)
+                    await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member.mention} demoted from stage coordinator.')
+                else:
+                    await conn.execute('''
+                        INSERT INTO stage_coordinators (guild_id, channel_id, discord_snowflake) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING
+                    ''', guild_id, channel_obj.id, member.id)
+                    await conn.execute('''
+                        DELETE FROM active_voice_mutes
+                        WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target='room'
+                    ''', guild_id, member.id, channel_obj.id)
+                    await member.edit(mute=False)
+                    await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member.mention} promoted to stage coordinator.')
+            except Exception as e:
+                logger.warning(f'Failed to toggle promotion: {e}')
+                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Failed to toggle promotion for {member.display_name}.')
+        
+    @commands.hybrid_command(name='xstage', help='Destroy the stage in the current channel.')
+    @is_owner_developer_coordinator_predicator()
+    async def stage_quit(self, ctx: commands.Context, *, channel: Optional[str] = None) -> None:
+        guild_id = ctx.guild.id
+        channel_obj = await self.resolve_channel(ctx, channel)
+        if not channel_obj:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Invalid channel.')
+        async with self.bot.db_pool.acquire() as conn:
+            stage = await conn.fetchrow('''
+                SELECT initiator_id FROM active_stages
+                WHERE guild_id=$1 AND channel_id=$2
+            ''', guild_id, channel_obj.id)
+            if not stage:
+                return await self.handler.send_message(ctx, content='\U000026A0\U0000FE0F No active stage found.')
+            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
+            if ctx.author.id != stage['initiator_id'] or not is_owner_or_dev:
+                return await self.handler.send_message(ctx, content='\U0001F6AB Only the stage initiator can end this stage.')
+            await conn.execute('DELETE FROM active_stages WHERE guild_id=$1 AND channel_id=$2', guild_id, channel_obj.id)
+            await conn.execute('''
+                DELETE FROM active_voice_mutes
+                WHERE guild_id=$1 AND channel_id=$2 AND target='room'
+            ''', guild_id, channel_obj.id)
+            if isinstance(channel_obj, discord.VoiceChannel):
+                members = channel_obj.members
+                for member in members:
+                    user_mute = await conn.fetchrow('''
+                        SELECT 1 FROM active_voice_mutes
+                        WHERE guild_id=$1 AND channel_id=$2 AND discord_snowflake=$3 AND target='room'
+                    ''', guild_id, channel_obj.id, member.id)
+                    if not user_mute and member.voice and member.voice.mute:
+                        try:
+                            await member.edit(mute=False, reason='Stage ended — no user-specific mute found')
+                        except discord.Forbidden:
+                            logger.debug(f'No permission to unmute {member.display_name}')
+                        except discord.HTTPException as e:
+                            logger.debug(f'Failed to unmute {member.display_name}: {e}')
+        await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Stage in {channel_obj.mention} has ended.')
     
     @commands.command(name='rmv', help='Move all the members in one room to another.')
     @is_owner_predicator()
@@ -2715,7 +2913,7 @@ class Hybrid(commands.Cog):
         source_channel = ctx.guild.get_channel(source_id)
         target_channel = ctx.guild.get_channel(target_id)
         if not source_channel or not target_channel:
-            await ctx.send('\U0001F6AB One or both channel IDs are invalid.')
+            await self.handler.send_message(ctx, content='\U0001F6AB One or both channel IDs are invalid.')
             return
         await self.move_all_members(source_channel, target_channel)
         await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Moved all members from `{source_channel.name}` to `{target_channel.name}`.')
@@ -2726,8 +2924,6 @@ class Hybrid(commands.Cog):
         self,
         ctx: commands.Context,
         channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
-        *,
-        reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
     ) -> None:
         channel_obj = await self.resolve_channel(ctx, channel)
         if not channel_obj or not channel:
@@ -2741,8 +2937,11 @@ class Hybrid(commands.Cog):
                     continue
                 try:
                     row = await conn.fetchrow('''
-                        SELECT guild_id FROM active_voice_mutes
+                        SELECT guild_id, target, expires_at, reason
+                        FROM active_voice_mutes
                         WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                        AND target = 'user'
+                        AND (expires_at IS NULL OR expires_at > NOW())
                     ''', ctx.guild.id, member_obj.id, channel_obj.id)
                     if not row:
                         skipped_members.append(member_obj)
@@ -2756,7 +2955,7 @@ class Hybrid(commands.Cog):
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
-                    ''', 'unmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Unmuted via unmute_all: {reason}')
+                    ''', 'unmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Unmuted via unmute_all')
                     unmuted_members.append(member_obj)
                 except Exception as e:
                     logger.warning(f'Unmute failed for {member_obj.mention}: {e}')
@@ -2843,7 +3042,7 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from input: {channel}.')
         target_role, allowed = await check_block(ctx, ctx.author, channel_obj)
         if not allowed:
-            await self.handler.send_message(ctx, content=f'❌ You must be {target_role} or higher to toggle logging for {channel_obj.mention}.')
+            await self.handler.send_message(ctx, content=f'\U0001F6AB You must be {target_role} or higher to toggle logging for {channel_obj.mention}.')
             return
         guild_id = ctx.guild.id
         current_channels = self.log_channels.setdefault(guild_id, [])
@@ -2931,7 +3130,7 @@ class Hybrid(commands.Cog):
         embed_user.set_footer(text=f"Ban Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
         embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
         embed_duration.add_field(name=f'{duration_emoji} Ban Duration', value=duration_info, inline=False)
-        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else 'New Ban'}\n**Server:** {guild.name} (`{guild.id}`)"
+        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '\U0001F6AB No'}\n**Action Type:** {'Modification' if is_modification else 'New Ban'}\n**Server:** {guild.name} (`{guild.id}`)"
         embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
         embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
@@ -2974,7 +3173,7 @@ class Hybrid(commands.Cog):
         embed_user.set_footer(text=f"Text Mute Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
         embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
         embed_duration.add_field(name=f'{duration_emoji} Text Mute Duration', value=duration_info, inline=False)
-        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else 'New Text Mute'}\n**Server:** {guild.name} (`{guild.id}`)"
+        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '\U0001F6AB No'}\n**Action Type:** {'Modification' if is_modification else 'New Text Mute'}\n**Server:** {guild.name} (`{guild.id}`)"
         embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
         embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
@@ -3020,7 +3219,7 @@ class Hybrid(commands.Cog):
         embed_user.set_footer(text=f"Voice Mute Ref: {member.id}-{channel.id} | Msg: {ctx.message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
         embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
         embed_duration.add_field(name=f'{duration_emoji} Voice Mute Duration', value=duration_info, inline=False)
-        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '❌ No'}\n**Action Type:** {'Modification' if is_modification else 'New Voice Mute'}\n**Server:** {guild.name} (`{guild.id}`)"
+        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '\U0001F6AB No'}\n**Action Type:** {'Modification' if is_modification else 'New Voice Mute'}\n**Server:** {guild.name} (`{guild.id}`)"
         embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
         embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
@@ -3045,21 +3244,14 @@ class Hybrid(commands.Cog):
         days, remainder = divmod(total_seconds, 86400)
         hours, remainder = divmod(remainder, 3600)
         minutes, _ = divmod(remainder, 60)
-        if base:
-            if expires_at > base:
-                prefix = "for "
-            else:
-                prefix = "reduced by "
-        else:
-            prefix = "for "
         if days > 0:
-            return f"{prefix}{days} day(s)"
+            return f"{days} day(s)"
         elif hours > 0:
-            return f"{prefix}{hours} hour(s)"
+            return f"{hours} hour(s)"
         elif minutes > 0:
-            return f"{prefix}{minutes} minute(s)"
+            return f"{minutes} minute(s)"
         else:
-            return f"{prefix}less than a minute"
+            return f"less than a minute"
         
     async def get_cap(self, channel_id: int, guild_id: int, moderation_type: Optional[str]) -> Optional[str]:
         async with self.bot.db_pool.acquire() as conn:
@@ -3186,7 +3378,6 @@ class Hybrid(commands.Cog):
             except discord.HTTPException:
                 logger.warning(f'\U0001F6AB Failed to move {member} due to a network error.')
                 
-                
     def parse_duration(self, duration: Optional[str], base: Optional[datetime] = None) -> tuple[Optional[datetime], str]:
         if duration is None:
             delta = timedelta(hours=24)
@@ -3207,21 +3398,21 @@ class Hybrid(commands.Cog):
             value = int(duration.rstrip('daysy'))
             delta = timedelta(days=value * sign)
             target = (base if (is_relative and base) else datetime.now(timezone.utc)) + delta
-            return target, f'for {value} day(s)' if sign > 0 else f'reduced by {value} day(s)'
+            return target, f'{value} day(s)' if sign > 0 else f'{value} day(s)'
         if duration.endswith(('h', 'hr', 'hrs', 'hour', 'hours')):
             value = int(duration.rstrip('hrshours'))
             delta = timedelta(hours=value * sign)
             target = (base if (is_relative and base) else datetime.now(timezone.utc)) + delta
-            return target, f'for {value} hour(s)' if sign > 0 else f'reduced by {value} hour(s)'
+            return target, f'{value} hour(s)' if sign > 0 else f'{value} hour(s)'
         if duration.endswith(('m', 'min', 'mins', 'minute', 'minutes')):
             value = int(duration.rstrip('minsmutes'))
             delta = timedelta(minutes=value * sign)
             target = (base if (is_relative and base) else datetime.now(timezone.utc)) + delta
-            return target, f'for {value} minute(s)' if sign > 0 else f'reduced by {value} minute(s)'
+            return target, f'{value} minute(s)' if sign > 0 else f'{value} minute(s)'
         value = int(duration)
         delta = timedelta(hours=value * sign)
         target = (base if (is_relative and base) else datetime.now(timezone.utc)) + delta
-        return target, f'for {value} hour(s)' if sign > 0 else f'reduced by {value} hour(s)'
+        return target, f'{value} hour(s)' if sign > 0 else f'{value} hour(s)'
 
     def perform_backup(self, db_user: Optional[str], db_name: Optional[str], db_host: Optional[str], db_password: Optional[str], backup_dir: Optional[str]) -> str:
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')

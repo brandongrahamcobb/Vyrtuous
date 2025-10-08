@@ -125,6 +125,15 @@ async def is_developer(ctx):
     if not row or not row.get('developer_guild_ids') or ctx.guild.id not in row.get('developer_guild_ids', []):
         raise NotDeveloper('You are not a developer in this guild.')
     return True
+    
+async def is_developer_member(member: discord.Member, bot: commands.Bot) -> bool:
+    async with bot.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            'SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member.id
+        )
+    if not row or not row.get('developer_guild_ids') or member.guild.id not in row.get('developer_guild_ids', []):
+        return False
+    return True
 
 async def is_guild_owner(ctx):
     if ctx.guild is None:
@@ -142,6 +151,27 @@ async def is_system_owner(ctx):
 async def is_owner(ctx: commands.Context, member_id: int):
     system_owner_id = int(ctx.bot.config['discord_owner_id'])
     if ctx.guild.owner_id == member_id or system_owner_id == member_id:
+        return True
+    return False
+
+async def is_guild_owner_member(member: discord.Member) -> bool:
+    if member.guild is None:
+        raise NotInAGuild('Member is not in a guild.')
+    if member.guild.owner_id != member.id:
+        return False
+    return True
+
+async def is_system_owner_member(member: discord.Member, bot: commands.Bot) -> bool:
+    system_owner_id = int(bot.config['discord_owner_id'])
+    if member.id != system_owner_id:
+        raise False
+    return True
+
+async def is_owner_member(member: discord.Member, bot: commands.Bot) -> bool:
+    system_owner_id = int(bot.config['discord_owner_id'])
+    if member.guild is not None and member.guild.owner_id == member.id:
+        return True
+    if member.id == system_owner_id:
         return True
     return False
 
@@ -308,6 +338,41 @@ async def is_coordinator(ctx, target_channel_id: int):
     if target_channel_id not in coordinator_channel_ids:
         raise NotCoordinator('You are not a coordinator in the target channel.')
     return True
+
+async def is_coordinator_via_objects(member, channel):
+    if member.guild is None: raise NotCoordinator('Command must be used in a guild.')
+    async with member._state._get_client().db_pool.acquire() as conn:
+        user_row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1', member.id)
+    if not user_row:
+        return False
+    coordinator_channel_ids = user_row.get('coordinator_channel_ids') or []
+    if channel.id not in coordinator_channel_ids:
+        return False
+    return True
+    
+async def is_moderator_via_objects(member, channel):
+    if member.guild is None: raise NotModerator('Command must be used in a guild.')
+    async with member._state._get_client().db_pool.acquire() as conn:
+        user_row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake = $1', member.id)
+    if not user_row:
+        return False
+    moderator_channel_ids = user_row.get('moderator_channel_ids') or []
+    if channel.id not in moderator_channel_ids:
+        return False
+    return True
+    
+async def is_owner_developer_via_objects(member: discord.Member, bot: commands.Bot) -> bool:
+    for check in (is_system_owner_member, is_guild_owner_member, is_developer_member):
+        try:
+            if check is is_system_owner_member:
+                if await check(member, bot):
+                    return True
+            else:
+                if await check(member):
+                    return True
+        except Exception:
+            continue
+    return False
 
 async def is_moderator(ctx, target_channel_id: int):
     if ctx.guild is None:

@@ -39,6 +39,8 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_voice_mutes.start()
         if not self.check_expired_text_mutes.is_running():
             self.check_expired_text_mutes.start()
+        if not self.check_expired_stages.is_running():
+            self.check_expired_stages.start()
     
     @staticmethod
     def perform_backup(db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
@@ -112,16 +114,16 @@ class ScheduledTasks(commands.Cog):
                 logger.warning(f'No permission to remove ban override for user {user_id} in channel {channel_id}.')
             except discord.HTTPException as e:
                 logger.error(f'Failed to remove permission override: {e}')
-
+    
     @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self):
         now = datetime.now(timezone.utc)
         async with self.bot.db_pool.acquire() as conn:
             expired = await conn.fetch('''
-                SELECT guild_id, discord_snowflake, channel_id
+                SELECT guild_id, discord_snowflake, channel_id, target
                 FROM active_voice_mutes
                 WHERE expires_at IS NOT NULL
-                AND expires_at <= $1
+                  AND expires_at <= $1
             ''', now)
             for record in expired:
                 guild = self.bot.get_guild(record['guild_id'])
@@ -141,32 +143,40 @@ class ScheduledTasks(commands.Cog):
                         member = await guild.fetch_member(record['discord_snowflake'])
                     except discord.NotFound:
                         continue
-                await conn.execute('''
-                    DELETE FROM active_voice_mutes
-                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                ''', guild.id, record['discord_snowflake'], record['channel_id'])
                 if member.voice and member.voice.channel and member.voice.channel.id == record['channel_id']:
                     try:
                         await member.edit(mute=False)
                     except discord.HTTPException:
-                        logger.warning(f'No permission to unmute user {record["discord_snowflake"]} in channel {record["channel_id"]}.')
-            for guild in self.bot.guilds:
-                for member in guild.members:
-                    if member.voice and member.voice.mute:
-                        has_server_record = await conn.fetchval('''
-                            SELECT 1 FROM active_server_voice_mutes
-                            WHERE guild_id = $1 AND discord_snowflake = $2
-                        ''', guild.id, member.id)
-                        has_channel_record = await conn.fetchval('''
-                            SELECT 1 FROM active_voice_mutes
-                            WHERE guild_id = $1 AND discord_snowflake = $2
-                            AND channel_id = $3
-                        ''', guild.id, member.id, member.voice.channel.id if member.voice.channel else None)
-                        if not has_server_record and not has_channel_record:
-                            try:
-                                await member.edit(mute=False)
-                            except discord.HTTPException:
-                                logger.warning(f'No permission to unmute stray-muted user {member.id} in guild {guild.id}.')
+                        logger.warning(f'No permission to unmute user {member.id} in channel {channel.id}.')
+                await conn.execute('''
+                    DELETE FROM active_voice_mutes
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4
+                ''', record['guild_id'], record['discord_snowflake'], record['channel_id'], record['target'])
+    
+    @tasks.loop(minutes=1)
+    async def check_expired_stages(self):
+        now = datetime.now(timezone.utc)
+        async with self.bot.db_pool.acquire() as conn:
+            expired = await conn.fetch('''
+                SELECT guild_id, channel_id
+                FROM active_stages
+                WHERE expires_at IS NOT NULL
+                  AND expires_at <= $1
+            ''', now)
+            for record in expired:
+                guild_id, channel_id = record['guild_id'], record['channel_id']
+                await conn.execute('''
+                    DELETE FROM active_voice_mutes
+                    WHERE guild_id = $1 AND channel_id = $2 AND target = 'user'
+                ''', guild_id, channel_id)
+                await conn.execute('''
+                    DELETE FROM stage_coordinators
+                    WHERE guild_id = $1 AND channel_id = $2
+                ''', guild_id, channel_id)
+                await conn.execute('''
+                    DELETE FROM active_stages
+                    WHERE guild_id = $1 AND channel_id = $2
+                ''', guild_id, channel_id)
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
