@@ -57,8 +57,8 @@ class EventListeners(commands.Cog):
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
         if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
             return
-#        if member.bot:
-#            return
+        if member.bot:
+            return
         after_channel = after.channel
         before_channel = before.channel
         user_id = member.id
@@ -73,7 +73,25 @@ class EventListeners(commands.Cog):
             coordinator_ids = set()
             if after_channel:
                 try:
+                    active_stage = await conn.fetchrow('''
+                        SELECT expires_at FROM active_stages
+                        WHERE guild_id = $1 AND channel_id = $2
+                    ''', member.guild.id, after_channel.id)
+                    coordinators = await conn.fetch('''
+                        SELECT discord_snowflake FROM stage_coordinators
+                        WHERE guild_id = $1 AND channel_id = $2
+                    ''', member.guild.id, after_channel.id)
                     if after_channel is not None and after_channel != before.channel:
+                        if active_stage:
+                            now = time.time()
+                            self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
+                            if len(self.join_log[member.id]) < 1:
+                                self.join_log[member.id].append(now)
+                                embed = discord.Embed(title=f"\U0001F399 {after_channel.name} is in Stage Mode", description=f"{member.guild.name}", color=discord.Color.green())
+                                expires = active_stage['expires_at']
+                                embed.add_field(name="Ends", value=f"<t:{int(expires.timestamp())}:R>")
+                                embed.set_footer(text=f"Ask to speak!")
+                                await after_channel.send(embed=embed)
                         rows = await conn.fetch('''
                             SELECT channel_id, discord_snowflake, reason
                             FROM active_flags
@@ -119,21 +137,13 @@ class EventListeners(commands.Cog):
                                     embeds.append(embed)
                                 now = time.time()
                                 self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
-                                if len(self.join_log[member.id]) < 3:
+                                if len(self.join_log[member.id]) < 1:
                                     self.join_log[member.id].append(now)
                                     if len(embeds) == 1:
                                         await after_channel.send(embed=embeds[0])
                                     else:
                                         paginator = ChannelPaginator(self.bot, after_channel, embeds)
                                         await paginator.start()
-                    active_stage = await conn.fetchrow('''
-                        SELECT expires_at FROM active_stages
-                        WHERE guild_id = $1 AND channel_id = $2
-                    ''', member.guild.id, after_channel.id)
-                    coordinators = await conn.fetch('''
-                        SELECT discord_snowflake FROM stage_coordinators
-                        WHERE guild_id = $1 AND channel_id = $2
-                    ''', member.guild.id, after_channel.id)
                     coordinator_ids = {r['discord_snowflake'] for r in coordinators}
                     is_owner_or_dev = await is_owner_developer_via_objects(member, self.bot)
                     if before.mute != after.mute:

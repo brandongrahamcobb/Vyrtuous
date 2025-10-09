@@ -29,9 +29,8 @@ os.makedirs(DIR_TEMP, exist_ok=True)
 class DiscordMessageService:
     def __init__(self, bot: DiscordBot, db_pool):
         self.bot = bot
-
-    async def send_dm(self, ctx: commands.Context, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
-        member = ctx.author
+        
+    async def send_dm(self, member: discord.Member, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
         channel = await member.create_dm()
         await self._send_message(channel.send, content=content, file=file, embed=embed)
 
