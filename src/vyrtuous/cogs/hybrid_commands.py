@@ -1651,7 +1651,6 @@ class Hybrid(commands.Cog):
             ''', 'remove_moderator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Removed a moderator from the channel')
             updated_row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
         return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} has been revoked moderator access in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
-        return await self.handler.send_dm(f'{self.get_random_emoji()} {member_obj.mention} has been revoked moderator access in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name='bans', help='Lists ban statistics.')
     @is_owner_developer_coordinator_moderator_predicator(None)
@@ -2486,7 +2485,6 @@ class Hybrid(commands.Cog):
                     name = member_obj.display_name
                     duration_str = self.fmt_duration(record['expires_at'])
                     description_lines.append(f'• {name} — <@{uid}> — {duration_str}')
-                print("tst")
                 if not description_lines:
                     return await ctx.send(f'\U0001F6AB No muted users currently in {ctx.guild.name}.')
                 chunk_size = 18
@@ -2497,7 +2495,6 @@ class Hybrid(commands.Cog):
                     embed.add_field(name=f'{ctx.guild.name}', value='\n'.join(chunk), inline=False)
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
-                print("succes")
                 return await paginator.start()
         return await self.handler.send_message(ctx, content='\U0001F6AB You must specify a member, a voice channel or be connected to a voice channel.')
             
