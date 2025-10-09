@@ -227,7 +227,7 @@ class EventListeners(commands.Cog):
                             should_be_muted = True
                     if just_manual_unmute:
                         should_be_muted = False
-                    if should_be_muted and not after.mute:
+                    if should_be_muted and not after.mute and not existing_mute_row:
                         expires_at = existing_mute_row['expires_at'] if existing_mute_row else None
                         if expires_at:
                             await conn.execute('''
