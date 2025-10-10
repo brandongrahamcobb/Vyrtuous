@@ -228,20 +228,6 @@ class EventListeners(commands.Cog):
                     if just_manual_unmute:
                         should_be_muted = False
                     if should_be_muted and not after.mute:
-#                        expires_at = existing_mute_row['expires_at'] if existing_mute_row else None
-#                        if expires_at:
-#                            await conn.execute('''
-#                                INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target)
-#                                VALUES ($1, $2, $3, NOW() + interval '1 hour', 'user')
-#                                ON CONFLICT (guild_id, discord_snowflake, channel_id, target) DO UPDATE
-#                                SET expires_at = EXCLUDED.expires_at
-#                            ''', member.guild.id, user_id, after_channel.id)
-#                        else:
-#                            await conn.execute('''
-#                                INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, target)
-#                                VALUES ($1, $2, $3, 'user')
-#                                ON CONFLICT (guild_id, discord_snowflake, channel_id, target) DO NOTHING
-#                            ''', member.guild.id, user_id, after_channel.id)
                         try:
                             await member.edit(mute=True, reason=f'Enforcing mute in {after_channel.name} (found in arrays)')
                         except discord.Forbidden:

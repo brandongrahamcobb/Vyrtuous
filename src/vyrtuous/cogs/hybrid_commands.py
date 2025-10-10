@@ -1547,7 +1547,7 @@ class Hybrid(commands.Cog):
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1, $2, $3, $4, $5, $6)
-            ''', 'delete_alias', None, ctx.author.id, ctx.guild.id, channel_obj.id if channel else None, f'Deleted alias {alias_name}')
+            ''', 'delete_alias', None, ctx.author.id, ctx.guild.id, channel_obj.id, f'Deleted alias {alias_name}')
         if self.bot.get_command(alias_name):
             self.bot.remove_command(alias_name)
         if alias_dict == 'channel_aliases':
