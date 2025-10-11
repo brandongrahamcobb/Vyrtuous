@@ -93,6 +93,7 @@ class EventListeners(commands.Cog):
                                     description=f"{member.guild.name}",
                                     color=discord.Color.green()
                                 )
+                                embed.add_field(name="Ends", value=f"<t:{int(expires.timestamp())}:R>")
                                 embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
                                 await after_channel.send(embed=embed)
                         rows = await conn.fetch('''
