@@ -89,11 +89,11 @@ class EventListeners(commands.Cog):
                                 self.join_log[member.id].append(now)
                                 expires = active_stage['expires_at']
                                 embed = discord.Embed(
-                                    title=f"\U0001F399 {after_channel.name} — Stage Mode Active",
-                                    description=f"{member.guild.name}\n\n**Ask to speak!**",
+                                    title=f"\U0001F399 {after_channel.name} — Stage Mode",
+                                    description=f"{member.guild.name}",
                                     color=discord.Color.green()
                                 )
-                                embed.add_field(name="Ends", value=f"<t:{int(expires.timestamp())}:R>")
+                                embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
                                 await after_channel.send(embed=embed)
                         rows = await conn.fetch('''
                             SELECT channel_id, discord_snowflake, reason
