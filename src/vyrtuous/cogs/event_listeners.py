@@ -90,10 +90,9 @@ class EventListeners(commands.Cog):
                                 expires = active_stage['expires_at']
                                 embed = discord.Embed(
                                     title=f"\U0001F399 {after_channel.name} — Stage Mode",
-                                    description=f"{member.guild.name}",
+                                    description=f"Ends <t:{int(expires.timestamp())}:R>",
                                     color=discord.Color.green()
                                 )
-                                embed.add_field(name="Ends", value=f"<t:{int(expires.timestamp())}:R>")
                                 embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
                                 await after_channel.send(embed=embed)
                         rows = await conn.fetch('''
