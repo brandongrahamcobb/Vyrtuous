@@ -165,10 +165,17 @@ class ScheduledTasks(commands.Cog):
             ''', now)
             for record in expired:
                 guild_id, channel_id = record['guild_id'], record['channel_id']
+                records = await conn.fetch('SELECT discord_snowflake FROM active_voice_mutes WHERE guild_id = $1 AND channel_id = $2 AND target = $3', guild_id, channel_id, 'room')
                 await conn.execute('''
                     DELETE FROM active_voice_mutes
-                    WHERE guild_id = $1 AND channel_id = $2 AND target = 'user'
+                    WHERE guild_id = $1 AND channel_id = $2 AND target = 'room'
                 ''', guild_id, channel_id)
+                guild = self.bot.get_guild(guild_id)
+                if guild:
+                    for record in records:
+                        member = guild.get_member(record['user_id'])
+                        if member and member.voice and member.voice.mute:
+                            await member.edit(mute=False, reason='Stage room closed or unmuted automatically')
                 await conn.execute('''
                     DELETE FROM stage_coordinators
                     WHERE guild_id = $1 AND channel_id = $2
