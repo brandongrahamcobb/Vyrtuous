@@ -2813,7 +2813,7 @@ class Hybrid(commands.Cog):
                 SELECT 1 FROM stage_coordinators
                 WHERE guild_id=$1 AND channel_id=$2 AND discord_snowflake=$3
             ''', guild_id, stage_channel.id, author.id)
-            if not is_coordinator or not is_owner_or_dev:
+            if not is_coordinator and not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Only stage coordinators can use this command.')
             try:
                 await member.edit(mute=not member.voice.mute)
