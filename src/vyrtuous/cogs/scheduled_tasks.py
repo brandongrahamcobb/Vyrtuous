@@ -209,6 +209,8 @@ class ScheduledTasks(commands.Cog):
                         channel = await guild.fetch_channel(channel_id)
                     except discord.NotFound:
                         continue
+                if not isinstance(channel, discord.VoiceChannel):
+                    continue
                 member = guild.get_member(user_id)
                 if member is None:
                     try:
@@ -225,7 +227,6 @@ class ScheduledTasks(commands.Cog):
                     logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}.')
                 except discord.HTTPException as e:
                     logger.error(f'Failed to remove permission override: {e}')
-
 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:

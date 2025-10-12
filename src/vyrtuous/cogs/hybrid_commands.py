@@ -530,7 +530,7 @@ class Hybrid(commands.Cog):
                                 pass
                             elif not is_coordinator and expires_at and existing_ban['expires_at']:
                                 caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
-                                active_cap = next((c for c in caps if c[0] == 'tmute'), None)
+                                active_cap = next((c for c in caps if c[0] == 'ban'), None)
                                 cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
                                 if expires_at < existing_ban['expires_at'] and expires_at <= cap_expires_at:
                                     pass
