@@ -135,8 +135,6 @@ class ScheduledTasks(commands.Cog):
                         channel = await guild.fetch_channel(record['channel_id'])
                     except discord.NotFound:
                         continue
-                if not isinstance(channel, discord.VoiceChannel):
-                    continue
                 member = guild.get_member(record['discord_snowflake'])
                 if member is None:
                     try:
@@ -209,25 +207,23 @@ class ScheduledTasks(commands.Cog):
                         channel = await guild.fetch_channel(channel_id)
                     except discord.NotFound:
                         continue
-                if not isinstance(channel, discord.VoiceChannel):
-                    continue
                 member = guild.get_member(user_id)
                 if member is None:
                     try:
                         member = await guild.fetch_member(user_id)
                     except discord.NotFound:
                         continue
-                await conn.execute('''
-                    DELETE FROM active_text_mutes
-                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                ''', guild.id, member.id, channel_id)
                 try:
                     await channel.set_permissions(member, send_messages=None)
                 except discord.Forbidden:
                     logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}.')
                 except discord.HTTPException as e:
                     logger.error(f'Failed to remove permission override: {e}')
-
+                await conn.execute('''
+                    DELETE FROM active_text_mutes
+                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                ''', guild.id, member.id, channel_id)
+                
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
