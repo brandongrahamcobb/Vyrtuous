@@ -70,11 +70,11 @@ class ScheduledTasks(commands.Cog):
     def setup_backup_directory(backup_dir: str) -> str:
         os.makedirs(backup_dir, exist_ok=True)
         return backup_dir
-        
-    @commands.after_invoke
-    async def after_invoke(self, ctx: commands.Context) -> None:
-        if hasattr(self.bot, 'db_pool'):
-            await self.bot.db_pool.close()
+#        
+#    @commands.after_invoke
+#    async def after_invoke(self, ctx: commands.Context) -> None:
+#        if hasattr(self.bot, 'db_pool'):
+#            await self.bot.db_pool.close()
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
