@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timezone
+import discord
 import os
 import subprocess
 
@@ -171,7 +172,7 @@ class ScheduledTasks(commands.Cog):
                 guild = self.bot.get_guild(guild_id)
                 if guild:
                     for record in records:
-                        member = guild.get_member(record['user_id'])
+                        member = guild.get_member(record['discord_snowflake'])
                         if member and member.voice and member.voice.mute:
                             await member.edit(mute=False, reason='Stage room closed or unmuted automatically')
                 await conn.execute('''
