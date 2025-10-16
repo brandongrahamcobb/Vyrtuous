@@ -805,7 +805,13 @@ class Hybrid(commands.Cog):
                     embed.set_author(name=f"{member_obj.display_name} is flagged", icon_url=member_obj.display_avatar.url)
                     embed.add_field(name="User", value=member_obj.mention, inline=True)
                     embed.add_field(name="Channel", value=channel_obj.mention, inline=False)
-                    embed.add_field(name="Reason", value=updated_reason or 'No reason provided', inline=False)
+                    full_reason = None
+                    if existing_flag:
+                        if is_reason_append: full_reason = f"{existing_flag['reason']} {cleaned_reason}".strip()
+                        elif is_reason_delete: full_reason = ''
+                        else: full_reason = cleaned_reason
+                    else: full_reason = cleaned_reason
+                    embed.add_field(name="Reason", value=full_reason or 'No reason provided', inline=False)
                     await ctx.send(embed=embed)
             except Exception as e:
                 logger.exception(f'Database error in flag_alias: {e}')
