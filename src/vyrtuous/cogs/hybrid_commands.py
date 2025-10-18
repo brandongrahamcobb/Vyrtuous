@@ -3494,7 +3494,7 @@ class Hybrid(commands.Cog):
                     duration_str = self.fmt_duration(record['expires_at'])
                     description_lines.append(f'• {name} — <@{uid}> — {duration_str}')
                 if not description_lines:
-                    return await send(content=f'\U0001F6AB No muted users currently in {ctx.guild.name}.')
+                    return await send(content=f'\U0001F6AB No muted users currently in {channel_obj.mention}.')
                 chunk_size = 18
                 pages = []
                 for i in range(0, len(description_lines), chunk_size):
