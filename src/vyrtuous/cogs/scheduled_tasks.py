@@ -42,8 +42,6 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_text_mutes.start()
         if not self.check_expired_stages.is_running():
             self.check_expired_stages.start()
-        if not self.simple_test.is_running():
-            self.simple_test.start()
     
     @staticmethod
     def perform_backup(db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
@@ -261,19 +259,6 @@ class ScheduledTasks(commands.Cog):
     @check_expired_stages.before_loop
     async def before_check_expired_stages(self):
         await self.bot.wait_until_ready()
-    
-    @tasks.loop(seconds=15)
-    async def simple_test(self):
-        channel = self.bot.get_channel(1403500881135272066)
-        if channel:
-            await channel.send(f"Loop ran at {datetime.now()}")
-    
-    @simple_test.before_loop
-    async def before_simple_test(self):
-        await self.bot.wait_until_ready()
-        channel = self.bot.get_channel(1403500881135272066)
-        if channel:
-            await channel.send("Starting simple_test loop")
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(ScheduledTasks(bot))
