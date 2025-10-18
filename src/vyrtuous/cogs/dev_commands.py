@@ -75,9 +75,7 @@ class DevCommands(commands.Cog):
                 synced = []
             else:
                 synced = await ctx.bot.tree.sync()
-            await ctx.send(
-                await ctx.send(f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
-            )
+            await ctx.send(f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
             return
         ret = 0
         for guild in guilds:

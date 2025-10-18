@@ -1509,7 +1509,6 @@ class Hybrid(commands.Cog):
             await self.send_log(ctx, 'vmute', member_obj, channel_obj, duration_display, updated_reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return voice_mute_alias
 
-
     def create_unban_alias(self, command_name: Optional[str]) -> Command:
         @commands.command(name=command_name, help='Unban a user from a voice channel.')
         @is_owner_developer_coordinator_moderator_predicator('unban')
@@ -5068,11 +5067,6 @@ class Hybrid(commands.Cog):
     def setup_backup_directory(self, backup_dir: Optional[str]) -> str:
         os.makedirs(backup_dir, exist_ok=True)
         return backup_dir
-    
-    @app_commands.command(name='test', description='Unmutes a member throughout the entire guild.')
-    @is_server_muter_app_predicator()
-    async def test(self, interaction: discord.Interaction):
-        await interaction.reply("Success")
         
 async def setup(bot: DiscordBot):
     cog = Hybrid(bot)
