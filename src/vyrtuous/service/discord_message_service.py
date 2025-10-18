@@ -30,29 +30,20 @@ class DiscordMessageService:
     def __init__(self, bot: DiscordBot, db_pool):
         self.bot = bot
         
-    async def send_dm(self, member: discord.Member, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
-        channel = await member.create_dm()
-        await self._send_message(channel.send, content=content, file=file, embed=embed)
-
-    async def send_message(self, ctx: commands.Context, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
-        can_send = (
-            ctx.guild
-            and isinstance(ctx.channel, discord.abc.GuildChannel)
-            and ctx.channel.permissions_for(ctx.guild.me).send_messages
-        )
+    async def send_message(self, ctx: commands.Context, *, content: str=None, file: discord.File=None, embed: discord.Embed=None, allowed_mentions: discord.AllowedMentions=discord.AllowedMentions.all()):
+        can_send = ctx.guild and isinstance(ctx.channel, discord.abc.GuildChannel) and ctx.channel.permissions_for(ctx.guild.me).send_messages
         if can_send:
             try:
-                await self._send_message(lambda **kwargs: ctx.reply(**kwargs), content=content, file=file, embed=embed)
+                await self._send_message(lambda **kw: ctx.reply(**kw), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
             except discord.HTTPException as e:
-                if e.code == 50035:  # Invalid Form Body due to message_reference
-                    await self._send_message(lambda **kwargs: ctx.send(**kwargs), content=content, file=file, embed=embed)
+                if e.code == 50035:
+                    await self._send_message(lambda **kw: ctx.send(**kw), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
                 else:
                     raise
         else:
-            await self.send_dm(ctx.author, content=content, file=file, embed=embed)
-
-
-    async def _send_message(self, send_func, *, content: str = None, file: discord.File = None, embed: discord.Embed = None):
+            await self.send_dm(ctx.author, content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+    
+    async def _send_message(self, send_func, *, content: str=None, file: discord.File=None, embed: discord.Embed=None, allowed_mentions: discord.AllowedMentions=discord.AllowedMentions.all()):
         kwargs = {}
         if content:
             kwargs['content'] = content
@@ -60,6 +51,8 @@ class DiscordMessageService:
             kwargs['file'] = file
         if embed:
             kwargs['embed'] = embed
+        if allowed_mentions is not None:
+            kwargs['allowed_mentions'] = allowed_mentions
         await send_func(**kwargs)
 
 class Paginator:
@@ -144,3 +137,27 @@ class ChannelPaginator:
             except asyncio.TimeoutError:
                 await self.message.clear_reactions()
                 break
+                
+class UserPaginator(discord.ui.View):
+    def __init__(self, bot: DiscordBot, ctx, pages, *, timeout=60):
+        super().__init__(timeout=timeout)
+        self.bot=bot;self.ctx=ctx;self.pages=pages;self.current_page=0;self.message=None
+    async def start(self):
+        if not self.pages:
+            return await (self.ctx.interaction.response.send_message if self.ctx.interaction else self.ctx.send)('There are no pages to display.',ephemeral=bool(self.ctx.interaction))
+        embed=self.pages[self.current_page]
+        if self.ctx.interaction: await self.ctx.interaction.response.send_message(embed=embed,ephemeral=True,view=self)
+        else: self.message=await self.ctx.author.send(embed=embed,view=self)
+    @discord.ui.button(label='⬅️',style=discord.ButtonStyle.secondary)
+    async def previous(self,interaction:discord.Interaction,button:discord.ui.Button):
+        if interaction.user!=self.ctx.author:return await interaction.response.send_message("You cannot use this paginator.",ephemeral=True)
+        if self.current_page>0:self.current_page-=1;await interaction.response.edit_message(embed=self.pages[self.current_page],view=self)
+    @discord.ui.button(label='➡️',style=discord.ButtonStyle.secondary)
+    async def next(self,interaction:discord.Interaction,button:discord.ui.Button):
+        if interaction.user!=self.ctx.author:return await interaction.response.send_message("You cannot use this paginator.",ephemeral=True)
+        if self.current_page<len(self.pages)-1:self.current_page+=1;await interaction.response.edit_message(embed=self.pages[self.current_page],view=self)
+    @discord.ui.button(label='⏹️',style=discord.ButtonStyle.danger)
+    async def stop(self,interaction:discord.Interaction,button:discord.ui.Button):
+        if interaction.user!=self.ctx.author:return await interaction.response.send_message("You cannot use this paginator.",ephemeral=True)
+        await interaction.response.edit_message(view=None)
+        self.stop()
