@@ -250,7 +250,6 @@ class EventListeners(commands.Cog):
                                 perm_lines.append(f'• {channel_mention} — {reason}')
                         if perm_lines:
                             perm_embed = discord.Embed(title=f'\U0001F507 Attempted unmute: {member.display_name}', description='\n'.join(perm_lines)+'\n\nThis user must be unmuted manually via the bot.',     color=discord.Color.red())
-                            should_be_muted = True
                             await after_channel.send(embed=perm_embed)
                     if should_be_muted and not after.mute:
                         try:

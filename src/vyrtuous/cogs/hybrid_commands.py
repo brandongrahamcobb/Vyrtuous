@@ -1699,9 +1699,9 @@ class Hybrid(commands.Cog):
                         return await ctx.send(f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                     if row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'unmute'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
+                    await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4', ctx.guild.id, member_obj.id,  channel_obj.id, 'user')
                     if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                         await member_obj.edit(mute=False)
-                    await conn.execute('DELETE FROM active_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4', ctx.guild.id, member_obj.id,  channel_obj.id, 'user')
                     await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,  $2, $3, $4, $5, $6)', 'unmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Unmuted a member')
             except Exception as e:
                 logger.warning(f'\U0001F6AB Database error: {e}')
