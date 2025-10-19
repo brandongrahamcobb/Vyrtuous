@@ -2897,7 +2897,7 @@ class Hybrid(commands.Cog):
                 rows = [r for r in rows if guild.get_channel(r['channel_id'])]
                 if not rows:
                     return await send(
-                        f'\U0001F6AB {member_obj.mention} is not flagged in any voice channels.',
+                        content=f'\U0001F6AB {member_obj.mention} is not flagged in any voice channels.',
                         allowed_mentions=discord.AllowedMentions.none()
                     )
                 lines = []
