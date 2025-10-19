@@ -151,12 +151,13 @@ class EventListeners(commands.Cog):
                     is_owner_or_dev = await is_owner_developer_via_objects(member, self.bot)
                     if before.mute != after.mute:
                         if before.mute and not after.mute and before_channel:
-                            await conn.execute('''
+                            result = await conn.execute('''
                                 DELETE FROM active_voice_mutes
                                 WHERE guild_id = $1
-                                  AND discord_snowflake = $2
-                                  AND channel_id = $3
-                                  AND target = 'user'
+                                AND discord_snowflake = $2
+                                AND channel_id = $3
+                                AND target = 'user'
+                                AND expires_at IS NOT NULL
                             ''', member.guild.id, user_id, before_channel.id)
                             just_manual_unmute = True
                         elif active_stage and before.mute and not after.mute and before_channel:
@@ -228,8 +229,29 @@ class EventListeners(commands.Cog):
                     if existing_mute_row:
                         if not existing_mute_row['expires_at'] or existing_mute_row['expires_at'] > datetime.now(timezone.utc):
                             should_be_muted = True
-                    if just_manual_unmute:
-                        should_be_muted = False
+                    if just_manual_unmute and existing_mute_row:
+                        records = await conn.fetch('''
+                            SELECT guild_id, channel_id, expires_at, reason
+                            FROM active_voice_mutes
+                            WHERE discord_snowflake = $1
+                              AND guild_id = $2
+                              AND target = 'user'
+                        ''', member.id, member.guild.id)
+                        records = [r for r in records if member.guild.get_channel(r['channel_id'])]
+                        if not records:
+                            return
+                        description_lines = []
+                        perm_lines = []
+                        for record in records:
+                            channel_obj = member.guild.get_channel(record['channel_id'])
+                            channel_mention = channel_obj.mention if channel_obj else f'`{record['channel_id']}`'
+                            reason = record['reason']
+                            if record['expires_at'] is None:
+                                perm_lines.append(f'• {channel_mention} — {reason}')
+                        if perm_lines:
+                            perm_embed = discord.Embed(title=f'\U0001F507 Attempted unmute: {member.display_name}', description='\n'.join(perm_lines)+'\n\nThis user must be unmuted manually via the bot.',     color=discord.Color.red())
+                            should_be_muted = True
+                            await after_channel.send(embed=perm_embed)
                     if should_be_muted and not after.mute:
                         try:
                             await member.edit(mute=True, reason=f'Enforcing mute in {after_channel.name} (found in arrays)')
@@ -246,7 +268,7 @@ class EventListeners(commands.Cog):
                             logger.debug(f'Failed to unmute {member.display_name}: {e}')
                 except Exception as e:
                     logger.exception('Error in on_voice_state_update', exc_info=e)
-                        
+            
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
         user_id = member.id
