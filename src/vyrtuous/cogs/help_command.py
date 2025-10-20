@@ -144,8 +144,6 @@ class Help(commands.Cog):
                 return await self.handler.send_message(ctx, f'\U0001F6AB Command `{command_name}` not found.')
             if cmd.hidden:
                 return await self.handler.send_message(ctx, f'\U0001F6AB Command `{command_name}` is hidden.')
-            if not await cmd.can_run(ctx):
-                return await self.handler.send_message(ctx, f'\U0001F6AB You do not have permission to run `{command_name}`.')
             embed = discord.Embed(
                 title=f'{config['discord_command_prefix']}{cmd.name}',
                 description=cmd.help or 'No description provided.',
