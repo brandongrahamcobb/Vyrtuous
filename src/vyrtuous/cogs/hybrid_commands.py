@@ -337,19 +337,20 @@ class Hybrid(commands.Cog):
         ctx: commands.Context,
         channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     )-> None:
-        async def send(**kw):
-            await self.handler.send_message(ctx, **kw)
-        channel_obj = await self.resolve_channel(ctx, channel)
-        if not channel_obj:
-            return await send(content=f'\U0001F6AB Could not resolve a valid channel from input: {channel}.')
+        async def send(**kw): await self.handler.send_message(ctx, **kw)
+        if not channel:
+            return await send(content=f'\U0001F6AB Please provide a valid channel ID.')
+        if channel.startswith('<#') and channel.endswith('>'): channel_id = int(channel[2:-1])
+        else: channel_id = int(channel)
+        if channel_id == ctx.channel.id: return await send(content=f'\U0001F6AB Cannot clear the current channel.')
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE users
                 SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $1),
                     moderator_channel_ids = array_remove(moderator_channel_ids, $1),
                     updated_at = NOW()
-            ''', channel_obj.id)
-        await send(content=f'{self.get_random_emoji()} Removed {channel_obj.mention} from all users\' coordinator and moderator access.', allowed_mentions=discord.AllowedMentions.none())
+            ''', channel_id)
+        await send(content=f'{self.get_random_emoji()} Removed channel ID `{channel_id}` from all users\' coordinator and moderator access.', allowed_mentions=discord.AllowedMentions.none())
     
     @app_commands.command(name='admin', description='Grants server mute privileges to a member for the entire guild.')
     @is_owner_app_predicator()
