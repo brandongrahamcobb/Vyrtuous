@@ -211,12 +211,23 @@ class EventListeners(commands.Cog):
                             should_be_muted = False
                     if not before.mute and after.mute and after_channel:
                         if not existing_mute_row:
-                            await conn.execute('''
-                                INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target)
-                                VALUES ($1, $2, $3, NOW() + interval '1 hour', 'user')
-                                ON CONFLICT (guild_id, discord_snowflake, channel_id, target) DO UPDATE
-                                SET expires_at = EXCLUDED.expires_at
-                            ''', member.guild.id, user_id, after_channel.id)
+                            other_cog = self.bot.get_cog("Hybrid")
+                            if other_cog is not None:
+                                if member.id not in other_cog.super["members"]:
+                                    await conn.execute('''
+                                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target)
+                                        VALUES ($1, $2, $3, NOW() + interval '1 hour', 'user')
+                                        ON CONFLICT (guild_id, discord_snowflake, channel_id, target) DO UPDATE
+                                        SET expires_at = EXCLUDED.expires_at
+                                    ''', member.guild.id, user_id, after_channel.id)
+                                else:
+                                    embed = discord.Embed(
+                                        title=f'\u1F4AB {member.display_name} is a hero!',
+                                        description=f'{member.display_name} cannot be muted.',
+                                        color=discord.Color.gold()
+                                    )
+                                    embed.set_thumbnail(url=member.display_avatar.url)
+                                    await after_channel.send(embed=embed)
                     existing_mute_row = await conn.fetchrow('''
                         SELECT expires_at
                         FROM active_voice_mutes
