@@ -79,151 +79,255 @@ class ScheduledTasks(commands.Cog):
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
-        now = datetime.now(timezone.utc)
-        async with self.bot.db_pool.acquire() as conn:
-            expired = await conn.fetch('''
-                SELECT guild_id, discord_snowflake, channel_id
-                FROM active_bans
-                WHERE expires_at <= $1
-            ''', now)
-        for record in expired:
-            user_id = record['discord_snowflake']
-            guild = self.bot.get_guild(record['guild_id'])
-            if guild is None:
-                continue
-            channel_id = record['channel_id']
-            channel = self.bot.get_channel(channel_id)
-            if not channel:
-                try:
-                    channel = await guild.fetch_channel(channel_id)
-                except discord.NotFound:
-                    continue
-            member = guild.get_member(user_id)
-            if member is None:
-                try:
-                    member = await guild.fetch_member(user_id)
-                except discord.NotFound:
-                    continue
+        try:
+            now = datetime.now(timezone.utc)
             async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('''
-                    DELETE FROM active_bans
-                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                ''', guild.id, user_id, channel_id)
-            try:
-                await channel.set_permissions(member, overwrite=None)
-            except discord.Forbidden:
-                logger.warning(f'No permission to remove ban override for user {user_id} in channel {channel_id}.')
-            except discord.HTTPException as e:
-                logger.error(f'Failed to remove permission override: {e}')
+                expired = await conn.fetch('''
+                    SELECT guild_id, discord_snowflake, channel_id
+                    FROM active_bans
+                    WHERE expires_at <= $1
+                ''', now)
+                for record in expired:
+                    try:
+                        user_id = record['discord_snowflake']
+                        guild_id = record['guild_id']
+                        channel_id = record['channel_id']
+                        guild = self.bot.get_guild(guild_id)
+                        if guild is None:
+                            logger.info(f'Guild {guild_id} not found, cleaning up expired ban')
+                            await conn.execute('''
+                                DELETE FROM active_bans
+                                WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                            ''', guild_id, user_id, channel_id)
+                            continue
+                        channel = self.bot.get_channel(channel_id)
+                        if not channel:
+                            try:
+                                channel = await guild.fetch_channel(channel_id)
+                            except discord.NotFound:
+                                logger.info(f'Channel {channel_id} not found, cleaning up expired ban')
+                                await conn.execute('''
+                                    DELETE FROM active_bans
+                                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                                ''', guild_id, user_id, channel_id)
+                                continue
+                        member = guild.get_member(user_id)
+                        if member is None:
+                            try:
+                                member = await guild.fetch_member(user_id)
+                            except discord.NotFound:
+                                logger.info(f'Member {user_id} not found in guild {guild_id}, cleaning up expired ban')
+                                await conn.execute('''
+                                    DELETE FROM active_bans
+                                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                                ''', guild_id, user_id, channel_id)
+                                continue
+                        await conn.execute('''
+                            DELETE FROM active_bans
+                            WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                        ''', guild_id, user_id, channel_id)
+                        try:
+                            await channel.set_permissions(member, overwrite=None)
+                            logger.info(f'Removed ban override for user {user_id} in channel {channel_id}')
+                        except discord.Forbidden:
+                            logger.warning(f'No permission to remove ban override for user {user_id} in channel {channel_id}')
+                        except discord.HTTPException as e:
+                            logger.error(f'Failed to remove permission override for user {user_id} in channel {channel_id}: {e}')
+                    except Exception as e:
+                        logger.error(f'Error processing expired ban for user {user_id} in guild {guild_id}: {e}', exc_info=True)
+                        continue
+        except Exception as e:
+            logger.error(f'Error in check_expired_bans task: {e}', exc_info=True)
     
     @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self):
-        now = datetime.now(timezone.utc)
-        async with self.bot.db_pool.acquire() as conn:
-            expired = await conn.fetch('''
-                SELECT guild_id, discord_snowflake, channel_id, target
-                FROM active_voice_mutes
-                WHERE expires_at IS NOT NULL
-                  AND expires_at <= $1
-            ''', now)
-            for record in expired:
-                guild = self.bot.get_guild(record['guild_id'])
-                if guild is None:
-                    continue
-                channel = self.bot.get_channel(record['channel_id'])
-                if not channel:
+        try:
+            now = datetime.now(timezone.utc)
+            async with self.bot.db_pool.acquire() as conn:
+                expired = await conn.fetch('''
+                    SELECT guild_id, discord_snowflake, channel_id, target
+                    FROM active_voice_mutes
+                    WHERE expires_at IS NOT NULL
+                      AND expires_at <= $1
+                ''', now)
+                for record in expired:
                     try:
-                        channel = await guild.fetch_channel(record['channel_id'])
-                    except discord.NotFound:
+                        guild_id = record['guild_id']
+                        user_id = record['discord_snowflake']
+                        channel_id = record['channel_id']
+                        target = record['target']
+                        guild = self.bot.get_guild(guild_id)
+                        if guild is None:
+                            logger.info(f'Guild {guild_id} not found, cleaning up expired voice mute')
+                            await conn.execute('''
+                                DELETE FROM active_voice_mutes
+                                WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4
+                            ''', guild_id, user_id, channel_id, target)
+                            continue
+                        channel = self.bot.get_channel(channel_id)
+                        if not channel:
+                            try:
+                                channel = await guild.fetch_channel(channel_id)
+                            except discord.NotFound:
+                                logger.info(f'Channel {channel_id} not found, cleaning up expired voice mute')
+                                await conn.execute('''
+                                    DELETE FROM active_voice_mutes
+                                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4
+                                ''', guild_id, user_id, channel_id, target)
+                                continue
+                        member = guild.get_member(user_id)
+                        if member is None:
+                            try:
+                                member = await guild.fetch_member(user_id)
+                            except discord.NotFound:
+                                logger.info(f'Member {user_id} not found in guild {guild_id}, cleaning up expired voice mute')
+                                await conn.execute('''
+                                    DELETE FROM active_voice_mutes
+                                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4
+                                ''', guild_id, user_id, channel_id, target)
+                                continue
+                        await conn.execute('''
+                            DELETE FROM active_voice_mutes
+                            WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4
+                        ''', guild_id, user_id, channel_id, target)
+                        if member.voice and member.voice.channel and member.voice.channel.id == channel_id:
+                            try:
+                                await member.edit(mute=False)
+                                logger.info(f'Unmuted user {user_id} in channel {channel_id}')
+                            except discord.Forbidden:
+                                logger.warning(f'No permission to unmute user {user_id} in channel {channel_id}')
+                            except discord.HTTPException as e:
+                                logger.error(f'Failed to unmute user {user_id} in channel {channel_id}: {e}')
+                        else:
+                            logger.info(f'User {user_id} not in voice channel {channel_id}, skipping unmute')
+                    except Exception as e:
+                        logger.error(f'Error processing expired voice mute for user {user_id} in guild {guild_id}: {e}', exc_info=True)
                         continue
-                member = guild.get_member(record['discord_snowflake'])
-                if member is None:
-                    try:
-                        member = await guild.fetch_member(record['discord_snowflake'])
-                    except discord.NotFound:
-                        continue
-                if member.voice and member.voice.channel and member.voice.channel.id == record['channel_id']:
-                    try:
-                        await member.edit(mute=False)
-                    except discord.HTTPException:
-                        logger.warning(f'No permission to unmute user {member.id} in channel {channel.id}.')
-                await conn.execute('''
-                    DELETE FROM active_voice_mutes
-                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND target = $4
-                ''', record['guild_id'], record['discord_snowflake'], record['channel_id'], record['target'])
+        except Exception as e:
+            logger.error(f'Error in check_expired_voice_mutes task: {e}', exc_info=True)
     
     @tasks.loop(minutes=1)
     async def check_expired_stages(self):
-        now = datetime.now(timezone.utc)
-        async with self.bot.db_pool.acquire() as conn:
-            expired = await conn.fetch('''
-                SELECT guild_id, channel_id
-                FROM active_stages
-                WHERE expires_at IS NOT NULL
-                  AND expires_at <= $1
-            ''', now)
-            for record in expired:
-                guild_id, channel_id = record['guild_id'], record['channel_id']
-                records = await conn.fetch('SELECT discord_snowflake FROM active_voice_mutes WHERE guild_id = $1 AND channel_id = $2 AND target = $3', guild_id, channel_id, 'room')
-                await conn.execute('''
-                    DELETE FROM active_voice_mutes
-                    WHERE guild_id = $1 AND channel_id = $2 AND target = 'room'
-                ''', guild_id, channel_id)
-                guild = self.bot.get_guild(guild_id)
-                if guild:
-                    for record in records:
-                        member = guild.get_member(record['discord_snowflake'])
-                        if member and member.voice and member.voice.mute:
-                            await member.edit(mute=False, reason='Stage room closed or unmuted automatically')
-                await conn.execute('''
-                    DELETE FROM stage_coordinators
-                    WHERE guild_id = $1 AND channel_id = $2
-                ''', guild_id, channel_id)
-                await conn.execute('''
-                    DELETE FROM active_stages
-                    WHERE guild_id = $1 AND channel_id = $2
-                ''', guild_id, channel_id)
+        try:
+            now = datetime.now(timezone.utc)
+            async with self.bot.db_pool.acquire() as conn:
+                expired = await conn.fetch('''
+                    SELECT guild_id, channel_id
+                    FROM active_stages
+                    WHERE expires_at IS NOT NULL
+                      AND expires_at <= $1
+                ''', now)
+                for record in expired:
+                    try:
+                        guild_id = record['guild_id']
+                        channel_id = record['channel_id']
+                        muted_members = await conn.fetch('''
+                            SELECT discord_snowflake 
+                            FROM active_voice_mutes 
+                            WHERE guild_id = $1 AND channel_id = $2 AND target = $3
+                        ''', guild_id, channel_id, 'room')
+                        await conn.execute('''
+                            DELETE FROM active_voice_mutes
+                            WHERE guild_id = $1 AND channel_id = $2 AND target = 'room'
+                        ''', guild_id, channel_id)
+                        await conn.execute('''
+                            DELETE FROM stage_coordinators
+                            WHERE guild_id = $1 AND channel_id = $2
+                        ''', guild_id, channel_id)
+                        await conn.execute('''
+                            DELETE FROM active_stages
+                            WHERE guild_id = $1 AND channel_id = $2
+                        ''', guild_id, channel_id)
+                        guild = self.bot.get_guild(guild_id)
+                        if guild:
+                            for member_record in muted_members:
+                                try:
+                                    user_id = member_record['discord_snowflake']
+                                    member = guild.get_member(user_id)
+                                    if member and member.voice and member.voice.mute:
+                                        try:
+                                            await member.edit(mute=False, reason='Stage room closed or unmuted automatically')
+                                            logger.info(f'Unmuted user {user_id} after stage {channel_id} expired')
+                                        except discord.Forbidden:
+                                            logger.warning(f'No permission to unmute user {user_id} in expired stage {channel_id}')
+                                        except discord.HTTPException as e:
+                                            logger.error(f'Failed to unmute user {user_id} in expired stage {channel_id}: {e}')
+                                except Exception as e:
+                                    logger.error(f'Error unmuting member {user_id} from expired stage: {e}', exc_info=True)
+                                    continue
+                        else:
+                            logger.info(f'Guild {guild_id} not found when processing expired stage {channel_id}')
+                        logger.info(f'Cleaned up expired stage for channel {channel_id} in guild {guild_id}')
+                    except Exception as e:
+                        logger.error(f'Error processing expired stage for channel {channel_id} in guild {guild_id}: {e}', exc_info=True)
+                        continue
+        except Exception as e:
+            logger.error(f'Error in check_expired_stages task: {e}', exc_info=True)
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
-        now = datetime.now(timezone.utc)
-        async with self.bot.db_pool.acquire() as conn:
-            expired = await conn.fetch('''
-                SELECT guild_id, discord_snowflake, channel_id
-                FROM active_text_mutes
-                WHERE expires_at IS NOT NULL
-                  AND expires_at <= $1
-            ''', now)
-            if not expired:
-                return
-            for record in expired:
-                user_id = record['discord_snowflake']
-                guild = self.bot.get_guild(record['guild_id'])
-                if guild is None:
-                    continue
-                channel_id = record['channel_id']
-                channel = self.bot.get_channel(channel_id)
-                if not channel:
+        try:
+            now = datetime.now(timezone.utc)
+            async with self.bot.db_pool.acquire() as conn:
+                expired = await conn.fetch('''
+                    SELECT guild_id, discord_snowflake, channel_id
+                    FROM active_text_mutes
+                    WHERE expires_at IS NOT NULL
+                      AND expires_at <= $1
+                ''', now)
+                if not expired:
+                    return
+                for record in expired:
                     try:
-                        channel = await guild.fetch_channel(channel_id)
-                    except discord.NotFound:
+                        user_id = record['discord_snowflake']
+                        guild_id = record['guild_id']
+                        channel_id = record['channel_id']
+                        guild = self.bot.get_guild(guild_id)
+                        if guild is None:
+                            logger.info(f'Guild {guild_id} not found, cleaning up expired text mute')
+                            await conn.execute('''
+                                DELETE FROM active_text_mutes
+                                WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                            ''', guild_id, user_id, channel_id)
+                            continue
+                        channel = self.bot.get_channel(channel_id)
+                        if not channel:
+                            try:
+                                channel = await guild.fetch_channel(channel_id)
+                            except discord.NotFound:
+                                logger.info(f'Channel {channel_id} not found, cleaning up expired text mute')
+                                await conn.execute('''
+                                    DELETE FROM active_text_mutes
+                                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                                ''', guild_id, user_id, channel_id)
+                                continue
+                        member = guild.get_member(user_id)
+                        if member is None:
+                            try:
+                                member = await guild.fetch_member(user_id)
+                            except discord.NotFound:
+                                logger.info(f'Member {user_id} not found in guild {guild_id}, cleaning up expired text mute')
+                                await conn.execute('''
+                                    DELETE FROM active_text_mutes
+                                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                                ''', guild_id, user_id, channel_id)
+                                continue
+                        await conn.execute('''
+                            DELETE FROM active_text_mutes
+                            WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                        ''', guild_id, user_id, channel_id)
+                        try:
+                            await channel.set_permissions(member, send_messages=None)
+                            logger.info(f'Removed text mute override for user {user_id} in channel {channel_id}')
+                        except discord.Forbidden:
+                            logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}')
+                        except discord.HTTPException as e:
+                            logger.error(f'Failed to remove permission override for user {user_id} in channel {channel_id}: {e}')
+                    except Exception as e:
+                        logger.error(f'Error processing expired text mute for user {user_id} in guild {guild_id}: {e}', exc_info=True)
                         continue
-                member = guild.get_member(user_id)
-                if member is None:
-                    try:
-                        member = await guild.fetch_member(user_id)
-                    except discord.NotFound:
-                        continue
-                try:
-                    await channel.set_permissions(member, send_messages=None)
-                except discord.Forbidden:
-                    logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}.')
-                except discord.HTTPException as e:
-                    logger.error(f'Failed to remove permission override: {e}')
-                await conn.execute('''
-                    DELETE FROM active_text_mutes
-                    WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
-                ''', guild.id, member.id, channel_id)
+        except Exception as e:
+            logger.error(f'Error in check_expired_text_mutes task: {e}', exc_info=True)
                 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
