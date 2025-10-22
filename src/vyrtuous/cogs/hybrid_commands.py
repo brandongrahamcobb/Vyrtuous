@@ -1182,7 +1182,7 @@ class Hybrid(commands.Cog):
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1, $2, $3, $4, $5, $6)
             ''', 'create_moderator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Created a moderator')
-        return await send(f'{self.get_random_emoji()} {member_obj.mention} has been granted moderator rights in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has been granted moderator rights in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     def create_role_alias(self, command_name: Optional[str]) -> Command:
         @commands.command(name=command_name, help=f'Gives a specific role to a user.')
