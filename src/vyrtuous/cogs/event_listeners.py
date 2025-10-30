@@ -105,7 +105,7 @@ class EventListeners(commands.Cog):
                             for row in rows:
                                 grouped.setdefault(row['channel_id'], []).append(row)
                             context_records = grouped.get(after_channel.id)
-                            if context_records:
+                            if context_records and after_channel.id:
                                 embeds = []
                                 embed = discord.Embed(
                                     title=f'\u26A0\uFE0F {member.display_name} is flagged',

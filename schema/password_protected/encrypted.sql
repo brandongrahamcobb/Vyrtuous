@@ -86,7 +86,21 @@ CREATE TABLE IF NOT EXISTS active_flags (
     reason TEXT,
     PRIMARY KEY (guild_id, discord_snowflake, channel_id)
 );
--- Currently active mutes
+
+CREATE TABLE IF NOT EXISTS active_stages (
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    initiator_id BIGINT NOT NULL,
+    expires_at TIMESTAMPTZ,
+    PRIMARY KEY (guild_id, channel_id)
+);
+
+CREATE TABLE IF NOT EXISTS stage_coordinators (
+    guild_id BIGINT NOT NULL,
+    channel_id BIGINT NOT NULL,
+    discord_snowflake BIGINT NOT NULL,
+    PRIMARY KEY (guild_id, channel_id, discord_snowflake)
+);
 
 CREATE TABLE IF NOT EXISTS active_voice_mutes (
     guild_id BIGINT NOT NULL,
@@ -94,7 +108,8 @@ CREATE TABLE IF NOT EXISTS active_voice_mutes (
     channel_id BIGINT NOT NULL,
     expires_at TIMESTAMPTZ,
     reason TEXT,
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id)
+    target TEXT CHECK (target IN ('room', 'user')) DEFAULT 'user',
+    PRIMARY KEY (guild_id, discord_snowflake, channel_id, target)
 );
 
 CREATE TABLE moderation_logs (
