@@ -1186,7 +1186,7 @@ class Hybrid(commands.Cog):
 
     def create_role_alias(self, command_name: Optional[str]) -> Command:
         @commands.command(name=command_name, help=f'Gives a specific role to a user.')
-        @is_owner_developer_coordinator_predicator('role')
+        @is_owner_developer_coordinator_moderator_predicator('role')
         async def role_alias(
             ctx: commands.Context,
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
