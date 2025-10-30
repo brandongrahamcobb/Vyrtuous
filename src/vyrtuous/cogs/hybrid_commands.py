@@ -1202,20 +1202,20 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB No role alias configured for `{command_name}`.')
             static_role_id = int(alias_data.get('role_id'))
             target_channel_id = int(alias_data.get('channel_id')) if alias_data.get('channel_id') else None
-            is_owner_or_dev, is_coord = await check_owner_dev_coord(ctx, target_channel_id)
+            is_owner_or_dev, is_coord_or_mod = await check_owner_dev_coord_mod(ctx, target_channel_id)
             member_obj = await self.resolve_member(ctx, member)
             if not member_obj or not member:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
             channel_obj = await self.resolve_channel(ctx, target_channel_id)
             if not channel_obj:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve a valid channel from the alias.')
-            if not is_owner_or_dev and not is_coord:
+            if not is_owner_or_dev and not is_coord_or_mod:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`{command_name}`) in {channel_obj.mention}')
             if member_obj.bot and not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot give the bot a role.')
-            highest_role, success = await check_block(ctx, member_obj, channel_obj)
-            if not success:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` have a role because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+#            highest_role, success = await check_block(ctx, member_obj, channel_obj)
+#            if not success:
+#                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` have a role because they are a higher/or equivalent role than you in {channel_obj.mention}.')
             role_obj = ctx.guild.get_role(static_role_id)
             if not role_obj:
                 return await ctx.send(f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
