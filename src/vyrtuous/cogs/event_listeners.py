@@ -105,48 +105,49 @@ class EventListeners(commands.Cog):
                             for row in rows:
                                 grouped.setdefault(row['channel_id'], []).append(row)
                             context_records = grouped.get(after_channel.id)
-                            if context_records and after_channel.id:
-                                embeds = []
-                                embed = discord.Embed(
-                                    title=f'\u26A0\uFE0F {member.display_name} is flagged',
-                                    color=discord.Color.red()
-                                )
-                                embed.set_thumbnail(url=member.display_avatar.url)
-                                for record in context_records:
-                                    reason = record['reason'] or 'No reason provided'
-                                    embed.add_field(name=f'Channel: {after_channel.mention}', value=f'Reason: {reason}', inline=False)
-                                other_channels = [ch_id for ch_id in grouped.keys() if ch_id != after_channel.id]
-                                if other_channels:
-                                    ch_mentions = []
-                                    for ch_id in other_channels:
-                                        ch = member.guild.get_channel(ch_id)
-                                        if not ch:
-                                            ch = await member.guild.fetch_channel(ch_id)
-                                        ch_mentions.append(ch.mention if ch else f'Channel ID `{ch_id}`')
-                                    embed.add_field(name='Other flagged channels', value='\n'.join(ch_mentions), inline=False)
-                                embeds.append(embed)
-                                for ch_id in other_channels:
-                                    records = grouped[ch_id]
-                                    ch = member.guild.get_channel(ch_id)
-                                    ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
+                            if after_channel.id == 1222056499959042108 and context_records:
+                                if context_records and after_channel.id:
+                                    embeds = []
                                     embed = discord.Embed(
-                                        title=f'\u26A0\uFE0F {member.display_name} is flagged in {ch_name}',
+                                        title=f'\u26A0\uFE0F {member.display_name} is flagged',
                                         color=discord.Color.red()
                                     )
                                     embed.set_thumbnail(url=member.display_avatar.url)
-                                    for record in records:
+                                    for record in context_records:
                                         reason = record['reason'] or 'No reason provided'
-                                        embed.add_field(name='Channel', value=f'{ch_name}\nReason: {reason}', inline=False)
+                                        embed.add_field(name=f'Channel: {after_channel.mention}', value=f'Reason: {reason}', inline=False)
+                                    other_channels = [ch_id for ch_id in grouped.keys() if ch_id != after_channel.id]
+                                    if other_channels:
+                                        ch_mentions = []
+                                        for ch_id in other_channels:
+                                            ch = member.guild.get_channel(ch_id)
+                                            if not ch:
+                                                ch = await member.guild.fetch_channel(ch_id)
+                                            ch_mentions.append(ch.mention if ch else f'Channel ID `{ch_id}`')
+                                        embed.add_field(name='Other flagged channels', value='\n'.join(ch_mentions), inline=False)
                                     embeds.append(embed)
-                                now = time.time()
-                                self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
-                                if len(self.join_log[member.id]) < 1:
-                                    self.join_log[member.id].append(now)
-                                    if len(embeds) == 1:
-                                        await after_channel.send(embed=embeds[0])
-                                    else:
-                                        paginator = ChannelPaginator(self.bot, after_channel, embeds)
-                                        await paginator.start()
+                                    for ch_id in other_channels:
+                                        records = grouped[ch_id]
+                                        ch = member.guild.get_channel(ch_id)
+                                        ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
+                                        embed = discord.Embed(
+                                            title=f'\u26A0\uFE0F {member.display_name} is flagged in {ch_name}',
+                                            color=discord.Color.red()
+                                        )
+                                        embed.set_thumbnail(url=member.display_avatar.url)
+                                        for record in records:
+                                            reason = record['reason'] or 'No reason provided'
+                                            embed.add_field(name='Channel', value=f'{ch_name}\nReason: {reason}', inline=False)
+                                        embeds.append(embed)
+                                    now = time.time()
+                                    self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
+                                    if len(self.join_log[member.id]) < 1:
+                                        self.join_log[member.id].append(now)
+                                        if len(embeds) == 1:
+                                            await after_channel.send(embed=embeds[0])
+                                        else:
+                                            paginator = ChannelPaginator(self.bot, after_channel, embeds)
+                                            await paginator.start()
                     coordinator_ids = {r['discord_snowflake'] for r in coordinators}
                     is_owner_or_dev = await is_owner_developer_via_objects(member, self.bot)
                     if before.mute != after.mute:

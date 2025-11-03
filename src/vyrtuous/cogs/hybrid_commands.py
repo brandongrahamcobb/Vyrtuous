@@ -562,9 +562,13 @@ class Hybrid(commands.Cog):
         if alias_type == 'ban':
             cmd = self.create_ban_alias(alias_name)
         elif alias_type == 'flag':
+            if channel_obj.id != '1222056499959042108':
+                return await send(content=f'\U0001F6AB {channel_obj.mention} has no vegan association.')
             cmd = self.create_flag_alias(alias_name)
         elif alias_type == 'unflag':
             cmd = self.create_unflag_alias(alias_name)
+            if channel_obj.id != '1222056499959042108':
+                return await send(content=f'\U0001F6AB {channel_obj.mention} has no vegan association.')
         elif alias_type == 'mute':
             cmd = self.create_voice_mute_alias(alias_name)
         elif alias_type == 'tmute':
@@ -1213,9 +1217,7 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`{command_name}`) in {channel_obj.mention}')
             if member_obj.bot and not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot give the bot a role.')
-#            highest_role, success = await check_block(ctx, member_obj, channel_obj)
-#            if not success:
-#                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` have a role because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+#            highest_role, success = await check_block(ctx, member_obj, channel_obj)o
             role_obj = ctx.guild.get_role(static_role_id)
             if not role_obj:
                 return await ctx.send(f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
