@@ -4239,7 +4239,7 @@ class Hybrid(commands.Cog):
                 logger.warning(f'Failed to toggle promotion: {e}')
                 await send(content=f'\U000026A0\U0000FE0F Failed to toggle promotion for {member.display_name}.')
     
-    @app_commands.command(name='csurvey', description='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
+    @app_commands.command(name='survey', description='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
     @app_commands.describe(channel='Tag a voice/stage channel')
     @is_owner_developer_app_predicator()
     async def app_stage_survey(self, interaction: discord.Interaction, channel:     Optional[discord.abc.GuildChannel] = None):
@@ -4264,7 +4264,7 @@ class Hybrid(commands.Cog):
         )
         await send(content=msg)
         
-    @commands.command(name='csurvey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
+    @commands.command(name='survey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
     @is_owner_developer_predicator()
     async def stage_survey(self, ctx: commands.Context, *, channel: Optional[str] = None):
         async def send(**kw): await self.handler.send_message(ctx, **kw)
