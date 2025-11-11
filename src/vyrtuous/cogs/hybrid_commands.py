@@ -2125,11 +2125,14 @@ class Hybrid(commands.Cog):
     @app_commands.describe(target='"all", channel name/ID/mention, or user mention/ID')
     async def app_list_bans(self, interaction: discord.Interaction, target: str = None):
         send = lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
+        ctx=await self.bot.get_context(interaction)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         guild = interaction.guild
         member_obj = await self.resolve_app_member(interaction, target)
         if member_obj:
             target = None
-            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj = await self.resolve_app_channel(interaction, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
@@ -2248,10 +2251,12 @@ class Hybrid(commands.Cog):
     async def list_bans(self, ctx: commands.Context, target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')) -> None:
         async def send(**kw):
             await self.handler.send_message(ctx, **kw)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj=await self.resolve_member(ctx,target)
         if member_obj:
             target=None
-            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj=await self.resolve_channel(ctx,target)
         if not channel_obj and not member_obj:return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
@@ -3374,10 +3379,12 @@ class Hybrid(commands.Cog):
     async def app_list_mutes(self, interaction: discord.Interaction, target: str=None):
         send=lambda **kw:interaction.response.send_message(**kw,ephemeral=True)
         ctx=await self.bot.get_context(interaction)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj=await self.resolve_member(ctx,target)
         if member_obj:
             target=None
-            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj=await self.resolve_channel(ctx,target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
@@ -3449,10 +3456,12 @@ class Hybrid(commands.Cog):
     ) -> None:
         async def send(**kw):
             await self.handler.send_message(ctx, **kw)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj = await self.resolve_member(ctx, target)
         if member_obj:
             target = None
-            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj = await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
@@ -3755,10 +3764,12 @@ class Hybrid(commands.Cog):
         send=lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
         guild=interaction.guild
         ctx=await self.bot.get_context(interaction)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj=await self.resolve_member(ctx, target)
         if member_obj:
             target=None
-            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj=await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx, channel_obj)
@@ -3826,10 +3837,12 @@ class Hybrid(commands.Cog):
     ) -> None:
         async def send(**kw):
             await self.handler.send_message(ctx, **kw)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj = await self.resolve_member(ctx, target)
         if member_obj:
             target = None
-            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj = await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
