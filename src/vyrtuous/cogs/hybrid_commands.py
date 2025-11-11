@@ -2127,13 +2127,15 @@ class Hybrid(commands.Cog):
         send = lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
         guild = interaction.guild
         member_obj = await self.resolve_app_member(interaction, target)
-        if member_obj: target = None
+        if member_obj:
+            target = None
+            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj = await self.resolve_app_channel(interaction, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(interaction, channel_obj)
-#        if not is_owner_or_dev and not is_mod_or_coord:
-#            return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention if channel_obj else ""}.')
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
+            return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention if channel_obj else ""}.')
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await send(content='\U0001F6AB Only owners or developers can list all bans across the server.')
@@ -2173,7 +2175,7 @@ class Hybrid(commands.Cog):
             paginator = UserPaginator(self.bot, interaction, pages)
             return await paginator.start()
         _, is_coord = await check_owner_dev_coord(interaction, channel_obj)
-        if (is_owner_or_dev or is_coord) and member_obj:
+        if (is_owner_or_dev or is_coord or is_team_member) and member_obj:
             async with self.bot.db_pool.acquire() as conn:
                 bans = await conn.fetch(
                     '''SELECT channel_id, expires_at, reason
@@ -2201,7 +2203,7 @@ class Hybrid(commands.Cog):
                         duration_str = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
                 embed.add_field(name=channel_mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
             return await send(embed=embed)
-        elif (is_mod_or_coord or is_owner_or_dev) and channel_obj:
+        elif (is_mod_or_coord or is_owner_or_dev or is_team_member) and channel_obj:
             async with self.bot.db_pool.acquire() as conn:
                 bans = await conn.fetch(
                     '''SELECT discord_snowflake, expires_at, reason
@@ -2247,11 +2249,14 @@ class Hybrid(commands.Cog):
         async def send(**kw):
             await self.handler.send_message(ctx, **kw)
         member_obj=await self.resolve_member(ctx,target)
-        if member_obj:target=None
+        if member_obj:
+            target=None
+            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj=await self.resolve_channel(ctx,target)
         if not channel_obj and not member_obj:return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
-#        if not is_owner_or_dev and not is_mod_or_coord:return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention}.')
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
+            return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention}.')
         if target and target.lower()=='all':
             if not is_owner_or_dev:return await send(content='\U0001F6AB Only owners or developers can list all bans across the server.')
             async with self.bot.db_pool.acquire() as conn:rows=await conn.fetch('''SELECT discord_snowflake,channel_id,expires_at,reason FROM active_bans WHERE guild_id=$1 ORDER BY channel_id,expires_at NULLS LAST''',ctx.guild.id)
@@ -2275,7 +2280,7 @@ class Hybrid(commands.Cog):
             paginator=UserPaginator(self.bot,ctx,pages) if ctx.interaction else Paginator(self.bot,ctx,pages)
             return await paginator.start()
         _,is_coord=await check_owner_dev_coord(ctx,channel_obj)
-        if (is_owner_or_dev or is_coord) and member_obj:
+        if (is_owner_or_dev or is_coord or is_team_member) and member_obj:
             async with self.bot.db_pool.acquire() as conn:bans=await conn.fetch('''SELECT channel_id,expires_at,reason FROM active_bans WHERE guild_id=$1 AND discord_snowflake=$2''',ctx.guild.id,member_obj.id)
             bans=[b for b in bans if ctx.guild.get_channel(b['channel_id'])]
             if not bans:return await send(content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.')
@@ -2290,7 +2295,7 @@ class Hybrid(commands.Cog):
                     else:days,seconds=delta.days,delta.seconds;hours=seconds//3600;minutes=(seconds%3600)//60;duration_str=f'{days}d {hours}h left' if days>0 else f'{hours}h {minutes}m left' if hours>0 else f'{minutes}m left'
                 embed.add_field(name=channel_mention,value=f'Reason: {reason}\nDuration: {duration_str}',inline=False)
             return await send(embed=embed)
-        elif (is_mod_or_coord or is_owner_or_dev) and channel_obj:
+        elif (is_mod_or_coord or is_owner_or_dev or is_team_member) and channel_obj:
             async with self.bot.db_pool.acquire() as conn:bans=await conn.fetch('''SELECT discord_snowflake,expires_at,reason FROM active_bans WHERE guild_id=$1 AND channel_id=$2 ORDER BY expires_at NULLS LAST''',ctx.guild.id,channel_obj.id)
             if not bans:return await send(content=f'\U0001F6AB No active bans found for {channel_obj.mention}.')
             lines=[]
@@ -3370,11 +3375,13 @@ class Hybrid(commands.Cog):
         send=lambda **kw:interaction.response.send_message(**kw,ephemeral=True)
         ctx=await self.bot.get_context(interaction)
         member_obj=await self.resolve_member(ctx,target)
-        if member_obj: target=None
+        if member_obj:
+            target=None
+            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj=await self.resolve_channel(ctx,target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
-#        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention if channel_obj else "this context"}.')
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention if channel_obj else "this context"}.')
         if target and target.lower()=='all' and is_owner_or_dev:
             async with self.bot.db_pool.acquire() as conn:
                 records=await conn.fetch('''SELECT discord_snowflake, channel_id, expires_at, COALESCE(reason,'No reason provided') AS reason FROM active_voice_mutes WHERE guild_id=$1 AND target='user' ORDER BY channel_id,discord_snowflake''',ctx.guild.id)
@@ -3399,7 +3406,7 @@ class Hybrid(commands.Cog):
             paginator=UserPaginator(self.bot,ctx,pages)
             return await paginator.start()
         _,is_coord=await check_owner_dev_coord(ctx,channel_obj)
-        if (is_owner_or_dev or is_coord) and member_obj:
+        if (is_owner_or_dev or is_coord or is_team_member) and member_obj:
             async with self.bot.db_pool.acquire() as conn:
                 records=await conn.fetch('''SELECT guild_id, channel_id, expires_at, reason FROM active_voice_mutes WHERE discord_snowflake=$1 AND guild_id=$2 AND target='user' ''',member_obj.id,ctx.guild.id)
             records=[r for r in records if ctx.guild.get_channel(r['channel_id'])]
@@ -3411,7 +3418,7 @@ class Hybrid(commands.Cog):
                 lines.append(f'• {ch_mention} — {r["reason"]} — {self.fmt_duration(r["expires_at"])}')
             embed=Embed(title=f'\U0001F507 Mute records for {member_obj.display_name}',description='\n'.join(lines),color=Color.orange())
             return await send(embed=embed,allowed_mentions=discord.AllowedMentions.none())
-        elif (is_mod_or_coord or is_owner_or_dev) and channel_obj:
+        elif (is_mod_or_coord or is_owner_or_dev or is_team_member) and channel_obj:
             async with self.bot.db_pool.acquire() as conn:
                 records=await conn.fetch('''SELECT guild_id, channel_id, expires_at, reason, discord_snowflake FROM active_voice_mutes WHERE channel_id=$1 AND guild_id=$2 AND target='user' ''',channel_obj.id,ctx.guild.id)
             if not records: return await send(content=f'\U0001F6AB No users are currently muted in {channel_obj.mention}.')
@@ -3445,12 +3452,13 @@ class Hybrid(commands.Cog):
         member_obj = await self.resolve_member(ctx, target)
         if member_obj:
             target = None
+            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj = await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
-#        if not is_owner_or_dev and not is_mod_or_coord:
-#            return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
+            return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
         if target and target.lower() == 'all':
             if is_owner_or_dev:
                 async with self.bot.db_pool.acquire() as conn:
@@ -3485,7 +3493,7 @@ class Hybrid(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
         _, is_coord = await check_owner_dev_coord(ctx, channel_obj)
-        if (is_owner_or_dev or is_coord) and member_obj:
+        if (is_owner_or_dev or is_coord or is_team_member) and member_obj:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
                     SELECT guild_id, channel_id, expires_at, reason
@@ -3506,7 +3514,7 @@ class Hybrid(commands.Cog):
                 description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
             embed = discord.Embed(title=f'\U0001F507 Mute records for {member_obj.display_name}', description='\n'.join(description_lines), color=discord.Color.orange())
             return await send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        elif (is_mod_or_coord or is_owner_or_dev) and channel_obj:
+        elif (is_mod_or_coord or is_owner_or_dev or is_team_member) and channel_obj:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
                     SELECT guild_id, channel_id, expires_at, reason, discord_snowflake
@@ -3748,11 +3756,13 @@ class Hybrid(commands.Cog):
         guild=interaction.guild
         ctx=await self.bot.get_context(interaction)
         member_obj=await self.resolve_member(ctx, target)
-        if member_obj: target=None
+        if member_obj:
+            target=None
+            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj=await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx, channel_obj)
-#        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention if channel_obj else "this channel"}.')
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention if channel_obj else "this channel"}.')
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower()=='all' and is_owner_or_dev:
                 records=await conn.fetch('''SELECT discord_snowflake, channel_id, reason, expires_at FROM active_text_mutes WHERE guild_id = $1 ORDER BY channel_id, discord_snowflake''', guild.id)
@@ -3775,7 +3785,7 @@ class Hybrid(commands.Cog):
                 paginator=UserPaginator(self.bot, ctx, pages)
                 return await paginator.start()
             _,is_coord=await check_owner_dev_coord(ctx, channel_obj)
-            if member_obj and (is_owner_or_dev or is_coord):
+            if member_obj and (is_owner_or_dev or is_coord or is_team_member):
                 records=await conn.fetch('''SELECT channel_id, reason, expires_at FROM active_text_mutes WHERE discord_snowflake = $1 AND guild_id = $2''', member_obj.id, guild.id)
                 if not records: return await send(content=f'\U0001F6AB {member_obj.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
                 lines=[]
@@ -3790,7 +3800,7 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator=UserPaginator(self.bot, ctx, pages)
                 return await paginator.start()
-            if (is_owner_or_dev or is_mod_or_coord) and channel_obj:
+            if (is_owner_or_dev or is_mod_or_coord or is_team_member) and channel_obj:
                 records=await conn.fetch('''SELECT discord_snowflake, reason, expires_at FROM active_text_mutes WHERE channel_id = $1 AND guild_id = $2''', channel_obj.id, guild.id)
                 if not records: return await send(content=f'\U0001F6AB No users are currently text-muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 lines=[]
@@ -3819,12 +3829,13 @@ class Hybrid(commands.Cog):
         member_obj = await self.resolve_member(ctx, target)
         if member_obj:
             target = None
+            is_team_member = any(r.id in [row['role_id'] for row in await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')] for r in member_obj.roles)
         channel_obj = await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
-#        if not is_owner_or_dev and not is_mod_or_coord:
-#            return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention}.')
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
+            return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower() == 'all' and is_owner_or_dev:
                 records = await conn.fetch('''
@@ -3853,7 +3864,7 @@ class Hybrid(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             _, is_coord = await check_owner_dev_coord(ctx, channel_obj)
-            if member_obj and (is_owner_or_dev or is_coord):
+            if member_obj and (is_owner_or_dev or is_coord or is_team_member):
                 records = await conn.fetch('''
                     SELECT channel_id, reason, expires_at
                     FROM active_text_mutes
@@ -3873,7 +3884,7 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-            if (is_owner_or_dev or is_mod_or_coord) and channel_obj:
+            if (is_owner_or_dev or is_mod_or_coord or is_team_member) and channel_obj:
                 records = await conn.fetch('''
                     SELECT discord_snowflake, reason, expires_at
                     FROM active_text_mutes
