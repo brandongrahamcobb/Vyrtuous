@@ -4783,6 +4783,37 @@ class Hybrid(commands.Cog):
                 DO UPDATE SET is_team_member = TRUE;
             ''', role.id)
         await send(content=f'{self.get_random_emoji()} Role `{role.name}` (`{role.id}`) is now authorized for moderator-level checks.')
+        
+    @commands.command(name='tunrole', help='Removes a team role from the permission table.')
+    @is_owner_predicator()
+    async def team_role_undo(
+        self,
+        ctx: commands.Context,
+        *,
+        role_ref: Optional[str] = commands.parameter(description='Tag a role or provide its ID')
+    ):
+        async def send(**kw):
+            await self.handler.send_message(ctx, **kw)
+        if not role_ref:
+            return await send(content='\u26A0\ufe0f You must mention a role or provide its ID.')
+        role = None
+        if ctx.message.role_mentions:
+            role = ctx.message.role_mentions[0]
+        else:
+            try:
+                role_id = int(role_ref)
+                role = ctx.guild.get_role(role_id)
+            except ValueError:
+                pass
+        if not role:
+            return await send(content='\U0001F6AB Could not find that role. Please mention it or use its numeric ID.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE role_permissions
+                SET is_team_member = FALSE
+                WHERE role_id = $1;
+            ''', role.id)
+        await send(content=f'\u274C Role `{role.name}` (`{role.id}`) is no longer authorized for moderator-level checks.')
 
     @commands.command(name='roleid', help='Get the ID of a role by name in this server.')
     @is_owner_developer_predicator()
