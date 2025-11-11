@@ -2121,7 +2121,7 @@ class Hybrid(commands.Cog):
         return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} has been revoked moderator access in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         
     @app_commands.command(name='bans', description='Lists ban statistics.')
-    @is_owner_developer_coordinator_moderator_app_predicator(None)
+    @is_owner_developer_coordinator_moderator_role_app_predicator(None)
     @app_commands.describe(target='"all", channel name/ID/mention, or user mention/ID')
     async def app_list_bans(self, interaction: discord.Interaction, target: str = None):
         send = lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
@@ -2242,7 +2242,7 @@ class Hybrid(commands.Cog):
         return await send(content='\U0001F6AB You must specify a member, a text channel or use "all".')
         
     @commands.command(name='bans', description='Lists ban statistics.')
-    @is_owner_developer_coordinator_moderator_predicator(None)
+    @is_owner_developer_coordinator_moderator_role_predicator(None)
     async def list_bans(self, ctx: commands.Context, target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')) -> None:
         async def send(**kw):
             await self.handler.send_message(ctx, **kw)
@@ -3365,7 +3365,7 @@ class Hybrid(commands.Cog):
         return await send(content='\U0001F6AB You must specify a member, a voice channel, or use "all".')
         
     @app_commands.command(name='mutes', description='Lists mute statistics.')
-    @is_owner_developer_coordinator_app_predicator(None)
+    @is_owner_developer_coordinator_moderator_role_app_predicator(None)
     async def app_list_mutes(self, interaction: discord.Interaction, target: str=None):
         send=lambda **kw:interaction.response.send_message(**kw,ephemeral=True)
         ctx=await self.bot.get_context(interaction)
@@ -3434,7 +3434,7 @@ class Hybrid(commands.Cog):
         return await send(content='\U0001F6AB You must specify a member, a voice channel or be connected to a voice channel.')
         
     @commands.command(name='mutes', help='Lists mute statistics.')
-    @is_owner_developer_coordinator_predicator(None)
+    @is_owner_developer_coordinator_moderator_role_predicator(None)
     async def list_mutes(
         self,
         ctx: commands.Context,
@@ -3742,7 +3742,7 @@ class Hybrid(commands.Cog):
     
     @app_commands.command(name='tmutes', description='Lists text-mute statistics.')
     @app_commands.describe(target='"all", channel name/ID/mention, or user mention/ID')
-    @is_owner_developer_coordinator_app_predicator(None)
+    @is_owner_developer_coordinator_moderator_role_app_predicator(None)
     async def app_list_text_mutes(self, interaction: discord.Interaction, target: str = None):
         send=lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
         guild=interaction.guild
@@ -3808,7 +3808,7 @@ class Hybrid(commands.Cog):
         return await send(content='\U0001F6AB You must specify "all", a member, or a text channel.')
         
     @commands.command(name='tmutes', help='Lists text-mute statistics.')
-    @is_owner_developer_coordinator_predicator(None)
+    @is_owner_developer_coordinator_moderator_role_predicator(None)
     async def list_text_mutes(
         self,
         ctx: commands.Context,
@@ -4751,6 +4751,52 @@ class Hybrid(commands.Cog):
         if member_obj.voice and member_obj.voice.channel:
             await member_obj.edit(mute=False)
         return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
+        
+    @commands.command(name='trole', help='Adds or enables a team role in the permission table.')
+    @is_owner_predicator()
+    async def team_role(
+        self,
+        ctx: commands.Context,
+        *,
+        role_ref: Optional[str] = commands.parameter(description='Tag a role or provide its ID')
+    ):
+        async def send(**kw):
+            await self.handler.send_message(ctx, **kw)
+        if not role_ref:
+            return await send(content='\u26A0\uFE0F You must mention a role or provide its ID.')
+        role = None
+        if ctx.message.role_mentions:
+            role = ctx.message.role_mentions[0]
+        else:
+            try:
+                role_id = int(role_ref)
+                role = ctx.guild.get_role(role_id)
+            except ValueError:
+                pass
+        if not role:
+            return await send(content='\U0001F6AB Could not find that role. Please mention it or use its numeric ID.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO role_permissions (role_id, is_team_member)
+                VALUES ($1, TRUE)
+                ON CONFLICT (role_id)
+                DO UPDATE SET is_team_member = TRUE;
+            ''', role.id)
+        await send(content=f'{self.get_random_emoji()} Role `{role.name}` (`{role.id}`) is now authorized for moderator-level checks.')
+
+    @commands.command(name='roleid', help='Get the ID of a role by name in this server.')
+    @is_owner_developer_predicator()
+    async def roleid(self, ctx: commands.Context, *, role_name: str):
+        async def send(**kw):
+            await self.handler.send_message(ctx, **kw)
+        if ctx.guild is None:
+            return await send(content='\u26A0\ufe0f This command can only be used in a server.')  # ⚠️
+        role = discord.utils.get(ctx.guild.roles, name=role_name)
+        if role:
+            await send(content=f'{self.get_random_emoji()} Role `{role.name}` has ID `{role.id}`.')
+        else:
+            await send(content=f'\u274C No role named "{role_name}" found in this server.')
+
         
     def create_ban_log_pages(self, ctx: commands.Context, member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, guild: discord.Guild = None, highest_role: Optional[str] = ''):
         if expires_at is None: color, ban_type, duration_emoji = 0xDC143C, '🔒 Permanent', '♾️'
