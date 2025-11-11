@@ -2132,8 +2132,8 @@ class Hybrid(commands.Cog):
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(interaction, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention if channel_obj else ""}.')
+#        if not is_owner_or_dev and not is_mod_or_coord:
+#            return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention if channel_obj else ""}.')
         if target and target.lower() == 'all':
             if not is_owner_or_dev:
                 return await send(content='\U0001F6AB Only owners or developers can list all bans across the server.')
@@ -2251,7 +2251,7 @@ class Hybrid(commands.Cog):
         channel_obj=await self.resolve_channel(ctx,target)
         if not channel_obj and not member_obj:return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention}.')
+#        if not is_owner_or_dev and not is_mod_or_coord:return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention}.')
         if target and target.lower()=='all':
             if not is_owner_or_dev:return await send(content='\U0001F6AB Only owners or developers can list all bans across the server.')
             async with self.bot.db_pool.acquire() as conn:rows=await conn.fetch('''SELECT discord_snowflake,channel_id,expires_at,reason FROM active_bans WHERE guild_id=$1 ORDER BY channel_id,expires_at NULLS LAST''',ctx.guild.id)
@@ -3374,7 +3374,7 @@ class Hybrid(commands.Cog):
         channel_obj=await self.resolve_channel(ctx,target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention if channel_obj else "this context"}.')
+#        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention if channel_obj else "this context"}.')
         if target and target.lower()=='all' and is_owner_or_dev:
             async with self.bot.db_pool.acquire() as conn:
                 records=await conn.fetch('''SELECT discord_snowflake, channel_id, expires_at, COALESCE(reason,'No reason provided') AS reason FROM active_voice_mutes WHERE guild_id=$1 AND target='user' ORDER BY channel_id,discord_snowflake''',ctx.guild.id)
@@ -3449,8 +3449,8 @@ class Hybrid(commands.Cog):
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
+#        if not is_owner_or_dev and not is_mod_or_coord:
+#            return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
         if target and target.lower() == 'all':
             if is_owner_or_dev:
                 async with self.bot.db_pool.acquire() as conn:
@@ -3752,7 +3752,7 @@ class Hybrid(commands.Cog):
         channel_obj=await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention if channel_obj else "this channel"}.')
+#        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention if channel_obj else "this channel"}.')
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower()=='all' and is_owner_or_dev:
                 records=await conn.fetch('''SELECT discord_snowflake, channel_id, reason, expires_at FROM active_text_mutes WHERE guild_id = $1 ORDER BY channel_id, discord_snowflake''', guild.id)
@@ -3823,8 +3823,8 @@ class Hybrid(commands.Cog):
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention}.')
+#        if not is_owner_or_dev and not is_mod_or_coord:
+#            return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower() == 'all' and is_owner_or_dev:
                 records = await conn.fetch('''
