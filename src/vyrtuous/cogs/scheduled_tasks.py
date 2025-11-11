@@ -42,6 +42,8 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_text_mutes.start()
         if not self.check_expired_stages.is_running():
             self.check_expired_stages.start()
+        if not self.check_active_bans.is_running():
+            self.check_active_bans.start()
     
     @staticmethod
     def perform_backup(db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
@@ -77,6 +79,28 @@ class ScheduledTasks(commands.Cog):
 #        if hasattr(self.bot, 'db_pool'):
 #            await self.bot.db_pool.close()
 
+    @tasks.loop(minutes=5)  # run every 5 minutes
+    async def check_active_bans(self):
+        async with self.bot.db_pool.acquire() as conn:
+            for guild in self.bot.guilds:
+                for channel in guild.channels:
+                    if not isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
+                        continue
+                    for member in channel.members:
+                        perms = channel.permissions_for(member)
+                        if not perms.view_channel:
+                            break
+                        ban = await conn.fetchrow('''
+                            SELECT expires_at
+                            FROM active_bans
+                            WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
+                        ''', guild.id, member.id, channel.id)
+                        if ban:
+                            expires_at = ban['expires_at']
+                            now = datetime.now(timezone.utc)
+                            if expires_at is None or expires_at > now:
+                                await channel.set_permissions(member, overwrite=discord.PermissionOverwrite(view_channel=False))
+                                
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
         try:
