@@ -4239,6 +4239,55 @@ class Hybrid(commands.Cog):
                 logger.warning(f'Failed to toggle promotion: {e}')
                 await send(content=f'\U000026A0\U0000FE0F Failed to toggle promotion for {member.display_name}.')
     
+    @app_commands.command(name='csurvey', description='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
+    @app_commands.describe(channel='Tag a voice/stage channel')
+    @is_owner_developer_app_predicator()
+    async def app_stage_survey(self, interaction: discord.Interaction, channel:     Optional[discord.abc.GuildChannel] = None):
+        send = lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
+        channel_obj = channel or getattr(interaction.user.voice, 'channel', None)
+        if not isinstance(channel_obj, (discord.VoiceChannel, discord.StageChannel)):
+            return await send(content='\U0001F6AB Please specify a valid voice or stage channel.')
+        owners, developers, moderators, coordinators = [], [], [], []
+        for member in channel_obj.members:
+            if await is_owner_member(member, self.bot): owners.append(member)
+            elif await is_developer_member(member, self.bot): developers.append(member)
+            elif await is_coordinator_via_objects(member, channel_obj): coordinators.append(member)
+            elif await is_moderator_via_objects(member, channel_obj): moderators.append(member)
+        def fmt(users): return ', '.join(u.mention for u in users) if users else '*None*'
+        msg = (
+            f'\U0001F50D **Survey results for {channel_obj.mention}:**\n'
+            f'\n**Owners:** {fmt(owners)}'
+            f'\n**Developers:** {fmt(developers)}'
+            f'\n**Moderators:** {fmt(moderators)}'
+            f'\n**Coordinators:** {fmt(coordinators)}'
+            f'\n\nTotal surveyed: {len(channel_obj.members)}'
+        )
+        await send(content=msg)
+        
+    @commands.command(name='csurvey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
+    @is_owner_developer_predicator()
+    async def stage_survey(self, ctx: commands.Context, *, channel: Optional[str] = None):
+        async def send(**kw): await self.handler.send_message(ctx, **kw)
+        channel_obj = await self.resolve_channel(ctx, channel) or getattr(ctx.author.voice, 'channel', None)
+        if not isinstance(channel_obj, (discord.VoiceChannel, discord.StageChannel)):
+            return await send(content='\U0001F6AB Please specify a valid voice or stage channel.')
+        owners, developers, moderators, coordinators = [], [], [], []
+        for member in channel_obj.members:
+            if await is_owner_member(member, ctx.bot): owners.append(member)
+            elif await is_developer_member(member, ctx.bot): developers.append(member)
+            elif await is_coordinator_via_objects(member, channel_obj): coordinators.append(member)
+            elif await is_moderator_via_objects(member, channel_obj): moderators.append(member)
+        def fmt(users): return ', '.join(u.mention for u in users) if users else '*None*'
+        msg = (
+            f'\U0001F50D **Survey results for {channel_obj.mention}:**\n'
+            f'\n**Owners:** {fmt(owners)}'
+            f'\n**Developers:** {fmt(developers)}'
+            f'\n**Moderators:** {fmt(moderators)}'
+            f'\n**Coordinators:** {fmt(coordinators)}'
+            f'\n\nTotal surveyed: {len(channel_obj.members)}'
+        )
+        await send(content=msg)
+
     @app_commands.command(name='xstage', description='Destroy the stage in the current channel.')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID')
     @is_owner_developer_coordinator_app_predicator()
