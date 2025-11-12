@@ -275,6 +275,26 @@ class Help(commands.Cog):
                         inline=False
                     )
             pages.append(embed)
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        team_role_ids = [r['role_id'] for r in rows]
+        author_role_ids = [role.id for role in ctx.author.roles]
+        is_team_member = any(rid in team_role_ids for rid in author_role_ids)
+        if is_team_member:
+            team_member_commands = [cmd for cmd in all_commands if getattr(cmd.callback, "_team_command", False) and not cmd.hidden]
+            if team_member_commands:
+                embed = discord.Embed(
+                    title="Team Member Commands",
+                    description="Commands available to users in team member roles:",
+                    color=discord.Color.yellow()
+                )
+                cog_map = {}
+                for cmd in team_member_commands:
+                    cog_map.setdefault(cmd.cog_name or "No Cog", []).append(cmd)
+                for cog_name, cmds in cog_map.items():
+                    cmd_list = '\n'.join(f'**{config["discord_command_prefix"]}{c.name}** – {c.help or "No description"}' for c in cmds)
+                    embed.add_field(name=cog_name, value=cmd_list, inline=False)
+                pages.insert(-1, embed)
         if not pages:
             return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         paginator = Paginator(bot, ctx, pages)

@@ -2323,6 +2323,7 @@ class Hybrid(commands.Cog):
             paginator=UserPaginator(self.bot,ctx,pages) if ctx.interaction else Paginator(self.bot,ctx,pages)
             return await paginator.start()
         return await send(content='\U0001F6AB You must specify a member, a text channel or use "all".')
+
     
     @app_commands.command(name='caps', description='List active caps for a channel or all channels if "all" is provided.')
     @is_owner_developer_coordinator_moderator_app_predicator(None)
@@ -3446,6 +3447,7 @@ class Hybrid(commands.Cog):
             paginator=UserPaginator(self.bot,ctx,pages)
             return await paginator.start()
         return await send(content='\U0001F6AB You must specify a member, a voice channel or be connected to a voice channel.')
+
         
     @commands.command(name='mutes', help='Lists mute statistics.')
     @is_owner_developer_coordinator_moderator_role_predicator(None)
@@ -3555,7 +3557,8 @@ class Hybrid(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
         return await send(content='\U0001F6AB You must specify a member, a voice channel or be connected to a voice channel.')
-          
+
+        
     @app_commands.command(name='rms', description='Lists all members with server mute privileges in this guild.')
     @is_owner_app_predicator()
     async def app_list_server_muters(self, interaction: discord.Interaction):
@@ -5317,3 +5320,9 @@ class Hybrid(commands.Cog):
 async def setup(bot: DiscordBot):
     cog = Hybrid(bot)
     await bot.add_cog(cog)
+    cog.app_list_bans.callback._team_command = True
+    cog.list_mutes.callback._team_command = True
+    cog.app_list_mutes.callback._team_command = True
+    cog.list_bans.callback._team_command = True
+    cog.list_text_mutes.callback._team_command = True
+    cog.app_list_text_mutes.callback._team_command = True
