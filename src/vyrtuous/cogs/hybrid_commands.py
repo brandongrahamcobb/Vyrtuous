@@ -1825,7 +1825,7 @@ class Hybrid(commands.Cog):
                     logger.warning('\U0001F6AB Discord forbidden: Cannot change the user\'s channel permissions.')
                     raise
                 await conn.execute('DELETE FROM active_text_mutes WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3', ctx.guild.id, member_obj.id, static_channel_id)
-                await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1, $2, $3, $4, $5, $6)', 'untfmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Untextmuted a user')
+                await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1, $2, $3, $4, $5, $6)', 'untmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Untextmuted a user')
             return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention}\'s text muted in {channel_obj.mention} has been removed.', allowed_mentions=discord.AllowedMentions.none())
         return untext_mute_alias
     

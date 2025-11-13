@@ -131,6 +131,10 @@ CREATE TABLE IF NOT EXISTS log_channels (
     enabled BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (guild_id, channel_id)
 );
+CREATE TABLE role_permissions (
+    role_id BIGINT PRIMARY KEY,
+    is_team_member BOOLEAN DEFAULT FALSE
+);
 
 GRANT ALL PRIVILEGES ON DATABASE vyrtuous TO vyrtuous;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO vyrtuous;
