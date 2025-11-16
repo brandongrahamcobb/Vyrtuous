@@ -663,7 +663,7 @@ class Hybrid(commands.Cog):
                     is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                     is_reason_set = stripped.startswith('=')
                     is_reason_delete = stripped == '-'
-                    updated_reason = existing_ban['reason'] if existing_ban else reason
+                    updated_reason = existing_ban['reason'] if existing_ban and not is_modification else reason
                     if existing_ban and (is_reason_append or is_reason_set or is_reason_delete):
                         if is_reason_append:
                             new_text = reason.strip() if reason else ''
@@ -1057,7 +1057,7 @@ class Hybrid(commands.Cog):
                             updated_reason = None
                         await conn.execute(update_sql, ctx.guild.id, member_obj.id, channel_obj.id, updated_reason)
                     elif not is_modification:
-                        updated_reason = cleaned_reason if cleaned_reason else 'No reason provided'
+                        updated_reason = cleaned_reason if cleaned_reason and not is_modification else 'No reason provided'
                         await conn.execute(insert_sql, ctx.guild.id, member_obj.id, channel_obj.id, updated_reason)
                     else:
                         return await ctx.send(f'\U0001F6AB {member_obj.mention} is already flagged in {channel_obj.mention} for {existing_flag["reason"]}.', allowed_mentions=discord.AllowedMentions.none())
@@ -1289,7 +1289,7 @@ class Hybrid(commands.Cog):
                 is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                 is_reason_set = stripped.startswith('=')
                 is_reason_delete = stripped == '-'
-                updated_reason = reason
+                updated_reason = existing_text_mute['reason'] if existing_text_mute and not is_modification else reason
                 if existing_text_mute and (is_reason_append or is_reason_set or is_reason_delete):
                     if is_reason_append:
                         new_text = reason.strip() if reason else ''
@@ -1447,7 +1447,7 @@ class Hybrid(commands.Cog):
                 is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                 is_reason_set = stripped == '='
                 is_reason_delete = stripped == '-'
-                updated_reason = reason
+                updated_reason = existing_mute['reason'] if existing_mute and not is_modification else reason
                 if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
                     if is_reason_append:
                         new_text = reason.strip() if reason else ''

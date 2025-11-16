@@ -331,6 +331,35 @@ class EventListeners(commands.Cog):
             return
         if isinstance(error, commands.CheckFailure):
             return await send_check_failure_embed(ctx, error)
+            
+#    @commands.Cog.listener()
+#    async def on_command(self, ctx):
+#        await ctx.send("Bot is currently down. Changes will not be saved permanently.")
+        
+    @commands.Cog.listener()
+    async def on_ready(self):
+        async with self.bot.db_pool.acquire() as conn:
+            bans=await conn.fetch('SELECT discord_snowflake,channel_id FROM active_bans')
+            texts=await conn.fetch('SELECT discord_snowflake,channel_id FROM active_text_mutes')
+            voices=await conn.fetch('SELECT discord_snowflake,channel_id FROM active_voice_mutes')
+            ban_set={(r['discord_snowflake'],r['channel_id']) for r in bans}
+            text_set={(r['discord_snowflake'],r['channel_id']) for r in texts}
+            voice_set={(r['discord_snowflake'],r['channel_id']) for r in voices}
+            for guild in self.bot.guilds:
+                for channel in guild.channels:
+                    if isinstance(channel,discord.TextChannel):
+                        for overwrite_obj, overwrite in channel.overwrites.items():
+                           uid = overwrite_obj.id
+                           if overwrite.send_messages is False and (uid, channel.id) not in text_set:
+                               await channel.set_permissions(overwrite_obj, send_messages=None)
+
+                           if overwrite.view_channel is False and (uid, channel.id) not in ban_set:
+                               await channel.set_permissions(overwrite_obj, overwrite=None)
+                    if isinstance(channel,discord.VoiceChannel):
+                        for member in channel.members:
+                            if member.voice and member.voice.mute and (member.id,channel.id) not in voice_set:
+                                await member.edit(mute=False)
+
     
 async def setup(bot: DiscordBot):
     await bot.add_cog(EventListeners(bot))
