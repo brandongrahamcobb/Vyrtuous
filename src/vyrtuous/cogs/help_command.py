@@ -74,37 +74,32 @@ class Help(commands.Cog):
     
     async def get_user_highest_permission(self, bot, ctx):
         try:
-            if await is_system_owner(ctx):
-                return 'Owner'
-        except commands.CheckFailure:
-            pass
+            if await is_system_owner(ctx): return 'Owner'
+        except commands.CheckFailure: pass
         try:
-            if await is_guild_owner(ctx):
-                return 'Owner'
-        except commands.CheckFailure:
-            pass
+            if await is_guild_owner(ctx): return 'Owner'
+        except commands.CheckFailure: pass
         try:
-            if await is_developer(ctx):
-                return 'Developer'
-        except commands.CheckFailure:
-            pass
-        try:
-            if ctx.guild:
+            if await is_developer(ctx): return 'Developer'
+        except commands.CheckFailure: pass
+        if ctx.guild:
+            room_name = getattr(ctx.channel, 'name', None)
+            try:
                 async with ctx.bot.db_pool.acquire() as conn:
                     user_row = await conn.fetchrow(
-                        'SELECT coordinator_channel_ids, moderator_channel_ids FROM users WHERE discord_snowflake = $1',
+                        'SELECT coordinator_channel_ids, moderator_channel_ids, coordinator_room_names, moderator_room_names '
+                        'FROM users WHERE discord_snowflake=$1',
                         ctx.author.id
                     )
                     if user_row:
-                        coordinator_channel_ids = user_row.get('coordinator_channel_ids') or []
-                        moderator_channel_ids = user_row.get('moderator_channel_ids') or []
-        
-                        if coordinator_channel_ids:
-                            return 'Coordinator'
-                        if moderator_channel_ids:
-                            return 'Moderator'
-        except Exception as e:
-            logger.warning(f'Error checking coordinator/moderator permissions: {e}')
+                        c_chan = user_row.get('coordinator_channel_ids') or []
+                        m_chan = user_row.get('moderator_channel_ids') or []
+                        c_room = user_row.get('coordinator_room_names') or []
+                        m_room = user_row.get('moderator_room_names') or []
+                        if c_chan or c_room: return 'Coordinator'
+                        if m_chan or m_room: return 'Moderator'
+            except Exception as e:
+                logger.warning(f'Error checking coordinator/moderator permissions: {e}')
         return 'Everyone'
     
     async def group_commands_by_permission(self, bot, ctx, commands_list):
@@ -195,20 +190,26 @@ class Help(commands.Cog):
         if not all_commands:
             return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         current_text_channel_id = ctx.channel.id
+        current_room_name = getattr(ctx.channel, 'name', None)
         current_guild_id = ctx.guild.id if ctx.guild else None
         guild_aliases = self.bot.command_aliases.get(current_guild_id, {})
         guild_channel_aliases = guild_aliases.get('channel_aliases', {})
         guild_role_aliases = guild_aliases.get('role_aliases', {})
+        guild_temp_aliases = guild_aliases.get('temp_room_aliases', {})
         current_guild_alias_commands = set()
         for type_map in guild_channel_aliases.values():
             current_guild_alias_commands.update(type_map.keys())
         for type_map in guild_role_aliases.values():
+            current_guild_alias_commands.update(type_map.keys())
+        for type_map in guild_temp_aliases.values():
             current_guild_alias_commands.update(type_map.keys())
         all_alias_commands = set()
         for guild_id, guild_data in self.bot.command_aliases.items():
             for type_map in guild_data.get('channel_aliases', {}).values():
                 all_alias_commands.update(type_map.keys())
             for type_map in guild_data.get('role_aliases', {}).values():
+                all_alias_commands.update(type_map.keys())
+            for type_map in guild_data.get('temp_room_aliases', {}).values():
                 all_alias_commands.update(type_map.keys())
         contextual_commands = []
         for command in all_commands:
@@ -217,14 +218,17 @@ class Help(commands.Cog):
                 for type_map in guild_channel_aliases.values()
             )
             in_role = any(
-                command.name in type_map and type_map[command.name].get('channel_id') == current_text_channel_id
+                command.name in type_map and isinstance(type_map[command.name], dict) and type_map[command.name].get('channel_id') == current_text_channel_id
                 for type_map in guild_role_aliases.values()
             )
-            if in_channel or in_role or command.name not in all_alias_commands:
+            in_temp_room = any(
+                command.name in type_map and isinstance(type_map[command.name], dict) and type_map[command.name].get('room_name') == current_room_name
+                for type_map in guild_temp_aliases.values()
+            )
+            if in_channel or in_role or in_temp_room or command.name not in all_alias_commands:
                 contextual_commands.append(command)
         if not contextual_commands:
-            await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
-            return
+            return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         permission_groups = await self.group_commands_by_permission(bot, ctx, contextual_commands)
         pages = []
         user_highest = await self.get_user_highest_permission(bot, ctx)
@@ -256,24 +260,16 @@ class Help(commands.Cog):
             for cog_name in sorted(cog_map):
                 commands_in_cog = sorted(cog_map[cog_name], key=lambda c: c.name)
                 command_list = '\n'.join(
-                    f'**{config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}'
+                    f'**{config["discord_command_prefix"]}{cmd.name}** – {cmd.help or "No description"}'
                     for cmd in commands_in_cog
                 )
                 if len(command_list) > 1024:
                     chunks = self.split_command_list(commands_in_cog)
                     for j, chunk in enumerate(chunks):
                         field_name = f'{cog_name}' if j == 0 else f'{cog_name} (cont.)'
-                        embed.add_field(
-                            name=field_name,
-                            value=chunk,
-                            inline=False
-                        )
+                        embed.add_field(name=field_name, value=chunk, inline=False)
                 else:
-                    embed.add_field(
-                        name=cog_name,
-                        value=command_list,
-                        inline=False
-                    )
+                    embed.add_field(name=cog_name, value=command_list, inline=False)
             pages.append(embed)
         async with self.bot.db_pool.acquire() as conn:
             rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')

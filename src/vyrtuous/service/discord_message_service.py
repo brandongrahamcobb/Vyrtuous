@@ -139,25 +139,56 @@ class ChannelPaginator:
                 break
                 
 class UserPaginator(discord.ui.View):
-    def __init__(self, bot: DiscordBot, ctx, pages, *, timeout=60):
+    def __init__(self, bot: DiscordBot, interaction: discord.Interaction, pages, *, timeout=60):
         super().__init__(timeout=timeout)
-        self.bot=bot;self.ctx=ctx;self.pages=pages;self.current_page=0;self.message=None
+        self.bot = bot
+        self.interaction = interaction
+        self.pages = pages
+        self.current_page = 0
+        self.message = None
+        
     async def start(self):
         if not self.pages:
-            return await (self.ctx.interaction.response.send_message if self.ctx.interaction else self.ctx.send)('There are no pages to display.',ephemeral=bool(self.ctx.interaction))
-        embed=self.pages[self.current_page]
-        if self.ctx.interaction: await self.ctx.interaction.response.send_message(embed=embed,ephemeral=True,view=self)
-        else: self.message=await self.ctx.author.send(embed=embed,view=self)
-    @discord.ui.button(label='⬅️',style=discord.ButtonStyle.secondary)
-    async def previous(self,interaction:discord.Interaction,button:discord.ui.Button):
-        if interaction.user!=self.ctx.author:return await interaction.response.send_message("You cannot use this paginator.",ephemeral=True)
-        if self.current_page>0:self.current_page-=1;await interaction.response.edit_message(embed=self.pages[self.current_page],view=self)
-    @discord.ui.button(label='➡️',style=discord.ButtonStyle.secondary)
-    async def next(self,interaction:discord.Interaction,button:discord.ui.Button):
-        if interaction.user!=self.ctx.author:return await interaction.response.send_message("You cannot use this paginator.",ephemeral=True)
-        if self.current_page<len(self.pages)-1:self.current_page+=1;await interaction.response.edit_message(embed=self.pages[self.current_page],view=self)
-    @discord.ui.button(label='⏹️',style=discord.ButtonStyle.danger)
-    async def stop(self,interaction:discord.Interaction,button:discord.ui.Button):
-        if interaction.user!=self.ctx.author:return await interaction.response.send_message("You cannot use this paginator.",ephemeral=True)
+            return await self.interaction.response.send_message(
+                'There are no pages to display.',
+                ephemeral=True
+            )
+        embed = self.pages[self.current_page]
+        self.message = await self.interaction.response.send_message(
+            embed=embed,
+            ephemeral=True,
+            view=self
+        )
+        
+    @discord.ui.button(label='⬅️', style=discord.ButtonStyle.secondary)
+    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.interaction.user:
+            return await interaction.response.send_message(
+                "You cannot use this paginator.",
+                ephemeral=True
+            )
+        if self.current_page > 0:
+            self.current_page -= 1
+            await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
+
+    @discord.ui.button(label='➡️', style=discord.ButtonStyle.secondary)
+    async def next(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.interaction.user:
+            return await interaction.response.send_message(
+                "You cannot use this paginator.",
+                ephemeral=True
+            )
+        if self.current_page < len(self.pages) - 1:
+            self.current_page += 1
+            await interaction.response.edit_message(embed=self.pages[self.current_page], view=self)
+
+    @discord.ui.button(label='⏹️', style=discord.ButtonStyle.danger)
+    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.interaction.user:
+            return await interaction.response.send_message(
+                "You cannot use this paginator.",
+                ephemeral=True
+            )
         await interaction.response.edit_message(view=None)
         self.stop()
+
