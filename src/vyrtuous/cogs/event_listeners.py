@@ -54,35 +54,79 @@ class EventListeners(commands.Cog):
               AND (expires_at IS NULL OR expires_at > NOW())
         ''', guild_id, user_id)
     
+#    @commands.Cog.listener()
+#    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+#        guild = channel.guild
+#        name = channel.name.lower()
+#        for c in guild.channels:
+#            if c.id != channel.id and c.name.lower() == name:
+#                return
+#        async with self.bot.db_pool.acquire() as conn:
+#            temp_room = await conn.fetchrow(
+#                '''
+#                SELECT room_name
+#                FROM temporary_rooms
+#                WHERE guild_snowflake=$1
+#                  AND room_name=$2
+#                ''',
+#                guild.id, name
+#            )
+#            if not temp_room:
+#                return
+#            await conn.execute(
+#                '''
+#                UPDATE temporary_rooms
+#                SET room_snowflake=$3
+#                WHERE guild_snowflake=$1
+#                  AND room_name=$2
+#                ''',
+#                guild.id, name, channel.id
+#            )
+#            await conn.execute(
+#                '''
+#                UPDATE command_aliases
+#                SET channel_id=$3
+#                WHERE guild_id=$1
+#                  AND room_name=$2
+#                ''',
+#                guild.id, name, channel.id
+#            )
+#        guild_aliases = self.bot.command_aliases.setdefault(guild.id, {})
+#        temp_aliases = guild_aliases.get('temp_room_aliases', {})
+#        for alias_type, aliases in temp_aliases.items():
+#            for alias_name, data in aliases.items():
+#                if data.get("room_name") == name:
+#                    data["channel_id"] = channel.id
     @commands.Cog.listener()
-    async def on_guild_channel_create(self, channel):
-        name = channel.name.lower()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+        print(f"DEBUG: Channel created - ID: {channel.id}, Name: {channel.name}, Type: {type(channel).__name__}")
         guild = channel.guild
+        name = channel.name.lower()
+    
+        print(f"DEBUG: Checking for duplicate channel names in guild {guild.id}")
         for c in guild.channels:
             if c.id != channel.id and c.name.lower() == name:
+                print(f"DEBUG: Duplicate channel name found, skipping - Existing ID: {c.id}")
                 return
+    
+        print(f"DEBUG: No duplicates found, checking database for temporary room")
         async with self.bot.db_pool.acquire() as conn:
-            exists_perm = await conn.fetchrow(
+            temp_room = await conn.fetchrow(
                 '''
-                SELECT 1 
-                FROM command_aliases 
-                WHERE guild_id = $1
-                  AND (channel_id IS NULL OR channel_id <> $2)
-                  AND room_name = $3
-                ''',
-                guild.id, channel.id, name
-            )
-            exists_temp = await conn.fetchrow(
-                '''
-                SELECT 1
+                SELECT room_name
                 FROM temporary_rooms
                 WHERE guild_snowflake=$1
                   AND room_name=$2
                 ''',
                 guild.id, name
             )
-            if exists_perm or exists_temp is None:
+            print(f"DEBUG: Database query result: {temp_room}")
+    
+            if not temp_room:
+                print(f"DEBUG: Not a temporary room, exiting")
                 return
+    
+            print(f"DEBUG: Updating temporary_rooms table with channel ID {channel.id}")
             await conn.execute(
                 '''
                 UPDATE temporary_rooms
@@ -92,8 +136,32 @@ class EventListeners(commands.Cog):
                 ''',
                 guild.id, name, channel.id
             )
-
-
+    
+            print(f"DEBUG: Updating command_aliases table")
+            await conn.execute(
+                '''
+                UPDATE command_aliases
+                SET channel_id=$3
+                WHERE guild_id=$1
+                  AND room_name=$2
+                ''',
+                guild.id, name, channel.id
+            )
+    
+        print(f"DEBUG: Updating in-memory cache for guild {guild.id}")
+        guild_aliases = self.bot.command_aliases.setdefault(guild.id, {})
+        temp_aliases = guild_aliases.get('temp_room_aliases', {})
+        print(f"DEBUG: Found {len(temp_aliases)} alias types in temp_room_aliases")
+    
+        for alias_type, aliases in temp_aliases.items():
+            print(f"DEBUG: Processing alias_type: {alias_type} with {len(aliases)} aliases")
+            for alias_name, data in aliases.items():
+                if data.get("room_name") == name:
+                    print(f"DEBUG: Updating alias {alias_name} with channel_id {channel.id}")
+                    data["channel_id"] = channel.id
+                
+                    
+    # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
         if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:

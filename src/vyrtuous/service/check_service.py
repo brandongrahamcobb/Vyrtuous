@@ -845,7 +845,7 @@ async def is_system_owner_app(interaction: discord.Interaction) -> bool:
         raise NotSystemOwner()
     return True
 
-async def check_block_app(self, ctx: discord.Interaction, member: discord.Member, channel: Optional[discord.abc.GuildChannel]=None):
+async def check_block_app(ctx: discord.Interaction, member: discord.Member, channel: Optional[discord.abc.GuildChannel]=None):
     bot=ctx.client
     channel_id=getattr(channel,'id',None) or ctx.channel.id
     guild=ctx.guild

@@ -19,13 +19,14 @@ import datetime
 import inspect
 import os
 import re
+import types
 from typing import Any, Coroutine, Optional
 
 from discord.ext.commands import Command
 
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
-from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
+from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator, UserPaginator
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
 
@@ -39,7 +40,7 @@ class Help(commands.Cog):
         self.bot.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
 
-    async def get_available_commands(self, bot, ctx) -> list[commands.Command]:
+    async def get_available_commands_text(self, bot, ctx) -> list[commands.Command]:
         available_commands = []
         for command in bot.commands:
             try:
@@ -51,7 +52,7 @@ class Help(commands.Cog):
                 logger.warning(f'\U0001F6AB Exception while checking command \'{command}\': {e}')
         return available_commands
 
-    async def get_command_permission_level(self, bot, ctx, command):
+    async def get_command_permission_level_text(self, bot, ctx, command):
         if not hasattr(command, 'checks') or not command.checks:
             return 'Everyone'
         for check in command.checks:
@@ -61,6 +62,28 @@ class Help(commands.Cog):
             if hasattr(func, '_permission_level'):
                 return func._permission_level
         return 'Everyone'
+        
+    async def get_available_commands_app(self, bot, interaction) -> list[commands.Command]:
+        available=[]
+        user_highest = await self.get_user_highest_permission_app(bot, interaction)
+        for command in bot.commands:
+            try:
+                perm_level = await self.get_command_permission_level_app(bot, interaction, command)
+                # Only include commands that the user has permission to run
+                if PERMISSION_ORDER.index(user_highest) <= PERMISSION_ORDER.index(perm_level):
+                    available.append(command)
+            except Exception as e:
+                logger.warning(f'\U0001F6AB Exception while evaluating command {command}: {e}')
+        return available
+
+    
+    async def get_command_permission_level_app(self, bot, interaction, command):
+        if not hasattr(command,'checks') or not command.checks: return 'Everyone'
+        for check in command.checks:
+            func=check.__wrapped__ if hasattr(check,'__wrapped__') else check
+            if hasattr(func,'_permission_level'): return func._permission_level
+        return 'Everyone'
+
         
     def get_permission_color(self, perm_level):
         colors = {
@@ -72,7 +95,7 @@ class Help(commands.Cog):
         }
         return colors.get(perm_level, discord.Color.greyple())
     
-    async def get_user_highest_permission(self, bot, ctx):
+    async def get_user_highest_permission_text(self, bot, ctx):
         try:
             if await is_system_owner(ctx): return 'Owner'
         except commands.CheckFailure: pass
@@ -101,16 +124,55 @@ class Help(commands.Cog):
             except Exception as e:
                 logger.warning(f'Error checking coordinator/moderator permissions: {e}')
         return 'Everyone'
-    
-    async def group_commands_by_permission(self, bot, ctx, commands_list):
+        
+    async def get_user_highest_permission_app(self, bot, interaction):
+        try:
+            if await is_system_owner_app(interaction): return 'Owner'
+        except commands.CheckFailure: pass
+        try:
+            if await is_guild_owner_app(interaction): return 'Owner'
+        except commands.CheckFailure: pass
+        try:
+            if await is_developer_app(interaction): return 'Developer'
+        except commands.CheckFailure: pass
+        guild=interaction.guild
+        if guild:
+            author=interaction.user
+            channel=interaction.channel
+            room_name=getattr(channel,'name',None)
+            try:
+                async with bot.db_pool.acquire() as conn:
+                    row=await conn.fetchrow('SELECT coordinator_channel_ids, moderator_channel_ids, coordinator_room_names, moderator_room_names FROM users WHERE discord_snowflake=$1',author.id)
+                    if row:
+                        c_chan=row.get('coordinator_channel_ids') or []
+                        c_room=row.get('coordinator_room_names') or []
+                        m_chan=row.get('moderator_channel_ids') or []
+                        m_room=row.get('moderator_room_names') or []
+                        if c_chan or c_room: return 'Coordinator'
+                        if m_chan or m_room: return 'Moderator'
+            except Exception as e:
+                logger.warning(f'Error checking coordinator/moderator permissions: {e}')
+        return 'Everyone'
+
+        
+    async def group_commands_by_permission_text(self, bot, ctx, commands_list):
         permission_groups = {level: [] for level in PERMISSION_ORDER}
         for command in commands_list:
-            perm_level = await self.get_command_permission_level(bot, ctx, command)
+            perm_level = await self.get_command_permission_level_text(bot, ctx, command)
             if perm_level in permission_groups:
                 permission_groups[perm_level].append(command)
             else:
                 permission_groups['Everyone'].append(command)
         return permission_groups
+    
+    async def group_commands_by_permission_app(self, bot, interaction, commands_list):
+        permission_groups={level:[] for level in PERMISSION_ORDER}
+        for command in commands_list:
+            perm_level=await self.get_command_permission_level_app(bot,interaction,command)
+            if perm_level in permission_groups: permission_groups[perm_level].append(command)
+            else: permission_groups['Everyone'].append(command)
+        return permission_groups
+
 
     def split_command_list(self, commands_list, max_length=1024):
         chunks = []
@@ -131,7 +193,7 @@ class Help(commands.Cog):
         return chunks
         
     @commands.command(name='help')
-    async def help(self, ctx, *, command_name: str = None):
+    async def help_text_command(self, ctx, *, command_name: str = None):
         bot = ctx.bot
         if command_name:
             cmd = bot.get_command(command_name.lower())
@@ -186,7 +248,7 @@ class Help(commands.Cog):
                         inline=False
                     )
             return await self.handler.send_message(ctx, embed=embed)
-        all_commands = await self.get_available_commands(bot, ctx)
+        all_commands = await self.get_available_commands_text(bot, ctx)
         if not all_commands:
             return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         current_text_channel_id = ctx.channel.id
@@ -229,9 +291,9 @@ class Help(commands.Cog):
                 contextual_commands.append(command)
         if not contextual_commands:
             return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
-        permission_groups = await self.group_commands_by_permission(bot, ctx, contextual_commands)
+        permission_groups = await self.group_commands_by_permission_text(bot, ctx, contextual_commands)
         pages = []
-        user_highest = await self.get_user_highest_permission(bot, ctx)
+        user_highest = await self.get_user_highest_permission_text(bot, ctx)
         user_index = PERMISSION_ORDER.index(user_highest)
         permission_order = [
             ('Owner', '`Owner` inherits `developer`.'),
@@ -295,6 +357,116 @@ class Help(commands.Cog):
             return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         paginator = Paginator(bot, ctx, pages)
         return await paginator.start()
+    
+    @app_commands.command(name='help', description='Show command information or your available commands.')
+    @app_commands.describe(command_name='The command to view details for.')
+    async def help_app_command(self, interaction: discord.Interaction, command_name: Optional[str] = None):
+        bot = interaction.client
+        if command_name:
+            cmd = bot.get_command(command_name.lower())
+            if not cmd:
+                return await interaction.response.send_message(f'\U0001F6AB Command `{command_name}` not found.', ephemeral=True)
+            if cmd.hidden:
+                return await interaction.response.send_message(f'\U0001F6AB Command `{command_name}` is hidden.', ephemeral=True)
+            embed = discord.Embed(title=f'{config["discord_command_prefix"]}{cmd.name}', description=cmd.help or 'No description provided.', color=discord.Color.blue())
+            sig = inspect.signature(cmd.callback)
+            parameters = list(sig.parameters.items())
+            if parameters and parameters[0][0]=='self':
+                parameters.pop(0)
+            if parameters and parameters[0][0]=='ctx':
+                parameters.pop(0)
+            if parameters:
+                usage_parts=[f'{config["discord_command_prefix"]}{cmd.name}']
+                param_details=[]
+                for name,param in parameters:
+                    is_optional=param.kind==inspect.Parameter.KEYWORD_ONLY
+                    default=param.default
+                    description=getattr(default,'description',None) if isinstance(default,commands.Parameter) else None
+                    annotation=param.annotation.__name__ if hasattr(param.annotation,'__name__') else str(param.annotation)
+                    usage_parts.append(f'[{name}]' if is_optional else f'<{name}>')
+                    detail=f'**{name}** ({annotation})'
+                    if description:
+                        detail+=f': {description}'
+                    param_details.append(detail)
+                embed.add_field(name='Usage',value=f'`{" ".join(usage_parts)}`',inline=False)
+                if param_details:
+                    embed.add_field(name='Parameter Details',value='\n'.join(param_details),inline=False)
+            return await interaction.response.send_message(embed=embed, ephemeral=True)
+        all_commands=await self.get_available_commands_app(bot,interaction)
+        if not all_commands:
+            return await interaction.response.send_message('\U0001F6AB No commands available to you.', ephemeral=True)
+        current_text_channel_id=interaction.channel.id
+        current_room_name=getattr(interaction.channel,'name',None)
+        current_guild_id=interaction.guild.id if interaction.guild else None
+        guild_aliases=self.bot.command_aliases.get(current_guild_id,{})
+        guild_channel_aliases=guild_aliases.get('channel_aliases',{})
+        guild_role_aliases=guild_aliases.get('role_aliases',{})
+        guild_temp_aliases=guild_aliases.get('temp_room_aliases',{})
+        current_guild_alias_commands=set()
+        for type_map in guild_channel_aliases.values(): current_guild_alias_commands.update(type_map.keys())
+        for type_map in guild_role_aliases.values(): current_guild_alias_commands.update(type_map.keys())
+        for type_map in guild_temp_aliases.values(): current_guild_alias_commands.update(type_map.keys())
+        all_alias_commands=set()
+        for guild_id,guild_data in self.bot.command_aliases.items():
+            for tm in guild_data.get('channel_aliases',{}).values(): all_alias_commands.update(tm.keys())
+            for tm in guild_data.get('role_aliases',{}).values(): all_alias_commands.update(tm.keys())
+            for tm in guild_data.get('temp_room_aliases',{}).values(): all_alias_commands.update(tm.keys())
+        contextual_commands=[]
+        for command in all_commands:
+            in_channel=any(command.name in tm and tm[command.name]==current_text_channel_id for tm in guild_channel_aliases.values())
+            in_role=any(command.name in tm and isinstance(tm[command.name],dict) and tm[command.name].get('channel_id')==current_text_channel_id for tm in guild_role_aliases.values())
+            in_temp_room=any(command.name in tm and isinstance(tm[command.name],dict) and tm[command.name].get('room_name')==current_room_name for tm in guild_temp_aliases.values())
+            if in_channel or in_role or in_temp_room or command.name not in all_alias_commands:
+                contextual_commands.append(command)
+        if not contextual_commands:
+            return await interaction.response.send_message('\U0001F6AB No commands available to you.', ephemeral=True)
+        permission_groups=await self.group_commands_by_permission_app(bot,interaction,contextual_commands)
+        pages=[]
+        user_highest=await self.get_user_highest_permission_app(bot,interaction)
+        user_index=PERMISSION_ORDER.index(user_highest)
+        permission_order=[('Owner','`Owner` inherits `developer`.'),('Developer','`Developer` inherits `coordinator`.'),('Coordinator','`Coordinator` inherits `moderator`.'),('Moderator','Moderators can use these     commands.'),('Everyone','Commands available to everyone.')]
+        for i,(perm_level,description) in enumerate(permission_order):
+            if i<user_index: continue
+            commands_in_level=sorted(permission_groups.get(perm_level,[]),key=lambda c:c.name)
+            if not commands_in_level: continue
+            embed=discord.Embed(title=f'{perm_level} Commands',description=description,color=self.get_permission_color(perm_level))
+            cog_map={}
+            for command in commands_in_level:
+                if command.hidden: continue
+                cog_name=command.cog_name or 'Aliases'
+                cog_map.setdefault(cog_name,[]).append(command)
+            for cog_name in sorted(cog_map):
+                commands_in_cog=sorted(cog_map[cog_name],key=lambda c:c.name)
+                command_list='\n'.join(f'**{config["discord_command_prefix"]}{cmd.name}** – {cmd.help or "No description"}' for cmd in commands_in_cog)
+                if len(command_list)>1024:
+                    chunks=self.split_command_list(commands_in_cog)
+                    for j,chunk in enumerate(chunks):
+                        field_name=cog_name if j==0 else f'{cog_name} (cont.)'
+                        embed.add_field(name=field_name,value=chunk,inline=False)
+                else:
+                    embed.add_field(name=cog_name,value=command_list,inline=False)
+            pages.append(embed)
+        async with self.bot.db_pool.acquire() as conn:
+            rows=await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        team_role_ids=[r['role_id'] for r in rows]
+        author_role_ids=[r.id for r in interaction.user.roles]
+        is_team_member=any(rid in team_role_ids for rid in author_role_ids)
+        if is_team_member:
+            team_cmds=[cmd for cmd in all_commands if getattr(cmd.callback,'_team_command',False) and not cmd.hidden]
+            if team_cmds:
+                embed=discord.Embed(title='Team Member Commands',description='Commands available to users in team member roles:',color=discord.Color.yellow())
+                cog_map={}
+                for cmd in team_cmds:
+                    cog_map.setdefault(cmd.cog_name or 'No Cog',[]).append(cmd)
+                for cog_name,cmds in cog_map.items():
+                    cmd_list='\n'.join(f'**{config["discord_command_prefix"]}{c.name}** – {c.help or "No description"}' for c in cmds)
+                    embed.add_field(name=cog_name,value=cmd_list,inline=False)
+                pages.insert(-1,embed)
+        if not pages:
+            return await interaction.response.send_message('\U0001F6AB No commands available to you.', ephemeral=True)
+        paginator=UserPaginator(bot,interaction,pages)
+        return await paginator.start()
+
 
 async def setup(bot: DiscordBot):
     cog = Help(bot)
