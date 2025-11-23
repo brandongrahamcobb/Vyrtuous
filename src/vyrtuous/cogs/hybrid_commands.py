@@ -1548,7 +1548,7 @@ class Hybrid(commands.Cog):
                         guild_id, alias_type, alias_name, channel_id, role_id, room_name
                     )
                     VALUES ($1,$2,$3,$4,$5,$6)
-                ''', ctx.guild.id, alias_type, alias_name, channel_obj.id, role_id, None)
+                ''', ctx.guild.id, alias_type, alias_name, channel_obj.id, role_id, room_name_to_store or '')
         else:
             async with ctx.bot.db_pool.acquire() as conn:
                 await conn.execute('''
@@ -2953,7 +2953,7 @@ class Hybrid(commands.Cog):
                 channel_obj = temp_channel
                 break
         if not room_name:
-            room_name = getattr(channel_obj, 'name', '')
+            room_name = ''
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO active_stages (guild_id, channel_id, initiator_id, expires_at, room_name)
@@ -3010,7 +3010,7 @@ class Hybrid(commands.Cog):
                 channel_obj = temp_channel
                 break
         if not room_name:
-            room_name = getattr(channel_obj, 'name', '')
+            room_name = ''
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO active_stages (guild_id, channel_id, initiator_id, expires_at, room_name)
@@ -4475,7 +4475,7 @@ class Hybrid(commands.Cog):
         if not member_obj:
             return await send(content='\U0001F6AB Invalid member.')
         stage_channel = member_obj.voice.channel if member_obj.voice else None
-        room_name = ""
+        room_name = ''
         is_temp_room = False
         async with self.bot.db_pool.acquire() as conn:
             if stage_channel is None:
@@ -4500,7 +4500,7 @@ class Hybrid(commands.Cog):
                 if not record:
                     record = records[0]
                     stage_channel = guild.get_channel(record['channel_id'])
-                    room_name = record['room_name'] or ""
+                    room_name = record['room_name'] or ''
             else:
                 temp_rooms = self.temp_rooms.get(guild_id, {})
                 for t in temp_rooms.values():
@@ -4510,7 +4510,7 @@ class Hybrid(commands.Cog):
                         room_name = t.room_name
                         break
                 if not is_temp_room:
-                    room_name = ""
+                    room_name = ''
             stage = await conn.fetchrow('''
                 SELECT initiator_id
                 FROM active_stages
@@ -5723,7 +5723,7 @@ class Hybrid(commands.Cog):
                 channel_obj = temp_channel
                 break
         if not room_name:
-            room_name = getattr(channel_obj, 'name', '')
+            room_name = ''
         async with self.bot.db_pool.acquire() as conn:
             stage = await conn.fetchrow('SELECT initiator_id FROM active_stages WHERE guild_id=$1 AND channel_id=$2', guild_id, channel_obj.id)
             if not stage:
@@ -5772,7 +5772,7 @@ class Hybrid(commands.Cog):
                 channel_obj = temp_channel
                 break
         if not room_name:
-            room_name = getattr(channel_obj, 'name', '')
+            room_name = ''
         async with self.bot.db_pool.acquire() as conn:
             stage = await conn.fetchrow('SELECT initiator_id FROM active_stages WHERE guild_id=$1 AND channel_id=$2', guild_id, channel_obj.id)
             if not stage:

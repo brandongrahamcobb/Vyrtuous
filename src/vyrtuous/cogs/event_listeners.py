@@ -38,78 +38,51 @@ class EventListeners(commands.Cog):
         self.join_log = defaultdict(list)
         self._ready_done = False
     
-    async def fetch_active_bans(self, conn, guild_id: int, user_id: int):
-        return await conn.fetch('''
-            SELECT channel_id, expires_at
-            FROM active_bans
-            WHERE guild_id = $1 AND discord_snowflake = $2
-              AND (expires_at IS NULL OR expires_at > NOW())
-        ''', guild_id, user_id)
-
-    async def fetch_active_text_mutes(self, conn, guild_id: int, user_id: int):
-        return await conn.fetch('''
-            SELECT channel_id
-            FROM active_text_mutes
-            WHERE guild_id = $1 AND discord_snowflake = $2
-              AND (expires_at IS NULL OR expires_at > NOW())
-        ''', guild_id, user_id)
+    async def fetch_active_bans(self, conn, guild_id: int, user_id: int, temp_room_name: str = None):
+        if temp_room_name:
+            return await conn.fetch('''
+                SELECT channel_id, expires_at
+                FROM active_bans
+                WHERE guild_id = $1
+                  AND discord_snowflake = $2
+                  AND room_name = $3
+                  AND (expires_at IS NULL OR expires_at > NOW())
+            ''', guild_id, user_id, temp_room_name)
+        else:
+            return await conn.fetch('''
+                SELECT channel_id, expires_at
+                FROM active_bans
+                WHERE guild_id = $1
+                  AND discord_snowflake = $2
+                  AND (expires_at IS NULL OR expires_at > NOW())
+            ''', guild_id, user_id)
     
-#    @commands.Cog.listener()
-#    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
-#        guild = channel.guild
-#        name = channel.name.lower()
-#        for c in guild.channels:
-#            if c.id != channel.id and c.name.lower() == name:
-#                return
-#        async with self.bot.db_pool.acquire() as conn:
-#            temp_room = await conn.fetchrow(
-#                '''
-#                SELECT room_name
-#                FROM temporary_rooms
-#                WHERE guild_snowflake=$1
-#                  AND room_name=$2
-#                ''',
-#                guild.id, name
-#            )
-#            if not temp_room:
-#                return
-#            await conn.execute(
-#                '''
-#                UPDATE temporary_rooms
-#                SET room_snowflake=$3
-#                WHERE guild_snowflake=$1
-#                  AND room_name=$2
-#                ''',
-#                guild.id, name, channel.id
-#            )
-#            await conn.execute(
-#                '''
-#                UPDATE command_aliases
-#                SET channel_id=$3
-#                WHERE guild_id=$1
-#                  AND room_name=$2
-#                ''',
-#                guild.id, name, channel.id
-#            )
-#        guild_aliases = self.bot.command_aliases.setdefault(guild.id, {})
-#        temp_aliases = guild_aliases.get('temp_room_aliases', {})
-#        for alias_type, aliases in temp_aliases.items():
-#            for alias_name, data in aliases.items():
-#                if data.get("room_name") == name:
-#                    data["channel_id"] = channel.id
+    async def fetch_active_text_mutes(self, conn, guild_id: int, user_id: int, temp_room_name: str = None):
+        if temp_room_name:
+            return await conn.fetch('''
+                SELECT channel_id
+                FROM active_text_mutes
+                WHERE guild_id = $1
+                  AND discord_snowflake = $2
+                  AND room_name = $3
+                  AND (expires_at IS NULL OR expires_at > NOW())
+            ''', guild_id, user_id, temp_room_name)
+        else:
+            return await conn.fetch('''
+                SELECT channel_id
+                FROM active_text_mutes
+                WHERE guild_id = $1
+                  AND discord_snowflake = $2
+                  AND (expires_at IS NULL OR expires_at > NOW())
+            ''', guild_id, user_id)
+    
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
-        print(f"DEBUG: Channel created - ID: {channel.id}, Name: {channel.name}, Type: {type(channel).__name__}")
         guild = channel.guild
         name = channel.name.lower()
-    
-        print(f"DEBUG: Checking for duplicate channel names in guild {guild.id}")
         for c in guild.channels:
             if c.id != channel.id and c.name.lower() == name:
-                print(f"DEBUG: Duplicate channel name found, skipping - Existing ID: {c.id}")
                 return
-    
-        print(f"DEBUG: No duplicates found, checking database for temporary room")
         async with self.bot.db_pool.acquire() as conn:
             temp_room = await conn.fetchrow(
                 '''
@@ -120,13 +93,9 @@ class EventListeners(commands.Cog):
                 ''',
                 guild.id, name
             )
-            print(f"DEBUG: Database query result: {temp_room}")
-    
             if not temp_room:
                 print(f"DEBUG: Not a temporary room, exiting")
                 return
-    
-            print(f"DEBUG: Updating temporary_rooms table with channel ID {channel.id}")
             await conn.execute(
                 '''
                 UPDATE temporary_rooms
@@ -136,8 +105,6 @@ class EventListeners(commands.Cog):
                 ''',
                 guild.id, name, channel.id
             )
-    
-            print(f"DEBUG: Updating command_aliases table")
             await conn.execute(
                 '''
                 UPDATE command_aliases
@@ -147,19 +114,12 @@ class EventListeners(commands.Cog):
                 ''',
                 guild.id, name, channel.id
             )
-    
-        print(f"DEBUG: Updating in-memory cache for guild {guild.id}")
         guild_aliases = self.bot.command_aliases.setdefault(guild.id, {})
         temp_aliases = guild_aliases.get('temp_room_aliases', {})
-        print(f"DEBUG: Found {len(temp_aliases)} alias types in temp_room_aliases")
-    
         for alias_type, aliases in temp_aliases.items():
-            print(f"DEBUG: Processing alias_type: {alias_type} with {len(aliases)} aliases")
             for alias_name, data in aliases.items():
                 if data.get("room_name") == name:
-                    print(f"DEBUG: Updating alias {alias_name} with channel_id {channel.id}")
                     data["channel_id"] = channel.id
-                
                     
     # Done
     @commands.Cog.listener()
@@ -174,6 +134,11 @@ class EventListeners(commands.Cog):
         should_be_muted = False
         just_manual_unmute = False
         async with self.db_pool.acquire() as conn:
+            temp_room = await conn.fetchrow('''
+                SELECT room_name FROM temporary_rooms
+                WHERE guild_snowflake = $1 AND room_snowflake = $2
+            ''', member.guild.id, after_channel.id)
+            room_name = temp_room['room_name'] if temp_room else ''
             user_data = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', user_id)
             server_mute_guild_ids = user_data['server_mute_guild_ids'] or [] if user_data else []
             if member.guild.id in server_mute_guild_ids:
@@ -182,14 +147,25 @@ class EventListeners(commands.Cog):
             coordinator_ids = set()
             if after_channel:
                 try:
-                    active_stage = await conn.fetchrow('''
-                        SELECT expires_at FROM active_stages
-                        WHERE guild_id = $1 AND channel_id = $2
-                    ''', member.guild.id, after_channel.id)
-                    coordinators = await conn.fetch('''
-                        SELECT discord_snowflake FROM stage_coordinators
-                        WHERE guild_id = $1 AND channel_id = $2
-                    ''', member.guild.id, after_channel.id)
+                    if temp_room:
+                        room_name = temp_room['room_name']
+                        active_stage = await conn.fetchrow('''
+                            SELECT expires_at FROM active_stages
+                            WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+                        ''', member.guild.id, after_channel.id, room_name)
+                        coordinators = await conn.fetch('''
+                            SELECT discord_snowflake FROM stage_coordinators
+                            WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+                        ''', member.guild.id, after_channel.id, room_name)
+                    else:
+                        active_stage = await conn.fetchrow('''
+                            SELECT expires_at FROM active_stages
+                            WHERE guild_id = $1 AND channel_id = $2
+                        ''', member.guild.id, after_channel.id)
+                        coordinators = await conn.fetch('''
+                            SELECT discord_snowflake FROM stage_coordinators
+                            WHERE guild_id = $1 AND channel_id = $2
+                        ''', member.guild.id, after_channel.id)
                     if after_channel is not None and after_channel != before.channel:
                         if active_stage:
                             now = time.time()
@@ -259,30 +235,49 @@ class EventListeners(commands.Cog):
                                             await paginator.start()
                     coordinator_ids = {r['discord_snowflake'] for r in coordinators}
                     is_owner_or_dev = await is_owner_developer_via_objects(member, self.bot)
-                    room_name_before = getattr(before_channel, 'room_name', '') if before_channel else ''
-                    room_name_after = getattr(after_channel, 'room_name', '') if after_channel else ''
                     if before.mute != after.mute:
                         if before.mute and not after.mute and before_channel:
-                            result = await conn.execute('''
-                                DELETE FROM active_voice_mutes
-                                WHERE guild_id = $1
-                                  AND discord_snowflake = $2
-                                  AND channel_id = $3
-                                  AND target = 'user'
-                                  AND expires_at IS NOT NULL
-                                  AND room_name = $4
-                            ''', member.guild.id, user_id, before_channel.id, room_name_before)
+                            if temp_room:
+                                room_name = temp_room['room_name']
+                                result = await conn.execute('''
+                                    DELETE FROM active_voice_mutes
+                                    WHERE guild_id = $1
+                                      AND discord_snowflake = $2
+                                      AND channel_id = $3
+                                      AND room_name = $4
+                                      AND target = 'user'
+                                      AND expires_at IS NOT NULL
+                                ''', member.guild.id, user_id, before_channel.id, room_name)
+                            else:
+                                result = await conn.execute('''
+                                    DELETE FROM active_voice_mutes
+                                    WHERE guild_id = $1
+                                      AND discord_snowflake = $2
+                                      AND channel_id = $3
+                                      AND target = 'user'
+                                      AND expires_at IS NOT NULL
+                                ''', member.guild.id, user_id, before_channel.id)
                             just_manual_unmute = True
                         elif active_stage and before.mute and not after.mute and before_channel:
                             try:
-                                await conn.execute('''
-                                    DELETE FROM active_voice_mutes
-                                    WHERE guild_id=$1
-                                      AND discord_snowflake=$2
-                                      AND channel_id=$3
-                                      AND target='room'
-                                      AND room_name=$4
-                                ''', member.guild.id, user_id, after_channel.id, room_name_after)
+                                if temp_room:
+                                    room_name = temp_room['room_name']
+                                    await conn.execute('''
+                                        DELETE FROM active_voice_mutes
+                                        WHERE guild_id = $1
+                                          AND discord_snowflake = $2
+                                          AND channel_id = $3
+                                          AND room_name = $4
+                                          AND target = 'room'
+                                    ''', member.guild.id, user_id, after_channel.id, room_name)
+                                else:
+                                    await conn.execute('''
+                                        DELETE FROM active_voice_mutes
+                                        WHERE guild_id = $1
+                                          AND discord_snowflake = $2
+                                          AND channel_id = $3
+                                          AND target = 'room'
+                                    ''', member.guild.id, user_id, after_channel.id)
                                 just_manual_unmute = True
                                 await member.edit(mute=False, reason=f'Removing stage mute in {before_channel.name}')
                                 return
@@ -292,79 +287,123 @@ class EventListeners(commands.Cog):
                             except discord.HTTPException as e:
                                 logger.debug(f'Failed to unmute {member.display_name}: {e}')
                                 raise
-                        if active_stage and (user_id not in coordinator_ids and not is_owner_or_dev) and not after.mute and before_channel != after_channel and after_channel:
-                            expires_at = active_stage['expires_at']
-                            try:
-                                await conn.execute('''
-                                    INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target, room_name)
-                                    VALUES ($1, $2, $3, $4, 'room', $5)
-                                    ON CONFLICT (guild_id, discord_snowflake, channel_id, target, room_name)
-                                    DO UPDATE SET expires_at = EXCLUDED.expires_at
-                                ''', member.guild.id, user_id, after_channel.id, expires_at, room_name_after)
-                                await member.edit(mute=True, reason=f'Enforcing stage mute in {after_channel.name}')
-                                return
-                            except discord.Forbidden:
-                                logger.debug(f'No permission to mute {member.display_name}')
-                            except discord.HTTPException as e:
-                                logger.debug(f'Failed to mute {member.display_name}: {e}')
-                        existing_mute_row = await conn.fetchrow('''
-                            SELECT expires_at
-                            FROM active_voice_mutes
-                            WHERE guild_id = $1
-                              AND discord_snowflake = $2
-                              AND channel_id = $3
-                              AND target = 'user'
-                              AND room_name = $4
-                        ''', member.guild.id, user_id, after_channel.id, room_name_after)
-                        if existing_mute_row:
-                            if existing_mute_row['expires_at'] and existing_mute_row['expires_at'] <= datetime.now(timezone.utc):
-                                await conn.execute('''
-                                    DELETE FROM active_voice_mutes
+                    if active_stage and (user_id not in coordinator_ids and not is_owner_or_dev) and not after.mute and before_channel != after_channel and after_channel:
+                         expires_at = active_stage['expires_at']
+                         try:
+                             if temp_room:
+                                 room_name = temp_room['room_name']
+                                 await conn.execute('''
+                                     INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target, room_name)
+                                     VALUES ($1, $2, $3, $4, 'room', $5)
+                                     ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
+                                     DO UPDATE SET expires_at = EXCLUDED.expires_at
+                                 ''', member.guild.id, user_id, after_channel.id, expires_at, room_name)
+                             else:
+                                 await conn.execute('''
+                                     INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target)
+                                     VALUES ($1, $2, $3, $4, 'room')
+                                     ON CONFLICT (guild_id, discord_snowflake, channel_id, target)
+                                     DO UPDATE SET expires_at = EXCLUDED.expires_at
+                                 ''', member.guild.id, user_id, after_channel.id, expires_at)
+                             await member.edit(mute=True, reason=f'Enforcing stage mute in {after_channel.name}')
+                             return
+                         except discord.Forbidden:
+                             logger.debug(f'No permission to mute {member.display_name}')
+                         except discord.HTTPException as e:
+                             logger.debug(f'Failed to mute {member.display_name}: {e}')
+                    existing_mute_row = await conn.fetchrow('''
+                        SELECT expires_at
+                        FROM active_voice_mutes
+                        WHERE guild_id = $1
+                          AND discord_snowflake = $2
+                          AND channel_id = $3
+                          AND target = 'user'
+                    ''', member.guild.id, user_id, after_channel.id)
+                    if existing_mute_row:
+                        if existing_mute_row['expires_at'] and existing_mute_row['expires_at'] <= datetime.now(timezone.utc):
+                            if temp_room:
+                                room_name = temp_room['room_name']
+                                existing_mute_row = await conn.fetchrow('''
+                                    SELECT expires_at
+                                    FROM active_voice_mutes
+                                    WHERE guild_id = $1
+                                      AND discord_snowflake = $2
+                                      AND channel_id = $3
+                                      AND room_name = $4
+                                      AND target = 'user'
+                                ''', member.guild.id, user_id, after_channel.id, room_name)
+                            else:
+                                existing_mute_row = await conn.fetchrow('''
+                                    SELECT expires_at
+                                    FROM active_voice_mutes
                                     WHERE guild_id = $1
                                       AND discord_snowflake = $2
                                       AND channel_id = $3
                                       AND target = 'user'
-                                      AND room_name = $4
-                                ''', member.guild.id, user_id, before_channel.id, room_name_before)
-                                existing_mute_row = None
-                                should_be_muted = False
-                        if not before.mute and after.mute and after_channel:
-                            if not existing_mute_row:
-                                other_cog = self.bot.get_cog("Hybrid")
-                                if other_cog is not None:
-                                    if member.id not in other_cog.super["members"]:
+                                ''', member.guild.id, user_id, after_channel.id)
+                            existing_mute_row = None
+                            should_be_muted = False
+                    if not before.mute and after.mute and after_channel:
+                        if not existing_mute_row:
+                            other_cog = self.bot.get_cog("Hybrid")
+                            if other_cog is not None:
+                                if member.id not in other_cog.super["members"]:
+                                    if temp_room:
+                                        room_name = temp_room['room_name']
                                         await conn.execute('''
                                             INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target, room_name)
                                             VALUES ($1, $2, $3, NOW() + interval '1 hour', 'user', $4)
-                                            ON CONFLICT (guild_id, discord_snowflake, channel_id, target, room_name)
-                                            DO UPDATE SET expires_at = EXCLUDED.expires_at
-                                        ''', member.guild.id, user_id, after_channel.id, room_name_after)
+                                            ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target) DO UPDATE
+                                            SET expires_at = EXCLUDED.expires_at
+                                        ''', member.guild.id, user_id, after_channel.id, room_name)
                                     else:
-                                        embed = discord.Embed(
-                                            title=f'\u1F4AB {member.display_name} is a hero!',
-                                            description=f'{member.display_name} cannot be muted.',
-                                            color=discord.Color.gold()
-                                        )
-                                        embed.set_thumbnail(url=member.display_avatar.url)
-                                        await after_channel.send(embed=embed)
-                        existing_mute_row = await conn.fetchrow('''
-                            SELECT expires_at
-                            FROM active_voice_mutes
-                            WHERE guild_id = $1
-                              AND discord_snowflake = $2
-                              AND channel_id = $3
-                              AND target = 'user'
-                              AND room_name = $4
-                        ''', member.guild.id, user_id, after_channel.id, room_name_after)
-                        if just_manual_unmute and existing_mute_row:
-                            records = await conn.fetch('''
-                                SELECT guild_id, channel_id, expires_at, reason
+                                        await conn.execute('''
+                                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target)
+                                            VALUES ($1, $2, $3, NOW() + interval '1 hour', 'user')
+                                            ON CONFLICT (guild_id, discord_snowflake, channel_id, target) DO UPDATE
+                                            SET expires_at = EXCLUDED.expires_at
+                                        ''', member.guild.id, user_id, after_channel.id)
+                                else:
+                                    embed = discord.Embed(
+                                        title=f'\u1F4AB {member.display_name} is a hero!',
+                                        description=f'{member.display_name} cannot be muted.',
+                                        color=discord.Color.gold()
+                                    )
+                                    embed.set_thumbnail(url=member.display_avatar.url)
+                                    await after_channel.send(embed=embed)
+                    existing_mute_row = await conn.fetchrow('''
+                        SELECT expires_at
+                        FROM active_voice_mutes
+                        WHERE guild_id = $1
+                          AND discord_snowflake = $2
+                          AND channel_id = $3
+                          AND target = 'user'
+                    ''', member.guild.id, user_id, after_channel.id)
+                    should_be_muted = False
+                    if existing_mute_row:
+                        if not existing_mute_row['expires_at'] or existing_mute_row['expires_at'] > datetime.now(timezone.utc):
+                            should_be_muted = True
+                    if just_manual_unmute and existing_mute_row:
+                        if temp_room:
+                            room_name = temp_room['room_name']
+                            existing_mute_row = await conn.fetchrow('''
+                                SELECT expires_at
                                 FROM active_voice_mutes
-                                WHERE discord_snowflake = $1
-                                  AND guild_id = $2
+                                WHERE guild_id = $1
+                                  AND discord_snowflake = $2
+                                  AND channel_id = $3
+                                  AND room_name = $4
                                   AND target = 'user'
-                                  AND room_name = $3
-                            ''', member.id, member.guild.id, room_name_after)
+                            ''', member.guild.id, user_id, after_channel.id, room_name)
+                        else:
+                            existing_mute_row = await conn.fetchrow('''
+                                SELECT expires_at
+                                FROM active_voice_mutes
+                                WHERE guild_id = $1
+                                  AND discord_snowflake = $2
+                                  AND channel_id = $3
+                                  AND target = 'user'
+                            ''', member.guild.id, user_id, after_channel.id)
                         records = [r for r in records if member.guild.get_channel(r['channel_id'])]
                         if not records:
                             return
@@ -401,8 +440,16 @@ class EventListeners(commands.Cog):
         user_id = member.id
         guild = member.guild
         async with self.db_pool.acquire() as conn:
-            bans = await self.fetch_active_bans(conn, guild.id, user_id)
-            text_mutes = await self.fetch_active_text_mutes(conn, guild.id, user_id)
+            temp_room_name = None
+            temp_room = await conn.fetchrow('''
+                SELECT room_name FROM temporary_rooms
+                WHERE guild_snowflake = $1
+                  AND owner_snowflake = $2
+            ''', guild.id, user_id)
+            if temp_room:
+                temp_room_name = temp_room['room_name']
+            bans = await self.fetch_active_bans(conn, guild.id, user_id, temp_room_name)
+            text_mutes = await self.fetch_active_text_mutes(conn, guild.id, user_id, temp_room_name)
             for row in bans:
                 channel = guild.get_channel(row['channel_id'])
                 if not channel or not isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
@@ -451,7 +498,7 @@ class EventListeners(commands.Cog):
 #    @commands.Cog.listener()
 #    async def on_command(self, ctx):
 #        await ctx.send("Bot is currently down. Changes will not be saved permanently.")
-        
+
     @commands.Cog.listener()
     async def on_ready(self):
         if getattr(self, "_ready_done", False):
@@ -461,28 +508,30 @@ class EventListeners(commands.Cog):
         if hybrid_cog:
             await hybrid_cog.load_temp_rooms()
         async with self.bot.db_pool.acquire() as conn:
-            print(self.bot.user.name)
-            bans=await conn.fetch('SELECT discord_snowflake,channel_id FROM active_bans')
-            texts=await conn.fetch('SELECT discord_snowflake,channel_id FROM active_text_mutes')
-            voices=await conn.fetch('SELECT discord_snowflake,channel_id FROM active_voice_mutes')
-            ban_set={(r['discord_snowflake'],r['channel_id']) for r in bans}
-            text_set={(r['discord_snowflake'],r['channel_id']) for r in texts}
-            voice_set={(r['discord_snowflake'],r['channel_id']) for r in voices}
+            bans = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_bans')
+            texts = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_text_mutes')
+            voices = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_voice_mutes')
+            ban_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in bans}
+            text_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in texts}
+            voice_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in voices}
             for guild in self.bot.guilds:
                 for channel in guild.channels:
-                    if isinstance(channel,discord.TextChannel):
+                    temp_room = await conn.fetchrow('''
+                        SELECT room_name FROM temporary_rooms
+                        WHERE guild_snowflake = $1 AND room_snowflake = $2
+                    ''', guild.id, channel.id)
+                    room_name = temp_room['room_name'] if temp_room else ''
+                    if isinstance(channel, discord.TextChannel):
                         for overwrite_obj, overwrite in channel.overwrites.items():
-                           uid = overwrite_obj.id
-                           if overwrite.send_messages is False and (uid, channel.id) not in text_set:
-                               await channel.set_permissions(overwrite_obj, send_messages=None)
-
-                           if overwrite.view_channel is False and (uid, channel.id) not in ban_set:
-                               await channel.set_permissions(overwrite_obj, overwrite=None)
-                    if isinstance(channel,discord.VoiceChannel):
+                            uid = overwrite_obj.id
+                            if overwrite.send_messages is False and (uid, channel.id, room_name) not in text_set:
+                                await channel.set_permissions(overwrite_obj, send_messages=None)
+                            if overwrite.view_channel is False and (uid, channel.id, room_name) not in ban_set:
+                                await channel.set_permissions(overwrite_obj, overwrite=None)
+                    if isinstance(channel, discord.VoiceChannel):
                         for member in channel.members:
-                            if member.voice and member.voice.mute and (member.id,channel.id) not in voice_set:
+                            if member.voice and member.voice.mute and (member.id, channel.id, room_name) not in voice_set:
                                 await member.edit(mute=False)
-
     
 async def setup(bot: DiscordBot):
     await bot.add_cog(EventListeners(bot))
