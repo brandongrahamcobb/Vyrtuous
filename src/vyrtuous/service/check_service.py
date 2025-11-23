@@ -402,6 +402,42 @@ async def check_owner_dev_coord(ctx: commands.Context, channel: Optional[discord
             if target_channel_id in c_chan or target_room_name in c_room:
                 is_coord = True
     return is_owner_or_dev, is_coord
+    
+async def check_owner_dev_coord_app(
+    interaction: discord.Interaction,
+    channel: Optional[discord.abc.GuildChannel] = None
+) -> Tuple[bool, bool]:
+    is_owner_or_dev = False
+    is_coord = False
+    guild = interaction.guild
+    user_id = interaction.user.id
+    target_channel_id = getattr(channel, 'id', None) or getattr(interaction, '_target_channel_id', None) or getattr(interaction.channel, 'id', None)
+    target_room_name = getattr(channel, 'name', None)
+    try:
+        if await is_system_owner_app(interaction):
+            is_owner_or_dev = True
+    except Exception:
+        try:
+            if guild and await is_guild_owner_app(interaction):
+                is_owner_or_dev = True
+        except Exception:
+            try:
+                if guild and await is_developer_app(interaction):
+                    is_owner_or_dev = True
+            except Exception:
+                pass
+    if guild:
+        async with interaction.client.db_pool.acquire() as conn:
+            user_row = await conn.fetchrow(
+                'SELECT coordinator_channel_ids, coordinator_room_names FROM users WHERE discord_snowflake=$1',
+                user_id
+            )
+        if user_row:
+            c_chan = user_row.get('coordinator_channel_ids') or []
+            c_room = user_row.get('coordinator_room_names') or []
+            if target_channel_id in c_chan or target_room_name in c_room:
+                is_coord = True
+    return is_owner_or_dev, is_coord
 
 async def is_coordinator(ctx, target_channel_id: int):
     if ctx.guild is None:
