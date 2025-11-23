@@ -134,11 +134,6 @@ class EventListeners(commands.Cog):
         should_be_muted = False
         just_manual_unmute = False
         async with self.db_pool.acquire() as conn:
-            temp_room = await conn.fetchrow('''
-                SELECT room_name FROM temporary_rooms
-                WHERE guild_snowflake = $1 AND room_snowflake = $2
-            ''', member.guild.id, after_channel.id)
-            room_name = temp_room['room_name'] if temp_room else ''
             user_data = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', user_id)
             server_mute_guild_ids = user_data['server_mute_guild_ids'] or [] if user_data else []
             if member.guild.id in server_mute_guild_ids:
@@ -146,6 +141,11 @@ class EventListeners(commands.Cog):
             active_stage = None
             coordinator_ids = set()
             if after_channel:
+                temp_room = await conn.fetchrow('''
+                    SELECT room_name FROM temporary_rooms
+                    WHERE guild_snowflake = $1 AND room_snowflake = $2
+                ''', member.guild.id, after_channel.id)
+                room_name = temp_room['room_name'] if temp_room else ''
                 try:
                     if temp_room:
                         room_name = temp_room['room_name']
