@@ -381,7 +381,7 @@ class Hybrid(commands.Cog):
                 try:
                     await member_obj.move_to(None, reason=f'{reason or "No reason provided"}')
                 except discord.Forbidden:
-                    await ctx.send(f'\U0001F6AB Could not disconnect {member_obj.mention} from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    await self.handler.send_message(ctx, f'\U0001F6AB Could not disconnect {member_obj.mention} from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 except Exception as e:
                     logger.exception(f'Unexpected error while disconnecting user: {e}')
                     raise
@@ -405,7 +405,7 @@ class Hybrid(commands.Cog):
                 description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                 color=discord.Color.orange()
             )
-            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
             highest_role = await self.get_highest_role_text(ctx, ctx.author, channel_obj)
             await self.send_log(ctx, 'ban', member_obj, channel_obj, duration_display, updated_reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return ban_alias_text_command
@@ -458,10 +458,10 @@ class Hybrid(commands.Cog):
                 async with self.bot.db_pool.acquire() as conn:
                     already_cowed = await conn.fetchval(select_sql, member_obj.id, channel_obj.id)
                     if already_cowed:
-                        return await ctx.send(f'\U0001F6AB {member_obj.mention} is already going vegan.', allowed_mentions=discord.AllowedMentions.none())
+                        return await self.handler.send_message(ctx, f'\U0001F6AB {member_obj.mention} is already going vegan.', allowed_mentions=discord.AllowedMentions.none())
                     created_at = await conn.fetchval(insert_log_sql, 'cow', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Cowed a user')
                     await conn.execute(insert_cow_sql, ctx.guild.id, member_obj.id, channel_obj.id, created_at)
-                    await ctx.send(f'\U0001F525 {member_obj.mention} is going vegan!!! \U0001F525', allowed_mentions=discord.AllowedMentions.none())
+                    await self.handler.send_message(ctx, f'\U0001F525 {member_obj.mention} is going vegan!!! \U0001F525', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 return await self.handler.send_message(ctx, content=f'Database error: {e}')
                 raise
@@ -549,7 +549,7 @@ class Hybrid(commands.Cog):
                         updated_reason = cleaned_reason if cleaned_reason and not is_modification else 'No reason provided'
                         await conn.execute(insert_sql, ctx.guild.id, member_obj.id, channel_obj.id, updated_reason)
                     else:
-                        return await ctx.send(f'\U0001F6AB {member_obj.mention} is already flagged in {channel_obj.mention} for {existing_flag["reason"]}.', allowed_mentions=discord.AllowedMentions.none())
+                        return await self.handler.send_message(ctx, f'\U0001F6AB {member_obj.mention} is already flagged in {channel_obj.mention} for {existing_flag["reason"]}.', allowed_mentions=discord.AllowedMentions.none())
                     embed = discord.Embed(color=discord.Color.orange())
                     embed.set_author(name=f"{member_obj.display_name} is flagged", icon_url=member_obj.display_avatar.url)
                     embed.add_field(name="User", value=member_obj.mention, inline=True)
@@ -561,12 +561,11 @@ class Hybrid(commands.Cog):
                         else: full_reason = cleaned_reason
                     else: full_reason = cleaned_reason
                     embed.add_field(name="Reason", value=full_reason or 'No reason provided', inline=False)
-                    await ctx.send(embed=embed)
+                    await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 logger.exception(f'Database error in flag_alias: {e}')
                 raise
         return flag_alias_text_command
-
 
     def create_role_alias(self, command_name: Optional[str]) -> Command:
         @commands.command(name=command_name, help=f'Gives a specific role to a user.')
@@ -599,11 +598,11 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot give the bot a role.')
             role_obj = ctx.guild.get_role(static_role_id)
             if not role_obj:
-                return await ctx.send(f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
+                return await self.handler.send_message(ctx, f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
             if role_obj in member_obj.roles:
-                return await ctx.send(f'{member_obj.mention} already has {role_obj.mention}.')
+                return await self.handler.send_message(ctx, f'{member_obj.mention} already has {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             await member_obj.add_roles(role_obj, reason=f'Added role')
-            return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, f'{self.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         return role_alias_text_command
             
     def create_text_mute_alias(self, command_name: Optional[str]) -> Command:
@@ -705,7 +704,7 @@ class Hybrid(commands.Cog):
                 description=f"**User:** {member_obj.mention}\n**Channel/Room:** {target_name}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                 color=discord.Color.orange()
             )
-            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
             return await self.send_log(
                 ctx, 'tmute', member_obj, channel_obj, duration_display, updated_reason,
                 ctx.author, expires_at, command_name, True, stripped in ('+', '-', '='), highest_role
@@ -880,7 +879,7 @@ class Hybrid(commands.Cog):
                     description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                     color=discord.Color.orange()
                 )
-            await ctx.send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
             highest_role = await self.get_highest_role_text(ctx, ctx.author, channel_obj)
             await self.send_log(ctx, 'vmute', member_obj, channel_obj, duration_display, updated_reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
         return voice_mute_alias_text_command
@@ -947,7 +946,7 @@ class Hybrid(commands.Cog):
                     VALUES ($1,$2,$3,$4,$5,$6)
                 ''', 'unban', member_obj.id, ctx.author.id, ctx.guild.id, static_channel_id if static_channel_id else -1, f'Unbanned a user from room `{room_name}`' if room_name != '' else 'Unbanned a user')
             mention_target = channel_obj.mention if channel_obj else f'room `{room_name}`'
-            return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} has been unbanned from {mention_target}.', allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, f'{self.get_random_emoji()} {member_obj.mention} has been unbanned from {mention_target}.', allowed_mentions=discord.AllowedMentions.none())
         return unban_alias_text_command
 
 
@@ -1000,7 +999,7 @@ class Hybrid(commands.Cog):
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
                     ''', 'uncow', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Uncowed a user')
-                    await ctx.send(f'👎<@{member_obj.id}> is no longer going vegan.👎', allowed_mentions=discord.AllowedMentions.none())
+                    await self.handler.send_message(ctx, f'👎<@{member_obj.id}> is no longer going vegan.👎', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'Database error: {e}')
                 raise
@@ -1055,7 +1054,7 @@ class Hybrid(commands.Cog):
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
                     ''', 'unflag', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Unflagged a user')
-                    await ctx.send(f'{self.get_random_emoji()} Unflagged {member_obj.mention} for channel {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    await self.handler.send_message(ctx, f'{self.get_random_emoji()} Unflagged {member_obj.mention} for channel {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 await self.handler.send_message(ctx, content=f'Database error: {e}')
                 raise
@@ -1111,7 +1110,7 @@ class Hybrid(commands.Cog):
                           AND target = 'user'
                     ''', ctx.guild.id, member_obj.id, channel_obj.id, room_name)
                     if not row:
-                        return await ctx.send(f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                        return await self.handler.send_message(ctx, f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                     if row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(ctx, 'unmute'):
                         return await self.handler.send_message(ctx, content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
                     await conn.execute('''
@@ -1129,8 +1128,8 @@ class Hybrid(commands.Cog):
                 logger.warning(f'\U0001F6AB Database error: {e}')
                 raise
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
-                return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} has been unmuted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
-            return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} is no longer marked as muted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, f'{self.get_random_emoji()} {member_obj.mention} has been unmuted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, f'{self.get_random_emoji()} {member_obj.mention} is no longer marked as muted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
         return unmute_alias_text_command
 
     def create_unrole_alias(self, command_name: Optional[str]) -> Command:
@@ -1167,11 +1166,11 @@ class Hybrid(commands.Cog):
             static_role_id = int(alias_data.get('role_id'))
             role_obj = ctx.guild.get_role(static_role_id)
             if not role_obj:
-                return await ctx.send(f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
+                return await self.handler.send_message(ctx, f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
             if role_obj not in member_obj.roles:
-                return await ctx.send(f'{member_obj.mention} does not have {role_obj.mention}.')
+                return await self.handler.send_message(ctx, f'{member_obj.mention} does not have {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             await member_obj.remove_roles(role_obj)
-            return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention} had {role_obj.mention} removed.', allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, f'{self.get_random_emoji()} {member_obj.mention} had {role_obj.mention} removed.', allowed_mentions=discord.AllowedMentions.none())
         return unrole_alias_text_command
         
     def create_untextmute_alias(self, command_name: Optional[str]) -> Command:
@@ -1230,7 +1229,7 @@ class Hybrid(commands.Cog):
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
                 ''', ctx.guild.id, member_obj.id, static_channel_id, room_name)
                 await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1, $2, $3, $4, $5, $6)', 'untmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Untextmuted a user')
-            return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention}\'s text muted in {channel_obj.mention} has been removed.', allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, f'{self.get_random_emoji()} {member_obj.mention}\'s text muted in {channel_obj.mention} has been removed.', allowed_mentions=discord.AllowedMentions.none())
         return untext_mute_alias_text_command
             
     @app_commands.command(name='admin', description='Grants server mute privileges to a member for the entire guild.')
@@ -1617,7 +1616,7 @@ class Hybrid(commands.Cog):
             await send(file=discord.File(backup_file))
         except Exception as e:
             logger.error(f'Error during database backup: {e}')
-            await ctx.send(f'\U0001F6AB Failed to create backup: {e}')
+            await self.handler.send_message(ctx, f'\U0001F6AB Failed to create backup: {e}')
     
     @app_commands.command(name='cap', description='Set a duration limit for bans, mutes and text mutes.')
     @is_owner_developer_app_predicator()
@@ -2199,7 +2198,7 @@ class Hybrid(commands.Cog):
                        FROM active_bans
                        WHERE guild_id=$1 AND discord_snowflake=$2''', guild.id, member_obj.id)
             bans = [b for b in bans if guild.get_channel(b['channel_id'])]
-            if not bans: return await send(content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.')
+            if not bans: return await send(content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
             embed = discord.Embed(title=f'\u26D4 Ban records for {member_obj.display_name}', color=discord.Color.red())
             for record in bans:
                 ch_obj = guild.get_channel(record['channel_id'])
@@ -2303,7 +2302,7 @@ class Hybrid(commands.Cog):
         if (is_owner_or_dev or is_coord or is_team_member) and member_obj:
             async with self.bot.db_pool.acquire() as conn:bans=await conn.fetch('''SELECT channel_id,expires_at,reason FROM active_bans WHERE guild_id=$1 AND discord_snowflake=$2''',ctx.guild.id,member_obj.id)
             bans=[b for b in bans if ctx.guild.get_channel(b['channel_id'])]
-            if not bans:return await send(content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.')
+            if not bans:return await send(content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
             embed=discord.Embed(title=f'\u26D4 Ban records for {member_obj.display_name}',color=discord.Color.red())
             for record in bans:
                 channel_obj=ctx.guild.get_channel(record['channel_id']);channel_mention=channel_obj.mention if channel_obj else f'Channel ID `{record["channel_id"]}`'
@@ -2845,7 +2844,7 @@ class Hybrid(commands.Cog):
         if is_owner_or_dev and member_obj:
             if member_obj.id != ctx.author.id:
                 if not is_owner_or_dev:
-                    return await send(content=f'\U0001F6AB You do not have permission to use (`coords`) for {member_obj.mention}.')
+                    return await send(content=f'\U0001F6AB You do not have permission to use (`coords`) for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             query = '''
                 SELECT coordinator_channel_ids
                 FROM users
@@ -2961,7 +2960,7 @@ class Hybrid(commands.Cog):
         msg = f'{self.get_random_emoji()} Stage created for {duration_display} in {channel_obj.mention}.\nMuted {len(muted)} user(s). Skipped {len(skipped)}.'
         if failed:
             msg += f'\n\U000026A0\U0000FE0F Failed: {len(failed)}.'
-        await send(content=msg)
+        await send(content=msg, allowed_mentions=discord.AllowedMentions.none())
     
     @commands.command(name='cstage', help='Create a stage in the current or specified channel.')
     @is_owner_developer_predicator()
@@ -3018,7 +3017,7 @@ class Hybrid(commands.Cog):
         msg = f'{self.get_random_emoji()} Stage created for {duration_display} in {channel_obj.mention}.\nMuted {len(muted)} user(s). Skipped {len(skipped)}.'
         if failed:
             msg += f'\n\U000026A0\U0000FE0F Failed: {len(failed)}.'
-        await send(content=msg)
+        await send(content=msg, allowed_mentions=discord.AllowedMentions.none())
         
     @app_commands.command(name='devs', description='Lists developers.')
     @is_owner_developer_app_predicator()
@@ -3050,9 +3049,9 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
             else:
                 if not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid member from input: {target}.')
-                if member_obj.id!=interaction.user.id: return await send(content=f'\U0001F6AB You do not have permission to use this command (`devs`) for {member_obj.mention}.')
+                if member_obj.id!=interaction.user.id: return await send(content=f'\U0001F6AB You do not have permission to use this command (`devs`) for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 row=await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake=$1',member_obj.id)
-                if not row or not row['developer_guild_ids']: return await send(content=f'\U0001F6AB {member_obj.mention} is not a developer in any guilds.')
+                if not row or not row['developer_guild_ids']: return await send(content=f'\U0001F6AB {member_obj.mention} is not a developer in any guilds.', allowed_mentions=discord.AllowedMentions.none())
                 guilds=[self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
                 embed=discord.Embed(title=f'Developer guilds for {member_obj.display_name}',description=', '.join(guilds) if guilds else 'No known guilds',color=discord.Color.blurple())
                 pages.append(embed)
@@ -3092,9 +3091,9 @@ class Hybrid(commands.Cog):
                 if not member_obj:
                     return await send(content=f'\U0001F6AB Could not resolve a valid member from input: {target}.')
                 if member_obj.id != ctx.author.id:
-                    return await send(content=f'\U0001F6AB You do not have permission to use this command (`devs`) for {member_obj.mention}.')
+                    return await send(content=f'\U0001F6AB You do not have permission to use this command (`devs`) for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
-                if not row or not row['developer_guild_ids']: return await send(content=f'\U0001F6AB {member_obj.mention} is not a developer in any guilds.')
+                if not row or not row['developer_guild_ids']: return await send(content=f'\U0001F6AB {member_obj.mention} is not a developer in any guilds.', allowed_mentions=discord.AllowedMentions.none())
                 guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
                 embed = discord.Embed(title=f'Developer guilds for {member_obj.display_name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
                 pages.append(embed)
@@ -3311,7 +3310,7 @@ class Hybrid(commands.Cog):
         self.super["state"] = not self.super["state"]
         self.super["members"].add(member_obj.id)
         state = f'ON {self.get_random_emoji()}' if self.super["state"] else f'OFF \U0001F6AB'
-        await ctx.send(f'{self.get_random_emoji()} Feature switched {state}.')
+        await self.handler.send_message(ctx, f'{self.get_random_emoji()} Feature switched {state}.')
         if not self.super["state"]:
             for channel in ctx.guild.channels:
                 await self.unrestrict(ctx.guild, member_obj)
@@ -3549,7 +3548,7 @@ class Hybrid(commands.Cog):
             return await paginator.start()
         _,is_coord=await check_owner_dev_coord_app(interaction,channel_obj)
         if is_owner_or_dev and member_obj:
-            if member_obj.id!=interaction.user.id and not is_coord and not is_owner_or_dev: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mods`) for {member_obj.mention}.')
+            if member_obj.id!=interaction.user.id and not is_coord and not is_owner_or_dev: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mods`) for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             query='''SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1'''
             async with self.bot.db_pool.acquire() as conn:
                 row=await conn.fetchrow(query,member_obj.id)
@@ -3641,7 +3640,7 @@ class Hybrid(commands.Cog):
         if is_owner_or_dev and member_obj:
             if member_obj.id != ctx.author.id:
                 if not is_coord and not is_owner_or_dev:
-                    return await send(content=f'\U0001F6AB You do not have permission to use this command (`mods`) for {member_obj.mention}.')
+                    return await send(content=f'\U0001F6AB You do not have permission to use this command (`mods`) for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             query = '''
                 SELECT moderator_channel_ids
                 FROM users
@@ -3934,7 +3933,7 @@ class Hybrid(commands.Cog):
                 current_entries.append({'guild_id': guild_id, 'channel_id': channel_obj.id, 'type': log_type, 'snowflakes': sf if sf else None, 'enabled': True})
                 msg=f'{self.get_random_emoji()} Log channel {channel_obj.mention} created with type `{log_type or "general"}`.'
         self.log_channels[guild_id]=current_entries
-        await send(content=msg)
+        await send(content=msg, allowed_mentions=discord.AllowedMentions.none())
         
     @commands.command(name='mlog', help='Create, modify, or delete a log channel.')
     @is_owner_developer_predicator()
@@ -3978,7 +3977,7 @@ class Hybrid(commands.Cog):
                 })
                 msg = f'{self.get_random_emoji()} Log channel {channel_obj.mention} created with type `{log_type or "general"}`.'
         self.log_channels[guild_id] = current_entries
-        await send(content=msg)
+        await send(content=msg, allowed_mentions=discord.AllowedMentions.none())
     
         
     @app_commands.command(name='log', description='Toggle logging for a channel on or off.')
@@ -4018,7 +4017,7 @@ class Hybrid(commands.Cog):
                 current_channels.append(channel_obj.id)
                 msg = f'{self.get_random_emoji()} Logging for {channel_obj.mention} enabled.'
         self.log_channels[guild_id] = current_channels
-        await send(content=msg)
+        await send(content=msg, allowed_mentions=discord.AllowedMentions.none())
         
     @commands.command(name='log', help='Toggle logging for a channel on or off.')
     @is_owner_developer_coordinator_moderator_predicator(None)
@@ -4058,7 +4057,7 @@ class Hybrid(commands.Cog):
                 current_channels.append(channel_obj.id)
                 msg = f'{self.get_random_emoji()} Logging for {channel_obj.mention} enabled.'
         self.log_channels[guild_id] = current_channels
-        await send(content=msg)
+        await send(content=msg, allowed_mentions=discord.AllowedMentions.none())
         
     @app_commands.command(name='mstage', description='Mute/unmute a member in the active stage.')
     @app_commands.describe(member='Tag a member or include their snowflake ID')
@@ -4210,7 +4209,7 @@ class Hybrid(commands.Cog):
                 return await send(content='\U0001F6AB Only stage coordinators can use this command.')
             try:
                 await member_obj.edit(mute=not member_obj.voice.mute)
-                return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
+                return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 logger.warning(f'Failed to toggle mute: {e}')
                 return await send(content=f'\U000026A0\ufe0f Failed to toggle mute for {member_obj.display_name}.')
@@ -4254,7 +4253,7 @@ class Hybrid(commands.Cog):
                         DELETE FROM stage_coordinators
                         WHERE guild_id=$1 AND channel_id=$2 AND room_name=$3 AND discord_snowflake=$4
                     ''', guild_id, stage_channel.id, room_name, member_obj.id)
-                    await send(content=f'{self.get_random_emoji()} {member_obj.mention} demoted from stage coordinator.')
+                    await send(content=f'{self.get_random_emoji()} {member_obj.mention} demoted from stage coordinator.', allowed_mentions=discord.AllowedMentions.none())
                 else:
                     await conn.execute('''
                         INSERT INTO stage_coordinators (guild_id, channel_id, room_name, discord_snowflake)
@@ -4266,7 +4265,7 @@ class Hybrid(commands.Cog):
                     ''', guild_id, member_obj.id, stage_channel.id)
                     if member_obj.voice and member_obj.voice.mute:
                         await member_obj.edit(mute=False)
-                    await send(content=f'{self.get_random_emoji()} {member_obj.mention} promoted to stage coordinator.')
+                    await send(content=f'{self.get_random_emoji()} {member_obj.mention} promoted to stage coordinator.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 logger.warning(f'Failed to toggle promotion: {e}')
                 await send(content=f'\U000026A0\U0000FE0F Failed to toggle promotion for {member_obj.display_name}.')
@@ -4310,7 +4309,7 @@ class Hybrid(commands.Cog):
                         DELETE FROM stage_coordinators
                         WHERE guild_id=$1 AND channel_id=$2 AND room_name=$3 AND discord_snowflake=$4
                     ''', guild_id, stage_channel.id, room_name, member_obj.id)
-                    await send(content=f'{self.get_random_emoji()} {member_obj.mention} demoted from stage coordinator.')
+                    await send(content=f'{self.get_random_emoji()} {member_obj.mention} demoted from stage coordinator.', allowed_mentions=discord.AllowedMentions.none())
                 else:
                     await conn.execute('''
                         INSERT INTO stage_coordinators (guild_id, channel_id, room_name, discord_snowflake)
@@ -4322,69 +4321,38 @@ class Hybrid(commands.Cog):
                     ''', guild_id, member_obj.id, stage_channel.id)
                     if member_obj.voice and member_obj.voice.mute:
                         await member_obj.edit(mute=False)
-                    await send(content=f'{self.get_random_emoji()} {member_obj.mention} promoted to stage coordinator.')
+                    await send(content=f'{self.get_random_emoji()} {member_obj.mention} promoted to stage coordinator.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 logger.warning(f'Failed to toggle promotion: {e}')
                 await send(content=f'\U000026A0\U0000FE0F Failed to toggle promotion for {member_obj.display_name}.')
     
-    @commands.command(name='rename', help='Migrate a temporary room to a new channel.')
-    async def rename_temp_room_app_command(self, ctx, old_name: str, new_channel: discord.abc.GuildChannel):
-        guild = ctx.guild
-        user_id = ctx.author.id
-        old_name_lc = old_name.lower()
-        async with self.bot.db_pool.acquire() as conn:
-            temp_room = await conn.fetchrow('''
-                SELECT room_name, owner_snowflake FROM temporary_rooms
-                WHERE guild_snowflake=$1 AND room_name=$2
-            ''', guild.id, old_name_lc)
-            if not temp_room:
-                return await ctx.send(f"No temporary room named '{old_name}' found.", ephemeral=True)
-            if temp_room['owner_snowflake'] != user_id:
-                return await ctx.send("Only the owner can migrate this room.", ephemeral=True)
-            await conn.execute('''
-                UPDATE temporary_rooms
-                SET room_snowflake=$3
-                WHERE guild_snowflake=$1 AND room_name=$2
-            ''', guild.id, old_name_lc, new_channel.id)
-            tables = ['command_aliases', 'log_channels', 'active_bans', 'active_text_mutes',
-                      'active_voice_mutes', 'active_stages', 'stage_coordinators', 'active_caps']
-            for table in tables:
-                await conn.execute(f'''
-                    UPDATE {table}
-                    SET channel_id=$3
-                    WHERE guild_id=$1 AND room_name=$2
-                ''', guild.id, old_name_lc, new_channel.id)
-        await ctx.send(f"Temporary room '{old_name}' migrated to {new_channel.mention}.")
-
     @app_commands.command(name='rename', description='Migrate a temporary room to a new channel.')
     @app_commands.describe(old_name='Old temporary room name', new_channel='New channel to migrate to')
     async def rename_temp_room_app_command(self, interaction: discord.Interaction, old_name: str, new_channel: discord.abc.GuildChannel):
-        guild = interaction.guild
-        user_id = interaction.user.id
-        old_name_lc = old_name.lower()
-        send = lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
+        guild = interaction.guild; user_id = interaction.user.id; old_name_lc = old_name.lower(); send = lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
         async with self.bot.db_pool.acquire() as conn:
-            temp_room = await conn.fetchrow('''
-                SELECT room_name, owner_snowflake FROM temporary_rooms
-                WHERE guild_snowflake=$1 AND room_name=$2
-            ''', guild.id, old_name_lc)
-            if not temp_room:
-                return await send(content=f"No temporary room named '{old_name}' found.")
-            if temp_room['owner_snowflake'] != user_id:
-                return await send(content="Only the owner can migrate this room.")
-            await conn.execute('''
-                UPDATE temporary_rooms
-                SET room_snowflake=$3
-                WHERE guild_snowflake=$1 AND room_name=$2
-            ''', guild.id, old_name_lc, new_channel.id)
-            tables = ['command_aliases', 'log_channels', 'active_bans', 'active_text_mutes',
-                      'active_voice_mutes', 'active_stages', 'stage_coordinators', 'active_caps']
-            for table in tables:
-                await conn.execute(f'''
-                    UPDATE {table}
-                    SET channel_id=$3
-                    WHERE guild_id=$1 AND room_name=$2
-                ''', guild.id, old_name_lc, new_channel.id)
+            temp_room = await conn.fetchrow('SELECT room_name, owner_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2', guild.id, old_name_lc)
+            if not temp_room: return await send(content=f"No temporary room named '{old_name}' found.")
+            if temp_room['owner_snowflake'] != user_id: return await send(content="Only the owner can migrate this room.")
+            conflict = await conn.fetchrow('SELECT 1 FROM command_aliases WHERE guild_id=$1 AND channel_id=$2 AND (room_name IS NULL OR room_name=\'\')', guild.id, new_channel.id)
+            if conflict: return await send(content=f"Cannot migrate: new channel {new_channel.mention} has existing aliases for normal channels.")
+            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2', guild.id, old_name_lc, new_channel.id)
+            tables = ['command_aliases','log_channels','active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps']
+            for table in tables: await conn.execute(f'UPDATE {table} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, old_name_lc, new_channel.id)
+        await send(content=f"Temporary room '{old_name}' migrated to {new_channel.mention}.")
+        
+    @commands.command(name='rename', help='Migrate a temporary room to a new channel.')
+    async def rename_temp_room_app_command(self, ctx, old_name: str, new_channel: discord.abc.GuildChannel):
+        guild = ctx.guild; user_id = ctx.author.id; old_name_lc = old_name.lower(); send = lambda **kw: self.handler.send_message(ctx, **kw, ephemeral=True)
+        async with self.bot.db_pool.acquire() as conn:
+            temp_room = await conn.fetchrow('SELECT room_name, owner_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2', guild.id, old_name_lc)
+            if not temp_room: return await send(content=f"No temporary room named '{old_name}' found.")
+            if temp_room['owner_snowflake'] != user_id: return await send(content="Only the owner can migrate this room.")
+            conflict = await conn.fetchrow('SELECT 1 FROM command_aliases WHERE guild_id=$1 AND channel_id=$2 AND (room_name IS NULL OR room_name=\'\')', guild.id, new_channel.id)
+            if conflict: return await send(content=f"Cannot migrate: new channel {new_channel.mention} has existing aliases for normal channels.")
+            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2', guild.id, old_name_lc, new_channel.id)
+            tables = ['command_aliases','log_channels','active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps']
+            for table in tables: await conn.execute(f'UPDATE {table} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, old_name_lc, new_channel.id)
         await send(content=f"Temporary room '{old_name}' migrated to {new_channel.mention}.")
         
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
@@ -4392,7 +4360,6 @@ class Hybrid(commands.Cog):
         source_id='Tag the source channel or include its snowflake ID',
         target_id='Tag the target channel or include its snowflake ID'
     )
-    @is_owner_app_predicator()
     async def room_move_all_app_command(
         self,
         interaction: discord.Interaction,
@@ -4796,7 +4763,7 @@ class Hybrid(commands.Cog):
             f'\n**Coordinators:** {fmt(coordinators)}'
             f'\n\nTotal surveyed: {len(channel_obj.members)}'
         )
-        await send(content=msg)
+        await send(content=msg, allowed_mentions=discord.AllowedMentions.none())
         
     @commands.command(name='survey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
     @is_owner_developer_predicator()
@@ -4825,7 +4792,7 @@ class Hybrid(commands.Cog):
             f'\n**Coordinators:** {fmt(coordinators)}'
             f'\n\nTotal surveyed: {len(channel_obj.members)}'
         )
-        await send(content=msg)
+        await send(content=msg, allowed_mentions=discord.AllowedMentions.none())
     
     @app_commands.command(name='temp', description='Mark a channel as a temporary room and assign an owner.')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
@@ -4850,7 +4817,7 @@ class Hybrid(commands.Cog):
         self.temp_rooms.setdefault(guild_id,{})[room.name.lower()]=room
         async with interaction.client.db_pool.acquire() as conn:
             await conn.execute('INSERT INTO temporary_rooms (guild_snowflake,room_name,owner_snowflake,room_snowflake) VALUES ($1,$2,$3,$4) ON CONFLICT (guild_snowflake,room_name) DO NOTHING',guild_id,room.name,owner_snowflake,room.id)
-        await send(content=f'{self.get_random_emoji()} Channel {room.mention} has been marked as a temporary room with owner <@{owner_snowflake}>.',ephemeral=True)
+        await send(content=f'{self.get_random_emoji()} Channel {room.mention} has been marked as a temporary room with owner <@{owner_snowflake}>.',ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
     
     @commands.command(name='temp', help='Mark a channel as a temporary room and assign an owner.')
     @is_owner_developer_predicator()
@@ -4880,7 +4847,7 @@ class Hybrid(commands.Cog):
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (guild_snowflake, room_name) DO NOTHING
             ''', ctx.guild.id, channel_obj.name, owner_snowflake, channel_obj.id)
-        await send(content=f'{self.get_random_emoji()} Channel {channel_obj.mention} has been marked as a temporary room with owner <@{owner_snowflake}>.')
+        await send(content=f'{self.get_random_emoji()} Channel {channel_obj.mention} has been marked as a temporary room with owner <@{owner_snowflake}>.', allowed_mentions=discord.AllowedMentions.none())
         
     @app_commands.command(name='tmutes', description='Lists text-mute statistics.')
     @app_commands.describe(target='"all", channel name/ID/mention, or user mention/ID')
@@ -5442,7 +5409,7 @@ class Hybrid(commands.Cog):
                     updated_at = NOW()
                 WHERE discord_snowflake = $1
             ''', member_obj.id, interaction.guild.id)
-        return await send(content=f'{self.get_random_emoji()} {member_obj.mention}\'s developer access has been revoked in {interaction.guild.name}.')
+        return await send(content=f'{self.get_random_emoji()} {member_obj.mention}\'s developer access has been revoked in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
         
     @commands.command(name='xdev', help='Removes a developer.')
     @is_owner_predicator()
@@ -5463,7 +5430,7 @@ class Hybrid(commands.Cog):
                     updated_at = NOW()
                 WHERE discord_snowflake = $1
             ''', member_obj.id, ctx.guild.id)
-        return await ctx.send(f'{self.get_random_emoji()} {member_obj.mention}\'s developer access has been revoked in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+        return await self.handler.send_message(ctx, f'{self.get_random_emoji()} {member_obj.mention}\'s developer access has been revoked in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
     
     @app_commands.command(name='xmod', description="Revokes a member's VC moderator role for a given channel.")
     @is_owner_developer_coordinator_app_predicator(None)
@@ -5488,7 +5455,7 @@ class Hybrid(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT moderator_channel_ids, moderator_room_names FROM users WHERE discord_snowflake = $1', member_obj.id)
             if not row:
-                return await send(content=f'\U0001F6AB {member_obj.mention} is not found in the moderator database.')
+                return await send(content=f'\U0001F6AB {member_obj.mention} is not found in the moderator database.', allowed_mentions=discord.AllowedMentions.none())
             current_channel_ids = row.get('moderator_channel_ids', []) or []
             current_rooms = row.get('moderator_room_names', []) or []
             if channel_obj.id in current_channel_ids:
@@ -5508,9 +5475,9 @@ class Hybrid(commands.Cog):
             has_remaining_guild_channels = any(ch_id in guild_voice_channel_ids for ch_id in remaining_channels)
             has_remaining_rooms = bool(remaining_rooms)
             if not has_remaining_guild_channels and not has_remaining_rooms:
-                return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has had all moderator access revoked in {channel_obj.mention} and {guild.name} (no remaining channels or temp rooms).')
+                return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has had all moderator access revoked in {channel_obj.mention} and {guild.name} (no remaining channels or temp rooms).', allowed_mentions=discord.AllowedMentions.none())
             else:
-                return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has been revoked moderator access in {channel_obj.mention}.')
+                return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has been revoked moderator access in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 
     @commands.command(name='xmod', help='Revokes a member\'s VC moderator role for a given channel.')
     @is_owner_developer_coordinator_predicator(None)
