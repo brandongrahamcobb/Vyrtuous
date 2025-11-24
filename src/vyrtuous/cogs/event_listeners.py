@@ -254,9 +254,10 @@ class EventListeners(commands.Cog):
                                     WHERE guild_id = $1
                                       AND discord_snowflake = $2
                                       AND channel_id = $3
+                                      AND room_name = $4
                                       AND target = 'user'
                                       AND expires_at IS NOT NULL
-                                ''', member.guild.id, user_id, before_channel.id)
+                                ''', member.guild.id, user_id, before_channel.id, '')
                             just_manual_unmute = True
                         elif active_stage and before.mute and not after.mute and before_channel:
                             try:
@@ -276,8 +277,9 @@ class EventListeners(commands.Cog):
                                         WHERE guild_id = $1
                                           AND discord_snowflake = $2
                                           AND channel_id = $3
+                                          AND room_name = $4
                                           AND target = 'room'
-                                    ''', member.guild.id, user_id, after_channel.id)
+                                    ''', member.guild.id, user_id, after_channel.id, '')
                                 just_manual_unmute = True
                                 await member.edit(mute=False, reason=f'Removing stage mute in {before_channel.name}')
                                 return
@@ -300,11 +302,11 @@ class EventListeners(commands.Cog):
                                  ''', member.guild.id, user_id, after_channel.id, expires_at, room_name)
                              else:
                                  await conn.execute('''
-                                     INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target)
-                                     VALUES ($1, $2, $3, $4, 'room')
-                                     ON CONFLICT (guild_id, discord_snowflake, channel_id, target)
+                                     INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, room_name, expires_at, target)
+                                     VALUES ($1, $2, $3, $4, 'room', $5)
+                                     ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
                                      DO UPDATE SET expires_at = EXCLUDED.expires_at
-                                 ''', member.guild.id, user_id, after_channel.id, expires_at)
+                                 ''', member.guild.id, user_id, after_channel.id, expires_at, '')
                              await member.edit(mute=True, reason=f'Enforcing stage mute in {after_channel.name}')
                              return
                          except discord.Forbidden:
@@ -317,8 +319,9 @@ class EventListeners(commands.Cog):
                         WHERE guild_id = $1
                           AND discord_snowflake = $2
                           AND channel_id = $3
+                          AND room_name = $4
                           AND target = 'user'
-                    ''', member.guild.id, user_id, after_channel.id)
+                    ''', member.guild.id, user_id, after_channel.id, '')
                     if existing_mute_row:
                         if existing_mute_row['expires_at'] and existing_mute_row['expires_at'] <= datetime.now(timezone.utc):
                             if temp_room:
@@ -339,8 +342,9 @@ class EventListeners(commands.Cog):
                                     WHERE guild_id = $1
                                       AND discord_snowflake = $2
                                       AND channel_id = $3
+                                      AND room_name = $4
                                       AND target = 'user'
-                                ''', member.guild.id, user_id, after_channel.id)
+                                ''', member.guild.id, user_id, after_channel.id, '')
                             existing_mute_row = None
                             should_be_muted = False
                     if not before.mute and after.mute and after_channel:
@@ -358,11 +362,11 @@ class EventListeners(commands.Cog):
                                         ''', member.guild.id, user_id, after_channel.id, room_name)
                                     else:
                                         await conn.execute('''
-                                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target)
-                                            VALUES ($1, $2, $3, NOW() + interval '1 hour', 'user')
-                                            ON CONFLICT (guild_id, discord_snowflake, channel_id, target) DO UPDATE
+                                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target, room_name)
+                                            VALUES ($1, $2, $3, NOW() + interval '1 hour', 'user', $4)
+                                            ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target) DO UPDATE
                                             SET expires_at = EXCLUDED.expires_at
-                                        ''', member.guild.id, user_id, after_channel.id)
+                                        ''', member.guild.id, user_id, after_channel.id, '')
                                 else:
                                     embed = discord.Embed(
                                         title=f'\u1F4AB {member.display_name} is a hero!',
@@ -377,8 +381,9 @@ class EventListeners(commands.Cog):
                         WHERE guild_id = $1
                           AND discord_snowflake = $2
                           AND channel_id = $3
+                          AND room_name = $4
                           AND target = 'user'
-                    ''', member.guild.id, user_id, after_channel.id)
+                    ''', member.guild.id, user_id, after_channel.id, '')
                     should_be_muted = False
                     if existing_mute_row:
                         if not existing_mute_row['expires_at'] or existing_mute_row['expires_at'] > datetime.now(timezone.utc):
@@ -402,8 +407,9 @@ class EventListeners(commands.Cog):
                                 WHERE guild_id = $1
                                   AND discord_snowflake = $2
                                   AND channel_id = $3
+                                  AND room_name = $4
                                   AND target = 'user'
-                            ''', member.guild.id, user_id, after_channel.id)
+                            ''', member.guild.id, user_id, after_channel.id, '')
                         records = [r for r in records if member.guild.get_channel(r['channel_id'])]
                         if not records:
                             return
