@@ -2188,7 +2188,10 @@ class Hybrid(commands.Cog):
         channel_obj = await self.resolve_channel_app(interaction, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_app(interaction, channel_obj)
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall_app(interaction)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_app(interaction, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
             return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention if channel_obj else ''}.')
         if target and target.lower() == 'all':
@@ -2310,7 +2313,10 @@ class Hybrid(commands.Cog):
             target=None
         channel_obj=await self.resolve_channel(ctx,target)
         if not channel_obj and not member_obj:return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
             return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention}.')
         if target and target.lower()=='all':
@@ -2740,16 +2746,20 @@ class Hybrid(commands.Cog):
         target: Optional[str] = None
     ):
         send=lambda **kw:interaction.response.send_message(**kw,ephemeral=True)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         guild=interaction.guild
         if guild is None: return await send(content="This command must be used in a server.")
         member_obj=await self.resolve_member_app(interaction,target)
         if member_obj: target=None
         channel_obj=await self.resolve_channel_app(interaction,target)
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            if channel_obj:
-                return await send(content=f'\U0001F6AB You do not have permission to use (`coords`) in {channel_obj.mention}.')
-            return await send(content=f'\U0001F6AB You do not have permission to use (`coords`) here.')
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall_app(interaction)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_app(interaction, channel_obj)
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
+            return await send(content=f'\U0001F6AB You do not have permission to use (`coords`) in {channel_obj.mention}.')
         if target and target.lower()=='all':
             if not is_owner_or_dev:
                 return await send(content='\U0001F6AB You are not authorized to list all coordinators.')
@@ -2833,11 +2843,17 @@ class Hybrid(commands.Cog):
     @is_owner_developer_coordinator_moderator_predicator(None)
     async def list_coordinators_text_command(self,ctx:commands.Context,target:Optional[str]=commands.parameter(default=None,description='Voice channel name, mention, ID, "all", or member ID')) -> None:
         async def send(**kw): await self.handler.send_message(ctx,**kw)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj=await self.resolve_member(ctx,target)
         if member_obj: target=None
         channel_obj=await self.resolve_channel(ctx,target)
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`coords`) in {channel_obj.mention if channel_obj else "this context"}.')
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`coords`) in {channel_obj.mention if channel_obj else "this context"}.')
         temp_rooms=self.temp_rooms.get(ctx.guild.id,{})
         room_name=None
         if channel_obj:
@@ -3115,14 +3131,20 @@ class Hybrid(commands.Cog):
         interaction: discord.Interaction,
         target: Optional[str] = None
     ):
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         send=lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
         guild=interaction.guild
         member_obj=await self.resolve_member_app(interaction,target)
         if member_obj: target=None
         channel_obj=await self.resolve_channel_app(interaction,target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`flags`) in {channel_obj.mention if channel_obj else "this context"}.')
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall_app(interaction)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_app(interaction, channel_obj)
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`flags`) in {channel_obj.mention}.')
         if target and target.lower()=='all':
             if not is_owner_or_dev: return await send(content='\U0001F6AB Only owners or developers can list flags across all channels.')
             async with self.bot.db_pool.acquire() as conn:
@@ -3412,12 +3434,18 @@ class Hybrid(commands.Cog):
         target: Optional[str] = None
     ):
         send=lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         member_obj=await self.resolve_member_app(interaction,target)
         if member_obj: target=None
         channel_obj=await self.resolve_channel_app(interaction,target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`ls`) in {channel_obj.mention if channel_obj else "this context"}.')
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`ls`) in {channel_obj.mention}.')
         guild=interaction.guild
         async with self.bot.db_pool.acquire() as conn:
             if member_obj:
@@ -3460,14 +3488,20 @@ class Hybrid(commands.Cog):
     ) -> None:
         async def send(**kw):
             await self.handler.send_message(ctx, **kw)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj = await self.resolve_member(ctx, target)
         if member_obj:
             target = None
         channel_obj = await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
             return await send(content=f'\U0001F6AB You do not have permission to use this command (`ls`) in {channel_obj.mention}.')
         guild = ctx.guild
         try:
@@ -3534,13 +3568,19 @@ class Hybrid(commands.Cog):
         target: Optional[str] = None
     ):
         send=lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         guild=interaction.guild
         member_obj=await self.resolve_member_app(interaction,target)
         if member_obj: target=None
         channel_obj=await self.resolve_channel_app(interaction,target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mods`) in {channel_obj.mention if channel_obj else "this context"}.')
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall_app(interaction)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_app(interaction, channel_obj)
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mods`) in {channel_obj.mention if channel_obj else "this context"}.')
         if target and target.lower()=='all':
             if not is_owner_or_dev: return await send(content='\U0001F6AB You are not authorized to list all moderators.')
             query='''SELECT unnest(moderator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE moderator_channel_ids IS NOT NULL'''
@@ -3604,12 +3644,18 @@ class Hybrid(commands.Cog):
     @is_owner_developer_coordinator_moderator_predicator(None)
     async def list_moderators_text_command(self,ctx:commands.Context,target:Optional[str]=commands.parameter(default=None,description='Voice channel name/mention/ID, "all", or member mention/ID')) -> None:
         async def send(**kw): await self.handler.send_message(ctx,**kw)
+        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
+        valid_role_ids = [r['role_id'] for r in rows]
+        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj=await self.resolve_member(ctx,target)
         if member_obj: target=None
         channel_obj=await self.resolve_channel(ctx,target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mods`) in {channel_obj.mention if channel_obj else "this context"}.')
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mods`) in {channel_obj.mention if channel_obj else "this context"}.')
         temp_rooms=self.temp_rooms.get(ctx.guild.id,{})
         room_name=None
         if channel_obj:
@@ -3703,7 +3749,10 @@ class Hybrid(commands.Cog):
         if member_obj: target=None
         channel_obj=await self.resolve_channel_app(interaction,target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall_app(interaction)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_app(interaction, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention if channel_obj else "this context"}.')
         if target and target.lower()=='all' and is_owner_or_dev:
             async with self.bot.db_pool.acquire() as conn:
@@ -3781,7 +3830,10 @@ class Hybrid(commands.Cog):
         channel_obj = await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
             return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
         if target and target.lower() == 'all':
@@ -4380,8 +4432,6 @@ class Hybrid(commands.Cog):
     
         await send(content=f"Temporary room '{true_old}' has been renamed to '{new_name}'.")
     
-
-        
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
     @app_commands.describe(
         source_id='Tag the source channel or include its snowflake ID',
@@ -4948,7 +4998,10 @@ class Hybrid(commands.Cog):
         if member_obj: target=None
         channel_obj=await self.resolve_channel(interaction, target)
         if not channel_obj and not member_obj: return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction, channel_obj)
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall_app(interaction)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_app(interaction, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention if channel_obj else "this channel"}.')
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower()=='all' and is_owner_or_dev:
@@ -5022,7 +5075,11 @@ class Hybrid(commands.Cog):
         channel_obj = await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if not member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if is_mod_or_coord = await is_moderator_by_objects(ctx.author,
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
             return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:

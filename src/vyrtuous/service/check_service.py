@@ -922,3 +922,91 @@ async def check_block_app(ctx: discord.Interaction, member: discord.Member, chan
         return target_highest,False
     success=role_hierarchy.index(target_highest)<role_hierarchy.index(author_highest)
     return target_highest,success
+
+async def check_owner_dev_coord_mod_overall(ctx: commands.Context) -> Tuple[bool,bool]:
+    guild = ctx.guild
+    is_mod_or_coord = False
+    is_owner_or_dev = False
+    user_id = ctx.author.id
+    try:
+        if await is_system_owner(ctx): is_owner_or_dev = True
+    except commands.CheckFailure:
+        try:
+            if guild and await is_guild_owner(ctx): is_owner_or_dev = True
+        except commands.CheckFailure:
+            try:
+                if guild and await is_developer(ctx): is_owner_or_dev = True
+            except commands.CheckFailure: pass
+    if guild:
+        async with ctx.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow('SELECT coordinator_channel_ids,coordinator_room_names,moderator_channel_ids,moderator_room_names FROM users WHERE discord_snowflake=$1',user_id)
+        if row:
+            if (row.get('coordinator_channel_ids') or []) or (row.get('coordinator_room_names') or []) or (row.get('moderator_channel_ids') or []) or (row.get('moderator_room_names') or []):
+                is_mod_or_coord = True
+    return is_owner_or_dev,is_mod_or_coord
+
+async def check_owner_dev_coord_overall(ctx: commands.Context) -> Tuple[bool,bool]:
+    guild = ctx.guild
+    is_coord = False
+    is_owner_or_dev = False
+    user_id = ctx.author.id
+    try:
+        if await is_system_owner(ctx): is_owner_or_dev = True
+    except commands.CheckFailure:
+        try:
+            if guild and await is_guild_owner(ctx): is_owner_or_dev = True
+        except commands.CheckFailure:
+            try:
+                if guild and await is_developer(ctx): is_owner_or_dev = True
+            except commands.CheckFailure: pass
+    if guild:
+        async with ctx.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow('SELECT coordinator_channel_ids,coordinator_room_names FROM users WHERE discord_snowflake=$1',user_id)
+        if row:
+            if (row.get('coordinator_channel_ids') or []) or (row.get('coordinator_room_names') or []):
+                is_coord = True
+    return is_owner_or_dev,is_coord
+
+async def check_owner_dev_coord_mod_overall_app(interaction: discord.Interaction) -> Tuple[bool,bool]:
+    guild = interaction.guild
+    is_mod_or_coord = False
+    is_owner_or_dev = False
+    user_id = interaction.user.id
+    try:
+        if await is_system_owner_inter(interaction): is_owner_or_dev = True
+    except app_commands.CheckFailure:
+        try:
+            if guild and await is_guild_owner_inter(interaction): is_owner_or_dev = True
+        except app_commands.CheckFailure:
+            try:
+                if guild and await is_developer_inter(interaction): is_owner_or_dev = True
+            except app_commands.CheckFailure: pass
+    if guild:
+        async with interaction.client.db_pool.acquire() as conn:
+            row = await conn.fetchrow('SELECT coordinator_channel_ids,coordinator_room_names,moderator_channel_ids,moderator_room_names FROM users WHERE discord_snowflake=$1',user_id)
+        if row:
+            if (row.get('coordinator_channel_ids') or []) or (row.get('coordinator_room_names') or []) or (row.get('moderator_channel_ids') or []) or (row.get('moderator_room_names') or []):
+                is_mod_or_coord = True
+    return is_owner_or_dev,is_mod_or_coord
+
+async def check_owner_dev_coord_overall_app(interaction: discord.Interaction) -> Tuple[bool,bool]:
+    guild = interaction.guild
+    is_coord = False
+    is_owner_or_dev = False
+    user_id = interaction.user.id
+    try:
+        if await is_system_owner_inter(interaction): is_owner_or_dev = True
+    except app_commands.CheckFailure:
+        try:
+            if guild and await is_guild_owner_inter(interaction): is_owner_or_dev = True
+        except app_commands.CheckFailure:
+            try:
+                if guild and await is_developer_inter(interaction): is_owner_or_dev = True
+            except app_commands.CheckFailure: pass
+    if guild:
+        async with interaction.client.db_pool.acquire() as conn:
+            row = await conn.fetchrow('SELECT coordinator_channel_ids,coordinator_room_names FROM users WHERE discord_snowflake=$1',user_id)
+        if row:
+            if (row.get('coordinator_channel_ids') or []) or (row.get('coordinator_room_names') or []):
+                is_coord = True
+    return is_owner_or_dev,is_coord
