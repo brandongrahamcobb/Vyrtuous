@@ -188,7 +188,7 @@ class Hybrid(commands.Cog):
                     print(f"[TempRoom] Channel '{room_name}' not found in guild {guild_id}")
                     continue
                 temp_channel = TempChannel(channel_obj, room_name)
-                self.temp_rooms.setdefault(guild_id, {})[room_name.lower()] = temp_channel
+                self.temp_rooms.setdefault(guild_id, {})[room_name] = temp_channel
     
     async def load_log_channels(self):
         async with self.bot.db_pool.acquire() as conn:
@@ -1379,8 +1379,8 @@ class Hybrid(commands.Cog):
             return await send(content='\U0001F6AB Alias name cannot be empty.')
         channel_obj = await self.resolve_channel_app(interaction, channel)
         temp_rooms = self.temp_rooms.get(interaction.guild.id, {})
-        if channel_obj and channel_obj.name.lower() in temp_rooms:
-            temp_channel = temp_rooms[channel_obj.name.lower()]
+        if channel_obj and channel_obj.name in temp_rooms:
+            temp_channel = temp_rooms[channel_obj.name]
             channel_obj = temp_channel
             is_temp_room = True
             room_name_to_store = temp_channel.room_name
@@ -1487,8 +1487,8 @@ class Hybrid(commands.Cog):
             return await send(content='\U0001F6AB Alias name cannot be empty.')
         channel_obj = await self.resolve_channel(ctx, channel)
         temp_rooms = self.temp_rooms.get(ctx.guild.id, {})
-        if channel_obj.name.lower() in temp_rooms:
-            temp_channel = temp_rooms[channel_obj.name.lower()]
+        if channel_obj.name in temp_rooms:
+            temp_channel = temp_rooms[channel_obj.name]
             channel_obj = temp_channel
             is_temp_room = True
             room_name_to_store = temp_channel.room_name
@@ -2471,13 +2471,13 @@ class Hybrid(commands.Cog):
             temp_room_obj = None
             if target and target.lower() != 'all':
                 for temp_channel in temp_rooms.values():
-                    if temp_channel.room_name.lower() == target.lower():
+                    if temp_channel.room_name == target:
                         temp_room_obj = temp_channel
                         channel_obj = temp_channel
                         break
             elif not target and channel_obj:
                 for temp_channel in temp_rooms.values():
-                    if channel_obj.name.lower() == temp_channel.room_name.lower():
+                    if channel_obj.name == temp_channel.room_name:
                         temp_room_obj = temp_channel
                         channel_obj = temp_channel
                         break
@@ -2543,7 +2543,7 @@ class Hybrid(commands.Cog):
             if temp_room_obj:
                 for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
                     for alias_name, data in room_map.items():
-                        if data.get('room_name', '').lower() == temp_room_obj.room_name.lower():
+                        if data.get('room_name', '') == temp_room_obj.room_name:
                             lines.append(f'**{alias_type.capitalize()} Alias for `{data["room_name"]}`**')
                             lines.append(f'`{alias_name}` → `{data["room_name"]}`')
                             found_aliases = True
@@ -2592,13 +2592,13 @@ class Hybrid(commands.Cog):
             temp_room_obj = None
             if target and target.lower() != 'all':
                 for temp_channel in temp_rooms.values():
-                    if temp_channel.room_name.lower() == target.lower():
+                    if temp_channel.room_name == target:
                         temp_room_obj = temp_channel
                         channel_obj = temp_channel
                         break
             elif not target:
                 for temp_channel in temp_rooms.values():
-                    if channel_obj.name.lower() == temp_channel.room_name.lower():
+                    if channel_obj.name == temp_channel.room_name:
                         temp_room_obj = temp_channel
                         channel_obj = temp_channel
                         break
@@ -2664,7 +2664,7 @@ class Hybrid(commands.Cog):
             if temp_room_obj:
                 for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
                     for alias_name, data in room_map.items():
-                        if data.get('room_name', '').lower() == temp_room_obj.room_name.lower():
+                        if data.get('room_name', '') == temp_room_obj.room_name:
                             lines.append(f'**{alias_type.capitalize()} Alias for `{data["room_name"]}`**')
                             lines.append(f'`{alias_name}` → `{data["room_name"]}`')
                             found_aliases = True
@@ -4286,7 +4286,7 @@ class Hybrid(commands.Cog):
     @commands.command(name='rename', help='Rename a temporary room and migrate all associated records.')
     @is_owner_developer_coordinator_predicator()
     async def rename_temp_room_app_command(self, ctx, old_name: str, new_name: str):
-        guild=ctx.guild; user_id=ctx.author.id; old_lc=old_name.lower(); new_lc=new_name.lower()
+        guild=ctx.guild; user_id=ctx.author.id; old_lc=old_name; new_lc=new_name
         send=lambda **kw:self.handler.send_message(ctx,**kw)
         if old_lc==new_lc: return await send(content='The new room name must be different.')
         async with self.bot.db_pool.acquire() as conn:
@@ -4766,7 +4766,7 @@ class Hybrid(commands.Cog):
         except ValueError: return await send(content=f'\U0001F6AB Invalid owner ID: {owner}',ephemeral=True)
         guild_id=interaction.guild.id
         room=TempChannel(channel_obj,channel_obj.name)
-        self.temp_rooms.setdefault(guild_id,{})[room.name.lower()]=room
+        self.temp_rooms.setdefault(guild_id,{})[room.name]=room
         async with interaction.client.db_pool.acquire() as conn:
             old_owner=await conn.fetchval('SELECT owner_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild_id,room.name)
             await conn.execute('INSERT INTO temporary_rooms (guild_snowflake,room_name,owner_snowflake,room_snowflake) VALUES ($1,$2,$3,$4) ON CONFLICT (guild_snowflake,room_name) DO UPDATE SET  owner_snowflake=$3,room_snowflake=$4',guild_id,room.name,owner_snowflake,room.id)
@@ -4797,7 +4797,7 @@ class Hybrid(commands.Cog):
             return await send(content=f'\U0001F6AB Invalid owner ID: {owner}')
     
         channel_obj = TempChannel(channel_obj, channel_obj.name)
-        self.temp_rooms.setdefault(ctx.guild.id, {})[channel_obj.name.lower()] = channel_obj
+        self.temp_rooms.setdefault(ctx.guild.id, {})[channel_obj.name] = channel_obj
     
         async with ctx.bot.db_pool.acquire() as conn:
             # Fetch old owner and their current room_snowflake BEFORE updating the temp room
