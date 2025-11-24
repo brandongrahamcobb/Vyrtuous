@@ -1763,7 +1763,7 @@ class Hybrid(commands.Cog):
             return await send(content='\U0001F6AB Could not resolve the channel.')
     
         async with self.bot.db_pool.acquire() as conn:
-            # Remove channel from users' arrays
+            # Remove channel from users' coordinator and moderator lists
             await conn.execute('''
                 UPDATE users
                 SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $1::bigint),
@@ -1771,38 +1771,48 @@ class Hybrid(commands.Cog):
                     updated_at = NOW()
             ''', channel_obj.id)
     
+            # Remove room_name entries from users where applicable
             await conn.execute('''
                 UPDATE users
                 SET coordinator_room_names = ARRAY(
-                        SELECT name FROM unnest(coordinator_room_names) AS name
-                        WHERE NOT EXISTS (
-                            SELECT 1 FROM command_aliases WHERE channel_id=$1 AND room_name=name
-                        )
-                    ),
-                    moderator_room_names = ARRAY(
-                        SELECT name FROM unnest(moderator_room_names) AS name
-                        WHERE NOT EXISTS (
-                            SELECT 1 FROM command_aliases WHERE channel_id=$1 AND room_name=name
-                        )
-                    ),
-                    updated_at = NOW()
+                    SELECT name
+                    FROM unnest(coordinator_room_names) AS name
+                    WHERE name NOT IN (
+                        SELECT room_name FROM temporary_rooms WHERE room_snowflake = $1
+                    )
+                ),
+                moderator_room_names = ARRAY(
+                    SELECT name
+                    FROM unnest(moderator_room_names) AS name
+                    WHERE name NOT IN (
+                        SELECT room_name FROM temporary_rooms WHERE room_snowflake = $1
+                    )
+                ),
+                updated_at = NOW()
             ''', channel_obj.id)
     
-            # Delete all associated records in related tables
-            tables = [
+            # Delete associated rows from all tables that use either channel_id or room_name
+            tables_with_channel_id = [
                 'command_aliases',
                 'active_bans',
                 'active_text_mutes',
                 'active_voice_mutes',
                 'active_stages',
                 'stage_coordinators',
-                'active_caps',
-                'temporary_rooms'
+                'active_caps'
             ]
-            for table in tables:
-                await conn.execute(f'DELETE FROM {table} WHERE channel_id=$1 OR room_snowflake=$1', channel_obj.id)
+            for table in tables_with_channel_id:
+                await conn.execute(f'''
+                    DELETE FROM {table}
+                    WHERE channel_id = $1 OR room_name IN (
+                        SELECT room_name FROM temporary_rooms WHERE room_snowflake = $1
+                    )
+                ''', channel_obj.id)
     
-        # Clean up in-memory temp room aliases
+            # Finally remove the temp room itself
+            await conn.execute('DELETE FROM temporary_rooms WHERE room_snowflake = $1', channel_obj.id)
+    
+        # Remove in-memory temp-room aliases
         guild_aliases = self.bot.command_aliases.setdefault(channel_obj.guild.id, {})
         temp_aliases = guild_aliases.get('temp_room_aliases', {})
         for alias_type, aliases in temp_aliases.items():
@@ -1810,7 +1820,11 @@ class Hybrid(commands.Cog):
                 if data.get('channel_id') == channel_obj.id:
                     del aliases[alias_name]
     
-        await send(content=f'{self.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
+        await send(
+            content=f'{self.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users and deleted all associated records.',
+            allowed_mentions=discord.AllowedMentions.none()
+        )
+
 
     
     @app_commands.command(name='coord', description='Grants coordinator access for a specific voice channel.')
