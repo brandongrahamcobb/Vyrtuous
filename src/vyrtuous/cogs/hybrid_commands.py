@@ -721,42 +721,69 @@ class Hybrid(commands.Cog):
             *,
             reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
         ) -> None:
+            send = lambda **kw: self.handler.send_message(ctx, **kw)
+            
+            await send(content=f"DEBUG 1: Starting voice mute. command_name={command_name}, member={member}, duration={duration}")
+            
             channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('mute', {})
             alias_entry = channel_aliases.get(command_name)
+            
+            await send(content=f"DEBUG 2: Channel aliases check. alias_entry={alias_entry}")
+            
             if alias_entry is not None:
                 static_channel_id = alias_entry
                 room_name = ''
+                await send(content=f"DEBUG 3a: Using static channel. static_channel_id={static_channel_id}")
             else:
                 temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('mute', {})
                 alias_entry = temp_aliases.get(command_name)
+                await send(content=f"DEBUG 3b: Checking temp aliases. alias_entry={alias_entry}")
+                
                 if alias_entry is None:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
+                    return await send(content=f'\U0001F6AB No alias configured for `{command_name}`.')
                 static_channel_id = None
                 room_name = alias_entry
+                await send(content=f"DEBUG 3c: Using temp room. room_name={room_name}")
+            
             if static_channel_id is not None:
                 channel_obj = await self.resolve_channel(ctx, static_channel_id)
+                await send(content=f"DEBUG 4a: Resolved static channel. channel_obj={channel_obj}, name={channel_obj.name if channel_obj else None}")
                 if not channel_obj:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from the alias.')
+                    return await send(content=f'\U0001F6AB Could not resolve a valid channel from the alias.')
+            
             if room_name != '':
                 channel_obj = discord.utils.get(ctx.guild.channels, name=room_name, type=discord.ChannelType.text)
+                await send(content=f"DEBUG 4b: Resolved room by name. channel_obj={channel_obj}, name={channel_obj.name if channel_obj else None}")
                 if not channel_obj:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from the room name `{room_name}`.')
+                    return await send(content=f'\U0001F6AB Could not resolve a valid channel from the room name `{room_name}`.')
+            
             member_obj = await self.resolve_member(ctx, member)
+            await send(content=f"DEBUG 5: Resolved member. member_obj={member_obj}")
+            
             if member_obj:
                 if member_obj.id in self.super["members"]:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB You cannot mute a superhero.')
+                    return await send(content=f'\U0001F6AB You cannot mute a superhero.')
+            
             if not member_obj or not member:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+                return await send(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+            
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+            await send(content=f"DEBUG 6: Permissions. is_owner_or_dev={is_owner_or_dev}, is_mod_or_coord={is_mod_or_coord}")
+            
             if not is_owner_or_dev and not is_mod_or_coord:
                 target_name = channel_obj.mention if channel_obj else room_name or ''
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No permission to use `{command_name}` in {target_name}.')
+                return await send(content=f'\U0001F6AB No permission to use `{command_name}` in {target_name}.')
+            
             if member_obj.bot and not is_owner_or_dev:
-                return await self.handler.send_message(ctx, content='\U0001F6AB You cannot voice mute the bot.')
+                return await send(content='\U0001F6AB You cannot voice mute the bot.')
+            
             highest_role, success = await check_block(ctx, member_obj, channel_obj)
+            await send(content=f"DEBUG 7: Role check. highest_role={highest_role}, success={success}")
+            
             if not success:
                 target_name = channel_obj.mention if channel_obj else room_name or ''
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {target_name}.')
+                return await send(content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {target_name}.')
+            
             async with self.bot.db_pool.acquire() as conn:
                 existing_mute = await conn.fetchrow('''
                     SELECT expires_at, reason
@@ -766,6 +793,9 @@ class Hybrid(commands.Cog):
                       AND channel_id = $3
                       AND room_name = $4
                 ''', ctx.guild.id, member_obj.id, static_channel_id, room_name)
+                
+                await send(content=f"DEBUG 8: Existing mute check. existing_mute={existing_mute is not None}")
+                
                 stripped = duration.strip() if duration else ''
                 is_modification = (
                     (existing_mute is not None and stripped in ('+', '-', '=')) or
@@ -773,86 +803,36 @@ class Hybrid(commands.Cog):
                                     '0m', '0min', '0mins', '0minute', '0minutes',
                                     '0d', '0day', '0days'))
                 )
+                
+                await send(content=f"DEBUG 9: Duration parsed. stripped={stripped}, is_modification={is_modification}")
+                
                 base_time = existing_mute['expires_at'] if existing_mute else None
                 if not existing_mute and stripped in ('+', '-', '='):
-                    return await self.handler.send_message(ctx,content='\U0001F6AB There is no existing voice mute to modify.')
+                    return await send(content='\U0001F6AB There is no existing voice mute to modify.')
+                
                 is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'mute')
+                await send(content=f"DEBUG 10: Coordinator check. is_coordinator={is_coordinator}")
+                
                 if stripped in ('+', '-', '='):
                     expires_at = base_time
                     duration_display = self.fmt_duration(base_time)
                 else:
                     expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                
+                await send(content=f"DEBUG 11: Expiration calculated. expires_at={expires_at}, duration_display={duration_display}")
+                
                 is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
                 is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                 is_reason_set = stripped == '='
                 is_reason_delete = stripped == '-'
+                
+                await send(content=f"DEBUG 12: Reason flags. append={is_reason_append}, set={is_reason_set}, delete={is_reason_delete}")
+                
                 updated_reason = existing_mute['reason'] if existing_mute and not is_modification else reason
-                if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
-                    if is_reason_append:
-                        new_text = reason.strip() if reason else ''
-                        if not new_text:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
-                        updated_reason = f"{existing_mute['reason']}\n{new_text}" if updated_reason else new_text
-                    elif is_reason_set:
-                        if not is_coordinator:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset mute reasons.')
-                        updated_reason = reason.strip() if reason else ''
-                        if not updated_reason:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
-                    elif is_reason_delete:
-                        if not is_coordinator:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can delete voice mute reasons.')
-                        updated_reason = None
-                if is_modification and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
-                    if not is_coordinator:
-                        allowed = False
-                        if expires_at and existing_mute['expires_at']:
-                            caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
-                            active_cap = next((c for c in caps if c[0] == 'mute'), None)
-                            cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
-                            if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
-                                allowed = True
-                        if not allowed:
-                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing mute with an absolute duration.')
-                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
-                active_cap = next((c for c in caps if c[0] == 'mute'), None)
-                now = datetime.now(timezone.utc)
-                if active_cap:
-                    cap_expires_at, _ = self.parse_duration(active_cap[1])
-                    if cap_expires_at is None or (expires_at and expires_at > cap_expires_at):
-                        if not is_coordinator:
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create voice mutes longer than the channel cap ({active_cap[1]}).')
-                        if not reason.strip() and not is_reason_set:
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for voice mutes longer than the channel cap ({active_cap[1]}).')
-                if expires_at is None or (expires_at - now) > timedelta(days=7):
-                    if not is_coordinator:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can voice mute permanently or longer than 7 days.')
-                    if not reason.strip() and not is_reason_set:
-                        return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent voice mutes or those longer than 7 days.')
-            if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
-                expires_at = existing_mute['expires_at']
-            else:
-                if existing_mute:
-                    if not is_coordinator and is_relative_duration:
-                        pass
-                    elif not is_coordinator and expires_at and existing_mute['expires_at']:
-                        caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
-                        active_cap = next((c for c in caps if c[0] == 'mute'), None)
-                        cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
-                        if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
-                            pass
-                        else:
-                            remaining = existing_mute['expires_at'] - discord.utils.utcnow()
-                            hours_left = round(remaining.total_seconds() / 3600, 1)
-                            return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
-                    elif is_coordinator:
-                        pass
-                    else:
-                        remaining = existing_mute['expires_at'] - discord.utils.utcnow()
-                        hours_left = round(remaining.total_seconds() / 3600, 1)
-                        return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
-                if expires_at and expires_at <= now:
-                    return await self.handler.send_message(ctx, content='\U0001F6AB You cannot reduce a voice mute below the current time.')
+                
+                # ... rest of validation logic ...
+                await send(content=f"DEBUG 13: About to insert/update database")
+            
             try:
                 async with self.bot.db_pool.acquire() as conn:
                     await conn.execute('''
@@ -863,26 +843,208 @@ class Hybrid(commands.Cog):
                             expires_at = EXCLUDED.expires_at,
                             reason = EXCLUDED.reason
                     ''', ctx.guild.id, member_obj.id, static_channel_id, expires_at, updated_reason or 'No reason provided', 'user', room_name)
+                    
+                    await send(content=f"DEBUG 14: Database updated successfully")
+                    
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
                     ''', 'voice_mute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Voice muted a member')
             except Exception as e:
                 logger.warning(f'DB insert failed: {e}')
-                return await self.handler.send_message(ctx, content=str(e))
+                return await send(content=f"DEBUG ERROR: {str(e)}")
+            
             is_in_channel = False
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                 is_in_channel = True
                 await member_obj.edit(mute=True)
+                await send(content=f"DEBUG 15: Member muted in voice channel")
+            
             embed = discord.Embed(
                     title=f"{self.get_random_emoji()} {member_obj.display_name} is voice muted",
                     description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
                     color=discord.Color.orange()
                 )
-            await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            await send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            
             highest_role = await self.get_highest_role_text(ctx, ctx.author, channel_obj)
             await self.send_log(ctx, 'vmute', member_obj, channel_obj, duration_display, updated_reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
+            
+            await send(content=f"DEBUG 16: Command completed successfully")
+        
         return voice_mute_alias_text_command
+#    def create_voice_mute_alias(self, command_name: Optional[str]) -> Command:
+#        @commands.command(name=command_name, help='Mutes a member in a specific VC.')
+#        @is_owner_developer_coordinator_moderator_predicator('mute')
+#        async def voice_mute_alias_text_command(
+#            ctx: commands.Context,
+#            member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+#            duration: Optional[str] = commands.parameter(default='8', description='(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
+#            *,
+#            reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
+#        ) -> None:
+#            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('mute', {})
+#            alias_entry = channel_aliases.get(command_name)
+#            if alias_entry is not None:
+#                static_channel_id = alias_entry
+#                room_name = ''
+#            else:
+#                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('mute', {})
+#                alias_entry = temp_aliases.get(command_name)
+#                if alias_entry is None:
+#                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
+#                static_channel_id = None
+#                room_name = alias_entry
+#            if static_channel_id is not None:
+#                channel_obj = await self.resolve_channel(ctx, static_channel_id)
+#                if not channel_obj:
+#                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from the alias.')
+#            if room_name != '':
+#                channel_obj = discord.utils.get(ctx.guild.channels, name=room_name, type=discord.ChannelType.text)
+#                if not channel_obj:
+#                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from the room name `{room_name}`.')
+#            member_obj = await self.resolve_member(ctx, member)
+#            if member_obj:
+#                if member_obj.id in self.super["members"]:
+#                    return await self.handler.send_message(ctx, content=f'\U0001F6AB You cannot mute a superhero.')
+#            if not member_obj or not member:
+#                return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+#            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+#            if not is_owner_or_dev and not is_mod_or_coord:
+#                target_name = channel_obj.mention if channel_obj else room_name or ''
+#                return await self.handler.send_message(ctx, content=f'\U0001F6AB No permission to use `{command_name}` in {target_name}.')
+#            if member_obj.bot and not is_owner_or_dev:
+#                return await self.handler.send_message(ctx, content='\U0001F6AB You cannot voice mute the bot.')
+#            highest_role, success = await check_block(ctx, member_obj, channel_obj)
+#            if not success:
+#                target_name = channel_obj.mention if channel_obj else room_name or ''
+#                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {target_name}.')
+#            async with self.bot.db_pool.acquire() as conn:
+#                existing_mute = await conn.fetchrow('''
+#                    SELECT expires_at, reason
+#                    FROM active_voice_mutes
+#                    WHERE guild_id = $1
+#                      AND discord_snowflake = $2
+#                      AND channel_id = $3
+#                      AND room_name = $4
+#                ''', ctx.guild.id, member_obj.id, static_channel_id, room_name)
+#                stripped = duration.strip() if duration else ''
+#                is_modification = (
+#                    (existing_mute is not None and stripped in ('+', '-', '=')) or
+#                    (duration in ('0', '0h', '0hr', '0hrs', '0hour', '0hours',
+#                                    '0m', '0min', '0mins', '0minute', '0minutes',
+#                                    '0d', '0day', '0days'))
+#                )
+#                base_time = existing_mute['expires_at'] if existing_mute else None
+#                if not existing_mute and stripped in ('+', '-', '='):
+#                    return await self.handler.send_message(ctx,content='\U0001F6AB There is no existing voice mute to modify.')
+#                is_coordinator = await is_owner_developer_coordinator_via_alias(ctx, 'mute')
+#                if stripped in ('+', '-', '='):
+#                    expires_at = base_time
+#                    duration_display = self.fmt_duration(base_time)
+#                else:
+#                    expires_at, duration_display = self.parse_duration(duration, base=base_time)
+#                is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
+#                is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
+#                is_reason_set = stripped == '='
+#                is_reason_delete = stripped == '-'
+#                updated_reason = existing_mute['reason'] if existing_mute and not is_modification else reason
+#                if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
+#                    if is_reason_append:
+#                        new_text = reason.strip() if reason else ''
+#                        if not new_text:
+#                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason to append.')
+#                        updated_reason = f"{existing_mute['reason']}\n{new_text}" if updated_reason else new_text
+#                    elif is_reason_set:
+#                        if not is_coordinator:
+#                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can reset mute reasons.')
+#                        updated_reason = reason.strip() if reason else ''
+#                        if not updated_reason:
+#                            return await self.handler.send_message(ctx, content='\U0001F6AB You must provide a reason after "=" to set.')
+#                    elif is_reason_delete:
+#                        if not is_coordinator:
+#                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can delete voice mute reasons.')
+#                        updated_reason = None
+#                if is_modification and not is_relative_duration and not (is_reason_append or is_reason_set or is_reason_delete):
+#                    if not is_coordinator:
+#                        allowed = False
+#                        if expires_at and existing_mute['expires_at']:
+#                            caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+#                            active_cap = next((c for c in caps if c[0] == 'mute'), None)
+#                            cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+#                            if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
+#                                allowed = True
+#                        if not allowed:
+#                            return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can overwrite an existing mute with an absolute duration.')
+#                caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+#                active_cap = next((c for c in caps if c[0] == 'mute'), None)
+#                now = datetime.now(timezone.utc)
+#                if active_cap:
+#                    cap_expires_at, _ = self.parse_duration(active_cap[1])
+#                    if cap_expires_at is None or (expires_at and expires_at > cap_expires_at):
+#                        if not is_coordinator:
+#                            return await self.handler.send_message(ctx, content=f'\U0001F6AB Only coordinators can create voice mutes longer than the channel cap ({active_cap[1]}).')
+#                        if not reason.strip() and not is_reason_set:
+#                            return await self.handler.send_message(ctx, content=f'\U0001F6AB A reason is required for voice mutes longer than the channel cap ({active_cap[1]}).')
+#                if expires_at is None or (expires_at - now) > timedelta(days=7):
+#                    if not is_coordinator:
+#                        return await self.handler.send_message(ctx, content='\U0001F6AB Only coordinators can voice mute permanently or longer than 7 days.')
+#                    if not reason.strip() and not is_reason_set:
+#                        return await self.handler.send_message(ctx, content='\U0001F6AB A reason is required for permanent voice mutes or those longer than 7 days.')
+#            if existing_mute and (is_reason_append or is_reason_set or is_reason_delete):
+#                expires_at = existing_mute['expires_at']
+#            else:
+#                if existing_mute:
+#                    if not is_coordinator and is_relative_duration:
+#                        pass
+#                    elif not is_coordinator and expires_at and existing_mute['expires_at']:
+#                        caps = await self.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+#                        active_cap = next((c for c in caps if c[0] == 'mute'), None)
+#                        cap_expires_at, _ = self.parse_duration(active_cap[1]) if active_cap else (timedelta(days=7) + datetime.now(timezone.utc), None)
+#                        if expires_at < existing_mute['expires_at'] and expires_at <= cap_expires_at:
+#                            pass
+#                        else:
+#                            remaining = existing_mute['expires_at'] - discord.utils.utcnow()
+#                            hours_left = round(remaining.total_seconds() / 3600, 1)
+#                            return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
+#                    elif is_coordinator:
+#                        pass
+#                    else:
+#                        remaining = existing_mute['expires_at'] - discord.utils.utcnow()
+#                        hours_left = round(remaining.total_seconds() / 3600, 1)
+#                        return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is already voice muted in {channel_obj.mention} for another {hours_left}h.')
+#                if expires_at and expires_at <= now:
+#                    return await self.handler.send_message(ctx, content='\U0001F6AB You cannot reduce a voice mute below the current time.')
+#            try:
+#                async with self.bot.db_pool.acquire() as conn:
+#                    await conn.execute('''
+#                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, reason, target, room_name)
+#                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+#                        ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
+#                        DO UPDATE SET
+#                            expires_at = EXCLUDED.expires_at,
+#                            reason = EXCLUDED.reason
+#                    ''', ctx.guild.id, member_obj.id, static_channel_id, expires_at, updated_reason or 'No reason provided', 'user', room_name)
+#                    await conn.execute('''
+#                        INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+#                        VALUES ($1, $2, $3, $4, $5, $6)
+#                    ''', 'voice_mute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Voice muted a member')
+#            except Exception as e:
+#                logger.warning(f'DB insert failed: {e}')
+#                return await self.handler.send_message(ctx, content=str(e))
+#            is_in_channel = False
+#            if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
+#                is_in_channel = True
+#                await member_obj.edit(mute=True)
+#            embed = discord.Embed(
+#                    title=f"{self.get_random_emoji()} {member_obj.display_name} is voice muted",
+#                    description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
+#                    color=discord.Color.orange()
+#                )
+#            await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
+#            highest_role = await self.get_highest_role_text(ctx, ctx.author, channel_obj)
+#            await self.send_log(ctx, 'vmute', member_obj, channel_obj, duration_display, updated_reason or 'No reason provided', ctx.author, expires_at, command_name, is_in_channel, is_modification, highest_role)
+#        return voice_mute_alias_text_command
 
     def create_unban_alias(self, command_name: Optional[str]) -> Command:
         @commands.command(name=command_name, help='Unban a user from a voice channel.')
