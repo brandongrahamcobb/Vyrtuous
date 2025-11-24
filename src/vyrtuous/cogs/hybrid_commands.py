@@ -2325,41 +2325,41 @@ class Hybrid(commands.Cog):
         async def send(**kw):
             await self.handler.send_message(ctx, **kw)
     
-        await send(content=f"Command invoked by {ctx.author} with target: {target}")
+        print(f"Command invoked by {ctx.author} with target: {target}")
     
         # Check team member roles
         rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
         valid_role_ids = [r['role_id'] for r in rows]
         is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
-        await send(content=f"is_team_member: {is_team_member}, valid_role_ids: {valid_role_ids}")
+        print(f"is_team_member: {is_team_member}, valid_role_ids: {valid_role_ids}")
     
         # Resolve member
         member_obj = await self.resolve_member(ctx, target)
-        await send(content=f"Resolved member_obj: {member_obj}")
+        print(f"Resolved member_obj: {member_obj}")
     
         if member_obj:
             target = None
     
         # Resolve channel
         channel_obj = await self.resolve_channel(ctx, target)
-        await send(content=f"Resolved channel_obj: {channel_obj}")
+        print(f"Resolved channel_obj: {channel_obj}")
     
         if not channel_obj and not member_obj:
-            return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
+            return print(f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
     
         # Permission checks
         if member_obj:
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
-            await send(content=f"Permissions check (overall) for author: is_owner_or_dev={is_owner_or_dev}, is_mod_or_coord={is_mod_or_coord}")
+            print(f"Permissions check (overall) for author: is_owner_or_dev={is_owner_or_dev}, is_mod_or_coord={is_mod_or_coord}")
         else:
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
-            await send(content=f"Permissions check (per channel) for author: is_owner_or_dev={is_owner_or_dev}, is_mod_or_coord={is_mod_or_coord}")
+            print(f"Permissions check (per channel) for author: is_owner_or_dev={is_owner_or_dev}, is_mod_or_coord={is_mod_or_coord}")
     
         # Final permission enforcement
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
-            return await send(content=f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention if channel_obj else "this context"}.')
+            return print(f'\U0001F6AB You do not have permission to use command (`bans`) in {channel_obj.mention if channel_obj else "this context"}.')
     
-        await send(content="Permission check passed, proceeding with listing bans...")
+        print("Permission check passed, proceeding with listing bans...")
 
         if target and target.lower()=='all':
             if not is_owner_or_dev:return await send(content='\U0001F6AB Only owners or developers can list all bans across the server.')
