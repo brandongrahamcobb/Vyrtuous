@@ -4372,21 +4372,23 @@ class Hybrid(commands.Cog):
             for table in tables: await conn.execute(f'UPDATE {table} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, old_name_lc, new_channel.id)
         await send(content=f"Temporary room '{old_name}' migrated to {new_channel.mention}.")
         
-    @commands.command(name='rename', help='Migrate a temporary room to a new channel by exact name and snowflake.')
+    @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
     @is_owner_developer_coordinator_predicator()
-    async def rename_temp_room_command(self, ctx, old_name: str, new_room_snowflake: int):
+    async def migrate_temp_room_command(self, ctx, old_name: str, new_room_snowflake: int):
         guild = ctx.guild
         user_id = ctx.author.id
         send = lambda **kw: self.handler.send_message(ctx, **kw)
         async with self.bot.db_pool.acquire() as conn:
-            temp = await conn.fetchrow(
-                'SELECT room_name,owner_snowflake,room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
+            rooms = await conn.fetch(
+                'SELECT room_name, owner_snowflake, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name
             )
-            if not temp: return await send(content=f"No temporary room named '{old_name}' found.")
-            if temp['owner_snowflake'] != user_id:
-                is_owner_or_dev, _ = await check_owner_dev_coord(ctx, None)
-                if not is_owner_or_dev: return await send(content="Only the owner or developers can migrate this room.")
+            if not rooms: return await send(content=f"No temporary room named '{old_name}' found.")
+            if len(rooms) > 1: return await send(content=f"Multiple temporary rooms named '{old_name}' exist. Migration failed.")
+            temp = rooms[0]
+            is_owner = temp['owner_snowflake'] == user_id
+            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, None)
+            if not (is_owner_or_dev or is_owner): return await send(content="Only the owner or developers can migrate this room.")
             channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
             if not channel_obj: return await send(content=f"No channel found with ID {new_room_snowflake}.")
             conflict = await conn.fetchrow(
@@ -4398,14 +4400,13 @@ class Hybrid(commands.Cog):
                 'UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name, new_room_snowflake
             )
-            tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps']
+            tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps','command_aliases']
             for table in tables:
                 await conn.execute(
                     f'UPDATE {table} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',
                     guild.id, old_name, new_room_snowflake
                 )
         await send(content=f"Temporary room '{old_name}' migrated to {channel_obj.mention}.")
-
     
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
     @app_commands.describe(
