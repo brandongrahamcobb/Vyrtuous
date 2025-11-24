@@ -601,7 +601,10 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
             if role_obj in member_obj.roles:
                 return await self.handler.send_message(ctx, content=f'{member_obj.mention} already has {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
-            await member_obj.add_roles(role_obj, reason=f'Added role')
+            try:
+                await member_obj.add_roles(role_obj, reason=f'Added role')
+            except discord.Forbidden:
+                return await self.handler.send_message(ctx, content="\U0001F6AB {member.obj} was not successfully roled.", allowed_mentions=discord.AllowedMentions.none())
             return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         return role_alias_text_command
             
@@ -682,7 +685,7 @@ class Hybrid(commands.Cog):
                     try:
                         await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False)
                     except discord.Forbidden:
-                        logger.warning('Failed to update channel permissions for text mute.')
+                        return await self.handler.send_message(ctx, content="\U0001F6AB {member.obj} was not successfully text-muted.", allowed_mentions=discord.AllowedMentions.none())
                 await conn.execute('''
                     INSERT INTO active_text_mutes (guild_id, discord_snowflake, channel_id, reason, expires_at, room_name)
                     VALUES ($1,$2,$3,$4,$5,$6)
@@ -863,22 +866,20 @@ class Hybrid(commands.Cog):
                             expires_at = EXCLUDED.expires_at,
                             reason = EXCLUDED.reason
                     ''', ctx.guild.id, member_obj.id, static_channel_id, expires_at, updated_reason or 'No reason provided', 'user', room_name)
-                    await ctx.send("testbefore")
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
                     ''', 'voice_mute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Voice muted a member')
-                    await ctx.send("test")
             except Exception as e:
                 logger.warning(f'DB insert failed: {e}')
                 return await self.handler.send_message(ctx, content=str(e))
-            await ctx.send("testafter")
             is_in_channel = False
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
-                await ctx.send("testafter2")
                 is_in_channel = True
-                await member_obj.edit(mute=True)
-            await ctx.send("testafter3")
+                try:
+                    await member_obj.edit(mute=True)
+                except discord.Forbidden:
+                    return await self.handler.send_message(ctx, content="\U0001F6AB {member.obj} was not successfully voice muted.", allowed_mentions=discord.AllowedMentions.none())
             embed = discord.Embed(
                     title=f"{self.get_random_emoji()} {member_obj.display_name} is voice muted",
                     description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
@@ -941,7 +942,7 @@ class Hybrid(commands.Cog):
                     if channel_obj:
                         await channel_obj.set_permissions(member_obj, overwrite=None)
                 except discord.Forbidden:
-                    logger.warning('\U0001F6AB Missing permissions to update channel permissions.')
+                    return await self.handler.send_message(ctx, content="\U0001F6AB {member.obj} was not successfully unbanned.", allowed_mentions=discord.AllowedMentions.none())
                 await conn.execute('''
                     DELETE FROM active_bans
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
@@ -1127,7 +1128,10 @@ class Hybrid(commands.Cog):
                           AND target = $5
                     ''', ctx.guild.id, member_obj.id, channel_obj.id, room_name, 'user')
                     if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
-                        await member_obj.edit(mute=False)
+                        try:
+                            await member_obj.edit(mute=False)
+                        except discord.Forbidden:
+                            return await self.handler.send_message(ctx, content="\U0001F6AB {member.obj} was not successfully unmuted.", allowed_mentions=discord.AllowedMentions.none())
                     await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,  $2, $3, $4, $5, $6)', 'unmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Unmuted a member')
             except Exception as e:
                 logger.warning(f'\U0001F6AB Database error: {e}')
@@ -1174,7 +1178,10 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Could not resolve role with ID `{static_role_id}`.')
             if role_obj not in member_obj.roles:
                 return await self.handler.send_message(ctx, content=f'{member_obj.mention} does not have {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
-            await member_obj.remove_roles(role_obj)
+            try:
+                await member_obj.remove_roles(role_obj)
+            except discord.Forbidden:
+                return await self.handler.send_message(ctx, content="\U0001F6AB {member.obj} was not successfully unroled.", allowed_mentions=discord.AllowedMentions.none())
             return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member_obj.mention} had {role_obj.mention} removed.', allowed_mentions=discord.AllowedMentions.none())
         return unrole_alias_text_command
         
@@ -1227,8 +1234,7 @@ class Hybrid(commands.Cog):
                 try:
                     await channel_obj.set_permissions(member_obj, send_messages=None)
                 except discord.Forbidden:
-                    logger.warning('\U0001F6AB Discord forbidden: Cannot change the user\'s channel permissions.')
-                    raise
+                    return await self.handler.send_message(ctx, content="\U0001F6AB {member.obj} was not successfully untext-muted.", allowed_mentions=discord.AllowedMentions.none())
                 await conn.execute('''
                     DELETE FROM active_text_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
