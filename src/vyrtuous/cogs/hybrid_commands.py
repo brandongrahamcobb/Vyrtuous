@@ -4293,8 +4293,8 @@ class Hybrid(commands.Cog):
             temp=await conn.fetchrow('SELECT room_name,owner_snowflake,room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,old_lc)
             if not temp: return await send(content=f"No room named '{old_name}' found.")
             is_owner=temp['owner_snowflake']==user_id
-            is_dev_or_owner=await is_owner_developer_via_objects(ctx.author,self.bot)
-            if not (is_owner or is_dev_or_owner): return await send(content='Only the owner or developers can rename this room.')
+            is_owner_or_dev, is_coord = await check_owner_dev_coord(ctx, None)
+            if not is_owner_or_dev or is_coord: return await send(content='Only the owner or developers can rename this room.')
             exists=await conn.fetchrow('SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,new_lc)
             if exists: return await send(content=f"A temp room named '{new_name}' already exists.")
             await conn.execute('UPDATE temporary_rooms SET room_name=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,old_lc,new_lc)
