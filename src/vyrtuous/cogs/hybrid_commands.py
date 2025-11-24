@@ -1968,44 +1968,36 @@ class Hybrid(commands.Cog):
     @is_owner_developer_coordinator_moderator_app_predicator(None)
     async def delete_message_app_command(self, interaction: discord.Interaction, message_id: int, channel: str):
         send=lambda **kw:interaction.response.send_message(**kw,ephemeral=True)
-        guild=interaction.guild; user_id=interaction.user.id
+        channel_obj=await self.resolve_channel_app(interaction,channel); guild=interaction.guild
         if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
-        channel_obj = await self.resolve_channel_app(interaction, channel)
+        if not channel_obj:return await send(content='\U0001F6AB Could not resolve that channel.')
+        async with self.bot.db_pool.acquire() as conn:
+            temp=await conn.fetchrow('SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_snowflake=$2',guild.id,channel_obj.id)
+        if not temp:return await send(content='\U0001F6AB This channel is not a temporary room.')
         try: msg=await channel_obj.fetch_message(message_id)
         except: return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in `{channel_obj.name}`.')
-        if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
-        if not (is_owner_or_dev or is_mod_or_coord):
-            return await send(content=f'\U0001F6AB You have insufficient privileges in `{channel_obj.name}` to delete messages.')
-        try:
-            await msg.delete()
-            return await send(content=f'{self.get_random_emoji()} Message `{message_id}` deleted successfully.')
-        except:
-            return await send(content=f'\U0001F6AB Failed to delete the message.')
+        if not (is_owner_or_dev or is_mod_or_coord):return await send(content=f'\U0001F6AB You have insufficient privileges in `{channel_obj.name}` to delete messages.')
+        try: await msg.delete(); return await send(content=f'{self.get_random_emoji()} Message `{message_id}` deleted successfully.')
+        except: return await send(content='\U0001F6AB Failed to delete the message.')
 
     @commands.command(name='del', help='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
     @is_owner_developer_coordinator_moderator_predicator(None)
-    async def delete_message_text_command(
-        self,
-        ctx,
-        message_id: int,
-        *, 
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
-    ):
+    async def delete_message_text_command(self, ctx, message_id: int, *, channel: Optional[str]=commands.parameter(default=None,description='Channel or snowflake')):
         send=lambda **kw:self.handler.send_message(ctx,**kw)
-        guild=ctx.guild; user_id=ctx.author.id
+        channel_obj=await self.resolve_channel(ctx,channel); guild=ctx.guild
         if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
-        channel_obj = await self.resolve_channel(ctx, channel)
+        if not channel_obj:return await send(content='\U0001F6AB Could not resolve that channel.')
+        async with self.bot.db_pool.acquire() as conn:
+            temp=await conn.fetchrow('SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_snowflake=$2',guild.id,channel_obj.id)
+        if not temp:return await send(content='\U0001F6AB This channel is not a temporary room.')
         try: msg=await channel_obj.fetch_message(message_id)
         except: return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in `{channel_obj.name}`.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
-        if not (is_owner_or_dev or is_mod_or_coord):
-            return await send(content=f'\U0001F6AB You have insufficient privileges in `{channel_obj.name}` to delete messages.')
-        try:
-            await msg.delete()
-            return await send(content=f'{self.get_random_emoji()} Message `{message_id}` deleted successfully.')
-        except Exception as e:
-            return await send(content=f'\U0001F6AB Failed to delete the message.')
+        if not (is_owner_or_dev or is_mod_or_coord):return await send(content=f'\U0001F6AB You have insufficient privileges in `{channel_obj.name}` to delete messages.')
+        try: await msg.delete(); return await send(content=f'{self.get_random_emoji()} Message `{message_id}` deleted successfully.')
+        except: return await send(content='\U0001F6AB Failed to delete the message.')
+
         
     @app_commands.command(name='dev', description='Elevates a user\'s permissions to a bot developer.')
     @is_owner_app_predicator()
