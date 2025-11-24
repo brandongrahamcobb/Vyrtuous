@@ -1963,7 +1963,48 @@ class Hybrid(commands.Cog):
             ''', 'create_coordinator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Created a coordinator')
         guild_id = ctx.guild.id
         return await send(content=f'{self.get_random_emoji()} {member_obj.mention} has been granted coordinator rights in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
-        
+    
+    @app_commands.command(name='del', description='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
+    @is_owner_developer_coordinator_moderator_app_predicator(None)
+    async def delete_message_app_command(self, interaction: discord.Interaction, message_id: int):
+        send=lambda **kw:interaction.response.send_message(**kw,ephemeral=True)
+        guild=interaction.guild; user_id=interaction.user.id
+        if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
+        msg=None; channel_obj=None
+        for ch in guild.text_channels:
+            try:
+                msg=await ch.fetch_message(message_id); channel_obj=ch; break
+            except: continue
+        if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
+        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_interaction(interaction,channel_obj)
+        if not (is_owner_or_dev or is_mod_or_coord):
+            return await send(content=f'\U0001F6AB You have insufficient privileges in `{channel_obj.name}` to delete messages.')
+        try:
+            await msg.delete()
+            return await send(content=f'{self.get_random_emoji()} Message `{message_id}` deleted successfully.')
+        except:
+            return await send(content=f'\U0001F6AB Failed to delete the message.')
+
+    @commands.command(name='del', help='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
+    @is_owner_developer_coordinator_moderator_predicator(None)
+    async def delete_message_text_command(self, ctx, message_id: int):
+        send=lambda **kw:self.handler.send_message(ctx,**kw)
+        guild=ctx.guild; user_id=ctx.author.id
+        if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
+        msg=None; channel_obj=None
+        for ch in guild.text_channels:
+            try:
+                msg=await ch.fetch_message(message_id); channel_obj=ch; break
+            except: continue
+        if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
+        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
+        if not (is_owner_or_dev or is_mod_or_coord):
+            return await send(content=f'\U0001F6AB You have insufficient privileges in `{channel_obj.name}` to delete messages.')
+        try:
+            await msg.delete()
+            return await send(content=f'{self.get_random_emoji()} Message `{message_id}` deleted successfully.')
+        except Exception as e:
+            return await send(content=f'\U0001F6AB Failed to delete the message.')
         
     @app_commands.command(name='dev', description='Elevates a user\'s permissions to a bot developer.')
     @is_owner_app_predicator()
