@@ -5079,7 +5079,6 @@ class Hybrid(commands.Cog):
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
         else:
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
-        if is_mod_or_coord = await is_moderator_by_objects(ctx.author,
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
             return await send(content=f'\U0001F6AB You do not have permission to use this command (`tmutes`) in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
