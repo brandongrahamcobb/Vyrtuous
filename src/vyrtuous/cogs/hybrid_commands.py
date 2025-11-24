@@ -604,7 +604,7 @@ class Hybrid(commands.Cog):
             try:
                 await member_obj.add_roles(role_obj, reason=f'Added role')
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj} was not successfully roled.", allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully roled.", allowed_mentions=discord.AllowedMentions.none())
             return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         return role_alias_text_command
             
@@ -685,7 +685,7 @@ class Hybrid(commands.Cog):
                     try:
                         await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False)
                     except discord.Forbidden:
-                        return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj} was not successfully text-muted.", allowed_mentions=discord.AllowedMentions.none())
+                        return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully text-muted.", allowed_mentions=discord.AllowedMentions.none())
                 await conn.execute('''
                     INSERT INTO active_text_mutes (guild_id, discord_snowflake, channel_id, reason, expires_at, room_name)
                     VALUES ($1,$2,$3,$4,$5,$6)
@@ -879,7 +879,7 @@ class Hybrid(commands.Cog):
                 try:
                     await member_obj.edit(mute=True)
                 except discord.Forbidden:
-                    return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj} was not successfully voice muted.", allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully voice muted.", allowed_mentions=discord.AllowedMentions.none())
             embed = discord.Embed(
                     title=f"{self.get_random_emoji()} {member_obj.display_name} is voice muted",
                     description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
@@ -942,7 +942,7 @@ class Hybrid(commands.Cog):
                     if channel_obj:
                         await channel_obj.set_permissions(member_obj, overwrite=None)
                 except discord.Forbidden:
-                    return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj} was not successfully unbanned.", allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully unbanned.", allowed_mentions=discord.AllowedMentions.none())
                 await conn.execute('''
                     DELETE FROM active_bans
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
@@ -1131,7 +1131,7 @@ class Hybrid(commands.Cog):
                         try:
                             await member_obj.edit(mute=False)
                         except discord.Forbidden:
-                            return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj} was not successfully unmuted.", allowed_mentions=discord.AllowedMentions.none())
+                            return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully unmuted.", allowed_mentions=discord.AllowedMentions.none())
                     await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,  $2, $3, $4, $5, $6)', 'unmute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Unmuted a member')
             except Exception as e:
                 logger.warning(f'\U0001F6AB Database error: {e}')
@@ -1181,7 +1181,7 @@ class Hybrid(commands.Cog):
             try:
                 await member_obj.remove_roles(role_obj)
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj} was not successfully unroled.", allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully unroled.", allowed_mentions=discord.AllowedMentions.none())
             return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member_obj.mention} had {role_obj.mention} removed.', allowed_mentions=discord.AllowedMentions.none())
         return unrole_alias_text_command
         
@@ -1234,7 +1234,7 @@ class Hybrid(commands.Cog):
                 try:
                     await channel_obj.set_permissions(member_obj, send_messages=None)
                 except discord.Forbidden:
-                    return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj} was not successfully untext-muted.", allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully untext-muted.", allowed_mentions=discord.AllowedMentions.none())
                 await conn.execute('''
                     DELETE FROM active_text_mutes
                     WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
@@ -1970,11 +1970,9 @@ class Hybrid(commands.Cog):
         send=lambda **kw:interaction.response.send_message(**kw,ephemeral=True)
         guild=interaction.guild; user_id=interaction.user.id
         if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
-        msg=None;
         channel_obj = await self.resolve_channel_app(interaction, channel)
-        try:
-            channel_obj.fetch_message(message_id)
-        except: continue
+        try: msg=await channel_obj.fetch_message(message_id)
+        except: return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in `{channel_obj.name}`.')
         if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
         if not (is_owner_or_dev or is_mod_or_coord):
@@ -1991,12 +1989,9 @@ class Hybrid(commands.Cog):
         send=lambda **kw:self.handler.send_message(ctx,**kw)
         guild=ctx.guild; user_id=ctx.author.id
         if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
-        msg=None;
         channel_obj = await self.resolve_channel(ctx, channel)
-        try:
-            channel_obj.fetch_message(message_id)
-        except: continue
-        if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
+        try: msg=await channel_obj.fetch_message(message_id)
+        except: return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in `{channel_obj.name}`.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
         if not (is_owner_or_dev or is_mod_or_coord):
             return await send(content=f'\U0001F6AB You have insufficient privileges in `{channel_obj.name}` to delete messages.')
