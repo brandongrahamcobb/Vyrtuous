@@ -1973,7 +1973,7 @@ class Hybrid(commands.Cog):
         msg=None;
         channel_obj = await self.resolve_channel_app(interaction, channel)
         try:
-            channel_obj.fetch_message(message_id);
+            channel_obj.fetch_message(message_id)
         except: continue
         if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
@@ -1994,7 +1994,7 @@ class Hybrid(commands.Cog):
         msg=None;
         channel_obj = await self.resolve_channel(ctx, channel)
         try:
-            channel_obj.fetch_message(message_id);
+            channel_obj.fetch_message(message_id)
         except: continue
         if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
