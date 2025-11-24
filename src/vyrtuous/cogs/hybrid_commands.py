@@ -1966,17 +1966,17 @@ class Hybrid(commands.Cog):
     
     @app_commands.command(name='del', description='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
     @is_owner_developer_coordinator_moderator_app_predicator(None)
-    async def delete_message_app_command(self, interaction: discord.Interaction, message_id: int):
+    async def delete_message_app_command(self, interaction: discord.Interaction, message_id: int, channel: str):
         send=lambda **kw:interaction.response.send_message(**kw,ephemeral=True)
         guild=interaction.guild; user_id=interaction.user.id
         if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
-        msg=None; channel_obj=None
-        for ch in guild.text_channels:
-            try:
-                msg=await ch.fetch_message(message_id); channel_obj=ch; break
-            except: continue
+        msg=None;
+        channel_obj = await self.resolve_channel_app(interaction, channel)
+        try:
+            channel_obj.fetch_message(message_id);
+        except: continue
         if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
-        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_interaction(interaction,channel_obj)
+        is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod_app(interaction,channel_obj)
         if not (is_owner_or_dev or is_mod_or_coord):
             return await send(content=f'\U0001F6AB You have insufficient privileges in `{channel_obj.name}` to delete messages.')
         try:
@@ -1987,15 +1987,15 @@ class Hybrid(commands.Cog):
 
     @commands.command(name='del', help='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
     @is_owner_developer_coordinator_moderator_predicator(None)
-    async def delete_message_text_command(self, ctx, message_id: int):
+    async def delete_message_text_command(self, ctx, message_id: int, *, channel: str):
         send=lambda **kw:self.handler.send_message(ctx,**kw)
         guild=ctx.guild; user_id=ctx.author.id
         if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
-        msg=None; channel_obj=None
-        for ch in guild.text_channels:
-            try:
-                msg=await ch.fetch_message(message_id); channel_obj=ch; break
-            except: continue
+        msg=None;
+        channel_obj = await self.resolve_channel(ctx, channel)
+        try:
+            channel_obj.fetch_message(message_id);
+        except: continue
         if not msg:return await send(content=f'\U0001F6AB No message with ID `{message_id}` found in any channel.')
         is_owner_or_dev,is_mod_or_coord=await check_owner_dev_coord_mod(ctx,channel_obj)
         if not (is_owner_or_dev or is_mod_or_coord):
