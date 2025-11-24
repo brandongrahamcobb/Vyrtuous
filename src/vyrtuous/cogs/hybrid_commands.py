@@ -4286,29 +4286,30 @@ class Hybrid(commands.Cog):
     @commands.command(name='rename', help='Rename a temporary room and migrate all associated records.')
     @is_owner_developer_coordinator_predicator()
     async def rename_temp_room_app_command(self, ctx, old_name: str, new_name: str):
-        guild=ctx.guild; user_id=ctx.author.id; old_lc=old_name; new_lc=new_name
-        send=lambda **kw:self.handler.send_message(ctx,**kw)
-        if old_lc==new_lc: return await send(content='The new room name must be different.')
+        guild=ctx.guild; new_key=new_name; old_key=old_name; send=lambda **kw:self.handler.send_message(ctx,**kw); user_id=ctx.author.id
+        if old_key==new_key: return await send(content='The new room name must be different.')
         async with self.bot.db_pool.acquire() as conn:
-            temp=await conn.fetchrow('SELECT room_name,owner_snowflake,room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,old_lc)
+            temp=await conn.fetchrow('SELECT room_name,owner_snowflake,room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name ILIKE $2',guild.id,old_key)
             if not temp: return await send(content=f"No room named '{old_name}' found.")
+            true_old=temp['room_name']
             is_owner=temp['owner_snowflake']==user_id
-            is_owner_or_dev, is_coord = await check_owner_dev_coord(ctx, None)
-            if not is_owner_or_dev or is_coord: return await send(content='Only the owner or developers can rename this room.')
-            exists=await conn.fetchrow('SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,new_lc)
+            is_owner_or_dev,is_coord=await check_owner_dev_coord(ctx,None)
+            if not (is_owner_or_dev or is_owner): return await send(content='Only the owner or developers can rename this room.')
+            exists=await conn.fetchrow('SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name ILIKE $2',guild.id,new_key)
             if exists: return await send(content=f"A temp room named '{new_name}' already exists.")
-            await conn.execute('UPDATE temporary_rooms SET room_name=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,old_lc,new_lc)
-            tables=['command_aliases','active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps']
+            await conn.execute('UPDATE temporary_rooms SET room_name=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,true_old,new_key)
+            tables=['active_bans','active_caps','active_stages','active_text_mutes','active_voice_mutes','command_aliases','stage_coordinators']
             for table in tables:
-                await conn.execute(f'UPDATE {table} SET room_name=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,old_lc,new_lc)
-            await conn.execute('UPDATE users SET coordinator_room_names=ARRAY(SELECT DISTINCT unnest(COALESCE(coordinator_room_names,ARRAY[]::TEXT[])) REPLACE $2 WITH $3) WHERE $2=ANY(coordinator_room_names)',old_lc,new_lc)
-            await conn.execute('UPDATE users SET moderator_room_names=ARRAY(SELECT DISTINCT unnest(COALESCE(moderator_room_names,ARRAY[]::TEXT[])) REPLACE $2 WITH $3) WHERE $2=ANY(moderator_room_names)',old_lc,new_lc)
+                await conn.execute(f'UPDATE {table} SET room_name=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,true_old,new_key)
+            await conn.execute('UPDATE users SET coordinator_room_names=ARRAY(SELECT DISTINCT unnest(coordinator_room_names)||$2) WHERE $1=ANY(coordinator_room_names)',true_old,new_key)
+            await conn.execute('UPDATE users SET moderator_room_names=ARRAY(SELECT DISTINCT unnest(moderator_room_names)||$2) WHERE $1=ANY(moderator_room_names)',true_old,new_key)
         aliases=self.bot.command_aliases.setdefault(guild.id,{})
         temp_aliases=aliases.get('temp_room_aliases',{})
         for alias_type,entries in temp_aliases.items():
             for alias_name,data in entries.items():
-                if data.get('room_name')==old_lc: data['room_name']=new_lc
+                if data.get('room_name')==true_old: data['room_name']=new_key
         await send(content=f"Temporary room '{old_name}' has been renamed to '{new_name}'.")
+
 
         
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
