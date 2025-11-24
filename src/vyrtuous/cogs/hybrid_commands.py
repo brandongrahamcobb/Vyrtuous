@@ -3153,8 +3153,6 @@ class Hybrid(commands.Cog):
             await self.handler.send_message(ctx, **kw)
         member_obj = await self.resolve_member(ctx, target)
         channel_obj = await self.resolve_channel(ctx, target)
-        if not target:
-            return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord:
             return await send(content=f'\U0001F6AB You do not have permission to use this command (`flags`) in {channel_obj.mention}.')
