@@ -4287,27 +4287,76 @@ class Hybrid(commands.Cog):
     @is_owner_developer_coordinator_predicator()
     async def rename_temp_room_app_command(self, ctx, old_name: str, new_name: str):
         guild=ctx.guild; new_key=new_name; old_key=old_name; send=lambda **kw:self.handler.send_message(ctx,**kw); user_id=ctx.author.id
+    
+        print(f"[RENAME DEBUG] Starting rename command")
+        print(f"[RENAME DEBUG] Guild ID: {guild.id}")
+        print(f"[RENAME DEBUG] old_name input: '{old_name}'")
+        print(f"[RENAME DEBUG] old_name repr: {repr(old_name)}")
+        print(f"[RENAME DEBUG] old_name length: {len(old_name)}")
+        print(f"[RENAME DEBUG] old_name bytes: {old_name.encode('utf-8').hex()}")
+    
         if old_key==new_key: return await send(content='The new room name must be different.')
+    
         async with self.bot.db_pool.acquire() as conn:
+            # Debug: Show all rooms in this guild
+            print(f"[RENAME DEBUG] Fetching all rooms in guild...")
+            all_rooms = await conn.fetch('SELECT room_name FROM temporary_rooms WHERE guild_snowflake=$1', guild.id)
+            print(f"[RENAME DEBUG] Found {len(all_rooms)} rooms:")
+            for idx, room in enumerate(all_rooms):
+                rname = room['room_name']
+                print(f"  [{idx}] '{rname}'")
+                print(f"       repr: {repr(rname)}")
+                print(f"       length: {len(rname)}")
+                print(f"       bytes: {rname.encode('utf-8').hex()}")
+                print(f"       ILIKE match: {rname.lower() == old_key.lower()}")
+    
+            print(f"[RENAME DEBUG] Executing query with ILIKE...")
+            print(f"[RENAME DEBUG] Query params: guild_id={guild.id}, old_key='{old_key}'")
+    
             temp=await conn.fetchrow('SELECT room_name,owner_snowflake,room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name ILIKE $2',guild.id,old_key)
-            if not temp: return await send(content=f"No room named '{old_name}' found.")
+    
+            print(f"[RENAME DEBUG] Query result: {temp}")
+    
+            if not temp:
+                print(f"[RENAME DEBUG] ERROR: No room found matching '{old_key}'")
+                # Try exact match with lower()
+                temp_lower = await conn.fetchrow('SELECT room_name,owner_snowflake,room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND LOWER(room_name)=LOWER($2)',guild.id,old_key)
+                print(f"[RENAME DEBUG] Tried LOWER() comparison: {temp_lower}")
+                return await send(content=f"No room named '{old_name}' found.")
+    
             true_old=temp['room_name']
+            print(f"[RENAME DEBUG] Found room: '{true_old}' (repr: {repr(true_old)})")
+    
             is_owner=temp['owner_snowflake']==user_id
             is_owner_or_dev,is_coord=await check_owner_dev_coord(ctx,None)
+    
+            print(f"[RENAME DEBUG] Permissions - is_owner: {is_owner}, is_owner_or_dev: {is_owner_or_dev}")
+    
             if not (is_owner_or_dev or is_owner): return await send(content='Only the owner or developers can rename this room.')
+    
             exists=await conn.fetchrow('SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name ILIKE $2',guild.id,new_key)
             if exists: return await send(content=f"A temp room named '{new_name}' already exists.")
+    
+            print(f"[RENAME DEBUG] Starting updates from '{true_old}' to '{new_key}'")
             await conn.execute('UPDATE temporary_rooms SET room_name=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,true_old,new_key)
+            print(f"[RENAME DEBUG] Updated temporary_rooms")
+    
             tables=['active_bans','active_caps','active_stages','active_text_mutes','active_voice_mutes','command_aliases','stage_coordinators']
             for table in tables:
-                await conn.execute(f'UPDATE {table} SET room_name=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,true_old,new_key)
+                result = await conn.execute(f'UPDATE {table} SET room_name=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,true_old,new_key)
+                print(f"[RENAME DEBUG] Updated {table}: {result}")
+    
             await conn.execute('UPDATE users SET coordinator_room_names=ARRAY(SELECT DISTINCT unnest(coordinator_room_names)||$2) WHERE $1=ANY(coordinator_room_names)',true_old,new_key)
             await conn.execute('UPDATE users SET moderator_room_names=ARRAY(SELECT DISTINCT unnest(moderator_room_names)||$2) WHERE $1=ANY(moderator_room_names)',true_old,new_key)
+            print(f"[RENAME DEBUG] Updated user arrays")
+    
         aliases=self.bot.command_aliases.setdefault(guild.id,{})
         temp_aliases=aliases.get('temp_room_aliases',{})
         for alias_type,entries in temp_aliases.items():
             for alias_name,data in entries.items():
                 if data.get('room_name')==true_old: data['room_name']=new_key
+    
+        print(f"[RENAME DEBUG] Rename complete!")
         await send(content=f"Temporary room '{old_name}' has been renamed to '{new_name}'.")
 
 
