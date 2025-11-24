@@ -4386,10 +4386,10 @@ class Hybrid(commands.Cog):
             if not rooms: return await send(content=f"No temporary room named '{old_name}' found.")
             if len(rooms) > 1: return await send(content=f"Multiple temporary rooms named '{old_name}' exist. Migration failed.")
             temp = rooms[0]
-            is_owner = temp['owner_snowflake'] == user_id
-            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, None)
-            if not (is_owner_or_dev or is_owner): return await send(content="Only the owner or developers can migrate this room.")
             channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
+            is_owner = temp['owner_snowflake'] == user_id
+            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
+            if not (is_owner_or_dev or is_owner): return await send(content="Only the owner or developers can migrate this room.")
             if not channel_obj: return await send(content=f"No channel found with ID {new_room_snowflake}.")
             conflict = await conn.fetchrow(
                 'SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_snowflake=$2',
