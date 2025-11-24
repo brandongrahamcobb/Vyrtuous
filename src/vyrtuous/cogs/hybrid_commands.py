@@ -875,8 +875,10 @@ class Hybrid(commands.Cog):
             await ctx.send("testafter")
             is_in_channel = False
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
+                await ctx.send("testafter2")
                 is_in_channel = True
                 await member_obj.edit(mute=True)
+            await ctx.send("testafter3")
             embed = discord.Embed(
                     title=f"{self.get_random_emoji()} {member_obj.display_name} is voice muted",
                     description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason or 'No reason provided'}",
