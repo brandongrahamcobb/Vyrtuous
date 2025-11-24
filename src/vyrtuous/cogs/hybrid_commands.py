@@ -4283,30 +4283,33 @@ class Hybrid(commands.Cog):
             for table in tables: await conn.execute(f'UPDATE {table} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, old_name_lc, new_channel.id)
         await send(content=f"Temporary room '{old_name}' migrated to {new_channel.mention}.")
         
-    @commands.command(name='rename', help='Migrate a temporary room to a new channel.')
+    @commands.command(name='rename', help='Rename a temporary room and migrate all associated records.')
     @is_owner_developer_coordinator_predicator()
-    async def rename_temp_room_app_command(self, ctx, old_name: str, new_channel: discord.abc.GuildChannel):
-        guild=ctx.guild; new_id=new_channel.id; old_name_lc=old_name.lower(); send=lambda **kw:self.handler.send_message(ctx,**kw); uid=ctx.author.id
+    async def rename_temp_room_app_command(self, ctx, old_name: str, new_name: str):
+        guild=ctx.guild; user_id=ctx.author.id; old_lc=old_name.lower(); new_lc=new_name.lower()
+        send=lambda **kw:self.handler.send_message(ctx,**kw)
+        if old_lc==new_lc: return await send(content='The new room name must be different.')
         async with self.bot.db_pool.acquire() as conn:
-            temp=await conn.fetchrow('SELECT room_name,owner_snowflake,room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,old_name_lc)
-            if not temp: return await send(content=f"No temporary room named '{old_name}' found.")
-            owner=temp['owner_snowflake']; old_id=temp['room_snowflake']
-            allowed=await is_owner(ctx,uid) or await is_developer(ctx,uid) or uid==owner
-            if not allowed: return await send(content="Only the room owner, an owner, developer, or coordinator can migrate this room.")
-            conflict=await conn.fetchrow('SELECT 1 FROM command_aliases WHERE guild_id=$1 AND channel_id=$2 AND (room_name IS NULL OR room_name=\'\')',guild.id,new_id)
-            if conflict: return await send(content=f"Cannot migrate: {new_channel.mention} has existing non-temp aliases.")
-            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,old_name_lc,new_id)
-            tables=['active_bans','active_caps','active_stages','active_text_mutes','active_voice_mutes','command_aliases','stage_coordinators']
-            for t in tables: await conn.execute(f'UPDATE {t} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,old_name_lc,new_id)
-            if old_id:
-                await conn.execute('UPDATE users SET coordinator_room_names=ARRAY(SELECT DISTINCT unnest(COALESCE(coordinator_room_names,ARRAY[]::TEXT[])||ARRAY[$1])) WHERE $1=ANY(coordinator_room_names)',old_name_lc)
-                await conn.execute('UPDATE users SET moderator_room_names=ARRAY(SELECT DISTINCT unnest(COALESCE(moderator_room_names,ARRAY[]::TEXT[])||ARRAY[$1])) WHERE $1=ANY(moderator_room_names)',old_name_lc)
+            temp=await conn.fetchrow('SELECT room_name,owner_snowflake,room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,old_lc)
+            if not temp: return await send(content=f"No room named '{old_name}' found.")
+            is_owner=temp['owner_snowflake']==user_id
+            is_dev_or_owner=await is_owner_developer_via_objects(ctx.author,self.bot)
+            if not (is_owner or is_dev_or_owner): return await send(content='Only the owner or developers can rename this room.')
+            exists=await conn.fetchrow('SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,new_lc)
+            if exists: return await send(content=f"A temp room named '{new_name}' already exists.")
+            await conn.execute('UPDATE temporary_rooms SET room_name=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,old_lc,new_lc)
+            tables=['command_aliases','active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps']
+            for table in tables:
+                await conn.execute(f'UPDATE {table} SET room_name=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,old_lc,new_lc)
+            await conn.execute('UPDATE users SET coordinator_room_names=ARRAY(SELECT DISTINCT unnest(COALESCE(coordinator_room_names,ARRAY[]::TEXT[])) REPLACE $2 WITH $3) WHERE $2=ANY(coordinator_room_names)',old_lc,new_lc)
+            await conn.execute('UPDATE users SET moderator_room_names=ARRAY(SELECT DISTINCT unnest(COALESCE(moderator_room_names,ARRAY[]::TEXT[])) REPLACE $2 WITH $3) WHERE $2=ANY(moderator_room_names)',old_lc,new_lc)
         aliases=self.bot.command_aliases.setdefault(guild.id,{})
-        temp_aliases=aliases.setdefault('temp_room_aliases',{})
-        for atype,alist in temp_aliases.items():
-            for aname,data in alist.items():
-                if data.get('room_name')==old_name_lc: data['channel_id']=new_id
-        return await send(content=f"Temporary room '{old_name}' migrated to {new_channel.mention}.")
+        temp_aliases=aliases.get('temp_room_aliases',{})
+        for alias_type,entries in temp_aliases.items():
+            for alias_name,data in entries.items():
+                if data.get('room_name')==old_lc: data['room_name']=new_lc
+        await send(content=f"Temporary room '{old_name}' has been renamed to '{new_name}'.")
+
         
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
     @app_commands.describe(
