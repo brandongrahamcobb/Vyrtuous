@@ -79,9 +79,7 @@ CREATE TABLE active_server_voice_mutes (
     discord_snowflake BIGINT NOT NULL,
     expires_at TIMESTAMPTZ,
     reason TEXT,
-    channel_id BIGINT DEFAULT -1,
-    room_name TEXT DEFAULT '',
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id, room_name)
+    PRIMARY KEY (guild_id, discord_snowflake)
 );
 
 CREATE TABLE active_cows (

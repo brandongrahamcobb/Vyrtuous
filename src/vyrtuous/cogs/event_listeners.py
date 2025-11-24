@@ -77,83 +77,49 @@ class EventListeners(commands.Cog):
             ''', guild_id, user_id)
     
     @commands.Cog.listener()
-    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
-        guild = channel.guild
-        name = channel.name
+    async def on_guild_channel_create(self,channel:discord.abc.GuildChannel):
+        guild=channel.guild
+        name=channel.name
         for c in guild.channels:
-            if c.id != channel.id and c.name == name:
-                return
+            if c.id!=channel.id and c.name==name: return
         async with self.bot.db_pool.acquire() as conn:
-            temp_room = await conn.fetchrow('''
-                SELECT room_name
-                FROM temporary_rooms
-                WHERE guild_snowflake=$1
-                  AND room_name=$2
-            ''', guild.id, name)
-            if not temp_room:
-                print(f"DEBUG: Not a temporary room, exiting")
-                return
-            await conn.execute('''
-                UPDATE temporary_rooms
-                SET room_snowflake=$3
-                WHERE guild_snowflake=$1
-                  AND room_name=$2
-            ''', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE command_aliases
-                SET channel_id=$3
-                WHERE guild_id=$1
-                  AND room_name=$2
-            ''', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE log_channels
-                SET channel_id=$3
-                WHERE guild_id=$1
-                  AND type='general'
-                  AND $2=ANY(snowflakes)
-            ''', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE active_bans
-                SET channel_id=$3
-                WHERE guild_id=$1
-                  AND room_name=$2
-            ''', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE active_text_mutes
-                SET channel_id=$3
-                WHERE guild_id=$1
-                  AND room_name=$2
-            ''', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE active_voice_mutes
-                SET channel_id=$3
-                WHERE guild_id=$1
-                  AND room_name=$2
-            ''', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE active_stages
-                SET channel_id=$3
-                WHERE guild_id=$1
-                  AND room_name=$2
-            ''', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE stage_coordinators
-                SET channel_id=$3
-                WHERE guild_id=$1
-                  AND room_name=$2
-            ''', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE active_caps
-                SET channel_id=$3
-                WHERE guild_id=$1
-                  AND room_name=$2
-            ''', guild.id, name, channel.id)
-        guild_aliases = self.bot.command_aliases.setdefault(guild.id, {})
-        temp_aliases = guild_aliases.get('temp_room_aliases', {})
-        for alias_type, aliases in temp_aliases.items():
-            for alias_name, data in aliases.items():
-                if data.get("room_name") == name:
-                    data["channel_id"] = channel.id
+            temp_room=await conn.fetchrow('SELECT room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,name)
+            if not temp_room: return
+            old_id=temp_room['room_snowflake']
+            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,name,channel.id)
+            await conn.execute('UPDATE command_aliases SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+            await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+            await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+            await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+            await conn.execute('UPDATE active_stages SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+            await conn.execute('UPDATE stage_coordinators SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+            await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+            if old_id:
+                # carry over coordinators by room name
+                await conn.execute('''
+                    UPDATE users
+                    SET coordinator_room_names=ARRAY(
+                        SELECT DISTINCT unnest(
+                            COALESCE(coordinator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
+                        )
+                    )
+                    WHERE $1=ANY(coordinator_room_names)
+                ''',name)
+                # carry over moderators by room name
+                await conn.execute('''
+                    UPDATE users
+                    SET moderator_room_names=ARRAY(
+                        SELECT DISTINCT unnest(
+                            COALESCE(moderator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
+                        )
+                    )
+                    WHERE $1=ANY(moderator_room_names)
+                ''',name)
+        guild_aliases=self.bot.command_aliases.setdefault(guild.id,{})
+        temp_aliases=guild_aliases.get('temp_room_aliases',{})
+        for alias_type,aliases in temp_aliases.items():
+            for alias_name,data in aliases.items():
+                if data.get('room_name')==name: data['channel_id']=channel.id
                     
     # Done
     @commands.Cog.listener()

@@ -171,7 +171,7 @@ async def is_guild_owner_member(member: discord.Member) -> bool:
 async def is_system_owner_member(member: discord.Member, bot: commands.Bot) -> bool:
     system_owner_id = int(bot.config['discord_owner_id'])
     if member.id != system_owner_id:
-        raise False
+        return False
     return True
 
 async def is_owner_member(member: discord.Member, bot: commands.Bot) -> bool:
