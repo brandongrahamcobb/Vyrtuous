@@ -4356,6 +4356,22 @@ class Hybrid(commands.Cog):
                 logger.warning(f'Failed to toggle promotion: {e}')
                 await send(content=f'\U000026A0\U0000FE0F Failed to toggle promotion for {member_obj.display_name}.')
     
+    @commands.command(name='debug', help='Get information about a channel by ID or mention.')
+    @is_owner_predicator()
+    async def channel_info_command(self, ctx, channel_input: Union[int, str]):
+        send = lambda **kw: self.handler.send_message(ctx, **kw)
+    
+        channel_obj = await self.resolve_channel(ctx, channel_input)
+    
+        if not channel_obj:
+            return await send(content=f"Could not find channel: {channel_input}")
+    
+        await send(content=f"**Channel Info:**\n"
+                          f"Name: `{channel_obj.name}`\n"
+                          f"ID: `{channel_obj.id}`\n"
+                          f"Type: {channel_obj.type}\n"
+                          f"Mention: {channel_obj.mention}")
+
     @app_commands.command(name='rename', description='Migrate a temporary room to a new channel.')
     @app_commands.describe(old_name='Old temporary room name', new_channel='New channel to migrate to')
     @is_owner_developer_coordinator_app_predicator()
@@ -6200,14 +6216,14 @@ class Hybrid(commands.Cog):
                 logger.debug(f"Direct channel: {value.id}")
                 return value
             if isinstance(value, int):
-                c = await ctx.guild.fetch_channel(value)
+                c = ctx.guild.get_channel(value)
                 if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                     logger.debug(f"Resolved channel by int ID: {c.id}")
                     return c
             if isinstance(value, str):
                 if value.isdigit():
                     cid = int(value)
-                    c = await ctx.guild.fetch_channel(cid)
+                    c = ctx.guild.get_channel(cid)
                     if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                         logger.debug(f"Resolved channel by str ID: {c.id}")
                         return c
