@@ -6252,7 +6252,7 @@ class Hybrid(commands.Cog):
             logger.warning(f"Member resolution error: {e}")
         return None
     
-    async def resolve_channel(self, ctx: commands.Context, value: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]]) -> Optional[Union[discord.TextChannel, iscord.VoiceChannel]]:
+    async def resolve_channel(self, ctx: commands.Context, value: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]]) -> Optional[Union[discord.TextChannel, discord.VoiceChannel]]:
         try:
             if isinstance(value, (discord.TextChannel, discord.VoiceChannel)):
                 logger.debug(f"Direct channel: {value.id}")
