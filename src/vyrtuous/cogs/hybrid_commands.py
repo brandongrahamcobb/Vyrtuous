@@ -6200,14 +6200,14 @@ class Hybrid(commands.Cog):
                 logger.debug(f"Direct channel: {value.id}")
                 return value
             if isinstance(value, int):
-                c = ctx.guild.get_channel(value)
+                c = await ctx.guild.fetch_channel(value)
                 if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                     logger.debug(f"Resolved channel by int ID: {c.id}")
                     return c
             if isinstance(value, str):
                 if value.isdigit():
                     cid = int(value)
-                    c = ctx.guild.get_channel(cid)
+                    c = await ctx.guild.fetch_channel(cid)
                     if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                         logger.debug(f"Resolved channel by str ID: {c.id}")
                         return c
