@@ -3276,13 +3276,22 @@ class Hybrid(commands.Cog):
         member_obj = await self.resolve_member(ctx, member)
         if not hasattr(self, "super"):
             self.super = {"state": False, "members": set()}
+    
+        # Toggle state
         self.super["state"] = not self.super["state"]
-        self.super["members"].add(member_obj.id)
-        state = f'ON {self.get_random_emoji()}' if self.super["state"] else f'OFF \U0001F6AB'
-        await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Feature switched {state}.')
-        if not self.super["state"]:
+    
+        if self.super["state"]:
+            # Turning ON: add member
+            self.super["members"].add(member_obj.id)
+        else:
+            # Turning OFF: remove member
+            self.super["members"].discard(member_obj.id)
             for channel in ctx.guild.channels:
                 await self.unrestrict(ctx.guild, member_obj)
+    
+        state = f'ON {self.get_random_emoji()}' if self.super["state"] else f'OFF \U0001F6AB'
+        await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Feature switched {state}.')
+
                 
     @app_commands.command(name='logs', description='Lists log channels for this guild or a specified guild ID.')
     @is_owner_developer_app_predicator()
