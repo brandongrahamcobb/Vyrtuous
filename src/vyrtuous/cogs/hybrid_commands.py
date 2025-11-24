@@ -4378,45 +4378,62 @@ class Hybrid(commands.Cog):
         guild = ctx.guild
         user_id = ctx.author.id
         send = lambda **kw: self.handler.send_message(ctx, **kw)
+    
         async with self.bot.db_pool.acquire() as conn:
             # Fetch the old room
             rooms = await conn.fetch(
                 'SELECT room_name, owner_snowflake, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name
             )
-            if not rooms: return await send(content=f"No temporary room named '{old_name}' found.")
-            if len(rooms) > 1: return await send(content=f"Multiple temporary rooms named '{old_name}' exist. Migration failed.")
+            if not rooms:
+                return await send(content=f"No temporary room named '{old_name}' found.")
+            if len(rooms) > 1:
+                return await send(content=f"Multiple temporary rooms named '{old_name}' exist. Migration failed.")
+    
             temp = rooms[0]
-            is_owner = temp['owner_snowflake'] == user_id
-            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, None)
-            if not (is_owner_or_dev or is_owner): return await send(content="Only the owner or developers can migrate this room.")
-
+    
             # Resolve the target channel
             channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
-            if not channel_obj: return await send(content=f"No channel found with ID {new_room_snowflake}.")
-
-            # Fail if any temporary room already has the same name as the new channel
+    
+            # Check permissions
+            is_owner = temp['owner_snowflake'] == user_id
+            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
+            if not (is_owner_or_dev or is_owner):
+                return await send(content="Only the owner or developers can migrate this room.")
+    
+            # Fail if another room already has the new channel's name (but not if it's the same room)
             conflict = await conn.fetchrow(
-                'SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
-                guild.id, channel_obj.name
+                'SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2 AND room_name != $3',
+                guild.id, channel_obj.name, old_name
             )
-            if conflict: return await send(content=f"Cannot migrate: a temporary room with the name '{channel_obj.name}' already exists.")
-
-            # Update the old room to point to the new channel
+            if conflict:
+                return await send(content=f"Cannot migrate: a different temporary room with the name '{channel_obj.name}' already exists.")
+    
+            # Update BOTH the room name and snowflake
             await conn.execute(
-                'UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',
-                guild.id, old_name, new_room_snowflake
+                'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
+                guild.id, old_name, channel_obj.name, new_room_snowflake
             )
-
-            # Update all associated tables
+    
+            # Update all associated tables with the new name AND channel_id
             tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps','command_aliases']
             for table in tables:
                 await conn.execute(
-                    f'UPDATE {table} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',
-                    guild.id, old_name, new_room_snowflake
+                    f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
+                    guild.id, old_name, channel_obj.name, new_room_snowflake
                 )
-
-        await send(content=f"Temporary room '{old_name}' migrated to {channel_obj.mention}.")
+    
+            # Also update user coordinator/moderator arrays
+            await conn.execute(
+                'UPDATE users SET coordinator_room_names=array_replace(coordinator_room_names, $1, $2) WHERE $1=ANY(coordinator_room_names)',
+                old_name, channel_obj.name
+            )
+            await conn.execute(
+                'UPDATE users SET moderator_room_names=array_replace(moderator_room_names, $1, $2) WHERE $1=ANY(moderator_room_names)',
+                old_name, channel_obj.name
+            )
+    
+        await send(content=f"Temporary room '{old_name}' migrated to {channel_obj.mention} and renamed to '{channel_obj.name}'.")
 
 
     
