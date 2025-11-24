@@ -1749,7 +1749,7 @@ class Hybrid(commands.Cog):
 
     @commands.command(
         name='clear',
-        help='Removes a specific channel ID from all users, including temp-room associations.'
+        help='Removes a specific channel ID from all users, including temp-room associations and all related records.'
     )
     @is_owner_predicator()
     async def clear_channel_access_text_command(
@@ -1761,34 +1761,57 @@ class Hybrid(commands.Cog):
         channel_obj = await self.resolve_channel(ctx, channel)
         if not channel_obj:
             return await send(content='\U0001F6AB Could not resolve the channel.')
+    
         async with self.bot.db_pool.acquire() as conn:
+            # Remove channel from users' arrays
             await conn.execute('''
                 UPDATE users
                 SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $1::bigint),
                     moderator_channel_ids = array_remove(moderator_channel_ids, $1::bigint),
                     updated_at = NOW()
             ''', channel_obj.id)
+    
             await conn.execute('''
                 UPDATE users
-                SET coordinator_room_names = (
-                        SELECT array_agg(name) 
-                        FROM unnest(coordinator_room_names) AS name
-                        WHERE EXISTS (
-                            SELECT 1 FROM command_aliases 
-                            WHERE channel_id = $1 AND room_name = name
+                SET coordinator_room_names = ARRAY(
+                        SELECT name FROM unnest(coordinator_room_names) AS name
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM command_aliases WHERE channel_id=$1 AND room_name=name
                         )
                     ),
-                    moderator_room_names = (
-                        SELECT array_agg(name) 
-                        FROM unnest(moderator_room_names) AS name
-                        WHERE EXISTS (
-                            SELECT 1 FROM command_aliases 
-                            WHERE channel_id = $1 AND room_name = name
+                    moderator_room_names = ARRAY(
+                        SELECT name FROM unnest(moderator_room_names) AS name
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM command_aliases WHERE channel_id=$1 AND room_name=name
                         )
                     ),
                     updated_at = NOW()
             ''', channel_obj.id)
-        await send(content=f'{self.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access, including temp-room associations.', allowed_mentions=discord.AllowedMentions.none())
+    
+            # Delete all associated records in related tables
+            tables = [
+                'command_aliases',
+                'active_bans',
+                'active_text_mutes',
+                'active_voice_mutes',
+                'active_stages',
+                'stage_coordinators',
+                'active_caps',
+                'temporary_rooms'
+            ]
+            for table in tables:
+                await conn.execute(f'DELETE FROM {table} WHERE channel_id=$1 OR room_snowflake=$1', channel_obj.id)
+    
+        # Clean up in-memory temp room aliases
+        guild_aliases = self.bot.command_aliases.setdefault(channel_obj.guild.id, {})
+        temp_aliases = guild_aliases.get('temp_room_aliases', {})
+        for alias_type, aliases in temp_aliases.items():
+            for alias_name, data in list(aliases.items()):
+                if data.get('channel_id') == channel_obj.id:
+                    del aliases[alias_name]
+    
+        await send(content=f'{self.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
+
     
     @app_commands.command(name='coord', description='Grants coordinator access for a specific voice channel.')
     @is_owner_developer_app_predicator()
