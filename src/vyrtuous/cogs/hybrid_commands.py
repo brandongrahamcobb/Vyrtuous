@@ -5050,7 +5050,7 @@ class Hybrid(commands.Cog):
         channel_obj = await self.resolve_channel(ctx, target)
         if not channel_obj and not member_obj:
             return await send(content=f'\U0001F6AB Could not resolve a valid channel or member from input: {target}.')
-        if not member_obj:
+        if member_obj:
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
         else:
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
