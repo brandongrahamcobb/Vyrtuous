@@ -1985,7 +1985,13 @@ class Hybrid(commands.Cog):
 
     @commands.command(name='del', help='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
     @is_owner_developer_coordinator_moderator_predicator(None)
-    async def delete_message_text_command(self, ctx, message_id: int, *, channel: str):
+    async def delete_message_text_command(
+        self,
+        ctx,
+        message_id: int,
+        *, 
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+    ):
         send=lambda **kw:self.handler.send_message(ctx,**kw)
         guild=ctx.guild; user_id=ctx.author.id
         if not guild:return await send(content='\U0001F6AB This command can only be used in servers.')
