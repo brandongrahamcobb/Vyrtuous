@@ -4379,6 +4379,7 @@ class Hybrid(commands.Cog):
         user_id = ctx.author.id
         send = lambda **kw: self.handler.send_message(ctx, **kw)
         async with self.bot.db_pool.acquire() as conn:
+            # Fetch the old room
             rooms = await conn.fetch(
                 'SELECT room_name, owner_snowflake, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name
@@ -4389,26 +4390,34 @@ class Hybrid(commands.Cog):
             is_owner = temp['owner_snowflake'] == user_id
             is_owner_or_dev, _ = await check_owner_dev_coord(ctx, None)
             if not (is_owner_or_dev or is_owner): return await send(content="Only the owner or developers can migrate this room.")
+
+            # Resolve the target channel
             channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
             if not channel_obj: return await send(content=f"No channel found with ID {new_room_snowflake}.")
-            # Fail if a temporary room already exists with the same name as the target channel
+
+            # Fail if any temporary room already has the same name as the new channel
             conflict = await conn.fetchrow(
                 'SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, channel_obj.name
             )
-            if conflict: return await send(content=f"Cannot migrate: a temporary room already exists with the name '{channel_obj.name}'.")
-            # Migrate room_snowflake and all associated tables
+            if conflict: return await send(content=f"Cannot migrate: a temporary room with the name '{channel_obj.name}' already exists.")
+
+            # Update the old room to point to the new channel
             await conn.execute(
                 'UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name, new_room_snowflake
             )
+
+            # Update all associated tables
             tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps','command_aliases']
             for table in tables:
                 await conn.execute(
                     f'UPDATE {table} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',
                     guild.id, old_name, new_room_snowflake
                 )
+
         await send(content=f"Temporary room '{old_name}' migrated to {channel_obj.mention}.")
+
 
     
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
