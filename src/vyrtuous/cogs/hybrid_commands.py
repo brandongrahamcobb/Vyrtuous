@@ -4386,16 +4386,18 @@ class Hybrid(commands.Cog):
             if not rooms: return await send(content=f"No temporary room named '{old_name}' found.")
             if len(rooms) > 1: return await send(content=f"Multiple temporary rooms named '{old_name}' exist. Migration failed.")
             temp = rooms[0]
-            channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
             is_owner = temp['owner_snowflake'] == user_id
-            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
+            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, None)
             if not (is_owner_or_dev or is_owner): return await send(content="Only the owner or developers can migrate this room.")
+            channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
             if not channel_obj: return await send(content=f"No channel found with ID {new_room_snowflake}.")
+            # Fail if a temporary room already exists with the same name as the target channel
             conflict = await conn.fetchrow(
-                'SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_snowflake=$2',
-                guild.id, new_room_snowflake
+                'SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
+                guild.id, channel_obj.name
             )
-            if conflict: return await send(content=f"Cannot migrate: channel {channel_obj.mention} is already used by another temporary room.")
+            if conflict: return await send(content=f"Cannot migrate: a temporary room already exists with the name '{channel_obj.name}'.")
+            # Migrate room_snowflake and all associated tables
             await conn.execute(
                 'UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name, new_room_snowflake
@@ -4407,6 +4409,7 @@ class Hybrid(commands.Cog):
                     guild.id, old_name, new_room_snowflake
                 )
         await send(content=f"Temporary room '{old_name}' migrated to {channel_obj.mention}.")
+
     
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
     @app_commands.describe(
