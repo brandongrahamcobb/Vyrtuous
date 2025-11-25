@@ -2736,6 +2736,7 @@ class Hybrid(commands.Cog):
         else:
             channel_obj = await self.resolve_channel(ctx, target)
             temp_rooms = self.temp_rooms.get(ctx.guild.id, {})
+            await send(content=f"DEBUG: temp_rooms for guild {ctx.guild.id} = {temp_rooms}")
             temp_room_obj = None
             if target and target.lower() != 'all':
                 for temp_channel in temp_rooms.values():
