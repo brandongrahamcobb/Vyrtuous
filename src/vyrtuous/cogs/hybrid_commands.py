@@ -4612,6 +4612,9 @@ class Hybrid(commands.Cog):
                     if temp_room.room_snowflake == old_channel_id:
                         temp_room.room_snowflake = channel_obj.id
                         temp_room.room_name = channel_obj.name
+            for alias_type, aliases in guild_aliases.items():
+                for alias_name, alias_data in aliases.items():
+                    await send(content=f"DEBUG: Alias type='{alias_type}', name='{alias_name}', channel_id={alias_data.get('channel_id')}, room_name='{alias_data.get('room_name')}'")
 
 
         await send(content=f"✅ Temporary room '{old_name}' migrated to {channel_obj.mention} and renamed to '{channel_obj.name}'.")
