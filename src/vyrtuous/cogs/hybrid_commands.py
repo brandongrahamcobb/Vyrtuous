@@ -189,11 +189,19 @@ class Hybrid(commands.Cog):
                     continue
                 channel_obj = guild.get_channel(room_snowflake)
                 if not channel_obj:
-                    print(f"[TempRoom] Channel with ID '{room_snowflake}' not found in guild {guild_id}")
                     continue
                 temp_channel = TempChannel(channel_obj, room_name)
                 self.temp_rooms.setdefault(guild_id, {})[room_snowflake] = temp_channel
-
+    
+        # Send debug messages to all channels
+        for guild_id, rooms in self.temp_rooms.items():
+            for channel_id, temp_channel in rooms.items():
+                try:
+                    await temp_channel.channel_obj.send(
+                        f"[TempRoom Debug] Loaded temp room: '{temp_channel.room_name}' with channel ID {channel_id}"
+                    )
+                except Exception as e:
+                    print(f"[TempRoom] Failed to send debug to channel {channel_id} in guild {guild_id}: {e}")
 
     
     async def load_log_channels(self):
