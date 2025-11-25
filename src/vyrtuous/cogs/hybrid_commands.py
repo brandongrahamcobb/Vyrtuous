@@ -2739,6 +2739,7 @@ class Hybrid(commands.Cog):
             temp_room_obj = None
             if target and target.lower() != 'all':
                 for temp_channel in temp_rooms.values():
+                    await send(content=f"DEBUG: temp_channel.room_name='{temp_channel.room_name}', target='{target}'")
                     if temp_channel.room_name == target:
                         temp_room_obj = temp_channel
                         channel_obj = temp_channel
