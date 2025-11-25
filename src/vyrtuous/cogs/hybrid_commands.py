@@ -185,7 +185,6 @@ class Hybrid(commands.Cog):
                 owner_snowflake = row['owner_snowflake']
                 self.temp_rooms.setdefault(guild_id, {})[room_snowflake] = TempChannel(
                     room_name=room_name,
-                    room_snowflake=room_snowflake,
                     owner_snowflake=owner_snowflake
                 )
     
