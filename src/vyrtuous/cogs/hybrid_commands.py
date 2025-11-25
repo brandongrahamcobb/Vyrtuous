@@ -4600,10 +4600,11 @@ class Hybrid(commands.Cog):
                 old_name, channel_obj.name
             )
             await send(content=f"DEBUG 11: Updated moderator arrays: {mod_result}")
+            old_channel_id = temp['room_snowflake']
             guild_aliases = self.bot.command_aliases.get(guild.id, {}).get('temp_room_aliases', {})
             for alias_type, aliases in guild_aliases.items():
                 for alias_name, alias_data in aliases.items():
-                    if alias_data.get('channel_id') == temp['room_snowflake']:
+                    if alias_data.get('channel_id') == old_channel_id:
                         alias_data['channel_id'] = channel_obj.id
                         alias_data['room_name'] = channel_obj.name
 
