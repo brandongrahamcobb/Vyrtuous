@@ -1233,10 +1233,7 @@ class Hybrid(commands.Cog):
                 if temp_room.room_name == alias_entry:
                     channel_obj = temp_room.channel_obj
                     break
-            if channel_obj is None:
-                static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('untmute', {}).get(command_name)
-                if static_channel_id:
-                    channel_obj = await self.resolve_channel(ctx, static_channel_id)
+            channel_obj = await self.resolve_channel(ctx, static_channel_id)
             member_obj = await self.resolve_member(ctx, member)
             if member_obj.bot:
                 return await send(content='\U0001F6AB You cannot untext-mute the bot.')
