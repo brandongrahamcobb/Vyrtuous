@@ -2750,11 +2750,9 @@ class Hybrid(commands.Cog):
         else:
             channel_obj = await self.resolve_channel(ctx, target)
             temp_rooms = self.temp_rooms.get(ctx.guild.id, {})
-            await send(content=f"DEBUG: temp_rooms for guild {ctx.guild.id} = {temp_rooms}")
             temp_room_obj = None
             if target and target.lower() != 'all':
                 for temp_channel in temp_rooms.values():
-                    await send(content=f"DEBUG: temp_channel.room_name='{temp_channel.room_name}', target='{target}'")
                     if temp_channel.room_name == target:
                         temp_room_obj = temp_channel
                         channel_obj = temp_channel
@@ -2827,7 +2825,6 @@ class Hybrid(commands.Cog):
             if temp_room_obj:
                 for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
                     for alias_name, data in room_map.items():
-                        await send(content=f"DEBUG: alias_name='{alias_name}', room_name_in_data='{data.get('room_name')}', temp_room_obj_name='{getattr(temp_room_obj, 'room_name', None)}'")
                         if temp_room_obj and data.get('room_name', '') == temp_room_obj.room_name:
                             lines.append(f'**{alias_type.capitalize()} Alias for `{data["room_name"]}`**')
                             lines.append(f'`{alias_name}` → `{data["room_name"]}`')
@@ -3339,7 +3336,10 @@ class Hybrid(commands.Cog):
         if member_obj.bot:
             return await send(content='\U0001F6AB You cannot list flags on the bot.')
         channel_obj = await self.resolve_channel(ctx, target)
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
+        if member_obj:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_overall(ctx)
+        else:
+            is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member:
             return await send(content=f'\U0001F6AB You do not have permission to use this command (`flags`) in {channel_obj.mention}.')
         guild = ctx.guild
