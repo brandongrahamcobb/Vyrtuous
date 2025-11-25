@@ -1224,21 +1224,19 @@ class Hybrid(commands.Cog):
             if alias_entry is not None:
                 static_channel_id = alias_entry
                 room_name = ''
-            else:
-                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('untmute', {})
-                alias_entry = temp_aliases.get(command_name)
-                if alias_entry is None:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
-                static_channel_id = None
-                room_name = alias_entry
-            if static_channel_id is not None:
-                channel_obj = await self.resolve_channel(ctx, static_channel_id)
-                if not channel_obj:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from the alias.')
-            if room_name != '':
-                channel_obj = discord.utils.get(ctx.guild.channels, name=room_name, type=discord.ChannelType.text)
-                if not channel_obj:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid channel from the room name `{room_name}`.')
+            temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('untmute', {})
+            alias_entry = temp_aliases.get(command_name)
+            if alias_entry is None:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
+            channel_obj = None
+            for temp_room in self.temp_rooms.get(ctx.guild.id, {}).values():
+                if temp_room.room_name == alias_entry:
+                    channel_obj = temp_room.channel_obj
+                    break
+            if channel_obj is None:
+                static_channel_id = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('untmute', {}).get(command_name)
+                if static_channel_id:
+                    channel_obj = await self.resolve_channel(ctx, static_channel_id)
             member_obj = await self.resolve_member(ctx, member)
             if member_obj.bot:
                 return await send(content='\U0001F6AB You cannot untext-mute the bot.')
