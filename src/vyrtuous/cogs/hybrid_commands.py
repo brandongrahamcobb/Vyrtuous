@@ -1220,20 +1220,17 @@ class Hybrid(commands.Cog):
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
         ) -> None:
             channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('untmute', {})
-            alias_entry = channel_aliases.get(command_name)
-            if alias_entry is not None:
-                static_channel_id = alias_entry
-                room_name = ''
-            temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('untmute', {})
-            alias_entry = temp_aliases.get(command_name)
-            if alias_entry is None:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
-            channel_obj = None
-            for temp_room in self.temp_rooms.get(ctx.guild.id, {}).values():
-                if temp_room.room_name == alias_entry:
-                    channel_obj = temp_room.channel_obj
-                    break
-            channel_obj = await self.resolve_channel(ctx, static_channel_id)
+            static_channel_id = channel_aliases.get(command_name)
+            if static_channel_id:
+                channel_obj = await self.resolve_channel(ctx, static_channel_id)
+            if channel_obj is None:
+                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('untmute', {})
+                alias_entry = temp_aliases.get(command_name)
+                if alias_entry:
+                    for temp_room in self.temp_rooms.get(ctx.guild.id, {}).values():
+                        if temp_room.room_name == alias_entry:
+                            channel_obj = temp_room.channel_obj
+                            break
             member_obj = await self.resolve_member(ctx, member)
             if member_obj.bot:
                 return await send(content='\U0001F6AB You cannot untext-mute the bot.')
