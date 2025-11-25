@@ -183,7 +183,7 @@ class Hybrid(commands.Cog):
                 room_name = row['room_name']
                 room_snowflake = row['room_snowflake']
                 owner_snowflake = row['owner_snowflake']
-                self.temp_rooms.setdefault(guild_id, {})[room_snowflake] = TemporaryChannel(
+                self.temp_rooms.setdefault(guild_id, {})[room_snowflake] = TempChannel(
                     room_name=room_name,
                     room_snowflake=room_snowflake,
                     owner_snowflake=owner_snowflake
