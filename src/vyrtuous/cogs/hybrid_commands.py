@@ -125,7 +125,7 @@ class Hybrid(commands.Cog):
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.log_channels: dict[int, list[dict]] = {}
         self.super = {"state": False, "members": set()}
-        self.temp_rooms: dict[int, discord.abc.GuildChannel] = {}
+        self.temp_rooms: dict[int, dict[int, TempChannel]] = {}
         self._loaded_aliases = set()
 
     async def cog_load(self) -> None:
@@ -173,13 +173,12 @@ class Hybrid(commands.Cog):
                         self.bot.add_command(cmd)
                         self._loaded_aliases.add(alias_name)
         await self.load_log_channels()
-        self.temp_rooms = {}
         await self.load_temp_rooms()
         
     async def load_temp_rooms(self):
         async with self.bot.db_pool.acquire() as conn:
             temp_rows = await conn.fetch(
-                'SELECT guild_snowflake, room_name, owner_snowflake, room_snowflake FROM temporary_rooms'
+                'SELECT guild_snowflake, room_name, room_snowflake, owner_snowflake FROM temporary_rooms'
             )
             for row in temp_rows:
                 guild_id = row['guild_snowflake']
@@ -194,6 +193,7 @@ class Hybrid(commands.Cog):
                     continue
                 temp_channel = TempChannel(channel_obj, room_name)
                 self.temp_rooms.setdefault(guild_id, {})[room_snowflake] = temp_channel
+
 
     
     async def load_log_channels(self):
