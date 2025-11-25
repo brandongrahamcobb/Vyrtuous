@@ -173,6 +173,21 @@ class Hybrid(commands.Cog):
                         self.bot.add_command(cmd)
                         self._loaded_aliases.add(alias_name)
         await self.load_log_channels()
+        self.temp_rooms = {}
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                'SELECT guild_snowflake, room_name, room_snowflake, owner_snowflake FROM temporary_rooms'
+            )
+            for row in rows:
+                guild_id = row['guild_snowflake']
+                room_name = row['room_name']
+                room_snowflake = row['room_snowflake']
+                owner_snowflake = row['owner_snowflake']
+                self.temp_rooms.setdefault(guild_id, {})[room_snowflake] = TempRoom(
+                    room_name=room_name,
+                    room_snowflake=room_snowflake,
+                    owner_snowflake=owner_snowflake
+                )
     
     async def load_temp_rooms(self):
         async with self.bot.db_pool.acquire() as conn:
