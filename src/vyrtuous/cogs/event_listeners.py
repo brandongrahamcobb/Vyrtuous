@@ -440,14 +440,14 @@ class EventListeners(commands.Cog):
                             logger.debug(f'No permission to unmute {member.display_name}')
                         except discord.HTTPException as e:
                             logger.debug(f'Failed to unmute {member.display_name}: {e}')
-                    for role in member.roles:
-                       perms = after_channel.permissions_for(role)
-                       if perms.speak is False:
-                           try:
-                               await member.edit(mute=True, reason=f'Auto-muting in {after_channel.name} (Unable to speak role)')
-                               await after_channel.send(f'Auto-muting {member.mention} in (Unable to speak role).')
-                           except discord.HTTPException as e:
-                               logger.debug(f'Failed to mute {member.display_name}: {e}')
+#                    for role in member.roles:
+                    perms = after_channel.permissions_for(member)
+                    if perms.speak is False:
+                        try:
+                            await member.edit(mute=True, reason=f'Auto-muting in {after_channel.name} (Unable to speak role)')
+                            await after_channel.send(f'Auto-muting {member.mention} in (Unable to speak role).')
+                        except discord.HTTPException as e:
+                            logger.debug(f'Failed to mute {member.display_name}: {e}')
                 except Exception as e:
                     logger.exception('Error in on_voice_state_update', exc_info=e)
             
