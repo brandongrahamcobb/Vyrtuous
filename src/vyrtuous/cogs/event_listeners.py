@@ -441,29 +441,29 @@ class EventListeners(commands.Cog):
                         except discord.HTTPException as e:
                             logger.debug(f'Failed to unmute {member.display_name}: {e}')
 #                    for role in member.roles:
-                     perms = after_channel.permissions_for(member)
-                     if perms.speak is False:
-                         denying_roles = []
-                         for role, overwrite in after_channel.overwrites.items():
-                             if isinstance(role, discord.Role):
-                                 if overwrite.speak is False and role in member.roles:
-                                     denying_roles.append(role)
-                             elif isinstance(role, discord.Member):
-                                 if overwrite.speak is False and role.id == member.id:
-                                     denying_roles.append(role)
-                     
-                         # Fallback if no explicit overwrite found (global role permission)
-                         if not denying_roles:
-                             for role in member.roles:
-                                 if role.permissions.speak is False:
-                                     denying_roles.append(role)
-                     
-                         names = ", ".join(r.name if hasattr(r, "name") else r.display_name for r in denying_roles) or "Unknown"
-                     
-                         try:
-                             await member.edit(mute=True, reason=f'Auto-muting in {after_channel.name} (Unable to speak)')
-                             await after_channel.send(f'Auto-muting {member.mention} — speak denied by: {names}')
-                         except Exception as e:
+                    perms = after_channel.permissions_for(member)
+                    if perms.speak is False:
+                        denying_roles = []
+                        for role, overwrite in after_channel.overwrites.items():
+                            if isinstance(role, discord.Role):
+                                if overwrite.speak is False and role in member.roles:
+                                    denying_roles.append(role)
+                            elif isinstance(role, discord.Member):
+                                if overwrite.speak is False and role.id == member.id:
+                                    denying_roles.append(role)
+                    
+                        # Fallback if no explicit overwrite found (global role permission)
+                        if not denying_roles:
+                            for role in member.roles:
+                                if role.permissions.speak is False:
+                                    denying_roles.append(role)
+                    
+                        names = ", ".join(r.name if hasattr(r, "name") else r.display_name for r in denying_roles) or "Unknown"
+                    
+                        try:
+                            await member.edit(mute=True, reason=f'Auto-muting in {after_channel.name} (Unable to speak)')
+                            await after_channel.send(f'Auto-muting {member.mention} — speak denied by: {names}')
+                        except Exception as e:
         logger.debug(f'Failed to mute {member.display_name}: {e}')
 #                    perms = after_channel.permissions_for(member)
 #                    if perms.speak is False:
