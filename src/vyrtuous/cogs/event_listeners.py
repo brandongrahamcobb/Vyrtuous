@@ -54,8 +54,9 @@ class EventListeners(commands.Cog):
                 FROM active_bans
                 WHERE guild_id = $1
                   AND discord_snowflake = $2
+                  AND room_name = $3
                   AND (expires_at IS NULL OR expires_at > NOW())
-            ''', guild_id, user_id)
+            ''', guild_id, user_id, '')
     
     async def fetch_active_text_mutes(self, conn, guild_id: int, user_id: int, temp_room_name: str = None):
         if temp_room_name:
@@ -73,8 +74,9 @@ class EventListeners(commands.Cog):
                 FROM active_text_mutes
                 WHERE guild_id = $1
                   AND discord_snowflake = $2
+                  AND room_name = $3
                   AND (expires_at IS NULL OR expires_at > NOW())
-            ''', guild_id, user_id)
+            ''', guild_id, user_id, '')
     
     @commands.Cog.listener()
     async def on_guild_channel_create(self,channel:discord.abc.GuildChannel):
