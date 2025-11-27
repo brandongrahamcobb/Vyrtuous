@@ -465,7 +465,7 @@ class EventListeners(commands.Cog):
                             await member.edit(mute=True, reason=f'Auto-muting in {after_channel.name} (Unable to speak)')
                             await target_log_channel.send(f'Auto-muting {member.mention} — speak denied by: {names}')
                         except Exception as e:
-        logger.debug(f'Failed to mute {member.display_name}: {e}')
+                            logger.debug(f'Failed to mute {member.display_name}: {e}')
 #                    perms = after_channel.permissions_for(member)
 #                    if perms.speak is False:
 #                        try:
