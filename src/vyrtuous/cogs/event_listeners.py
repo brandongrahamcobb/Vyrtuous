@@ -117,8 +117,8 @@ class EventListeners(commands.Cog):
                     )
                     WHERE $1=ANY(moderator_room_names)
                 ''',name)
-        guild_aliases=self.bot.command_aliases.setdefault(guild.id,{})
-        temp_aliases=guild_aliases.get('temp_room_aliases',{})
+        guild_aliases=self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
+        temp_aliases=guild_aliases.get('temp_room_aliases', self.bot.command_aliases.default_factory())
         for alias_type,aliases in temp_aliases.items():
             for alias_name,data in aliases.items():
                 if data.get('room_name')==name: data['channel_id']=channel.id

@@ -125,7 +125,7 @@ class Hybrid(commands.Cog):
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.log_channels: dict[int, list[dict]] = {}
         self.super = {"state": False, "members": set()}
-        self.temp_rooms: dict[int, dict[int, TempChannel]] = {}
+        self.temp_rooms: dict[int, dict[str, TempChannel]] = {}
         self._loaded_aliases = set()
 
     async def cog_load(self) -> None:
@@ -140,21 +140,21 @@ class Hybrid(commands.Cog):
                 room_name = row['room_name']
                 channel_id = row['channel_id']
                 role_id = row.get('role_id')
-                if room_name:
-                    self.bot.command_aliases.setdefault(guild_id, {}).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {
+                if room_name == '':
+                    self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {
                         'room_name': room_name,
                         'channel_id': int(channel_id) if channel_id else None,
                         'role_id': int(role_id) if role_id else None
                     }
                 elif alias_type in ('role', 'unrole'):
                     if role_id:
-                        self.bot.command_aliases.setdefault(guild_id, {}).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {
+                        self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {
                             'role_id': int(role_id),
                             'channel_id': int(channel_id) if channel_id else None
                         }
                 else:
                     if channel_id:
-                        self.bot.command_aliases.setdefault(guild_id, {}).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_id)
+                        self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_id)
                 if alias_name not in self._loaded_aliases:
                     cmd = None
                     if alias_type == 'mute': cmd = self.create_voice_mute_alias(alias_name)
@@ -191,18 +191,7 @@ class Hybrid(commands.Cog):
                 if not channel_obj:
                     continue
                 temp_channel = TempChannel(channel_obj, room_name)
-                self.temp_rooms.setdefault(guild_id, {})[room_snowflake] = temp_channel
-    
-        # Send debug messages to all channels
-        for guild_id, rooms in self.temp_rooms.items():
-            for channel_id, temp_channel in rooms.items():
-                try:
-                    await temp_channel.channel_obj.send(
-                        f"[TempRoom Debug] Loaded temp room: '{temp_channel.room_name}' with channel ID {channel_id}"
-                    )
-                except Exception as e:
-                    print(f"[TempRoom] Failed to send debug to channel {channel_id} in guild {guild_id}: {e}")
-
+                self.temp_rooms.setdefault(guild_id, {})[room_name] = temp_channel
     
     async def load_log_channels(self):
         async with self.bot.db_pool.acquire() as conn:
@@ -255,13 +244,13 @@ class Hybrid(commands.Cog):
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB You cannot ban a superhero.')
             if not member_obj or not member:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('ban', {})
+            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('channel_aliases', {}).get('ban', {})
             alias_entry = channel_aliases.get(command_name)
             if alias_entry is not None:
                 static_channel_id = alias_entry
                 room_name = ''
             else:
-                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('ban', {})
+                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('temp_room_aliases', {}).get('ban', {})
                 alias_entry = temp_aliases.get(command_name)
                 if alias_entry is None:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
@@ -433,7 +422,7 @@ class Hybrid(commands.Cog):
         ) -> None:
             channel_id = (
                 self.bot.command_aliases
-                    .get(ctx.guild.id, {})
+                    .get(ctx.guild.id, self.bot.command_aliases.default_factory())
                     .get('channel_aliases', {})
                     .get('cow', {})
                     .get(command_name)
@@ -492,7 +481,7 @@ class Hybrid(commands.Cog):
         ) -> None:
             channel_id = (
                 self.bot.command_aliases
-                    .get(ctx.guild.id, {})
+                    .get(ctx.guild.id, self.bot.command_aliases.default_factory())
                     .get('channel_aliases', {})
                     .get('flag', {})
                     .get(command_name)
@@ -590,7 +579,7 @@ class Hybrid(commands.Cog):
         ) -> None:
             alias_data = (
                 self.bot.command_aliases
-                    .get(ctx.guild.id, {})
+                    .get(ctx.guild.id, self.bot.command_aliases.default_factory())
                     .get('role_aliases', {})
                     .get('role', {})
                     .get(command_name)
@@ -635,13 +624,13 @@ class Hybrid(commands.Cog):
             *,
             reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
         ) -> None:
-            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('tmute', {})
+            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('channel_aliases', {}).get('tmute', {})
             alias_entry = channel_aliases.get(command_name)
             if alias_entry is not None:
                 static_channel_id = alias_entry
                 room_name = ''
             else:
-                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('tmute', {})
+                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('temp_room_aliases', {}).get('tmute', {})
                 alias_entry = temp_aliases.get(command_name)
                 if alias_entry is None:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
@@ -739,13 +728,13 @@ class Hybrid(commands.Cog):
             reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
         ) -> None:
         
-            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('mute', {})
+            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('channel_aliases', {}).get('mute', {})
             alias_entry = channel_aliases.get(command_name)
             if alias_entry is not None:
                 static_channel_id = alias_entry
                 room_name = ''
             else:
-                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('mute', {})
+                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('temp_room_aliases', {}).get('mute', {})
                 alias_entry = temp_aliases.get(command_name)
                 if alias_entry is None:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
@@ -915,13 +904,13 @@ class Hybrid(commands.Cog):
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
             room_name: Optional[str] = ''
         ) -> None:
-            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('unban', {})
+            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('channel_aliases', {}).get('unban', {})
             alias_entry = channel_aliases.get(command_name)
             if alias_entry is not None:
                 static_channel_id = alias_entry
                 room_name = ''
             else:
-                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('unban', {})
+                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('temp_room_aliases', {}).get('unban', {})
                 alias_entry = temp_aliases.get(command_name)
                 if alias_entry is None:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
@@ -984,7 +973,7 @@ class Hybrid(commands.Cog):
         ) -> None:
             static_channel_id = int(
                 self.bot.command_aliases
-                    .get(ctx.guild.id, {})
+                    .get(ctx.guild.id, self.bot.command_aliases.default_factory())
                     .get('channel_aliases', {})
                     .get('uncow', {})
                     .get(command_name)
@@ -1041,7 +1030,7 @@ class Hybrid(commands.Cog):
         ) -> None:
             static_channel_id = int(
                 self.bot.command_aliases
-                    .get(ctx.guild.id, {})
+                    .get(ctx.guild.id, self.bot.command_aliases.default_factory())
                     .get('channel_aliases', {})
                     .get('unflag', {})
                     .get(command_name)
@@ -1096,13 +1085,13 @@ class Hybrid(commands.Cog):
             ctx: commands.Context,
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
         ) -> None:
-            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('unmute', {})
+            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('channel_aliases', {}).get('unmute', {})
             alias_entry = channel_aliases.get(command_name)
             if alias_entry is not None:
                 static_channel_id = alias_entry
                 room_name = ''
             else:
-                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('unmute', {})
+                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('temp_room_aliases', {}).get('unmute', {})
                 alias_entry = temp_aliases.get(command_name)
                 if alias_entry is None:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
@@ -1162,6 +1151,14 @@ class Hybrid(commands.Cog):
                 logger.warning(f'\U0001F6AB Database error: {e}')
                 raise
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
+                for role in member_obj.roles:
+                    perms = channel_obj.permissions_for(role)
+                    if perms.speak is False:
+                        try:
+                            await member_obj.edit(mute=True)
+                        except discord.Forbidden:
+                            logger.warning(f"Could not locally re-mute {member_obj} in {channel_obj.name}")
+            if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                 return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member_obj.mention} has been unmuted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
             return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member_obj.mention} is no longer marked as muted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
         return unmute_alias_text_command
@@ -1175,7 +1172,7 @@ class Hybrid(commands.Cog):
         ) -> None:
             alias_data = (
                 self.bot.command_aliases
-                    .get(ctx.guild.id, {})
+                    .get(ctx.guild.id, self.bot.command_aliases.default_factory())
                     .get('role_aliases', {})
                     .get('unrole', {})
                     .get(command_name)
@@ -1219,13 +1216,13 @@ class Hybrid(commands.Cog):
             ctx,
             member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
         ) -> None:
-            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('channel_aliases', {}).get('untmute', {})
+            channel_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('channel_aliases', {}).get('untmute', {})
             alias_entry = channel_aliases.get(command_name)
             if alias_entry is not None:
                 static_channel_id = alias_entry
                 room_name = ''
             else:
-                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, {}).get('temp_room_aliases', {}).get('untmute', {})
+                temp_aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory()).get('temp_room_aliases', {}).get('untmute', {})
                 alias_entry = temp_aliases.get(command_name)
                 if alias_entry is None:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
@@ -1482,11 +1479,11 @@ class Hybrid(commands.Cog):
                 VALUES ($1,$2,$3,$4,$5,$6)
             ''', 'create_alias', None, interaction.user.id, interaction.guild.id, channel_obj.id, f'Created an alias: {alias_name}')
         if alias_type in ('role','unrole') and is_owner_or_dev:
-            self.bot.command_aliases.setdefault(interaction.guild.id, {}).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {'channel_id': channel_obj.id, 'role_id': role_id}
+            self.bot.command_aliases.setdefault(interaction.guild.id, self.bot.command_aliases.default_factory()).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {'channel_id': channel_obj.id, 'role_id': role_id}
         elif is_temp_room:
-            self.bot.command_aliases.setdefault(interaction.guild.id, {}).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {'room_name': room_name_to_store, 'channel_id': channel_obj.id}
+            self.bot.command_aliases.setdefault(interaction.guild.id, self.bot.command_aliases.default_factory()).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {'room_name': room_name_to_store, 'channel_id': channel_obj.id}
         else:
-            self.bot.command_aliases.setdefault(interaction.guild.id, {}).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = channel_obj.id
+            self.bot.command_aliases.setdefault(interaction.guild.id, self.bot.command_aliases.default_factory()).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = channel_obj.id
         cmd = None
         if alias_type == 'ban': cmd = self.create_ban_alias(alias_name)
         elif alias_type == 'flag': cmd = self.create_flag_alias(alias_name)
@@ -1530,12 +1527,15 @@ class Hybrid(commands.Cog):
         if not alias_name or not alias_name.strip():
             return await send(content='\U0001F6AB Alias name cannot be empty.')
         channel_obj = await self.resolve_channel(ctx, channel)
+        is_temp_room = False
+        room_name_to_store = None
+        temp_channel = None
         temp_rooms = self.temp_rooms.get(ctx.guild.id, {})
         if channel_obj.name in temp_rooms:
             temp_channel = temp_rooms[channel_obj.name]
-            channel_obj = temp_channel
             is_temp_room = True
             room_name_to_store = temp_channel.room_name
+            channel_obj = temp_channel.channel
         else:
             is_temp_room = False
             room_name_to_store = None
@@ -1594,11 +1594,11 @@ class Hybrid(commands.Cog):
                 VALUES ($1,$2,$3,$4,$5,$6)
             ''', 'create_alias', None, ctx.author.id, ctx.guild.id, channel_obj.id, f'Created an alias: {alias_name}')
         if alias_type in ('role','unrole') and is_owner_or_dev:
-            self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {'channel_id': int(channel_obj.id), 'role_id': int(role_id)}
+            self.bot.command_aliases.setdefault(ctx.guild.id, self.bot.command_aliases.default_factory()).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {'channel_id': int(channel_obj.id), 'role_id': int(role_id)}
         elif is_temp_room:
-            self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {'room_name': room_name_to_store, 'channel_id': int(channel_obj.id)}
+            self.bot.command_aliases.setdefault(ctx.guild.id, self.bot.command_aliases.default_factory()).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {'room_name': room_name_to_store, 'channel_id': int(channel_obj.id)}
         else:
-            self.bot.command_aliases.setdefault(ctx.guild.id, {}).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_obj.id)
+            self.bot.command_aliases.setdefault(ctx.guild.id, self.bot.command_aliases.default_factory()).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_obj.id)
         cmd = None
         if alias_type == 'ban': cmd = self.create_ban_alias(alias_name)
         elif alias_type == 'flag': cmd = self.create_flag_alias(alias_name)
@@ -1857,7 +1857,7 @@ class Hybrid(commands.Cog):
             await conn.execute('DELETE FROM temporary_rooms WHERE room_snowflake = $1', channel_obj.id)
     
         # Remove in-memory temp-room aliases
-        guild_aliases = self.bot.command_aliases.setdefault(channel_obj.guild.id, {})
+        guild_aliases = self.bot.command_aliases.setdefault(channel_obj.guild.id, self.bot.command_aliases.default_factory())
         temp_aliases = guild_aliases.get('temp_room_aliases', {})
         for alias_type, aliases in temp_aliases.items():
             for alias_name, data in list(aliases.items()):
@@ -2620,7 +2620,7 @@ class Hybrid(commands.Cog):
         target: Optional[str] = None
     ):
         send = lambda **kw: interaction.response.send_message(**kw, ephemeral=True)
-        aliases = self.bot.command_aliases.get(interaction.guild.id, {})
+        aliases = self.bot.command_aliases.get(interaction.guild.id, self.bot.command_aliases.default_factory())
         if not aliases:
             return await send(content=f'No aliases defined in {interaction.guild.name}.')
         if target and target.lower() == 'all':
@@ -2741,7 +2741,7 @@ class Hybrid(commands.Cog):
     ) -> None:
         async def send(**kw):
             await self.handler.send_message(ctx, **kw)
-        aliases = self.bot.command_aliases.get(ctx.guild.id, {})
+        aliases = self.bot.command_aliases.get(ctx.guild.id, self.bot.command_aliases.default_factory())
         if not aliases:
             return await send(content=f'No aliases defined in {ctx.guild.name}.')
         if target and target.lower() == 'all':
@@ -2757,7 +2757,7 @@ class Hybrid(commands.Cog):
                         temp_room_obj = temp_channel
                         channel_obj = temp_channel
                         break
-            elif not target:
+            else:
                 for temp_channel in temp_rooms.values():
                     if channel_obj.name == temp_channel.room_name:
                         temp_room_obj = temp_channel
@@ -3061,7 +3061,7 @@ class Hybrid(commands.Cog):
         room_name = ''
         is_temp_room = False
         for temp_channel in temp_rooms.values():
-            if temp_channel.id == getattr(channel_obj, 'id', None) or temp_channel.name == getattr(channel_obj, 'name', None):
+            if temp_channel.name == getattr(channel_obj, 'name', None):
                 room_name = temp_channel.room_name
                 is_temp_room = True
                 channel_obj = temp_channel
@@ -3118,7 +3118,7 @@ class Hybrid(commands.Cog):
         room_name = ''
         is_temp_room = False
         for temp_channel in temp_rooms.values():
-            if temp_channel.id == getattr(channel_obj, 'id', None) or temp_channel.name == getattr(channel_obj, 'name', None):
+            if temp_channel.name == getattr(channel_obj, 'name', None):
                 room_name = temp_channel.room_name
                 is_temp_room = True
                 channel_obj = temp_channel
@@ -4537,53 +4537,36 @@ class Hybrid(commands.Cog):
     @is_owner_developer_coordinator_predicator()
     async def migrate_temp_room_command(self, ctx, old_name: str, new_room_snowflake: int):
         guild = ctx.guild
-        user_id = ctx.author.id
         send = lambda **kw: self.handler.send_message(ctx, **kw)
-    
+        user_id = ctx.author.id
         async with self.bot.db_pool.acquire() as conn:
             rooms = await conn.fetch(
                 'SELECT room_name, owner_snowflake, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name
             )
-    
             if not rooms:
                 return await send(content=f"No temporary room named '{old_name}' found.")
             if len(rooms) > 1:
                 return await send(content=f"Multiple temporary rooms named '{old_name}' exist. Migration failed.")
-    
             temp = rooms[0]
-    
             channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
+            
             if not channel_obj:
                 return await send(content=f"No channel found with ID {new_room_snowflake}.")
-    
             is_owner = temp['owner_snowflake'] == user_id
             is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
             if not (is_owner_or_dev or is_owner):
                 return await send(content="Only the owner or developers can migrate this room.")
-    
-            conflict = await conn.fetchrow(
-                'SELECT 1 FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2 AND room_name != $3',
-                guild.id, channel_obj.name, old_name
-            )
-            if conflict:
-                return await send(content=f"Cannot migrate: a different temporary room with the name '{channel_obj.name}' already exists.")
-    
-            # Update temporary_rooms
             await conn.execute(
                 'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name, channel_obj.name, new_room_snowflake
             )
-    
-            # Update associated tables
             tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps','command_aliases']
             for table in tables:
                 await conn.execute(
                     f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
                     guild.id, old_name, channel_obj.name, new_room_snowflake
                 )
-    
-            # Update user arrays
             await conn.execute(
                 'UPDATE users SET coordinator_room_names=array_replace(coordinator_room_names, $1, $2) WHERE $1=ANY(coordinator_room_names)',
                 old_name, channel_obj.name
@@ -4592,31 +4575,21 @@ class Hybrid(commands.Cog):
                 'UPDATE users SET moderator_room_names=array_replace(moderator_room_names, $1, $2) WHERE $1=ANY(moderator_room_names)',
                 old_name, channel_obj.name
             )
-    
             old_channel_id = temp['room_snowflake']
-    
-            # Update in-memory temp_room_aliases
-            guild_aliases = self.bot.command_aliases.get(guild.id, {}).get('temp_room_aliases', {})
-            for alias_type, aliases in guild_aliases.items():
-                for alias_name, alias_data in aliases.items():
-                    if alias_data.get('channel_id') == old_channel_id:
-                        alias_data['channel_id'] = channel_obj.id
-                        alias_data['room_name'] = channel_obj.name
-    
-            # Update in-memory temp rooms
+            guild_alias_root = self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
+            for group_name, group in guild_alias_root.items():
+                for alias_type, aliases in group.items():
+                    for alias_name, alias_data in aliases.items():
+                        if alias_name == old_name:
+                            alias_data["channel_id"] = channel_obj.id
+                            alias_name = channel_obj.name
             if guild.id in self.temp_rooms:
                 if old_name in self.temp_rooms[guild.id]:
                     temp_channel = self.temp_rooms[guild.id].pop(old_name)
                     temp_channel.room_name = channel_obj.name
-                    temp_channel.channel_obj = channel_obj
+                    temp_channel.channel = channel_obj
                     self.temp_rooms[guild.id][channel_obj.name] = temp_channel
-                else:
-                    for temp_room in self.temp_rooms[guild.id].values():
-                        if temp_room.room_snowflake == old_channel_id:
-                            temp_room.room_snowflake = channel_obj.id
-                            temp_room.room_name = channel_obj.name
-    
-        await send(content=f"✅ Temporary room '{old_name}' migrated to {channel_obj.mention} and renamed to '{channel_obj.name}'.")
+            return await send(content=f"✅ Temporary room '{old_name}' migrated to {channel_obj.mention} and renamed to '{channel_obj.name}'.")
 
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
     @app_commands.describe(
@@ -5491,7 +5464,7 @@ class Hybrid(commands.Cog):
         send = lambda **kw: interaction.response.send_message(**kw,ephemeral=True)
         if not alias_name or not alias_name.strip():
             return await send(content='\U0001F6AB `alias_name` cannot be empty.')
-        guild_aliases = self.bot.command_aliases.get(interaction.guild.id, {})
+        guild_aliases = self.bot.command_aliases.get(interaction.guild.id, self.bot.command_aliases.default_factory())
         alias_dict = None
         alias_entry=None
         alias_room=None
@@ -5674,7 +5647,7 @@ class Hybrid(commands.Cog):
                 ''', member_obj.id, channel_obj.id)
             temp_rooms_to_remove = []
             for room in current_rooms:
-                temp_alias = self.bot.command_aliases.get(interaction.guild.id, {}) \
+                temp_alias = self.bot.command_aliases.get(interaction.guild.id, self.bot.command_aliases.default_factory()) \
                     .get('temp_room_aliases', {}) \
                     .get('mute', {}) \
                     .get(room)
@@ -5812,7 +5785,7 @@ class Hybrid(commands.Cog):
                 await conn.execute('UPDATE users SET moderator_channel_ids = array_remove(moderator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
             temp_rooms_to_remove = []
             for room in current_rooms:
-                temp_alias = self.bot.command_aliases.get(guild.id, {}).get('temp_room_aliases', {}).get('mute', {}).get(room)
+                temp_alias = self.bot.command_aliases.get(guild.id, self.bot.command_aliases.default_factory()).get('temp_room_aliases', {}).get('mute', {}).get(room)
                 if temp_alias and temp_alias.get('channel_id') == channel_obj.id:
                     temp_rooms_to_remove.append(room)
             for room_name in temp_rooms_to_remove:
@@ -6072,7 +6045,7 @@ class Hybrid(commands.Cog):
         room_name = ''
         is_temp_room = False
         for temp_channel in temp_rooms.values():
-            if temp_channel.id == getattr(channel_obj, 'id', None) or temp_channel.name == getattr(channel_obj, 'name', None):
+            if temp_channel.name == getattr(channel_obj, 'name', None):
                 room_name = temp_channel.room_name
                 is_temp_room = True
                 channel_obj = temp_channel
