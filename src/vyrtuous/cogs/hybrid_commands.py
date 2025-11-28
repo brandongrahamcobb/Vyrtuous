@@ -392,7 +392,7 @@ class Hybrid(commands.Cog):
                     reason=f'{reason or "No reason provided"}'
                 )
             except discord.Forbidden:
-                logger.warning('\U0001F6AB Missing permissions to deny channel access.')
+                return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully banned.", allowed_mentions=discord.AllowedMentions.none())
             is_in_channel = False
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                 is_in_channel = True
