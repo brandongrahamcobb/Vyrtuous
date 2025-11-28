@@ -273,6 +273,12 @@ class Hybrid(commands.Cog):
                     return await self.handler.send_message(
                         ctx, content=f'\U0001F6AB Could not resolve a valid channel from the room name `{room_name}`.'
                     )
+            member_obj = await self.resolve_member(ctx, member)
+            if member_obj:
+                if member_obj.id in self.super["members"]:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB You cannot ban a superhero.')
+            if not member_obj or not member:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
             if member_obj.bot and not is_owner_or_dev:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot ban the bot.')
@@ -804,7 +810,7 @@ class Hybrid(commands.Cog):
             if not success:
                 target_name = channel_obj.mention if channel_obj else room_name or ''
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {target_name}.')
-            print('test')
+            
             async with self.bot.db_pool.acquire() as conn:
                 existing_mute = await conn.fetchrow('''
                     SELECT expires_at, reason
