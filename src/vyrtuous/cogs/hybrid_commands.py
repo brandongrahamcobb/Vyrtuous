@@ -2859,15 +2859,22 @@ class Hybrid(commands.Cog):
         channel_obj = await self.resolve_channel(ctx, target)
         temp_room_obj = None
         found_aliases = False
-        for alias_type, commands_dict in aliases.get('channel_aliases', {}).items():
-            for cmd_name, value in commands_dict.items():
-                channel_id = int(value)
-                break
-        for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
-            for alias_name, data in room_map.items():
-                room_name = data.get('room_name', '')
-                if room_name != '' and room_name.lower() == channel_obj.name.lower():
-                    temp_room_obj = data
+#        for alias_type, commands_dict in aliases.get('channel_aliases', {}).items():
+#            for cmd_name, value in commands_dict.items():
+#                channel_id = int(value)
+#                break
+#        for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
+#            for alias_name, data in room_map.items():
+#                room_name = data.get('room_name', '')
+#                if room_name != '' and room_name.lower() == channel_obj.name.lower():
+#                    temp_room_obj = data
+#                    break
+#            if temp_room_obj:
+#                break
+        for guild_temp_rooms in self.temp_rooms.values():
+            for temp_channel in guild_temp_rooms.values():
+                if temp_channel.room_name.lower() == channel_obj.name.lower():
+                    temp_room_obj = temp_channel
                     break
             if temp_room_obj:
                 break
@@ -2910,13 +2917,13 @@ class Hybrid(commands.Cog):
                     found_aliases = True
         else:
             for kind, type_map in aliases.get('channel_aliases', {}).items():
-                channel_entries = {name: cid for name, cid in type_map.items() if cid == channel_id}
+                channel_entries = {name: cid for name, cid in type_map.items() if cid == channel_obj.id}
                 if channel_entries:
                     found_aliases = True
                     lines.append(f'**{kind.capitalize()}**')
                     lines.extend(f'`{name}`' for name, cid in channel_entries.items())
             for kind, type_map in aliases.get('role_aliases', {}).items():
-                role_entries = {name: data for name, data in type_map.items() if isinstance(data, dict) and data.get('channel_id') == channel_id}
+                role_entries = {name: data for name, data in type_map.items() if isinstance(data, dict) and data.get('channel_id') == channel_obj.id}
                 if role_entries:
                     found_aliases = True
                     lines.append(f'**{kind.capitalize()}**')

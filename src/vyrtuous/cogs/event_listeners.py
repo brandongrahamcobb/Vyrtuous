@@ -558,7 +558,7 @@ class EventListeners(commands.Cog):
                             if overwrite.send_messages is False and (uid, channel.id, room_name) not in text_set:
                                 await channel.set_permissions(overwrite_obj, send_messages=None)
                             if overwrite.view_channel is False and (uid, channel.id, room_name) not in ban_set:
-                                await channel.set_permissions(overwrite_obj, overwrite=None)
+                                await channel.set_permissions(overwrite_obj, view_channel=True)
                     if isinstance(channel, discord.VoiceChannel):
                         for member in channel.members:
                             if member.voice and member.voice.mute and (member.id, channel.id, room_name) not in voice_set:
