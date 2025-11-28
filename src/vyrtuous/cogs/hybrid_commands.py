@@ -4660,7 +4660,6 @@ class Hybrid(commands.Cog):
                 return await send(ctx, content=f"Multiple temporary rooms named '{old_name}' exist. Migration failed.")
             temp = rooms[0]
             channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
-            
             if not channel_obj:
                 return await send(ctx, content=f"No channel found with ID {new_room_snowflake}.")
             is_owner = temp['owner_snowflake'] == user_id
@@ -4688,17 +4687,19 @@ class Hybrid(commands.Cog):
             old_channel_id = temp['room_snowflake']
             guild_alias_root = self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
             for group_name, group in guild_alias_root.items():
-                for alias_type, aliases in group.items():
-                    for alias_name, alias_data in aliases.items():
-                        if alias_name == old_name:
-                            alias_data["channel_id"] = channel_obj.id
-                            alias_name = channel_obj.name
+                if group_name == 'temp_room_aliases':
+                    for alias_type, aliases in group.items():
+                        aliases_to_update = {}
+                        for alias_name, alias_data in list(aliases.items()):
+                            if alias_data.get('room_name') == old_room_name:
+                                alias_data['channel_id'] = target_channel.id
+                                alias_data['room_name'] = new_room_name
             if guild.id in self.temp_rooms:
-                if old_name in self.temp_rooms[guild.id]:
-                    temp_channel = self.temp_rooms[guild.id].pop(old_name)
-                    temp_channel.room_name = channel_obj.name
-                    temp_channel.channel = channel_obj
-                    self.temp_rooms[guild.id][channel_obj.name] = temp_channel
+                if old_room_name in self.temp_rooms[guild.id]:
+                    temp_channel_obj = self.temp_rooms[guild.id].pop(old_room_name)
+                    temp_channel_obj.room_name = new_room_name
+                    temp_channel_obj.channel = target_channel
+                    self.temp_rooms[guild.id][new_room_name] = temp_channel_obj
             return await send(ctx, content=f"✅ Temporary room '{old_name}' migrated to {channel_obj.mention} and renamed to '{channel_obj.name}'.")
 
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
