@@ -3090,7 +3090,7 @@ class Hybrid(commands.Cog):
                     room_name=temp.room_name
                     break
         async with ctx.bot.db_pool.acquire() as conn:
-            if target.lower()=='all':
+            if target and target.lower()=='all':
                 if not is_owner_or_dev: return await send(ctx, content='\U0001F6AB You are not authorized to list all coordinators.')
                 query='SELECT unnest(coordinator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE coordinator_channel_ids IS NOT NULL'
                 rows=await conn.fetch(query)
@@ -3921,7 +3921,7 @@ class Hybrid(commands.Cog):
                     room_name=temp.room_name
                     break
         async with ctx.bot.db_pool.acquire() as conn:
-            if target.lower()=='all':
+            if target and target.lower()=='all':
                 if not is_owner_or_dev: return await send(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
                 query='SELECT unnest(moderator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE moderator_channel_ids IS NOT NULL'
                 rows=await conn.fetch(query)
@@ -4011,7 +4011,7 @@ class Hybrid(commands.Cog):
         else:
             is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod_app(interaction, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord and not is_team_member: return await send(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention if channel_obj else "this context"}.')
-        if target.lower()=='all' and is_owner_or_dev:
+        if target and target.lower()=='all' and is_owner_or_dev:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''SELECT discord_snowflake, channel_id, expires_at, COALESCE(reason,'No reason provided') AS reason FROM active_voice_mutes WHERE guild_id=$1 AND target='user' ORDER BY     channel_id,discord_snowflake''',guild.id)
             if not records: return await send(content=f'\U0001F6AB No muted users currently in {guild.name}.')
