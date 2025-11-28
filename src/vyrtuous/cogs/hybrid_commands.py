@@ -4692,14 +4692,14 @@ class Hybrid(commands.Cog):
                         aliases_to_update = {}
                         for alias_name, alias_data in list(aliases.items()):
                             if alias_data.get('room_name') == old_name:
-                                alias_data['channel_id'] = target_channel.id
+                                alias_data['channel_id'] =  new_room_snowflake
                                 alias_data['room_name'] = channel_obj.name
             if guild.id in self.temp_rooms:
-                if old_room_name in self.temp_rooms[guild.id]:
+                if old_name in self.temp_rooms[guild.id]:
                     temp_channel_obj = self.temp_rooms[guild.id].pop(old_name)
                     temp_channel_obj.room_name = channel_obj.name
-                    temp_channel_obj.channel = target_channel
-                    self.temp_rooms[guild.id][new_room_name] = temp_channel_obj
+                    temp_channel_obj.channel = channel_obj
+                    self.temp_rooms[guild.id][channel_obj.name] = temp_channel_obj
             return await send(ctx, content=f"✅ Temporary room '{old_name}' migrated to {channel_obj.mention} and renamed to '{channel_obj.name}'.")
 
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
