@@ -6411,6 +6411,9 @@ class Hybrid(commands.Cog):
             )
             return [(r['moderation_type'], r['duration']) for r in rows]
     
+    def get_temp_channel_by_name(self, guild_id: int, room_name: str):
+        return self.temp_rooms.get(guild_id, {}).get(room_name)
+    
     async def resolve_member(self, ctx: commands.Context, value: Optional[Union[int, str, discord.Member]]) -> Optional[discord.Member]:
         try:
             if isinstance(value, discord.Member):

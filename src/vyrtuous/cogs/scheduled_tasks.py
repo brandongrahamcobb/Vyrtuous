@@ -81,11 +81,14 @@ class ScheduledTasks(commands.Cog):
 
     @tasks.loop(minutes=5)  # run every 5 minutes
     async def check_active_bans(self):
+        hybrid = self.bot.get_cog("Hybrid")
         async with self.bot.db_pool.acquire() as conn:
             for guild in self.bot.guilds:
                 for channel in guild.channels:
                     if not isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
                         continue
+                    if hybrid:
+                        temp = hybrid.get_temp_channel_by_name(guild.id, channel.name)
                     for member in channel.members:
                         perms = channel.permissions_for(member)
                         if not perms.view_channel:
@@ -97,7 +100,7 @@ class ScheduledTasks(commands.Cog):
                               AND discord_snowflake = $2
                               AND channel_id = $3
                               AND room_name = $4
-                        ''', guild.id, member.id, channel.id, getattr(channel, 'room_name', ''))
+                        ''', guild.id, member.id, channel.id, temp.room_name if getattr(temp, 'is_temp_room', False) else '')
                         if ban:
                             expires_at = ban['expires_at']
                             now = datetime.now(timezone.utc)
@@ -108,6 +111,7 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_bans(self):
         try:
             now = datetime.now(timezone.utc)
+            hybrid = self.bot.get_cog("Hybrid")
             async with self.bot.db_pool.acquire() as conn:
                 expired = await conn.fetch('''
                     SELECT guild_id, discord_snowflake, channel_id, room_name
@@ -126,7 +130,9 @@ class ScheduledTasks(commands.Cog):
                                 channel = await guild.fetch_channel(channel_id)
                             except discord.NotFound:
                                 channel = None
-                        room_name = getattr(channel, 'room_name', '') if channel else ''
+                        if hybrid:
+                            temp = hybrid.get_temp_channel_by_name(guild.id, channel.name)
+                        room_name = temp.room_name if getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired ban')
                             await conn.execute('''
@@ -166,6 +172,7 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_voice_mutes(self):
         try:
             now = datetime.now(timezone.utc)
+            hybrid = self.bot.get_cog("Hybrid")
             async with self.bot.db_pool.acquire() as conn:
                 expired = await conn.fetch('''
                     SELECT guild_id, discord_snowflake, channel_id, target, room_name
@@ -185,7 +192,9 @@ class ScheduledTasks(commands.Cog):
                                 channel = await guild.fetch_channel(channel_id)
                             except discord.NotFound:
                                 channel = None
-                        room_name = getattr(channel, 'room_name', '') if channel else ''
+                        if hybrid:
+                            temp = hybrid.get_temp_channel_by_name(guild.id, channel.name)
+                        room_name = temp.room_name if getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired voice mute')
                             await conn.execute('''
@@ -229,9 +238,10 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_stages(self):
         try:
             now = datetime.now(timezone.utc)
+            hybrid = self.bot.get_cog("Hybrid")
             async with self.bot.db_pool.acquire() as conn:
                 expired = await conn.fetch('''
-                    SELECT guild_id, channel_id
+                    SELECT guild_id, channel_id, room_name
                     FROM active_stages
                     WHERE expires_at IS NOT NULL
                       AND expires_at <= $1
@@ -240,24 +250,29 @@ class ScheduledTasks(commands.Cog):
                     try:
                         guild_id = record['guild_id']
                         channel_id = record['channel_id']
+                        stored_room = record['room_name']
+                        guild = self.bot.get_guild(guild_id)
+                        channel = self.bot.get_channel(channel_id)
+                        if hybrid and guild and channel:
+                            temp = hybrid.get_temp_channel(guild_id, channel_id)
+                        room_name = temp.room_name if getattr(temp, 'is_temp_room', False) else ''
                         muted_members = await conn.fetch('''
-                            SELECT discord_snowflake 
-                            FROM active_voice_mutes 
-                            WHERE guild_id = $1 AND channel_id = $2 AND target = $3
-                        ''', guild_id, channel_id, 'room')
+                            SELECT discord_snowflake
+                            FROM active_voice_mutes
+                            WHERE guild_id = $1 AND channel_id = $2 AND target = $3 AND room_name = $4
+                        ''', guild_id, channel_id, 'room', room_name)
                         await conn.execute('''
                             DELETE FROM active_voice_mutes
-                            WHERE guild_id = $1 AND channel_id = $2 AND target = 'room'
-                        ''', guild_id, channel_id)
+                            WHERE guild_id = $1 AND channel_id = $2 AND target = 'room' AND room_name = $3
+                        ''', guild_id, channel_id, room_name)
                         await conn.execute('''
                             DELETE FROM stage_coordinators
-                            WHERE guild_id = $1 AND channel_id = $2
-                        ''', guild_id, channel_id)
+                            WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+                        ''', guild_id, channel_id, room_name)
                         await conn.execute('''
                             DELETE FROM active_stages
-                            WHERE guild_id = $1 AND channel_id = $2
-                        ''', guild_id, channel_id)
-                        guild = self.bot.get_guild(guild_id)
+                            WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+                        ''', guild_id, channel_id, room_name)
                         if guild:
                             for member_record in muted_members:
                                 try:
@@ -276,17 +291,20 @@ class ScheduledTasks(commands.Cog):
                                     continue
                         else:
                             logger.info(f'Guild {guild_id} not found when processing expired stage {channel_id}')
+    
                         logger.info(f'Cleaned up expired stage for channel {channel_id} in guild {guild_id}')
                     except Exception as e:
                         logger.error(f'Error processing expired stage for channel {channel_id} in guild {guild_id}: {e}', exc_info=True)
                         continue
         except Exception as e:
             logger.error(f'Error in check_expired_stages task: {e}', exc_info=True)
+
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
         try:
             now = datetime.now(timezone.utc)
+            hybrid = self.bot.get_cog("Hybrid")
             async with self.bot.db_pool.acquire() as conn:
                 expired = await conn.fetch('''
                     SELECT guild_id, discord_snowflake, channel_id, room_name
@@ -307,7 +325,9 @@ class ScheduledTasks(commands.Cog):
                                 channel = await guild.fetch_channel(channel_id)
                             except discord.NotFound:
                                 channel = None
-                        room_name = getattr(channel, 'room_name', '') if channel else ''
+                        if hybrid and guild and channel:
+                            temp = hybrid.get_temp_channel(guild_id, channel_id)
+                        room_name = temp.room_name if getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired text mute')
                             await conn.execute('''
