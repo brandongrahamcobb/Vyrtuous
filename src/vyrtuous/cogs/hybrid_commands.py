@@ -4647,7 +4647,8 @@ class Hybrid(commands.Cog):
     @is_owner_developer_coordinator_predicator()
     async def migrate_temp_room_command(self, ctx, old_name: str, new_room_snowflake: int):
         guild = ctx.guild
-        send = lambda **kw: self.handler.send_message(ctx, **kw)
+        async def send(ctx, **kw):
+            await self.handler.send_message(ctx, **kw)
         user_id = ctx.author.id
         async with self.bot.db_pool.acquire() as conn:
             rooms = await conn.fetch(
