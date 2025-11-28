@@ -442,30 +442,34 @@ class EventListeners(commands.Cog):
                             logger.debug(f'Failed to unmute {member.display_name}: {e}')
 #                    for role in member.roles:
                     target_log_channel = after_channel.guild.get_channel(1409191157694595183)
-                    perms = after_channel.permissions_for(member)
-                    if perms.speak is False:
-                        denying_roles = []
-                        for role, overwrite in after_channel.overwrites.items():
-                            if isinstance(role, discord.Role):
-                                if overwrite.speak is False and role in member.roles:
-                                    denying_roles.append(role)
-                            elif isinstance(role, discord.Member):
-                                if overwrite.speak is False and role.id == member.id:
-                                    denying_roles.append(role)
+                    explicit_deny_roles = []
+                    for role in member.roles:
+                        ow = after_channel.overwrites_for(role)
+                        if ow.speak is False:  # Explicit deny only
+                            explicit_deny_roles.append(role)
                     
-                        # Fallback if no explicit overwrite found (global role permission)
-                        if not denying_roles:
-                            for role in member.roles:
-                                if role.permissions.speak is False:
-                                    denying_roles.append(role)
-                    
-                        names = ", ".join(r.name if hasattr(r, "name") else r.display_name for r in denying_roles) or "Unknown"
-                    
+                    # If any role explicitly denies speak, take action
+                    if explicit_deny_roles:
                         try:
-                            await member.edit(mute=True, reason=f'Auto-muting in {after_channel.name} (Unable to speak)')
-                            await target_log_channel.send(f'Auto-muting {member.mention} — speak denied by: {names}')
+                            await member.edit(
+                                mute=True, 
+                                reason=f"Auto-muting in {after_channel.name} (explicit speak deny)"
+                            )
+                    
+                            # Log to your logging channel
+                            if target_log_channel:
+                                await target_log_channel.send(
+                                    f"🔇 Auto-muted {member.mention} in **{after_channel.name}** "
+                                    f"due to explicit speak deny from roles: "
+                                    f"{', '.join(r.name for r in explicit_deny_roles)}"
+                                )
+                    
                         except Exception as e:
-                            logger.debug(f'Failed to mute {member.display_name}: {e}')
+                            if target_log_channel:
+                                await log_channel.send(
+                                    f"⚠ Failed to auto-mute {member.mention} in "
+                                    f"**{after_channel.name}** — `{e}`"
+                                )
 #                    perms = after_channel.permissions_for(member)
 #                    if perms.speak is False:
 #                        try:
