@@ -2552,7 +2552,7 @@ class Hybrid(commands.Cog):
                     if delta.total_seconds()<=0:duration_str='Expired'
                     else:days,seconds=delta.days,delta.seconds;hours=seconds//3600;minutes=(seconds%3600)//60;duration_str=f'{days}d {hours}h left' if days>0 else f'{hours}h {minutes}m left' if hours>0 else f'{minutes}m left'
                 embed.add_field(name=channel_mention,value=f'Reason: {reason}\nDuration: {duration_str}',inline=False)
-            return await send(embed=embed)
+            return await send(ctx, embed=embed)
         elif channel_obj:
             async with self.bot.db_pool.acquire() as conn:bans=await conn.fetch('''SELECT discord_snowflake,expires_at,reason FROM active_bans WHERE guild_id=$1 AND channel_id=$2 ORDER BY expires_at NULLS LAST''',ctx.guild.id,channel_obj.id)
             if not bans:return await send(ctx, content=f'\U0001F6AB No active bans found for {channel_obj.mention}.')
@@ -2670,7 +2670,7 @@ class Hybrid(commands.Cog):
                 description='\n'.join(lines),
                 color=discord.Color.red()
             )
-            return await send(embed=embed)
+            return await send(ctx, embed=embed)
         channel_obj = await self.resolve_channel(ctx, target)
         is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(ctx, channel_obj)
         if not is_owner_or_dev and not is_mod_or_coord or is_team_member:
@@ -2684,7 +2684,7 @@ class Hybrid(commands.Cog):
             description='\n'.join(lines),
             color=discord.Color.red()
         )
-        await send(embed=embed)
+        await send(ctx, embed=embed)
     
     @app_commands.command(
         name='cmds',
@@ -2945,7 +2945,7 @@ class Hybrid(commands.Cog):
                 description='\n'.join(lines),
                 color=discord.Color.blue()
             )
-            await send(embed=embed)
+            await send(ctx, embed=embed)
 
     @app_commands.command(
         name='coords',
@@ -3091,7 +3091,7 @@ class Hybrid(commands.Cog):
                         name=m.display_name if m else f'User ID {uid}'
                         embed.add_field(name=f'{ctx.guild.name}',value=f'• {name} (<@{uid}>)',inline=False)
                     pages.append(embed)
-                if len(pages)==1: return await send(embed=pages[0],allowed_mentions=discord.AllowedMentions.none())
+                if len(pages)==1: return await send(ctx, embed=pages[0],allowed_mentions=discord.AllowedMentions.none())
                 paginator=Paginator(self.bot,ctx,pages)
                 return await paginator.start()
             elif member_obj:
@@ -3114,7 +3114,7 @@ class Hybrid(commands.Cog):
                     chunk=channel_mentions[i:i+chunk_size]
                     embed=discord.Embed(title=f'🧭 {member_obj.display_name} is a coordinator in:',description='\n'.join(f'• {ch}' for ch in chunk),color=discord.Color.gold())
                     embeds.append(embed)
-                if len(embeds)==1: return await send(embed=embeds[0],allowed_mentions=discord.AllowedMentions.none())
+                if len(embeds)==1: return await send(ctx, embed=embeds[0],allowed_mentions=discord.AllowedMentions.none())
                 paginator=Paginator(self.bot,ctx,embeds)
                 return await paginator.start()
             elif channel_obj:
@@ -3487,7 +3487,7 @@ class Hybrid(commands.Cog):
                     description='\n'.join(lines),
                     color=discord.Color.orange()
                 )
-                return await send(embed=embed, allowed_mentions=discord.AllowedMentions.all())
+                return await send(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.all())
         elif channel_obj:
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('''
@@ -3651,7 +3651,7 @@ class Hybrid(commands.Cog):
                     value=f"Type: **{log_type}**\n{detail}",
                     inline=False
                 )
-        await send(embed=embed)
+        await send(ctx, embed=embed)
 
     @app_commands.command(name='ls', description='List users cowed as going vegan in this guild.')
     @is_owner_developer_coordinator_moderator_app_predicator(None)
@@ -3767,7 +3767,7 @@ class Hybrid(commands.Cog):
                         description='\n'.join(lines),
                         color=discord.Color.green()
                     )
-                    return await send(embed=embed, allowed_mentions=discord.AllowedMentions.all())
+                    return await send(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.all())
                 elif channel_obj:
                     rows = await conn.fetch('''
                         SELECT discord_snowflake, created_at
@@ -3922,7 +3922,7 @@ class Hybrid(commands.Cog):
                         name=m.display_name if m else f'User ID {uid}'
                         embed.add_field(name=f'{ctx.guild.name}',value=f'• {name} (<@{uid}>)',inline=False)
                     pages.append(embed)
-                if len(pages)==1: return await send(embed=pages[0],allowed_mentions=discord.AllowedMentions.none())
+                if len(pages)==1: return await send(ctx, embed=pages[0],allowed_mentions=discord.AllowedMentions.none())
                 paginator=Paginator(self.bot,ctx,pages)
                 return await paginator.start()
             elif member_obj:
@@ -3945,7 +3945,7 @@ class Hybrid(commands.Cog):
                     chunk=channel_mentions[i:i+chunk_size]
                     embed=discord.Embed(title=f'🛡️ {member_obj.display_name} moderates:',description='\n'.join(f'• {ch}' for ch in chunk),color=discord.Color.magenta())
                     embeds.append(embed)
-                if len(embeds)==1: return await send(embed=embeds[0],allowed_mentions=discord.AllowedMentions.none())
+                if len(embeds)==1: return await send(ctx, embed=embeds[0],allowed_mentions=discord.AllowedMentions.none())
                 paginator=Paginator(self.bot,ctx,embeds)
                 return await paginator.start()
             elif channel_obj:
@@ -4129,7 +4129,7 @@ class Hybrid(commands.Cog):
                 duration_str = self.fmt_duration(record['expires_at'])
                 description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
             embed = discord.Embed(title=f'\U0001F507 Mute records for {member_obj.display_name}', description='\n'.join(description_lines), color=discord.Color.orange())
-            return await send(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            return await send(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
         elif channel_obj:
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
