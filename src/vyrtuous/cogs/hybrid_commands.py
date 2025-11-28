@@ -313,7 +313,10 @@ class Hybrid(commands.Cog):
                     expires_at = base_time
                     duration_display = self.fmt_duration(base_time)
                 else:
-                    expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                    try:
+                        expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                    except ValueError:
+                        return await self.handler.send_message(ctx, content='\U0001F6AB Invalid duration format.')
                 is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
                 is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                 is_reason_set = stripped.startswith('=')
@@ -696,11 +699,14 @@ class Hybrid(commands.Cog):
                 ''', ctx.guild.id, member_obj.id, static_channel_id, room_name)
                 stripped = duration.strip() if duration else ''
                 base_time = existing_text_mute['expires_at'] if existing_text_mute else None
-                expires_at, duration_display = (
-                    (base_time, self.fmt_duration(base_time))
-                    if stripped in ('+', '-', '=')
-                    else self.parse_duration(duration, base=base_time)
-                )
+                try:
+                    expires_at, duration_display = (
+                        (base_time, self.fmt_duration(base_time))
+                        if stripped in ('+', '-', '=')
+                        else self.parse_duration(duration, base=base_time)
+                    )
+                except ValueError:
+                    return await self.handler.send_message(ctx, content='\U0001F6AB Invalid duration format.')
                 updated_reason = existing_text_mute['reason'] if existing_text_mute else reason
                 if existing_text_mute and stripped in ('+', '-', '='):
                     if stripped == '+':
@@ -835,7 +841,10 @@ class Hybrid(commands.Cog):
                     expires_at = base_time
                     duration_display = self.fmt_duration(base_time)
                 else:
-                    expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                    try:
+                        expires_at, duration_display = self.parse_duration(duration, base=base_time)
+                    except ValueError:
+                        return await self.handler.send_message(ctx, content='\U0001F6AB Invalid duration format.')
                 is_relative_duration = stripped.startswith('+') and (len(stripped) > 1 and stripped[1].isdigit())
                 is_reason_append = stripped == '+' or (stripped.startswith('+') and not stripped[1].isdigit())
                 is_reason_set = stripped == '='
