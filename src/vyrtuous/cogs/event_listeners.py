@@ -440,41 +440,27 @@ class EventListeners(commands.Cog):
                             logger.debug(f'No permission to unmute {member.display_name}')
                         except discord.HTTPException as e:
                             logger.debug(f'Failed to unmute {member.display_name}: {e}')
-#                    for role in member.roles:
-                    target_log_channel = after_channel.guild.get_channel(1409191157694595183)
                     explicit_deny_roles = []
                     for role in member.roles:
                         ow = after_channel.overwrites_for(role)
-                        if ow.speak is False:  # Explicit deny only
+                        if ow.speak is False:
                             explicit_deny_roles.append(role)
-                    
-                    # If any role explicitly denies speak, take action
                     if explicit_deny_roles:
                         try:
                             await member.edit(
                                 mute=True, 
                                 reason=f"Auto-muting in {after_channel.name} (explicit speak deny)"
                             )
-                    
-                            # Log to your logging channel
-                            if target_log_channel:
-                                await target_log_channel.send(
-                                    f"🔇 Auto-muted {member.mention} in **{after_channel.name}** "
-                                    f"due to explicit speak deny from roles: "
-                                    f"{', '.join(r.name for r in explicit_deny_roles)}"
-                                )
-                    
+                            await logger.debug(
+                                f"🔇 Auto-muted {member.mention} in **{after_channel.name}** "
+                                f"due to explicit speak deny from roles: "
+                                f"{', '.join(r.name for r in explicit_deny_roles)}"
+                            )
                         except Exception as e:
-                            if target_log_channel:
-                                await log_channel.send(
-                                    f"⚠ Failed to auto-mute {member.mention} in "
-                                    f"**{after_channel.name}** — `{e}`"
-                                )
-#                    perms = after_channel.permissions_for(member)
-#                    if perms.speak is False:
-#                        try:
-#                            await member.edit(mute=True, reason=f'Auto-muting in {after_channel.name} (Unable to speak role)')
-#                            await after_channel.send(f'Auto-muting {member.mention} in (Unable to speak role).')
+                            logger.debug(
+                                f"⚠ Failed to auto-mute {member.mention} in "
+                                f"**{after_channel.name}** — `{e}`"
+                            )
                         except discord.HTTPException as e:
                             logger.debug(f'Failed to mute {member.display_name}: {e}')
                 except Exception as e:
