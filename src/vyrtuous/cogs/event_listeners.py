@@ -78,24 +78,111 @@ class EventListeners(commands.Cog):
                   AND (expires_at IS NULL OR expires_at > NOW())
             ''', guild_id, user_id, '')
     
+#    @commands.Cog.listener()
+#    async def on_guild_channel_create(self,channel:discord.abc.GuildChannel):
+#        guild=channel.guild
+#        name=channel.name
+#        for c in guild.channels:
+#            if c.id!=channel.id and c.name==name: return
+#        async with self.bot.db_pool.acquire() as conn:
+#            temp_room=await conn.fetchrow('SELECT room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,name)
+#            if not temp_room: return
+#            old_id=temp_room['room_snowflake']
+#            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,name,channel.id)
+#            await conn.execute('UPDATE command_aliases SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+#            await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+#            await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+#            await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+#            await conn.execute('UPDATE active_stages SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+#            await conn.execute('UPDATE stage_coordinators SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+#            await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+#            if old_id:
+#                # carry over coordinators by room name
+#                await conn.execute('''
+#                    UPDATE users
+#                    SET coordinator_room_names=ARRAY(
+#                        SELECT DISTINCT unnest(
+#                            COALESCE(coordinator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
+#                        )
+#                    )
+#                    WHERE $1=ANY(coordinator_room_names)
+#                ''',name)
+#                # carry over moderators by room name
+#                await conn.execute('''
+#                    UPDATE users
+#                    SET moderator_room_names=ARRAY(
+#                        SELECT DISTINCT unnest(
+#                            COALESCE(moderator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
+#                        )
+#                    )
+#                    WHERE $1=ANY(moderator_room_names)
+#                ''',name)
+#        guild_aliases=self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
+#        temp_aliases=guild_aliases.get('temp_room_aliases', self.bot.command_aliases.default_factory())
+#        for alias_type,aliases in temp_aliases.items():
+#            for alias_name,data in aliases.items():
+#                if data.get('room_name')==name: data['channel_id']=channel.id
     @commands.Cog.listener()
-    async def on_guild_channel_create(self,channel:discord.abc.GuildChannel):
-        guild=channel.guild
-        name=channel.name
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+        debug_channel = self.bot.get_channel(1278596669876867072)
+        
+        guild = channel.guild
+        name = channel.name
+        
+        if debug_channel:
+            await debug_channel.send(
+                f"🆕 **Channel Created**\n"
+                f"Guild: {guild.name} ({guild.id})\n"
+                f"Channel: {channel.mention} (`{name}`, ID: {channel.id})"
+            )
+        
+        # Check for duplicate channel names
         for c in guild.channels:
-            if c.id!=channel.id and c.name==name: return
+            if c.id != channel.id and c.name == name:
+                if debug_channel:
+                    await debug_channel.send(
+                        f"⚠️ **Duplicate channel name detected** - Exiting\n"
+                        f"Existing channel: {c.mention} (ID: {c.id})"
+                    )
+                return
+        
         async with self.bot.db_pool.acquire() as conn:
-            temp_room=await conn.fetchrow('SELECT room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,name)
-            if not temp_room: return
-            old_id=temp_room['room_snowflake']
-            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,name,channel.id)
-            await conn.execute('UPDATE command_aliases SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-            await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-            await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-            await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-            await conn.execute('UPDATE active_stages SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-            await conn.execute('UPDATE stage_coordinators SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-            await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
+            temp_room = await conn.fetchrow(
+                'SELECT room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
+                guild.id, name
+            )
+            
+            if not temp_room:
+                if debug_channel:
+                    await debug_channel.send(
+                        f"ℹ️ **Not a temp room** - No matching temp room found in database for `{name}`"
+                    )
+                return
+            
+            old_id = temp_room['room_snowflake']
+            
+            if debug_channel:
+                await debug_channel.send(
+                    f"✅ **Temp Room Found**\n"
+                    f"Room Name: `{name}`\n"
+                    f"Old Snowflake: `{old_id}`\n"
+                    f"New Snowflake: `{channel.id}`\n"
+                    f"Starting database updates..."
+                )
+            
+            # Update all database tables
+            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2', guild.id, name, channel.id)
+            await conn.execute('UPDATE command_aliases SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            await conn.execute('UPDATE active_stages SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            await conn.execute('UPDATE stage_coordinators SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            
+            if debug_channel:
+                await debug_channel.send(f"💾 **Database tables updated** for room `{name}`")
+            
             if old_id:
                 # carry over coordinators by room name
                 await conn.execute('''
@@ -106,7 +193,8 @@ class EventListeners(commands.Cog):
                         )
                     )
                     WHERE $1=ANY(coordinator_room_names)
-                ''',name)
+                ''', name)
+                
                 # carry over moderators by room name
                 await conn.execute('''
                     UPDATE users
@@ -116,13 +204,46 @@ class EventListeners(commands.Cog):
                         )
                     )
                     WHERE $1=ANY(moderator_room_names)
-                ''',name)
-        guild_aliases=self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
-        temp_aliases=guild_aliases.get('temp_room_aliases', self.bot.command_aliases.default_factory())
-        for alias_type,aliases in temp_aliases.items():
-            for alias_name,data in aliases.items():
-                if data.get('room_name')==name: data['channel_id']=channel.id
+                ''', name)
+                
+                if debug_channel:
+                    await debug_channel.send(f"👥 **Carried over coordinators/moderators** for room `{name}`")
+        
+        # Update in-memory command aliases for temp rooms
+        guild_aliases = self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
+        temp_aliases = guild_aliases.get('temp_room_aliases', {})
+        
+        if debug_channel:
+            await debug_channel.send(
+                f"🔍 **Checking in-memory aliases**\n"
+                f"Found {len(temp_aliases)} alias types"
+            )
+        
+        updated_count = 0
+        for alias_type, aliases in temp_aliases.items():
+            for alias_name, data in aliases.items():
+                if data.get('room_name') == name:
+                    old_channel_id = data.get('channel_id')
+                    data['channel_id'] = channel.id
+                    updated_count += 1
                     
+                    # Send debug log for each updated alias
+                    if debug_channel:
+                        await debug_channel.send(
+                            f"🔧 **Alias Updated**\n"
+                            f"Type: `{alias_type}`\n"
+                            f"Alias: `{alias_name}`\n"
+                            f"Room Name: `{name}`\n"
+                            f"Old Channel ID: `{old_channel_id}`\n"
+                            f"New Channel ID: `{channel.id}`\n"
+                            f"Verified: `{self.bot.command_aliases[guild.id]['temp_room_aliases'][alias_type][alias_name]['channel_id']}`"
+                        )
+        
+        if debug_channel:
+            if updated_count > 0:
+                await debug_channel.send(f"✅ **Complete** - Updated {updated_count} alias(es) for temp room `{name}`")
+            else:
+                await debug_channel.send(f"ℹ️ **No aliases to update** for temp room `{name}`")
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
