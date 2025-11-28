@@ -2940,7 +2940,7 @@ class Hybrid(commands.Cog):
                             lines.append(f'`{alias_name}`')
                             found_aliases = True
         if not found_aliases:
-            return await send(ctx, content='\U0001F6AB No aliases found for the requested target: `{target}`.')
+            return await send(ctx, content=f'\U0001F6AB No aliases found for the requested target: `{target}`.')
         if target and target.lower() == 'all':
             pages = []
             chunk_size = 18
