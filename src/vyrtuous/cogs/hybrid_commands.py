@@ -2931,7 +2931,7 @@ class Hybrid(commands.Cog):
                         rid = data.get('role_id')
                         role = ctx.guild.get_role(rid)
                         mention = role.mention if role else f'<@&{rid}>'
-                        lines.append(f'`{name}`')
+                        lines.append(f'`{name}` → {mention}')
             if temp_room_obj:
                 for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
                     for alias_name, data in room_map.items():
@@ -2940,7 +2940,7 @@ class Hybrid(commands.Cog):
                             lines.append(f'`{alias_name}`')
                             found_aliases = True
         if not found_aliases:
-            return await send(ctx, content='\U0001F6AB No aliases found for the specified channel or server-wide.')
+            return await send(ctx, content='\U0001F6AB No aliases found for the requested target: `{target}`.')
         if target and target.lower() == 'all':
             pages = []
             chunk_size = 18
