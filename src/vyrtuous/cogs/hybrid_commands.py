@@ -2935,7 +2935,7 @@ class Hybrid(commands.Cog):
             if temp_room_obj:
                 for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
                     for alias_name, data in room_map.items():
-                        if temp_room_obj and data.get('room_name', '') == temp_room_obj.get('room_name', ''):
+                        if temp_room_obj and data.get('room_name', '') == temp_room_obj.room_name:
                             lines.append(f'**{alias_type.capitalize()}`**')
                             lines.append(f'`{alias_name}`')
                             found_aliases = True
