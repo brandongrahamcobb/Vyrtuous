@@ -124,7 +124,7 @@ class EventListeners(commands.Cog):
 #                if data.get('room_name')==name: data['channel_id']=channel.id
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
-        debug_channel = self.bot.get_channel(1278596669876867072)
+        debug_channel = self.bot.get_channel(1403500881135272066)
         
         guild = channel.guild
         name = channel.name
