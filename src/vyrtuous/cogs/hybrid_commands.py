@@ -4689,7 +4689,6 @@ class Hybrid(commands.Cog):
             for group_name, group in guild_alias_root.items():
                 if group_name == 'temp_room_aliases':
                     for alias_type, aliases in group.items():
-                        aliases_to_update = {}
                         for alias_name, alias_data in list(aliases.items()):
                             if alias_data.get('room_name') == old_name:
                                 alias_data['channel_id'] =  new_room_snowflake
