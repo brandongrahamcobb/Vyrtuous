@@ -578,14 +578,14 @@ class EventListeners(commands.Cog):
 #    async def on_command(self, ctx):
 #        await ctx.send("Bot is currently down. Changes will not be saved permanently.")
 
-#    @commands.Cog.listener()
-#    async def on_ready(self):
-#        if getattr(self, "_ready_done", False):
-#            return
-#        self._ready_done = True
-#        hybrid_cog = self.bot.get_cog("Hybrid")
-#        if hybrid_cog:
-#            await hybrid_cog.load_temp_rooms()
+    @commands.Cog.listener()
+    async def on_ready(self):
+        if getattr(self, "_ready_done", False):
+            return
+        self._ready_done = True
+        hybrid_cog = self.bot.get_cog("Hybrid")
+        if hybrid_cog:
+            await hybrid_cog.load_temp_rooms()
 #        async with self.bot.db_pool.acquire() as conn:
 #            bans = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_bans')
 #            texts = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_text_mutes')
