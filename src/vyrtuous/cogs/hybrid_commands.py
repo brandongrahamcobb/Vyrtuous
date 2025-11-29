@@ -152,9 +152,8 @@ class Hybrid(commands.Cog):
                             'role_id': int(role_id),
                             'channel_id': int(channel_id) if channel_id else None
                         }
-                else:
-                    if channel_id:
-                        self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_id)
+                elif channel_id:
+                    self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_id)
                 if alias_name not in self._loaded_aliases:
                     cmd = None
                     if alias_type == 'mute': cmd = self.create_voice_mute_alias(alias_name)
@@ -2859,18 +2858,6 @@ class Hybrid(commands.Cog):
         channel_obj = await self.resolve_channel(ctx, target)
         temp_room_obj = None
         found_aliases = False
-#        for alias_type, commands_dict in aliases.get('channel_aliases', {}).items():
-#            for cmd_name, value in commands_dict.items():
-#                channel_id = int(value)
-#                break
-#        for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
-#            for alias_name, data in room_map.items():
-#                room_name = data.get('room_name', '')
-#                if room_name != '' and room_name.lower() == channel_obj.name.lower():
-#                    temp_room_obj = data
-#                    break
-#            if temp_room_obj:
-#                break
         for guild_temp_rooms in self.temp_rooms.values():
             for temp_channel in guild_temp_rooms.values():
                 if temp_channel.room_name.lower() == channel_obj.name.lower():
