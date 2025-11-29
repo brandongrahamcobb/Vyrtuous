@@ -2919,20 +2919,13 @@ class Hybrid(commands.Cog):
                         role = ctx.guild.get_role(rid)
                         mention = role.mention if role else f'<@&{rid}>'
                         lines.append(f'`{name}` → {mention}')
-#            if temp_room_obj:
-#                for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
-#                    for alias_name, data in room_map.items():
-#                        if temp_room_obj and data.get('room_name', '') == temp_room_obj.room_name:
-#                            lines.append(f'**{alias_type.capitalize()}`**')
-#                            lines.append(f'`{alias_name}`')
-#                            found_aliases = True
             if temp_room_obj:
                 for alias_type, room_map in aliases.get('temp_room_aliases', {}).items():
-                    matching_aliases = [alias_name for alias_name, data in room_map.items() if data.get('room_name', '') == temp_room_obj.room_name]
-                    if matching_aliases:
-                        found_aliases = True
-                        lines.append(f'**{alias_type.capitalize()}**')  # Header once per type
-                        lines.extend(f'`{alias}`' for alias in matching_aliases) 
+                    for alias_name, data in room_map.items():
+                        if temp_room_obj and data.get('room_name', '') == temp_room_obj.room_name:
+                            lines.append(f'**{alias_type.capitalize()}`**')
+                            lines.append(f'`{alias_name}`')
+                            found_aliases = True
         if not found_aliases:
             return await send(ctx, content=f'\U0001F6AB No aliases found for the requested target: `{target}`.')
         if target and target.lower() == 'all':
@@ -5365,9 +5358,9 @@ class Hybrid(commands.Cog):
                 records = await conn.fetch('''
                     SELECT discord_snowflake, channel_id, reason, expires_at
                     FROM active_text_mutes
-                    WHERE guild_id = $1
+                    WHERE guild_id = $1 AND room_name = $2
                     ORDER BY channel_id, discord_snowflake
-                ''', ctx.guild.id)
+                ''', ctx.guild.id, '')
                 if not records:
                     return await send(ctx, content=f'\U0001F6AB No users are currently text-muted in {ctx.guild.name}.')
                 grouped = defaultdict(list)
@@ -5394,8 +5387,8 @@ class Hybrid(commands.Cog):
                 records = await conn.fetch('''
                     SELECT channel_id, reason, expires_at
                     FROM active_text_mutes
-                    WHERE discord_snowflake = $1 AND guild_id = $2
-                ''', member_obj.id, ctx.guild.id)
+                    WHERE discord_snowflake = $1 AND guild_id = $2 AND room_name = $3
+                ''', member_obj.id, ctx.guild.id, '')
                 if not records:
                     return await send(ctx, content=f'\U0001F6AB {member_obj.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
@@ -5417,8 +5410,8 @@ class Hybrid(commands.Cog):
                 records = await conn.fetch('''
                     SELECT discord_snowflake, reason, expires_at
                     FROM active_text_mutes
-                    WHERE channel_id = $1 AND guild_id = $2
-                ''', channel_obj.id, ctx.guild.id)
+                    WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
+                ''', channel_obj.id, ctx.guild.id, '')
                 if not records:
                     return await send(ctx, content=f'\U0001F6AB No users are currently text-muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
