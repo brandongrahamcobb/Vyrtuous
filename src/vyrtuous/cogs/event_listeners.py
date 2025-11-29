@@ -578,39 +578,39 @@ class EventListeners(commands.Cog):
 #    async def on_command(self, ctx):
 #        await ctx.send("Bot is currently down. Changes will not be saved permanently.")
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if getattr(self, "_ready_done", False):
-            return
-        self._ready_done = True
-        hybrid_cog = self.bot.get_cog("Hybrid")
-        if hybrid_cog:
-            await hybrid_cog.load_temp_rooms()
-        async with self.bot.db_pool.acquire() as conn:
-            bans = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_bans')
-            texts = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_text_mutes')
-            voices = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_voice_mutes')
-            ban_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in bans}
-            text_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in texts}
-            voice_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in voices}
-            for guild in self.bot.guilds:
-                for channel in guild.channels:
-                    temp_room = await conn.fetchrow('''
-                        SELECT room_name FROM temporary_rooms
-                        WHERE guild_snowflake = $1 AND room_snowflake = $2
-                    ''', guild.id, channel.id)
-                    room_name = temp_room['room_name'] if temp_room else ''
-                    if isinstance(channel, discord.TextChannel):
-                        for overwrite_obj, overwrite in channel.overwrites.items():
-                            uid = overwrite_obj.id
-                            if overwrite.send_messages is False and (uid, channel.id, room_name) not in text_set:
-                                await channel.set_permissions(overwrite_obj, send_messages=None)
-                            if overwrite.view_channel is False and (uid, channel.id, room_name) not in ban_set:
-                                await channel.set_permissions(overwrite_obj, view_channel=True)
-                    if isinstance(channel, discord.VoiceChannel):
-                        for member in channel.members:
-                            if member.voice and member.voice.mute and (member.id, channel.id, room_name) not in voice_set:
-                                await member.edit(mute=False)
+#    @commands.Cog.listener()
+#    async def on_ready(self):
+#        if getattr(self, "_ready_done", False):
+#            return
+#        self._ready_done = True
+#        hybrid_cog = self.bot.get_cog("Hybrid")
+#        if hybrid_cog:
+#            await hybrid_cog.load_temp_rooms()
+#        async with self.bot.db_pool.acquire() as conn:
+#            bans = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_bans')
+#            texts = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_text_mutes')
+#            voices = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_voice_mutes')
+#            ban_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in bans}
+#            text_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in texts}
+#            voice_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in voices}
+#            for guild in self.bot.guilds:
+#                for channel in guild.channels:
+#                    temp_room = await conn.fetchrow('''
+#                        SELECT room_name FROM temporary_rooms
+#                        WHERE guild_snowflake = $1 AND room_snowflake = $2
+#                    ''', guild.id, channel.id)
+#                    room_name = temp_room['room_name'] if temp_room else ''
+#                    if isinstance(channel, discord.TextChannel):
+#                        for overwrite_obj, overwrite in channel.overwrites.items():
+#                            uid = overwrite_obj.id
+#                            if overwrite.send_messages is False and (uid, channel.id, room_name) not in text_set:
+#                                await channel.set_permissions(overwrite_obj, send_messages=None)
+#                            if overwrite.view_channel is False and (uid, channel.id, room_name) not in ban_set:
+#                                await channel.set_permissions(overwrite_obj, view_channel=True)
+#                    if isinstance(channel, discord.VoiceChannel):
+#                        for member in channel.members:
+#                            if member.voice and member.voice.mute and (member.id, channel.id, room_name) not in voice_set:
+#                                await member.edit(mute=False)
     
 async def setup(bot: DiscordBot):
     await bot.add_cog(EventListeners(bot))
