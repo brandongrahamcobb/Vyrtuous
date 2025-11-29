@@ -181,6 +181,10 @@ class Hybrid(commands.Cog):
             await self.load_temp_rooms(conn)
             debug_messages.append(f"✅ Loaded temp_rooms: {len(self.temp_rooms)} guilds")
             
+            if not self.bot.is_ready():
+                print("Bot not ready yet, waiting...")
+                await self.bot.wait_until_ready()
+                print("Bot is now ready!")
             rows = await conn.fetch(
                 'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases'
             )
