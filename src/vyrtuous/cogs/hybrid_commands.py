@@ -178,7 +178,7 @@ class Hybrid(commands.Cog):
         debug_messages = []
         
         async with self.bot.db_pool.acquire() as conn:
-            await self.load_temp_rooms()
+            await self.load_temp_rooms(conn)
             debug_messages.append(f"✅ Loaded temp_rooms: {len(self.temp_rooms)} guilds")
             
             rows = await conn.fetch(
@@ -285,23 +285,22 @@ class Hybrid(commands.Cog):
                     except Exception as e:
                         print(f"Failed to send debug to {channel.name}: {e}")
         
-    async def load_temp_rooms(self):
-        async with self.bot.db_pool.acquire() as conn:
-            temp_rows = await conn.fetch(
-                'SELECT guild_snowflake, room_name, room_snowflake, owner_snowflake FROM temporary_rooms'
-            )
-            for row in temp_rows:
-                guild_id = row['guild_snowflake']
-                room_name = row['room_name']
-                room_snowflake = row['room_snowflake']
-                guild = self.bot.get_guild(guild_id)
-                if not guild:
-                    continue
-                channel_obj = guild.get_channel(room_snowflake)
-                if not channel_obj:
-                    continue
-                temp_channel = TempChannel(channel_obj, room_name)
-                self.temp_rooms.setdefault(guild_id, {})[room_name] = temp_channel
+    async def load_temp_rooms(self, conn):
+        temp_rows = await conn.fetch(
+            'SELECT guild_snowflake, room_name, room_snowflake, owner_snowflake FROM temporary_rooms'
+        )
+        for row in temp_rows:
+            guild_id = row['guild_snowflake']
+            room_name = row['room_name']
+            room_snowflake = row['room_snowflake']
+            guild = self.bot.get_guild(guild_id)
+            if not guild:
+                continue
+            channel_obj = guild.get_channel(room_snowflake)
+            if not channel_obj:
+                continue
+            temp_channel = TempChannel(channel_obj, room_name)
+            self.temp_rooms.setdefault(guild_id, {})[room_name] = temp_channel
     
     async def load_log_channels(self):
         async with self.bot.db_pool.acquire() as conn:
