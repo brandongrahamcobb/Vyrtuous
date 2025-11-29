@@ -4737,6 +4737,65 @@ class Hybrid(commands.Cog):
             for table in tables: await conn.execute(f'UPDATE {table} SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, old_name_lc, new_channel.id)
         await send(content=f"Temporary room '{old_name}' migrated to {new_channel.mention}.")
         
+#    @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
+#    @is_owner_developer_coordinator_predicator()
+#    async def migrate_temp_room_command(self, ctx, old_name: str, new_room_snowflake: int):
+#        guild = ctx.guild
+#        async def send(ctx, **kw):
+#            await self.handler.send_message(ctx, **kw)
+#        user_id = ctx.author.id
+#        async with self.bot.db_pool.acquire() as conn:
+#            rooms = await conn.fetch(
+#                'SELECT room_name, owner_snowflake, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
+#                guild.id, old_name
+#            )
+#            if not rooms:
+#                return await send(ctx, content=f"No temporary room named '{old_name}' found.")
+#            if len(rooms) > 1:
+#                return await send(ctx, content=f"Multiple temporary rooms named '{old_name}' exist. Migration failed.")
+#            temp = rooms[0]
+#            channel_obj = await self.resolve_channel(ctx, new_room_snowflake)
+#            if not channel_obj:
+#                return await send(ctx, content=f"No channel found with ID {new_room_snowflake}.")
+#            is_owner = temp['owner_snowflake'] == user_id
+#            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
+#            if not (is_owner_or_dev or is_owner):
+#                return await send(ctx, content="Only the owner or developers can migrate this room.")
+#            await conn.execute(
+#                'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
+#                guild.id, old_name, channel_obj.name, new_room_snowflake
+#            )
+#            tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps','command_aliases']
+#            for table in tables:
+#                await conn.execute(
+#                    f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
+#                    guild.id, old_name, channel_obj.name, new_room_snowflake
+#                )
+#            await conn.execute(
+#                'UPDATE users SET coordinator_room_names=array_replace(coordinator_room_names, $1, $2) WHERE $1=ANY(coordinator_room_names)',
+#                old_name, channel_obj.name
+#            )
+#            await conn.execute(
+#                'UPDATE users SET moderator_room_names=array_replace(moderator_room_names, $1, $2) WHERE $1=ANY(moderator_room_names)',
+#                old_name, channel_obj.name
+#            )
+#            old_channel_id = temp['room_snowflake']
+#            guild_alias_root = self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
+#            for group_name, group in guild_alias_root.items():
+#                if group_name == 'temp_room_aliases':
+#                    for alias_type, aliases in group.items():
+#                        for alias_name, alias_data in list(aliases.items()):
+#                            if alias_data.get('room_name') == old_name:
+#                                alias_data['channel_id'] =  new_room_snowflake
+#                                alias_data['room_name'] = channel_obj.name
+#            if guild.id in self.temp_rooms:
+#                if old_name in self.temp_rooms[guild.id]:
+#                    temp_channel_obj = self.temp_rooms[guild.id].pop(old_name)
+#                    temp_channel_obj.room_name = channel_obj.name
+#                    temp_channel_obj.channel = channel_obj
+#                    self.temp_rooms[guild.id][channel_obj.name] = temp_channel_obj
+#            return await send(ctx, content=f"✅ Temporary room '{old_name}' migrated to {channel_obj.mention} and renamed to '{channel_obj.name}'.")
+
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
     @is_owner_developer_coordinator_predicator()
     async def migrate_temp_room_command(self, ctx, old_name: str, new_room_snowflake: int):
@@ -4761,6 +4820,8 @@ class Hybrid(commands.Cog):
             is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
             if not (is_owner_or_dev or is_owner):
                 return await send(ctx, content="Only the owner or developers can migrate this room.")
+            
+            # Update database
             await conn.execute(
                 'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, old_name, channel_obj.name, new_room_snowflake
@@ -4779,21 +4840,26 @@ class Hybrid(commands.Cog):
                 'UPDATE users SET moderator_room_names=array_replace(moderator_room_names, $1, $2) WHERE $1=ANY(moderator_room_names)',
                 old_name, channel_obj.name
             )
-            old_channel_id = temp['room_snowflake']
-            guild_alias_root = self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
-            for group_name, group in guild_alias_root.items():
-                if group_name == 'temp_room_aliases':
-                    for alias_type, aliases in group.items():
-                        for alias_name, alias_data in list(aliases.items()):
+            
+            # Update in-memory command aliases
+            if guild.id in self.bot.command_aliases:
+                guild_alias_root = self.bot.command_aliases[guild.id]
+                if 'temp_room_aliases' in guild_alias_root:
+                    temp_room_aliases = guild_alias_root['temp_room_aliases']
+                    for alias_type, aliases in temp_room_aliases.items():
+                        for alias_name, alias_data in aliases.items():
                             if alias_data.get('room_name') == old_name:
-                                alias_data['channel_id'] =  new_room_snowflake
+                                alias_data['channel_id'] = new_room_snowflake
                                 alias_data['room_name'] = channel_obj.name
+            
+            # Update in-memory temp_rooms
             if guild.id in self.temp_rooms:
                 if old_name in self.temp_rooms[guild.id]:
                     temp_channel_obj = self.temp_rooms[guild.id].pop(old_name)
                     temp_channel_obj.room_name = channel_obj.name
                     temp_channel_obj.channel = channel_obj
                     self.temp_rooms[guild.id][channel_obj.name] = temp_channel_obj
+            
             return await send(ctx, content=f"✅ Temporary room '{old_name}' migrated to {channel_obj.mention} and renamed to '{channel_obj.name}'.")
 
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
