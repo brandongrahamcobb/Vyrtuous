@@ -128,12 +128,68 @@ class Hybrid(commands.Cog):
         self.temp_rooms: dict[int, dict[str, TempChannel]] = {}
         self._loaded_aliases = set()
 
+#    async def cog_load(self) -> None:
+#        async with self.bot.db_pool.acquire() as conn:
+#            rows = await conn.fetch(
+#                'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases'
+#            )
+#            for row in rows:
+#                guild_id = row['guild_id']
+#                alias_type = row['alias_type']
+#                alias_name = row['alias_name']
+#                room_name = row['room_name']
+#                channel_id = row['channel_id']
+#                role_id = row.get('role_id')
+#                if room_name != '':
+#                    self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {
+#                        'room_name': room_name,
+#                        'channel_id': int(channel_id) if channel_id else None,
+#                        'role_id': int(role_id) if role_id else None
+#                    }
+#                elif alias_type in ('role', 'unrole'):
+#                    if role_id:
+#                        self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {
+#                            'role_id': int(role_id),
+#                            'channel_id': int(channel_id) if channel_id else None
+#                        }
+#                elif channel_id:
+#                    self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_id)
+#                if alias_name not in self._loaded_aliases:
+#                    cmd = None
+#                    if alias_type == 'mute': cmd = self.create_voice_mute_alias(alias_name)
+#                    elif alias_type == 'unmute': cmd = self.create_unmute_alias(alias_name)
+#                    elif alias_type == 'ban': cmd = self.create_ban_alias(alias_name)
+#                    elif alias_type == 'unban': cmd = self.create_unban_alias(alias_name)
+#                    elif alias_type == 'cow': cmd = self.create_cow_alias(alias_name)
+#                    elif alias_type == 'uncow': cmd = self.create_uncow_alias(alias_name)
+#                    elif alias_type == 'flag': cmd = self.create_flag_alias(alias_name)
+#                    elif alias_type == 'unflag': cmd = self.create_unflag_alias(alias_name)
+#                    elif alias_type == 'tmute': cmd = self.create_text_mute_alias(alias_name)
+#                    elif alias_type == 'untmute': cmd = self.create_untextmute_alias(alias_name)
+#                    elif alias_type == 'role': cmd = self.create_role_alias(alias_name)
+#                    elif alias_type == 'unrole': cmd = self.create_unrole_alias(alias_name)
+#                    if cmd and not self.bot.get_command(alias_name):
+#                        self.bot.add_command(cmd)
+#                        self._loaded_aliases.add(alias_name)
+#        await self.load_log_channels()
+#        await self.load_temp_rooms()
+
     async def cog_load(self) -> None:
+        debug_messages = []
+        
         async with self.bot.db_pool.acquire() as conn:
+            debug_messages.append("🔄 Starting cog_load")
+            
             await self.load_temp_rooms()
+            debug_messages.append(f"✅ Loaded temp_rooms: {len(self.temp_rooms)} guilds")
+            for guild_id, rooms in self.temp_rooms.items():
+                debug_messages.append(f"  Guild {guild_id}: {list(rooms.keys())}")
+            
             rows = await conn.fetch(
                 'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases'
             )
+            debug_messages.append(f"📋 Fetched {len(rows)} alias rows from database")
+            
             for row in rows:
                 guild_id = row['guild_id']
                 alias_type = row['alias_type']
@@ -141,21 +197,29 @@ class Hybrid(commands.Cog):
                 room_name = row['room_name']
                 channel_id = row['channel_id']
                 role_id = row.get('role_id')
+                
+                debug_messages.append(f"\n🔍 Processing: {alias_name} (type={alias_type}, room={room_name}, channel={channel_id})")
+                
                 if room_name != '':
                     self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {
                         'room_name': room_name,
                         'channel_id': int(channel_id) if channel_id else None,
                         'role_id': int(role_id) if role_id else None
                     }
+                    debug_messages.append(f"  ✅ Added to temp_room_aliases")
                 elif alias_type in ('role', 'unrole'):
                     if role_id:
                         self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {
                             'role_id': int(role_id),
                             'channel_id': int(channel_id) if channel_id else None
                         }
+                        debug_messages.append(f"  ✅ Added to role_aliases")
                 elif channel_id:
                     self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_id)
+                    debug_messages.append(f"  ✅ Added to channel_aliases")
+                
                 if alias_name not in self._loaded_aliases:
+                    debug_messages.append(f"  🆕 Alias '{alias_name}' not in _loaded_aliases")
                     cmd = None
                     if alias_type == 'mute': cmd = self.create_voice_mute_alias(alias_name)
                     elif alias_type == 'unmute': cmd = self.create_unmute_alias(alias_name)
@@ -169,10 +233,40 @@ class Hybrid(commands.Cog):
                     elif alias_type == 'untmute': cmd = self.create_untextmute_alias(alias_name)
                     elif alias_type == 'role': cmd = self.create_role_alias(alias_name)
                     elif alias_type == 'unrole': cmd = self.create_unrole_alias(alias_name)
-                    if cmd and not self.bot.get_command(alias_name):
-                        self.bot.add_command(cmd)
-                        self._loaded_aliases.add(alias_name)
+                    
+                    if cmd:
+                        debug_messages.append(f"  ✅ Created command object for '{alias_name}'")
+                        existing = self.bot.get_command(alias_name)
+                        if existing:
+                            debug_messages.append(f"  ⚠️ Command '{alias_name}' already exists in bot")
+                        else:
+                            self.bot.add_command(cmd)
+                            self._loaded_aliases.add(alias_name)
+                            debug_messages.append(f"  ✅ Added command '{alias_name}' to bot")
+                    else:
+                        debug_messages.append(f"  ❌ Failed to create command for '{alias_name}' (type={alias_type})")
+                else:
+                    debug_messages.append(f"  ⏭️ Alias '{alias_name}' already in _loaded_aliases")
+        
         await self.load_log_channels()
+        debug_messages.append(f"\n✅ Loaded log channels")
+        
+        # Send debug messages to all temp room channels
+        debug_text = "\n".join(debug_messages)
+        chunks = [debug_text[i:i+1900] for i in range(0, len(debug_text), 1900)]
+        
+        for guild_id, rooms in self.temp_rooms.items():
+            guild = self.bot.get_guild(guild_id)
+            if not guild:
+                continue
+            for room_name, temp_channel in rooms.items():
+                channel = temp_channel.channel
+                if channel:
+                    try:
+                        for chunk in chunks:
+                            await channel.send(f"```\n{chunk}\n```")
+                    except Exception as e:
+                        print(f"Failed to send debug to {channel.name}: {e}")
         
     async def load_temp_rooms(self):
         async with self.bot.db_pool.acquire() as conn:
