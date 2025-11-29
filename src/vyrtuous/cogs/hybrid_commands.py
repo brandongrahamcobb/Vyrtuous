@@ -4837,8 +4837,16 @@ class Hybrid(commands.Cog):
                 old_name, channel_obj.name
             )
             await conn.execute(
+                'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
+                old_channel_id, new_room_snowflake
+            )
+            await conn.execute(
                 'UPDATE users SET moderator_room_names=array_replace(moderator_room_names, $1, $2) WHERE $1=ANY(moderator_room_names)',
                 old_name, channel_obj.name
+            )
+            await conn.execute(
+                'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
+                old_channel_id, new_room_snowflake
             )
             
             # Update in-memory command aliases
