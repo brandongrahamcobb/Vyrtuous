@@ -173,7 +173,7 @@ class Hybrid(commands.Cog):
                         self._loaded_aliases.add(alias_name)
         await self.load_log_channels()
         
-    async def load_temp_rooms(self, conn):
+    async def load_temp_rooms(self):
         temp_rows = await conn.fetch(
             'SELECT guild_snowflake, room_name, room_snowflake, owner_snowflake FROM temporary_rooms'
         )
