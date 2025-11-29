@@ -6009,7 +6009,7 @@ class Hybrid(commands.Cog):
     @commands.command(name='xcoord',help='Revokes coordinator access from a user in a specific voice channel.')
     @is_owner_developer_predicator()
     async def demote_coordinator_text_command(self,ctx:commands.Context,member:Optional[str]=commands.parameter(default=None,description='Tag a member or include their snowflake     ID'),channel:Optional[str]=commands.parameter(default=None,description='Tag a channel or include its snowflake ID')) -> None:
-        send=lambda **kw:self.handler.send_message(ctx,**kw)
+        async def send(ctx, **kw): await self.handler.send_message(ctx,**kw)
         channel_obj=await self.resolve_channel(ctx,channel)
         member_obj=await self.resolve_member(ctx,member)
         if not channel_obj: return await send(ctx, content=f'\U0001F6AB Could not resolve a valid channel from input: {channel}.')
