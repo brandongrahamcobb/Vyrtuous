@@ -488,29 +488,29 @@ class EventListeners(commands.Cog):
                             logger.debug(f'No permission to unmute {member.display_name}')
                         except discord.HTTPException as e:
                             logger.debug(f'Failed to unmute {member.display_name}: {e}')
-                    explicit_deny_roles = []
-                    for role in member.roles:
-                        ow = after_channel.overwrites_for(role)
-                        if ow.speak is False:
-                            explicit_deny_roles.append(role)
-                    if explicit_deny_roles:
-                        try:
-                            await member.edit(
-                                mute=True, 
-                                reason=f"Auto-muting in {after_channel.name} (explicit speak deny)"
-                            )
-                            await logger.debug(
-                                f"🔇 Auto-muted {member.mention} in **{after_channel.name}** "
-                                f"due to explicit speak deny from roles: "
-                                f"{', '.join(r.name for r in explicit_deny_roles)}"
-                            )
-                        except Exception as e:
-                            logger.debug(
-                                f"⚠ Failed to auto-mute {member.mention} in "
-                                f"**{after_channel.name}** — `{e}`"
-                            )
-                        except discord.HTTPException as e:
-                            logger.debug(f'Failed to mute {member.display_name}: {e}')
+#                    explicit_deny_roles = []
+#                    for role in member.roles:
+#                        ow = after_channel.overwrites_for(role)
+#                        if ow.speak is False:
+#                            explicit_deny_roles.append(role)
+#                    if explicit_deny_roles:
+#                        try:
+#                            await member.edit(
+#                                mute=True, 
+#                                reason=f"Auto-muting in {after_channel.name} (explicit speak deny)"
+#                            )
+#                            await logger.debug(
+#                                f"🔇 Auto-muted {member.mention} in **{after_channel.name}** "
+#                                f"due to explicit speak deny from roles: "
+#                                f"{', '.join(r.name for r in explicit_deny_roles)}"
+#                            )
+#                        except Exception as e:
+#                            logger.debug(
+#                                f"⚠ Failed to auto-mute {member.mention} in "
+#                                f"**{after_channel.name}** — `{e}`"
+#                            )
+#                        except discord.HTTPException as e:
+#                            logger.debug(f'Failed to mute {member.display_name}: {e}')
                 except Exception as e:
                     logger.exception('Error in on_voice_state_update', exc_info=e)
             
