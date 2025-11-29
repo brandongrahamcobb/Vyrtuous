@@ -140,7 +140,7 @@ class Hybrid(commands.Cog):
                 room_name = row['room_name']
                 channel_id = row['channel_id']
                 role_id = row.get('role_id')
-                if room_name == '':
+                if room_name != '':
                     self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {
                         'room_name': room_name,
                         'channel_id': int(channel_id) if channel_id else None,
