@@ -130,6 +130,7 @@ class Hybrid(commands.Cog):
 
     async def cog_load(self) -> None:
         async with self.bot.db_pool.acquire() as conn:
+            await self.load_temp_rooms()
             rows = await conn.fetch(
                 'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases'
             )
@@ -172,7 +173,6 @@ class Hybrid(commands.Cog):
                         self.bot.add_command(cmd)
                         self._loaded_aliases.add(alias_name)
         await self.load_log_channels()
-        await self.load_temp_rooms()
         
     async def load_temp_rooms(self):
         async with self.bot.db_pool.acquire() as conn:
