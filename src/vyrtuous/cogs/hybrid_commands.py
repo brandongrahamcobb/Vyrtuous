@@ -178,18 +178,15 @@ class Hybrid(commands.Cog):
         debug_messages = []
         
         async with self.bot.db_pool.acquire() as conn:
-            debug_messages.append("🔄 Starting cog_load")
-            
             await self.load_temp_rooms()
             debug_messages.append(f"✅ Loaded temp_rooms: {len(self.temp_rooms)} guilds")
-            for guild_id, rooms in self.temp_rooms.items():
-                debug_messages.append(f"  Guild {guild_id}: {list(rooms.keys())}")
             
             rows = await conn.fetch(
                 'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases'
             )
-            debug_messages.append(f"📋 Fetched {len(rows)} alias rows from database")
+            debug_messages.append(f"📋 Total aliases in DB: {len(rows)}")
             
+            temp_room_count = 0
             for row in rows:
                 guild_id = row['guild_id']
                 alias_type = row['alias_type']
@@ -198,28 +195,58 @@ class Hybrid(commands.Cog):
                 channel_id = row['channel_id']
                 role_id = row.get('role_id')
                 
-                debug_messages.append(f"\n🔍 Processing: {alias_name} (type={alias_type}, room={room_name}, channel={channel_id})")
-                
                 if room_name != '':
+                    temp_room_count += 1
+                    debug_messages.append(f"\n🔍 Temp alias: {alias_name}")
+                    debug_messages.append(f"  Type: {alias_type}")
+                    debug_messages.append(f"  Room: {room_name}")
+                    debug_messages.append(f"  Channel ID: {channel_id}")
+                    
                     self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('temp_room_aliases', {}).setdefault(alias_type, {})[alias_name] = {
                         'room_name': room_name,
                         'channel_id': int(channel_id) if channel_id else None,
                         'role_id': int(role_id) if role_id else None
                     }
-                    debug_messages.append(f"  ✅ Added to temp_room_aliases")
+                    debug_messages.append(f"  ✅ Stored in command_aliases")
+                    
+                    if alias_name in self._loaded_aliases:
+                        debug_messages.append(f"  ⏭️ Already in _loaded_aliases")
+                    else:
+                        debug_messages.append(f"  🆕 Not in _loaded_aliases, creating command...")
+                        cmd = None
+                        if alias_type == 'mute': cmd = self.create_voice_mute_alias(alias_name)
+                        elif alias_type == 'unmute': cmd = self.create_unmute_alias(alias_name)
+                        elif alias_type == 'ban': cmd = self.create_ban_alias(alias_name)
+                        elif alias_type == 'unban': cmd = self.create_unban_alias(alias_name)
+                        elif alias_type == 'cow': cmd = self.create_cow_alias(alias_name)
+                        elif alias_type == 'uncow': cmd = self.create_uncow_alias(alias_name)
+                        elif alias_type == 'flag': cmd = self.create_flag_alias(alias_name)
+                        elif alias_type == 'unflag': cmd = self.create_unflag_alias(alias_name)
+                        elif alias_type == 'tmute': cmd = self.create_text_mute_alias(alias_name)
+                        elif alias_type == 'untmute': cmd = self.create_untextmute_alias(alias_name)
+                        
+                        if cmd:
+                            debug_messages.append(f"  ✅ Command created: {cmd.name}")
+                            existing = self.bot.get_command(alias_name)
+                            if existing:
+                                debug_messages.append(f"  ⚠️ Command already exists in bot!")
+                            else:
+                                self.bot.add_command(cmd)
+                                self._loaded_aliases.add(alias_name)
+                                debug_messages.append(f"  ✅ Command added to bot")
+                        else:
+                            debug_messages.append(f"  ❌ Command creation failed")
                 elif alias_type in ('role', 'unrole'):
                     if role_id:
                         self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('role_aliases', {}).setdefault(alias_type, {})[alias_name] = {
                             'role_id': int(role_id),
                             'channel_id': int(channel_id) if channel_id else None
                         }
-                        debug_messages.append(f"  ✅ Added to role_aliases")
                 elif channel_id:
                     self.bot.command_aliases.setdefault(guild_id, self.bot.command_aliases.default_factory()).setdefault('channel_aliases', {}).setdefault(alias_type, {})[alias_name] = int(channel_id)
-                    debug_messages.append(f"  ✅ Added to channel_aliases")
                 
-                if alias_name not in self._loaded_aliases:
-                    debug_messages.append(f"  🆕 Alias '{alias_name}' not in _loaded_aliases")
+                # Create commands for non-temp aliases without debug
+                if room_name == '' and alias_name not in self._loaded_aliases:
                     cmd = None
                     if alias_type == 'mute': cmd = self.create_voice_mute_alias(alias_name)
                     elif alias_type == 'unmute': cmd = self.create_unmute_alias(alias_name)
@@ -233,23 +260,13 @@ class Hybrid(commands.Cog):
                     elif alias_type == 'untmute': cmd = self.create_untextmute_alias(alias_name)
                     elif alias_type == 'role': cmd = self.create_role_alias(alias_name)
                     elif alias_type == 'unrole': cmd = self.create_unrole_alias(alias_name)
-                    
-                    if cmd:
-                        debug_messages.append(f"  ✅ Created command object for '{alias_name}'")
-                        existing = self.bot.get_command(alias_name)
-                        if existing:
-                            debug_messages.append(f"  ⚠️ Command '{alias_name}' already exists in bot")
-                        else:
-                            self.bot.add_command(cmd)
-                            self._loaded_aliases.add(alias_name)
-                            debug_messages.append(f"  ✅ Added command '{alias_name}' to bot")
-                    else:
-                        debug_messages.append(f"  ❌ Failed to create command for '{alias_name}' (type={alias_type})")
-                else:
-                    debug_messages.append(f"  ⏭️ Alias '{alias_name}' already in _loaded_aliases")
+                    if cmd and not self.bot.get_command(alias_name):
+                        self.bot.add_command(cmd)
+                        self._loaded_aliases.add(alias_name)
+            
+            debug_messages.append(f"\n📊 Summary: {temp_room_count} temp room aliases processed")
         
         await self.load_log_channels()
-        debug_messages.append(f"\n✅ Loaded log channels")
         
         # Send debug messages to all temp room channels
         debug_text = "\n".join(debug_messages)
