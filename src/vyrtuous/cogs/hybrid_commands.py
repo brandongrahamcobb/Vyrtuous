@@ -174,21 +174,22 @@ class Hybrid(commands.Cog):
         await self.load_log_channels()
         
     async def load_temp_rooms(self):
-        temp_rows = await conn.fetch(
-            'SELECT guild_snowflake, room_name, room_snowflake, owner_snowflake FROM temporary_rooms'
-        )
-        for row in temp_rows:
-            guild_id = row['guild_snowflake']
-            room_name = row['room_name']
-            room_snowflake = row['room_snowflake']
-            guild = self.bot.get_guild(guild_id)
-            if not guild:
-                continue
-            channel_obj = guild.get_channel(room_snowflake)
-            if not channel_obj:
-                continue
-            temp_channel = TempChannel(channel_obj, room_name)
-            self.temp_rooms.setdefault(guild_id, {})[room_name] = temp_channel
+        async with self.bot.db_pool.acquire() as conn:
+            temp_rows = await conn.fetch(
+                'SELECT guild_snowflake, room_name, room_snowflake, owner_snowflake FROM temporary_rooms'
+            )
+            for row in temp_rows:
+                guild_id = row['guild_snowflake']
+                room_name = row['room_name']
+                room_snowflake = row['room_snowflake']
+                guild = self.bot.get_guild(guild_id)
+                if not guild:
+                    continue
+                channel_obj = guild.get_channel(room_snowflake)
+                if not channel_obj:
+                    continue
+                temp_channel = TempChannel(channel_obj, room_name)
+                self.temp_rooms.setdefault(guild_id, {})[room_name] = temp_channel
     
     async def load_log_channels(self):
         async with self.bot.db_pool.acquire() as conn:
