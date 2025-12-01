@@ -486,8 +486,8 @@ class EventListeners(commands.Cog):
 #                            )
 #                        except discord.HTTPException as e:
 #                            logger.debug(f'Failed to mute {member.display_name}: {e}')
-#                except Exception as e:
-#                    logger.exception('Error in on_voice_state_update', exc_info=e)
+                except Exception as e:
+                    logger.exception('Error in on_voice_state_update', exc_info=e)
             
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:
