@@ -5433,6 +5433,22 @@ class Hybrid(commands.Cog):
         )
         await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
 
+    @commands.command(name='check', help='List temporary rooms with matching command aliases.')
+    @is_owner_developer_predicator()
+    async def check_temp_rooms_text_command(self, ctx: commands.Context):
+        aliases=self.command_aliases
+        guild_id=ctx.guild.id
+        rooms=self.temp_rooms.get(guild_id,{})
+        results=[]
+        for room_name,room in rooms.items():
+            room_id=room.channel.id
+            for command_name,meta in aliases.items():
+                a_id=meta.get('id')
+                a_room=meta.get('room_name')
+                if a_id==room_id and a_room==room_name:
+                    results.append(f"{command_name} → {room_name} ({room_id})")
+        output='\n'.join(results) if results else 'No temporary room commands found.'
+        await self.handler.send_message(ctx,content=output)
     # CHECK
     @app_commands.command(name='temp', description='Mark a channel as a temporary room and assign an owner.')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
