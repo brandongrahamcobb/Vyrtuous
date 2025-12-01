@@ -5495,28 +5495,57 @@ class Hybrid(commands.Cog):
             ''', channel_obj.name, channel_obj.id, member_obj.id)
             await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Channel {channel_obj.mention} is now owned by {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
+    @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.')
+    @is_owner_developer_predicator()
+    async def check_temp_rooms_app_command(
+        self,
+        interaction: discord.Interaction
+    ):
+        if not interaction.guild:
+            return await self.send(interaction, content='\U0001F6AB This command can only be used in servers.')
+        aliases = self.bot.command_aliases.get(interaction.guild.id, {})
+        rooms = self.temp_rooms.get(interaction.guild.id, {})
+        temp_aliases = aliases.get('temp_room_aliases', {})
+        if not rooms:
+            return await self.send(interaction, content='No temporary rooms found.')
+        listings = []
+        for room_name, room in rooms.items():
+            room_id = room.channel.id
+            listings.append(f"{room_name} ({room_id})")
+            for alias_type, group in temp_aliases.items():
+                for alias_name,meta in group.items():
+                    a_id = meta.get('channel_id')
+                    a_room = meta.get('room_name')
+                    if a_id == room_id and a_room == room_name:
+                        listings.append(f"  ↳ {alias_name} ({alias_type})")
+        output = '\n'.join(listings)
+        return await self.send(interaction, content=f'{self.get_random_emoji()}\n{output}')
+        
     @commands.command(name='temps', help='List temporary rooms with matching command aliases.')
     @is_owner_developer_predicator()
-    async def check_temp_rooms_text_command(self, ctx: commands.Context):
-        aliases=self.bot.command_aliases.get(ctx.guild.id,{})
-        guild_id=ctx.guild.id
-        rooms=self.temp_rooms.get(guild_id,{})
-        temp_aliases=aliases.get('temp_room_aliases',{})
+    async def check_temp_rooms_text_command(
+        self,
+        ctx: commands.Context
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        aliases = self.bot.command_aliases.get(ctx.guild.id, {})
+        rooms = self.temp_rooms.get(ctx.guild.id,{})
+        temp_aliases = aliases.get('temp_room_aliases', {})
         if not rooms:
-            await self.handler.send_message(ctx,content='No temporary rooms found.')
-            return
-        listings=[]
-        for room_name,room in rooms.items():
-            room_id=room.channel.id
+            return await self.handler.send_message(ctx, content='\U0001F6AB No temporary rooms found.')
+        listings = []
+        for room_name, room in rooms.items():
+            room_id = room.channel.id
             listings.append(f"{room_name} ({room_id})")
-            for alias_type,group in temp_aliases.items():
+            for alias_type, group in temp_aliases.items():
                 for alias_name,meta in group.items():
-                    a_id=meta.get('channel_id')
-                    a_room=meta.get('room_name')
-                    if a_id==room_id and a_room==room_name:
+                    a_id = meta.get('channel_id')
+                    a_room = meta.get('room_name')
+                    if a_id == room_id and a_room == room_name:
                         listings.append(f"  ↳ {alias_name} ({alias_type})")
-        output='\n'.join(listings)
-        await self.handler.send_message(ctx,content=output)
+        output = '\n'.join(listings)
+        return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()}\n{output}')
         
     @app_commands.command(name='tmutes', description='Lists text-mute statistics.')
     @app_commands.describe(target='"all", channel name/ID/mention, or user mention/ID')
@@ -6574,7 +6603,7 @@ class Hybrid(commands.Cog):
 
     @app_commands.command(name='xtemp', description='Delete a temporary room.')
     @is_owner_developer_app_predicator()
-    async def delete_temp_room_text_command(
+    async def delete_temp_room_app_command(
         self,
         interaction: discord.Interaction,
         channel: Optional[str]
@@ -6611,7 +6640,7 @@ class Hybrid(commands.Cog):
         if not temp_room:
             await self.handler.send_message(ctx, content='\U0001F6AB This channel is not registered as a temporary room.')
             return
-        async with ctx.bot.db_pool.acquire() as conn:
+        async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT owner_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2', ctx.guild.id, channel_obj.name)
             owner_id = row['owner_snowflake'] if row else None
             if owner_id:
