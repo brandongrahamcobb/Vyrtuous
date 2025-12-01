@@ -5437,18 +5437,23 @@ class Hybrid(commands.Cog):
     @is_owner_developer_predicator()
     async def check_temp_rooms_text_command(self, ctx: commands.Context):
         aliases=self.bot.command_aliases.get(ctx.guild.id,{})
-        rooms=self.temp_rooms.get(ctx.guild.id,{})
+        guild_id=ctx.guild.id
+        rooms=self.temp_rooms.get(guild_id,{})
         temp_aliases=aliases.get('temp_room_aliases',{})
-        results=[]
+        if not rooms:
+            await self.handler.send_message(ctx,content='No temporary rooms found.')
+            return
+        listings=[]
         for room_name,room in rooms.items():
             room_id=room.channel.id
+            listings.append(f"{room_name} ({room_id})")
             for alias_type,group in temp_aliases.items():
                 for alias_name,meta in group.items():
                     a_id=meta.get('channel_id')
                     a_room=meta.get('room_name')
                     if a_id==room_id and a_room==room_name:
-                        results.append(f"{alias_name} → {room_name} ({room_id})")
-        output='\n'.join(results) if results else 'No temporary room commands found.'
+                        listings.append(f"  ↳ {alias_name} ({alias_type})")
+        output='\n'.join(listings)
         await self.handler.send_message(ctx,content=output)
     # CHECK
     @app_commands.command(name='temp', description='Mark a channel as a temporary room and assign an owner.')
