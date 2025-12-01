@@ -595,7 +595,7 @@ async def check_block(ctx: commands.Context, member: discord.Member, channel: Op
             return 'Owner', True
         return target_highest, False
     success = role_hierarchy.index(target_highest) < role_hierarchy.index(author_highest)
-    return target_highest, success
+    return author_highest, success
     
 async def is_owner_developer_coordinator_via_alias(ctx: commands.Context, alias_type: Optional[str] = None) -> bool:
     guild = ctx.guild
@@ -921,7 +921,7 @@ async def check_block_app(ctx: discord.Interaction, member: discord.Member, chan
         if 'Owner' in author_roles: return 'Owner',True
         return target_highest,False
     success=role_hierarchy.index(target_highest)<role_hierarchy.index(author_highest)
-    return target_highest,success
+    return author_highest,success
 
 async def check_owner_dev_coord_mod_overall(ctx: commands.Context) -> Tuple[bool,bool]:
     guild = ctx.guild
