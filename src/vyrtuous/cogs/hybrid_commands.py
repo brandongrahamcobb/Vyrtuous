@@ -5436,17 +5436,18 @@ class Hybrid(commands.Cog):
     @commands.command(name='check', help='List temporary rooms with matching command aliases.')
     @is_owner_developer_predicator()
     async def check_temp_rooms_text_command(self, ctx: commands.Context):
-        aliases=self.command_aliases
-        guild_id=ctx.guild.id
-        rooms=self.temp_rooms.get(guild_id,{})
+        aliases=self.bot.command_aliases.get(ctx.guild.id,{})
+        rooms=self.temp_rooms.get(ctx.guild.id,{})
+        temp_aliases=aliases.get('temp_room_aliases',{})
         results=[]
         for room_name,room in rooms.items():
             room_id=room.channel.id
-            for command_name,meta in aliases.items():
-                a_id=meta.get('id')
-                a_room=meta.get('room_name')
-                if a_id==room_id and a_room==room_name:
-                    results.append(f"{command_name} → {room_name} ({room_id})")
+            for alias_type,group in temp_aliases.items():
+                for alias_name,meta in group.items():
+                    a_id=meta.get('channel_id')
+                    a_room=meta.get('room_name')
+                    if a_id==room_id and a_room==room_name:
+                        results.append(f"{alias_name} → {room_name} ({room_id})")
         output='\n'.join(results) if results else 'No temporary room commands found.'
         await self.handler.send_message(ctx,content=output)
     # CHECK
