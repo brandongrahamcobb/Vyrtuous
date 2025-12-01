@@ -4786,76 +4786,6 @@ class Hybrid(commands.Cog):
                     self.temp_rooms[interaction.guild.id][channel_obj.name] = temp_channel_obj
             return await self.send(interaction, content=f'{self.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
 
-#    @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
-#    @is_owner_developer_coordinator_predicator()
-#    async def migrate_temp_room_command(
-#        self,
-#        ctx,
-#        old_name: Optional[str] = commands.parameter(default=None, description='Provide a channel name'),
-#        new_target: Optional[int] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
-#    ):
-#        if not ctx.guild:
-#            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-#        async with self.bot.db_pool.acquire() as conn:
-#            rooms = await conn.fetch(
-#                'SELECT room_name, owner_snowflake, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
-#                ctx.guild.id, old_name
-#            )
-#            if not rooms:
-#                return await self.handler.send_message(ctx, content=f'No temporary room named `{old_name}` found.')
-#            if len(rooms) > 1:
-#                return await self.handler.send_message(ctx, content=f'Multiple temporary rooms named `{old_name}` exist. Migration failed.')
-#            temp = rooms[0]
-#            channel_obj = await self.resolve_channel(ctx, new_target)
-#            if channel_obj.type != discord.ChannelType.voice:
-#                return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-#            is_owner = temp['owner_snowflake'] == ctx.author.id
-#            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
-#            if not (is_owner_or_dev or is_owner):
-#                return await self.handler.send_message(ctx, content='Only the owner or developers can migrate this room.')
-#            await conn.execute(
-#                'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
-#                ctx.guild.id, old_name, channel_obj.name, channel_obj.id
-#            )
-#            tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps','command_aliases']
-#            for table in tables:
-#                await conn.execute(
-#                    f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
-#                    ctx.guild.id, old_name, channel_obj.name, channel_obj.id
-#                )
-#            await conn.execute(
-#                'UPDATE users SET coordinator_room_names=array_replace(coordinator_room_names, $1, $2) WHERE $1=ANY(coordinator_room_names)',
-#                old_name, channel_obj.name
-#            )
-#            await conn.execute(
-#                'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
-#                temp['room_snowflake'], channel_obj.id
-#            )
-#            await conn.execute(
-#                'UPDATE users SET moderator_room_names=array_replace(moderator_room_names, $1, $2) WHERE $1=ANY(moderator_room_names)',
-#                old_name, channel_obj.name
-#            )
-#            await conn.execute(
-#                'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
-#                temp['room_snowflake'], channel_obj.id
-#            )
-#            if ctx.guild.id in self.bot.command_aliases:
-#                guild_alias_root = self.bot.command_aliases[ctx.guild.id]
-#                if 'temp_room_aliases' in guild_alias_root:
-#                    temp_room_aliases = guild_alias_root['temp_room_aliases']
-#                    for alias_type, aliases in temp_room_aliases.items():
-#                        for alias_name, alias_data in aliases.items():
-#                            if alias_data.get('room_name') == old_name:
-#                                alias_data['channel_id'] = channel_obj.id
-#                                alias_data['room_name'] = channel_obj.name
-#            if ctx.guild.id in self.temp_rooms:
-#                if old_name in self.temp_rooms[ctx.guild.id]:
-#                    temp_channel_obj = self.temp_rooms[ctx.guild.id].pop(old_name)
-#                    temp_channel_obj.room_name = channel_obj.name
-#                    temp_channel_obj.channel = channel_obj
-#                    self.temp_rooms[ctx.guild.id][channel_obj.name] = temp_channel_obj
-#            return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
-
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
     @is_owner_developer_coordinator_predicator()
     async def migrate_temp_room_command(
@@ -4866,11 +4796,6 @@ class Hybrid(commands.Cog):
     ):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        
-        await self.handler.send_message(ctx, content=f"DEBUG: Before migrate - temp_rooms guilds: {list(self.temp_rooms.keys())}")
-        if ctx.guild.id in self.temp_rooms:
-            await self.handler.send_message(ctx, content=f"DEBUG: Rooms in guild before: {list(self.temp_rooms[ctx.guild.id].keys())}")
-        
         async with self.bot.db_pool.acquire() as conn:
             rooms = await conn.fetch(
                 'SELECT room_name, owner_snowflake, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
@@ -4888,9 +4813,6 @@ class Hybrid(commands.Cog):
             is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
             if not (is_owner_or_dev or is_owner):
                 return await self.handler.send_message(ctx, content='Only the owner or developers can migrate this room.')
-            
-            await self.handler.send_message(ctx, content=f"DEBUG: Migrating '{old_name}' to '{channel_obj.name}' ({channel_obj.id})")
-            
             await conn.execute(
                 'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
                 ctx.guild.id, old_name, channel_obj.name, channel_obj.id
@@ -4917,8 +4839,6 @@ class Hybrid(commands.Cog):
                 'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
                 temp['room_snowflake'], channel_obj.id
             )
-            
-            await self.handler.send_message(ctx, content=f"DEBUG: Updating command_aliases...")
             if ctx.guild.id in self.bot.command_aliases:
                 guild_alias_root = self.bot.command_aliases[ctx.guild.id]
                 if 'temp_room_aliases' in guild_alias_root:
@@ -4928,23 +4848,12 @@ class Hybrid(commands.Cog):
                             if alias_data.get('room_name') == old_name:
                                 alias_data['channel_id'] = channel_obj.id
                                 alias_data['room_name'] = channel_obj.name
-            
-            await self.handler.send_message(ctx, content=f"DEBUG: ctx.guild.id in temp_rooms: {ctx.guild.id in self.temp_rooms}")
             if ctx.guild.id in self.temp_rooms:
-                await self.handler.send_message(ctx, content=f"DEBUG: old_name '{old_name}' in temp_rooms[guild]: {old_name in self.temp_rooms[ctx.guild.id]}")
                 if old_name in self.temp_rooms[ctx.guild.id]:
                     temp_channel_obj = self.temp_rooms[ctx.guild.id].pop(old_name)
                     temp_channel_obj.room_name = channel_obj.name
                     temp_channel_obj.channel = channel_obj
                     self.temp_rooms[ctx.guild.id][channel_obj.name] = temp_channel_obj
-                    await self.handler.send_message(ctx, content=f"DEBUG: Successfully migrated in memory")
-                else:
-                    await self.handler.send_message(ctx, content=f"DEBUG: old_name not found! Available: {list(self.temp_rooms[ctx.guild.id].keys())}")
-            else:
-                await self.handler.send_message(ctx, content=f"DEBUG: Guild not in temp_rooms!")
-            
-            await self.handler.send_message(ctx, content=f"DEBUG: After migrate - rooms in guild: {list(self.temp_rooms.get(ctx.guild.id, {}).keys())}")
-            
             return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
 
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
