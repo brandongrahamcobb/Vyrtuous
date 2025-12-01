@@ -174,6 +174,7 @@ class Hybrid(commands.Cog):
                         self.bot.add_command(cmd)
                         self._loaded_aliases.add(alias_name)
         await self.load_log_channels()
+        await self.load_temp_rooms()
 
     async def load_temp_rooms(self):
         async with self.bot.db_pool.acquire() as conn:
