@@ -77,66 +77,24 @@ class EventListeners(commands.Cog):
                   AND room_name = $3
                   AND (expires_at IS NULL OR expires_at > NOW())
             ''', guild_id, user_id, '')
-    
-#    @commands.Cog.listener()
-#    async def on_guild_channel_create(self,channel:discord.abc.GuildChannel):
-#        guild=channel.guild
-#        name=channel.name
-#        for c in guild.channels:
-#            if c.id!=channel.id and c.name==name: return
-#        async with self.bot.db_pool.acquire() as conn:
-#            temp_room=await conn.fetchrow('SELECT room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',guild.id,name)
-#            if not temp_room: return
-#            old_id=temp_room['room_snowflake']
-#            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2',guild.id,name,channel.id)
-#            await conn.execute('UPDATE command_aliases SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-#            await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-#            await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-#            await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-#            await conn.execute('UPDATE active_stages SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-#            await conn.execute('UPDATE stage_coordinators SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-#            await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2',guild.id,name,channel.id)
-#            if old_id:
-#                # carry over coordinators by room name
-#                await conn.execute('''
-#                    UPDATE users
-#                    SET coordinator_room_names=ARRAY(
-#                        SELECT DISTINCT unnest(
-#                            COALESCE(coordinator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
-#                        )
-#                    )
-#                    WHERE $1=ANY(coordinator_room_names)
-#                ''',name)
-#                # carry over moderators by room name
-#                await conn.execute('''
-#                    UPDATE users
-#                    SET moderator_room_names=ARRAY(
-#                        SELECT DISTINCT unnest(
-#                            COALESCE(moderator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
-#                        )
-#                    )
-#                    WHERE $1=ANY(moderator_room_names)
-#                ''',name)
-#        guild_aliases=self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
-#        temp_aliases=guild_aliases.get('temp_room_aliases', self.bot.command_aliases.default_factory())
-#        for alias_type,aliases in temp_aliases.items():
-#            for alias_name,data in aliases.items():
-#                if data.get('room_name')==name: data['channel_id']=channel.id
+
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
         name = channel.name
+        hybrid_cog = self.bot.get_cog("Hybrid")
         for c in guild.channels:
             if c.id != channel.id and c.name == name:
                 return
         async with self.bot.db_pool.acquire() as conn:
             temp_room = await conn.fetchrow(
-                'SELECT room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
+                'SELECT room_snowflake, room_name FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
                 guild.id, name
             )
             if not temp_room:
                 return
             old_id = temp_room['room_snowflake']
+            old_name = temp_room['room_name']
             await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE command_aliases SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
@@ -164,6 +122,18 @@ class EventListeners(commands.Cog):
                     )
                     WHERE $1=ANY(moderator_room_names)
                 ''', name)
+                await conn.execute('''
+                    UPDATE users
+                    SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),
+                        updated_at = NOW()
+                    WHERE $1 = ANY(coordinator_channel_ids)
+                ''', old_id, channel.id)
+                await conn.execute('''
+                    UPDATE users
+                    SET moderator_channel_ids = array_replace(moderator_channel_ids, $1, $2),
+                        updated_at = NOW()
+                    WHERE $1 = ANY(moderator_channel_ids)
+                ''', old_id, channel.id)
         guild_aliases = self.bot.command_aliases.setdefault(guild.id, self.bot.command_aliases.default_factory())
         temp_aliases = guild_aliases.get('temp_room_aliases', {})
         for alias_type, aliases in temp_aliases.items():
@@ -171,6 +141,14 @@ class EventListeners(commands.Cog):
                 if data.get('room_name') == name:
                     old_channel_id = data.get('channel_id')
                     data['channel_id'] = channel.id
+                    data['room_name'] = channel.name
+        if hybrid_cog:
+            if guild.id in hybrid_cog.temp_rooms:
+                if old_name in hybrid_cog.temp_rooms[guild.id]:
+                    temp_channel_obj = hybrid_cog.temp_rooms[guild.id].pop(old_name)
+                    temp_channel_obj.room_name = channel.name
+                    temp_channel_obj.channel = channel
+                    hybrid_cog.temp_rooms[guild.id][channel.name] = temp_channel_obj
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
@@ -495,10 +473,7 @@ class EventListeners(commands.Cog):
 #                            explicit_deny_roles.append(role)
 #                    if explicit_deny_roles:
 #                        try:
-#                            await member.edit(
-#                                mute=True, 
-#                                reason=f"Auto-muting in {after_channel.name} (explicit speak deny)"
-#                            )
+#                            await member.move_to(after_channel)
 #                            await logger.debug(
 #                                f"🔇 Auto-muted {member.mention} in **{after_channel.name}** "
 #                                f"due to explicit speak deny from roles: "
@@ -511,8 +486,8 @@ class EventListeners(commands.Cog):
 #                            )
 #                        except discord.HTTPException as e:
 #                            logger.debug(f'Failed to mute {member.display_name}: {e}')
-                except Exception as e:
-                    logger.exception('Error in on_voice_state_update', exc_info=e)
+#                except Exception as e:
+#                    logger.exception('Error in on_voice_state_update', exc_info=e)
             
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member) -> None:

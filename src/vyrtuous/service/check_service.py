@@ -973,13 +973,13 @@ async def check_owner_dev_coord_mod_overall_app(interaction: discord.Interaction
     is_owner_or_dev = False
     user_id = interaction.user.id
     try:
-        if await is_system_owner_inter(interaction): is_owner_or_dev = True
+        if await is_system_owner_app(interaction): is_owner_or_dev = True
     except app_commands.CheckFailure:
         try:
-            if guild and await is_guild_owner_inter(interaction): is_owner_or_dev = True
+            if guild and await is_guild_owner_app(interaction): is_owner_or_dev = True
         except app_commands.CheckFailure:
             try:
-                if guild and await is_developer_inter(interaction): is_owner_or_dev = True
+                if guild and await is_developer_app(interaction): is_owner_or_dev = True
             except app_commands.CheckFailure: pass
     if guild:
         async with interaction.client.db_pool.acquire() as conn:

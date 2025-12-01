@@ -89,7 +89,7 @@ class ScheduledTasks(commands.Cog):
                         continue
                     temp = None
                     if hybrid and guild and channel:
-                        temp = hybrid.get_temp_channel_by_name(guild.id, channel.name)
+                        temp = hybrid.temp_rooms.get(guild.id, {}).get(channel.name)
                     room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                     for member in channel.members:
                         perms = channel.permissions_for(member)
@@ -134,7 +134,7 @@ class ScheduledTasks(commands.Cog):
                                 channel = None
                         temp = None
                         if hybrid and guild and channel:
-                            temp = hybrid.get_temp_channel_by_name(guild.id, channel.name)
+                            temp = hybrid.temp_rooms.get(guild_id, {}).get(channel.name)
                         room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired ban')
@@ -197,7 +197,7 @@ class ScheduledTasks(commands.Cog):
                                 channel = None
                         temp = None
                         if hybrid and guild and channel:
-                            temp = hybrid.get_temp_channel_by_name(guild.id, channel.name)
+                            temp = hybrid.temp_rooms.get(guild_id, {}).get(channel.name)
                         room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired voice mute')
@@ -259,7 +259,7 @@ class ScheduledTasks(commands.Cog):
                         channel = self.bot.get_channel(channel_id)
                         temp = None
                         if hybrid and guild and channel:
-                            temp = hybrid.get_temp_channel_by_name(guild.id, channel.name)
+                            temp = hybrid.temp_rooms.get(guild_id, {}).get(channel.name)
                         room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                         muted_members = await conn.fetch('''
                             SELECT discord_snowflake
@@ -332,7 +332,7 @@ class ScheduledTasks(commands.Cog):
                                 channel = None
                         temp = None
                         if hybrid and guild and channel:
-                            temp = hybrid.get_temp_channel_by_name(guild.id, channel.name)
+                            temp = hybrid.temp_rooms.get(guild_id, {}).get(channel.name)
                         room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired text mute')
