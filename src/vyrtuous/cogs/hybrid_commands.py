@@ -1936,7 +1936,7 @@ class Hybrid(commands.Cog):
             return await self.send(interaction, content='\U0001F6AB You cannot make the bot a coordinator.')
         highest_role, success = await check_block_app(interaction, member_obj, channel_obj)
         if not success:
-            return await self.send(interaction, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` a coordinator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await self.send(interaction, content=f'\U0001F6AB You are not allowed to make {member_obj.mention} a coordinator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             if room_name != '':
                 await conn.execute('''
@@ -1999,7 +1999,7 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a coordinator.')
         highest_role, success = await check_block(ctx, member_obj, channel_obj)
         if not success:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` a coordinator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make {member_obj.mention} a coordinator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             if room_name != '':
                 await conn.execute('''
@@ -2112,7 +2112,7 @@ class Hybrid(commands.Cog):
             return await self.send(interaction, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         highest_role, success = await check_block_app(interaction, member_obj, None)
         if not success:
-            return await self.send(interaction, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` a developer because they are a higher/or equivalent role than you in {interaction.guild.name}.')
+            return await self.send(interaction, content=f'\U0001F6AB You are not allowed to make {member_obj.mention} a developer because they are a higher/or equivalent role than you in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (discord_snowflake, developer_guild_ids)
@@ -2144,7 +2144,7 @@ class Hybrid(commands.Cog):
              return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a developer.')
         highest_role, success = await check_block(ctx, member_obj, None)
         if not success:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` a developer because they are a higher/or equivalent role than you in {ctx.guild.name}.')
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make {member_obj.mention} a developer because they are a higher/or equivalent role than you in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO users (discord_snowflake, developer_guild_ids)
@@ -2194,7 +2194,7 @@ class Hybrid(commands.Cog):
             return await self.send(interaction, content=f'\U0001F6AB You do not have permission to use this command (`mod`) in {channel_obj.mention}')
         highest_role, success = await check_block_app(interaction, member_obj, channel_obj)
         if not success:
-            return await self.send(interaction, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await self.send(interaction, content=f'\U0001F6AB You are not allowed to make {member_obj.mention} a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         if not is_owner_or_dev:
             async with self.bot.db_pool.acquire() as conn:
                 if room_name != '':
@@ -2273,7 +2273,7 @@ class Hybrid(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`mod`) in {channel_obj.mention}')
         highest_role, success = await check_block(ctx, member_obj, channel_obj)
         if not success:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make this `{highest_role}` a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to make {member_obj.mention} a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         if not is_owner_or_dev:
             async with self.bot.db_pool.acquire() as conn:
                 if room_name != '':
