@@ -317,7 +317,7 @@ class EventListeners(commands.Cog):
                             except discord.HTTPException as e:
                                 logger.debug(f'Failed to unmute {member.display_name}: {e}')
                                 raise
-                    if active_stage and (user_id not in coordinator_ids and not is_owner_or_dev) and not after.mute and before_channel != after_channel and after_channel:
+                    if active_stage and (user_id not in coordinator_ids and not is_owner_or_dev) and before_channel != after_channel and after_channel: #and not after.mute 
                          expires_at = active_stage['expires_at']
                          try:
                              if temp_room:
