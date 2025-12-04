@@ -6464,7 +6464,7 @@ class Hybrid(commands.Cog):
                     EXCEPT SELECT $2
                 ))
                 WHERE discord_snowflake = $1
-            ''', member_obj.id, guild_id)
+            ''', member_obj.id, interaction.guild.id)
             await conn.execute('''
                 DELETE FROM active_server_voice_mutes
                 WHERE discord_snowflake = $1 AND guild_id = $2
@@ -6488,15 +6488,12 @@ class Hybrid(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE users
-                SET server_mute_guild_ids = (
-                    SELECT ARRAY(
-                        SELECT unnest(server_mute_guild_ids)
-                        EXCEPT
-                        SELECT $2::bigint
-                    )
-                )
-                WHERE discord_snowflake = $1;
-            ''', member_obj.id)
+                SET server_mute_guild_ids = (SELECT ARRAY(
+                    SELECT unnest(server_mute_guild_ids)
+                    EXCEPT SELECT $2
+                ))
+                WHERE discord_snowflake = $1
+            ''', member_obj.id, ctx.guild.id)
             await conn.execute('''
                 DELETE FROM active_server_voice_mutes
                 WHERE discord_snowflake = $1 AND guild_id = $2
