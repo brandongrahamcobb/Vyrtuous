@@ -149,6 +149,12 @@ class EventListeners(commands.Cog):
                     temp_channel_obj.room_name = channel.name
                     temp_channel_obj.channel = channel
                     hybrid_cog.temp_rooms[guild.id][channel.name] = temp_channel_obj
+        banned_users = []
+        rows = await conn.fetch('SELECT user_id FROM active_bans WHERE guild_id=$1 AND room_name=$2', guild.id, name)
+        banned_users = [guild.get_member(r['user_id']) for r in rows if guild.get_member(r['user_id'])]
+        for u in banned_users:
+            if u:
+                await channel.set_permissions(u, view_channel=False)
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
