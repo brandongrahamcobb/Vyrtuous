@@ -5070,7 +5070,7 @@ class Hybrid(commands.Cog):
             try:
                 await member_obj.edit(mute=True)
             except discord.Forbidden:
-                return await self.send(interaction, content=f"\U0001F6AB {member_obj.mention} was not successfully voice muted.", allowed_mentions=discord.AllowedMentions.none())
+                return await self.send(interaction, content=f'\U0001F6AB {member_obj.mention} was not successfully voice muted.', allowed_mentions=discord.AllowedMentions.none())
         return await self.send(interaction, content=f'{self.get_random_emoji()} {member_obj.mention} has been server muted for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
             
     @commands.command(name='smute', help='Mutes a member throughout the entire guild.')
@@ -5112,7 +5112,7 @@ class Hybrid(commands.Cog):
             try:
                 await member_obj.edit(mute=True)
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully voice muted.", allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} was not successfully voice muted.', allowed_mentions=discord.AllowedMentions.none())
         return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member_obj.mention} has been server muted for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
 
     @app_commands.command(name='stages', description='Lists stage mute statistics.')
@@ -6479,7 +6479,7 @@ class Hybrid(commands.Cog):
             try:
                 await member_obj.edit(mute=False)
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully voice muted.", allowed_mentions=discord.AllowedMentions.none())
+                return await self.send(interaction, content=f'\U0001F6AB {member_obj.mention} was not successfully unvoice muted.', allowed_mentions=discord.AllowedMentions.none())
         await self.send(interaction, content=f'{self.get_random_emoji()} {member_obj.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
         
     @commands.command(name='xsmute', help='Unmutes a member throughout the entire guild.')
@@ -6511,7 +6511,7 @@ class Hybrid(commands.Cog):
             try:
                 await member_obj.edit(mute=False)
             except discord.Forbidden:
-                return await self.handler.send_message(ctx, content=f"\U0001F6AB {member_obj.mention} was not successfully voice muted.", allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} was not successfully unvoice muted.', allowed_mentions=discord.AllowedMentions.none())
         return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} {member_obj.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
     
     @app_commands.command(name='xstage', description='Destroy the stage in the current channel.')
