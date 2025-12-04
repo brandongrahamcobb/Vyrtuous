@@ -6453,7 +6453,7 @@ class Hybrid(commands.Cog):
     ):
         if not interaction.guild:
             return await self.send(interaction, content='This command must be used in a server.')
-        member_obj = await self.resolve_member(ctx, member)
+        member_obj = await self.resolve_member_app(interaction, member)
         if not member_obj:
             return await self.send(interaction, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         async with self.bot.db_pool.acquire() as conn:
@@ -6488,12 +6488,15 @@ class Hybrid(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE users
-                SET server_mute_guild_ids = (SELECT ARRAY(
-                    SELECT unnest(server_mute_guild_ids)
-                    EXCEPT SELECT $2
-                ))
-                WHERE discord_snowflake = $1
-            ''', member_obj.id, ctx.guild.id)
+                SET server_mute_guild_ids = (
+                    SELECT ARRAY(
+                        SELECT unnest(server_mute_guild_ids)
+                        EXCEPT
+                        SELECT $2::bigint
+                    )
+                )
+                WHERE discord_snowflake = $1;
+            ''', member_obj.id)
             await conn.execute('''
                 DELETE FROM active_server_voice_mutes
                 WHERE discord_snowflake = $1 AND guild_id = $2
