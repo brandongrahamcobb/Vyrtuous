@@ -6468,7 +6468,7 @@ class Hybrid(commands.Cog):
             await conn.execute('''
                 DELETE FROM active_server_voice_mutes
                 WHERE discord_snowflake = $1 AND guild_id = $2
-            ''', member_obj.id, guild_id)
+            ''', member_obj.id, interaction.guild.id)
         if member_obj.voice and member_obj.voice.channel:
             await member_obj.edit(mute=False)
         await self.send(interaction, content=f'{self.get_random_emoji()} {member_obj.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
@@ -6478,7 +6478,7 @@ class Hybrid(commands.Cog):
     async def undo_server_mute_text_command(
             self,
             ctx: commands.Context,
-            member: Optional[str] = commands.parameter(description='Tag a member or include their snowflake ID')
+            member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
