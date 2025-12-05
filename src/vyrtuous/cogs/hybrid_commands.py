@@ -4729,7 +4729,6 @@ class Hybrid(commands.Cog):
 
     @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.')
     @app_commands.describe(old_name='Old temporary room name', new_channel='New channel to migrate to')
-    @is_owner_developer_coordinator_app_predicator()
     async def migrate_temp_room_app_command(
         self,
         interaction: discord.Interaction,
@@ -4802,7 +4801,6 @@ class Hybrid(commands.Cog):
             return await self.send(interaction, content=f'{self.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
     
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
-    @is_owner_developer_coordinator_predicator()
     async def migrate_temp_room_text_command(
         self,
         ctx,
