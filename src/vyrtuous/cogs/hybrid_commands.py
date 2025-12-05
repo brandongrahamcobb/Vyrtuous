@@ -1838,9 +1838,16 @@ class Hybrid(commands.Cog):
                     ),
                     updated_at = NOW()
             ''', channel_obj.id)
-        await self.send(interaction, content=f'{self.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access, including temp-room associations.', allowed_mentions=discord.AllowedMentions.none())
+            await conn.execute(
+                'DELETE FROM temporary_rooms WHERE room_snowflake = $1',
+                channel_obj.id
+            )
+        if interaction.guild.id in self.temp_rooms:
+            to_remove = [name for name, obj in self.temp_rooms[interaction.guild.id].items() if obj.channel.id == channel_obj.id]
+            for name in to_remove:
+                self.temp_rooms[interaction.guild.id].pop(name)
+        await self.send(interaction, content=f'{self.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted any temp-room associations.', allowed_mentions=discord.AllowedMentions.none())
 
-   # CHECK
     @commands.command(name='clear', help='Removes a specific channel ID from all users, including temp-room associations and all related records.')
     @is_owner_predicator()
     async def clear_channel_access_text_command(
@@ -1895,12 +1902,16 @@ class Hybrid(commands.Cog):
                     )
                 ''', channel_obj.id)
             await conn.execute('DELETE FROM temporary_rooms WHERE room_snowflake = $1', channel_obj.id)
-        guild_aliases = self.bot.command_aliases.setdefault(channel_obj.guild.id, self.bot.command_aliases.default_factory())
+        guild_aliases = self.bot.command_aliases.setdefault(ctx.guild.id, self.bot.command_aliases.default_factory())
         temp_aliases = guild_aliases.get('temp_room_aliases', {})
         for alias_type, aliases in temp_aliases.items():
             for alias_name, data in list(aliases.items()):
                 if data.get('channel_id') == channel_obj.id:
                     del aliases[alias_name]
+        if ctx.guild.id in self.temp_rooms:
+            to_remove = [name for name, obj in self.temp_rooms[ctx.guild.id].items() if obj.channel.id == channel_obj.id]
+            for name in to_remove:
+                self.temp_rooms[ctx.guild.id].pop(name)
         return await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Removed channel {channel_obj.mention} from all users and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
     
     @app_commands.command(name='coord', description='Grants coordinator access for a specific voice channel.')
@@ -4719,7 +4730,7 @@ class Hybrid(commands.Cog):
     @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.')
     @app_commands.describe(old_name='Old temporary room name', new_channel='New channel to migrate to')
     @is_owner_developer_coordinator_app_predicator()
-    async def rename_temp_room_app_command(
+    async def migrate_temp_room_app_command(
         self,
         interaction: discord.Interaction,
         old_name: str,
@@ -4741,14 +4752,17 @@ class Hybrid(commands.Cog):
             if channel_obj.type != discord.ChannelType.voice:
                 return await self.send(interaction, content='\U0001F6AB Please specify a valid target.')
             is_owner = temp['owner_snowflake'] == interaction.user.id
-            is_owner_or_dev, _ = await check_owner_dev_coord_app(interaction, channel_obj)
-            if not (is_owner_or_dev or is_owner):
-                return await self.send(interaction, content='\U0001F6AB Only the owner or developers can migrate this room.')
+            is_dev_or_owner, _ = await check_owner_dev_coord_app(interaction, channel_obj)
+            if not (is_owner or is_dev_or_owner):
+                return await self.send(interaction, content='\U0001F6AB Only the room owner or developers can migrate this room.')
             await conn.execute(
                 'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
                 interaction.guild.id, old_name, channel_obj.name, channel_obj.id
             )
-            tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps','command_aliases']
+            tables = [
+                'active_bans','active_text_mutes','active_voice_mutes',
+                'active_stages','stage_coordinators','active_caps','command_aliases'
+            ]
             for table in tables:
                 await conn.execute(
                     f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
@@ -4786,10 +4800,10 @@ class Hybrid(commands.Cog):
                     temp_channel_obj.channel = channel_obj
                     self.temp_rooms[interaction.guild.id][channel_obj.name] = temp_channel_obj
             return await self.send(interaction, content=f'{self.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
-
+    
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
     @is_owner_developer_coordinator_predicator()
-    async def migrate_temp_room_command(
+    async def migrate_temp_room_text_command(
         self,
         ctx,
         old_name: Optional[str] = commands.parameter(default=None, description='Provide a channel name'),
@@ -4811,14 +4825,17 @@ class Hybrid(commands.Cog):
             if channel_obj.type != discord.ChannelType.voice:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
             is_owner = temp['owner_snowflake'] == ctx.author.id
-            is_owner_or_dev, _ = await check_owner_dev_coord(ctx, channel_obj)
-            if not (is_owner_or_dev or is_owner):
-                return await self.handler.send_message(ctx, content='Only the owner or developers can migrate this room.')
+            is_dev_or_owner, _ = await check_owner_dev_coord(ctx, channel_obj)
+            if not (is_owner or is_dev_or_owner):
+                return await self.handler.send_message(ctx, content='Only the room owner or developers can migrate this room.')
             await conn.execute(
                 'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
                 ctx.guild.id, old_name, channel_obj.name, channel_obj.id
             )
-            tables = ['active_bans','active_text_mutes','active_voice_mutes','active_stages','stage_coordinators','active_caps','command_aliases']
+            tables = [
+                'active_bans','active_text_mutes','active_voice_mutes',
+                'active_stages','stage_coordinators','active_caps','command_aliases'
+            ]
             for table in tables:
                 await conn.execute(
                     f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
@@ -5415,6 +5432,8 @@ class Hybrid(commands.Cog):
                 UPDATE users
                 SET moderator_room_names = array_remove(moderator_room_names, $1),
                     moderator_channel_ids = array_remove(moderator_channel_ids, $2),
+                    coordinator_room_names = array_remove(coordinator_room_names, $1),
+                    coordinator_channel_ids = array_remove(coordinator_channel_ids, $2),
                     updated_at = NOW()
                 WHERE discord_snowflake = $3
             ''', channel_obj.name, channel_obj.id, member_obj.id)
@@ -5425,8 +5444,8 @@ class Hybrid(commands.Cog):
             ''', interaction.guild.id, channel_obj.name, member_obj.id, channel_obj.id)
             await conn.execute('''
                 UPDATE users
-                SET coordinator_room_names = CASE WHEN NOT $1=ANY(coordinator_room_names) THEN array_append(coordinator_room_names,$1) ELSE coordinator_room_names END,
-                    coordinator_channel_ids = CASE WHEN NOT $2=ANY(coordinator_channel_ids) THEN array_append(coordinator_channel_ids,$2) ELSE coordinator_channel_ids END,
+                SET coordinator_room_names = CASE WHEN NOT $1=ANY(coordinator_room_names) THEN array_append(coordinator_room_names, $1) ELSE coordinator_room_names END,
+                    coordinator_channel_ids = CASE WHEN NOT $2=ANY(coordinator_channel_ids) THEN array_append(coordinator_channel_ids, $2) ELSE coordinator_channel_ids END,
                     updated_at = NOW()
                 WHERE discord_snowflake = $3
             ''', channel_obj.name, channel_obj.id, member_obj.id)
@@ -5454,8 +5473,8 @@ class Hybrid(commands.Cog):
         self.temp_rooms.setdefault(ctx.guild.id, {})[channel_obj.name] = temp_channel
         async with ctx.bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO users (discord_snowflake, coordinator_room_names, coordinator_channel_ids, moderator_room_names, moderator_channel_ids)
-                VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::BIGINT[], ARRAY[]::TEXT[], ARRAY[]::BIGINT[])
+                INSERT INTO users (discord_snowflake, moderator_room_names, moderator_channel_ids)
+                VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::BIGINT[])
                 ON CONFLICT (discord_snowflake) DO NOTHING
             ''', member_obj.id)
             old_owner_row = await conn.fetchrow(
@@ -5466,18 +5485,18 @@ class Hybrid(commands.Cog):
             old_room_snowflake = old_owner_row['room_snowflake'] if old_owner_row else None
             if old_owner and old_owner != member_obj.id:
                 await conn.execute('''
-                    INSERT INTO users (discord_snowflake, coordinator_room_names, coordinator_channel_ids, moderator_room_names, moderator_channel_ids)
-                    VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::BIGINT[], ARRAY[]::TEXT[], ARRAY[]::BIGINT[])
+                    INSERT INTO users (discord_snowflake, moderator_room_names, moderator_channel_ids)
+                    VALUES ($1, ARRAY[]::TEXT[], ARRAY[]::BIGINT[])
                     ON CONFLICT (discord_snowflake) DO NOTHING
                 ''', old_owner)
                 channel_ids_to_remove = [ch for ch in (old_room_snowflake, channel_obj.id) if ch]
                 for ch_id in channel_ids_to_remove:
                     await conn.execute('''
                         UPDATE users
-                        SET coordinator_room_names = array_remove(coordinator_room_names, $1),
-                            coordinator_channel_ids = array_remove(coordinator_channel_ids, $2),
-                            moderator_room_names = array_remove(moderator_room_names, $1),
+                        SET moderator_room_names = array_remove(moderator_room_names, $1),
                             moderator_channel_ids = array_remove(moderator_channel_ids, $2),
+                            coordinator_room_names = array_remove(coordinator_room_names, $1),
+                            coordinator_channel_ids = array_remove(coordinator_channel_ids, $2),
                             updated_at = NOW()
                         WHERE discord_snowflake = $3
                     ''', channel_obj.name, ch_id, old_owner)
@@ -5485,21 +5504,17 @@ class Hybrid(commands.Cog):
                 UPDATE users
                 SET moderator_room_names = array_remove(moderator_room_names, $1),
                     moderator_channel_ids = array_remove(moderator_channel_ids, $2),
+                    coordinator_room_names = array_remove(coordinator_room_names, $1),
+                    coordinator_channel_ids = array_remove(coordinator_channel_ids, $2),
                     updated_at = NOW()
                 WHERE discord_snowflake = $3
             ''', channel_obj.name, channel_obj.id, member_obj.id)
             await conn.execute('''
                 INSERT INTO temporary_rooms (guild_snowflake, room_name, owner_snowflake, room_snowflake)
                 VALUES ($1, $2, $3, $4)
-                ON CONFLICT (guild_snowflake, room_name) DO UPDATE SET owner_snowflake=$3, room_snowflake=$4
+                ON CONFLICT (guild_snowflake, room_name)
+                DO UPDATE SET owner_snowflake=$3, room_snowflake=$4
             ''', ctx.guild.id, channel_obj.name, member_obj.id, channel_obj.id)
-            await conn.execute('''
-                UPDATE users
-                SET coordinator_room_names = CASE WHEN NOT $1=ANY(coordinator_room_names) THEN array_append(coordinator_room_names,$1) ELSE coordinator_room_names END,
-                    coordinator_channel_ids = CASE WHEN NOT $2=ANY(coordinator_channel_ids) THEN array_append(coordinator_channel_ids,$2) ELSE coordinator_channel_ids END,
-                    updated_at = NOW()
-                WHERE discord_snowflake = $3
-            ''', channel_obj.name, channel_obj.id, member_obj.id)
             await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Channel {channel_obj.mention} is now owned by {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.')
