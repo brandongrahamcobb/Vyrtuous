@@ -634,7 +634,7 @@ class Hybrid(commands.Cog):
                 temp_aliases = self.bot.command_aliases.get(
                     ctx.guild.id,
                     self.bot.command_aliases.default_factory()
-                ).get('temp_room_aliases', {}).get(alias_type, {})
+                ).get('temp_room_aliases', {}).get('tmute', {})
                 alias_entry = temp_aliases.get(command_name)
                 if alias_entry is None:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No alias configured for `{command_name}`.')
@@ -5690,7 +5690,14 @@ class Hybrid(commands.Cog):
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (guild_snowflake, room_name)
                 DO UPDATE SET owner_snowflake=$3, room_snowflake=$4
-            ''', ctx.guild.id, channel_obj.name, member_obj.id, channel_obj.id)
+            ''', interaction.guild.id, channel_obj.name, member_obj.id, channel_obj.id)
+            await conn.execute('''
+                UPDATE users
+                SET moderator_room_names = CASE WHEN NOT $1=ANY(moderator_room_names) THEN array_append(moderator_room_names,$1) ELSE moderator_room_names END,
+                    moderator_channel_ids = CASE WHEN NOT $2=ANY(moderator_channel_ids) THEN array_append(moderator_channel_ids,$2) ELSE moderator_channel_ids END,
+                    updated_at = NOW()
+                WHERE discord_snowflake = $3
+            ''', channel_obj.name, channel_obj.id, member_obj.id)
             await self.send(interaction, content=f'{self.get_random_emoji()} Channel {channel_obj.mention} is now owned by {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command(name='temp', help='Mark a channel as a temporary room and assign an owner.')
@@ -5757,6 +5764,13 @@ class Hybrid(commands.Cog):
                 ON CONFLICT (guild_snowflake, room_name)
                 DO UPDATE SET owner_snowflake=$3, room_snowflake=$4
             ''', ctx.guild.id, channel_obj.name, member_obj.id, channel_obj.id)
+            await conn.execute('''
+                UPDATE users
+                SET moderator_room_names = CASE WHEN NOT $1=ANY(moderator_room_names) THEN array_append(moderator_room_names,$1) ELSE moderator_room_names END,
+                    moderator_channel_ids = CASE WHEN NOT $2=ANY(moderator_channel_ids) THEN array_append(moderator_channel_ids,$2) ELSE moderator_channel_ids END,
+                    updated_at = NOW()
+                WHERE discord_snowflake = $3
+            ''', channel_obj.name, channel_obj.id, member_obj.id)
             await self.handler.send_message(ctx, content=f'{self.get_random_emoji()} Channel {channel_obj.mention} is now owned by {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.')
