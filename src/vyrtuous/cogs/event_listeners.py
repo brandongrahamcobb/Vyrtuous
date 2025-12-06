@@ -155,6 +155,11 @@ class EventListeners(commands.Cog):
             for u in banned_users:
                 if u:
                     await channel.set_permissions(u, view_channel=False)
+            rows_mutes = await conn.fetch('SELECT discord_snowflake FROM active_text_mutes WHERE guild_id=$1 AND room_name=$2', guild.id, name)
+            text_muted_users = [guild.get_member(r['discord_snowflake']) for r in rows_mutes if guild.get_member(r['discord_snowflake'])]
+            for u in text_muted_users:
+                if u:
+                    await channel.set_permissions(u, send_messages=False)
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
