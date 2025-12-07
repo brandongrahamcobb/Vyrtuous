@@ -18,7 +18,8 @@ RUN apt-get update && \
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_CREATE=false \
-    POETRY_SUBPROCESS_TIMEOUT=300
+    POETRY_SUBPROCESS_TIMEOUT=300 \
+    POETRY_INSTALLER_MAX_WORKERS=10
 
 # Set working directory
 WORKDIR /app
@@ -34,4 +35,5 @@ RUN pip install --no-cache-dir poetry
 
 RUN which python
 
-RUN poetry install
+RUN poetry install -no-interaction --no-ansi --no-root && \
+    poetry install --only-root
