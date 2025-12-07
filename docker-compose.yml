@@ -6,6 +6,7 @@ services:
     ports:
       - "5432:5432"
   vyrtuous:
+    image: registry.gitlab.com/vyrtuous/vyrtuous:latest
     build: .
     container_name: vyrtuous
     depends_on:
