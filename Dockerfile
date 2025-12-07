@@ -18,7 +18,7 @@ RUN apt-get update && \
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_CREATE=false \
-    PYTHON=/usr/local/bin/python3
+    POETRY_SUBPROCESS_TIMEOUT=300 \
 # Set working directory
 WORKDIR /app
 RUN mkdir -p /app/backups
