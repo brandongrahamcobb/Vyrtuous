@@ -31,4 +31,4 @@ COPY /schema/init/ /docker-entrypoint-initdb.d
 # Install Poetry
 RUN pip install --no-cache-dir poetry
 
-RUN poetry install --no-root
+RUN poetry install
