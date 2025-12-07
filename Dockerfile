@@ -1,4 +1,4 @@
-FROM python:3-slim
+FROM python:3.12-slim
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -17,8 +17,8 @@ RUN apt-get update && \
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    POETRY_VIRTUALENVS_CREATE=false
-
+    POETRY_VIRTUALENVS_CREATE=false \
+    PYTHON=/usr/local/bin/python3
 # Set working directory
 WORKDIR /app
 RUN mkdir -p /app/backups
