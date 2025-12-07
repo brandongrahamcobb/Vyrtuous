@@ -23,12 +23,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 RUN mkdir -p /app/backups
 # && chown -R 1000:1000 /app
-
 #USER 1000
 COPY src README.md pyproject.toml poetry.lock* ./
 COPY /schema/init/ /docker-entrypoint-initdb.d
 
 # Install Poetry
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir poetry
 
 RUN which python
