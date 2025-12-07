@@ -74,9 +74,7 @@ CREATE TABLE active_server_voice_mutes (
     discord_snowflake BIGINT NOT NULL,
     expires_at TIMESTAMPTZ,
     reason TEXT,
-    channel_id BIGINT DEFAULT -1,
-    room_name TEXT DEFAULT '',
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id, room_name)
+    PRIMARY KEY (guild_id, discord_snowflake)
 );
 
 CREATE TABLE active_cows (
@@ -158,14 +156,6 @@ CREATE TABLE temporary_rooms (
     PRIMARY KEY (guild_snowflake, room_name)
 );
 
-CREATE TABLE temporary_room_aliases (
-    guild_snowflake BIGINT NOT NULL,
-    room_name TEXT NOT NULL,
-    alias_type TEXT NOT NULL,
-    alias_name TEXT NOT NULL,
-    role_snowflake BIGINT,
-    PRIMARY KEY (guild_snowflake, room_name, alias_type, alias_name)
-);
 
 
 GRANT ALL PRIVILEGES ON DATABASE vyrtuous TO vyrtuous;
