@@ -17,7 +17,7 @@ RUN apt-get update && \
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    POETRY_VIRTUALENVS_CREATE=false
+    POETRY_VIRTUALENVS_CREATE=false \
     PYTHON=/usr/local/bin/python3
 # Set working directory
 WORKDIR /app
