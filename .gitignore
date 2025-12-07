@@ -25,6 +25,7 @@ MANIFEST
 
 # Environments
 .env
+.env_vyrtuous
 .envrc
 .venv
 env/

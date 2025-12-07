@@ -71,64 +71,30 @@ Lifecycle Features
 
 Prerequisites:
 
-• Python 3.13+ (`python3 --version`)
+- Python 3.13+ (`python3 --version`)
+- Poetry (https://python-poetry.org/docs/#installation)
+- Docker (`docker --version`)
 
-• pip (`pip --version`)
-
-• PostgreSQL (`psql --version`)
-
-• Docker (`docker --version`)
-
-1. Clone the repo
+1. Clone and cd into directory
 
 ```bash
-git clone https://github.com/brandongrahamcobb/Vyrtuous.git
+git clone https://gitlab.com/vyrtuous/vyrtuous
+cd vyrtuous
 ```
-2. Install Docker
-3. Install postgresql
-4. Run from the root directory of the git repository. 
+
+2. Copy `.env.example` to `.env` and populate the variables
+```bash
+cp .env.example .env
+nano .env
+```
+
+3. Use compose to build and run the stack
 ```sh
-sudo docker compose build vyrtuous --no-cache
-sudo docker compose up db
-sudo docker cp schema/password_protected/schema.sql vyrtuous-db-1:/.
-sudo docker exec -it vyrtuous-db-1 /bin/bash
-psql -U postgres
-CREATE DATABASE vyrtuous;
-CREATE USER vyrtuous WITH PASSWORD 'password';
-\q
-psql -U vyrtuous -d vyrtuous -f schema.sql
-\q
-export POSTGRES_PASSWORD="password"
-docker compose run --service-ports vyrtuous
-Enter API key for 'Discord' []: 
-Discord command prefix? [!]: 
-Discord developer channel? []:
-Discord testing guild id []:
-Logging level [INFO]:
-exit
-sudo docker compose up vyrtuous -d
+docker compose up
 ```
-16. Profit
+4. Profit
 
-## Configuration
-
-On first run, The Vyrtuous Project will prompt you to enter and confirm:
-
-• Discord command prefix
-
-• Discord owner ID
-
-• Discord testing guild
-
-Your settings are saved here in the container:
-
-```txt
-~/.config/vyrtuous/config.yml
-```
-
-Subsequent launches read from this file—no environment variables needed.
-
-The bot will load or create its config, connect to Discord, and register commands.
+The bot will connect to Discord, and register commands.
 
 ## License
 

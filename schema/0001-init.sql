@@ -1,19 +1,5 @@
+ALTER ROLE vyrtuous WITH SUPERUSER LOGIN PASSWORD 'password';
 ALTER DATABASE vyrtuous OWNER TO vyrtuous;
-ALTER ROLE vyrtuous WITH SUPERUSER;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS command_aliases;
-DROP TABLE IF EXISTS mute_reasons;
-DROP TABLE IF EXISTS active_mutes;
-DROP TABLE IF EXISTS ban_reasons;
-DROP TABLE IF EXISTS active_bans;
-DROP TABLE IF EXISTS ban_roles;
-DROP TABLE IF EXISTS mute_roles;
-DROP TABLE IF EXISTS moderation_logs;
-DROP TABLE IF EXISTS mute_reasons;
-DROP TABLE IF EXISTS server_mute_reasons;
-DROP TABLE IF EXISTS server_muter_ids;
-DROP TABLE IF EXISTS ban_expirations;
-DROP TABLE IF EXISTS text_mutes;
 
 CREATE TABLE users (
     discord_snowflake BIGINT PRIMARY KEY,
@@ -155,23 +141,3 @@ CREATE TABLE temporary_rooms (
     room_snowflake BIGINT,
     PRIMARY KEY (guild_snowflake, room_name)
 );
-
-
-
-GRANT ALL PRIVILEGES ON DATABASE vyrtuous TO vyrtuous;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO vyrtuous;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO vyrtuous;
-GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO vyrtuous;
-GRANT USAGE ON SCHEMA public TO vyrtuous;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT ALL ON TABLES TO vyrtuous;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT ALL ON SEQUENCES TO vyrtuous;
-
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-GRANT ALL ON FUNCTIONS TO vyrtuous;
-
-
-
-

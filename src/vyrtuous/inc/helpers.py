@@ -43,10 +43,6 @@ PATH_DISCORD_BOT = join(DIR_BASE, 'vyrtuous', 'bots', 'discord_bot.py')
 PATH_EVENT_LISTENERS = join(DIR_BASE, 'vyrtuous', 'cogs', 'event_listeners.py')
 # Path: Handlers (handlers)
 PATH_HELPERS = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'helpers.py')
-PATH_INCREMENT_VERSION = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'increment_version.py')
-PATH_LOAD_CONTENTS = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'load_contents.py')
-PATH_LOAD_YAML = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'load_yaml.py')
-PATH_PROMPT_FOR_VALUES = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'prompt_for_values.py')
 PATH_SETUP_LOGGING = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'setup_logging.py')
 #### DISCORD
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
