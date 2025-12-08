@@ -32,7 +32,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PACKAGE_ROOT))
 
 async def database_init():
-    return await asyncpg.create_pool(host=os.getenv('POSTGRES_HOST'), database=os.getenv('POSTGRES_DATABASE'), user=os.getenv('POSTGRES_USER'), password=os.getenv('POSTGRES_PASSWORD'), command_timeout=30)
+    return await asyncpg.create_pool(host=os.getenv('POSTGRES_HOST'), database=os.getenv('POSTGRES_DB'), user=os.getenv('POSTGRES_USER'), password=os.getenv('POSTGRES_PASSWORD'), command_timeout=30)
 
 async def start_bot(bot, name):
     try:

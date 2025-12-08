@@ -375,7 +375,7 @@ class ScheduledTasks(commands.Cog):
             backup_dir = self.setup_backup_directory('/app/backups')
             backup_file = self.perform_backup(
                 db_user=os.getenv('POSTGRES_USER'),
-                db_name=os.getenv('POSTGRES_DATABASE'),
+                db_name=os.getenv('POSTGRES_DB'),
                 db_host=os.getenv('POSTGRES_HOST'),
                 db_password=os.getenv('POSTGRES_PASSWORD'),
                 backup_dir=backup_dir
