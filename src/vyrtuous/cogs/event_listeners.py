@@ -17,7 +17,6 @@
 '''
 import discord
 from datetime import datetime, timezone
-import os
 import time
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
@@ -25,7 +24,6 @@ from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService, ChannelPaginator
 from vyrtuous.bot.discord_bot import DiscordBot
-import asyncio
 from typing import defaultdict
 
 class EventListeners(commands.Cog):
@@ -37,7 +35,7 @@ class EventListeners(commands.Cog):
         self.handler = DiscordMessageService(self.bot, self.db_pool)
         self.join_log = defaultdict(list)
         self._ready_done = False
-    
+
     async def fetch_active_bans(self, conn, guild_id: int, user_id: int, temp_room_name: str = None):
         if temp_room_name:
             return await conn.fetch('''

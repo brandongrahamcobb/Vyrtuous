@@ -3,7 +3,7 @@ requires = [ "poetry-core", "setuptools",]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-package-mode = true
+package-mode = false
 name = "vyrtuous"
 version = "6.0.6"
 description = ""

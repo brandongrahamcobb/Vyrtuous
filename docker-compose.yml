@@ -2,18 +2,25 @@ services:
 
   db:
     image: postgres
+    restart: always
     ports:
       - "5432:5432"
     env_file:
       - .env
     volumes:
       - ./schema:/docker-entrypoint-initdb.d:Z
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   vyrtuous:
-    restart: always
     build: .
+    restart: always
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     env_file:
       - .env
     expose:
@@ -22,7 +29,10 @@ services:
       - vyrtuous-backups:/app/backups
       - vyrtuous-config:/root/.config/vyrtuous
       - ./src/vyrtuous:/app/vyrtuous:Z
-    command: python -u vyrtuous/main.py
+    healthcheck:
+      test: "healthcheck.sh || kill 1"
+      interval: 10s
+      retries: 3
 
 volumes:
   vyrtuous-config:

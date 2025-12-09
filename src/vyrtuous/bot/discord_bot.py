@@ -18,25 +18,26 @@
 import os
 from collections import defaultdict
 
+import asyncio
 import asyncpg
 import discord
 from discord.ext import commands
-from vyrtuous.inc.helpers import *
+from vyrtuous.inc.helpers import DISCORD_COGS
 
 from vyrtuous.utils.setup_logging import logger
 
 
 class DiscordBot(commands.Bot):
-    def __init__(self, *, config, db_pool: asyncpg.Pool, lock, **kwargs): # oauth_token, 
+    def __init__(self, *, config, db_pool: asyncpg.Pool, **kwargs): # oauth_token,
         try:
+            self.lock = asyncio.Lock()
             intents = discord.Intents.all()
-            super().__init__(command_prefix=config['discord_command_prefix'], help_command=None, intents=intents, **kwargs)
+            super().__init__(command_prefix=config['discord_command_prefix'],
+                             help_command=None,
+                             intents=intents,
+                             **kwargs)
             self.config = config
             self.db_pool = db_pool
-            self.lock = lock
-#            self.oauth_token = oauth_token
-            discord_api_config = config.get('api_keys', {}).get('Discord', {})
-            self.api_key = discord_api_config.get('api_key') or os.getenv('DISCORD_API_KEY')
             self.command_aliases: dict[int, dict[str, dict[str, dict[str, dict[str, int] | str]]]] = defaultdict(
                 lambda: {
                     "channel_aliases": {"mute": {}, "unmute": {}, "ban": {}, "unban": {}, "flag": {}, "unflag": {}, "cow": {}, "uncow": {}},
@@ -49,20 +50,6 @@ class DiscordBot(commands.Bot):
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {e}')
 
-    async def process_commands(self, message):
-        ctx = await self.get_context(message)
-        if ctx.command is not None:
-            await self.invoke(ctx)
-        
     async def setup_hook(self) -> None:
-        try:
-            cogs = DISCORD_COGS
-            for cog in cogs:
-                if cog not in self.extensions:
-                    await self.load_extension(cog)
-#            if self.testing_guild_id:
-#                guild = discord.Object(id=self.testing_guild_id)
-#                self.tree.copy_global_to(guild=guild)
-#                await self.tree.sync(guild=guild)
-        except Exception as e:
-            logger.error(f'Error during Discord bot setup_hook: {e}')
+        for cog in DISCORD_COGS:
+            await self.load_extension(cog)

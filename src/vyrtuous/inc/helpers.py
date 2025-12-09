@@ -52,7 +52,8 @@ DISCORD_COGS = [
     'vyrtuous.cogs.event_listeners',
     'vyrtuous.cogs.help_command',
     'vyrtuous.cogs.hybrid_commands',
-    'vyrtuous.cogs.scheduled_tasks'
+    'vyrtuous.cogs.scheduled_tasks',
+    'vyrtuous.cogs.heartbeat'
 ]
 DISCORD_COMMAND_PREFIX = '!'
 DISCORD_INTENTS = discord.Intents.all()
