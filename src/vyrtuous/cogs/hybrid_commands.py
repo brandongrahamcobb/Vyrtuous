@@ -5124,7 +5124,7 @@ class Hybrid(commands.Cog):
 
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
     @app_commands.describe(source_id='Tag the source channel or include its snowflake ID',target_id='Tag the target channel or include its snowflake ID')
-    @is_owner_app_predicator()
+    @is_owner_developer_app_predicator()
     async def room_move_all_app_command(
         self,
         interaction: discord.Interaction,
@@ -5149,7 +5149,7 @@ class Hybrid(commands.Cog):
         await self.send(interaction, content=f'{self.get_random_emoji()} Moved all members from {source_channel.mention} to {target_channel.mention}.')
         
     @commands.command(name='rmv', help='Move all the members in one room to another.')
-    @is_owner_predicator()
+    @is_owner_developer_predicator()
     async def room_move_all_text_command(
         self,
         ctx: commands.Context,
