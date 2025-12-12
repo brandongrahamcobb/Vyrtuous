@@ -1,0 +1,17 @@
+{
+  "name": "Python Colima Dev",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "vyrtuous",
+  "workspaceFolder": "/app",
+  "extensions": [
+    "ms-python.python",
+    "ms-azuretools.vscode-docker"
+  ],
+  "forwardPorts": [5678],
+  "remoteUser": "root",
+  "runArgs": ["-e", "DEBUGPY=1"],
+  "remoteEnv": {
+    "PATH": "/opt/homebrew/bin:${PATH}"
+  },
+  "docker.dockerPath": "/opt/homebrew/bin/docker"
+}

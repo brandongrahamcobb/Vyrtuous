@@ -23,13 +23,23 @@ import asyncpg
 import discord
 from discord.ext import commands
 from vyrtuous.inc.helpers import DISCORD_COGS
-
 from vyrtuous.utils.setup_logging import logger
 
 
 class DiscordBot(commands.Bot):
+
+    command_aliases: dict[int, dict[str, dict[str, dict[str, dict[str, int] | str]]]] = defaultdict(
+        lambda: {
+            "channel_aliases": {"mute": {}, "unmute": {}, "ban": {}, "unban": {}, "flag": {}, "unflag": {}, "cow": {}, "uncow": {}},
+            "role_aliases": {"role": {}, "unrole": {}}
+        }
+    )
+    
+    _instance = None
+        
     def __init__(self, *, config, db_pool: asyncpg.Pool, **kwargs): # oauth_token,
         try:
+            DiscordBot._instance = self
             self.lock = asyncio.Lock()
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'],
@@ -38,13 +48,6 @@ class DiscordBot(commands.Bot):
                              **kwargs)
             self.config = config
             self.db_pool = db_pool
-            self.command_aliases: dict[int, dict[str, dict[str, dict[str, dict[str, int] | str]]]] = defaultdict(
-                lambda: {
-                    "channel_aliases": {"mute": {}, "unmute": {}, "ban": {}, "unban": {}, "flag": {}, "unflag": {}, "cow": {}, "uncow": {}},
-                    "role_aliases": {"role": {}, "unrole": {}},
-                    "temp_room_aliases": {"mute": {}, "unmute": {}, "ban": {}, "unban": {}, "tmute": {}, "untmute": {}}
-                }
-            )
 
             self.testing_guild_id = self.config['discord_testing_guild_id']
         except Exception as e:
@@ -53,3 +56,9 @@ class DiscordBot(commands.Bot):
     async def setup_hook(self) -> None:
         for cog in DISCORD_COGS:
             await self.load_extension(cog)
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            raise RuntimeError("DiscordBot instance has not been created yet")
+        return cls._instance
