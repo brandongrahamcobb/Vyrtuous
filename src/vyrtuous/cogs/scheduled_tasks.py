@@ -24,6 +24,7 @@ from discord.ext import commands, tasks
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.backup import Backup
 
 class ScheduledTasks(commands.Cog):
 
@@ -44,53 +45,14 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_stages.start()
         if not self.check_active_bans.is_running():
             self.check_active_bans.start()
-    
-    @staticmethod
-    def perform_backup(db_user: str, db_name: str, db_host: str, db_password: str, backup_dir: str) -> str:
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        backup_file = os.path.join(backup_dir, f'backup_{timestamp}.sql')
-        dump_command = [
-            'pg_dump',
-            '-U', db_user,
-            '-h', db_host,
-            '-d', db_name,
-            '-F', 'p',
-            '-f', backup_file,
-        ]
-        env = os.environ.copy()
-        env['PGPASSWORD'] = db_password
-        result = subprocess.run(
-            dump_command,
-            capture_output=True,
-            text=True,
-            env=env,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f'Backup failed: {result.stderr}')
-        return backup_file
-    
-    @staticmethod
-    def setup_backup_directory(backup_dir: str) -> str:
-        os.makedirs(backup_dir, exist_ok=True)
-        return backup_dir
-#        
-#    @commands.after_invoke
-#    async def after_invoke(self, ctx: commands.Context) -> None:
-#        if hasattr(self.bot, 'db_pool'):
-#            await self.bot.db_pool.close()
 
-    @tasks.loop(minutes=5)  # run every 5 minutes
+    @tasks.loop(minutes=5)
     async def check_active_bans(self):
-        hybrid = self.bot.get_cog("Hybrid")
         async with self.bot.db_pool.acquire() as conn:
             for guild in self.bot.guilds:
                 for channel in guild.channels:
                     if not isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
                         continue
-                    temp = None
-                    if hybrid and guild and channel:
-                        temp = hybrid.temp_rooms.get(guild.id, {}).get(channel.name)
-                    room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                     for member in channel.members:
                         perms = channel.permissions_for(member)
                         if not perms.view_channel:
@@ -102,7 +64,7 @@ class ScheduledTasks(commands.Cog):
                               AND discord_snowflake = $2
                               AND channel_id = $3
                               AND room_name = $4
-                        ''', guild.id, member.id, channel.id, room_name)
+                        ''', guild.id, member.id, channel.id, channel.name)
                         if ban:
                             expires_at = ban['expires_at']
                             now = datetime.now(timezone.utc)
@@ -113,7 +75,6 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_bans(self):
         try:
             now = datetime.now(timezone.utc)
-            hybrid = self.bot.get_cog("Hybrid")
             async with self.bot.db_pool.acquire() as conn:
                 expired = await conn.fetch('''
                     SELECT guild_id, discord_snowflake, channel_id, room_name
@@ -132,16 +93,12 @@ class ScheduledTasks(commands.Cog):
                                 channel = await guild.fetch_channel(channel_id)
                             except discord.NotFound:
                                 channel = None
-                        temp = None
-                        if hybrid and guild and channel:
-                            temp = hybrid.temp_rooms.get(guild_id, {}).get(channel.name)
-                        room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired ban')
                             await conn.execute('''
                                 DELETE FROM active_bans
                                 WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                            ''', guild_id, user_id, channel_id, room_name)
+                            ''', guild_id, user_id, channel_id, channel.name)
                             continue
                         member = guild.get_member(user_id)
                         if member is None:
@@ -152,12 +109,12 @@ class ScheduledTasks(commands.Cog):
                                 await conn.execute('''
                                     DELETE FROM active_bans
                                     WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                                ''', guild_id, user_id, channel_id, room_name)
+                                ''', guild_id, user_id, channel_id, channel.name)
                                 continue
                         await conn.execute('''
                             DELETE FROM active_bans
                             WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                        ''', guild_id, user_id, channel_id, room_name)
+                        ''', guild_id, user_id, channel_id, channel.name)
                         try:
                             await channel.set_permissions(member, overwrite=None)
                             logger.info(f'Removed ban override for user {user_id} in channel {channel_id}')
@@ -175,7 +132,6 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_voice_mutes(self):
         try:
             now = datetime.now(timezone.utc)
-            hybrid = self.bot.get_cog("Hybrid")
             async with self.bot.db_pool.acquire() as conn:
                 expired = await conn.fetch('''
                     SELECT guild_id, discord_snowflake, channel_id, target, room_name
@@ -195,16 +151,12 @@ class ScheduledTasks(commands.Cog):
                                 channel = await guild.fetch_channel(channel_id)
                             except discord.NotFound:
                                 channel = None
-                        temp = None
-                        if hybrid and guild and channel:
-                            temp = hybrid.temp_rooms.get(guild_id, {}).get(channel.name)
-                        room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired voice mute')
                             await conn.execute('''
                                 DELETE FROM active_voice_mutes
                                 WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target=$4 AND room_name=$5
-                            ''', guild_id, user_id, channel_id, target, room_name)
+                            ''', guild_id, user_id, channel_id, target, channel.name)
                             continue
                         member = guild.get_member(user_id)
                         if member is None:
@@ -215,12 +167,12 @@ class ScheduledTasks(commands.Cog):
                                 await conn.execute('''
                                     DELETE FROM active_voice_mutes
                                     WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target=$4 AND room_name=$5
-                                ''', guild_id, user_id, channel_id, target, room_name)
+                                ''', guild_id, user_id, channel_id, target, channel.name)
                                 continue
                         await conn.execute('''
                             DELETE FROM active_voice_mutes
                             WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target=$4 AND room_name=$5
-                        ''', guild_id, user_id, channel_id, target, room_name)
+                        ''', guild_id, user_id, channel_id, target, channel.name)
                         if member.voice and member.voice.channel and member.voice.channel.id == channel_id:
                             try:
                                 await member.edit(mute=False)
@@ -242,7 +194,6 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_stages(self):
         try:
             now = datetime.now(timezone.utc)
-            hybrid = self.bot.get_cog("Hybrid")
             async with self.bot.db_pool.acquire() as conn:
                 expired = await conn.fetch('''
                     SELECT guild_id, channel_id, room_name
@@ -257,27 +208,23 @@ class ScheduledTasks(commands.Cog):
                         stored_room = record['room_name']
                         guild = self.bot.get_guild(guild_id)
                         channel = self.bot.get_channel(channel_id)
-                        temp = None
-                        if hybrid and guild and channel:
-                            temp = hybrid.temp_rooms.get(guild_id, {}).get(channel.name)
-                        room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                         muted_members = await conn.fetch('''
                             SELECT discord_snowflake
                             FROM active_voice_mutes
                             WHERE guild_id = $1 AND channel_id = $2 AND target = $3 AND room_name = $4
-                        ''', guild_id, channel_id, 'room', room_name)
+                        ''', guild_id, channel_id, 'room', channel.name)
                         await conn.execute('''
                             DELETE FROM active_voice_mutes
                             WHERE guild_id = $1 AND channel_id = $2 AND target = 'room' AND room_name = $3
-                        ''', guild_id, channel_id, room_name)
+                        ''', guild_id, channel_id, channel.name)
                         await conn.execute('''
                             DELETE FROM stage_coordinators
                             WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
-                        ''', guild_id, channel_id, room_name)
+                        ''', guild_id, channel_id, channel.name)
                         await conn.execute('''
                             DELETE FROM active_stages
                             WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
-                        ''', guild_id, channel_id, room_name)
+                        ''', guild_id, channel_id, channel.name)
                         if guild:
                             for member_record in muted_members:
                                 try:
@@ -309,7 +256,6 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_text_mutes(self):
         try:
             now = datetime.now(timezone.utc)
-            hybrid = self.bot.get_cog("Hybrid")
             async with self.bot.db_pool.acquire() as conn:
                 expired = await conn.fetch('''
                     SELECT guild_id, discord_snowflake, channel_id, room_name
@@ -330,16 +276,12 @@ class ScheduledTasks(commands.Cog):
                                 channel = await guild.fetch_channel(channel_id)
                             except discord.NotFound:
                                 channel = None
-                        temp = None
-                        if hybrid and guild and channel:
-                            temp = hybrid.temp_rooms.get(guild_id, {}).get(channel.name)
-                        room_name = temp.room_name if temp and getattr(temp, 'is_temp_room', False) else ''
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired text mute')
                             await conn.execute('''
                                 DELETE FROM active_text_mutes
                                 WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                            ''', guild_id, user_id, channel_id, room_name)
+                            ''', guild_id, user_id, channel_id, channel.name)
                             continue
                         member = guild.get_member(user_id)
                         if member is None:
@@ -350,12 +292,12 @@ class ScheduledTasks(commands.Cog):
                                 await conn.execute('''
                                     DELETE FROM active_text_mutes
                                     WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                                ''', guild_id, user_id, channel_id, room_name)
+                                ''', guild_id, user_id, channel_id, channel.name)
                                 continue
                         await conn.execute('''
                             DELETE FROM active_text_mutes
                             WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                        ''', guild_id, user_id, channel_id, room_name)
+                        ''', guild_id, user_id, channel_id, channel.name)
                         try:
                             await channel.set_permissions(member, send_messages=None)
                             logger.info(f'Removed text mute override for user {user_id} in channel {channel_id}')
@@ -372,15 +314,10 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
-            backup_dir = self.setup_backup_directory('/app/backups')
-            backup_file = self.perform_backup(
-                db_user=os.getenv('POSTGRES_USER'),
-                db_name=os.getenv('POSTGRES_DB'),
-                db_host=os.getenv('POSTGRES_HOST'),
-                db_password=os.getenv('POSTGRES_PASSWORD'),
-                backup_dir=backup_dir
-            )
-            logger.info(f'Backup completed successfully: {backup_file}')
+            backup = Backup(directory='/app/backups')
+            backup.create_backup_directory()
+            backup_file = backup.execute_backup()
+            logger.info(f'Backup completed successfully.')
         except Exception as e:
             logger.error(f'Error during database backup: {e}')
 

@@ -24,6 +24,7 @@ from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService, ChannelPaginator
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from typing import defaultdict
 
@@ -58,69 +59,56 @@ class EventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
-        alias_service = AliasService(self.bot, guild)
         name = channel.name
         for c in guild.channels:
             if c.id != channel.id and c.name == name:
                 return
         async with self.bot.db_pool.acquire() as conn:
-            temp_room = await conn.fetchrow(
-                'SELECT room_snowflake, room_name FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2',
-                guild.id, name
-            )
-            if not temp_room:
+            room = await TemporaryRoom.fetch_temporary_room_by_guild_and_room_name(guild=guild, room_name=name)
+            if not room:
                 return
-            old_id = temp_room['room_snowflake']
-            old_name = temp_room['room_name']
-            await conn.execute('UPDATE temporary_rooms SET room_snowflake=$3 WHERE guild_snowflake=$1 AND room_name=$2', guild.id, name, channel.id)
-            await conn.execute('UPDATE command_aliases SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            old_name = room.room_name
+            old_id = room.room_snowflake
+            await room.update_temporary_room_name_and_room_snowflake(channel=channel) # TODO: Tied with the temporary_room.py room non referential after deletion.
+            aliases = await Alias.fetch_command_aliases_by_channel(channel=channel)
+            for alias in aliases:
+                await alias.update_command_aliases_with_channel(channel=channel)
             await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_stages SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE stage_coordinators SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
-            if old_id:
-                await conn.execute('''
-                    UPDATE users
-                    SET coordinator_room_names=ARRAY(
-                        SELECT DISTINCT unnest(
-                            COALESCE(coordinator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
-                        )
+            await conn.execute('''
+                UPDATE users
+                SET coordinator_room_names=ARRAY(
+                    SELECT DISTINCT unnest(
+                        COALESCE(coordinator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
                     )
-                    WHERE $1=ANY(coordinator_room_names)
-                ''', name)
-                await conn.execute('''
-                    UPDATE users
-                    SET moderator_room_names=ARRAY(
-                        SELECT DISTINCT unnest(
-                            COALESCE(moderator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
-                        )
+                )
+                WHERE $1=ANY(coordinator_room_names)
+            ''', name)
+            await conn.execute('''
+                UPDATE users
+                SET moderator_room_names=ARRAY(
+                    SELECT DISTINCT unnest(
+                        COALESCE(moderator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
                     )
-                    WHERE $1=ANY(moderator_room_names)
-                ''', name)
-                await conn.execute('''
-                    UPDATE users
-                    SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),
-                        updated_at = NOW()
-                    WHERE $1 = ANY(coordinator_channel_ids)
-                ''', old_id, channel.id)
-                await conn.execute('''
-                    UPDATE users
-                    SET moderator_channel_ids = array_replace(moderator_channel_ids, $1, $2),
-                        updated_at = NOW()
-                    WHERE $1 = ANY(moderator_channel_ids)
-                ''', old_id, channel.id)
-            channel_aliases = alias_service.get_aliases_in_channel_aliases()
-            for alias_type, aliases in channel_aliases.items():
-                for alias_name, alias_channel_id in aliases.items():
-                    if alias_channel_id == old_id:
-                        alias_service.aliases['channel_aliases'][alias_type][alias_name] = channel.id
-            if guild.id in self.bot.temporary_rooms:
-                if old_name in self.bot.temporary_rooms[guild.id]:
-                    temporary_room = self.bot.temporary_rooms[guild.id].pop(old_name)
-                    temporary_room.load_channel(channel)
-                    self.bot.temporary_rooms[guild.id][name] = temporary_room
+                )
+                WHERE $1=ANY(moderator_room_names)
+            ''', name)
+            await conn.execute('''
+                UPDATE users
+                SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),
+                    updated_at = NOW()
+                WHERE $1 = ANY(coordinator_channel_ids)
+            ''', old_id, channel.id) # TODO: Tied to the other TODO's in this method
+            await conn.execute('''
+                UPDATE users
+                SET moderator_channel_ids = array_replace(moderator_channel_ids, $1, $2),
+                    updated_at = NOW()
+                WHERE $1 = ANY(moderator_channel_ids)
+            ''', old_id, channel.id) # TODO: Tied to the other TODO's in this method
             banned_users = []
             rows = await conn.fetch('SELECT discord_snowflake FROM active_bans WHERE guild_id=$1 AND room_name=$2', guild.id, name)
             banned_users = [guild.get_member(r['discord_snowflake']) for r in rows if guild.get_member(r['discord_snowflake'])]
@@ -306,34 +294,6 @@ class EventListeners(commands.Cog):
         if getattr(self, "_ready_done", False):
             return
         self._ready_done = True
-#        temporary_room_model = TemporaryRoom(self.bot, sel)
-#        temporary_room_loader = TemporaryRoomLoader(self.bot)
-#        await temporary_room_loader.load_temp_rooms()
-#        async with self.bot.db_pool.acquire() as conn:
-#            bans = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_bans')
-#            texts = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_text_mutes')
-#            voices = await conn.fetch('SELECT discord_snowflake, channel_id, room_name FROM active_voice_mutes')
-#            ban_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in bans}
-#            text_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in texts}
-#            voice_set = {(r['discord_snowflake'], r['channel_id'], r['room_name'] or '') for r in voices}
-#            for guild in self.bot.guilds:
-#                for channel in guild.channels:
-#                    temp_room = await conn.fetchrow('''
-#                        SELECT room_name FROM temporary_rooms
-#                        WHERE guild_snowflake = $1 AND room_snowflake = $2
-#                    ''', guild.id, channel.id)
-#                    room_name = temp_room['room_name'] if temp_room else ''
-#                    if isinstance(channel, discord.TextChannel):
-#                        for overwrite_obj, overwrite in channel.overwrites.items():
-#                            uid = overwrite_obj.id
-#                            if overwrite.send_messages is False and (uid, channel.id, room_name) not in text_set:
-#                                await channel.set_permissions(overwrite_obj, send_messages=None)
-#                            if overwrite.view_channel is False and (uid, channel.id, room_name) not in ban_set:
-#                                await channel.set_permissions(overwrite_obj, view_channel=True)
-#                    if isinstance(channel, discord.VoiceChannel):
-#                        for member in channel.members:
-#                            if member.voice and member.voice.mute and (member.id, channel.id, room_name) not in voice_set:
-#                                await member.edit(mute=False)
             
     async def get_active_stage(self, member: discord.User, after_channel: discord.abc.GuildChannel):
         async with self.db_pool.acquire() as conn:

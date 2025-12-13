@@ -1,0 +1,181 @@
+from typing import defaultdict, Optional
+from vyrtuous.bot.discord_bot import DiscordBot
+import discord
+
+
+class Alias:
+    def __init__(self, guild: discord.Guild, channel: discord.abc.GuildChannel, alias_type: Optional[str], alias_name: Optional[str], role_id: Optional[int]):
+        self.bot = DiscordBot.get_instance()
+        self.alias_type = alias_type
+        self.alias_name = alias_name
+        self.channel = channel
+        self.guild = guild
+        self.role_id = role_id
+        self.room_name = channel.name
+        
+    @classmethod
+    def format_aliases_by_channel(self, aliases, channel: discord.abc.GuildChannel) -> list[str]:
+        if not aliases:
+            return []
+        lines = []
+        lines.append(f'**Aliases in {channel.mention}**')
+        for alias in aliases:
+            if alias.role_id:
+                lines.append(f'`{alias.alias_name}` → <@&{alias.role_id}>')
+            else:
+                lines.append(f'`{alias.alias_name}`')
+        return lines
+        
+    @classmethod
+    def format_all_aliases(self, aliases) -> list[str]:
+        if not aliases:
+            return []
+        grouped = defaultdict(list)
+        lines = []
+        for alias in aliases:
+            grouped[alias.channel].append(alias)
+        for channel, channel_aliases in grouped.items():
+            lines.append(f'**Aliases in {channel.mention}**')
+            for alias in channel_aliases:
+                if alias.role_id:
+                    lines.append(f'`{alias.alias_name}` → <@&{alias.role_id}>')
+                else:
+                    lines.append(f'`{alias.alias_name}`')
+        return lines
+        
+    def load_alias_type(self, alias_type: str):
+        if not alias_type or not isinstance(alias_type, str):
+            raise ValueError("Invalid alias type.")
+        self.alias_type = alias_type
+        if self.alias_type not in self.bot.command_aliases['channel_aliases']:
+            self.bot.command_aliases['channel_aliases'][self.alias_type] = {}
+
+    def load_alias_name(self, alias_name: str):
+        if not alias_name or not isinstance(alias_name, str):
+            raise ValueError("Invalid alias name.")
+        if self.alias_type is None:
+            raise ValueError("Alias type must be set before alias name.")
+        self.alias_name = alias_name
+
+    def load_channel_id(self, channel_id: int):
+        if self.alias_type is None or self.alias_name is None:
+            raise ValueError("Alias type and name must be loaded before setting channel ID.")
+        self.bot.command_aliases['channel_aliases'][self.alias_type][self.alias_name] = channel_id
+
+    def load_role_id(self, role_id: int):
+        if self.alias_type is None or self.alias_name is None:
+            raise ValueError("Alias type and name must be loaded before setting role ID.")
+        if self.alias_type not in self.bot.command_aliases['role_aliases']:
+            self.bot.command_aliases['role_aliases'][self.alias_type] = {}
+        self.bot.command_aliases['role_aliases'][self.alias_type][self.alias_name] = role_id
+
+    async def insert_into_command_aliases(self):
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO command_aliases (guild_id, alias_type, alias_name, channel_id, role_id, room_name)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            ''', self.guild.id, self.alias_type, self.alias_name, self.channel.id, self.role_id, self.room_name)
+
+    @classmethod
+    async def fetch_command_aliases_by_channel(self, channel: discord.abc.GuildChannel):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases WHERE guild_id=$1 AND channel_id=$2',
+                channel.guild.id, channel.id
+            )
+            if not rows:
+                return None
+            aliases = []
+            for row in rows:
+                aliases.append(Alias(guild=channel.guild, channel=channel, alias_type=row['alias_type'], alias_name=row['alias_name'], role_id=row['role_id']))
+            return aliases
+    
+    @classmethod
+    async def fetch_command_alias_by_guild_and_name(self, guild: discord.Guild, alias_name: str):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases WHERE guild_id=$1 AND alias_name=$2',
+                guild.id, alias_name
+            )
+            if not row:
+                return None
+            return Alias(guild=guild, channel=channel, alias_type=row['alias_type'], alias_name=row['alias_name'], role_id=row['role_id'])
+            
+    @classmethod
+    async def fetch_command_aliases_by_role(self, guild: discord.Guild, role: discord.Role):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases WHERE guild_id=$1 AND role_id=$2',
+                guild.id, role.id
+            )
+            if not rows:
+                return None
+            aliases = []
+            for row in rows:
+                aliases.append(Alias(guild=guild, channel=channel, alias_type=row['alias_type'], alias_name=row['alias_name'], role_id=row['role_id']))
+            return aliases
+            
+    @classmethod
+    async def delete_command_alias_by_guild_and_alias_name(self, guild: discord.Guild, alias_name: str):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute(
+                'DELETE FROM command_aliases WHERE guild_id=$1 AND alias_name=$2',
+                guild.id, alias_name
+            )
+
+    @classmethod
+    async def delete_all_command_aliases_by_channel(self, channel: discord.abc.GuildChannel):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute(
+                'DELETE FROM command_aliases WHERE guild_id=$1 AND channel_id=$2',
+                channel.guild.id, channel.id
+            )
+    
+    @classmethod
+    async def fetch_command_aliases_by_guild(self, guild: discord.Guild):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases WHERE guild_id=$1 ORDER BY alias_name',
+                guild.id
+            )
+            if not rows:
+                return None
+            aliases = []
+            for row in rows:
+                channel = guild.get_channel(row['channel_id'])
+                aliases.append(Alias(guild=guild, channel=channel, alias_type=row['alias_type'], alias_name=row['alias_name'], role_id=row['role_id']))
+            return aliases
+    
+    @classmethod
+    async def fetch_all_guilds_with_command_aliases(self):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            guilds = {}
+            for guild in bot.guilds:
+                if not guild:
+                    return None
+                rows = await conn.fetch(
+                    'SELECT guild_id, alias_type, alias_name, channel_id, role_id, room_name FROM command_aliases WHERE guild_id=$1',
+                    guild.id
+                )
+                aliases = []
+                for row in rows:
+                    channel = guild.get_channel(row['channel_id'])
+                    aliases.append(Alias(guild=guild, channel=channel, alias_type=row['alias_type'], alias_name=row['alias_name'], role_id=row['role_id']))
+                guilds[guild] = aliases
+            if not guilds:
+                return None
+            return guilds
+            
+    async def update_command_aliases_with_channel(self, channel: discord.abc.GuildChannel):
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute(
+                'UPDATE command_aliases SET channel_id=$2, room_name=$5 WHERE guild_id=$1 AND alias_type=$3 AND alias_name=$4 AND role_id=$6',
+                self.guild.id, channel.id, self.alias_type, self.alias_name, channel.name, self.role_id
+            )
