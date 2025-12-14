@@ -203,4 +203,3 @@ class Duration:
                 number, unit = minutes, "minutes"
         unit_text = unit.rstrip('s') if number == 1 else unit
         return f"{number}{unit_text} from now" if sign > 0 else f"{number}{unit_text} ago"
-

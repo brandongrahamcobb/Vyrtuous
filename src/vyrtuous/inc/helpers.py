@@ -48,12 +48,16 @@ PATH_SETUP_LOGGING = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'setup_logging.p
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
 DISCORD_COGS = [
+    'vyrtuous.cogs.admin_commands',
+    'vyrtuous.cogs.aliases',
+    'vyrtuous.cogs.coordinator_commands',
     'vyrtuous.cogs.dev_commands',
     'vyrtuous.cogs.event_listeners',
     'vyrtuous.cogs.help_command',
+    'vyrtuous.cogs.heartbeat',
     'vyrtuous.cogs.hybrid_commands',
-    'vyrtuous.cogs.scheduled_tasks',
-    'vyrtuous.cogs.heartbeat'
+    'vyrtuous.cogs.owner_commands',
+    'vyrtuous.cogs.scheduled_tasks'
 ]
 DISCORD_COMMAND_PREFIX = '!'
 DISCORD_INTENTS = discord.Intents.all()

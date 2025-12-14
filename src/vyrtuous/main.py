@@ -23,11 +23,11 @@ from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
 from vyrtuous.utils.setup_logging import logger, setup_logging
-
+    
 async def database_init():
     return await asyncpg.create_pool(
             host=os.getenv('POSTGRES_HOST'),
-            database=os.getenv('POSTGRES_DATABASE'),
+            database=os.getenv('POSTGRES_DB'),
             user=os.getenv('POSTGRES_USER'),
             password=os.getenv('POSTGRES_PASSWORD'),
             command_timeout=30)
@@ -41,7 +41,7 @@ async def main():
         config=config,
         db_pool=db_pool,
     )
-
+    
     await discord_bot.start(config['discord_api_key'])
 
 if __name__ == '__main__':

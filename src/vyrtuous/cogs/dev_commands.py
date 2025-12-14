@@ -21,25 +21,378 @@ from vyrtuous.inc.helpers import *
 
 from vyrtuous.service.check_service import *
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.service.channel_service import ChannelService
+from vyrtuous.service.member_service import MemberService
+from vyrtuous.utils.alias import Alias
+from vyrtuous.utils.temporary_room import TemporaryRoom
 
 class DevCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
+        self.channel_service = ChannelService()
+        self.member_service = MemberService()
+
+    # DONE
+    @app_commands.command(name='admin', description='Grants server mute privileges to a member for the entire guild.')
+    @app_commands.describe(member='Tag a member or include their snowflake ID')
+    @is_owner_developer_predicator()
+    async def create_administrator_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: str
+    ):
+        if not interaction.guild:
+            return await self.send(interaction, content='\U0001F6AB This command can only be used in a server.')
+        member_obj = await self.member_service.resolve_member(interaction, member)
+        if member_obj.bot:
+            return await self.send(interaction, content='\U0001F6AB You cannot make the bot an administrator.')
+        if not member_obj:
+            return await self.send(interaction, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO users (discord_snowflake, administrator_guild_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (discord_snowflake) DO
+                UPDATE
+                    SET administrator_guild_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(COALESCE (u.administrator_guild_ids, '{}') || ARRAY[$2])
+                        )
+                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
+                     ),
+                    updated_at = NOW()
+            ''', member_obj.id, interaction.guild.id)
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been granted server mute permissions.', allowed_mentions=discord.AllowedMentions.none())
         
-    @commands.command(name='load', hidden=True)
-    @commands.check(at_home)
-    async def load(self, ctx: commands.Context, *, module: str):
+    # DONE
+    @commands.command(name='admin', help='Grants server mute privileges to a member for the entire guild.')
+    @is_owner_developer_predicator()
+    async def create_administrator_text_command(
+        self,
+        ctx: commands.Context,
+        member: Optional[str] = commands.parameter(description='Tag a member or include their snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        member_obj = await self.member_service.resolve_member(ctx, member)
+        if not member_obj:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        if member_obj.bot:
+            return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot an administrator.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO users (discord_snowflake, administrator_guild_ids)
+                VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (discord_snowflake) DO
+                UPDATE
+                    SET administrator_guild_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(COALESCE (u.administrator_guild_ids, '{}') || ARRAY[$2])
+                        )
+                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
+                     ),
+                    updated_at = NOW()
+            ''', member_obj.id, ctx.guild.id)
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been granted server mute permissions.', allowed_mentions=discord.AllowedMentions.none())
+            
+    # TODO
+    @app_commands.command(name='alias', description='Set an alias for a Vyrtuous action.')
+    @is_owner_developer_predicator()
+    @app_commands.describe(
+        alias_type='One of: cow, uncow, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, unrole',
+        alias_name='Alias/Pseudonym',
+        channel='Tag a channel or include its snowflake ID',
+        role='Role ID (only for role/unrole)'
+    )
+    async def create_alias_app_command(
+        self,
+        interaction: discord.Interaction,
+        alias_type: Optional[str] = None,
+        alias_name: Optional[str] = None,
+        channel: Optional[str] = None,
+        role: Optional[str] = None
+    ):
+        valid_types = {'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'}
+        if not alias_type or alias_type.lower() not in valid_types:
+            return await interaction.response.send_message(content=f'\U0001F6AB Invalid alias type. Must be one of: `{"`, `".join(valid_types)}`')
+        alias_type = alias_type.lower()
+        if not alias_name or not alias_name.strip():
+            return await interaction.response.send_message(content='\U0001F6AB Alias name cannot be empty.')
+        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        if channel_obj.type != discord.ChannelType.voice:
+            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+        old_aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
+        if old_aliases:
+            for old_alias in old_aliases:
+                if old_alias.alias_name:
+                    return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` ({alias_type}) already exists and is set to {old_alias.channel.mention}.')
+        if alias_type in ('role', 'unrole') and not role:
+            return await interaction.response.send_message(content='\U0001F6AB Role ID is required for role/unrole aliases.')
+        if role:
+            role_id = int(role.replace('<@&','').replace('>',''))
+        else:
+            role_id = None
+        alias_obj = Alias(interaction.guild, channel_obj, alias_type, alias_name, role_id)
+        await alias_obj.insert_into_command_aliases()
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                VALUES ($1,$2,$3,$4,$5,$6)
+            ''', 'create_alias', None, interaction.user.id, interaction.guild.id, channel_obj.id, f'Created an alias: {alias_name}')
+        if alias_type in ('role','unrole'):
+            mention = interaction.guild.get_role(role_id).mention
+        else:
+            mention = channel_obj.mention
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Alias `{alias_name}` ({alias_type}) set to {mention}.', allowed_mentions=discord.AllowedMentions.none())
+        
+    # TODO
+    @commands.command(
+        name='alias',
+        help='Set an alias for a cow, uncow, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, or unrole action.'
+    )
+    @is_owner_developer_predicator()
+    async def create_alias_text_command(
+        self,
+        ctx: commands.Context,
+        alias_type: Optional[str] = commands.parameter(default=None, description='One of: `cow`, `uncow`, `mute`, `unmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
+        alias_name: Optional[str] = commands.parameter(default=None, description='Alias/Pseudonym'),
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        *,
+        role: Optional[str] = commands.parameter(default=None, description='Role ID (only for role/unrole)')
+    ) -> None:
+        valid_types = {'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'cow', 'uncow', 'tmute', 'untmute', 'role', 'unrole'}
+        if not alias_type or alias_type.lower() not in valid_types:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Invalid alias type. Must be one of: `{"`, `".join(valid_types)}`')
+        alias_type = alias_type.lower()
+        if not alias_name or not alias_name.strip():
+            return await self.handler.send_message(ctx, content='\U0001F6AB Alias name cannot be empty.')
+        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        if channel_obj.type != discord.ChannelType.voice:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+        old_aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
+        if not old_aliases:
+            for old_alias in old_aliases:
+                if old_alias.alias_name:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{old_alias.alias_name}` ({old_alias.alias_type}) already exists and is set to {old_alias.channel.mention}.')
+        if alias_type in ('role', 'unrole') and not role:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Role ID is required for role/unrole aliases.')
+        if role:
+            role_id = int(role.replace('<@&','').replace('>',''))
+        else:
+            role_id = None
+        alias_obj = Alias(ctx.guild, channel_obj, alias_type, alias_name, role_id)
+        await alias_obj.insert_into_command_aliases()
+        async with ctx.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                VALUES ($1,$2,$3,$4,$5,$6)
+            ''', 'create_alias', None, ctx.author.id, ctx.guild.id, channel_obj.id, f'Created an alias: {alias_name}')
+        if alias_type in ('role','unrole'):
+            mention = ctx.guild.get_role(role_id).mention
+        else:
+            mention = channel_obj.mention
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Alias `{alias_name}` ({alias_type}) set to {mention}.', allowed_mentions=discord.AllowedMentions.none())
+    
+    # DONE
+    @app_commands.command(name='backup', description='Creates a backup of the database and uploads it')
+    @is_owner_developer_predicator()
+    async def app_backup(
+        self,
+        interaction: discord.Interaction
+    ):
+        try:
+            backup = Backup(directory='/app/backups')
+            backup.create_backup_directory()
+            backup_file = backup.execute_backup()
+            if backup_file:
+                await interaction.response.send_message(file=discord.File(backup.file_name))
+            else:
+                await interaction.response.send_message(content=f'\U0001F6AB Failed to create backup.')
+        except Exception as e:
+            logger.warning(f'Database error occurred: {e}')
+          
+    # DONE
+    @commands.command(name='backup', help='Creates a backup of the database and uploads it')
+    @is_owner_developer_predicator()
+    async def backup(
+        self,
+        ctx: commands.Context
+    ):
+        try:
+            backup = Backup(directory='/app/backups')
+            backup.create_backup_directory()
+            backup_file = backup.execute_backup()
+            if backup_file:
+                await self.handler.send_message(ctx, file=discord.File(backup.file_name))
+            else:
+                await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to create backup.')
+        except Exception as e:
+            logger.warning(f'Database error occurred: {e}')
+ 
+    # DONE
+    @app_commands.command(name='chown', description='Change the owner of a temporary room.')
+    @app_commands.describe(member='Tag a user or provide their snowflake ID', channel='Tag a chanel or provide it\'s snowflake ID')
+    @is_owner_developer_administrator_predicator()
+    async def change_temp_room_owner_app_command(
+        self,
+        interaction,
+        channel: Optional[str],
+        member: Optional[str]
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
+        member_obj = await self.member_service.resolve_member(interaction, member)
+        if not member_obj:
+            return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+        if not room:
+            return await interaction.response.send_message(content=f'{channel_obj.mention} is not a temporary room.')
+        await room.update_temporary_room_owner_snowflake(member_obj)
+        return await interaction.response.send_message(content=f'Ownership of {channel_obj.mention} has been transferred to {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            
+    # TODO
+    @commands.command(name='chown', help='Change the owner of a temporary room.')
+    @is_owner_developer_administrator_predicator()
+    async def change_temp_room_owner_text_command(
+        self,
+        ctx,
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a chanel or provide it\'s snowflake ID'),
+        member: Optional[str] = commands.parameter(default=None, description='Tag a user or provide their snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        member_obj = await self.member_service.resolve_member(ctx, member)
+        if not member_obj:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+        if not room:
+            return await self.handler.send_message(ctx, content=f'{channel_obj.mention} is not a temporary room.')
+        await room.update_temporary_room_owner_snowflake(member_obj)
+        return await self.handler.send_message(ctx, content=f'Ownership of {channel_obj.mention} has been transferred to {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        
+    # DONE
+    @app_commands.command(name='clear', description='Removes a specific channel ID from all users, including temp-room associations.')
+    @app_commands.describe(channel='Tag a channel or include its snowflake ID')
+    @is_owner_developer_predicator()
+    async def clear_channel_access_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: Optional[str] = None
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
+        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        if channel_obj.type != discord.ChannelType.voice:
+            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE users
+                SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $1::bigint),
+                    moderator_channel_ids = array_remove(moderator_channel_ids, $1::bigint),
+                    updated_at = NOW()
+            ''', channel_obj.id)
+            await conn.execute('''
+                UPDATE users
+                SET coordinator_room_names = (
+                        SELECT array_agg(name) 
+                        FROM unnest(coordinator_room_names) AS name
+                        WHERE EXISTS (
+                            SELECT 1 FROM command_aliases 
+                            WHERE channel_id = $1 AND room_name = name
+                        )
+                    ),
+                    moderator_room_names = (
+                        SELECT array_agg(name) 
+                        FROM unnest(moderator_room_names) AS name
+                        WHERE EXISTS (
+                            SELECT 1 FROM command_aliases 
+                            WHERE channel_id = $1 AND room_name = name
+                        )
+                    ),
+                    updated_at = NOW()
+            ''', channel_obj.id)
+            await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+        Alias.delete_all_command_aliases_by_channel(channel_obj)
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
+
+    # DONE
+    @commands.command(name='clear', help='Removes a specific channel ID from all users, including temp-room associations and all related records.')
+    @is_owner_developer_predicator()
+    async def clear_channel_access_text_command(
+        self,
+        ctx: commands.Context,
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+    ) -> None:
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        if channel_obj.type != discord.ChannelType.voice:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE users
+                SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $1::bigint),
+                    moderator_channel_ids = array_remove(moderator_channel_ids, $1::bigint),
+                    updated_at = NOW()
+            ''', channel_obj.id)
+            await conn.execute('''
+                UPDATE users
+                SET coordinator_room_names = ARRAY(
+                    SELECT name
+                    FROM unnest(coordinator_room_names) AS name
+                    WHERE name NOT IN (
+                        SELECT room_name FROM temporary_rooms WHERE room_snowflake = $1
+                    )
+                ),
+                moderator_room_names = ARRAY(
+                    SELECT name
+                    FROM unnest(moderator_room_names) AS name
+                    WHERE name NOT IN (
+                        SELECT room_name FROM temporary_rooms WHERE room_snowflake = $1
+                    )
+                ),
+                updated_at = NOW()
+            ''', channel_obj.id)
+            await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+        Alias.delete_all_command_aliases_by_channel(channel_obj)
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Removed channel {channel_obj.mention} from all users and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
+    
+    @app_commands.command(name='load', description='Loads a cog by name "vyrtuous.cog.<cog_name>.')
+    @is_owner_developer_predicator()
+    async def load_app_command(self, interaction: discord.Interaction, module: str):
+        try:
+            if interaction:
+                await ctx.interaction.response.defer(ephemeral=True)
+            await interaction.client.load_extension(module)
+        except commands.ExtensionError as e:
+            await interaction.response.send_message(f'{e.__class__.__name__}: {e}')
+        else:
+            await interaction.response.send_message('\N{OK HAND SIGN}')
+            
+    @commands.command(name='load', help='Loads a cog by name "vyrtuous.cog.<cog_name>."')
+    @is_owner_developer_predicator()
+    async def load_text_command(self, ctx: commands.Context, *, module: str):
         try:
             await ctx.bot.load_extension(module)
         except commands.ExtensionError as e:
             await ctx.send(f'{e.__class__.__name__}: {e}')
         else:
             await ctx.send('\N{OK HAND SIGN}')
-                                    
-    @commands.command(name='unload', hidden=True)
-    @commands.check(at_home)
-    async def unload(self, ctx: commands.Context, *, module: str):
+
+    @app_commands.command(name='unload', description='Unloads a cog by name "vyrtuous.cog.<cog_name>".')
+    @is_owner_developer_predicator()
+    async def unload_app_command(self, interaction: discord.Interaction, module: str):
+        try:
+            await interaction.client.unload_extension(module)
+        except commands.ExtensionError as e:
+            await interaction.response.send_message(f'{e.__class__.__name__}: {e}')
+        else:
+            await interaction.response.send_message('\N{OK HAND SIGN}')
+
+    @commands.command(name='unload', help='Unload a cog by name "vyrtuous.cog.<cog_name>:.')
+    @is_owner_developer_predicator()
+    async def unload_text_command(self, ctx: commands.Context, *, module: str):
         try:
             await ctx.bot.unload_extension(module)
         except commands.ExtensionError as e:
@@ -47,21 +400,59 @@ class DevCommands(commands.Cog):
         else:
             await ctx.send('\N{OK HAND SIGN}')
 
-
-    @commands.command(name='reload', hidden=True)
-    @commands.check(at_home)
+    @app_commands.command(name='reload', description='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
+    @app_commands.check(at_home)
+    @is_owner_developer_predicator()
+    async def reload_app_command(self, interaction: discord.Interaction, module: str):
+        try:
+            if interaction:
+                await interaction.response.defer(ephemeral=True)
+            await interaction.client.reload_extension(module)
+        except commands.ExtensionError as e:
+            await interaction.response.send_message(f'{e.__class__.__name__}: {e}')
+        else:
+            await interaction.response.send_message('\N{OK HAND SIGN}')
+            
+    @commands.command(name='reload', help='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
+    @is_owner_developer_predicator()
     async def reload(self, ctx: commands.Context, *, module: str):
         try:
-            if ctx.interaction:
-                await ctx.interaction.response.defer(ephemeral=True)
             await ctx.bot.reload_extension(module)
         except commands.ExtensionError as e:
             await ctx.send(f'{e.__class__.__name__}: {e}')
         else:
             await ctx.send('\N{OK HAND SIGN}')
-
-    @commands.command(name='sync', hidden=True)
-    @is_owner_predicator()
+            
+    @app_commands.command(name='sync', description="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
+    @is_owner_developer_predicator()
+    async def sync(self, interaction: discord.Interaction, spec: Optional[Literal['~', '*', '^']] = None) -> None:
+        guilds = interaction.client.guilds
+        if not guilds:
+            if spec == '~':
+                synced = await interaction.client.tree.sync(guild=interaction.guild)
+            elif spec == '*':
+                interaction.client.tree.copy_global_to(guild=interaction.guild)
+                synced = await interaction.client.tree.sync(guild=interaction.guild)
+            elif spec == '^':
+                interaction.client.tree.clear_commands(guild=interaction.guild)
+                await interaction.client.tree.sync(guild=interaction.guild)
+                synced = []
+            else:
+                synced = await interaction.client.tree.sync()
+            await interaction.response.send_message(f"Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
+            return
+        ret = 0
+        for guild in guilds:
+            try:
+                await interaction.client.tree.sync(guild=guild)
+            except discord.HTTPException:
+                pass
+            else:
+                ret += 1
+        await interaction.response.send_message(f'Synced the tree to {ret}/{len(guilds)}.')
+        
+    @commands.command(name='sync', help="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
+    @is_owner_developer_predicator()
     async def sync(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None) -> None:
         if not guilds:
             if spec == '~':
@@ -87,5 +478,481 @@ class DevCommands(commands.Cog):
                 ret += 1
         await ctx.send(f'Synced the tree to {ret}/{len(guilds)}.')
 
+    # DONE
+    @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.')
+    @app_commands.describe(old_name='Old temporary room name', new_channel='New channel to migrate to')
+    @is_owner_developer_predicator()
+    async def migrate_temp_room_app_command(
+        self,
+        interaction: discord.Interaction,
+        old_name: str,
+        new_channel: discord.abc.GuildChannel
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='This command must be used in a server.')
+        async with self.bot.db_pool.acquire() as conn:
+            room = await TemporaryRoom.fetch_temporary_room_by_guild_and_room_name(interaction.guild, old_name)
+            if not room:
+                return await interaction.response.send_message(content=f'\U0001F6AB No temporary room named `{old_name}` found.')
+            channel_obj = await self.channel_service.resolve_channel(interaction, new_channel.id)
+            if channel_obj.type != discord.ChannelType.voice:
+                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+            is_owner = room.room_owner == interaction.user
+            await room.update_temporary_room_name_and_room_snowflake(channel_obj)
+            aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
+            if aliases:
+                for alias_obj in aliases:
+                    await alias_obj.update_command_aliases_with_channel(channel_obj)
+            tables = [
+                'active_bans','active_text_mutes','active_voice_mutes',
+                'active_stages','stage_coordinators','active_caps'
+            ]
+            for table in tables:
+                await conn.execute(
+                    f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
+                    interaction.guild.id, old_name, channel_obj.name, channel_obj.id
+                )
+            await conn.execute(
+                'UPDATE users SET coordinator_room_names=array_replace(coordinator_room_names, $1, $2) WHERE $1=ANY(coordinator_room_names)',
+                old_name, channel_obj.name
+            )
+            await conn.execute(
+                'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
+                room.channel.id, channel_obj.id
+            )
+            await conn.execute(
+                'UPDATE users SET moderator_room_names=array_replace(moderator_room_names, $1, $2) WHERE $1=ANY(moderator_room_names)',
+                old_name, channel_obj.name
+            )
+            await conn.execute(
+                'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
+                room.channel.id, channel_obj.id
+            )
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
+    
+    # DONE
+    @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
+    @is_owner_developer_predicator()
+    async def migrate_temp_room_text_command(
+        self,
+        ctx,
+        old_name: Optional[str] = commands.parameter(default=None, description='Provide a channel name'),
+        new_channel: Optional[int] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        async with self.bot.db_pool.acquire() as conn:
+            room = await TemporaryRoom.fetch_temporary_room_by_guild_and_room_name(ctx.guild, old_name)
+            if not room:
+                return await self.handler.send_message(ctx, content=f'No temporary room named `{old_name}` found.')
+            channel_obj = await self.channel_service.resolve_channel(ctx, new_channel)
+            if channel_obj.type != discord.ChannelType.voice:
+                return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+            is_owner = room.room_owner == ctx.author
+            await room.update_temporary_room_name_and_room_snowflake(channel_obj)
+            aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
+            if aliases:
+                for alias_obj in aliases:
+                    await alias_obj.update_command_aliases_with_channel(channel_obj)
+            tables = [
+                'active_bans','active_text_mutes','active_voice_mutes',
+                'active_stages','stage_coordinators','active_caps'
+            ]
+            for table in tables:
+                await conn.execute(
+                    f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
+                    ctx.guild.id, old_name, channel_obj.name, channel_obj.id
+                )
+            await conn.execute(
+                'UPDATE users SET coordinator_room_names=array_replace(coordinator_room_names, $1, $2) WHERE $1=ANY(coordinator_room_names)',
+                old_name, channel_obj.name
+            )
+            await conn.execute(
+                'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
+                room.channel.id, channel_obj.id
+            )
+            await conn.execute(
+                'UPDATE users SET moderator_room_names=array_replace(moderator_room_names, $1, $2) WHERE $1=ANY(moderator_room_names)',
+                old_name, channel_obj.name
+            )
+            await conn.execute(
+                'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
+                room.channel.id, channel_obj.id
+            )
+            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
+
+
+    # DONE
+    @app_commands.command(name='rmv', description='Move all the members in one room to another.')
+    @app_commands.describe(source_id='Tag the source channel or include its snowflake ID',target_id='Tag the target channel or include its snowflake ID')
+    @is_owner_developer_predicator()
+    async def room_move_all_app_command(
+        self,
+        interaction: discord.Interaction,
+        source_id: Optional[str] = None,
+        target_id: Optional[str] = None
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='This command must be used in a server.')
+        source_channel = interaction.guild.get_channel(int(source_id))
+        target_channel = interaction.guild.get_channel(int(target_id))
+        if not source_channel or not target_channel:
+            return await interaction.response.send_message(content='\U0001F6AB One or both channels are invalid.')
+        if not isinstance(source_channel, discord.VoiceChannel) or not isinstance(target_channel, discord.VoiceChannel):
+            raise ValueError('\U0001F6AB Both source and target must be voice channels.')
+        for member in source_channel.members:
+            try:
+                await member.move_to(target_channel)
+            except discord.Forbidden:
+                logger.warning(f'\U0001F6AB Missing permissions to move {member}.')
+            except discord.HTTPException:
+                logger.warning(f'\U0001F6AB Failed to move {member} due to a network error.')
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Moved all members from {source_channel.mention} to {target_channel.mention}.')
+        
+    # DONE
+    @commands.command(name='rmv', help='Move all the members in one room to another.')
+    @is_owner_developer_predicator()
+    async def room_move_all_text_command(
+        self,
+        ctx: commands.Context,
+        source_id: Optional[int] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        target_id: Optional[int] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        source_channel = ctx.guild.get_channel(source_id)
+        target_channel = ctx.guild.get_channel(target_id)
+        if not source_channel or not target_channel:
+            await self.handler.send_message(ctx, content='\U0001F6AB One or both channel IDs are invalid.')
+            return
+        if not isinstance(source_channel, discord.VoiceChannel) or not isinstance(target_channel, discord.VoiceChannel):
+            raise ValueError('\U0001F6AB Both source and target must be voice channels.')
+        for member in source_channel.members:
+            try:
+                await member.move_to(target_channel)
+            except discord.Forbidden:
+                logger.warning(f'\U0001F6AB Missing permissions to move {member}.')
+            except discord.HTTPException:
+                logger.warning(f'\U0001F6AB Failed to move {member} due to a network error.')
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Moved all members from {source_channel.mention} to {target_channel.mention}.')
+        
+
+    # DONE
+    @app_commands.command(name='temp', description='Mark a channel as a temporary room and assign an owner.')
+    @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
+    @is_owner_developer_predicator()
+    async def create_temp_room_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: Optional[str] = None,
+        owner: Optional[str] = None
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='This command must be used in a server.')
+        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        if not isinstance(channel_obj, discord.VoiceChannel):
+            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+        member_obj = await self.member_service.resolve_member(interaction, owner)
+        temporary_room = TemporaryRoom(interaction.guild, channel_obj, member_obj)
+        async with self.bot.db_pool.acquire() as conn:
+            await temporary_room.insert_into_temporary_rooms()
+            await conn.execute('''
+                UPDATE users
+                SET moderator_room_names = CASE WHEN NOT $1=ANY(moderator_room_names) THEN array_append(moderator_room_names,$1) ELSE moderator_room_names END,
+                    moderator_channel_ids = CASE WHEN NOT $2=ANY(moderator_channel_ids) THEN array_append(moderator_channel_ids,$2) ELSE moderator_channel_ids END,
+                    updated_at = NOW()
+                WHERE discord_snowflake = $3
+            ''', channel_obj.name, channel_obj.id, member_obj.id)
+            await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Channel {channel_obj.mention} is now owned by {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+
+    # DONE
+    @commands.command(name='temp', help='Mark a channel as a temporary room and assign an owner.')
+    @is_owner_developer_predicator()
+    async def create_temp_room_text_command(
+        self,
+        ctx: commands.Context,
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        owner: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        if not channel:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Please provide a valid channel or ID.')
+        if not owner:
+            return await self.handler.send_message(ctx, content='\U0001F6AB Please provide the owner\'s Discord ID.')
+        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        if not isinstance(channel_obj, discord.VoiceChannel):
+            return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+        member_obj = await self.member_service.resolve_member(ctx, owner)
+        temporary_room = TemporaryRoom(ctx.guild, channel_obj, member_obj)
+        async with ctx.bot.db_pool.acquire() as conn:
+            await temporary_room.insert_into_temporary_rooms()
+            await conn.execute('''
+                UPDATE users
+                SET moderator_room_names = CASE WHEN NOT $1=ANY(moderator_room_names) THEN array_append(moderator_room_names,$1) ELSE moderator_room_names END,
+                    moderator_channel_ids = CASE WHEN NOT $2=ANY(moderator_channel_ids) THEN array_append(moderator_channel_ids,$2) ELSE moderator_channel_ids END,
+                    updated_at = NOW()
+                WHERE discord_snowflake = $3
+            ''', channel_obj.name, channel_obj.id, member_obj.id)
+            await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Channel {channel_obj.mention} is now owned by {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+
+    @app_commands.command(name='trole', description='Marks a role as administrator and syncs all members.')
+    @is_owner_developer_predicator()
+    async def grant_administrator_to_role_app_command(self, interaction: discord.Interaction, role: Optional[str]):
+        guild = interaction.guild
+        role_id = int(role.replace('<@&','').replace('>',''))
+        role_obj = guild.get_role(role_id)
+        async with self.bot.db_pool.acquire() as conn:
+            for member in role_obj.members:
+                await conn.execute(
+                    '''
+                    INSERT INTO users (discord_snowflake, administrator_role_ids, administrator_guild_ids)
+                    VALUES ($1, ARRAY[$2], ARRAY[$3])
+                    ON CONFLICT (discord_snowflake)
+                    DO UPDATE SET
+                        administrator_role_ids = ARRAY(SELECT DISTINCT unnest(users.administrator_role_ids || $2)),
+                        administrator_guild_ids = ARRAY(SELECT DISTINCT unnest(users.administrator_guild_ids || $3))
+                    ''',
+                    member.id,
+                    role_obj.id,
+                    guild.id
+                )
+        await interaction.response.send_message(f'Administrator role `{role_obj.name}` synced.')
+
+    @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
+    @is_owner_developer_predicator()
+    async def grant_administrator_to_role_text_command(self, ctx: commands.Context, role: Optional[str]):
+        guild = ctx.guild
+        role_id = int(role.replace('<@&','').replace('>',''))
+        role_obj = guild.get_role(role_id)
+        async with self.bot.db_pool.acquire() as conn:
+            for member in role_obj.members:
+                await conn.execute(
+                    '''
+                    INSERT INTO users (discord_snowflake, administrator_role_ids, administrator_guild_ids)
+                    VALUES ($1, ARRAY[$2], ARRAY[$3])
+                    ON CONFLICT (discord_snowflake)
+                    DO UPDATE SET
+                        administrator_role_ids = ARRAY(SELECT DISTINCT unnest(users.administrator_role_ids || $2)),
+                        administrator_guild_ids = ARRAY(SELECT DISTINCT unnest(users.administrator_guild_ids || $3))
+                    ''',
+                    member.id,
+                    role_obj.id,
+                    guild.id
+                )
+        await self.handler.send_message(ctx, f'Administrator role `{role_obj.name}` synced.')
+        
+    # DONE
+    @app_commands.command(name='xadmin', description='Revokes server mute privileges from a user.')
+    @app_commands.describe(member='Tag a member or include their snowflake ID')
+    @is_owner_developer_predicator()
+    async def demote_administrator_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: Optional[str] = None
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='This command must be used in a server.')
+        member_obj = await self.member_service.resolve_member(interaction, member)
+        if not member_obj:
+            return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        if member_obj.bot:
+            return await interaction.response.send_message(content='\U0001F6AB You cannot revoke server mute for the bot.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE users
+                SET administrator_guild_ids = (SELECT ARRAY(
+                    SELECT unnest(administrator_guild_ids)
+                     EXCEPT SELECT $2
+                ))
+                WHERE discord_snowflake = $1
+            ''', member_obj.id, interaction.guild.id)
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} no longer has server mute privileges.', allowed_mentions=discord.AllowedMentions.none())
+        
+    # DONE
+    @commands.command(name='xadmin', help='Revokes server mute privileges from a user.')
+    @is_owner_developer_predicator()
+    async def demote_administrator_text_command(
+        self,
+        ctx: commands.Context,
+        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        member_obj = await self.member_service.resolve_member(ctx, member)
+        if not member_obj or not member:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        if member_obj.bot:
+            return await self.handler.send_message(ctx, content='\U0001F6AB You cannot revoke server mute for the bot.')
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE users
+                SET administrator_guild_ids = (SELECT ARRAY(
+                    SELECT unnest(administrator_guild_ids)
+                     EXCEPT SELECT $2
+                ))
+                WHERE discord_snowflake = $1
+            ''', member_obj.id, ctx.guild.id)
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} no longer has server mute privileges.', allowed_mentions=discord.AllowedMentions.none())
+        
+    # TODO
+    @app_commands.command(name='xalias', description='Deletes an alias.')
+    @is_owner_developer_predicator()
+    @app_commands.describe(alias_name='Include an alias name')
+    async def delete_alias_app_command(
+        self,
+        interaction: discord.Interaction,
+        alias_name: Optional[str] = None
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='This command must be used in a server.')
+        if not alias_name or not alias_name.strip():
+            return await interaction.response.send_message(content='\U0001F6AB `alias_name` cannot be empty.')
+        aliases = await Alias.fetch_command_aliases_by_guild(interaction.guild)
+        if not aliases:
+            return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
+        found = False
+        for alias in aliases:
+            if alias.alias_name:
+                await Alias.delete_command_alias_by_guild_and_alias_name(interaction.guild, alias.alias_name)
+                found = True
+                break
+        if not found:
+            return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` not found.')
+        channel_obj = await self.channel_service.resolve_channel(interaction, alias.channel.id)
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,$2,$3,$4,$5,$6)
+                ''', 'delete_alias', None, interaction.user.id, interaction.guild.id, channel_obj.id, f'Deleted alias {alias_name}')
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Deleted alias `{alias_name}` from `{alias.alias_type}`.')
+
+    # TODO
+    @commands.command(name='xalias', help='Deletes an alias.')
+    @is_owner_developer_predicator()
+    async def delete_alias_text_command(
+        self,
+        ctx: commands.Context,
+        alias_name: Optional[str] = commands.parameter(default=None, description='Include an alias name')
+    ) -> None:
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        if not alias_name or not alias_name.strip():
+            return await self.handler.send_message(ctx, content='\U0001F6AB `alias_name` cannot be empty.')
+        aliases = await Alias.fetch_command_aliases_by_guild(ctx.guild)
+        if not aliases:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB No aliases found.')
+        found = False
+        for alias in aliases:
+            if alias.alias_name:
+                await Alias.delete_command_alias_by_guild_and_alias_name(ctx.guild, alias.alias_name)
+                found = True
+                break
+        if not found:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{alias_name}` not found.')
+        channel_obj = await self.channel_service.resolve_channel(ctx, alias.channel.id)
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO moderation_logs(action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES($1,$2,$3,$4,$5,$6)
+            ''', 'delete_alias', None, ctx.author.id, ctx.guild.id, channel_obj.id, f'Deleted alias {alias_name}')
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Deleted alias `{alias_name}` from `{alias.alias_type}`.')
+    
+    # TODO
+    @app_commands.command(name='xtemp', description='Delete a temporary room.')
+    @is_owner_developer_predicator()
+    async def delete_temp_room_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: Optional[str]
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
+        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+        if not room:
+            return await interaction.response.send_message(content='\U0001F6AB This channel is not registered as a temporary room.')
+        async with self.bot.db_pool.acquire() as conn:
+            if room.room_owner:
+                await conn.execute('UPDATE users SET coordinator_room_names=array_remove(coordinator_room_names,$1), coordinator_channel_ids=array_remove(coordinator_channel_ids,$2), moderator_room_names=array_remove(moderator_room_names,$1), moderator_channel_ids=array_remove(moderator_channel_ids,$2), updated_at=NOW() WHERE discord_snowflake=$3', channel_obj.name, channel_obj.id, room.room_owner.id)
+            await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} has been removed.', allowed_mentions=discord.AllowedMentions.none())
+        
+    # DONE
+    @commands.command(name='xtemp', help='Delete a temporary room.')
+    @is_owner_developer_predicator()
+    async def delete_temp_room_text_command(
+        self,
+        ctx: commands.Context,
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+        if not room:
+            await self.handler.send_message(ctx, content='\U0001F6AB This channel is not registered as a temporary room.')
+            return
+        async with self.bot.db_pool.acquire() as conn:
+            if room.room_owner:
+                await conn.execute('UPDATE users SET coordinator_room_names=array_remove(coordinator_room_names,$1), coordinator_channel_ids=array_remove(coordinator_channel_ids,$2), moderator_room_names=array_remove(moderator_room_names,$1), moderator_channel_ids=array_remove(moderator_channel_ids,$2), updated_at=NOW() WHERE discord_snowflake=$3', channel_obj.name, channel_obj.id, room.room_owner.id)
+            await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} has been removed.', allowed_mentions=discord.AllowedMentions.none())
+        
+    @app_commands.command(name='xtrole')
+    @is_owner_developer_predicator()
+    async def revoke_administrator_to_role_app_command(self, interaction: discord.Interaction, role: Optional[str]):
+        guild = interaction.guild
+        role_id = int(role.replace('<@&','').replace('>',''))
+        role_obj = guild.get_role(role_id)
+        for member in role_obj.members:
+            async with self.bot.db_pool.acquire() as conn:
+               row = await conn.fetchrow(
+                   'SELECT administrator_role_ids, administrator_guild_ids FROM users WHERE discord_snowflake=$1',
+                   member.id
+               )
+               if not row:
+                   return
+               role_ids = set(row['administrator_role_ids'] or [])
+               guild_ids = set(row['administrator_guild_ids'] or [])
+               role_ids.discard(role_obj.id)
+               if not (role_ids & {r.id for r in member.roles}):
+                   guild_ids.discard(guild.id)
+               await conn.execute(
+                   'UPDATE users SET administrator_role_ids=$2, administrator_guild_ids=$3 WHERE discord_snowflake=$1',
+                   member.id,
+                   list(role_ids),
+                   list(guild_ids)
+               )
+    
+            await self.handler.send_message(ctx, f'Administrator role `{role_obj.name}` removed.')  
+    
+    @commands.command(name='xtrole')
+    @is_owner_developer_predicator()
+    async def revoke_administrator_to_role_text_command(self, ctx: commands.Context, role: Optional[str]):
+        guild = ctx.guild
+        role_id = int(role.replace('<@&','').replace('>',''))
+        role_obj = guild.get_role(role_id)
+        for member in role_obj.members:
+            async with self.bot.db_pool.acquire() as conn:
+               row = await conn.fetchrow(
+                   'SELECT administrator_role_ids, administrator_guild_ids FROM users WHERE discord_snowflake=$1',
+                   member.id
+               )
+               if not row:
+                   return
+               role_ids = set(row['administrator_role_ids'] or [])
+               guild_ids = set(row['administrator_guild_ids'] or [])
+               role_ids.discard(role_obj.id)
+               if not (role_ids & {r.id for r in member.roles}):
+                   guild_ids.discard(guild.id)
+               await conn.execute(
+                   'UPDATE users SET administrator_role_ids=$2, administrator_guild_ids=$3 WHERE discord_snowflake=$1',
+                   member.id,
+                   list(role_ids),
+                   list(guild_ids)
+               )
+    
+            await interaction.response.send_message(content=f'Administrator role `{role_obj.name}` removed.')
+
+        
 async def setup(bot: DiscordBot):
     await bot.add_cog(DevCommands(bot))

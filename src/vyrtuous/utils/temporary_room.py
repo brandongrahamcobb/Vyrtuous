@@ -8,7 +8,7 @@ import asyncpg
 class TemporaryRoom:
     
         
-    def __init__(self, guild: discord.Guild, channel: discord.abc.GuildChannel, room_owner: discord.User):
+    def __init__(self, guild: discord.Guild, channel: discord.abc.GuildChannel, room_owner: discord.Member):
         self.channel = channel
         self.bot = DiscordBot.get_instance()
         self.guild = guild
@@ -34,7 +34,7 @@ class TemporaryRoom:
         else:
             raise ValueError(f"Invalid room name.")
         
-    def load_room_owner(self, room_owner_obj: discord.User):
+    def load_room_owner(self, room_owner_obj: discord.Member):
         if room_owner_obj:
             self.room_owner = room_owner_obj
         else:
@@ -50,7 +50,7 @@ class TemporaryRoom:
             ''', self.guild.id, self.channel.name, self.room_owner.id, self.channel.id)
 
     @classmethod
-    async def fetch_temporary_room_by_channel(self, channel: discord.abc.GuildChannel):
+    async def fetch_temporary_room_by_channel(cls, channel: discord.abc.GuildChannel):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             room = await conn.fetchrow(
@@ -63,7 +63,7 @@ class TemporaryRoom:
             return TemporaryRoom(guild=channel.guild, channel=channel, room_owner=member)
             
     @classmethod
-    async def fetch_temporary_rooms_by_guild_and_member(self, guild: discord.Guild, member: discord.User):
+    async def fetch_temporary_rooms_by_guild_and_member(cls, guild: discord.Guild, member: discord.Member):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
@@ -79,7 +79,7 @@ class TemporaryRoom:
             return temporary_rooms
             
     @classmethod
-    async def fetch_temporary_room_by_guild_and_room_name(self, guild: discord.Guild, room_name: str):
+    async def fetch_temporary_room_by_guild_and_room_name(cls, guild: discord.Guild, room_name: str):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             room = await conn.fetchrow(
@@ -92,7 +92,7 @@ class TemporaryRoom:
             member = guild.get_member(room['owner_snowflake'])
             return TemporaryRoom(guild=guild, channel=channel, room_owner=member)
             
-    async def update_temporary_room_owner_snowflake(self, member: discord.User):
+    async def update_temporary_room_owner_snowflake(self, member: discord.Member):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
                 'UPDATE temporary_rooms SET owner_snowflake=$1 WHERE guild_snowflake=$2 AND room_snowflake=$3 AND room_name=$4',
@@ -107,7 +107,7 @@ class TemporaryRoom:
             )
             
     @classmethod
-    async def delete_temporary_room_by_channel(self, channel: discord.abc.GuildChannel):
+    async def delete_temporary_room_by_channel(cls, channel: discord.abc.GuildChannel):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute(
@@ -116,7 +116,7 @@ class TemporaryRoom:
             )
     
     @classmethod
-    async def fetch_temporary_rooms_by_guild(self, guild: discord.Guild):
+    async def fetch_temporary_rooms_by_guild(cls, guild: discord.Guild):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
@@ -133,7 +133,7 @@ class TemporaryRoom:
             return temporary_rooms
             
     @classmethod
-    async def fetch_all_guilds_with_temporary_rooms(self):
+    async def fetch_all_guilds_with_temporary_rooms(cls):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             guilds = {}

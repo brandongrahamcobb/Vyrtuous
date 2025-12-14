@@ -4,12 +4,29 @@ import discord
 
 
 class Alias:
+
+
+    
     def __init__(self, guild: discord.Guild, channel: discord.abc.GuildChannel, alias_type: Optional[str], alias_name: Optional[str], role_id: Optional[int]):
         self.bot = DiscordBot.get_instance()
         self.alias_type = alias_type
         self.alias_name = alias_name
         self.channel = channel
         self.guild = guild
+        self.alias_cog = self.bot.get_cog("Aliases")
+        self.handlers = {
+            'ban': alias_cog.handle_ban_alias,
+            'unban': alias_cog.handle_unban_alias,
+            'flag': alias_cog.handle_flag_alias,
+            'unflag': alias_cog.handle_unflag_alias,
+            'mute': alias_cog.handle_voice_mute_alias,
+            'unmute': alias_cog.handle_unmute_alias,
+            'tmute': alias_cog.handle_text_mute_alias,
+            'untmute': alias_cog.handle_untextmute_alias,
+            'role': alias_cog.handle_role_alias,
+            'unrole': alias_cog.handle_unrole_alias
+        }
+        self.handler = handlers[alias_type]
         self.role_id = role_id
         self.room_name = channel.name
         
@@ -42,13 +59,6 @@ class Alias:
                 else:
                     lines.append(f'`{alias.alias_name}`')
         return lines
-        
-    def load_alias_type(self, alias_type: str):
-        if not alias_type or not isinstance(alias_type, str):
-            raise ValueError("Invalid alias type.")
-        self.alias_type = alias_type
-        if self.alias_type not in self.bot.command_aliases['channel_aliases']:
-            self.bot.command_aliases['channel_aliases'][self.alias_type] = {}
 
     def load_alias_name(self, alias_name: str):
         if not alias_name or not isinstance(alias_name, str):
@@ -56,18 +66,6 @@ class Alias:
         if self.alias_type is None:
             raise ValueError("Alias type must be set before alias name.")
         self.alias_name = alias_name
-
-    def load_channel_id(self, channel_id: int):
-        if self.alias_type is None or self.alias_name is None:
-            raise ValueError("Alias type and name must be loaded before setting channel ID.")
-        self.bot.command_aliases['channel_aliases'][self.alias_type][self.alias_name] = channel_id
-
-    def load_role_id(self, role_id: int):
-        if self.alias_type is None or self.alias_name is None:
-            raise ValueError("Alias type and name must be loaded before setting role ID.")
-        if self.alias_type not in self.bot.command_aliases['role_aliases']:
-            self.bot.command_aliases['role_aliases'][self.alias_type] = {}
-        self.bot.command_aliases['role_aliases'][self.alias_type][self.alias_name] = role_id
 
     async def insert_into_command_aliases(self):
         async with self.bot.db_pool.acquire() as conn:
@@ -92,7 +90,7 @@ class Alias:
             return aliases
     
     @classmethod
-    async def fetch_command_alias_by_guild_and_name(self, guild: discord.Guild, alias_name: str):
+    async def fetch_command_alias_by_guild_and_alias_name(self, guild: discord.Guild, alias_name: str):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -101,6 +99,7 @@ class Alias:
             )
             if not row:
                 return None
+            channel = guild.get_channel(row['channel_id'])
             return Alias(guild=guild, channel=channel, alias_type=row['alias_type'], alias_name=row['alias_name'], role_id=row['role_id'])
             
     @classmethod
@@ -115,6 +114,7 @@ class Alias:
                 return None
             aliases = []
             for row in rows:
+                channel = guild.get_channel(row['channel_id'])
                 aliases.append(Alias(guild=guild, channel=channel, alias_type=row['alias_type'], alias_name=row['alias_name'], role_id=row['role_id']))
             return aliases
             

@@ -37,7 +37,8 @@ class EventListeners(commands.Cog):
         self.handler = DiscordMessageService(self.bot, self.db_pool)
         self.join_log = defaultdict(list)
         self._ready_done = False
-
+        self.deleted_rooms = {}
+        
     async def fetch_active_bans(self, conn, guild_id: int, user_id: int):
         return await conn.fetch('''
             SELECT channel_id, expires_at
@@ -64,12 +65,12 @@ class EventListeners(commands.Cog):
             if c.id != channel.id and c.name == name:
                 return
         async with self.bot.db_pool.acquire() as conn:
-            room = await TemporaryRoom.fetch_temporary_room_by_guild_and_room_name(guild=guild, room_name=name)
+            room = self.deleted_rooms.pop(name, None)
             if not room:
                 return
             old_name = room.room_name
             old_id = room.room_snowflake
-            await room.update_temporary_room_name_and_room_snowflake(channel=channel) # TODO: Tied with the temporary_room.py room non referential after deletion.
+            await room.update_temporary_room_name_and_room_snowflake(channel=channel)
             aliases = await Alias.fetch_command_aliases_by_channel(channel=channel)
             for alias in aliases:
                 await alias.update_command_aliases_with_channel(channel=channel)
@@ -102,13 +103,13 @@ class EventListeners(commands.Cog):
                 SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),
                     updated_at = NOW()
                 WHERE $1 = ANY(coordinator_channel_ids)
-            ''', old_id, channel.id) # TODO: Tied to the other TODO's in this method
+            ''', old_id, channel.id)
             await conn.execute('''
                 UPDATE users
                 SET moderator_channel_ids = array_replace(moderator_channel_ids, $1, $2),
                     updated_at = NOW()
                 WHERE $1 = ANY(moderator_channel_ids)
-            ''', old_id, channel.id) # TODO: Tied to the other TODO's in this method
+            ''', old_id, channel.id)
             banned_users = []
             rows = await conn.fetch('SELECT discord_snowflake FROM active_bans WHERE guild_id=$1 AND room_name=$2', guild.id, name)
             banned_users = [guild.get_member(r['discord_snowflake']) for r in rows if guild.get_member(r['discord_snowflake'])]
@@ -120,6 +121,12 @@ class EventListeners(commands.Cog):
             for u in text_muted_users:
                 if u:
                     await channel.set_permissions(u, send_messages=False)
+                    
+    @commands.Cog.listener()                
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
+        room = await TemporaryRoom.fetch_temporary_room_by_chanel(channel=channel)
+        if room:
+            self.deleted_rooms[channel.name] = room
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
@@ -275,7 +282,32 @@ class EventListeners(commands.Cog):
             ctx = await self.bot.get_context(after)
             if ctx.command:
                 await self.bot.invoke(ctx)
-                
+    
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if not message.guild:
+            return
+        if message.author.bot:
+            return
+        prefix = await self.bot.get_prefix(message)
+        if prefix != self.config['discord_command_prefix']:
+            return
+        content = message.content[len(prefix):].strip()
+        if not content:
+            return
+        parts = content.split()
+        alias_name = parts[0]
+        args = parts[1:]
+        alias = await Alias.fetch_command_alias_by_guild_and_alias_name(message.guild, alias_name)
+        if not alias:
+            return
+        await self.dispatch_alias(message, alias, args)
+    
+    async def dispatch_alias(self, message: discord.Message, alias: Alias, args):
+        if not alias.handler:
+            return
+        await alias.handler(message, alias, args)
+        
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument):
@@ -294,8 +326,57 @@ class EventListeners(commands.Cog):
         if getattr(self, "_ready_done", False):
             return
         self._ready_done = True
-            
-    async def get_active_stage(self, member: discord.User, after_channel: discord.abc.GuildChannel):
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        if before.roles == after.roles:
+            return
+        guild_id = after.guild.id
+        added_roles = {r.id for r in after.roles} - {r.id for r in before.roles}
+        removed_roles = {r.id for r in before.roles} - {r.id for r in after.roles}
+        async with self.bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                'SELECT administrator_role_ids, administrator_guild_ids FROM users WHERE discord_snowflake=$1',
+                after.id
+            )
+            if not row:
+                return
+            admin_role_ids = set(row['administrator_role_ids'] or [])
+            admin_guild_ids = set(row['administrator_guild_ids'] or [])
+            if added_roles & admin_role_ids:
+                admin_guild_ids.add(guild_id)
+            if removed_roles & admin_role_ids:
+                remaining_admin_roles = admin_role_ids & {r.id for r in after.roles}
+                if not remaining_admin_roles:
+                    admin_guild_ids.discard(guild_id)
+            await conn.execute(
+                'UPDATE users SET administrator_guild_ids=$2 WHERE discord_snowflake=$1',
+                after.id,
+                list(admin_guild_ids)
+            )
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role):
+        guild = role.guild
+        async with self.bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                'SELECT discord_snowflake, administrator_role_ids, administrator_guild_ids FROM users WHERE $1 = ANY(administrator_role_ids)',
+                role.id
+            )
+            for row in rows:
+                role_ids = set(row['administrator_role_ids'] or [])
+                guild_ids = set(row['administrator_guild_ids'] or [])
+                role_ids.discard(role.id)
+                if not role_ids:
+                    guild_ids.discard(guild.id)
+                await conn.execute(
+                    'UPDATE users SET administrator_role_ids=$2, administrator_guild_ids=$3 WHERE discord_snowflake=$1',
+                    row['discord_snowflake'],
+                    list(role_ids),
+                    list(guild_ids)
+                )
+
+    async def get_active_stage(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
         async with self.db_pool.acquire() as conn:
             active_stage = await conn.fetchrow('''
                 SELECT expires_at FROM active_stages
@@ -303,7 +384,7 @@ class EventListeners(commands.Cog):
             ''', member.guild.id, after_channel.id, after_channel.name)
         return active_stage
         
-    async def get_coordinators_and_ids(self, member: discord.User, after_channel: discord.abc.GuildChannel):
+    async def get_coordinators_and_ids(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
         async with self.db_pool.acquire() as conn:
             coordinators = await conn.fetch('''
                 SELECT discord_snowflake FROM stage_coordinators
@@ -312,7 +393,7 @@ class EventListeners(commands.Cog):
             coordinator_ids = {r['discord_snowflake'] for r in coordinators}
         return coordinators, coordinator_ids
         
-    async def print_flags(self, member: discord.User, after_channel: discord.abc.GuildChannel):
+    async def print_flags(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
         async with self.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT channel_id, discord_snowflake, reason

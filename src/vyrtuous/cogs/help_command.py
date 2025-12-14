@@ -29,6 +29,7 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator, UserPaginator
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.alias import Alias
 
 PERMISSION_ORDER = ['Owner', 'Developer', 'Coordinator', 'Moderator', 'Everyone']
 
@@ -249,47 +250,15 @@ class Help(commands.Cog):
                     )
             return await self.handler.send_message(ctx, embed=embed)
         all_commands = await self.get_available_commands_text(bot, ctx)
-        if not all_commands:
-            return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         current_text_channel_id = ctx.channel.id
         current_room_name = getattr(ctx.channel, 'name', None)
         current_guild_id = ctx.guild.id if ctx.guild else None
-        guild_aliases = self.bot.command_aliases.get(current_guild_id, {})
-        guild_channel_aliases = guild_aliases.get('channel_aliases', {})
-        guild_role_aliases = guild_aliases.get('role_aliases', {})
-        guild_temp_aliases = guild_aliases.get('temp_room_aliases', {})
-        current_guild_alias_commands = set()
-        for type_map in guild_channel_aliases.values():
-            current_guild_alias_commands.update(type_map.keys())
-        for type_map in guild_role_aliases.values():
-            current_guild_alias_commands.update(type_map.keys())
-        for type_map in guild_temp_aliases.values():
-            current_guild_alias_commands.update(type_map.keys())
-        all_alias_commands = set()
-        for guild_id, guild_data in self.bot.command_aliases.items():
-            for type_map in guild_data.get('channel_aliases', {}).values():
-                all_alias_commands.update(type_map.keys())
-            for type_map in guild_data.get('role_aliases', {}).values():
-                all_alias_commands.update(type_map.keys())
-            for type_map in guild_data.get('temp_room_aliases', {}).values():
-                all_alias_commands.update(type_map.keys())
-        contextual_commands = []
-        for command in all_commands:
-            in_channel = any(
-                command.name in type_map and type_map[command.name] == current_text_channel_id
-                for type_map in guild_channel_aliases.values()
-            )
-            in_role = any(
-                command.name in type_map and isinstance(type_map[command.name], dict) and type_map[command.name].get('channel_id') == current_text_channel_id
-                for type_map in guild_role_aliases.values()
-            )
-            in_temp_room = any(
-                command.name in type_map and isinstance(type_map[command.name], dict) and type_map[command.name].get('room_name') == current_room_name
-                for type_map in guild_temp_aliases.values()
-            )
-            if in_channel or in_role or in_temp_room or command.name not in all_alias_commands:
-                contextual_commands.append(command)
-        if not contextual_commands:
+        command_aliases = await Alias.fetch_command_aliases_by_guild(ctx.guild)
+        contextual_aliases = [
+            alias for alias in aliases
+            if alias.channel.id == ctx.channel.id
+        ]
+        if not contextual_commands or not all_commands:
             return await self.handler.send_message(ctx, '\U0001F6AB No commands available to you.')
         permission_groups = await self.group_commands_by_permission_text(bot, ctx, contextual_commands)
         pages = []
@@ -398,26 +367,11 @@ class Help(commands.Cog):
         current_text_channel_id=interaction.channel.id
         current_room_name=getattr(interaction.channel,'name',None)
         current_guild_id=interaction.guild.id if interaction.guild else None
-        guild_aliases=self.bot.command_aliases.get(current_guild_id,{})
-        guild_channel_aliases=guild_aliases.get('channel_aliases',{})
-        guild_role_aliases=guild_aliases.get('role_aliases',{})
-        guild_temp_aliases=guild_aliases.get('temp_room_aliases',{})
-        current_guild_alias_commands=set()
-        for type_map in guild_channel_aliases.values(): current_guild_alias_commands.update(type_map.keys())
-        for type_map in guild_role_aliases.values(): current_guild_alias_commands.update(type_map.keys())
-        for type_map in guild_temp_aliases.values(): current_guild_alias_commands.update(type_map.keys())
-        all_alias_commands=set()
-        for guild_id,guild_data in self.bot.command_aliases.items():
-            for tm in guild_data.get('channel_aliases',{}).values(): all_alias_commands.update(tm.keys())
-            for tm in guild_data.get('role_aliases',{}).values(): all_alias_commands.update(tm.keys())
-            for tm in guild_data.get('temp_room_aliases',{}).values(): all_alias_commands.update(tm.keys())
-        contextual_commands=[]
-        for command in all_commands:
-            in_channel=any(command.name in tm and tm[command.name]==current_text_channel_id for tm in guild_channel_aliases.values())
-            in_role=any(command.name in tm and isinstance(tm[command.name],dict) and tm[command.name].get('channel_id')==current_text_channel_id for tm in guild_role_aliases.values())
-            in_temp_room=any(command.name in tm and isinstance(tm[command.name],dict) and tm[command.name].get('room_name')==current_room_name for tm in guild_temp_aliases.values())
-            if in_channel or in_role or in_temp_room or command.name not in all_alias_commands:
-                contextual_commands.append(command)
+        command_aliases = await Alias.fetch_command_aliases_by_guild(interaction.guild)
+        contextual_commands = []
+        for alias in command_aliases:
+            if alias.channel.id == current_text_channel_id:
+                contextual_commands.append(alias)
         if not contextual_commands:
             return await interaction.response.send_message('\U0001F6AB No commands available to you.', ephemeral=True)
         permission_groups=await self.group_commands_by_permission_app(bot,interaction,contextual_commands)

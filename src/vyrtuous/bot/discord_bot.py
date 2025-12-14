@@ -27,13 +27,6 @@ from vyrtuous.utils.setup_logging import logger
 
 
 class DiscordBot(commands.Bot):
-
-    command_aliases: dict[int, dict[str, dict[str, dict[str, dict[str, int] | str]]]] = defaultdict(
-        lambda: {
-            "channel_aliases": {"mute": {}, "unmute": {}, "ban": {}, "unban": {}, "flag": {}, "unflag": {}, "cow": {}, "uncow": {}},
-            "role_aliases": {"role": {}, "unrole": {}}
-        }
-    )
     
     _instance = None
         
