@@ -48,20 +48,35 @@ class OwnerCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a developer.')
         if not member_obj:
             return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        success = await has_equal_or_higher_role(interaction.message, member_obj)
+        if not success:
+            return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO users (discord_snowflake, developer_guild_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[])
-                ON CONFLICT (discord_snowflake) DO UPDATE
-                SET developer_guild_ids = (
-                    SELECT ARRAY(
-                        SELECT DISTINCT unnest(u.developer_guild_ids || EXCLUDED.developer_guild_ids)
-                    )
-                    FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
-                ),
-                updated_at = NOW()
-            ''', member_obj.id, interaction.guild.id)
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been granted developer rights in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+            row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
+            action = None
+            if row and interaction.guild.id in row['developer_guild_ids']:
+                await conn.execute('''
+                    UPDATE users
+                    SET developer_guild_ids = array_remove(developer_guild_ids, $2),
+                        updated_at = NOW()
+                    WHERE discord_snowflake = $1
+                ''', member_obj.id, interaction.guild.id)
+                action = 'revoked'
+            else:
+                await conn.execute('''
+                    INSERT INTO users (discord_snowflake, developer_guild_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (discord_snowflake) DO UPDATE
+                    SET developer_guild_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(u.developer_guild_ids || EXCLUDED.developer_guild_ids)
+                        )
+                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
+                    ),
+                    updated_at = NOW()
+                ''', member_obj.id, interaction.guild.id)
+                action = 'granted'
+        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer accessed has been {action} in {interaction.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
     @commands.command(name='dev', help='Elevates a user\'s permissions to a bot developer.')
@@ -77,23 +92,38 @@ class OwnerCommands(commands.Cog):
         if not member_obj:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.bot:
-             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a developer.')
+            return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a developer.')
+        success = await has_equal_or_higher_role(ctx.message, member_obj)
+        if not success:
+            return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO users (discord_snowflake, developer_guild_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[])
-                ON CONFLICT (discord_snowflake) DO UPDATE
-                SET developer_guild_ids = (
-                    SELECT ARRAY(
-                        SELECT DISTINCT unnest(u.developer_guild_ids || EXCLUDED.developer_guild_ids)
-                    )
-                    FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
-                ),
-                updated_at = NOW()
-            ''', member_obj.id, ctx.guild.id)
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been granted developer rights in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+            row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
+            action = None
+            if row and interaction.guild.id in row['developer_guild_ids']:
+                await conn.execute('''
+                    UPDATE users
+                    SET developer_guild_ids = array_remove(developer_guild_ids, $2),
+                        updated_at = NOW()
+                    WHERE discord_snowflake = $1
+                ''', member_obj.id, ctx.guild.id)
+                action = 'revoked'
+            else:
+                await conn.execute('''
+                    INSERT INTO users (discord_snowflake, developer_guild_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (discord_snowflake) DO UPDATE
+                    SET developer_guild_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(u.developer_guild_ids || EXCLUDED.developer_guild_ids)
+                        )
+                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
+                    ),
+                    updated_at = NOW()
+                ''', member_obj.id, ctx.guild.id)
+                action = 'granted'
+        await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer accessed has been {action} in {ctx.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         
-    # TODO
+    # DONE
     @app_commands.command(name='hero', description='Toggle the special feature for a member.')
     @app_commands.describe(member='Tag a member or include their snowflake ID')
     @is_owner_predicator()
@@ -120,7 +150,7 @@ class OwnerCommands(commands.Cog):
         state = 'ON' if vegans.state else 'OFF'
         await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Superhero mode turned {state}')
            
-    # TODO
+    # DONE
     @commands.command(name='hero', hidden=True)
     @is_owner_predicator()
     async def vegan_hero_text_command(
@@ -146,51 +176,5 @@ class OwnerCommands(commands.Cog):
         state = f'ON' if vegans.state else f'OFF'
         await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Superhero modeturned {state}.')
 
-
-    # DONE
-    @app_commands.command(name='xdev', description='Removes a developer.')
-    @app_commands.describe(member='Tag a member or include their snowflake ID')
-    @is_owner_predicator()
-    async def delete_developer_app(
-        self,
-        interaction: discord.Interaction,
-        member: str = None
-    ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
-        member_obj = await self.member_service.resolve_member(interaction, member)
-        if not member_obj:
-            return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}')
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                UPDATE users
-                SET developer_guild_ids = array_remove(developer_guild_ids, $2),
-                    updated_at = NOW()
-                WHERE discord_snowflake = $1
-            ''', member_obj.id, interaction.guild.id)
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s developer access has been revoked in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
-        
-    # DONE
-    @commands.command(name='xdev', help='Removes a developer.')
-    @is_owner_predicator()
-    async def delete_developer_text_command(
-        self,
-        ctx: commands.Context,
-        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-    ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        member_obj = await self.member_service.resolve_member(ctx, member)
-        if not member_obj:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}')
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                UPDATE users
-                SET developer_guild_ids = array_remove(developer_guild_ids, $2),
-                    updated_at = NOW()
-                WHERE discord_snowflake = $1
-            ''', member_obj.id, ctx.guild.id)
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s developer access has been revoked in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
-    
 async def setup(bot: DiscordBot):
     await bot.add_cog(OwnerCommands(bot))

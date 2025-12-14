@@ -15,4 +15,6 @@ FROM log_channels
 ON CONFLICT (guild_id, channel_id) DO NOTHING;
 
 ALTER TABLE users
-RENAME COLUMN server_muter_guild_ids TO administrator_guild_ids;
+RENAME COLUMN server_muter_guild_ids TO administrator_guild_ids
+DELETE COLUMN coordinator_room_names;
+DELETE COLUMN moderator_room_names;

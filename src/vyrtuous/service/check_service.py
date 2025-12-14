@@ -64,7 +64,7 @@ async def send_check_failure_embed(ctx_or_interaction_or_message, error: command
     embed.set_footer(text='Contact a bot admin if you think this is a mistake.')
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
         return await ctx_or_interaction_or_message.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-    elif isinstance(ctx_or_interaction_or_message, discord.Context) or isinstance(ctx_or_interaction_or_message, discord.Message):
+    elif isinstance(ctx_or_interaction_or_message, commands.Context) or isinstance(ctx_or_interaction_or_message, discord.Message):
         return await ctx_or_interaction_or_message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
     else:
         return None
@@ -74,10 +74,10 @@ async def is_moderator(ctx_or_interaction_or_message):
     channel_id = ctx_or_interaction_or_message.channel.id
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
         user_id = ctx_or_interaction_or_message.user.id
-    elif isinstance(ctx_or_interaction_or_message, discord.Context):
+    elif isinstance(ctx_or_interaction_or_message, commands.Context):
         user_id = ctx_or_interaction_or_message.author.id
     elif isinstance(ctx_or_interaction_or_message, discord.Message):
-        user_id = message.author.id
+        user_id = ctx_or_interaction_or_message.author.id
     else:
         user_id = None
     async with bot.db_pool.acquire() as conn:
@@ -96,15 +96,15 @@ async def is_coordinator(ctx_or_interaction_or_message):
     channel_id = ctx_or_interaction_or_message.channel.id
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
         user_id = ctx_or_interaction_or_message.user.id
-    elif isinstance(ctx_or_interaction_or_message, discord.Context):
+    elif isinstance(ctx_or_interaction_or_message, commands.Context):
         user_id = ctx_or_interaction_or_message.author.id
     elif isinstance(ctx_or_interaction_or_message, discord.Message):
-        user_id = message.author.id
+        user_id = ctx_or_interaction_or_message.author.id
     else:
         user_id = None
     async with bot.db_pool.acquire() as conn:
         user_row = await conn.fetchrow(
-            'SELECT coordinator_channel_ids,coordinator_room_names FROM users WHERE discord_snowflake=$1',
+            'SELECT coordinator_channel_ids, FROM users WHERE discord_snowflake=$1',
             user_id
         )
     if row and row.get('coordinator_channel_ids'):
@@ -118,17 +118,17 @@ async def is_administrator(ctx_or_interaction_or_message):
     async with bot.db_pool.acquire() as conn:
         if isinstance(ctx_or_interaction_or_message, discord.Interaction):
             user_id = ctx_or_interaction_or_message.user.id
-        elif isinstance(ctx_or_interaction_or_message, discord.Context):
+        elif isinstance(ctx_or_interaction_or_message, commands.Context):
             user_id = ctx_or_interaction_or_message.author.id
         elif isinstance(ctx_or_interaction_or_message, discord.Message):
-            user_id = message.author.id
+            user_id = ctx_or_interaction_or_message.author.id
         else:
             user_id = None
         row = await conn.fetchrow(
             'SELECT adminstrator_guild_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if row and row['adminstrator_guild_ids'] and ctx_or_interaction_or_message.guild.id in row['administrator_muter_guild_ids']:
+    if row and row['adminstrator_guild_ids'] and ctx_or_interaction_or_message.guild.id in row['administrator_guild_ids']:
         return True
     return False
 
@@ -136,48 +136,48 @@ async def is_developer(ctx_or_interaction_or_message):
     bot = DiscordBot.get_instance()
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
         user_id = ctx_or_interaction_or_message.user.id
-    elif isinstance(ctx_or_interaction_or_message, discord.Context):
+    elif isinstance(ctx_or_interaction_or_message, commands.Context):
         user_id = ctx_or_interaction_or_message.author.id
     elif isinstance(ctx_or_interaction_or_message, discord.Message):
-        user_id = message.author.id
+        user_id = ctx_or_interaction_or_message.author.id
     else:
         user_id = None
     async with bot.db_pool.acquire() as conn:
         row = await conn.fetchrow(
             'SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', user_id
         )
-    if not row or not row.get('developer_guild_ids') or ctx_or_insteraction.guild.id not in row.get('developer_guild_ids', []):
+    if not row or not row.get('developer_guild_ids') or ctx_or_interaction.guild.id not in row.get('developer_guild_ids', []):
         raise NotDeveloper()
     return True
 
 async def is_guild_owner(ctx_or_interaction_or_message):
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
         user_id = ctx_or_interaction_or_message.user.id
-    elif isinstance(ctx_or_interaction_or_message, discord.Context):
+    elif isinstance(ctx_or_interaction_or_message, commands.Context):
         user_id = ctx_or_interaction_or_message.author.id
     elif isinstance(ctx_or_interaction_or_message, discord.Message):
-        user_id = message.author.id
+        user_id = ctx_or_interaction_or_message.author.id
     else:
         user_id = None
     if ctx_or_interaction_or_message.guild.owner_id != user_id:
         raise NotGuildOwner()
     return True
 
-async def is_system_owner(user_id):
+async def is_system_owner(ctx_or_interaction_or_message):
+    bot = DiscordBot.get_instance()
+    if isinstance(ctx_or_interaction_or_message, discord.Interaction):
+        user = ctx_or_interaction_or_message.user
+    elif isinstance(ctx_or_interaction_or_message, commands.Context):
+        user = ctx_or_interaction_or_message.author
+    elif isinstance(ctx_or_interaction_or_message, discord.Message):
+        user = ctx_or_interaction_or_message.author
     system_owner_id = int(bot.config['discord_owner_id'])
-    if system_owner_id != user_id:
+    if system_owner_id != user.id:
         raise NotSystemOwner()
     return True
     
 async def is_owner(ctx_or_interaction_or_message):
-    bot = DiscordBot.get_instance()
-    if isinstance(ctx_or_interaction_or_message, discord.Interaction):
-        user_id = ctx_or_interaction_or_message.user.id
-    elif isinstance(ctx_or_interaction_or_message, discord.Context):
-        user_id = ctx_or_interaction_or_message.author.id
-    elif isinstance(ctx_or_interaction_or_message, discord.Message):
-        user_id = message.author.id
-    if await is_system_owner(user_id):
+    if await is_system_owner(ctx_or_interaction_or_message):
         return True
     if await is_guild_owner(ctx_or_interaction_or_message):
         return True
@@ -216,7 +216,7 @@ def is_owner_developer_administrator_predicator():
             except commands.CheckFailure:
                 continue
         return False
-    predicate._permission_level = 'Coordinator'
+    predicate._permission_level = 'Administrator'
     return commands.check(predicate)
     
 def is_owner_developer_administrator_coordinator_predicator():
@@ -237,14 +237,14 @@ def is_owner_developer_administrator_coordinator_predicator():
     predicate._permission_level = 'Coordinator'
     return commands.check(predicate)
     
-def is_owner_developer_coordinator_moderator_predicator():
+def is_owner_developer_administrator_coordinator_moderator_predicator():
     async def predicate(ctx_or_interaction_or_message):
         if isinstance(ctx_or_interaction_or_message, discord.Interaction):
             user = ctx_or_interaction_or_message.user
-        elif isinstance(ctx_or_interaction_or_message, discord.Context):
+        elif isinstance(ctx_or_interaction_or_message, commands.Context):
             user = ctx_or_interaction_or_message.author
         elif isinstance(ctx_or_interaction_or_message, discord.Message):
-            user = message.author
+            user = ctx_or_interaction_or_message.author
         else:
             user = None
         for check in (is_coordinator, is_moderator):
@@ -263,7 +263,7 @@ def is_owner_developer_coordinator_moderator_predicator():
     predicate._permission_level = 'Moderator'
     return commands.check(predicate)
 
-async def is_owner_developer_administrator_coordinator_moderator(message: discord.Message) -> str:
+async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interaction_or_message) -> str:
     checks = (
         ("Owner", is_system_owner),
         ("Owner", is_guild_owner),
@@ -274,7 +274,7 @@ async def is_owner_developer_administrator_coordinator_moderator(message: discor
     )
     for role_name, check in checks:
         try:
-            if await check(message):
+            if await check(ctx_or_interaction_or_message):
                 return role_name
         except commands.CheckFailure:
             continue
@@ -325,3 +325,9 @@ async def member_is_moderator(channel: discord.VoiceChannel, member: discord.Mem
     if not row:
         return False
     return channel.id in (row['moderator_channel_ids'] or [])
+
+async def has_equal_or_higher_role(message: discord.Message, member: discord.Member) -> bool:
+    sender = message.author
+    if isinstance(sender, discord.Member):
+        return member.top_role >= sender.top_role
+    return False

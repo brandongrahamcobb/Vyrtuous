@@ -82,24 +82,6 @@ class EventListeners(commands.Cog):
             await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('''
                 UPDATE users
-                SET coordinator_room_names=ARRAY(
-                    SELECT DISTINCT unnest(
-                        COALESCE(coordinator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
-                    )
-                )
-                WHERE $1=ANY(coordinator_room_names)
-            ''', name)
-            await conn.execute('''
-                UPDATE users
-                SET moderator_room_names=ARRAY(
-                    SELECT DISTINCT unnest(
-                        COALESCE(moderator_room_names,ARRAY[]::TEXT[]) || ARRAY[$1]
-                    )
-                )
-                WHERE $1=ANY(moderator_room_names)
-            ''', name)
-            await conn.execute('''
-                UPDATE users
                 SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),
                     updated_at = NOW()
                 WHERE $1 = ANY(coordinator_channel_ids)

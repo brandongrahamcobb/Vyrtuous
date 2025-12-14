@@ -41,7 +41,7 @@ class AdminCommands(commands.Cog):
         interaction: discord.Interaction,
         channel: str = None,
         moderation_type: str = None,
-        duration: str = '24'
+        duration: str = '24h'
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
@@ -82,7 +82,7 @@ class AdminCommands(commands.Cog):
         channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
         moderation_type: Optional[str] = commands.parameter(default=None, description='One of: `mute`, `ban`, `tmute`'),
         *,
-        duration: Optional[str] = commands.parameter(default='24', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default')
+        duration: Optional[str] = commands.parameter(default='24h', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default')
     ):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
@@ -115,7 +115,50 @@ class AdminCommands(commands.Cog):
         await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
     
     # DONE
-    @app_commands.command(name='coord', description='Grants coordinator access for a specific voice channel.')
+    @app_commands.command(name='chown', description='Change the owner of a temporary room.')
+    @app_commands.describe(member='Tag a user or provide their snowflake ID', channel='Tag a chanel or provide it\'s snowflake ID')
+    @is_owner_developer_administrator_predicator()
+    async def change_temp_room_owner_app_command(
+        self,
+        interaction,
+        channel: Optional[str],
+        member: Optional[str]
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
+        member_obj = await self.member_service.resolve_member(interaction, member)
+        if not member_obj:
+            return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+        if not room:
+            return await interaction.response.send_message(content=f'{channel_obj.mention} is not a temporary room.')
+        await room.update_temporary_room_owner_snowflake(member_obj)
+        return await interaction.response.send_message(content=f'Ownership of {channel_obj.mention} has been transferred to {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            
+    # DONE
+    @commands.command(name='chown', help='Change the owner of a temporary room.')
+    @is_owner_developer_administrator_predicator()
+    async def change_temp_room_owner_text_command(
+        self,
+        ctx,
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a chanel or provide it\'s snowflake ID'),
+        member: Optional[str] = commands.parameter(default=None, description='Tag a user or provide their snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        member_obj = await self.member_service.resolve_member(ctx, member)
+        if not member_obj:
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
+        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+        if not room:
+            return await self.handler.send_message(ctx, content=f'{channel_obj.mention} is not a temporary room.')
+        await room.update_temporary_room_owner_snowflake(member_obj)
+        return await self.handler.send_message(ctx, content=f'Ownership of {channel_obj.mention} has been transferred to {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        
+    # DONE
+    @app_commands.command(name='coord', description='Grants/revokes coordinator access for a specific voice channel.')
     @is_owner_developer_administrator_predicator()
     @app_commands.describe(member='Tag a member or include their snowflake ID', channel='Tag a channel or include its snowflake ID')
     async def create_coordinator_app_command(
@@ -134,41 +177,38 @@ class AdminCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
         if member_obj.bot:
             return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a coordinator.')
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                return await interaction.response.send_message(content=f'\U0001F6AB You are not allowed to make {member_obj.mention} a coordinator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        success = await has_equal_or_higher_role(interaction.message, member_obj)
+        if not success:
+            return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a coordinator because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO users (discord_snowflake, coordinator_room_names)
-                VALUES ($1, ARRAY[$2]::TEXT[])
-                ON CONFLICT (discord_snowflake) DO UPDATE
-                SET coordinator_room_names = (
-                    SELECT ARRAY(SELECT DISTINCT unnest(
-                        COALESCE(users.coordinator_room_names, ARRAY[]::TEXT[]) || ARRAY[$2]
-                    ))
-                ),
-                updated_at = NOW()
-            ''', member_obj.id, channel_obj.name)
-            await conn.execute('''
-                INSERT INTO users (discord_snowflake, coordinator_channel_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[])
-                ON CONFLICT (discord_snowflake) DO UPDATE
-                SET coordinator_channel_ids = (
-                    SELECT ARRAY(SELECT DISTINCT unnest(
-                        COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
-                    ))
-                ),
-                updated_at = NOW()
-            ''', member_obj.id, channel_obj.id)
+            action = None
+            row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
+            current_channel_ids = row.get('coordinator_channel_ids', []) if row else []
+            action = None
+            if channel_obj.id in current_channel_ids:
+                await conn.execute('UPDATE users SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
+                action = 'revoked'
+            else:
+                await conn.execute('''
+                    INSERT INTO users (discord_snowflake, coordinator_channel_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (discord_snowflake) DO UPDATE
+                    SET coordinator_channel_ids = (
+                        SELECT ARRAY(SELECT DISTINCT unnest(
+                            COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
+                        ))
+                    ),
+                    updated_at = NOW()
+                ''', member_obj.id, channel_obj.id)
+                action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
-            ''', 'create_coordinator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, 'Created a coordinator')
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been granted coordinator rights in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            ''', 'toggled_coordinator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, f'Coordinator access {action}')
+        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s coordinator access has been {action} in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
 
     # DONE
-    @commands.command(name='coord', help='Grants coordinator access for a specific voice channel.')
+    @commands.command(name='coord', help='Grants/revokes coordinator access for a specific voice channel.')
     @is_owner_developer_administrator_predicator()
     async def create_coordinator_text_command(
         self,
@@ -186,37 +226,34 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
         if member_obj.bot:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a coordinator.')
+        success = await has_equal_or_higher_role(ctx.message, member_obj)
+        if not success:
+            return await interaction.response.send_message(content=f"\U0001F6AB You are not toggle {member_obj.mention}'s coordinator role because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-            INSERT INTO users (discord_snowflake, coordinator_room_names)
-            VALUES ($1, ARRAY[$2]::TEXT[])
-            ON CONFLICT (discord_snowflake) DO UPDATE SET
-                coordinator_room_names = (
-                    SELECT ARRAY(
-                        SELECT DISTINCT unnest(
-                            COALESCE(users.coordinator_room_names, ARRAY[]::TEXT[]) || ARRAY[$2]
-                        )
-                    )
-                ),
-                updated_at = NOW();
-            ''', member_obj.id, channel_obj.name)
-            await conn.execute('''
-                INSERT INTO users AS u (discord_snowflake, coordinator_channel_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[])
-                ON CONFLICT (discord_snowflake) DO UPDATE SET
-                    coordinator_channel_ids = (
-                        SELECT ARRAY(
-                            SELECT DISTINCT unnest(
-                                COALESCE(u.coordinator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
-                            )
-                        )
+            action = None
+            row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
+            current_channel_ids = row.get('coordinator_channel_ids', []) if row else []
+            action = None
+            if channel_obj.id in current_channel_ids:
+                await conn.execute('UPDATE users SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
+                action = 'revoked'
+            else:
+                await conn.execute('''
+                    INSERT INTO users (discord_snowflake, coordinator_channel_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (discord_snowflake) DO UPDATE
+                    SET coordinator_channel_ids = (
+                        SELECT ARRAY(SELECT DISTINCT unnest(
+                            COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
+                        ))
                     ),
-                    updated_at = NOW();
-            ''', member_obj.id, channel_obj.id)
+                    updated_at = NOW()
+                ''', member_obj.id, channel_obj.id)
+                action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
-            ''', 'create_coordinator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Created a coordinator')
+            ''', 'toggled_coordinator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Coordinator access {action}')
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been granted coordinator rights in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
    # DONE
@@ -562,14 +599,14 @@ class AdminCommands(commands.Cog):
         await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
 
     # DONE
-    @app_commands.command(name='smute', description='Mutes a member throughout the entire guild.')
+    @app_commands.command(name='smute', description='Mutes or unmutes a member throughout the entire guild.')
     @app_commands.describe(member='Tag a member or include their snowflake ID', reason='Optional reason (required for 7 days or more)')
     @is_owner_developer_administrator_predicator()
-    async def server_mute_app_command(
+    async def toggle_server_mute_app_command(
         self,
         interaction: discord.Interaction,
         member: Optional[str] = None,
-        reason: Optional[str] = ''
+        reason: Optional[str] = None
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
@@ -579,10 +616,23 @@ class AdminCommands(commands.Cog):
         if member_obj.bot:
             return await interaction.response.send_message(content='\U0001F6AB You cannot server mute the bot.')
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO users (discord_snowflake, server_mute_guild_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (discord_snowflake) DO
-                UPDATE
+            row = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
+            current_mutes = row.get('server_mute_guild_ids', []) if row else []
+            action = None
+            if interaction.guild.id in current_mutes:
+                await conn.execute('UPDATE users SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, interaction.guild.id)
+                await conn.execute('DELETE FROM active_server_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2', interaction.guild.id, member_obj.id)
+                if member_obj.voice and member_obj.voice.channel:
+                    try:
+                        await member_obj.edit(mute=False)
+                    except discord.Forbidden:
+                        return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} was not successfully voice unmuted.', allowed_mentions=discord.AllowedMentions.none())
+                action = 'unmuted'
+            else:
+                await conn.execute('''
+                    INSERT INTO users (discord_snowflake, server_mute_guild_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (discord_snowflake) DO UPDATE
                     SET server_mute_guild_ids = (
                         SELECT ARRAY(
                             SELECT DISTINCT unnest(COALESCE (u.server_mute_guild_ids, '{}') || ARRAY[$2])
@@ -590,29 +640,34 @@ class AdminCommands(commands.Cog):
                         FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
                     ),
                     updated_at = NOW()
-            ''', member_obj.id, interaction.guild.id)
+                ''', member_obj.id, interaction.guild.id)
+                await conn.execute('''
+                    INSERT INTO active_server_voice_mutes (guild_id, discord_snowflake, reason)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (guild_id, discord_snowflake) DO UPDATE
+                    SET reason = EXCLUDED.reason
+                ''', interaction.guild.id, member_obj.id, reason)
+                if member_obj.voice and member_obj.voice.channel:
+                    try:
+                        await member_obj.edit(mute=True)
+                    except discord.Forbidden:
+                        return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} was not successfully voice muted.', allowed_mentions=discord.AllowedMentions.none())
+                action = 'muted'
             await conn.execute('''
-                INSERT INTO active_server_voice_mutes (guild_id, discord_snowflake, reason)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (guild_id, discord_snowflake) DO UPDATE
-                SET reason = EXCLUDED.reason
-            ''', interaction.guild.id, member_obj.id, reason or 'No reason provided')
-        if member_obj.voice and member_obj.voice.channel:
-            try:
-                await member_obj.edit(mute=True)
-            except discord.Forbidden:
-                return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} was not successfully voice muted.', allowed_mentions=discord.AllowedMentions.none())
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been server muted for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
+                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                VALUES ($1,$2,$3,$4,$5,$6)
+            ''', 'toggled_server_mute', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, f'Server {action}')
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been server {action} for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
             
-    # TODO
-    @commands.command(name='smute', help='Mutes a member throughout the entire guild.')
+    # DONE
+    @commands.command(name='smute', help='Mutes or unmutes a member throughout the entire guild.')
     @is_owner_developer_administrator_predicator()
-    async def server_mute_text_command(
+    async def toggle_server_mute_text_command(
         self,
         ctx: commands.Context,
         member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
         *,
-        reason: Optional[str] = commands.parameter(default='', description='Optional reason (required for 7 days or more)')
+        reason: Optional[str] = commands.parameter(default=None, description='Optional reason (required for 7 days or more)')
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
@@ -622,10 +677,23 @@ class AdminCommands(commands.Cog):
         if member_obj.bot:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot server mute the bot.')
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO users (discord_snowflake, server_mute_guild_ids)
-                VALUES ($1, ARRAY[$2]::BIGINT[]) ON CONFLICT (discord_snowflake) DO
-                UPDATE
+            row = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
+            current_mutes = row.get('server_mute_guild_ids', []) if row else []
+            action = None
+            if ctx.guild.id in current_mutes:
+                await conn.execute('UPDATE users SET server_mute_guild_ids = array_remove(server_mute_guild_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, ctx.guild.id)
+                await conn.execute('DELETE FROM active_server_voice_mutes WHERE guild_id = $1 AND discord_snowflake = $2', ctx.guild.id, member_obj.id)
+                if member_obj.voice and member_obj.voice.channel:
+                    try:
+                        await member_obj.edit(mute=False)
+                    except discord.Forbidden:
+                        return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} was not successfully voice unmuted.', allowed_mentions=discord.AllowedMentions.none())
+                action = 'unmuted'
+            else:
+                await conn.execute('''
+                    INSERT INTO users (discord_snowflake, server_mute_guild_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (discord_snowflake) DO UPDATE
                     SET server_mute_guild_ids = (
                         SELECT ARRAY(
                             SELECT DISTINCT unnest(COALESCE (u.server_mute_guild_ids, '{}') || ARRAY[$2])
@@ -633,20 +701,24 @@ class AdminCommands(commands.Cog):
                         FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
                     ),
                     updated_at = NOW()
-            ''', member_obj.id, ctx.guild.id)
+                ''', member_obj.id, ctx.guild.id)
+                await conn.execute('''
+                    INSERT INTO active_server_voice_mutes (guild_id, discord_snowflake, reason)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (guild_id, discord_snowflake) DO UPDATE
+                    SET reason = EXCLUDED.reason
+                ''', ctx.guild.id, member_obj.id, reason)
+                if member_obj.voice and member_obj.voice.channel:
+                    try:
+                        await member_obj.edit(mute=True)
+                    except discord.Forbidden:
+                        return await self.handler.send_message(content=f'\U0001F6AB {member_obj.mention} was not successfully voice muted.', allowed_mentions=discord.AllowedMentions.none())
+                action = 'muted'
             await conn.execute('''
-                INSERT INTO active_server_voice_mutes (guild_id, discord_snowflake, reason)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (guild_id, discord_snowflake) DO UPDATE
-                SET reason = EXCLUDED.reason
-            ''', ctx.guild.id, member_obj.id, reason or 'No reason provided')
-        if member_obj.voice and member_obj.voice.channel:
-            try:
-                await member_obj.edit(mute=True)
-            except discord.Forbidden:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} was not successfully voice muted.', allowed_mentions=discord.AllowedMentions.none())
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been server muted for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
-
+                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                VALUES ($1,$2,$3,$4,$5,$6)
+            ''', 'toggled_server_mute', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Server {action}')
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been server {action} for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
 
     # DONE
     @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.')
@@ -785,161 +857,6 @@ class AdminCommands(commands.Cog):
             ''', ctx.guild.id, channel_obj.id, moderation_type, channel_obj.name)
         await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
         
-    # TODO
-    @app_commands.command(name='xcoord', description='Revokes coordinator access from a user in a specific voice channel or temporary room.')
-    @is_owner_developer_administrator_predicator()
-    @app_commands.describe(member='Tag a member or include their snowflake ID', channel='Tag a channel or include its snowflake ID')
-    async def demote_coordinator_app_command(
-        self,
-        interaction: discord.Interaction,
-        member: Optional[str] = None,
-        channel: Optional[str] = None
-    ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
-        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-        if channel_obj.type != discord.ChannelType.voice:
-            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        member_obj = await self.member_service.resolve_member(interaction, member)
-        if not member_obj:
-            return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        async with self.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT coordinator_channel_ids, coordinator_room_names FROM users WHERE discord_snowflake = $1', member_obj.id)
-            if not row:
-                return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not found in the coordinator database.', allowed_mentions=discord.AllowedMentions.none())
-            current_channel_ids = row.get('coordinator_channel_ids', []) or []
-            current_rooms = row.get('coordinator_room_names', []) or []
-            if channel_obj.id in current_channel_ids:
-                await conn.execute('''
-                    UPDATE users
-                    SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2),
-                    SET coordinator_room_names = array_remove(coordinator_room_names, $3),
-                        updated_at = NOW()
-                    WHERE discord_snowflake = $1
-                ''', member_obj.id, channel_obj.id, channel_obj.name)
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                VALUES ($1, $2, $3, $4, $5, $6)
-            ''', 'remove_coordinator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id if channel_obj else None, 'Removed a coordinator from a voice channel/temp room')
-            updated_row = await conn.fetchrow('SELECT coordinator_channel_ids, coordinator_room_names FROM users WHERE discord_snowflake = $1', member_obj.id)
-            remaining_channels = updated_row.get('coordinator_channel_ids', []) if updated_row else []
-            remaining_rooms = updated_row.get('coordinator_room_names', []) if updated_row else []
-            guild_voice_channel_ids = [vc.id for vc in interaction.guild.voice_channels]
-            has_remaining_guild_channels = any(ch_id in guild_voice_channel_ids for ch_id in remaining_channels)
-            has_remaining_rooms = bool(remaining_rooms)
-            if not has_remaining_guild_channels and not has_remaining_rooms:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s coordinator access has been completely revoked from {channel_obj.mention} and in {interaction.guild.name} (no remaining channels or temp rooms).', allowed_mentions=discord.AllowedMentions.none())
-            else:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s coordinator access has been revoked from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
-
-    # TODO
-    @commands.command(name='xcoord', help='Revokes coordinator access from a user in a specific voice channel.')
-    @is_owner_developer_administrator_predicator()
-    async def demote_coordinator_text_command(
-        self,
-        ctx: commands.Context,
-        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
-    ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        if channel_obj.type != discord.ChannelType.voice:
-            return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-        member_obj = await self.member_service.resolve_member(ctx, member)
-        if not member_obj:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        async with self.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT coordinator_channel_ids, coordinator_room_names FROM users WHERE discord_snowflake=$1', member_obj.id)
-            if not row:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is not found in the coordinator database.', allowed_mentions=discord.AllowedMentions.none())
-            current_channel_ids = row.get('coordinator_channel_ids', []) or []
-            current_rooms = row.get('coordinator_room_names', []) or []
-            if channel_obj.id in current_channel_ids:
-                await conn.execute('UPDATE users SET coordinator_channel_ids=array_remove(coordinator_channel_ids,$2), updated_at=NOW() WHERE discord_snowflake=$1', member_obj.id, channel_obj.id)
-            temp_rooms = await conn.fetch('SELECT room_name FROM temporary_rooms WHERE guild_snowflake=$1 AND room_snowflake=$2', ctx.guild.id, channel_obj.id)
-            for tr in temp_rooms:
-                room_name = tr['room_name']
-                if room_name in current_rooms:
-                    await conn.execute('UPDATE users SET coordinator_room_names=array_remove(coordinator_room_names,$2), updated_at=NOW() WHERE discord_snowflake=$1', member_obj.id, channel_obj.name)
-            await conn.execute('INSERT INTO moderation_logs(action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES($1,$2,$3,$4,$5,$6)', 'remove_coordinator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Removed a coordinator from a voice channel/temp room')
-            updated_row = await conn.fetchrow('SELECT coordinator_channel_ids, coordinator_room_names FROM users WHERE discord_snowflake=$1', member_obj.id)
-            remaining_channels = updated_row.get('coordinator_channel_ids', []) if updated_row else []
-            remaining_rooms = updated_row.get('coordinator_room_names', []) if updated_row else []
-            guild_voice_channel_ids = [vc.id for vc in ctx.guild.voice_channels]
-            has_remaining_guild_channels = any(ch_id in guild_voice_channel_ids for ch_id in remaining_channels)
-            has_remaining_rooms = bool(remaining_rooms)
-            if not has_remaining_guild_channels and not has_remaining_rooms:
-                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s coordinator access has been completely revoked from {channel_obj.mention} and in {ctx.guild.name} (no remaining channels or temp rooms).', allowed_mentions=discord.AllowedMentions.none())
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s coordinator access has been revoked from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
-       
-    # DONE
-    @app_commands.command(name='xsmute', description='Unmutes a member throughout the entire guild.')
-    @is_owner_developer_administrator_coordinator_predicator()
-    @app_commands.describe(member='Tag a member or include their snowflake ID')
-    async def undo_server_mute_app_command(
-        self,
-        interaction: discord.Interaction,
-        member: Optional[str] = None
-    ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
-        member_obj = await self.member_service.resolve_member(interaction, member)
-        if not member_obj:
-            return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                UPDATE users
-                SET server_mute_guild_ids = (SELECT ARRAY(
-                    SELECT unnest(server_mute_guild_ids)
-                    EXCEPT SELECT $2
-                ))
-                WHERE discord_snowflake = $1
-            ''', member_obj.id, interaction.guild.id)
-            await conn.execute('''
-                DELETE FROM active_server_voice_mutes
-                WHERE discord_snowflake = $1 AND guild_id = $2
-            ''', member_obj.id, interaction.guild.id)
-        if member_obj.voice and member_obj.voice.channel:
-            try:
-                await member_obj.edit(mute=False)
-            except discord.Forbidden:
-                return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} was not successfully unvoice muted.', allowed_mentions=discord.AllowedMentions.none())
-        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
-        
-    # TODO
-    @commands.command(name='xsmute', help='Unmutes a member throughout the entire guild.')
-    @is_owner_developer_administrator_coordinator_predicator()
-    async def undo_server_mute_text_command(
-            self,
-            ctx: commands.Context,
-            member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
-    ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        member_obj = await self.member_service.resolve_member(ctx, member)
-        if not member_obj:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                UPDATE users
-                SET server_mute_guild_ids = (SELECT ARRAY(
-                    SELECT unnest(server_mute_guild_ids)
-                    EXCEPT SELECT $2
-                ))
-                WHERE discord_snowflake = $1
-            ''', member_obj.id, ctx.guild.id)
-            await conn.execute('''
-                DELETE FROM active_server_voice_mutes
-                WHERE discord_snowflake = $1 AND guild_id = $2
-            ''', member_obj.id, ctx.guild.id)
-        if member_obj.voice and member_obj.voice.channel:
-            try:
-                await member_obj.edit(mute=False)
-            except discord.Forbidden:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} was not successfully unvoice muted.', allowed_mentions=discord.AllowedMentions.none())
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been server unmuted.', allowed_mentions=discord.AllowedMentions.none())
-    
     # DONE
     @app_commands.command(name='xstage', description='Destroy the stage in the current channel.')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID')

@@ -158,13 +158,11 @@ class Hybrid(commands.Cog):
                 paginator = UserPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif member_obj:
-                query = 'SELECT coordinator_channel_ids, coordinator_room_names FROM users WHERE discord_snowflake=$1'
+                query = 'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1'
                 row = await conn.fetchrow(query, member_obj.id)
                 channels = []
                 if row:
                     channels.extend(row.get('coordinator_channel_ids') or [])
-                    if channel_obj.name and row.get('coordinator_room_names') and channel_obj.name in row['coordinator_room_names']:
-                        channels.append(channel_obj.id if channel_obj else None)
                 if not channels:
                     return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.display_name} is not a coordinator in any channels.')
                 channel_mentions = []
@@ -189,8 +187,7 @@ class Hybrid(commands.Cog):
                 if channel_obj.type != discord.ChannelType.voice:
                     return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
                 query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(coordinator_channel_ids)'
-                rows2 = await conn.fetch('SELECT discord_snowflake FROM users WHERE $1=ANY(coordinator_room_names)', channel_obj.name)
-                rows = list({r['discord_snowflake']: r for r in rows + rows2}.values())
+                rows = list({r['discord_snowflake']: r for r in rows}.values())
                 if not rows:
                     return await interaction.response.send_message(content=f'\U0001F6AB No coordinators found for {channel_obj.mention}.')
                 lines = []
@@ -254,13 +251,11 @@ class Hybrid(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             elif member_obj:
-                query = 'SELECT coordinator_channel_ids, coordinator_room_names FROM users WHERE discord_snowflake=$1'
+                query = 'SELECT coordinator_channel_ids, FROM users WHERE discord_snowflake=$1'
                 row = await conn.fetchrow(query, member_obj.id)
                 channels = []
                 if row:
                     channels.extend(row.get('coordinator_channel_ids') or [])
-                    if channel_obj.name and row.get('coordinator_room_names') and channel_obj.name in row['coordinator_room_names']:
-                        channels.append(channel_obj.id if channel_obj else None)
                 if not channels:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.display_name} is not a coordinator in any channels.')
                 channel_mentions  =[]
@@ -286,8 +281,7 @@ class Hybrid(commands.Cog):
                     return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
                 query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(coordinator_channel_ids)'
                 rows = await conn.fetch(query, channel_obj.id)
-                rows2 = await conn.fetch('SELECT discord_snowflake FROM users WHERE $1=ANY(coordinator_room_names)', channel_obj.name)
-                rows = list({r['discord_snowflake']: r for r in rows+rows2}.values())
+                rows = list({r['discord_snowflake']: r for r in rows}.values())
                 if not rows:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB No coordinators found for {channel_obj.mention}.')
                 lines = []
@@ -541,13 +535,11 @@ class Hybrid(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
         elif member_obj:
-            query = 'SELECT moderator_channel_ids, moderator_room_names FROM users WHERE discord_snowflake=$1'
-            row = await conn.fetchrow(query,member_obj.id)
+            query = 'SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1'
+            row = await conn.fetchrow(query, member_obj.id)
             channels = []
             if row:
                 channels.extend(row.get('moderator_channel_ids') or [])
-                if row.get('moderator_room_names') and channel_obj.name in row['moderator_room_names']:
-                    channels.append(channel_obj.id if channel_obj else None)
             if not channels: return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.display_name} is not a moderator in any channels.')
             channel_mentions = []
             for ch_id in channels:
@@ -571,8 +563,7 @@ class Hybrid(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
             query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(moderator_channel_ids)'
             rows = await conn.fetch(query,channel_obj.id)
-            rows2 = await conn.fetch('SELECT discord_snowflake FROM users WHERE $1=ANY(moderator_room_names)', channel_obj.name)
-            rows = list({r['discord_snowflake']:r for r in rows + rows2}.values())
+            rows = list({r['discord_snowflake']:r for r in rows}.values())
             if not rows:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators found for {channel_obj.mention}.')
             lines = []

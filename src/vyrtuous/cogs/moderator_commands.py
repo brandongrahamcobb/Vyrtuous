@@ -1193,7 +1193,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='pstage', description='Promote/demote a member as stage coordinator.')
     @app_commands.describe(member='Tag a member or include their snowflake ID')
-    @is_owner_developer_administrator_coordinator_moderator_app_predicator()
+    @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def stage_promote_app_command(
         self,
         interaction: discord.Interaction,
@@ -1655,10 +1655,4 @@ class ModeratorCommands(commands.Cog):
 async def setup(bot: DiscordBot):
     cog = ModeratorCommands(bot)
     await bot.add_cog(cog)
-    cog.list_bans_app_command.callback._team_command = True
-    cog.list_mutes_text_command.callback._team_command = True
-    cog.list_mutes_app_command.callback._team_command = True
-    cog.list_bans_text_command.callback._team_command = True
-    cog.list_text_mutes_text_command.callback._team_command = True
-    cog.list_text_mutes_app_command.callback._team_command = True
 

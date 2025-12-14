@@ -6,13 +6,11 @@ CREATE TABLE users (
     moderator_channel_ids BIGINT[],
     coordinator_channel_ids BIGINT[],
     developer_guild_ids BIGINT[],
-    adminstrator_guild_ids BIGINT[],
-    adminstrator_role_ids BIGINT[],
+    administrator_guild_ids BIGINT[],
+    administrator_role_ids BIGINT[],
     server_mute_guild_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    coordinator_room_names TEXT[],
-    moderator_room_names TEXT[]
 );
 
 CREATE TABLE active_text_mutes (

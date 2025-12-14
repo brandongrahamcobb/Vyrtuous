@@ -12,21 +12,61 @@ import datetime
 class Aliases(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
+        self.alias_help = {
+            'ban': [
+                "Tag a member or include their snowflake ID",
+                "(+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
+                "Optional reason (required for 7 days or more)"
+            ],
+            'unban': [
+                "Tag a member or include their snowflake ID"
+            ],
+            'flag': [
+                "Tag a member or include their snowflake ID",
+                "Reason for flagging the user"
+            ],
+            'unflag': [
+                "Tag a member or include their snowflake ID"
+            ],
+            'mute': [
+                "Tag a member or include their snowflake ID",
+                "(+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
+                "Optional reason (required for 7 days or more)"
+            ],
+            'unmute': [
+                "Tag a member or include their snowflake ID"
+            ],
+            'tmute': [
+                "Tag a member or include their snowflake ID",
+                "(+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
+                "Optional reason (required for 7 days or more)"
+            ],
+            'untmute': [
+                "Tag a member or include their snowflake ID"
+            ],
+            'role': [
+                "Tag a member or include their snowflake ID",
+                "Role to assign"
+            ],
+            'unrole': [
+                "Tag a member or include their snowflake ID",
+                "Role to remove"
+            ]
+        }
         self.bot = bot
         self.emoji = Emojis()
         self.channel_service = ChannelService()
         self.member_service = ChannelService()
         self.statistics = Statistics()
         self.vegans = Vegans.get_vegans()
-
+    
     async def handle_ban_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to ban users.')
         member = args[0] if len(args) > 0 else None
         duration = args[1] if len(args) > 1 else '24h'
         reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
-        #'Tag a member or include their snowflake ID'),
-        #'(+|-)duration(m|h|d) \n 0 - permanent / 24h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
-        #'Optional reason (required for 7 days or more)')
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
         allowed = False
@@ -42,13 +82,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot ban the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB No permission to use `{alias_name}` in {channel_obj.mention}.')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB Cannot ban `{highest_role}` in {channel_obj.mention}.')
-        is_coordinator = await is_owner_developer_coordinator_via_alias(message, alias)
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             existing_ban = await conn.fetchrow('''
                 SELECT expires_at, reason
@@ -122,7 +158,9 @@ class Aliases(commands.Cog):
     # TODO
     
     async def handle_cow_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to cow users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
@@ -132,12 +170,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot cow the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}.')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to cow this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
             SELECT 1
             FROM active_cows
@@ -164,11 +199,12 @@ class Aliases(commands.Cog):
     
     # TODO
     async def handle_flag_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
-        member = args[0] if len(args) > 0 else None #'Tag a member or include their snowflake ID'
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to flag users.')
+        member = args[0] if len(args) > 0 else None
         prefix = args[1][0] if len(args) > 1 and args[1][:1] in {'+', '-', '='} else None
         reason = ' '.join(args[1:])[1:].lstrip() if prefix else ' '.join(args[1:]) if len(args) > 1 else 'No reason provided.'
- #'An optional reason. For modifications, `+` to append the reason, `=` to overwrite the reason, `-` to delete the reason')
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(message, member)
@@ -182,12 +218,9 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}.')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to flag this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
             SELECT reason
             FROM active_flags
@@ -226,11 +259,12 @@ class Aliases(commands.Cog):
    
     # TODO
     async def handle_role_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
-        member = args[0] if len(args) > 0 else None #'Tag a member or include their snowflake ID'
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to role users.')
+        member = args[0] if len(args) > 0 else None
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
-        is_owner_or_dev, is_coord_or_mod = await check_owner_dev_coord_mod(message, alias.channel.id)
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
@@ -239,8 +273,9 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        if not is_owner_or_dev and not is_coord_or_mod:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}')
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         role_obj = message.guild.get_role(alias.role_id)
         if not role_obj:
             return await message.reply(content=f"\U000026A0\U0000FE0F Could not resolve role with ID `{alias.role_id}`.")
@@ -254,7 +289,9 @@ class Aliases(commands.Cog):
     
     # TODO
     async def handle_text_mute_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to text-mute users.')
         member = args[0] if len(args) > 0 else None # 'Tag a member or include their snowflake ID'
         duration = args[1] if len(args) > 1 else '24h' # '(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
         reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.' #'Optional reason (required for 7 days or more)')
@@ -264,13 +301,9 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj or member_obj.id in self.vegans:
             return await message.reply(content=f'\U0001F6AB Invalid target member: {member}.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB No permission to use `{alias.alias_name}` in {channel_obj.mention}.')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
-        is_coordinator = await is_owner_developer_coordinator_via_alias(message, alias)
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             existing_text_mute = await conn.fetchrow('''
                 SELECT expires_at, reason
@@ -332,7 +365,9 @@ class Aliases(commands.Cog):
     
     # TODO
     async def handle_voice_mute_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to voice mute users.')
         member = args[0] if len(args) > 0 else None # 'Tag a member or include their snowflake ID'
         duration = args[1] if len(args) > 1 else '24h' # '(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
         reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.' #'Optional reason (required for 7 days or more)')
@@ -349,13 +384,9 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot voice mute the bot.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB No permission to use `{alias.alias_name}` in {channel_obj.mention}.')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
-        is_coordinator = await is_owner_developer_coordinator_via_alias(message, alias)
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             existing_mute = await conn.fetchrow('''
                 SELECT expires_at, reason
@@ -427,7 +458,9 @@ class Aliases(commands.Cog):
 
     # TODO
     async def handle_unban_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to unban users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
@@ -439,12 +472,9 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to unban this `{highest_role}`.')
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
                 SELECT expires_at
@@ -470,7 +500,9 @@ class Aliases(commands.Cog):
 
     # TODO
     async def handle_uncow_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to uncow users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
@@ -480,12 +512,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot uncow the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to uncow this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
             SELECT 1
             FROM active_cows
@@ -512,7 +541,9 @@ class Aliases(commands.Cog):
         
     # DONE
     async def handle_unflag_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to unflag users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
@@ -522,9 +553,6 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unflag the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias['channel_id'])
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}')
         highest_role, success = await check_block(message, member_obj, channel_obj)
         if not success:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unflag this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
@@ -554,7 +582,9 @@ class Aliases(commands.Cog):
 
     # TODO
     async def handle_unmute_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to unmute users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
@@ -564,12 +594,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unmute the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to unmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
                 SELECT expires_at
@@ -604,7 +631,9 @@ class Aliases(commands.Cog):
 
     # TODO
     async def handle_unrole_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to unrole users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
@@ -614,12 +643,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unrole the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        is_owner_or_dev, is_coord = await check_owner_dev_coord(message, channel_obj)
-        if not is_coord and not is_owner_or_dev:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}.')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to derole this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
+            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         role_obj = message.guild.get_role(alias['role_id'])
         if not role_obj:
             return await message.reply(content=f"\U0001F6AB Could not resolve role with ID `{salias['role_id']}`.")
@@ -633,7 +659,9 @@ class Aliases(commands.Cog):
     
     # TODO
     async def handle_untextmute_alias(self, message: discord.Message, alias: Alias, args):
-        await assert_owner_developer_coordinator_moderator(message, alias)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if highest_role == 'Everyone':
+            return await message.reply(content='\U0001F6AB You are not permitted to untext-mute users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
@@ -645,11 +673,8 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias['channel_id'])
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        is_owner_or_dev, is_mod_or_coord = await check_owner_dev_coord_mod(message, channel_obj)
-        if not is_owner_or_dev and not is_mod_or_coord:
-            return await message.reply(content=f'\U0001F6AB You do not have permission to use this command (`{alias.alias_name}`) in {channel_obj.mention}.')
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
+        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
