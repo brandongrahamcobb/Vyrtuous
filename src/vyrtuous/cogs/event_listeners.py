@@ -71,7 +71,7 @@ class EventListeners(commands.Cog):
                 return
             old_name = room.room_name
             old_id = room.room_snowflake
-            await room.update_temporary_room_name_and_room_snowflake(channel=channel)
+            await room.update_temporary_room_name_and_room_snowflake(channel=channel, room_name=channel.name)
             aliases = await Alias.fetch_command_aliases_by_channel_id(guild_id=channel.guild.id, channel_id=old_id)
             for alias in aliases:
                 await alias.update_command_aliases_with_channel(channel=channel)

@@ -112,11 +112,11 @@ class TemporaryRoom:
                 member.id, self.guild.id, self.channel.id, self.channel.name
             )
             
-    async def update_temporary_room_name_and_room_snowflake(self, channel: discord.abc.GuildChannel):
+    async def update_temporary_room_name_and_room_snowflake(self, channel: discord.abc.GuildChannel, room_name: Optional[str]):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
                 'UPDATE temporary_rooms SET room_name=$3, room_snowflake=$4 WHERE guild_snowflake=$1 AND room_name=$2',
-                self.guild.id, self.channel.name, channel.name, channel.id
+                self.guild.id, channel.name, room_name, channel.id
             )
             
     @classmethod
