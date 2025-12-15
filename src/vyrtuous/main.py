@@ -26,10 +26,11 @@ import debugpy
 
 async def main():
 
-    debugpy.listen(("0.0.0.0", 5678))
-    debugpy.wait_for_client() 
-
     config = Config().get_config()
+    if config['logging_level'].upper() == 'DEBUG':
+        debugpy.listen(("0.0.0.0", 5678))
+        debugpy.wait_for_client() 
+        
     setup_logging(config, PATH_LOG)
     db_pool = await Database().database_init()
 
