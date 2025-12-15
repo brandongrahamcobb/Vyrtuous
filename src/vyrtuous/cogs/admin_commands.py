@@ -796,14 +796,14 @@ class AdminCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB No temporary rooms found.')
         lines = []
         for room in rooms:
-            room_id = room.channel_id
+            room_id = room.room_snowflake
             channel_obj = await self.channel_service.resolve_channel(interaction, room_id)
             aliases = await Alias.fetch_command_aliases_by_channel(room.channel)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
                 break
             for alias_obj in aliases:
-                if alias_obj.channel_id == room_id:
+                if alias_obj.room_snowflake == room_id:
                     lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
         pages = []
         chunks = 18
@@ -829,14 +829,14 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB No temporary rooms found.')
         lines = []
         for room in rooms:
-            room_id = room.channel_id
+            room_id = room.room_snowflake
             channel_obj = await self.channel_service.resolve_channel(ctx, room_id)
             aliases = await Alias.fetch_command_aliases_by_channel(room.channel)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
                 break
             for alias_obj in aliases:
-                if alias_obj.channel_id == room_id:
+                if alias_obj.room_snowflake == room_id:
                     lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
         pages = []
         chunk_size = 18
