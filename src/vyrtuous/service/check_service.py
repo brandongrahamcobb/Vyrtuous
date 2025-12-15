@@ -235,7 +235,7 @@ def is_owner_developer_administrator_coordinator_moderator_predicator():
     predicate._permission_level = 'Moderator'
     return commands.check(predicate)
 
-async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interaction_or_message, channel: discord.abc.GuildChannel) -> str:
+async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interaction_or_message) -> str:
     checks = (
         ("Owner", is_system_owner),
         ("Owner", is_guild_owner),
