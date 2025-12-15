@@ -65,6 +65,8 @@ class Duration:
                 number_found = True
             elif number_found:
                 suffix += char
+        if not suffix:
+            suffix = 'h'
         suffix = suffix.lower()
         return suffix
 
