@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 def setup_logging(config: Dict[str, Any], path_log) -> None:
     logging_level = config.get("logging_level", "INFO").upper()
+    print(logging_level)
     logging.basicConfig(level=getattr(logging, logging_level))
     if not exists(dirname(path_log)):
         makedirs(dirname(path_log))

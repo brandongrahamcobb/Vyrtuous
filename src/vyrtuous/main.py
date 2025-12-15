@@ -18,12 +18,11 @@
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import PATH_LOG
+from vyrtuous.utils.database import Database
 from vyrtuous.utils.setup_logging import logger, setup_logging
 
 import asyncio
-import asyncpg
 import debugpy
-import os
 
 async def main():
 
@@ -32,7 +31,7 @@ async def main():
 
     config = Config().get_config()
     setup_logging(config, PATH_LOG)
-    db_pool = await database_init()
+    db_pool = await Database().database_init()
 
     discord_bot = DiscordBot(
         config=config,

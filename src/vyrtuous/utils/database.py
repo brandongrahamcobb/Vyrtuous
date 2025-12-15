@@ -24,9 +24,9 @@ import subprocess
 
 class Database:
 
-    def __init__(self, directory: Optional[str]):
+    def __init__(self):
         self.database: Optional[str] = os.getenv('POSTGRES_DB')
-        self.directory = directory
+        self.directory = os.getenv('DB_DIRECTORY')
         self.host: Optional[str] = os.getenv('POSTGRES_HOST')
         self.password: Optional[str] = os.getenv('POSTGRES_PASSWORD')
         self.timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')

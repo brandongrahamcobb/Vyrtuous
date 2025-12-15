@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from collections import defaultdict
+from discord import app_commands
 from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *

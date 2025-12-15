@@ -17,10 +17,10 @@
 '''
 from datetime import datetime, timezone
 from discord.ext import commands, tasks
-from vyrtuous.inc.helpers import *
-from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.inc.helpers import *
 from vyrtuous.utils.database import Database
+from vyrtuous.utils.setup_logging import logger
 
 import discord
 
@@ -205,10 +205,8 @@ class ScheduledTasks(commands.Cog):
                     try:
                         guild_id = record['guild_id']
                         channel_id = record['channel_id']
-                        stored_room = record['room_name']
                         room_name = record['room_name']
                         guild = self.bot.get_guild(guild_id)
-                        channel = self.bot.get_channel(channel_id)
                         muted_members = await conn.fetch('''
                             SELECT discord_snowflake
                             FROM active_voice_mutes
@@ -228,6 +226,7 @@ class ScheduledTasks(commands.Cog):
                         ''', guild_id, channel_id, room_name)
                         if guild:
                             for member_record in muted_members:
+                                user_id = member_record['discord_snowflake']
                                 member = guild.get_member(user_id)
                                 if member is None:
                                     try:
@@ -315,7 +314,7 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
-            backup = Database(directory='/app/backups')
+            backup = Database()
             backup.create_backup_directory()
             backup.execute_backup()
             logger.info(f'Backup completed successfully.')

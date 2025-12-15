@@ -15,19 +15,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from discord import app_commands
 from typing import Literal, Optional
-
-from vyrtuous.inc.helpers import *
-
-from vyrtuous.service.check_service import *
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.inc.helpers import *
 from vyrtuous.service.channel_service import ChannelService
+from vyrtuous.service.check_service import *
+from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.service.discord_message_service import DiscordMessageService
 
 class DevCommands(commands.Cog):
 
@@ -159,7 +158,7 @@ class DevCommands(commands.Cog):
         ctx: commands.Context
     ):
         try:
-            backup = Database(directory='/app/backups')
+            backup = Database()
             backup.create_backup_directory()
             backup_file = backup.execute_backup()
             if backup_file:

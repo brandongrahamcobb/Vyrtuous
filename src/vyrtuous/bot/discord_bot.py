@@ -15,7 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from collections import defaultdict
 from discord.ext import commands
 from vyrtuous.inc.helpers import DISCORD_COGS
 from vyrtuous.utils.setup_logging import logger

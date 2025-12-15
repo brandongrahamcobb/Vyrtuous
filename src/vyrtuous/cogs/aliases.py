@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
+from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.statistics import Statistics
@@ -154,7 +155,7 @@ class Aliases(commands.Cog):
                 expires_at = duration_obj.output_datetime()
                 action = None
             else:
-                reason_obj.load_new_reason(reason)
+                reason_obj.load_new_reason(updated_reason)
                 action = reason_obj.interpret_action(duration_obj.get_prefix())
                 if action in ('delete', 'overwrite') and not is_coordinator:
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
@@ -291,13 +292,11 @@ class Aliases(commands.Cog):
             if prefix in ['+', '=', '-']:
                 if existing_flag:
                     reason_obj.load_old_reason(existing_flag['reason'])
-                reason_obj.load_new_reason(reason)
+                reason_obj.load_new_reason(updated_reason)
                 action = reason_obj.interpret_action(prefix)
                 if action in ('delete', 'overwrite') and not is_coordinator:
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
                 updated_reason = reason_obj.output_display()
-            else:
-                updated_reason = reason
             embed = discord.Embed(color=discord.Color.orange())
             embed.set_author(name=f'{member_obj.display_name} is flagged', icon_url=member_obj.display_avatar.url)
             embed.add_field(name='User', value=member_obj.mention, inline=True)
@@ -369,7 +368,7 @@ class Aliases(commands.Cog):
                 expires_at = duration_obj.output_datetime()
                 action = None
             else:
-                reason_obj.load_new_reason(reason)
+                reason_obj.load_new_reason(updated_reason)
                 action = reason_obj.interpret_action(duration_obj.get_prefix())
                 if action in ('delete', 'overwrite') and not is_coordinator:
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
@@ -455,7 +454,7 @@ class Aliases(commands.Cog):
                 expires_at = duration_obj.output_datetime()
                 action = None
             else:
-                reason_obj.load_new_reason(reason)
+                reason_obj.load_new_reason(updated_reason)
                 action = reason_obj.interpret_action(duration_obj.get_prefix())
                 if action in ('delete', 'overwrite') and not is_coordinator:
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
@@ -506,8 +505,8 @@ class Aliases(commands.Cog):
 
     # TODO
     async def handle_unban_alias(self, message: discord.Message, alias: Alias, args):
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
-        if highest_role == 'Everyone':
+        executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if executor_role == 'Everyone':
             return await message.reply(content='\U0001F6AB You are not permitted to unban users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
@@ -529,7 +528,7 @@ class Aliases(commands.Cog):
                 FROM active_bans
                 WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
             ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
-            if row and row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(message, alias):
+            if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent bans.')
             try:
                 if channel_obj:
@@ -630,8 +629,8 @@ class Aliases(commands.Cog):
 
     # TODO
     async def handle_unmute_alias(self, message: discord.Message, alias: Alias, args):
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
-        if highest_role == 'Everyone':
+        executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if executor_role == 'Everyone':
             return await message.reply(content='\U0001F6AB You are not permitted to unmute users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
@@ -657,7 +656,7 @@ class Aliases(commands.Cog):
             ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
             if not row:
                 return await message.reply(content=f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
-            if row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(message, alias):
+            if row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
             await conn.execute('''
                 DELETE FROM active_voice_mutes
@@ -707,8 +706,8 @@ class Aliases(commands.Cog):
     
     # TODO
     async def handle_untextmute_alias(self, message: discord.Message, alias: Alias, args):
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
-        if highest_role == 'Everyone':
+        executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if executor_role == 'Everyone':
             return await message.reply(content='\U0001F6AB You are not permitted to untext-mute users.')
         member = args[0] if len(args) > 0 else None
         if not message.guild:
@@ -730,7 +729,7 @@ class Aliases(commands.Cog):
                 FROM active_text_mutes
                 WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
             ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
-            if row and row['expires_at'] is None and not await is_owner_developer_coordinator_via_alias(message, alias):
+            if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent text mutes.')
             try:
                 await channel_obj.set_permissions(member_obj, send_messages=None)

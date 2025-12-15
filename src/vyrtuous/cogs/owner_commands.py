@@ -15,7 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from typing import Literal, Optional
+from discord import app_commands
+from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
@@ -50,10 +51,11 @@ class OwnerCommands(commands.Cog):
             return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         success = await has_equal_or_higher_role(interaction, member_obj)
         if not success:
-            return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
+            return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {interaction.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             action = None
+            developer_guild_ids = row['developer_guild_ids'] if row and row['developer_guild_ids'] is not None else []
             if not row or interaction.guild.id not in developer_guild_ids:
                 await conn.execute('''
                     INSERT INTO users (discord_snowflake, developer_guild_ids)
@@ -94,7 +96,7 @@ class OwnerCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a developer.')
         success = await has_equal_or_higher_role(ctx.message, member_obj)
         if not success:
-            return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {ctx.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             action = None

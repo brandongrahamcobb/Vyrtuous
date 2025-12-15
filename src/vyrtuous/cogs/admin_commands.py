@@ -15,12 +15,15 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from typing import Literal, Optional
+from discord import app_commands
+from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.channel_service import ChannelService
+from vyrtuous.service.check_service import *
 from vyrtuous.service.member_service import MemberService
+from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.statistics import Statistics
@@ -235,7 +238,7 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a coordinator.')
         success = await has_equal_or_higher_role(ctx.message, member_obj)
         if not success:
-            return await interaction.response.send_message(content=f"\U0001F6AB You are not toggle {member_obj.mention}'s coordinator role because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not toggle {member_obj.mention}'s coordinator role because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             action = None
             row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
@@ -296,8 +299,8 @@ class AdminCommands(commands.Cog):
                 ON CONFLICT DO NOTHING
             ''', interaction.guild.id, channel_obj.id, interaction.user.id, channel_obj.name)
             for user in channel_obj.members:
-                if await is_owner_member(user, self.bot) or await is_developer_member(user, self.bot) \
-                   or await is_coordinator_via_objects(user, channel_obj) or await is_moderator_via_objects(user, channel_obj) \
+                if await member_is_owner(user) or await member_is_developer(user) or await member_is_administrator(user) \
+                   or await member_is_coordinator(user, channel_obj) or await member_is_moderator(user, channel_obj) \
                    or user.id == interaction.user.id:
                     skipped.append(user)
                     continue
@@ -352,8 +355,8 @@ class AdminCommands(commands.Cog):
                 ON CONFLICT DO NOTHING
             ''', ctx.guild.id, channel_obj.id, ctx.author.id, channel_obj.name)
             for user in channel_obj.members:
-                if await is_owner_member(user, ctx.bot) or await is_developer_member(user, ctx.bot) \
-                   or await is_coordinator_via_objects(user, channel_obj) or await is_moderator_via_objects(user, channel_obj) \
+                if await member_is_owner(user) or await member_is_developer(user) or await member_is_administrator(user) \
+                   or await member_is_coordinator(user, channel_obj) or await member_is_moderator(user, channel_obj) \
                    or user.id == ctx.author.id:
                     skipped.append(user)
                     continue
@@ -875,7 +878,7 @@ class AdminCommands(commands.Cog):
                 original_duration = row['duration']
                 msg = f'{self.emoji.get_random_emoji()} Cap deleted on {channel_obj.mention} for {moderation_type} of duration {original_duration}.'
             else:
-                return await interaction.response.send_message(content=f'\U0001F6AB No caps exist in {room_display} for {moderation_type}.')
+                return await interaction.response.send_message(content=f'\U0001F6AB No caps exist in {channel_obj.mention} for {moderation_type}.')
             await conn.execute('''
                 DELETE FROM active_caps
                 WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3 AND room_name=$4
@@ -908,7 +911,7 @@ class AdminCommands(commands.Cog):
                 original_duration = row['duration']
                 msg = f'{self.emoji.get_random_emoji()} Cap deleted on {channel_obj.mention} for {moderation_type} of duration {original_duration}.'
             else:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No caps exist in {room_display} for {moderation_type}.')
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB No caps exist in {channel_obj.mention} for {moderation_type}.')
             await conn.execute('''
                 DELETE FROM active_caps
                 WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3 AND room_name=$4

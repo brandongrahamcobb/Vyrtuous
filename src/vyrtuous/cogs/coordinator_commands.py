@@ -15,7 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from typing import Literal, Optional
+from discord import app_commands
+from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.channel_service import ChannelService
