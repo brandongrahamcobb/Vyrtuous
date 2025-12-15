@@ -301,7 +301,7 @@ class DevCommands(commands.Cog):
             if channel_obj.type != discord.ChannelType.voice:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
             is_owner = room.room_owner == ctx.author
-            await room.update_temporary_room_name_and_room_snowflake(channel_obj, new_channel.name)
+            await room.update_temporary_room_name_and_room_snowflake(channel_obj, channel_obj.name)
             aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.room_snowflake)
             if aliases:
                 for alias_obj in aliases:
