@@ -41,6 +41,8 @@ class Duration:
     
     def get_number(self, duration: Optional[str]) -> Optional[int]:
         number_str = ''
+        if not duration:
+            return 0 
         if duration and duration[0] in self.prefix_types:
             duration = duration[1:]
         for char in duration:
@@ -110,6 +112,8 @@ class Duration:
         self.load_prefix(prefix)
         number = self.get_number(duration_str)
         self.load_number(number)
+        if self.validate_permanent():
+            return
         suffix = self.get_suffix(duration_str)
         self.load_suffix(suffix)
             
