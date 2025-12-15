@@ -406,7 +406,7 @@ class AdminCommands(commands.Cog):
                 msg = f'{self.emoji.get_random_emoji()} Logging for {channel_obj.mention} toggled {"on" if new_status else "off"}.'
             else:
                 msg = f'\U0001F6AB No logging for {channel_obj.mention} exists'
-        Statistics.load_channels()
+        await Statistics.load_channels()
         await interaction.response.send_message(content=msg, allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
@@ -437,7 +437,7 @@ class AdminCommands(commands.Cog):
                 msg = f'{self.emoji.get_random_emoji()} Logging for {channel_obj.mention} toggled {"on" if new_status else "off"}.'
             else:
                 msg = f'\U0001F6AB No logging for {channel_obj.mention} exists'
-        Statistics.load_channels()
+        await Statistics.load_channels()
         await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
@@ -558,7 +558,7 @@ class AdminCommands(commands.Cog):
                 await conn.execute('INSERT INTO statistic_channels (guild_id, channel_id, type, snowflakes, enabled) VALUES ($1, $2, $3, $4, TRUE);', interaction.guild.id, channel_obj.id, log_type, sf if sf else None)
                 current_entries.append({'guild_id': interaction.guild.id, 'channel_id': channel_obj.id, 'type': log_type, 'snowflakes': sf if sf else None, 'enabled': True})
                 msg = f'{self.emoji.get_random_emoji()} Log channel {channel_obj.mention} created with type `{log_type or "general"}`.'
-        Statistics.load_channels()
+        await Statistics.load_channels()
         await interaction.response.send_message(content=msg, allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
@@ -604,7 +604,7 @@ class AdminCommands(commands.Cog):
                     'enabled': True
                 })
                 msg = f'{self.emoji.get_random_emoji()} Log channel {channel_obj.mention} created with type `{log_type or "general"}`.'
-        Statistics.load_channels()
+        await Statistics.load_channels()
         await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
 
     # DONE

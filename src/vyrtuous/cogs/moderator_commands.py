@@ -436,7 +436,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_command_aliases_by_guild(interaction.guild)
             if not aliases:
                 return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
-            lines.extend(Alias.format_all_aliases(aliases))
+            lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
                 return await interaction.response.send_message(content='\U0001F6AB No aliases found in this server.')
@@ -454,7 +454,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
             if not aliases:
                 return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
-            lines.extend(Alias.format_aliases_by_channel(aliases, channel_obj))
+            lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
                 return await interaction.response.send_message(content=f'\U0001F6AB No aliases found for the requested target: {target if target else channel_obj.mention}.')
@@ -474,7 +474,7 @@ class ModeratorCommands(commands.Cog):
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Only owners, developers and administrators can list all aliases across the server.')
             aliases = await Alias.fetch_command_aliases_by_guild(ctx.guild)
-            lines.extend(Alias.format_all_aliases(aliases))
+            lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
                 return await self.handler.send_message(ctx, content='\U0001F6AB No aliases found in this server.')
@@ -492,7 +492,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
             if not aliases:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB No aliases found.')
-            lines.extend(Alias.format_aliases_by_channel(aliases, channel_obj))
+            lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB No aliases found for the requested target: {target if target else channel_obj.mention}.')

@@ -30,28 +30,15 @@ class Alias:
         self.role_id = role_id
         
     @classmethod
-    def format_aliases_by_channel(self, aliases, channel: discord.abc.GuildChannel) -> list[str]:
-        if not aliases:
-            return []
-        lines = []
-        lines.append(f'**Aliases in {channel.mention}**')
-        for alias in aliases:
-            if alias.role_id:
-                lines.append(f'`{alias.alias_name}` → <@&{alias.role_id}>')
-            else:
-                lines.append(f'`{alias.alias_name}`')
-        return lines
-        
-    @classmethod
-    def format_all_aliases(self, aliases) -> list[str]:
+    def format_aliases(self, aliases) -> list[str]:
         if not aliases:
             return []
         grouped = defaultdict(list)
         lines = []
         for alias in aliases:
-            grouped[alias.channel_id].append(alias)
-        for channel, channel_aliases in grouped.items():
-            lines.append(f'**Aliases in {channel.mention}**')
+            grouped[(alias.channel_id, alias.alias_type)].append(alias)
+        for (channel_id, alias_type), channel_aliases in grouped.items():
+            lines.append(f'**{alias_type.capitalize()}**')
             for alias in channel_aliases:
                 if alias.role_id:
                     lines.append(f'`{alias.alias_name}` → <@&{alias.role_id}>')
