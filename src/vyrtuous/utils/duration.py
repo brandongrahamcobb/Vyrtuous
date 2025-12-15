@@ -4,10 +4,11 @@ from typing import List, Optional
 import inspect
 
 class Duration:
+    
+    now: datetime = datetime.now(timezone.utc)
             
     def __init__(self):
         self.base: Optional[datetime] = None
-        self.now: datetime = datetime.now(timezone.utc)
         self.number: Optional[int] = None
         self.prefix: Optional[str] = None
         self.suffix: Optional[str] = None
@@ -109,7 +110,7 @@ class Duration:
         
     def validate_base(self) -> None:
         if self.base is None:
-           self.base = self.now
+           self.base = datetime.now(timezone.utc)
         
     def validate_number(self) -> None: 
         if self.number is None:
@@ -176,10 +177,11 @@ class Duration:
         else:
             return f"{number}{unit}"
     
-    def output_display_from_datetime(self, dt: Optional[datetime]) -> Optional[str]:
+    @classmethod
+    def output_display_from_datetime(cls, dt: Optional[datetime]) -> Optional[str]:
         if dt is None:
             return "permanent"
-        delta = dt - self.now
+        delta = dt - cls.now
         seconds = int(delta.total_seconds())
         if seconds == 0:
             return "now"

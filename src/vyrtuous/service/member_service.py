@@ -1,6 +1,7 @@
 from typing import Optional, Union
 
 import discord
+from vyrtuous.utils.setup_logging import logger
 
 class MemberService:
 

@@ -56,6 +56,7 @@ DISCORD_COGS = [
     'vyrtuous.cogs.help_command',
     'vyrtuous.cogs.heartbeat',
     'vyrtuous.cogs.hybrid_commands',
+    'vyrtuous.cogs.moderator_commands',
     'vyrtuous.cogs.owner_commands',
     'vyrtuous.cogs.scheduled_tasks'
 ]

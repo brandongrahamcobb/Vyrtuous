@@ -60,9 +60,6 @@ class ModeratorCommands(commands.Cog):
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         member_obj = await self.member_service.resolve_member(interaction, target)
         if member_obj and member_obj.bot:
             return await interaction.response.send_message(content='\U0001F6AB You cannot list bans on the bot.')
@@ -199,9 +196,6 @@ class ModeratorCommands(commands.Cog):
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj = await self.member_service.resolve_member(ctx, target)
         if member_obj and member_obj.bot:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot list bans on the bot.')
@@ -321,7 +315,7 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='caps', description='List active caps for a channel or all channels if "all" is provided.')
-    @is_owner_developer_administrator_coordinator_moderator_app_predicator()
+    @is_owner_developer_administrator_coordinator_moderator_predicator()
     @app_commands.describe(target='"all", channel name/ID/mention')
     async def list_caps_app_command(
         self,
@@ -330,9 +324,6 @@ class ModeratorCommands(commands.Cog):
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
@@ -387,9 +378,6 @@ class ModeratorCommands(commands.Cog):
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -524,8 +512,6 @@ class ModeratorCommands(commands.Cog):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-        if channel_obj.type != discord.ChannelType.text:
-            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
         try:
             msg = await channel_obj.fetch_message(int(message_id))
         except:
@@ -569,7 +555,7 @@ class ModeratorCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='flags', description='List flag statistics.')
-    @is_owner_developer_administrator_coordinator_predicator()
+    @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_flags_app_command(
         self,
         interaction: discord.Interaction,
@@ -577,9 +563,6 @@ class ModeratorCommands(commands.Cog):
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         member_obj = await self.member_service.resolve_member(interaction, target)
         if member_obj and member_obj.bot:
             return await interaction.response.send_message(content='\U0001F6AB You cannot list flags on the bot.')
@@ -658,7 +641,7 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @commands.command(name='flags', help='List flag statistics.')
-    @is_owner_developer_administrator_coordinator_predicator()
+    @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
@@ -666,9 +649,6 @@ class ModeratorCommands(commands.Cog):
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj = await self.member_service.resolve_member(ctx, target)
         if member_obj and member_obj.bot:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot list flags on the bot.')
@@ -769,9 +749,6 @@ class ModeratorCommands(commands.Cog):
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         member_obj = await self.member_service.resolve_member(interaction, target)
         if member_obj:
             target = None
@@ -831,9 +808,6 @@ class ModeratorCommands(commands.Cog):
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj = await self.member_service.resolve_member(ctx, target)
         if member_obj:
             target = None
@@ -896,7 +870,7 @@ class ModeratorCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name='mutes', description='Lists mute statistics.')
-    @is_owner_developer_administrator_coordinator_moderator_app_predicator()
+    @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_mutes_app_command(
         self,
         interaction: discord.Interaction,
@@ -904,10 +878,6 @@ class ModeratorCommands(commands.Cog):
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         member_obj = await self.member_service.resolve_member(interaction, target)
         if member_obj:
             target = None
@@ -996,9 +966,6 @@ class ModeratorCommands(commands.Cog):
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj = await self.member_service.resolve_member(ctx, target)
         if member_obj:
             target = None
@@ -1104,14 +1071,15 @@ class ModeratorCommands(commands.Cog):
     async def stage_mute_app_command(
         self,
         interaction: discord.Interaction,
-        member: Optional[str] = None
+        member: Optional[str] = None,
+        channel: Optional[str] = None
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
         member_obj = await self.member_service.resolve_member(interaction, member)
         if not member_obj:
             return await interaction.response.send_message(content=f'\U0001F6AB Invalid member for {member}.')
-        channel_obj = await self.channel_service.resolve_channel(interaction, None)
+        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         async with self.bot.db_pool.acquire() as conn:
             records = await conn.fetch('''
                 SELECT channel_id, room_name
@@ -1139,10 +1107,10 @@ class ModeratorCommands(commands.Cog):
                 return await interaction.response.send_message(content='\U0001F6AB Only stage coordinators or above can use this command.')
             try:
                 await member_obj.edit(mute=not member_obj.voice.mute)
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 logger.warning(f'Failed to toggle mute: {e}')
-            return await interaction.response.send_message(content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.')
+            return await interaction.response.send_message(content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 
     # DONE
     @commands.command(name='mstage', help='Mute/unmute a member in the active stage.')
@@ -1150,14 +1118,15 @@ class ModeratorCommands(commands.Cog):
     async def stage_mute_text_command(
         self,
         ctx: commands.Context,
-        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID')
+        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        channel: Optional[str] = commands.parameter(default=None, description="Tag a channel or include it's snowflake ID")
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(ctx, member)
         if not member_obj:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from target: `{member}`.')
-        channel_obj = await self.channel_service.resolve_channel(ctx, None)
+        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         async with self.bot.db_pool.acquire() as conn:
             records = await conn.fetch('''
                 SELECT channel_id, room_name
@@ -1188,7 +1157,7 @@ class ModeratorCommands(commands.Cog):
                 return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 logger.warning(f'Failed to toggle mute: {e}')
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to toggle mute for {member_obj.display_name}.')
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
     
     # DONE
     @app_commands.command(name='pstage', description='Promote/demote a member as stage coordinator.')
@@ -1238,7 +1207,7 @@ class ModeratorCommands(commands.Cog):
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been promoted to stage coordinator.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 logger.warning(f'Failed to toggle promotion: {e}')
-            return await interaction.response.send_message(content=f'\U0001F6AB Failed to toggle promotion for {member_obj.mention}.')
+            return await interaction.response.send_message(content=f'\U0001F6AB Failed to toggle promotion for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
     
     # DONE
     @commands.command(name='pstage', help='Promote/demote a member as stage coordinator.')
@@ -1288,7 +1257,7 @@ class ModeratorCommands(commands.Cog):
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been promoted to stage coordinator.', allowed_mentions=discord.AllowedMentions.none())
             except Exception as e:
                 logger.warning(f'Failed to toggle promotion: {e}')
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to toggle promotion for {member_obj.mention}.')
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to toggle promotion for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
     # DONE
     @app_commands.command(name='stages', description='Lists stage mute statistics.')
@@ -1301,9 +1270,6 @@ class ModeratorCommands(commands.Cog):
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         async with self.bot.db_pool.acquire() as conn:
@@ -1330,8 +1296,6 @@ class ModeratorCommands(commands.Cog):
                     pages.append(embed)
                 paginator = UserPaginator(self.bot, interaction, pages)
                 return await paginator.start()
-            if not (is_owner_or_dev or is_mod_or_coord or is_team_member):
-                return await interaction.response.send_message(content=f'\U0001F6AB You do not have permission to view stages in {channel_obj.mention}.')
             stage = await conn.fetchrow('''
                 SELECT initiator_id, expires_at FROM active_stages WHERE guild_id=$1 AND channel_id=$2 AND room_name = $3
             ''', interaction.guild.id, channel_obj.id, channel_obj.name)
@@ -1376,9 +1340,6 @@ class ModeratorCommands(commands.Cog):
     ):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         async with self.bot.db_pool.acquire() as conn:
@@ -1461,7 +1422,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='tmutes', description='Lists text-mute statistics.')
     @app_commands.describe(target='"all", channel name/ID/mention, or user mention/ID')
-    @is_owner_developer_administrator_coordinator_moderator_app_predicator()
+    @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_text_mutes_app_command(
         self,
         interaction: discord.Interaction,
@@ -1469,9 +1430,6 @@ class ModeratorCommands(commands.Cog):
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in interaction.user.roles)
         member_obj = await self.member_service.resolve_member(interaction, target)
         if member_obj:
             target = None
@@ -1556,14 +1514,11 @@ class ModeratorCommands(commands.Cog):
     ) -> None:
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        rows = await self.bot.db_pool.fetch('SELECT role_id FROM role_permissions WHERE is_team_member=TRUE')
-        valid_role_ids = [r['role_id'] for r in rows]
-        is_team_member = any(r.id in valid_role_ids for r in ctx.author.roles)
         member_obj = await self.member_service.resolve_member(ctx, target)
         if member_obj:
             target = None
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower()=='all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):

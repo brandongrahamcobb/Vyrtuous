@@ -2,61 +2,98 @@
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
+from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.statistics import Statistics
+from vyrtuous.utils.reason import Reason
 from vyrtuous.utils.vegans import Vegans
 from vyrtuous.utils.emojis import Emojis
 
-import datetime
+from datetime import datetime, timedelta, timezone
 
 class Aliases(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.alias_help = {
             'ban': [
-                "Tag a member or include their snowflake ID",
-                "(+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
-                "Optional reason (required for 7 days or more)"
+                "**member** (Optional): Tag a member or include their snowflake ID",
+                "**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
+                "**reason** (Optional): Optional reason (required for 7 days or more)"
+            ],
+            'cow': [
+                "**member** (Optional): Tag a member or include their snowflake ID"
+            ],
+            'uncow': [
+                "**member** (Optional): Tag a member or include their snowflake ID"
             ],
             'unban': [
-                "Tag a member or include their snowflake ID"
+                "**member** (Optional): Tag a member or include their snowflake ID"
             ],
             'flag': [
-                "Tag a member or include their snowflake ID",
-                "Reason for flagging the user"
+                "**member** (Optional): Tag a member or include their snowflake ID",
+                "**reason** (Optional): Optional reason for flagging the user"
             ],
             'unflag': [
-                "Tag a member or include their snowflake ID"
+                "**member** (Optional): Tag a member or include their snowflake ID"
             ],
             'mute': [
-                "Tag a member or include their snowflake ID",
-                "(+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
-                "Optional reason (required for 7 days or more)"
+                "**member** (Optional): Tag a member or include their snowflake ID",
+                "**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
+                "**reason** (Optional): Optional reason (required for 7 days or more)"
             ],
             'unmute': [
-                "Tag a member or include their snowflake ID"
+                "**member** (Optional): Tag a member or include their snowflake ID"
             ],
             'tmute': [
-                "Tag a member or include their snowflake ID",
-                "(+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
-                "Optional reason (required for 7 days or more)"
+                "**member** (Optional): Tag a member or include their snowflake ID",
+                "**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
+                "**reason** (Optional): Optional reason (required for 7 days or more)"
             ],
             'untmute': [
-                "Tag a member or include their snowflake ID"
+                "**member** (Optional): Tag a member or include their snowflake ID"
             ],
             'role': [
-                "Tag a member or include their snowflake ID",
-                "Role to assign"
+                "**member** (Optional): Tag a member or include their snowflake ID",
+                "**role** (Optional): Role to assign"
             ],
             'unrole': [
-                "Tag a member or include their snowflake ID",
-                "Role to remove"
+                "**member** (Optional): Tag a member or include their snowflake ID",
+                "**role** (Optional): Role to remove"
             ]
+        }
+        self.alias_type_to_description = {
+            'ban': 'Bans a user from the server.',
+            'cow': 'Verifies a user as going vegan.',
+            'uncow': 'Unverifies a user as going vegan.',
+            'unban': 'Unbans a user from the server.',
+            'flag': 'Flags a user for moderation review.',
+            'unflag': 'Removes a flag from a user.',
+            'mute': 'Mutes a user in voice channels.',
+            'unmute': 'Unmutes a user in voice channels.',
+            'tmute': 'Mutes a user in text channels.',
+            'untmute': 'Unmutes a user in text channels.',
+            'role': 'Assigns a role to a user.',
+            'unrole': 'Removes a role from a user.'
+        }
+        self.alias_type_to_permission_level = {
+            'ban': 'Moderator',
+            'cow': 'Moderator',
+            'uncow': 'Moderator',
+            'unban': 'Moderator',
+            'mute': 'Moderator',
+            'unmute': 'Moderator',
+            'tmute': 'Moderator',
+            'untmute': 'Moderator',
+            'flag': 'Moderator',
+            'unflag': 'Moderator',
+            'role': 'Coordinator',
+            'unrole': 'Coordinator'
         }
         self.bot = bot
         self.emoji = Emojis()
         self.channel_service = ChannelService()
-        self.member_service = ChannelService()
+        self.now: datetime = datetime.now(timezone.utc)
+        self.member_service = MemberService()
         self.statistics = Statistics()
         self.vegans = Vegans.get_vegans()
     
@@ -66,13 +103,10 @@ class Aliases(commands.Cog):
             return await message.reply(content='\U0001F6AB You are not permitted to ban users.')
         member = args[0] if len(args) > 0 else None
         duration = args[1] if len(args) > 1 else '24h'
-        reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
+        updated_reason  = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
         allowed = False
-        updated_reason = reason
-        now = datetime.now(timezone.utc)
-        updated_reason = reason
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
@@ -82,7 +116,7 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot ban the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
@@ -110,16 +144,16 @@ class Aliases(commands.Cog):
                 if action in ('delete', 'overwrite') and not is_coordinator:
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
                 updated_reason = reason_obj.output_display()
-            if expires_at and expires_at <= now:
+            if expires_at and expires_at <= self.now:
                 return await message.reply(content='\U0001F6AB You cannot reduce a ban below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await self.get_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[0] == 'ban'), None)
             if active_cap:
                 cap_expires_at = active_cap[1]
             else:
-                cap_expires_at = timedelta(days=7) + now
+                cap_expires_at = timedelta(days=7) + self.now
             if existing_ban and not expires_at < existing_ban['expires_at'] and not (is_coordinator or expires_at <= cap_expires_at):
                 return await message.reply(content='\U0001F6AB Only coordinators can ban for longer than the channel cap.')
         try:
@@ -153,7 +187,7 @@ class Aliases(commands.Cog):
             color=discord.Color.orange()
         )
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        await self.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
+        await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
         
     # TODO
     
@@ -170,7 +204,7 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot cow the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
@@ -204,7 +238,7 @@ class Aliases(commands.Cog):
             return await message.reply(content='\U0001F6AB You are not permitted to flag users.')
         member = args[0] if len(args) > 0 else None
         prefix = args[1][0] if len(args) > 1 and args[1][:1] in {'+', '-', '='} else None
-        reason = ' '.join(args[1:])[1:].lstrip() if prefix else ' '.join(args[1:]) if len(args) > 1 else 'No reason provided.'
+        updated_reason = ' '.join(args[1:])[1:].lstrip() if prefix else ' '.join(args[1:]) if len(args) > 1 else 'No reason provided.'
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(message, member)
@@ -218,7 +252,7 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
@@ -236,7 +270,6 @@ class Aliases(commands.Cog):
             SET reason = $4
             WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3
         '''
-        is_coordinator = await is_owner_developer_coordinator_via_alias(message, alias)
         async with self.bot.db_pool.acquire() as conn:
             existing_flag = await conn.fetchrow(select_sql, message.guild.id, member_obj.id, channel_obj.id)
             reason_obj = Reason()
@@ -254,7 +287,7 @@ class Aliases(commands.Cog):
             embed.set_author(name=f'{member_obj.display_name} is flagged', icon_url=member_obj.display_avatar.url)
             embed.add_field(name='User', value=member_obj.mention, inline=True)
             embed.add_field(name='Channel', value=channel_obj.mention, inline=False)
-            embed.add_field(name='Reason', value=update_reason, inline=False)
+            embed.add_field(name='Reason', value=updated_reason, inline=False)
             await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
    
     # TODO
@@ -273,7 +306,7 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         role_obj = message.guild.get_role(alias.role_id)
@@ -294,14 +327,14 @@ class Aliases(commands.Cog):
             return await message.reply(content='\U0001F6AB You are not permitted to text-mute users.')
         member = args[0] if len(args) > 0 else None # 'Tag a member or include their snowflake ID'
         duration = args[1] if len(args) > 1 else '24h' # '(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
-        reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.' #'Optional reason (required for 7 days or more)')
+        updated_reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.' #'Optional reason (required for 7 days or more)')
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj or member_obj.id in self.vegans:
             return await message.reply(content=f'\U0001F6AB Invalid target member: {member}.')
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
@@ -326,16 +359,16 @@ class Aliases(commands.Cog):
                 if action in ('delete', 'overwrite') and not is_coordinator:
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
                 updated_reason = reason_obj.output_display()
-            if expires_at and expires_at <= now:
+            if expires_at and expires_at <= self.now:
                 return await message.reply(content='\U0001F6AB You cannot reduce a text-mute below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await self.get_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[0] == 'tmute'), None)
             if active_cap:
                 cap_expires_at = active_cap[1]
             else:
-                cap_expires_at = timedelta(days=7) + now
+                cap_expires_at = timedelta(days=7) + self.now
             if existing_text_mute and not expires_at < existing_text_mute['expires_at'] and not (is_coordinator or expires_at <= cap_expires_at):
                 return await message.reply(content='\U0001F6AB Only coordinators can text-mute for longer than the channel cap.')
             is_in_channel = False
@@ -361,7 +394,7 @@ class Aliases(commands.Cog):
             color=discord.Color.orange()
         )
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        return await self.send_statistic(message, 'text_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
+        return await Statistics.send_statistic(message, 'text_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
     
     # TODO
     async def handle_voice_mute_alias(self, message: discord.Message, alias: Alias, args):
@@ -370,7 +403,7 @@ class Aliases(commands.Cog):
             return await message.reply(content='\U0001F6AB You are not permitted to voice mute users.')
         member = args[0] if len(args) > 0 else None # 'Tag a member or include their snowflake ID'
         duration = args[1] if len(args) > 1 else '24h' # '(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
-        reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.' #'Optional reason (required for 7 days or more)')
+        updated_reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.' #'Optional reason (required for 7 days or more)')
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
@@ -384,7 +417,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot voice mute the bot.')
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
@@ -395,7 +428,7 @@ class Aliases(commands.Cog):
                   AND discord_snowflake = $2
                   AND channel_id = $3
                   AND room_name = $4
-            ''', message.guild.id, member_obj.id, static_channel_id, channel_obj.name)
+            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
             duration_obj = Duration()
             reason_obj = Reason()
             duration_obj.load_from_combined_duration_str(duration)
@@ -412,16 +445,16 @@ class Aliases(commands.Cog):
                 if action in ('delete', 'overwrite') and not is_coordinator:
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
                 updated_reason = reason_obj.output_display()
-            if expires_at and expires_at <= now:
+            if expires_at and expires_at <= self.now:
                 return await message.reply(content='\U0001F6AB You cannot reduce a mute below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await self.get_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[0] == 'mute'), None)
             if active_cap:
                 cap_expires_at = active_cap[1]
             else:
-                cap_expires_at = timedelta(days=7) + now
+                cap_expires_at = timedelta(days=7) + self.now
             if existing_mute and not expires_at < existing_mute['expires_at'] and not (is_coordinator or expires_at <= cap_expires_at):
                 return await message.reply(content='\U0001F6AB Only coordinators can mute for longer than the channel cap.')
         try:
@@ -454,7 +487,7 @@ class Aliases(commands.Cog):
                 color=discord.Color.orange()
             )
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        await self.send_statistic(message, 'voice_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
+        await Statistics.send_statistic(message, 'voice_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
 
     # TODO
     async def handle_unban_alias(self, message: discord.Message, alias: Alias, args):
@@ -472,7 +505,7 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
@@ -512,7 +545,7 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot uncow the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
@@ -528,7 +561,7 @@ class Aliases(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 is_flagged = await conn.fetchval(select_sql, message.guild.id, member_obj.id, channel_obj.id)
                 if not is_flagged:
-                    return await message.reply(content=f'\U0001F6AB {member_obj.mention} has no active record in {channel_obj.mention}.')
+                    return await message.reply(content=f'\U0001F6AB {member_obj.mention} has no active record in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 await conn.execute(update_sql, message.guild.id, member_obj.id, channel_obj.id)
                 await conn.execute('''
                     INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -552,9 +585,9 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unflag the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias['channel_id'])
-        highest_role, success = await check_block(message, member_obj, channel_obj)
-        if not success:
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unflag this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
             SELECT 1
@@ -569,7 +602,7 @@ class Aliases(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 is_flagged = await conn.fetchval(select_sql, message.guild.id, member_obj.id, channel_obj.id)
                 if not is_flagged:
-                    return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged for {channel_obj.mention}.')
+                    return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged for {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 await conn.execute(update_sql, message.guild.id, member_obj.id, channel_obj.id)
                 await conn.execute('''
                     INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -594,7 +627,7 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unmute the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
@@ -643,12 +676,12 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unrole the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
-        role_obj = message.guild.get_role(alias['role_id'])
+        role_obj = message.guild.get_role(alias.role_id)
         if not role_obj:
-            return await message.reply(content=f"\U0001F6AB Could not resolve role with ID `{salias['role_id']}`.")
+            return await message.reply(content=f"\U0001F6AB Could not resolve role with ID `{alias.role_id}`.")
         if role_obj not in member_obj.roles:
             return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} does not have {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         try:
@@ -670,10 +703,10 @@ class Aliases(commands.Cog):
              return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot undo a textmute on the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias['channel_id'])
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        allowed = has_equal_or_higher_role(message=message, member=member_obj)
+        allowed = await has_equal_or_higher_role(message, member=member_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:

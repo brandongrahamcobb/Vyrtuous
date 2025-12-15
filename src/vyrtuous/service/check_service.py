@@ -85,7 +85,7 @@ async def is_moderator(ctx_or_interaction_or_message):
             'SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if row and row.get('moderator_channel_ids'):
+    if user_row and user_row.get('moderator_channel_ids'):
         m_chan = user_row.get('moderator_channel_ids') or []
         if channel_id not in m_chan:
             raise NotModerator()
@@ -104,10 +104,10 @@ async def is_coordinator(ctx_or_interaction_or_message):
         user_id = None
     async with bot.db_pool.acquire() as conn:
         user_row = await conn.fetchrow(
-            'SELECT coordinator_channel_ids, FROM users WHERE discord_snowflake=$1',
+            'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if row and row.get('coordinator_channel_ids'):
+    if user_row and user_row.get('coordinator_channel_ids'):
         c_chan = user_row.get('coordinator_channel_ids') or []
         if channel_id not in c_chan:
             raise NotCoordinator()
@@ -185,13 +185,9 @@ async def is_owner(ctx_or_interaction_or_message):
     
 def is_owner_predicator():
     async def predicate(ctx_or_interaction_or_message):
-        for check in is_owner:
-            try:
-                if await check(ctx_or_interaction_or_message):
-                    return True
-            except commands.CheckFailure:
-                continue
-        raise commands.CheckFailure('You are not system owner or guild owner.')
+        if await is_owner(ctx_or_interaction_or_message):
+            return True
+        return False
     predicate._permission_level = 'Owner'
     return commands.check(predicate)
 
@@ -203,7 +199,7 @@ def is_owner_developer_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure('You are not system owner, guild owner, or developer.')
+        return False
     predicate._permission_level = 'Developer'
     return commands.check(predicate)
 
@@ -221,13 +217,7 @@ def is_owner_developer_administrator_predicator():
     
 def is_owner_developer_administrator_coordinator_predicator():
     async def predicate(ctx_or_interaction_or_message):
-        for check in is_coordinator:
-            try:
-                if await check(ctx_or_interaction_or_message):
-                    return True
-            except commands.CheckFailure:
-                continue
-        for check in (is_owner, is_developer, is_administrator):
+        for check in (is_owner, is_developer, is_administrator, is_coordinator):
             try:
                 if await check(ctx_or_interaction_or_message):
                     return True
@@ -239,21 +229,7 @@ def is_owner_developer_administrator_coordinator_predicator():
     
 def is_owner_developer_administrator_coordinator_moderator_predicator():
     async def predicate(ctx_or_interaction_or_message):
-        if isinstance(ctx_or_interaction_or_message, discord.Interaction):
-            user = ctx_or_interaction_or_message.user
-        elif isinstance(ctx_or_interaction_or_message, commands.Context):
-            user = ctx_or_interaction_or_message.author
-        elif isinstance(ctx_or_interaction_or_message, discord.Message):
-            user = ctx_or_interaction_or_message.author
-        else:
-            user = None
-        for check in (is_coordinator, is_moderator):
-            try:
-                if await check(ctx_or_interaction_or_message):
-                    return True
-            except commands.CheckFailure:
-                continue
-        for check in (is_owner, is_developer, is_administrator):
+        for check in (is_owner, is_developer, is_administrator, is_coordinator, is_moderator):
             try:
                 if await check(ctx_or_interaction_or_message):
                     return True
@@ -326,8 +302,11 @@ async def member_is_moderator(channel: discord.VoiceChannel, member: discord.Mem
         return False
     return channel.id in (row['moderator_channel_ids'] or [])
 
-async def has_equal_or_higher_role(message: discord.Message, member: discord.Member) -> bool:
-    sender = message.author
-    if isinstance(sender, discord.Member):
+async def has_equal_or_higher_role(interaction_or_message, member: discord.Member) -> bool:
+    if isinstance(interaction_or_message, discord.Message):
+        sender = interaction_or_message.author
+    elif isinstance(interaction_or_message, discord.Interaction):
+        sender = interaction_or_message.user
+    if isinstance(sender, (discord.Member, discord.User)):
         return member.top_role >= sender.top_role
     return False

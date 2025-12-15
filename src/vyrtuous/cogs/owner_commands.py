@@ -21,6 +21,7 @@ from vyrtuous.inc.helpers import *
 
 from vyrtuous.service.check_service import *
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.utils.vegans import Vegans
@@ -29,11 +30,12 @@ class OwnerCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
+        self.emoji = Emojis()
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.member_service = MemberService()
 
     # DONE
-    @app_commands.command(name='dev', description='Elevates a user\'s permissions to a bot developer.')
+    @app_commands.command(name='dev', description="Grants/revokes a user's permissions to a bot developer.")
     @app_commands.describe(member='Tag a member or include their snowflake ID')
     @is_owner_predicator()
     async def create_developer_app_command(
@@ -48,7 +50,7 @@ class OwnerCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a developer.')
         if not member_obj:
             return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        success = await has_equal_or_higher_role(interaction.message, member_obj)
+        success = await has_equal_or_higher_role(interaction, member_obj)
         if not success:
             return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
@@ -76,10 +78,10 @@ class OwnerCommands(commands.Cog):
                     updated_at = NOW()
                 ''', member_obj.id, interaction.guild.id)
                 action = 'granted'
-        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer accessed has been {action} in {interaction.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
+        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer access has been {action} in {interaction.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
-    @commands.command(name='dev', help='Elevates a user\'s permissions to a bot developer.')
+    @commands.command(name='dev', help="Grants/revokes a user's permissions to a bot developer.")
     @is_owner_predicator()
     async def create_developer_text_command(
         self,
@@ -99,7 +101,7 @@ class OwnerCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             action = None
-            if row and interaction.guild.id in row['developer_guild_ids']:
+            if row and ctx.guild.id in row['developer_guild_ids']:
                 await conn.execute('''
                     UPDATE users
                     SET developer_guild_ids = array_remove(developer_guild_ids, $2),
@@ -121,10 +123,10 @@ class OwnerCommands(commands.Cog):
                     updated_at = NOW()
                 ''', member_obj.id, ctx.guild.id)
                 action = 'granted'
-        await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer accessed has been {action} in {ctx.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
+        await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer access has been {action} in {ctx.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
-    @app_commands.command(name='hero', description='Toggle the special feature for a member.')
+    @app_commands.command(name='hero', description='Grants/revokes invincibility for a member.')
     @app_commands.describe(member='Tag a member or include their snowflake ID')
     @is_owner_predicator()
     async def vegan_hero_app_command(
@@ -139,19 +141,18 @@ class OwnerCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB Could not resolve the member.')
         if member_obj.bot:
             return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a superhero.')
-        vegans = Vegans.get_vegans()
-        vegans.state = not vegans.state
-        if vegans.state:
-            vegans.add(member_obj.id)
-        else:
-            vegans.discard(member_obj.id)
+        state = Vegans.toggle_state()
+        if state:
+            Vegans.add_vegan(member_obj.id)
             for channel in interaction.guild.channels:
-                await self.unrestrict(interaction.guild, member_obj)
-        state = 'ON' if vegans.state else 'OFF'
-        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Superhero mode turned {state}')
+                await Vegans.unrestrict(interaction.guild, member_obj)
+        else:
+            Vegans.remove_vegan(member_obj.id)
+        state = 'ON' if state else 'OFF'
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Superhero mode turned {state} for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
            
     # DONE
-    @commands.command(name='hero', hidden=True)
+    @commands.command(name='hero', help='Grants/revokes invincibility for a member.')
     @is_owner_predicator()
     async def vegan_hero_text_command(
         self,
@@ -165,16 +166,15 @@ class OwnerCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve the member.')
         if member_obj.bot:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a superhero.')
-        vegans = Vegans.get_vegans()
-        vegans.state = not vegans.state
-        if vegans.state:
-            vegans.add(member_obj.id)
-        else:
-            vegans.discard(member_obj.id)
+        state = Vegans.toggle_state()
+        if state:
+            Vegans.add_vegan(member_obj.id)
             for channel in ctx.guild.channels:
-                await self.unrestrict(ctx.guild, member_obj)
-        state = f'ON' if vegans.state else f'OFF'
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Superhero modeturned {state}.')
+                await Vegans.unrestrict(ctx.guild, member_obj)
+        else:
+            Vegans.remove_vegan(member_obj.id)
+        state = f'ON' if state else f'OFF'
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Superhero modeturned {state} for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(OwnerCommands(bot))

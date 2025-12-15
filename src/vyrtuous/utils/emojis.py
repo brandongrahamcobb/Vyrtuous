@@ -90,4 +90,4 @@ class Emojis:
     ]
     
     def get_random_emoji(self):
-        return random.choice(EMOJIS)
+        return random.choice(self.EMOJIS)

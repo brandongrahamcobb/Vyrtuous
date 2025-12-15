@@ -15,18 +15,20 @@ class Alias:
         self.guild = guild
         self.alias_cog = self.bot.get_cog("Aliases")
         self.handlers = {
-            'ban': alias_cog.handle_ban_alias,
-            'unban': alias_cog.handle_unban_alias,
-            'flag': alias_cog.handle_flag_alias,
-            'unflag': alias_cog.handle_unflag_alias,
-            'mute': alias_cog.handle_voice_mute_alias,
-            'unmute': alias_cog.handle_unmute_alias,
-            'tmute': alias_cog.handle_text_mute_alias,
-            'untmute': alias_cog.handle_untextmute_alias,
-            'role': alias_cog.handle_role_alias,
-            'unrole': alias_cog.handle_unrole_alias
+            'ban': self.alias_cog.handle_ban_alias,
+            'cow': self.alias_cog.handle_cow_alias,
+            'uncow': self.alias_cog.handle_uncow_alias,
+            'unban': self.alias_cog.handle_unban_alias,
+            'flag': self.alias_cog.handle_flag_alias,
+            'unflag': self.alias_cog.handle_unflag_alias,
+            'mute': self.alias_cog.handle_voice_mute_alias,
+            'unmute': self.alias_cog.handle_unmute_alias,
+            'tmute': self.alias_cog.handle_text_mute_alias,
+            'untmute': self.alias_cog.handle_untextmute_alias,
+            'role': self.alias_cog.handle_role_alias,
+            'unrole': self.alias_cog.handle_unrole_alias
         }
-        self.handler = handlers[alias_type]
+        self.handler = self.handlers[alias_type]
         self.role_id = role_id
         self.room_name = channel.name
         

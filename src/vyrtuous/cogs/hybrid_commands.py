@@ -51,16 +51,16 @@ class Hybrid(commands.Cog):
         
     # DONE
     @app_commands.command(name='admins', description='Lists all members with server mute privileges in this guild.')
-    async def list_server_muters_app_command(
+    async def list_administrators_app_command(
         self,
         interaction: discord.Interaction
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in a server.')
         async with self.bot.db_pool.acquire() as conn:
-            records = await conn.fetch('''SELECT discord_snowflake FROM users WHERE $1=ANY(server_muter_guild_ids) ORDER BY discord_snowflake''', interaction.guild.id)
+            records = await conn.fetch('''SELECT discord_snowflake FROM users WHERE $1=ANY(administrator_guild_ids) ORDER BY discord_snowflake''', interaction.guild.id)
             if not records:
-                return await interaction.response.send_message(content=f'\U0001F6AB No admins found in {guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+                return await interaction.response.send_message(content=f'\U0001F6AB No admins found in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
             description_lines = []
             for record in records:
                 uid = record['discord_snowflake']
@@ -81,7 +81,7 @@ class Hybrid(commands.Cog):
             
     # DONE
     @commands.command(name='admins', help='Lists all members with server mute privileges in this guild.')
-    async def list_server_muters_text_command(
+    async def list_administrators_text_command(
         self,
         ctx: commands.Context
     ) -> None:
@@ -91,7 +91,7 @@ class Hybrid(commands.Cog):
             records = await conn.fetch('''
                 SELECT discord_snowflake
                 FROM users
-                WHERE $1 = ANY(server_muter_guild_ids)
+                WHERE $1 = ANY(administrator_guild_ids)
                 ORDER BY discord_snowflake
             ''', ctx.guild.id)
             if not records:
@@ -132,7 +132,7 @@ class Hybrid(commands.Cog):
             target = None
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         async with self.bot.db_pool.acquire() as conn:
-            highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+            highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all coordinators.')
@@ -187,6 +187,7 @@ class Hybrid(commands.Cog):
                 if channel_obj.type != discord.ChannelType.voice:
                     return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
                 query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(coordinator_channel_ids)'
+                rows = await conn.fetch(query, channel_obj.id)
                 rows = list({r['discord_snowflake']: r for r in rows}.values())
                 if not rows:
                     return await interaction.response.send_message(content=f'\U0001F6AB No coordinators found for {channel_obj.mention}.')
@@ -251,7 +252,7 @@ class Hybrid(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             elif member_obj:
-                query = 'SELECT coordinator_channel_ids, FROM users WHERE discord_snowflake=$1'
+                query = 'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1'
                 row = await conn.fetchrow(query, member_obj.id)
                 channels = []
                 if row:
@@ -508,10 +509,10 @@ class Hybrid(commands.Cog):
             target = None
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
-            async with ctx.bot.db_pool.acquire() as conn:
+        async with ctx.bot.db_pool.acquire() as conn:
+            if target and target.lower() == 'all':
+                if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                    return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
                 query = 'SELECT unnest(moderator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE moderator_channel_ids IS NOT NULL'
                 rows = await conn.fetch(query)
                 if not rows:
@@ -534,58 +535,58 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-        elif member_obj:
-            query = 'SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1'
-            row = await conn.fetchrow(query, member_obj.id)
-            channels = []
-            if row:
-                channels.extend(row.get('moderator_channel_ids') or [])
-            if not channels: return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.display_name} is not a moderator in any channels.')
-            channel_mentions = []
-            for ch_id in channels:
-                if not ch_id: continue
-                vc = ctx.guild.get_channel(ch_id)
-                channel_mentions.append(vc.mention if vc else f'Unknown Channel ({ch_id})')
-            embeds = []
-            chunk_size = 18
-            for i in range(0, len(channel_mentions), chunk_size):
-                chunk = channel_mentions[i:i+chunk_size]
-                embed = discord.Embed(
-                    title=f'🛡️ {member_obj.display_name} moderates:',
-                    description='\n'.join(f'• {ch}' for ch in chunk),
-                    color=discord.Color.magenta()
-                )
-                embeds.append(embed)
-            paginator = Paginator(self.bot, ctx, embeds)
-            return await paginator.start()
-        elif channel_obj:
-            if channel_obj.type != discord.ChannelType.voice:
-                return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-            query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(moderator_channel_ids)'
-            rows = await conn.fetch(query,channel_obj.id)
-            rows = list({r['discord_snowflake']:r for r in rows}.values())
-            if not rows:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators found for {channel_obj.mention}.')
-            lines = []
-            for r in rows:
-                uid = r['discord_snowflake']
-                m = ctx.guild.get_member(uid)
-                if not m: continue
-                lines.append(f'• {m.display_name} — <@{uid}>')
-            if not lines:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators currently in {ctx.guild.name}.')
-            pages = []
-            chunk_size = 18
-            for i in range(0,len(lines),chunk_size):
-                chunk = lines[i:i+chunk_size]
-                embed = discord.Embed(
-                    title=f'\U0001F6E1 Moderators for {channel_obj.name}',
-                    description='\n'.join(chunk),
-                    color=discord.Color.magenta()
-                )
-                pages.append(embed)
-            paginator = Paginator(self.bot, ctx, pages)
-            return await paginator.start()
+            elif member_obj:
+                query = 'SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1'
+                row = await conn.fetchrow(query, member_obj.id)
+                channels = []
+                if row:
+                    channels.extend(row.get('moderator_channel_ids') or [])
+                if not channels: return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.display_name} is not a moderator in any channels.')
+                channel_mentions = []
+                for ch_id in channels:
+                    if not ch_id: continue
+                    vc = ctx.guild.get_channel(ch_id)
+                    channel_mentions.append(vc.mention if vc else f'Unknown Channel ({ch_id})')
+                embeds = []
+                chunk_size = 18
+                for i in range(0, len(channel_mentions), chunk_size):
+                    chunk = channel_mentions[i:i+chunk_size]
+                    embed = discord.Embed(
+                        title=f'🛡️ {member_obj.display_name} moderates:',
+                        description='\n'.join(f'• {ch}' for ch in chunk),
+                        color=discord.Color.magenta()
+                    )
+                    embeds.append(embed)
+                paginator = Paginator(self.bot, ctx, embeds)
+                return await paginator.start()
+            elif channel_obj:
+                if channel_obj.type != discord.ChannelType.voice:
+                    return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+                query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(moderator_channel_ids)'
+                rows = await conn.fetch(query,channel_obj.id)
+                rows = list({r['discord_snowflake']:r for r in rows}.values())
+                if not rows:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators found for {channel_obj.mention}.')
+                lines = []
+                for r in rows:
+                    uid = r['discord_snowflake']
+                    m = ctx.guild.get_member(uid)
+                    if not m: continue
+                    lines.append(f'• {m.display_name} — <@{uid}>')
+                if not lines:
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators currently in {ctx.guild.name}.')
+                pages = []
+                chunk_size = 18
+                for i in range(0,len(lines),chunk_size):
+                    chunk = lines[i:i+chunk_size]
+                    embed = discord.Embed(
+                        title=f'\U0001F6E1 Moderators for {channel_obj.name}',
+                        description='\n'.join(chunk),
+                        color=discord.Color.magenta()
+                    )
+                    pages.append(embed)
+                paginator = Paginator(self.bot, ctx, pages)
+                return await paginator.start()
 
     # DONE
     @app_commands.command(name='owners', description='Show temporary room stats for "all", a channel, or a member.')
@@ -624,7 +625,7 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = UserPaginator(self.bot, interaction, pages)
                 return await paginator.start()
-            if member_obj and is_owner_or_dev:
+            if member_obj:
                 rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild_and_member(interaction.guild, member_obj)
                 if not rooms:
                     return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.display_name} does not own any temporary rooms.')
@@ -645,7 +646,7 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = UserPaginator(self.bot, interaction, pages)
                 return await paginator.start()
-            if channel_obj and is_owner_or_dev:
+            if channel_obj:
                 room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
                 if not room:
                     return await interaction.response.send_message(content=f'\U0001F6AB {channel_obj.mention} is not a temporary room.')
@@ -695,7 +696,7 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-            if member_obj and is_owner_or_dev:
+            if member_obj:
                 rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild_and_member(ctx.guild, member_obj)
                 if not rooms:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.display_name} does not own any temporary rooms.')
@@ -716,7 +717,7 @@ class Hybrid(commands.Cog):
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
-            if channel_obj and is_owner_or_dev:
+            if channel_obj:
                 room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
                 if not room:
                     return await self.handler.send_message(ctx, content=f'\U0001F6AB {channel_obj.mention} is not a temporary room.')
@@ -770,7 +771,7 @@ class Hybrid(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         if not isinstance(channel_obj, discord.VoiceChannel):
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        owners, developers, administrators, moderators, coordinators = [], [], [], []
+        owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
             if await member_is_owner(member): owners.append(member)
             elif await member_is_developer(member): developers.append(member)
@@ -803,7 +804,7 @@ class Hybrid(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         if not isinstance(channel_obj, (discord.VoiceChannel, discord.StageChannel)):
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid voice or stage channel.')
-        owners, developers, administrators, moderators, coordinators = [], [], [], []
+        owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
             if await member_is_owner(member): owners.append(member)
             elif await member_is_developer(member): developers.append(member)

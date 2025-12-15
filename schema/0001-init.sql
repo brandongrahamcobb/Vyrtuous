@@ -10,7 +10,7 @@ CREATE TABLE users (
     administrator_role_ids BIGINT[],
     server_mute_guild_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE active_text_mutes (
@@ -126,11 +126,6 @@ CREATE TABLE statistic_channels (
     snowflakes BIGINT[],
     enabled BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (guild_id, channel_id)
-);
-
-CREATE TABLE role_permissions (
-    role_id BIGINT PRIMARY KEY,
-    is_team_member BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE temporary_rooms (

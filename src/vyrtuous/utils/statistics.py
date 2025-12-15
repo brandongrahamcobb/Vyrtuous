@@ -7,13 +7,13 @@ from vyrtuous.service.discord_message_service import ChannelPaginator, UserPagin
 import discord
 
 class Statistics:
+        
+    statistic_channels: dict[int, list[dict]] = {}
 
-    def __init__(self):
-        self.bot = DiscordBot.get_instance()
-        self.statistic_channels: dict[int, list[dict]] = {}
-
-    async def load_channels(self):
-        async with self.bot.db_pool.acquire() as conn:
+    @classmethod
+    async def load_channels(cls):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('SELECT guild_id, channel_id, type, snowflakes, enabled FROM statistic_channels;')
             statistic_channels: dict[int, list[dict]] = {}
             for r in rows:
@@ -23,10 +23,15 @@ class Statistics:
                     "snowflakes": r['snowflakes'] or [],
                     "enabled": r['enabled']
                 })
-            self.statistic_channels = statistic_channels
+            cls.statistic_channels = statistic_channels
+            
+    @classmethod
+    def get_statistic_channels(cls):
+        return cls.statistic_channels
 
+    @classmethod
     async def send_statistic(
-        self,
+        cls,
         message,
         moderation_type: Optional[str],
         member: discord.Member,
@@ -39,13 +44,15 @@ class Statistics:
         is_modification: bool = False,
         highest_role: Optional[str] = 'Everyone'
     ):
+        bot = DiscordBot.get_instance()
         guild_id = message.guild.id
         guild = message.guild
-        if guild_id not in self.statistic_channels:
+        statistic_channels = cls.get_statistic_channels()
+        if guild_id not in statistic_channels:
             print(f"No statistic channels for guild {guild_id}")
             return
-        for entry in self.statistic_channels[guild_id]:
-            log_channel = self.bot.get_channel(entry["channel_id"])
+        for entry in statistic_channels[guild_id]:
+            log_channel = bot.get_channel(entry["channel_id"])
             if not log_channel:
                 continue
             log_type = entry.get("type")
@@ -54,16 +61,17 @@ class Statistics:
                 continue
             if log_type == "channel" and channel and channel.id not in snowflakes:
                 continue
-            pages = self.build_statistic_embeds(
+            pages = cls.build_statistic_embeds(
                     message=message, member=member, channel=channel, duration_display=duration_display,
                     reason=reason, executor=executor, expires_at=expires_at,
                     command_used=command_used, was_in_channel=was_in_channel,
                     is_modification=is_modification, highest_role=highest_role
                 )
-            paginator = ChannelPaginator(self.bot, log_channel, pages)
+            paginator = ChannelPaginator(bot, log_channel, pages)
             await paginator.start()
 
-    def build_statistic_embeds(self, message: discord.Message, member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, highest_role: Optional[str] = '', moderation_type: Optional[str] = None):
+    @classmethod
+    def build_statistic_embeds(cls, message: discord.Message, member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, highest_role: Optional[str] = '', moderation_type: Optional[str] = None):
         guild = message.guild
         time_left = expires_at - datetime.now(timezone.utc)
         hours_left = round(time_left.total_seconds() / 3600, 1)
