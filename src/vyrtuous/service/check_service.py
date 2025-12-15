@@ -214,7 +214,7 @@ def is_owner_developer_administrator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure('You are not an owner, developer or administrator in this guild.)
+        raise commands.CheckFailure('You are not an owner, developer or administrator in this guild.')
     predicate._permission_level = 'Administrator'
     return commands.check(predicate)
     
@@ -226,7 +226,7 @@ def is_owner_developer_administrator_coordinator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure('You are not an owner, developer, administrator in this guild or a coordinator in this channel.)
+        raise commands.CheckFailure('You are not an owner, developer, administrator in this guild or a coordinator in this channel.')
     predicate._permission_level = 'Coordinator'
     return commands.check(predicate)
     
@@ -238,7 +238,7 @@ def is_owner_developer_administrator_coordinator_moderator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure('You are not an owner, developer, administrator in this guild or a coordinator/moderator in this channel.)
+        raise commands.CheckFailure('You are not an owner, developer, administrator in this guild or a coordinator/moderator in this channel.')
     predicate._permission_level = 'Moderator'
     return commands.check(predicate)
 
