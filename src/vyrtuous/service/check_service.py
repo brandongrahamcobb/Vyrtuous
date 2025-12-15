@@ -72,7 +72,7 @@ async def send_check_failure_embed(ctx_or_interaction_or_message, error: command
 
 async def is_moderator(ctx_or_interaction_or_message):
     bot = DiscordBot.get_instance()
-    channel_id = ctx_or_interaction_or_message.channel.id
+    channel_id = target_channel.id
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
         user_id = ctx_or_interaction_or_message.user.id
     elif isinstance(ctx_or_interaction_or_message, commands.Context):
@@ -88,14 +88,10 @@ async def is_moderator(ctx_or_interaction_or_message):
         )
     if not user_row or not user_row.get('moderator_channel_ids'):
         raise NotModerator()
-    m_chan = user_row.get('moderator_channel_ids') or []
-    if channel_id not in m_chan:
-        raise NotModerator()
     return True
 
 async def is_coordinator(ctx_or_interaction_or_message):
     bot = DiscordBot.get_instance()
-    channel_id = ctx_or_interaction_or_message.channel.id
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
         user_id = ctx_or_interaction_or_message.user.id
     elif isinstance(ctx_or_interaction_or_message, commands.Context):
@@ -110,9 +106,6 @@ async def is_coordinator(ctx_or_interaction_or_message):
             user_id
         )
     if not user_row or not user_row.get('coordinator_channel_ids'):
-        raise NotCoordinator()
-    c_chan = user_row.get('coordinator_channel_ids') or []
-    if channel_id not in c_chan:
         raise NotCoordinator()
     return True
     
@@ -242,7 +235,7 @@ def is_owner_developer_administrator_coordinator_moderator_predicator():
     predicate._permission_level = 'Moderator'
     return commands.check(predicate)
 
-async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interaction_or_message) -> str:
+async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interaction_or_message, channel: discord.abc.GuildChannel) -> str:
     checks = (
         ("Owner", is_system_owner),
         ("Owner", is_guild_owner),
