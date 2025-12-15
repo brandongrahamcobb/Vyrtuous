@@ -259,7 +259,7 @@ class DevCommands(commands.Cog):
                 return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
             is_owner = room.room_owner == interaction.user
             await room.update_temporary_room_name_and_room_snowflake(channel_obj, new_channel.name)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(room.room_snowflake)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.room_snowflake)
             if aliases:
                 for alias_obj in aliases:
                     await alias_obj.update_command_aliases_with_channel(channel_obj)
@@ -302,7 +302,7 @@ class DevCommands(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
             is_owner = room.room_owner == ctx.author
             await room.update_temporary_room_name_and_room_snowflake(channel_obj, new_channel.name)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(room.room_snowflake)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.room_snowflake)
             if aliases:
                 for alias_obj in aliases:
                     await alias_obj.update_command_aliases_with_channel(channel_obj)
