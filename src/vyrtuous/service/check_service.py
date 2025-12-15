@@ -122,10 +122,10 @@ async def is_administrator(ctx_or_interaction_or_message):
         else:
             user_id = None
         row = await conn.fetchrow(
-            'SELECT adminstrator_guild_ids FROM users WHERE discord_snowflake=$1',
+            'SELECT administrator_guild_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if row and row['adminstrator_guild_ids'] and ctx_or_interaction_or_message.guild.id in row['administrator_guild_ids']:
+    if row and row['administrator_guild_ids'] and ctx_or_interaction_or_message.guild.id in row['administrator_guild_ids']:
         return True
     return False
 
