@@ -26,6 +26,10 @@ class NotCoordinator(commands.CheckFailure):
     def __init__(self, message='You are not a coordinator in the requested channel.'):
         super().__init__(message)
 
+class NotAdministrator(commands.CheckFailure):
+    def __init__(self, message='You are not an administrator in the requested channel.'):
+        super().__init__(message)
+        
 class NotModerator(commands.CheckFailure):
     def __init__(self, message='You are not a moderator in the requested channel.'):
         super().__init__(message)
@@ -82,10 +86,11 @@ async def is_moderator(ctx_or_interaction_or_message):
             'SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if user_row and user_row.get('moderator_channel_ids'):
-        m_chan = user_row.get('moderator_channel_ids') or []
-        if channel_id not in m_chan:
-            raise NotModerator()
+    if not user_row or not user_row.get('moderator_channel_ids'):
+        raise NotModerator()
+    m_chan = user_row.get('moderator_channel_ids') or []
+    if channel_id not in m_chan:
+        raise NotModerator()
     return True
 
 async def is_coordinator(ctx_or_interaction_or_message):
@@ -104,10 +109,11 @@ async def is_coordinator(ctx_or_interaction_or_message):
             'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if user_row and user_row.get('coordinator_channel_ids'):
-        c_chan = user_row.get('coordinator_channel_ids') or []
-        if channel_id not in c_chan:
-            raise NotCoordinator()
+    if not user_row or not user_row.get('coordinator_channel_ids'):
+        raise NotCoordinator()
+    c_chan = user_row.get('coordinator_channel_ids') or []
+    if channel_id not in c_chan:
+        raise NotCoordinator()
     return True
     
 async def is_administrator(ctx_or_interaction_or_message):
@@ -125,8 +131,8 @@ async def is_administrator(ctx_or_interaction_or_message):
             'SELECT administrator_guild_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if row and row['administrator_guild_ids'] and ctx_or_interaction_or_message.guild.id in row['administrator_guild_ids']:
-        return True
+    if not row and not row['administrator_guild_ids'] and ctx_or_interaction_or_message.guild.id in row['administrator_guild_ids']:
+        raise NotAdministrator()
     return False
 
 async def is_developer(ctx_or_interaction_or_message):
@@ -184,7 +190,7 @@ def is_owner_predicator():
     async def predicate(ctx_or_interaction_or_message):
         if await is_owner(ctx_or_interaction_or_message):
             return True
-        return False
+        raise commands.CheckFailure()
     predicate._permission_level = 'Owner'
     return commands.check(predicate)
 
@@ -196,7 +202,7 @@ def is_owner_developer_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        return False
+        raise commands.CheckFailure()
     predicate._permission_level = 'Developer'
     return commands.check(predicate)
 
@@ -208,7 +214,7 @@ def is_owner_developer_administrator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        return False
+        raise commands.CheckFailure()
     predicate._permission_level = 'Administrator'
     return commands.check(predicate)
     
@@ -220,7 +226,7 @@ def is_owner_developer_administrator_coordinator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        return False
+        raise commands.CheckFailure()
     predicate._permission_level = 'Coordinator'
     return commands.check(predicate)
     
@@ -232,7 +238,7 @@ def is_owner_developer_administrator_coordinator_moderator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        return False
+        raise commands.CheckFailure()
     predicate._permission_level = 'Moderator'
     return commands.check(predicate)
 
