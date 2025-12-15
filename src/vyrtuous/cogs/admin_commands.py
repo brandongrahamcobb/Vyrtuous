@@ -798,7 +798,7 @@ class AdminCommands(commands.Cog):
         for room in rooms:
             room_id = room.room_snowflake
             channel_obj = await self.channel_service.resolve_channel(interaction, room_id)
-            aliases = await Alias.fetch_command_aliases_by_channel(room.channel)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(room.channel_id)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
                 break
@@ -831,7 +831,7 @@ class AdminCommands(commands.Cog):
         for room in rooms:
             room_id = room.room_snowflake
             channel_obj = await self.channel_service.resolve_channel(ctx, room_id)
-            aliases = await Alias.fetch_command_aliases_by_channel(room.channel)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(room.channel_id)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
                 break
