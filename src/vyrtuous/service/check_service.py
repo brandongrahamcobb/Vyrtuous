@@ -257,7 +257,7 @@ async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interact
                 return role_name
         except commands.CheckFailure:
             continue
-    return "Everyone"
+    raise commands.CheckFailure()
 
 async def member_is_owner(member: discord.Member) -> bool:
     bot = DiscordBot.get_instance()
