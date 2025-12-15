@@ -29,7 +29,7 @@ class TemporaryRoom:
         self.is_temp_room: Optional[bool] = True
         self.room_snowflake: Optional[int] = channel_id 
         if self.channel:
-            self.room_name: Optional[str] = channel.name
+            self.room_name: Optional[str] = self.channel.name
         else:
             self.room_name = None
         self.room_owner = room_owner
