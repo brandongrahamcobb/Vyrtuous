@@ -24,6 +24,7 @@ python-dotenv = "^1.2.1"
 docker = "^7.1.0"
 debugpy = "^1.8.18"
 discord-py = "^2.6.4"
+discord = "^2.3.2"
 
 [tool.poetry.scripts]
 vyrtuous = "vyrtuous.main:run"

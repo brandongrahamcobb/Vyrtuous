@@ -534,6 +534,21 @@ files = [
 ]
 
 [[package]]
+name = "discord"
+version = "2.3.2"
+description = "A mirror package for discord.py. Please install that instead."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "discord-2.3.2-py3-none-any.whl", hash = "sha256:d7959418799dd3b1e896685812d880169c193468b061b3431fa2a4664febd3da"},
+    {file = "discord-2.3.2.tar.gz", hash = "sha256:cc1ee2dbe6df218ca51519af355b97e87309f8230f58c7f34885feb8e8a76145"},
+]
+
+[package.dependencies]
+"discord.py" = ">=2.3.2"
+
+[[package]]
 name = "discord-py"
 version = "2.6.4"
 description = "A Python wrapper for the Discord API"
@@ -1569,4 +1584,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "20d9afbaf4251709848964a42ca4b87f777b64c60ca891b5e7ec558d58773d2c"
+content-hash = "bee74eede7d28b892622a64c553e9081ece5fd3aef4c8520c07690e56765fec6"
