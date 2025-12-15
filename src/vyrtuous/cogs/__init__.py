@@ -14,3 +14,5 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+__version__ = "6.0.6"
+__all__ = ["admin_commands", "aliases", "coordinator_commands", "dev_commands", "event_listeners", "heartbeat", "help_command", "hybrid_commands", "moderator_commands", "owner_commands", "scheduled_tasks"]

@@ -19,11 +19,13 @@ import os
 import asyncio
 
 import asyncpg
+import debugpy
+
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
 from vyrtuous.utils.setup_logging import logger, setup_logging
-    
+
 async def database_init():
     return await asyncpg.create_pool(
             host=os.getenv('POSTGRES_HOST'),
@@ -33,6 +35,8 @@ async def database_init():
             command_timeout=30)
 
 async def main():
+#    debugpy.listen(("0.0.0.0", 5678))
+#    debugpy.wait_for_client() 
     config = Config().get_config()
     setup_logging(config, PATH_LOG)
     db_pool = await database_init()

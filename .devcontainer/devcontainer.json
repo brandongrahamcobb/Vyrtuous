@@ -3,15 +3,26 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "vyrtuous",
   "workspaceFolder": "/app",
-  "extensions": [
-    "ms-python.python",
-    "ms-azuretools.vscode-docker"
-  ],
-  "forwardPorts": [5678],
-  "remoteUser": "root",
-  "runArgs": ["-e", "DEBUGPY=1"],
-  "remoteEnv": {
-    "PATH": "/opt/homebrew/bin:${PATH}"
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python"
+      }
+    }
   },
-  "docker.dockerPath": "/opt/homebrew/bin/docker"
+  
+  "forwardPorts": [5678, 8080],
+  "remoteUser": "root",
+  
+  "remoteEnv": {
+    "DEBUGPY": "1"
+  },
+
+  "overrideCommand": true
 }

@@ -24,16 +24,24 @@ services:
     env_file:
       - .env
     expose:
+      - "5678"
       - "8080"
+    ports:
+      - "5678:5678"
     volumes:
       - vyrtuous-backups:/app/backups
       - vyrtuous-config:/root/.config/vyrtuous
-      - ./src/vyrtuous:/app/vyrtuous:Z
+      - ./src:/app/src:Z
     healthcheck:
       test: "healthcheck.sh || kill 1"
       interval: 10s
       retries: 3
-
+    environment:
+      - DEBUGPY=1
+      - PYTHONFROZENMODULES=0
+      - PYDEVD_DISABLE_FILE_VALIDATION=1
+      - PYTHONPATH=/app/src
+      
 volumes:
   vyrtuous-config:
   vyrtuous-backups:

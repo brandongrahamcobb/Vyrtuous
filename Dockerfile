@@ -11,9 +11,12 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir poetry
 
 COPY pyproject.toml poetry.lock* README.md ./
-RUN poetry install
 
 COPY healthcheck.sh ./
-COPY src ./
+COPY src/ ./src/
 
-CMD ["python", "-u", "vyrtuous/main.py"]
+RUN poetry install
+
+EXPOSE 5678
+
+CMD ["python", "-m", "vyrtuous.main"]
