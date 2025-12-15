@@ -125,7 +125,7 @@ class AdminCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='chown', description='Change the owner of a temporary room.')
-    @app_commands.describe(member='Tag a user or provide their snowflake ID', channel='Tag a chanel or provide it\'s snowflake ID')
+    @app_commands.describe(member='Tag a user or provide their snowflake ID', channel='Tag a channel or provide it\'s snowflake ID')
     @is_owner_developer_administrator_predicator()
     async def change_temp_room_owner_app_command(
         self,
@@ -151,7 +151,7 @@ class AdminCommands(commands.Cog):
     async def change_temp_room_owner_text_command(
         self,
         ctx,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a chanel or provide it\'s snowflake ID'),
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or provide it\'s snowflake ID'),
         member: Optional[str] = commands.parameter(default=None, description='Tag a user or provide their snowflake ID')
     ):
         if not ctx.guild:

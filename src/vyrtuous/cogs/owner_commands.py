@@ -56,7 +56,20 @@ class OwnerCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             action = None
-            if row and interaction.guild.id in row['developer_guild_ids']:
+            if not row or interaction.guild.id not in developer_guild_ids:
+                await conn.execute('''
+                    INSERT INTO users (discord_snowflake, developer_guild_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (discord_snowflake) DO UPDATE
+                    SET developer_guild_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(users.developer_guild_ids || EXCLUDED.developer_guild_ids)
+                        )
+                    ),
+                    updated_at = NOW()
+                ''', member_obj.id, interaction.guild.id)
+                action = 'granted'
+            else:
                 await conn.execute('''
                     UPDATE users
                     SET developer_guild_ids = array_remove(developer_guild_ids, $2),
@@ -64,20 +77,6 @@ class OwnerCommands(commands.Cog):
                     WHERE discord_snowflake = $1
                 ''', member_obj.id, interaction.guild.id)
                 action = 'revoked'
-            else:
-                await conn.execute('''
-                    INSERT INTO users (discord_snowflake, developer_guild_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (discord_snowflake) DO UPDATE
-                    SET developer_guild_ids = (
-                        SELECT ARRAY(
-                            SELECT DISTINCT unnest(u.developer_guild_ids || EXCLUDED.developer_guild_ids)
-                        )
-                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
-                    ),
-                    updated_at = NOW()
-                ''', member_obj.id, interaction.guild.id)
-                action = 'granted'
         return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer access has been {action} in {interaction.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
@@ -101,7 +100,21 @@ class OwnerCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             action = None
-            if row and ctx.guild.id in row['developer_guild_ids']:
+            developer_guild_ids = row['developer_guild_ids'] if row and row['developer_guild_ids'] is not None else []
+            if not row or ctx.guild.id not in developer_guild_ids:
+                await conn.execute('''
+                    INSERT INTO users (discord_snowflake, developer_guild_ids)
+                    VALUES ($1, ARRAY[$2]::BIGINT[])
+                    ON CONFLICT (discord_snowflake) DO UPDATE
+                    SET developer_guild_ids = (
+                        SELECT ARRAY(
+                            SELECT DISTINCT unnest(users.developer_guild_ids || EXCLUDED.developer_guild_ids)
+                        )
+                    ),
+                    updated_at = NOW()
+                ''', member_obj.id, ctx.guild.id)
+                action = 'granted'
+            else:
                 await conn.execute('''
                     UPDATE users
                     SET developer_guild_ids = array_remove(developer_guild_ids, $2),
@@ -109,20 +122,6 @@ class OwnerCommands(commands.Cog):
                     WHERE discord_snowflake = $1
                 ''', member_obj.id, ctx.guild.id)
                 action = 'revoked'
-            else:
-                await conn.execute('''
-                    INSERT INTO users (discord_snowflake, developer_guild_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (discord_snowflake) DO UPDATE
-                    SET developer_guild_ids = (
-                        SELECT ARRAY(
-                            SELECT DISTINCT unnest(u.developer_guild_ids || EXCLUDED.developer_guild_ids)
-                        )
-                        FROM users u WHERE u.discord_snowflake = EXCLUDED.discord_snowflake
-                    ),
-                    updated_at = NOW()
-                ''', member_obj.id, ctx.guild.id)
-                action = 'granted'
         await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer access has been {action} in {ctx.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         
     # DONE

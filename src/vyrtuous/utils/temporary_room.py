@@ -13,6 +13,7 @@ class TemporaryRoom:
         self.bot = DiscordBot.get_instance()
         self.guild = guild
         self.is_temp_room: Optional[bool] = True
+        self.room_snowflake: Optional[int] = channel.id
         self.room_name: Optional[str] = channel.name
         self.room_owner = room_owner
 

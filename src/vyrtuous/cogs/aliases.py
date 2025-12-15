@@ -106,7 +106,6 @@ class Aliases(commands.Cog):
         updated_reason  = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
-        allowed = False
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
@@ -116,9 +115,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot ban the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to ban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             existing_ban = await conn.fetchrow('''
                 SELECT expires_at, reason
@@ -204,9 +203,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot cow the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to cow this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
             SELECT 1
             FROM active_cows
@@ -252,9 +251,9 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to flag this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
             SELECT reason
             FROM active_flags
@@ -306,9 +305,9 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to unrole this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         role_obj = message.guild.get_role(alias.role_id)
         if not role_obj:
             return await message.reply(content=f"\U000026A0\U0000FE0F Could not resolve role with ID `{alias.role_id}`.")
@@ -334,9 +333,9 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj or member_obj.id in self.vegans:
             return await message.reply(content=f'\U0001F6AB Invalid target member: {member}.')
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to text-mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             existing_text_mute = await conn.fetchrow('''
                 SELECT expires_at, reason
@@ -417,9 +416,9 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot voice mute the bot.')
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed voice mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             existing_mute = await conn.fetchrow('''
                 SELECT expires_at, reason
@@ -505,9 +504,9 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to unban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
                 SELECT expires_at
@@ -545,9 +544,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot uncow the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to uncow this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
             SELECT 1
             FROM active_cows
@@ -586,7 +585,7 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unflag the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unflag this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         select_sql = '''
@@ -627,9 +626,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unmute the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to unmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
                 SELECT expires_at
@@ -676,9 +675,9 @@ class Aliases(commands.Cog):
         if member_obj.bot:
             return await message.reply(content='\U0001F6AB You cannot unrole the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to unrole this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         role_obj = message.guild.get_role(alias.role_id)
         if not role_obj:
             return await message.reply(content=f"\U0001F6AB Could not resolve role with ID `{alias.role_id}`.")
@@ -706,9 +705,9 @@ class Aliases(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel.id)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
-        allowed = await has_equal_or_higher_role(message, member=member_obj)
+        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to un textmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            return await message.reply(content=f'\U0001F6AB You are not allowed to untext-mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
                 SELECT expires_at

@@ -106,7 +106,7 @@ class EventListeners(commands.Cog):
                     
     @commands.Cog.listener()                
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
-        room = await TemporaryRoom.fetch_temporary_room_by_chanel(channel=channel)
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel=channel)
         if room:
             self.deleted_rooms[channel.name] = room
     # Done

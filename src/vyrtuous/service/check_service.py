@@ -146,7 +146,7 @@ async def is_developer(ctx_or_interaction_or_message):
         row = await conn.fetchrow(
             'SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', user_id
         )
-    if not row or not row.get('developer_guild_ids') or ctx_or_interaction.guild.id not in row.get('developer_guild_ids', []):
+    if not row or not row.get('developer_guild_ids') or ctx_or_interaction_or_message.guild.id not in row.get('developer_guild_ids', []):
         raise NotDeveloper()
     return True
 
@@ -302,11 +302,34 @@ async def member_is_moderator(channel: discord.VoiceChannel, member: discord.Mem
         return False
     return channel.id in (row['moderator_channel_ids'] or [])
 
-async def has_equal_or_higher_role(interaction_or_message, member: discord.Member) -> bool:
-    if isinstance(interaction_or_message, discord.Message):
-        sender = interaction_or_message.author
-    elif isinstance(interaction_or_message, discord.Interaction):
-        sender = interaction_or_message.user
-    if isinstance(sender, (discord.Member, discord.User)):
-        return member.top_role >= sender.top_role
-    return False
+async def has_equal_or_higher_role(message_ctx_or_interaction, member: discord.Member, channel: discord.abc.GuildChannel):
+    bot = DiscordBot.get_instance()
+    if isinstance(message_ctx_or_interaction, discord.Interaction):
+        sender = message_ctx_or_interaction.user
+    elif isinstance(message_ctx_or_interaction, discord.Message):
+        sender = message_ctx_or_interaction.author
+    else:
+        return False, None
+    CUSTOM_ROLE_RANKS = {
+        'Owner': 5,
+        'Administrator': 4,
+        'Developer': 3,
+        'Coordinator': 2,
+        'Moderator': 1
+    }
+    async def get_highest_role(user):
+        if await member_is_owner(user):
+            return 'Owner', 5
+        elif await member_is_administrator(user):
+            return 'Administrator', 4
+        elif await member_is_developer(user):
+            return 'Developer', 3
+        elif await member_is_coordinator(channel, user):
+            return 'Coordinator', 2
+        elif await member_is_moderator(channel, user):
+            return 'Moderator', 1
+        else:
+            return None, 0
+    sender_role, sender_rank = await get_highest_role(sender)
+    target_role, target_rank = await get_highest_role(member)
+    return sender_rank > target_rank, target_role
