@@ -121,7 +121,7 @@ class Help(commands.Cog):
         if cmd:
             return ("command", cmd)
         alias = await Alias.fetch_command_alias_by_guild_and_alias_name(ctx_or_interaction.guild, name.lower())
-        if alias and alias.channel.id == ctx_or_interaction.channel.id:
+        if alias and alias.channel_id == ctx_or_interaction.channel.id:
             return ("alias", alias)
         return (None, None)
 

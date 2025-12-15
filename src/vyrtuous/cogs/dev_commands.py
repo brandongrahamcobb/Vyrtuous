@@ -75,7 +75,7 @@ class DevCommands(commands.Cog):
             role_id = int(role.replace('<@&','').replace('>',''))
         else:
             role_id = None
-        alias_obj = Alias(interaction.guild, channel_obj, alias_type, alias_name, role_id)
+        alias_obj = Alias(interaction.guild.id, channel_obj.id, alias_type, alias_name, role_id)
         await alias_obj.insert_into_command_aliases()
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -120,7 +120,7 @@ class DevCommands(commands.Cog):
             role_id = int(role.replace('<@&','').replace('>',''))
         else:
             role_id = None
-        alias_obj = Alias(ctx.guild, channel_obj, alias_type, alias_name, role_id)
+        alias_obj = Alias(ctx.guild.id, channel_obj.id, alias_type, alias_name, role_id)
         await alias_obj.insert_into_command_aliases()
         async with ctx.bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -585,7 +585,7 @@ class DevCommands(commands.Cog):
                 break
         if not found:
             return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` not found.')
-        channel_obj = await self.channel_service.resolve_channel(interaction, alias.channel.id)
+        channel_obj = await self.channel_service.resolve_channel(interaction, alias.channel_id)
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,$2,$3,$4,$5,$6)
@@ -615,7 +615,7 @@ class DevCommands(commands.Cog):
                 break
         if not found:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{alias_name}` not found.')
-        channel_obj = await self.channel_service.resolve_channel(ctx, alias.channel.id)
+        channel_obj = await self.channel_service.resolve_channel(ctx, alias.channel_id)
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO moderation_logs(action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES($1,$2,$3,$4,$5,$6)

@@ -802,7 +802,7 @@ class AdminCommands(commands.Cog):
             if not aliases:
                 break
             for alias_obj in aliases:
-                if alias_obj.channel.id == room_id:
+                if alias_obj.channel_id == room_id:
                     lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
         pages = []
         chunks = 18
@@ -835,7 +835,7 @@ class AdminCommands(commands.Cog):
             if not aliases:
                 break
             for alias_obj in aliases:
-                if alias_obj.channel.id == room_id:
+                if alias_obj.channel_id == room_id:
                     lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
         pages = []
         chunk_size = 18

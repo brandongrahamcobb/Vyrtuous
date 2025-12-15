@@ -40,7 +40,6 @@ CREATE TABLE command_aliases (
     alias_name TEXT NOT NULL,
     channel_id BIGINT DEFAULT -1,
     role_id    BIGINT,
-    room_name  TEXT DEFAULT '',
     PRIMARY KEY (guild_id, alias_type, alias_name)
 );
 
