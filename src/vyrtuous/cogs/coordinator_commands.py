@@ -73,10 +73,10 @@ class CoordinatorCommands(commands.Cog):
                     ),
                     updated_at = NOW()
                 ''', member_obj.id, channel_obj.id)
-                action = 'revoked'
+                action = 'granted'
             elif channel_obj.id in current_channel_ids:
                 await conn.execute('UPDATE users SET moderator_channel_ids = array_remove(moderator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
-                action = 'granted'
+                action = 'revoked'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
@@ -121,10 +121,10 @@ class CoordinatorCommands(commands.Cog):
                     ),
                     updated_at = NOW()
                 ''', member_obj.id, channel_obj.id)
-                action = 'revoked'
+                action = 'granted'
             elif channel_obj.id in current_channel_ids:
                 await conn.execute('UPDATE users SET moderator_channel_ids = array_remove(moderator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
-                action = 'granted'
+                action = 'revoked'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
