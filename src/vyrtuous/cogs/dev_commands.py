@@ -67,7 +67,7 @@ class DevCommands(commands.Cog):
         if old_aliases:
             for old_alias in old_aliases:
                 if old_alias.alias_name == alias_name:
-                    return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` ({alias_type}) already exists and is set to {old_alias.channel.mention}.')
+                    return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` ({alias_type}) already exists and is set to  <@{old_alias.channel_id}>.')
         if alias_type in ('role', 'unrole') and not role:
             return await interaction.response.send_message(content='\U0001F6AB Role ID is required for role/unrole aliases.')
         if role:
@@ -112,7 +112,7 @@ class DevCommands(commands.Cog):
         if old_aliases:
             for old_alias in old_aliases:
                 if old_alias.alias_name == alias_name:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{old_alias.alias_name}` ({old_alias.alias_type}) already exists and is set to {old_alias.channel.mention}.')
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{old_alias.alias_name}` ({old_alias.alias_type}) already exists and is set to <@{old_alias.channel_id}>.')
         if alias_type in ('role', 'unrole') and not role:
             return await self.handler.send_message(ctx, content='\U0001F6AB Role ID is required for role/unrole aliases.')
         if role:

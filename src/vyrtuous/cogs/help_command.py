@@ -259,8 +259,8 @@ class Help(commands.Cog):
                 else:
                     embed.add_field(name='', value=command_text, inline=False)
             if perm_level in perm_alias_map:
-                for alias_text in perm_alias_map[perm_level]:
-                    embed.add_field(name='Aliases', value=alias_text, inline=False)
+                aliases_text = '\n'.join(perm_alias_map[perm_level])
+                embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
             return await interaction.response.send_message('\U0001F6AB No commands available to you.', ephemeral=True)
@@ -360,8 +360,8 @@ class Help(commands.Cog):
                 else:
                     embed.add_field(name='', value=command_text, inline=False)
             if perm_level in perm_alias_map:
-                for alias_text in perm_alias_map[perm_level]:
-                    embed.add_field(name='Aliases', value=alias_text, inline=False)
+                aliases_text = '\n'.join(perm_alias_map[perm_level])
+                embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
             return await self.handler.send_message(ctx, content='\U0001F6AB No commands available to you.')
