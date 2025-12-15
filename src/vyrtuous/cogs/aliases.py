@@ -115,8 +115,8 @@ class Aliases(commands.Cog):
         self.vegans = Vegans.get_vegans()
     
     async def handle_ban_alias(self, message: discord.Message, alias: Alias, args):
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
-        if highest_role == 'Everyone':
+        executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if executor_role == 'Everyone':
             return await message.reply(content='\U0001F6AB You are not permitted to ban users.')
         member = args[0] if len(args) > 0 else None
         duration = args[1] if len(args) > 1 else '24h'
@@ -157,7 +157,7 @@ class Aliases(commands.Cog):
             else:
                 reason_obj.load_new_reason(updated_reason)
                 action = reason_obj.interpret_action(duration_obj.get_prefix())
-                if action in ('delete', 'overwrite') and not is_coordinator:
+                if action in ('delete', 'overwrite') and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
                 updated_reason = reason_obj.output_display()
             if expires_at and expires_at <= self.now:
@@ -170,8 +170,12 @@ class Aliases(commands.Cog):
                 cap_expires_at = active_cap[1]
             else:
                 cap_expires_at = timedelta(days=7) + self.now
-            if existing_ban and not expires_at < existing_ban['expires_at'] and not (is_coordinator or expires_at <= cap_expires_at):
-                return await message.reply(content='\U0001F6AB Only coordinators can ban for longer than the channel cap.')
+            if existing_ban:
+                if not expires_at < existing_ban['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator') or expires_at <= cap_expires_at):
+                    return await message.reply(content='\U0001F6AB Only coordinators can ban for longer than the channel cap.')
+            else:
+                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
+                    return await message.reply(content='\U0001F6AB Only coordinators and above can ban for longer than the channel cap.')
         try:
             await channel_obj.set_permissions(member_obj, view_channel=False, reason=f'{updated_reason}')
         except discord.Forbidden:
@@ -336,8 +340,8 @@ class Aliases(commands.Cog):
     
     # TODO
     async def handle_text_mute_alias(self, message: discord.Message, alias: Alias, args):
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
-        if highest_role == 'Everyone':
+        executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if executor_role == 'Everyone':
             return await message.reply(content='\U0001F6AB You are not permitted to text-mute users.')
         member = args[0] if len(args) > 0 else None # 'Tag a member or include their snowflake ID'
         duration = args[1] if len(args) > 1 else '24h' # '(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
@@ -383,8 +387,12 @@ class Aliases(commands.Cog):
                 cap_expires_at = active_cap[1]
             else:
                 cap_expires_at = timedelta(days=7) + self.now
-            if existing_text_mute and not expires_at < existing_text_mute['expires_at'] and not (is_coordinator or expires_at <= cap_expires_at):
-                return await message.reply(content='\U0001F6AB Only coordinators can text-mute for longer than the channel cap.')
+            if existing_text_mute:
+                if not expires_at < existing_text_mute['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator') or expires_at <= cap_expires_at):
+                    return await message.reply(content='\U0001F6AB Only coordinators and above can text-mute for longer than the channel cap.')
+            else:
+                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
+                    return await message.reply(content='\U0001F6AB Only coordinators and above can textmute- for longer than the channel cap.')
             is_in_channel = False
             if channel_obj:
                 try:
@@ -412,8 +420,8 @@ class Aliases(commands.Cog):
     
     # TODO
     async def handle_voice_mute_alias(self, message: discord.Message, alias: Alias, args):
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
-        if highest_role == 'Everyone':
+        executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if executor_role == 'Everyone':
             return await message.reply(content='\U0001F6AB You are not permitted to voice mute users.')
         member = args[0] if len(args) > 0 else None # 'Tag a member or include their snowflake ID'
         duration = args[1] if len(args) > 1 else '24h' # '(+|-)duration(m|h|d) \n 0 - permanent / 8h - default \n `+` to append, `-` to delete, `=` to overwrite reason'),
@@ -469,8 +477,12 @@ class Aliases(commands.Cog):
                 cap_expires_at = active_cap[1]
             else:
                 cap_expires_at = timedelta(days=7) + self.now
-            if existing_mute and not expires_at < existing_mute['expires_at'] and not (is_coordinator or expires_at <= cap_expires_at):
-                return await message.reply(content='\U0001F6AB Only coordinators can mute for longer than the channel cap.')
+            if existing_mute:
+                if not expires_at < existing_mute['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator') or expires_at <= cap_expires_at):
+                    return await message.reply(content='\U0001F6AB Only coordinators and above can mute for longer than the channel cap.')
+            else:
+                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
+                    return await message.reply(content='\U0001F6AB Only coordinators and above can mute for longer than the channel cap.')
         try:
             async with self.bot.db_pool.acquire() as conn:
                 await conn.execute('''
