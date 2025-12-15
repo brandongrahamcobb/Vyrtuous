@@ -27,8 +27,11 @@ class TemporaryRoom:
         self.channel = self.bot.get_channel(channel_id)
         self.guild = guild
         self.is_temp_room: Optional[bool] = True
-        self.room_snowflake: Optional[int] = channel.id if self.channel else None
-        self.room_name: Optional[str] = channel.name if self.channel else None
+        self.room_snowflake: Optional[int] = channel_id 
+        if self.channel:
+            self.room_name: Optional[str] = channel.name
+        else:
+            self.room_name = None
         self.room_owner = room_owner
 
     def load_channel(self, channel_obj: discord.abc.GuildChannel):
