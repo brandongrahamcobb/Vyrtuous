@@ -77,7 +77,6 @@ class OwnerCommands(commands.Cog):
                     updated_at = NOW()
                 ''', member_obj.id, interaction.guild.id)
                 action = 'granted'
-            else:
         return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer access has been {action} in {interaction.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
