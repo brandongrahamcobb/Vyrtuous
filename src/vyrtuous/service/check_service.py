@@ -72,7 +72,6 @@ async def send_check_failure_embed(ctx_or_interaction_or_message, error: command
 
 async def is_moderator(ctx_or_interaction_or_message):
     bot = DiscordBot.get_instance()
-    channel_id = target_channel.id
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
         user_id = ctx_or_interaction_or_message.user.id
     elif isinstance(ctx_or_interaction_or_message, commands.Context):
