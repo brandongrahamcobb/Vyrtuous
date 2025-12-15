@@ -1,6 +1,6 @@
-''' dev_commands.py
+''' owner_commands.py A discord.py cog containing owner-only commands for the Vyrtuous bot.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,14 +16,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Literal, Optional
-
-from vyrtuous.inc.helpers import *
-
-from vyrtuous.service.check_service import *
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.emojis import Emojis
-from vyrtuous.service.member_service import MemberService
+from vyrtuous.inc.helpers import *
+from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService
+from vyrtuous.service.member_service import MemberService
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.vegans import Vegans
 
 class OwnerCommands(commands.Cog):

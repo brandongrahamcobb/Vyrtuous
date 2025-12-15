@@ -1,6 +1,6 @@
-''' discord.py  This is essentially a stripped version of Rapptz advanced_startup.py.
+''' discord.py This is essentially a stripped version of Rapptz advanced_startup.py.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,16 +15,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import os
 from collections import defaultdict
-
-import asyncio
-import asyncpg
-import discord
 from discord.ext import commands
 from vyrtuous.inc.helpers import DISCORD_COGS
 from vyrtuous.utils.setup_logging import logger
 
+import asyncio
+import asyncpg
+import discord
 
 class DiscordBot(commands.Bot):
     
@@ -41,7 +39,6 @@ class DiscordBot(commands.Bot):
                              **kwargs)
             self.config = config
             self.db_pool = db_pool
-
             self.testing_guild_id = self.config['discord_testing_guild_id']
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {e}')

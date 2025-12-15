@@ -1,6 +1,4 @@
-''' __init__.py  The purpose of this program is to provide the advanced_startup.py logic provided by Rapptz; from cd ../.
-    Copyright (C) 2024  github.com/brandongrahamcobb
-
+''' __init__.py The purpose of this program is to provide the cogs module.
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -15,4 +13,4 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 __version__ = "6.0.6"
-__all__ = ["admin_commands", "aliases", "coordinator_commands", "dev_commands", "event_listeners", "heartbeat", "help_command", "hybrid_commands", "moderator_commands", "owner_commands", "scheduled_tasks"]
+__all__ = ["admin_commands", "aliases", "coordinator_commands", "dev_commands", "event_listeners",  "everyone_commands", "heartbeat", "help_command","moderator_commands", "owner_commands", "scheduled_tasks"]

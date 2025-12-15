@@ -1,6 +1,6 @@
-''' commands.py
+''' moderator_commands.py A discord.py cog containing moderator commands for the Vyrtuous bot.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,28 +15,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import os
-import random
-import subprocess
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional, Union
-import discord
-
-from discord.ext.commands import Command
+from typing import Optional
 from discord import app_commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
-from vyrtuous.service.discord_message_service import DiscordMessageService, ChannelPaginator, Paginator, UserPaginator
+from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
 from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.backup import Backup
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.reason import Reason
-from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.setup_logging import logger
    
 class ModeratorCommands(commands.Cog):
@@ -106,7 +96,7 @@ class ModeratorCommands(commands.Cog):
                     mention = user.name if user else f'`{record["discord_snowflake"]}`'
                     embed.add_field(name='User', value=f'{mention}\nReason: {reason}\nDuration: {duration_str}', inline=False)
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         if member_obj:
             async with self.bot.db_pool.acquire() as conn:
@@ -182,7 +172,7 @@ class ModeratorCommands(commands.Cog):
                     color=discord.Color.red()
                 )
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         return await interaction.response.send_message(content='\U0001F6AB You must specify a member, a text channel or use "all".')
         
@@ -349,7 +339,7 @@ class ModeratorCommands(commands.Cog):
                     color=discord.Color.red()
                 )
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         if channel_obj.type != discord.ChannelType.voice:
@@ -446,7 +436,7 @@ class ModeratorCommands(commands.Cog):
                 chunk = lines[i:i + chunk_size]
                 embed = discord.Embed(title='All Aliases in Server', description='\n'.join(chunk), color=discord.Color.blue())
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         else:
             if channel_obj is None or channel_obj.type != discord.ChannelType.voice:
@@ -591,7 +581,7 @@ class ModeratorCommands(commands.Cog):
                     mention = m.mention if m else f'<@{uid}>'
                     embed.add_field(name=f'{interaction.guild.name}', value=f'• {mention}', inline=False)
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         if member_obj:
             async with self.bot.db_pool.acquire() as conn:
@@ -636,7 +626,7 @@ class ModeratorCommands(commands.Cog):
                     pages.append(embed)
             if not pages:
                 return await interaction.response.send_message(content=f'\U0001F6AB No flagged users currently in {interaction.guild.name}.')
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
     
     # DONE
@@ -796,7 +786,7 @@ class ModeratorCommands(commands.Cog):
                         color=discord.Color.green()
                     )
                     pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
                 
     # DONE
@@ -908,7 +898,7 @@ class ModeratorCommands(commands.Cog):
                         duration_str = Duration.output_display_from_datetime(r['expires_at'])
                         embed.add_field(name=name, value=f'{mention}\nReason: {r["reason"]}\nDuration: {duration_str}', inline=False)
                     pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         if member_obj:
             async with self.bot.db_pool.acquire() as conn:
@@ -953,7 +943,7 @@ class ModeratorCommands(commands.Cog):
                 )
                 embed.add_field(name=f'{interaction.guild.name}', value='\n'.join(chunk), inline=False)
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
 
     # DONE
@@ -1294,7 +1284,7 @@ class ModeratorCommands(commands.Cog):
                         ch_name = ch.mention if ch else f'Unknown Channel ({s["channel_id"]})'
                         embed.add_field(name=ch_name, value=f'Active stage mutes: {s["active_mutes"]}', inline=False)
                     pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             stage = await conn.fetchrow('''
                 SELECT initiator_id, expires_at FROM active_stages WHERE guild_id=$1 AND channel_id=$2 AND room_name = $3
@@ -1327,7 +1317,7 @@ class ModeratorCommands(commands.Cog):
                     color=discord.Color.purple()
                 )
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
             
     # DONE
@@ -1461,7 +1451,7 @@ class ModeratorCommands(commands.Cog):
                             duration_str = Duration.output_display_from_datetime(e['expires_at'])
                             embed.add_field(name=mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
                         pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif member_obj:
                 records = await conn.fetch('''SELECT channel_id, room_name, reason, expires_at FROM active_text_mutes WHERE discord_snowflake = $1 AND guild_id = $2 AND room_name = $3''', member_obj.id, interaction.guild.id, channel_obj.name)
@@ -1479,7 +1469,7 @@ class ModeratorCommands(commands.Cog):
                         color=discord.Color.orange()
                     )
                     pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif channel_obj:
                 records = await conn.fetch('''SELECT discord_snowflake, room_name, reason, expires_at FROM active_text_mutes WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3''', channel_obj.id, interaction.guild.id, channel_obj.name)
@@ -1500,7 +1490,7 @@ class ModeratorCommands(commands.Cog):
                         color=discord.Color.orange()
                     )
                     pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
         return await interaction.response.send_message(content='\U0001F6AB You must specify "all", a member, or a text channel.')
     

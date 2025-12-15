@@ -1,6 +1,6 @@
-''' config.py  The purpose of this program is to provide my primary configuaration script.
+''' config.py  The purpose of this program is to provide the primary configuaration script.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,12 +15,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import os
+from dotenv import load_dotenv
 from typing import Any, Dict
-
 from vyrtuous.inc.helpers import *
 
-from dotenv import load_dotenv
+import os
 
 class Config:
 
@@ -30,7 +29,6 @@ class Config:
     def get_config(cls) -> Dict[str, Any]:
         load_dotenv()
         _config = {
-            'postgres_password': os.environ['POSTGRES_PASSWORD'],
             'discord_api_key': os.environ['DISCORD_API_KEY'],
             'client_id': os.environ['CLIENT_ID'],
             'client_secret': os.environ['CLIENT_SECRET'],

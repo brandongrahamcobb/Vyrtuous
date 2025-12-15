@@ -1,6 +1,6 @@
-''' message.py  The purpose of this program is to handle messages in Discord.
+''' discord_message_service.py  The purpose of this program is to handle messages in Discord.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,16 +15,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-
-import asyncio
-import os
-
-import discord
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 
-os.makedirs(DIR_TEMP, exist_ok=True)
+import asyncio
+import discord
 
 class DiscordMessageService:
     def __init__(self, bot: DiscordBot, db_pool):
@@ -54,91 +50,8 @@ class DiscordMessageService:
         if allowed_mentions is not None:
             kwargs['allowed_mentions'] = allowed_mentions
         await send_func(**kwargs)
-
-class Paginator:
-    def __init__(self, bot: DiscordBot, ctx, pages):
-        self.bot = bot
-        self.ctx = ctx
-        self.pages = pages
-        self.current_page = 0
-        self.message = None
-
-    async def start(self):
-        if not self.pages:
-            await self.ctx.send('There are no pages to display.')
-            return
-        self.message = await self.ctx.send(embed=self.pages[self.current_page])
-        await self.message.add_reaction('⬅️')
-        await self.message.add_reaction('➡️')
-        await self.message.add_reaction('⏹️')
-        def check(reaction, user):
-            return (
-                user == self.ctx.author
-                and reaction.message.id == self.message.id
-                and str(reaction.emoji) in ['⬅️', '➡️', '⏹️']
-            )
-        while True:
-            try:
-                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                if str(reaction.emoji) == '⬅️':
-                    if self.current_page > 0:
-                        self.current_page -= 1
-                        await self.message.edit(embed=self.pages[self.current_page])
-                elif str(reaction.emoji) == '➡️':
-                    if self.current_page < len(self.pages) - 1:
-                        self.current_page += 1
-                        await self.message.edit(embed=self.pages[self.current_page])
-                elif str(reaction.emoji) == '⏹️':
-                    await self.message.clear_reactions()
-                    break
-                await self.message.remove_reaction(reaction.emoji, user)
-            except asyncio.TimeoutError:
-                await self.message.clear_reactions()
-                break
-
-class ChannelPaginator:
-    def __init__(self, bot: DiscordBot, channel: discord.TextChannel, pages, user: discord.Member = None):
-        self.bot = bot
-        self.channel = channel
-        self.pages = pages
-        self.current_page = 0
-        self.message = None
-        self.user = user  # Optional, only allow this user to control reactions
-
-    async def start(self):
-        if not self.pages:
-            await self.channel.send('There are no pages to display.')
-            return
-        self.message = await self.channel.send(embed=self.pages[self.current_page])
-        await self.message.add_reaction('⬅️')
-        await self.message.add_reaction('➡️')
-        await self.message.add_reaction('⏹️')
-
-        def check(reaction, user):
-            return (
-                (self.user is None or user == self.user)
-                and reaction.message.id == self.message.id
-                and str(reaction.emoji) in ['⬅️', '➡️', '⏹️']
-            )
-
-        while True:
-            try:
-                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
-                if str(reaction.emoji) == '⬅️' and self.current_page > 0:
-                    self.current_page -= 1
-                    await self.message.edit(embed=self.pages[self.current_page])
-                elif str(reaction.emoji) == '➡️' and self.current_page < len(self.pages) - 1:
-                    self.current_page += 1
-                    await self.message.edit(embed=self.pages[self.current_page])
-                elif str(reaction.emoji) == '⏹️':
-                    await self.message.clear_reactions()
-                    break
-                await self.message.remove_reaction(reaction.emoji, user)
-            except asyncio.TimeoutError:
-                await self.message.clear_reactions()
-                break
-                
-class UserPaginator(discord.ui.View):
+         
+class AppPaginator(discord.ui.View):
     def __init__(self, bot: DiscordBot, interaction: discord.Interaction, pages, *, timeout=60):
         super().__init__(timeout=timeout)
         self.bot = bot
@@ -191,4 +104,62 @@ class UserPaginator(discord.ui.View):
             )
         await interaction.response.edit_message(view=None)
         self.stop()
+
+class Paginator:
+    def __init__(self, bot: DiscordBot, ctx_or_channel, pages):
+        self.bot = bot
+        self.ctx_or_channel = ctx_or_channel
+        self.pages = pages
+        self.current_page = 0
+        self.message = None
+
+    async def start(self):
+        if isinstance(self.ctx_or_channel, commands.Context):
+            messageable = self.ctx_or_channel
+            author = self.ctx_or_channel.author
+            author_only = True
+        elif isinstance(self.ctx_or_channel, discord.abc.Messageable):
+            messageable = self.ctx_or_channel
+            author = None
+            author_only = False
+        else:
+            raise TypeError(f"Expected Context or Messageable, got {type(self.ctx_or_channel)}")
+        if not self.pages:
+            await messageable.send('There are no pages to display.')
+            return
+        self.message = await messageable.send(embed=self.pages[self.current_page])
+        await self.message.add_reaction('⬅️')
+        await self.message.add_reaction('➡️')
+        await self.message.add_reaction('⏹️')
+        def check(reaction, user):
+            if user.bot:
+                return False
+            if author_only:
+                return (
+                    user == author
+                    and reaction.message.id == self.message.id
+                    and str(reaction.emoji) in ['⬅️', '➡️', '⏹️']
+                )
+            return (
+                reaction.message.id == self.message.id
+                and str(reaction.emoji) in ['⬅️', '➡️', '⏹️']
+            )
+        while True:
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=check)
+                if str(reaction.emoji) == '⬅️':
+                    if self.current_page > 0:
+                        self.current_page -= 1
+                        await self.message.edit(embed=self.pages[self.current_page])
+                elif str(reaction.emoji) == '➡️':
+                    if self.current_page < len(self.pages) - 1:
+                        self.current_page += 1
+                        await self.message.edit(embed=self.pages[self.current_page])
+                elif str(reaction.emoji) == '⏹️':
+                    await self.message.clear_reactions()
+                    break
+                await self.message.remove_reaction(reaction.emoji, user)
+            except asyncio.TimeoutError:
+                await self.message.clear_reactions()
+                break
 

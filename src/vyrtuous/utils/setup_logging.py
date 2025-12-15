@@ -1,6 +1,6 @@
-''' setup_logging.py
+''' setup_logging.py The purpose of this program is to set up logging for Vyrtuous.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,21 +15,17 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-
 from os import makedirs
 from os.path import dirname, exists
 from typing import Any, Dict
 
-global logger
-
 import logging
-import logging.handlers
 
+global logger
 logger = logging.getLogger(__name__)
 
 def setup_logging(config: Dict[str, Any], path_log) -> None:
-#    logging_level = config['logging_level'].upper()
-    logging_level = 'INFO'
+    logging_level = config.get("logging_level", "INFO").upper()
     logging.basicConfig(level=getattr(logging, logging_level))
     if not exists(dirname(path_log)):
         makedirs(dirname(path_log))

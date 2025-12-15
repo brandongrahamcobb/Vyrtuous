@@ -1,6 +1,6 @@
-''' event_listeners.py
+''' event_listeners.py A discord.py cog containing event listeners for the Vyrtuous bot.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,18 +15,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import discord
 from datetime import datetime, timezone
-import time
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
-from vyrtuous.service.discord_message_service import DiscordMessageService, ChannelPaginator
+from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from typing import defaultdict
+
+import discord
+import time
 
 class EventListeners(commands.Cog):
 
@@ -428,7 +429,7 @@ class EventListeners(commands.Cog):
                             if len(embeds) == 1:
                                 await after_channel.send(embed=embeds[0])
                             else:
-                                paginator = ChannelPaginator(self.bot, after_channel, embeds)
+                                paginator = Paginator(self.bot, after_channel, embeds)
                                 await paginator.start()
                                 
     async def print_stage_message(self, active_stage, after_channel: discord.abc.GuildChannel):

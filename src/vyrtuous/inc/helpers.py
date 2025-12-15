@@ -1,6 +1,6 @@
-''' helpers.py  The purpose of this program is to provide generic parameters.
+''' helpers.py The purpose of this program is to provide generic parameters.
 
-    Copyright (C) 2024 github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,33 +17,11 @@
 '''
 from os.path import dirname, abspath, expanduser, join
 
-import discord
-
-
-def parse_comma_number(s):
-    return int(s.replace(",", ""))
-
+#### DEVELOPEMENT
+RELEASE_MODE = False
 #### DIRECTORIES
 DIR_BASE = abspath(join(dirname(dirname(dirname(dirname(__file__))))))
 DIR_HOME = expanduser('~')
-DIR_TEMP = join(DIR_BASE, 'vyrtuous', 'temp')
-
-#### PATHS
-### Path: Root (Py_vyrtuous)
-PATH_TOML = join(DIR_HOME, 'git', 'python', 'Vyrtuous', 'pyproject.toml')
-# Path: Py_Py_vyrtuous (vyrtuous)
-PATH_BASHRC = join(DIR_HOME, '.bashrc_vyrtuous')
-PATH_CONFIG = join(DIR_BASE, 'vyrtuous', 'config.py')
-PATH_CONFIG_YAML = join(DIR_HOME, '.config', 'vyrtuous', 'config.yaml')
-PATH_LOG = join(DIR_BASE, 'vyrtuous', '.log', 'discord.log')
-PATH_MAIN = join(DIR_BASE, 'vyrtuous', 'main.py')
-# Path: Bots (bots)
-PATH_DISCORD_BOT = join(DIR_BASE, 'vyrtuous', 'bots', 'discord_bot.py')
-# Path: Cogs (cogs)
-PATH_EVENT_LISTENERS = join(DIR_BASE, 'vyrtuous', 'cogs', 'event_listeners.py')
-# Path: Handlers (handlers)
-PATH_HELPERS = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'helpers.py')
-PATH_SETUP_LOGGING = join(DIR_BASE, 'vyrtuous', 'utils', 'inc', 'setup_logging.py')
 #### DISCORD
 DISCORD_CHARACTER_LIMITS = [2000, 4000]
 DISCORD_CHARACTER_LIMIT = 2000
@@ -53,24 +31,14 @@ DISCORD_COGS = [
     'vyrtuous.cogs.coordinator_commands',
     'vyrtuous.cogs.dev_commands',
     'vyrtuous.cogs.event_listeners',
+    'vyrtuous.cogs.everyone_commands',
     'vyrtuous.cogs.help_command',
     'vyrtuous.cogs.heartbeat',
-    'vyrtuous.cogs.hybrid_commands',
     'vyrtuous.cogs.moderator_commands',
     'vyrtuous.cogs.owner_commands',
     'vyrtuous.cogs.scheduled_tasks'
 ]
 DISCORD_COMMAND_PREFIX = '!'
-DISCORD_INTENTS = discord.Intents.all()
-DISCORD_RELEASE_MODE = False
-
-LOGGING_LEVEL = 'INFO'
-
-#### SCRIPTURE
-SCRIPTURE_HEADERS = {
-    'User-Agent': 'brandongrahamcobb@icloud.com',
-    'api-key': '2eb327f99245cd3d68da55370656d6e2'
-}
-
-USER_AGENT = 'https://github.com/brandongrahamcobb/Py_vyrtuous.git'
-VERSION = '1.0.0'
+#### PATHS
+PATH_TOML = join(DIR_HOME, 'git', 'python', 'Vyrtuous', 'pyproject.toml')
+PATH_LOG = join(DIR_BASE, 'vyrtuous', '.log', 'discord.log')

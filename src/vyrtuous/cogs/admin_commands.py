@@ -1,6 +1,6 @@
-''' dev_commands.py
+''' admin_commands.py A discord.py cog containing administrative commands for the Vyrtuous bot.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,9 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Literal, Optional
-
 from vyrtuous.inc.helpers import *
-
 from vyrtuous.service.check_service import *
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.channel_service import ChannelService
@@ -27,7 +25,7 @@ from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator, UserPaginator
+from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
 
 class AdminCommands(commands.Cog):
 
@@ -814,7 +812,7 @@ class AdminCommands(commands.Cog):
                 color=discord.Color.blue()
             )
             pages.append(embed)
-        paginator = UserPaginator(self.bot, interaction, pages)
+        paginator = AppPaginator(self.bot, interaction, pages)
         await paginator.start()
         
     # DONE

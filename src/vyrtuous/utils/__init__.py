@@ -1,5 +1,5 @@
-''' __init__.py  The purpose of this program is to provide the advanced_startup.py logic provided by Rapptz; from cd ../.
-    Copyright (C) 2024  github.com/brandongrahamcobb
+''' __init__.py The purpose of this program is to provide the utils module.
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

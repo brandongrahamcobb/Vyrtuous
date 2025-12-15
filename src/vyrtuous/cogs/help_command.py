@@ -1,6 +1,6 @@
-''' help_command.py
+''' help_command.py A discord.py cog containing a custom help command for the Vyrtuous bot.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,25 +15,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import datetime
-import inspect
-import os
-import re
-import types
-    
 from collections import defaultdict
-from typing import Any, Coroutine, Optional
-
-from discord.ext.commands import Command
-
+from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
-from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator, UserPaginator
+from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.permission import Permission
 
+import inspect
+    
 class Help(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
@@ -270,7 +263,7 @@ class Help(commands.Cog):
             pages.append(embed)
         if not pages:
             return await interaction.response.send_message('\U0001F6AB No commands available to you.', ephemeral=True)
-        paginator = UserPaginator(bot, interaction, pages)
+        paginator = AppPaginator(bot, interaction, pages)
         await paginator.start()
         
     @commands.command(name='help')

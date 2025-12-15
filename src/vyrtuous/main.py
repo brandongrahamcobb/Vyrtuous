@@ -1,6 +1,6 @@
-''' main.py  The purpose of this program is to be the primary executable Vyrtuous.
+''' main.py The purpose of this program is to be the primary executable for Vyrtuous.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,28 +15,21 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import os
-import asyncio
-
-import asyncpg
-import debugpy
-
-from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.config import Config
+from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.utils.setup_logging import logger, setup_logging
 
-async def database_init():
-    return await asyncpg.create_pool(
-            host=os.getenv('POSTGRES_HOST'),
-            database=os.getenv('POSTGRES_DB'),
-            user=os.getenv('POSTGRES_USER'),
-            password=os.getenv('POSTGRES_PASSWORD'),
-            command_timeout=30)
+import asyncio
+import asyncpg
+import debugpy
+import os
 
 async def main():
-#    debugpy.listen(("0.0.0.0", 5678))
-#    debugpy.wait_for_client() 
+
+    debugpy.listen(("0.0.0.0", 5678))
+    debugpy.wait_for_client() 
+
     config = Config().get_config()
     setup_logging(config, PATH_LOG)
     db_pool = await database_init()

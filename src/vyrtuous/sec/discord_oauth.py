@@ -1,6 +1,6 @@
-''' discord_oauth.py  The purpose of this program is to host the Quart app for Discord OAuth 2.0.
+''' discord_oauth.py The purpose of this program is to host the Quart app for Discord OAuth 2.0.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,14 +15,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import asyncio
-import os
 from datetime import datetime
+from quart import Quart, request, redirect
+from vyrtuous.utils.setup_logging import logger
 
 import aiohttp
-from quart import Quart, request, redirect
-
-from vyrtuous.utils.setup_logging import logger
+import asyncio
+import os
 
 discord_app = Quart(__name__)
 

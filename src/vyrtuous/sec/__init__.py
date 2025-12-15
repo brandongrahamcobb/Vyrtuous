@@ -1,4 +1,4 @@
-''' permission.py The purpose of this program is to provide the Permission utility class.
+''' __init__.py The purpose of this program is to provide the discord_oauth module.
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -14,6 +14,5 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-class Permission:
-
-    PERMISSION_TYPES = ['Owner', 'Developer', 'Administrator', 'Coordinator', 'Moderator', 'Everyone']
+__version__ = "6.0.6"
+__all__ = ["discord_oauth"]

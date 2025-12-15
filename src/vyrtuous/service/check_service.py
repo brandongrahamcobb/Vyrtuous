@@ -1,6 +1,6 @@
-''' check_service.py
+''' check_service.py The purpose of this program is to provide the check_service module.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -17,12 +17,9 @@
 '''
 
 from discord.ext import commands
-from discord import app_commands
-from typing import Optional, Tuple
-from vyrtuous.config import Config
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.setup_logging import logger
+
 import discord
       
 class NotCoordinator(commands.CheckFailure):

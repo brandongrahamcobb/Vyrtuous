@@ -1,6 +1,6 @@
-''' dev_commands.py
+''' coordinator_commands.py A discord.py cog containing coordinator commands for the Vyrtuous bot.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Literal, Optional
-
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.channel_service import ChannelService

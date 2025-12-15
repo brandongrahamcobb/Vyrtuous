@@ -1,6 +1,6 @@
-''' scheduled_tasks.py
+''' scheduled_tasks.py A discord.py cog containing scheduled tasks for the Vyrtuous bot.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,15 +16,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timezone
-import discord
-import os
-import subprocess
-
 from discord.ext import commands, tasks
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.backup import Backup
+from vyrtuous.utils.database import Database
+
+import discord
 
 class ScheduledTasks(commands.Cog):
 
@@ -313,14 +311,13 @@ class ScheduledTasks(commands.Cog):
                         logger.error(f'Error processing expired text mute for user {user_id} in guild {guild_id}: {e}', exc_info=True)
         except Exception as e:
             logger.error(f'Error in check_expired_text_mutes task: {e}', exc_info=True)
-
                 
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
-            backup = Backup(directory='/app/backups')
+            backup = Database(directory='/app/backups')
             backup.create_backup_directory()
-            backup_file = backup.execute_backup()
+            backup.execute_backup()
             logger.info(f'Backup completed successfully.')
         except Exception as e:
             logger.error(f'Error during database backup: {e}')

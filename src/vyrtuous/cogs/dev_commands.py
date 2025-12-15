@@ -1,6 +1,6 @@
-''' dev_commands.py
+''' dev_commands.py A discord.py cog containing developer commands for the Vyrtuous bot.
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.backup import Backup
+from vyrtuous.utils.database import Database
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.service.discord_message_service import DiscordMessageService
@@ -133,7 +133,7 @@ class DevCommands(commands.Cog):
             mention = channel_obj.mention
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Alias `{alias_name}` ({alias_type}) set to {mention}.', allowed_mentions=discord.AllowedMentions.none())
     
-    # DONE
+    # TODO
     @app_commands.command(name='backup', description='Creates a backup of the database and uploads it.')
     @is_owner_developer_predicator()
     async def app_backup(
@@ -141,7 +141,7 @@ class DevCommands(commands.Cog):
         interaction: discord.Interaction
     ):
         try:
-            backup = Backup(directory='/app/backups')
+            backup = Database(directory='/app/backups')
             backup.create_backup_directory()
             backup_file = backup.execute_backup()
             if backup_file:
@@ -151,7 +151,7 @@ class DevCommands(commands.Cog):
         except Exception as e:
             logger.warning(f'Database error occurred: {e}')
           
-    # DONE
+    # TODO
     @commands.command(name='backup', help='Creates a backup of the database and uploads it.')
     @is_owner_developer_predicator()
     async def backup(
@@ -159,7 +159,7 @@ class DevCommands(commands.Cog):
         ctx: commands.Context
     ):
         try:
-            backup = Backup(directory='/app/backups')
+            backup = Database(directory='/app/backups')
             backup.create_backup_directory()
             backup_file = backup.execute_backup()
             if backup_file:

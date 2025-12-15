@@ -1,6 +1,6 @@
 ''' commands.py
 
-    Copyright (C) 2024  github.com/brandongrahamcobb
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,31 +15,21 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-import os
-import random
-import subprocess
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional, Union
-import discord
-
-from discord.ext.commands import Command
 from discord import app_commands
+from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
-from vyrtuous.service.discord_message_service import DiscordMessageService, ChannelPaginator, Paginator, UserPaginator
-from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.backup import Backup
-from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.duration import Duration
+from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.reason import Reason
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.setup_logging import logger
    
-class Hybrid(commands.Cog):
+import discord
+
+class EveryoneCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.config = bot.config
@@ -76,7 +66,7 @@ class Hybrid(commands.Cog):
                 )
                 embed.add_field(name='Admins', value='\n'.join(chunk), inline=False)
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
             
     # DONE
@@ -155,7 +145,7 @@ class Hybrid(commands.Cog):
                         name = m.display_name if m else f'User ID {uid}'
                         embed.add_field(name=f'{interaction.guild.name}', value=f'• {name} (<@{uid}>)', inline=False)
                     pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif member_obj:
                 query = 'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1'
@@ -181,7 +171,7 @@ class Hybrid(commands.Cog):
                         color = discord.Color.gold()
                     )
                     embeds.append(embed)
-                paginator = UserPaginator(self.bot, interaction, embeds)
+                paginator = AppPaginator(self.bot, interaction, embeds)
                 return await paginator.start()
             elif channel_obj:
                 if channel_obj.type != discord.ChannelType.voice:
@@ -209,7 +199,7 @@ class Hybrid(commands.Cog):
                         color=discord.Color.gold()
                     )
                     pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
         
     # DONE
@@ -369,7 +359,7 @@ class Hybrid(commands.Cog):
                     color = discord.Color.blurple()
                 )
                 pages.append(embed)
-        paginator = UserPaginator(self.bot, interaction, pages)
+        paginator = AppPaginator(self.bot, interaction, pages)
         return await paginator.start()
         
     # DONE
@@ -452,7 +442,7 @@ class Hybrid(commands.Cog):
                     name = m.display_name if m else f'User ID {uid}'
                     embed.add_field(name=f'{interaction.guild.name}', value=f'• {name} (<@{uid}>)', inline=False)
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         if member_obj:
             query = '''SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1'''
@@ -467,7 +457,7 @@ class Hybrid(commands.Cog):
                 chunk = channel_mentions[i:i + chunk_size]
                 embed = discord.Embed(title=f'🛡️ {member_obj.display_name} moderates:', description='\n'.join(f'• {ch}' for ch in chunk), color=discord.Color.magenta())
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         if channel_obj:
             if channel_obj.type != discord.ChannelType.voice:
@@ -492,7 +482,7 @@ class Hybrid(commands.Cog):
                 chunk = lines[i:i + chunk_size]
                 embed = discord.Embed(title=f'\U0001F6E1 Moderators for {channel_obj.name}', description='\n'.join(chunk), color=discord.Color.magenta())
                 pages.append(embed)
-            paginator = UserPaginator(self.bot, interaction, pages)
+            paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         
     # DONE
@@ -623,7 +613,7 @@ class Hybrid(commands.Cog):
                             inline=False
                         )
                     pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             if member_obj:
                 rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild_and_member(interaction.guild, member_obj)
@@ -644,7 +634,7 @@ class Hybrid(commands.Cog):
                             inline=False
                         )
                     pages.append(embed)
-                paginator = UserPaginator(self.bot, interaction, pages)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             if channel_obj:
                 room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
@@ -824,6 +814,6 @@ class Hybrid(commands.Cog):
         await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
         
 async def setup(bot: DiscordBot):
-    cog = Hybrid(bot)
+    cog = EveryoneCommands(bot)
     await bot.add_cog(cog)
 
