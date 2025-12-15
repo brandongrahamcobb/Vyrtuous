@@ -274,11 +274,11 @@ class DevCommands(commands.Cog):
                 )
             await conn.execute(
                 'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
-                room.channel.id, channel_obj.id
+                room.channel_id, channel_obj.id
             )
             await conn.execute(
                 'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
-                room.channel.id, channel_obj.id
+                room.channel_id, channel_obj.id
             )
             return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
     
@@ -317,11 +317,11 @@ class DevCommands(commands.Cog):
                 )
             await conn.execute(
                 'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
-                room.channel.id, channel_obj.id
+                room.channel_id, channel_obj.id
             )
             await conn.execute(
                 'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
-                room.channel.id, channel_obj.id
+                room.channel_id, channel_obj.id
             )
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
 
