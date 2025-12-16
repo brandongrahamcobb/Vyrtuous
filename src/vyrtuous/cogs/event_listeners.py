@@ -122,13 +122,13 @@ class EventListeners(commands.Cog):
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
-
         allowed = True
         if member.bot:
+            return
+        if before.channel == after.channel and before.mute == after.mute:
             allowed = False
         if not allowed:
             return
-
         # member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(after.channel, member)
 
         async with self.db_pool.acquire() as conn:
