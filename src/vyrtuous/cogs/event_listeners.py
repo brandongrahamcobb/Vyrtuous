@@ -74,8 +74,9 @@ class EventListeners(commands.Cog):
             old_id = room.room_snowflake
             await room.update_temporary_room_name_and_room_snowflake(channel=channel, room_name=channel.name)
             aliases = await Alias.fetch_command_aliases_by_channel_id(guild_id=channel.guild.id, channel_id=old_id)
-            for alias in aliases:
-                await alias.update_command_aliases_with_channel(channel=channel)
+            if aliases:
+                for alias in aliases:
+                    await alias.update_command_aliases_with_channel(channel=channel)
             await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
