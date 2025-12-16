@@ -58,7 +58,7 @@ class Stage:
                 ''', guild.id, stage_name)
                 if row:
                     return Stage(row['expires_at'], row['channel_id'], stage_name, guild.id, row['initiator_id'])
-                raise Exception(f'No active stage in {guild.display_name} for `{stage_name}`.')
+                raise Exception(f'No active stage in {guild.name} for `{stage_name}`.')
         except Exception:
             raise
     
