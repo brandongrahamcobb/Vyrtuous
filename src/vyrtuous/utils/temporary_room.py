@@ -150,7 +150,7 @@ class TemporaryRoom:
                     temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_owner=member))
                 return temporary_rooms
             raise Exception('No temporary rooms found for {guild.name}.')
-        raise Exception:
+        except Exception:
             raise
             
     @classmethod
