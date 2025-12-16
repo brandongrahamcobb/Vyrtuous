@@ -54,8 +54,8 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         if channel_obj.type != discord.ChannelType.voice:
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        allowed = await is_owner_developer_administrator_coordinator(interaction, channel_obj, member_obj)
-        if not allowed:
+        channel_related_role = await is_owner_developer_administrator_coordinator(interaction, channel_obj, member_obj)
+        if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
             return await interaction.response.send_message(content='\U0001F6AB You are not permitted to grant/revoke moderator status.')
         success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
         if not success:
@@ -105,8 +105,8 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         if channel_obj.type != discord.ChannelType.voice:
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-        allowed = await is_owner_developer_administrator_coordinator(ctx, channel_obj, member_obj)
-        if not allowed:
+        channel_related_role = await is_owner_developer_administrator_coordinator(ctx, channel_obj, member_obj)
+        if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
             return await self.handler.send_message(ctx, content='\U0001F6AB You are not permitted to grant/revoke moderator status.')
         success = await has_equal_or_higher_role(ctx.message, member_obj, channel_obj)
         if not success:
