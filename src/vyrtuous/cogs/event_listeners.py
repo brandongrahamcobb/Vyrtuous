@@ -124,8 +124,6 @@ class EventListeners(commands.Cog):
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
 
         allowed = True
-        if before.channel == after.channel or before.mute == after.mute or before.self_mute == after.self_mute:
-            allowed = False
         if member.bot:
             allowed = False
         if not allowed:
