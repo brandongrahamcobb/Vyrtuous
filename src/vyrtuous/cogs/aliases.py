@@ -133,7 +133,7 @@ class Aliases(commands.Cog):
         if member_obj:
             if member_obj.id in self.vegans:
                 return await message.reply(content=f'\U0001F6AB You cannot ban a superhero.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot ban the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
@@ -230,7 +230,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot cow the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
@@ -273,7 +273,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot flag the bot.')
         if member_obj:
             if member_obj.id in self.vegans:
@@ -328,7 +328,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot give the bot a role.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         if not channel_obj:
@@ -447,8 +447,8 @@ class Aliases(commands.Cog):
                 return await message.reply(content=f'\U0001F6AB You cannot mute a superhero.')
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
-            return await message.reply(content='\U0001F6AB You cannot voice mute the bot.')
+        if member_obj.id == message.guild.me.id:
+           return await message.reply(content='\U0001F6AB You cannot voice mute this bot.')
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed voice mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
@@ -537,7 +537,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot unban the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         if not channel_obj:
@@ -579,7 +579,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj or not member:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot uncow the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
@@ -620,7 +620,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj or not member:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot unflag the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
@@ -661,7 +661,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot unmute the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
@@ -710,7 +710,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot unrole the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
@@ -738,7 +738,7 @@ class Aliases(commands.Cog):
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj:
              return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot undo a textmute on the bot.')
         channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
         if not channel_obj:
