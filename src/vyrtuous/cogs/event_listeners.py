@@ -71,36 +71,37 @@ class EventListeners(commands.Cog):
             room = self.deleted_rooms.pop(name, None)
             if not room:
                 room = await TemporaryRoom.fetch_temporary_room_by_guild_and_room_name(guild=guild, room_name=name)
-            old_name = room.room_name
-            old_id = room.room_snowflake
-            await room.update_temporary_room_name_and_room_snowflake(channel=channel, room_name=channel.name)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(guild_id=channel.guild.id, channel_id=old_id)
-            if aliases:
-                for alias in aliases:
-                    await alias.update_command_aliases_with_channel(channel=channel)
+            if room:
+                old_name = room.room_name
+                old_id = room.room_snowflake
+                await room.update_temporary_room_name_and_room_snowflake(channel=channel, room_name=channel.name)
+                aliases = await Alias.fetch_command_aliases_by_channel_id(guild_id=channel.guild.id, channel_id=old_id)
+                if aliases:
+                    for alias in aliases:
+                        await alias.update_command_aliases_with_channel(channel=channel)
+                try:
+                    old_stage = await Stage.fetch_stage_by_guild_and_stage_name(guild=guild, stage_name=old_name)
+                except Exception:
+                    old_stage = None
+                if old_stage:
+                    old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(guild=guild, stage_name=old_name)
+                    await old_stage.update_stage_by_channel_and_temporary_coordinator_ids(stage_channel=channel, temporary_stage_coordinator_ids=old_stage_temporary_coordinator_ids)
+                await conn.execute('''
+                    UPDATE users
+                    SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),
+                        updated_at = NOW()
+                    WHERE $1 = ANY(coordinator_channel_ids)
+                ''', old_id, channel.id)
+                await conn.execute('''
+                    UPDATE users
+                    SET moderator_channel_ids = array_replace(moderator_channel_ids, $1, $2),
+                        updated_at = NOW()
+                    WHERE $1 = ANY(moderator_channel_ids)
+                ''', old_id, channel.id)
             await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
-            try:
-                old_stage = await Stage.fetch_stage_by_guild_and_stage_name(guild=guild, stage_name=old_name)
-            except Exception:
-                old_stage = None
-            if old_stage:
-                old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(guild=guild, stage_name=old_name)
-                await old_stage.update_stage_by_channel_and_temporary_coordinator_ids(stage_channel=channel, temporary_stage_coordinator_ids=old_stage_temporary_coordinator_ids)
             await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
-            await conn.execute('''
-                UPDATE users
-                SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),
-                    updated_at = NOW()
-                WHERE $1 = ANY(coordinator_channel_ids)
-            ''', old_id, channel.id)
-            await conn.execute('''
-                UPDATE users
-                SET moderator_channel_ids = array_replace(moderator_channel_ids, $1, $2),
-                    updated_at = NOW()
-                WHERE $1 = ANY(moderator_channel_ids)
-            ''', old_id, channel.id)
             banned_users = []
             rows = await conn.fetch('SELECT discord_snowflake FROM active_bans WHERE guild_id=$1 AND room_name=$2', guild.id, name)
             banned_users = [guild.get_member(r['discord_snowflake']) for r in rows if guild.get_member(r['discord_snowflake'])]
