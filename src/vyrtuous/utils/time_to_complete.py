@@ -1,4 +1,4 @@
-''' __init__.py The purpose of this program is to provide the utils module.
+''' time_to_complete.py The purpose of this program is to provide the TimeCounter utility class.
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -14,5 +14,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-__version__ = "6.0.6"
-__all__ = ["alias", "backup", "cap", "duration", "emojis", "permission", "reason", "setup_logging", "statistics", "temporary_room", "three_variables", "time_counter" "vegans"]
+from typing import Optional
+
+class TimeCounter:
+ 
+    def __init__(self):
+        pass
+
+    def is_around_one_second(self, elapsed: float = 1.0):
+        return (0.0 <= elapsed) and (elapsed <= 2.0)
+            
+    def time_elapsed_measurement(self, start: Optional[int], end: Optional[int]) -> float:
+        if start > end:
+            return abs(end - start)
+        return end - start
+

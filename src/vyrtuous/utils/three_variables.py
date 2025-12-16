@@ -14,5 +14,3 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-__version__ = "6.0.6"
-__all__ = ["alias", "backup", "cap", "duration", "emojis", "permission", "reason", "setup_logging", "statistics", "temporary_room", "three_variables", "time_counter" "vegans"]
