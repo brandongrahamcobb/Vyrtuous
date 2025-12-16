@@ -80,9 +80,13 @@ class EventListeners(commands.Cog):
             await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
-            old_stage = await Stage.fetch_stage_by_guild_and_stage_name(guild=guild, stage_name=old_name)
-            old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(guild=guild, stage_name=old_name)
-            old_stage.update_stage_by_channel_and_temporary_coordinator_ids(stage_channel=channel, temporary_stage_coordinator_ids=old_stage_temporary_coordinator_ids)
+            try:
+                old_stage = await Stage.fetch_stage_by_guild_and_stage_name(guild=guild, stage_name=old_name)
+            except Exception:
+                old_stage = None
+            if old_stage:
+                old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(guild=guild, stage_name=old_name)
+                await old_stage.update_stage_by_channel_and_temporary_coordinator_ids(stage_channel=channel, temporary_stage_coordinator_ids=old_stage_temporary_coordinator_ids)
             await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('''
                 UPDATE users
