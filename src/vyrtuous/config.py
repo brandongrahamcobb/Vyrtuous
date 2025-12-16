@@ -36,6 +36,7 @@ class Config:
             'discord_command_prefix': os.environ['DISCORD_COMMAND_PREFIX'],
             'discord_owner_id': os.environ['DISCORD_OWNER_ID'],
             'discord_testing_guild_id': os.environ['DISCORD_TESTING_GUILD_ID'],
-            'logging_level': os.environ['LOGGING_LEVEL']
+            'logging_level': os.environ['LOGGING_LEVEL'],
+            'release_mode': os.environ['RELEASE_MODE']
         }
         return _config

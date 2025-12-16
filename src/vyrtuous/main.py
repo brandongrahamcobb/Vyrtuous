@@ -28,7 +28,7 @@ import debugpy
 async def main():
 
     config = Config().get_config()
-    if config['logging_level'].upper() == 'DEBUG':
+    if config['release_mode'] == 'False':
         debugpy.listen(("0.0.0.0", 5678))
         debugpy.wait_for_client() 
         
