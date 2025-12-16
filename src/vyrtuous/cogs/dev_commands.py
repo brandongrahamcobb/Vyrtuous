@@ -431,6 +431,7 @@ class DevCommands(commands.Cog):
                         room.room_owner.id
                     )
                 await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+                await Alias.delete_all_command_aliases_by_channel(channel_obj)
             action = 'removed'
         else:
             member_obj = await self.member_service.resolve_member(interaction, owner)
@@ -473,6 +474,7 @@ class DevCommands(commands.Cog):
                         room.room_owner.id
                     )
                 await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+                await Alias.delete_all_command_aliases_by_channel(channel_obj)
             action = 'removed'
         else:
             member_obj = await self.member_service.resolve_member(ctx, owner)

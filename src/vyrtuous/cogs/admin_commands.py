@@ -799,10 +799,9 @@ class AdminCommands(commands.Cog):
             aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.room_snowflake)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
-                break
+                continue
             for alias_obj in aliases:
-                if alias_obj.channel_id == room_id:
-                    lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
+                lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
         pages = []
         chunks = 18
         for i in range(0, len(lines), chunks):
@@ -832,10 +831,9 @@ class AdminCommands(commands.Cog):
             aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.room_snowflake)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
-                break
+                continue
             for alias_obj in aliases:
-                if alias_obj.channel_id == room_id:
-                    lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
+                lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
         pages = []
         chunk_size = 18
         for i in range(0, len(lines), chunk_size):
