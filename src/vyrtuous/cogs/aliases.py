@@ -25,8 +25,11 @@ from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.reason import Reason
+from vyrtuous.utils.time_to_complete import TimeToComplete
 from vyrtuous.utils.vegans import Vegans
 from vyrtuous.utils.emojis import Emojis
+
+import time
 
 class Aliases(commands.Cog):
 
@@ -115,6 +118,7 @@ class Aliases(commands.Cog):
         self.vegans = Vegans.get_vegans()
     
     async def handle_ban_alias(self, message: discord.Message, alias: Alias, args):
+        start_time = time.perf_counter()
         executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if executor_role == 'Everyone':
             return await message.reply(content='\U0001F6AB You are not permitted to ban users.')
@@ -208,9 +212,13 @@ class Aliases(commands.Cog):
         )
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
-        
-    # TODO
-    
+        end_time = time.perf_counter()
+        counter = TimeToComplete()
+        elapsed = counter.time_elapsed_measurement(start_time, end_time)
+        if not counter.is_around_one_second(elapsed):
+            logger.info(f'Alias ban command execution time: {elapsed:.4f} seconds.')
+
+    # DONE
     async def handle_cow_alias(self, message: discord.Message, alias: Alias, args):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if highest_role == 'Everyone':
@@ -251,7 +259,7 @@ class Aliases(commands.Cog):
             await conn.execute(insert_cow_sql, message.guild.id, member_obj.id, channel_obj.id, created_at)
             await message.reply(content=f'\U0001F525 {member_obj.mention} is going vegan!!! \U0001F525', allowed_mentions=discord.AllowedMentions.none())
     
-    # TODO
+    # DONE
     async def handle_flag_alias(self, message: discord.Message, alias: Alias, args):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if highest_role == 'Everyone':
@@ -308,7 +316,7 @@ class Aliases(commands.Cog):
             embed.add_field(name='Reason', value=updated_reason, inline=False)
             await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
    
-    # TODO
+    # DONE
     async def handle_role_alias(self, message: discord.Message, alias: Alias, args):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if highest_role == 'Everyone':
@@ -338,7 +346,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully roled.', allowed_mentions=discord.AllowedMentions.none())
         return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
     
-    # TODO
+    # DONE
     async def handle_text_mute_alias(self, message: discord.Message, alias: Alias, args):
         executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if executor_role == 'Everyone':
@@ -418,7 +426,7 @@ class Aliases(commands.Cog):
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         return await Statistics.send_statistic(message, 'text_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
     
-    # TODO
+    # DONE
     async def handle_voice_mute_alias(self, message: discord.Message, alias: Alias, args):
         executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if executor_role == 'Everyone':
@@ -515,7 +523,7 @@ class Aliases(commands.Cog):
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         await Statistics.send_statistic(message, 'voice_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
 
-    # TODO
+    # DONE
     async def handle_unban_alias(self, message: discord.Message, alias: Alias, args):
         executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if executor_role == 'Everyone':
@@ -557,7 +565,7 @@ class Aliases(commands.Cog):
             ''', 'unban', member_obj.id, message.author.id, message.guild.id, channel_obj.id, f'Unbanned a user from room `{channel_obj.name}`')
         return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been unbanned from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
 
-    # TODO
+    # DONE
     async def handle_uncow_alias(self, message: discord.Message, alias: Alias, args):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if highest_role == 'Everyone':
@@ -639,7 +647,7 @@ class Aliases(commands.Cog):
             logger.warning(f'Database error occurred: {e}')
             raise
 
-    # TODO
+    # DONE
     async def handle_unmute_alias(self, message: discord.Message, alias: Alias, args):
         executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if executor_role == 'Everyone':
@@ -688,7 +696,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been unmuted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
         return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is no longer marked as muted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
 
-    # TODO
+    # DONE
     async def handle_unrole_alias(self, message: discord.Message, alias: Alias, args):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if highest_role == 'Everyone':
@@ -716,7 +724,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unroled.', allowed_mentions=discord.AllowedMentions.none())
         return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} had {role_obj.mention} removed.', allowed_mentions=discord.AllowedMentions.none())
     
-    # TODO
+    # DONE
     async def handle_untextmute_alias(self, message: discord.Message, alias: Alias, args):
         executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if executor_role == 'Everyone':

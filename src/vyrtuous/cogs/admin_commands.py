@@ -847,7 +847,7 @@ class AdminCommands(commands.Cog):
         paginator = Paginator(self.bot, ctx, pages)
         await paginator.start()
         
-    # TODO
+    # DONE
     @app_commands.command(name='xcap', description='Delete a duration cap for bans, mutes and text mutes.')
     @is_owner_developer_administrator_predicator()
     @app_commands.describe(channel='Tag a channel or include its snowflake ID', moderation_type='One of: `mute`, `ban`, `tmute`')
@@ -881,7 +881,7 @@ class AdminCommands(commands.Cog):
             ''', interaction.guild.id, channel_obj.id, moderation_type, channel_obj.name)
         await interaction.response.send_message(content=msg, allowed_mentions=discord.AllowedMentions.none())
     
-    # TODO
+    # DONE
     @commands.command(name='xcap', help='Delete a duration cap for bans, mutes and text mutes.')
     @is_owner_developer_administrator_predicator()
     async def undo_cap_text_command(

@@ -16,7 +16,7 @@
 '''
 from typing import Optional
 
-class TimeCounter:
+class TimeToComplete:
  
     def __init__(self):
         pass

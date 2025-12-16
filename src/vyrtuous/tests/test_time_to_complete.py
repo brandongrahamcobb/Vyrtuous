@@ -1,6 +1,6 @@
 
 from typing import Optional
-from vyrtuous.utils.time_to_complete import TimeCounter
+from vyrtuous.utils.time_to_complete import TimeToComplete
 
 import pytest
 import time
@@ -15,8 +15,8 @@ def start():
 
 def test_time_elapsed_measurement(start: Optional[float], end: Optional[float]):
     try:
-        is_around_one_second = 1
-        counter = TimeCounter()
+        is_around_one_second = 1.0
+        counter = TimeToComplete()
         elapsed = counter.time_elapsed_measurement(start, end)
         if time.perf_counter() == start:
             start = time.perf_counter()
@@ -30,6 +30,6 @@ def test_time_elapsed_measurement(start: Optional[float], end: Optional[float]):
             end = time.perf_counter()
             elapsed = counter.time_elapsed_measurement(start, end)
             is_around_one_second = elapsed
-        assert is_around_one_second
+        assert counter.is_around_one_second(is_around_one_second)
     except TypeError:
         raise TypeError("Fixtures end and start must be floats representing time in seconds.")

@@ -132,7 +132,7 @@ class DevCommands(commands.Cog):
             mention = channel_obj.mention
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Alias `{alias_name}` ({alias_type}) set to {mention}.', allowed_mentions=discord.AllowedMentions.none())
     
-    # TODO
+    # DONE
     @app_commands.command(name='backup', description='Creates a backup of the database and uploads it.')
     @is_owner_developer_predicator()
     async def app_backup(
@@ -150,7 +150,7 @@ class DevCommands(commands.Cog):
         except Exception as e:
             logger.warning(f'Database error occurred: {e}')
           
-    # TODO
+    # DONE
     @commands.command(name='backup', help='Creates a backup of the database and uploads it.')
     @is_owner_developer_predicator()
     async def backup(
