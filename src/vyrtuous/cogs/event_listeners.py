@@ -25,6 +25,7 @@ from vyrtuous.service.discord_message_service import DiscordMessageService, Pagi
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.stage import Stage
+from vyrtuous.utils.vegans import Vegans
 from vyrtuous.utils.temporary_room import TemporaryRoom
 
 import discord
@@ -129,26 +130,26 @@ class EventListeners(commands.Cog):
         if not allowed:
             return
 
-        member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(after.channel, member)
+        # member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(after.channel, member)
 
         async with self.db_pool.acquire() as conn:
-
-            if after.channel:
-                stage = await Stage.fetch_stage_by_channel(after.channel)
-                temporary_stage_coordinator_ids = await stage.fetch_coordinator_temporary_stage_coordinator_ids(member, after.channel)
-                if stage:
-                    target = 'room'
-                    stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
-                else:
-                    target = 'user'
-                if stage and (member.id not in temporary_stage_coordinator_ids) and (member_permission_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
-                     expires_at = stage.expires_at
-                     await conn.execute('''
-                         INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target, room_name)
-                         VALUES ($1, $2, $3, $4, 'room', $5)
-                         ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
-                         DO UPDATE SET expires_at = EXCLUDED.expires_at
-                     ''', member.guild.id, member.id, after.channel.id, expires_at, after.channel.name)
+            target = 'user'
+            # if after.channel:
+                # stage = await Stage.fetch_stage_by_channel(after.channel)
+                # temporary_stage_coordinator_ids = await stage.fetch_coordinator_temporary_stage_coordinator_ids(member, after.channel)
+                # if stage:
+                #     target = 'room'
+                #     stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
+                # else:
+                #     target = 'user'
+                # if stage and (member.id not in temporary_stage_coordinator_ids) and (member_permission_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
+                #      expires_at = stage.expires_at
+                #      await conn.execute('''
+                #          INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target, room_name)
+                #          VALUES ($1, $2, $3, $4, 'room', $5)
+                #          ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
+                #          DO UPDATE SET expires_at = EXCLUDED.expires_at
+                #      ''', member.guild.id, member.id, after.channel.id, expires_at, after.channel.name)
 
             user_data = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', member.id)
             server_mute_guild_ids = user_data['server_mute_guild_ids'] or [] if user_data else []
@@ -156,24 +157,22 @@ class EventListeners(commands.Cog):
                 return    
 
             if after.channel:                    
-                if not before.mute and after.mute:                                    
-                    other_cog = self.bot.get_cog("Hybrid")
-                    if other_cog is not None:
-                        if member.id in other_cog.super["members"]:
-                            embed = discord.Embed(
-                                title=f'\u1F4AB {member.display_name} is a hero!',
-                                description=f'{member.display_name} cannot be muted.',
-                                color=discord.Color.gold()
-                            )
-                            embed.set_thumbnail(url=member.display_avatar.url)
-                            await after.channel.send(embed=embed)
-                        else:
-                            await conn.execute('''
-                                INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, room_name, target)
-                                VALUES ($1, $2, $3, $4, $5)
-                                ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
-                                DO UPDATE SET expires_at = NOW() + interval '1 hour'
-                            ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)#                            
+                if not before.mute and after.mute:
+                    if member.id in Vegans.get_vegans():
+                        embed = discord.Embed(
+                            title=f'\u1F4AB {member.display_name} is a hero!',
+                            description=f'{member.display_name} cannot be muted.',
+                            color=discord.Color.gold()
+                        )
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                        await after.channel.send(embed=embed)
+                    else:
+                        await conn.execute('''
+                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, room_name, target)
+                            VALUES ($1, $2, $3, $4, $5)
+                            ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
+                            DO UPDATE SET expires_at = NOW() + interval '1 hour'
+                        ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)#                            
                 if before.mute and not after.mute:
                     result = await conn.execute('''
                         DELETE FROM active_voice_mutes
