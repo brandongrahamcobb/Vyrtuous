@@ -15,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.discord_message_service import Paginator
@@ -62,7 +62,6 @@ class Statistics:
     ):
         bot = DiscordBot.get_instance()
         guild_id = message.guild.id
-        guild = message.guild
         statistic_channels = cls.get_statistic_channels()
         if guild_id not in statistic_channels:
             print(f"No statistic channels for guild {guild_id}")
@@ -78,8 +77,8 @@ class Statistics:
             if log_type == "channel" and channel and channel.id not in snowflakes:
                 continue
             pages = cls.build_statistic_embeds(
-                    message=message, member=member, channel=channel, duration_display=duration_display,
-                    reason=reason, executor=executor, expires_at=expires_at,
+                    message=message, moderation_type=moderation_type,member=member, channel=channel, duration_display=duration_display,
+                    reason=reason, executor=message.author, expires_at=expires_at,
                     command_used=command_used, was_in_channel=was_in_channel,
                     is_modification=is_modification, highest_role=highest_role
                 )
@@ -87,7 +86,7 @@ class Statistics:
             await paginator.start()
 
     @classmethod
-    def build_statistic_embeds(cls, message: discord.Message, member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, highest_role: Optional[str] = '', moderation_type: Optional[str] = None):
+    def build_statistic_embeds(cls, message: discord.Message, moderation_type: Optional[str], member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, highest_role: Optional[str] = ''):
         guild = message.guild
         time_left = expires_at - datetime.now(timezone.utc)
         hours_left = round(time_left.total_seconds() / 3600, 1)
@@ -136,9 +135,9 @@ class Statistics:
         embed_user.add_field(name='👮‍♂️ Executed By', value=exec_priority, inline=True)
         ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Command Used:** `{command_used}`"
         embed_user.add_field(name='📱 Command Context', value=ctx_info, inline=True)
-        embed_user.add_field(name=f'{duration_emoji} Duration', value=duration_info, inline=False)
+        embed_user.add_field(name=f'**Type:** {duration_type}\n {duration_emoji} Duration', value=duration_info, inline=False)
         embed_user.add_field(name='📝 Reason', value=f'```{reason if reason else "No reason provided"}```', inline=False)
-        embed_user.set_footer(text=f"Ban Ref: {member.id}-{channel.id} | Msg: {message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
+        embed_user.set_footer(text=f"Ref: {member.id}-{channel.id} | Msg: {message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
         embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
         embed_duration.add_field(name=f'{duration_emoji} Duration', value=duration_info, inline=False)
         action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '\U0001F6AB No'}\n**Action Type:** {'Modification' if is_modification else 'New'}\n**Server:** {guild.name} (`{guild.id}`)"
