@@ -140,9 +140,9 @@ class DevCommands(commands.Cog):
         interaction: discord.Interaction
     ):
         try:
-            backup = Database(directory='/app/backups')
-            backup.create_backup_directory()
-            backup_file = backup.execute_backup()
+            db = Database(directory='/app/backups')
+            db.create_backup_directory()
+            backup_file = db.execute_backup()
             if backup_file:
                 await interaction.response.send_message(file=discord.File(backup.file_name))
             else:
@@ -158,9 +158,9 @@ class DevCommands(commands.Cog):
         ctx: commands.Context
     ):
         try:
-            backup = Database()
-            backup.create_backup_directory()
-            backup_file = backup.execute_backup()
+            db = Database()
+            db.create_backup_directory()
+            backup_file = db.execute_backup()
             if backup_file:
                 await self.handler.send_message(ctx, file=discord.File(backup.file_name))
             else:

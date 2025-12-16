@@ -314,9 +314,9 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(hours=24)
     async def backup_database(self) -> None:
         try:
-            backup = Database()
-            backup.create_backup_directory()
-            backup.execute_backup()
+            db = Database()
+            db.create_backup_directory()
+            db.execute_backup()
             logger.info(f'Backup completed successfully.')
         except Exception as e:
             logger.error(f'Error during database backup: {e}')
