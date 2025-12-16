@@ -85,7 +85,9 @@ async def is_moderator(ctx_or_interaction_or_message):
             'SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if not user_row or not user_row.get('moderator_channel_ids'):
+    if not user_row:
+        raise NotModerator()
+    elif not user_row.get('moderator_channel_ids'):
         raise NotModerator()
     return True
 
@@ -104,7 +106,9 @@ async def is_coordinator(ctx_or_interaction_or_message):
             'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if not user_row or not user_row.get('coordinator_channel_ids'):
+    if not user_row:
+        raise NotCoordinator()
+    elif user_row.get('coordinator_channel_ids'):
         raise NotCoordinator()
     return True
     
@@ -123,9 +127,11 @@ async def is_administrator(ctx_or_interaction_or_message):
             'SELECT administrator_guild_ids FROM users WHERE discord_snowflake=$1',
             user_id
         )
-    if not row and not row['administrator_guild_ids'] and ctx_or_interaction_or_message.guild.id in row['administrator_guild_ids']:
+    if not row:
         raise NotAdministrator()
-    return False
+    elif not row['administrator_guild_ids']:
+        raise NotAdministrator()
+    return True
 
 async def is_developer(ctx_or_interaction_or_message):
     bot = DiscordBot.get_instance()
@@ -141,7 +147,9 @@ async def is_developer(ctx_or_interaction_or_message):
         row = await conn.fetchrow(
             'SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', user_id
         )
-    if not row or not row.get('developer_guild_ids') or ctx_or_interaction_or_message.guild.id not in row.get('developer_guild_ids', []):
+    if not row:
+        raise NotDeveloper()
+    elif not row.get('developer_guild_ids'):
         raise NotDeveloper()
     return True
 

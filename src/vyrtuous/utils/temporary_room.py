@@ -25,6 +25,7 @@ class TemporaryRoom:
     def __init__(self, guild: discord.Guild, channel_id: Optional[str], room_owner: discord.Member):
         self.bot = DiscordBot.get_instance()
         self.channel = self.bot.get_channel(channel_id)
+        self.channel_id: Optional[int] = channel_id
         self.guild = guild
         self.is_temp_room: Optional[bool] = True
         self.room_snowflake: Optional[int] = channel_id 
@@ -133,20 +134,24 @@ class TemporaryRoom:
     
     @classmethod
     async def fetch_temporary_rooms_by_guild(cls, guild: discord.Guild):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                'SELECT owner_snowflake, room_name, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 ORDER BY room_name',
-                guild.id
-            )
-            if not rows:
-                return None
-            temporary_rooms = []
-            for row in rows:
-                member = guild.get_member(row['owner_snowflake'])
-                channel = guild.get_channel(row['room_snowflake'])
-                temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_owner=member))
-            return temporary_rooms
+        try:
+            bot = DiscordBot.get_instance()
+            async with bot.db_pool.acquire() as conn:
+                rows = await conn.fetch(
+                    'SELECT owner_snowflake, room_name, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 ORDER BY room_name',
+                    guild.id
+                )
+                if not rows:
+                    return None
+                temporary_rooms = []
+                for row in rows:
+                    member = guild.get_member(row['owner_snowflake'])
+                    channel = guild.get_channel(row['room_snowflake'])
+                    temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_owner=member))
+                return temporary_rooms
+            raise Exception('No temporary rooms found for {guild.name}.')
+        raise Exception:
+            raise
             
     @classmethod
     async def fetch_all_guilds_with_temporary_rooms(cls):
