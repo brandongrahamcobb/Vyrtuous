@@ -2,6 +2,7 @@
 
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
+
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -36,7 +37,7 @@ async def main():
 
     discord_bot = DiscordBot(
         config=config,
-        db_pool=db_pool,
+        db_pool=db_pool
     )
     
     await discord_bot.start(config['discord_api_key'])

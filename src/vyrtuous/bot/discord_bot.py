@@ -30,7 +30,6 @@ class DiscordBot(commands.Bot):
     def __init__(self, *, config, db_pool: asyncpg.Pool, **kwargs): # oauth_token,
         try:
             DiscordBot._instance = self
-            self.lock = asyncio.Lock()
             intents = discord.Intents.all()
             super().__init__(command_prefix=config['discord_command_prefix'],
                              help_command=None,

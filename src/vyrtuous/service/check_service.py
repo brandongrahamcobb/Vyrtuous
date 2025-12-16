@@ -344,3 +344,19 @@ async def is_owner_developer_administrator_coordinator(ctx_or_interaction_or_mes
         except commands.CheckFailure:
             continue
     return "Everyone"
+
+async def is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel: discord.abc.GuildChannel, member: discord.Member) -> str:
+    checks = (
+        ("Owner", lambda: member_is_owner(member)),
+        ("Developer", lambda: member_is_developer(member)),
+        ("Administrator", lambda: member_is_administrator(member)),
+        ("Coordinator", lambda: member_is_coordinator(channel, member)),
+        ("Moderator", lambda: member_is_moderator(channel, member))
+    )
+    for role_name, check in checks:
+        try:
+            if await check():
+                return role_name
+        except commands.CheckFailure:
+            continue
+    return "Everyone"

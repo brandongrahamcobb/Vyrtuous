@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from collections import defaultdict
 from datetime import datetime, timezone
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
@@ -23,8 +24,8 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
+from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.temporary_room import TemporaryRoom
-from typing import defaultdict
 
 import discord
 import time
@@ -68,7 +69,7 @@ class EventListeners(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             room = self.deleted_rooms.pop(name, None)
             if not room:
-                return
+                room = await TemporaryRoom.fetch_temporary_room_by_guild_and_room_name(guild=guild, room_name=name)
             old_name = room.room_name
             old_id = room.room_snowflake
             await room.update_temporary_room_name_and_room_snowflake(channel=channel, room_name=channel.name)
@@ -78,8 +79,9 @@ class EventListeners(commands.Cog):
             await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
-            await conn.execute('UPDATE active_stages SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
-            await conn.execute('UPDATE stage_coordinators SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
+            old_stage = await Stage.fetch_stage_by_guild_and_stage_name(guild=guild, stage_name=old_name)
+            old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(guild=guild, stage_name=old_name)
+            old_stage.update_stage_by_channel_and_temporary_coordinator_ids(stage_channel=channel, temporary_stage_coordinator_ids=old_stage_temporary_coordinator_ids)
             await conn.execute('UPDATE active_caps SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('''
                 UPDATE users
@@ -113,38 +115,42 @@ class EventListeners(commands.Cog):
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
+
+        allowed = True
         if before.channel == after.channel or before.mute == after.mute or before.self_mute == after.self_mute:
-            return
+            allowed = False
         if member.bot:
+            allowed = False
+        if not allowed:
             return
-        after_channel = after.channel
-        before_channel = before.channel
-        user_id = member.id
-        is_owner_or_dev = await is_owner_developer_via_objects(member, self.bot)
-        coordinator_ids = set()
+
+        member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(after.channel, member)
+
         async with self.db_pool.acquire() as conn:
-            user_data = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', user_id)
-            server_mute_guild_ids = user_data['server_mute_guild_ids'] or [] if user_data else []
-            if member.guild.id in server_mute_guild_ids:
-                return
-            if after_channel:
-                active_stage = await self.get_active_stage(member, after_channel)
-                coordinators, coordinator_ids = await self.get_coordinators_and_coordinator_ids(member, after_channel)
-                if active_stage:
+
+            if after.channel:
+                stage = await Stage.fetch_stage_by_channel(after.channel)
+                temporary_stage_coordinator_ids = await stage.fetch_coordinator_temporary_stage_coordinator_ids(member, after.channel)
+                if stage:
                     target = 'room'
-                    self.print_stage_message(active_stage, after_channel)
+                    stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
                 else:
                     target = 'user'
-                
-                if active_stage and (user_id not in coordinator_ids and not is_owner_or_dev) and before_channel != after_channel:
-                     expires_at = active_stage['expires_at']
+                if stage and (member.id not in temporary_stage_coordinator_ids) and (member_permission_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
+                     expires_at = stage.expires_at
                      await conn.execute('''
                          INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target, room_name)
                          VALUES ($1, $2, $3, $4, 'room', $5)
                          ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
                          DO UPDATE SET expires_at = EXCLUDED.expires_at
-                     ''', member.guild.id, user_id, after_channel.id, expires_at, after_channel.name)
-                         
+                     ''', member.guild.id, member.id, after.channel.id, expires_at, after.channel.name)
+
+            user_data = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', member.id)
+            server_mute_guild_ids = user_data['server_mute_guild_ids'] or [] if user_data else []
+            if member.guild.id in server_mute_guild_ids:
+                return    
+
+            if after.channel:                    
                 if not before.mute and after.mute:                                    
                     other_cog = self.bot.get_cog("Hybrid")
                     if other_cog is not None:
@@ -155,15 +161,14 @@ class EventListeners(commands.Cog):
                                 color=discord.Color.gold()
                             )
                             embed.set_thumbnail(url=member.display_avatar.url)
-                            await after_channel.send(embed=embed)
+                            await after.channel.send(embed=embed)
                         else:
                             await conn.execute('''
                                 INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, room_name, target)
                                 VALUES ($1, $2, $3, $4, $5)
                                 ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
                                 DO UPDATE SET expires_at = NOW() + interval '1 hour'
-                            ''', member.guild.id, user_id, after_channel.id, after_channel.name, target)#                            
-
+                            ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)#                            
                 if before.mute and not after.mute:
                     result = await conn.execute('''
                         DELETE FROM active_voice_mutes
@@ -173,8 +178,7 @@ class EventListeners(commands.Cog):
                             AND room_name = $4
                             AND target = $5
                             AND expires_at IS NOT NULL
-                    ''', member.guild.id, user_id, before_channel.id, after_channel.name, target)
-
+                    ''', member.guild.id, member.id, before.channel.id, after.channel.name, target)
                 existing_mute_row = await conn.fetchrow('''
                     SELECT expires_at
                     FROM active_voice_mutes
@@ -183,24 +187,22 @@ class EventListeners(commands.Cog):
                         AND channel_id = $3
                         AND room_name = $4
                         AND target = $5
-                ''', member.guild.id, user_id, after_channel.id, after_channel.name, target)
-
+                ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)
                 if existing_mute_row and not after.mute:
                     try:
-                        await member.edit(mute=True, reason=f'Enforcing mute in {after_channel.name} (found in arrays)')
+                        await member.edit(mute=True, reason=f'Enforcing mute in {after.channel.name} (found in arrays)')
                     except discord.Forbidden:
                         logger.debug(f'No permission to mute {member.display_name}')
                     except discord.HTTPException as e:
                         logger.debug(f'Failed to mute {member.display_name}: {e}')
                 elif not existing_mute_row and after.mute:
                     try:
-                        await member.edit(mute=False, reason=f'Auto-unmuting in {after_channel.name} (no mute record)')
+                        await member.edit(mute=False, reason=f'Auto-unmuting in {after.channel.name} (no mute record)')
                     except discord.Forbidden:
                         logger.debug(f'No permission to unmute {member.display_name}')
                     except discord.HTTPException as e:
                         logger.debug(f'Failed to unmute {member.display_name}: {e}')
-
-                await self.print_flags(member, after_channel)
+                await self.print_flags(member, after.channel)
                 
 #                    explicit_deny_roles = []
 #                    for role in member.roles:
@@ -358,23 +360,6 @@ class EventListeners(commands.Cog):
                     list(role_ids),
                     list(guild_ids)
                 )
-
-    async def get_active_stage(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
-        async with self.db_pool.acquire() as conn:
-            active_stage = await conn.fetchrow('''
-                SELECT expires_at FROM active_stages
-                WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
-            ''', member.guild.id, after_channel.id, after_channel.name)
-        return active_stage
-        
-    async def get_coordinators_and_ids(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
-        async with self.db_pool.acquire() as conn:
-            coordinators = await conn.fetch('''
-                SELECT discord_snowflake FROM stage_coordinators
-                WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
-            ''', member.guild.id, after_channel.id, after_channel.name)
-            coordinator_ids = {r['discord_snowflake'] for r in coordinators}
-        return coordinators, coordinator_ids
         
     async def print_flags(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
         async with self.db_pool.acquire() as conn:
@@ -382,7 +367,7 @@ class EventListeners(commands.Cog):
                 SELECT channel_id, discord_snowflake, reason
                 FROM active_flags
                 WHERE guild_id = $1 AND discord_snowflake = $2
-            ''', member.guild.id, user_id)
+            ''', member.guild.id, member.id)
             if rows:
                 grouped = {}
                 for row in rows:
@@ -431,20 +416,6 @@ class EventListeners(commands.Cog):
                             else:
                                 paginator = Paginator(self.bot, after_channel, embeds)
                                 await paginator.start()
-                                
-    async def print_stage_message(self, active_stage, after_channel: discord.abc.GuildChannel):
-        now = time.time()
-        self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
-        if len(self.join_log[member.id]) < 1:
-            self.join_log[member.id].append(now)
-            expires = active_stage['expires_at']
-            embed = discord.Embed(
-                title=f"\U0001F399 {after_channel.name} — Stage Mode",
-                description=f"Ends <t:{int(expires.timestamp())}:R>",
-                color=discord.Color.green()
-            )
-            embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
-            await after_channel.send(embed=embed)
             
 async def setup(bot: DiscordBot):
     await bot.add_cog(EventListeners(bot))

@@ -26,6 +26,7 @@ debugpy = "^1.8.18"
 discord-py = "^2.6.4"
 discord = "^2.3.2"
 pytest = "^9.0.2"
+pytest-asyncio = "^1.3.0"
 
 [tool.poetry.scripts]
 vyrtuous = "vyrtuous.main:run"
