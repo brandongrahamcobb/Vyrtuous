@@ -171,9 +171,7 @@ class Aliases(commands.Cog):
             caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[0] == 'ban'), None)
             if active_cap:
-                duration_obj_2 = Duration()
-                duration_obj_2.load_base(active_cap[1])
-                cap_expires_at = duration_obj_2.output_datetime()
+                cap_expires_at = self.now + active_cap[1]
             else:
                 cap_expires_at = timedelta(days=7) + self.now
             if existing_ban and expires_at:
@@ -394,7 +392,7 @@ class Aliases(commands.Cog):
             caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[0] == 'tmute'), None)
             if active_cap:
-                cap_expires_at = active_cap[1]
+                cap_expires_at = self.now + active_cap[1]
             else:
                 cap_expires_at = timedelta(days=7) + self.now
             if existing_text_mute and expires_at:
@@ -484,7 +482,7 @@ class Aliases(commands.Cog):
             caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[0] == 'mute'), None)
             if active_cap:
-                cap_expires_at = active_cap[1]
+                cap_expires_at = self.now + active_cap[1]
             else:
                 cap_expires_at = timedelta(days=7) + self.now
             if existing_mute and expires_at:
