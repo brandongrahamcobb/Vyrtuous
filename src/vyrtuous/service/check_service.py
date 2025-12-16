@@ -328,3 +328,19 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, member: discord.M
     sender_role, sender_rank = await get_highest_role(sender)
     target_role, target_rank = await get_highest_role(member)
     return sender_rank > target_rank, target_role
+
+async def is_owner_developer_administrator_coordinator(ctx_or_interaction_or_message, channel: discord.abc.GuildChannel, member: discord.Member) -> str:
+    checks = (
+        ("Owner", is_system_owner),
+        ("Owner", is_guild_owner),
+        ("Developer", is_developer),
+        ("Administrator", is_administrator),
+        ("Coordinator", lambda ctx: member_is_coordinator(channel, member))
+    )
+    for role_name, check in checks:
+        try:
+            if await check(ctx_or_interaction_or_message):
+                return role_name
+        except commands.CheckFailure:
+            continue
+    return "Everyone"
