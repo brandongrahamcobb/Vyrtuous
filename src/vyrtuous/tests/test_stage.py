@@ -1,5 +1,22 @@
+
+''' test_stage.py The purpose of this program is to provide the tests for the Stage module.
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+'''
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import *
+from vyrtuous.tests.test_suite import *
 from vyrtuous.utils.stage import Stage
 import asyncio
 import asyncpg
@@ -10,36 +27,8 @@ import pytest
 import pytest_asyncio
 import vyrtuous
 
-MockGuild = lambda id, display_name: type('MockGuild', (), {'id': id, 'display_name': display_name})()
-MockChannel = lambda id, name, guild: type('MockChannel', (), {'id': id, 'name': name, 'guild': guild})()
-MockMember = lambda id, name: type('MockMember', (), {'id': id, 'name': name})()
-
-expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-guild = MockGuild(id=123456789, display_name="Test Guild")
-stage_channel_one = MockChannel(id=987654321, name="Test Stage Channel", guild=guild)
-stage_channel_two = MockChannel(id=978653421, name="Test Stage Channel", guild=guild)
-member_one = MockMember(id=111111111, name="Person 1")
-member_two = MockMember(id=222222222, name="Person 2")
-member_three = MockMember(id=333333333, name="Person 3")
-member_four = MockMember(id=444444444, name="Person 4")
-new_expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
 stage_name = "Test Stage Channel"
 temporary_coordinator_ids = [member_one.id, member_two.id]
-
-@pytest_asyncio.fixture(scope="session")
-async def bot_instance():
-    database: Optional[str] = os.getenv('POSTGRES_DB')
-    host: Optional[str] = os.getenv('POSTGRES_HOST')
-    password: Optional[str] = os.getenv('POSTGRES_PASSWORD')
-    user: Optional[str] = os.getenv('POSTGRES_USER')
-    dsn = f"postgres://{user}:{password}@{host}:{5432}/{database}"
-    db_pool = await asyncpg.create_pool(dsn=dsn)
-    config = {
-        'discord_command_prefix': '!',
-        'discord_testing_guild_id': 123456789012345678
-    }
-    bot = DiscordBot(config=config, db_pool=db_pool)
-    yield bot
     
 def test_fetch_stage_temporary_coordinator_ids_by_channel(bot_instance):
     async def inner():
@@ -52,7 +41,7 @@ def test_fetch_stage_temporary_coordinator_ids_by_channel(bot_instance):
             await conn.execute('''
                 INSERT INTO stage_coordinators (channel_id, discord_snowflake, guild_id, room_name)
                 VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)
-            ''', stage_channel_one.id, member_one.id, guild.id, stage_name, stage_channel_two.id, 222222222, guild.id, stage_name)
+            ''', channel_one.id, member_one.id, guild.id, stage_name, channel_two.id, 222222222, guild.id, stage_name)
         coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(guild, stage_name)
         assert len(coordinator_ids) == 2
         assert coordinator_ids == {111111111, 222222222}
@@ -73,9 +62,9 @@ def test_fetch_stage_by_channel(bot_instance):
             await conn.execute('''
                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
                 VALUES ($1, $2, $3, $4, $5)
-            ''', stage_channel_one.id, expires_at, guild.id, member_one.id, stage_name)
-        stage = await Stage.fetch_stage_by_channel(stage_channel_one)
-        assert stage.channel_id == stage_channel_one.id
+            ''', channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+        stage = await Stage.fetch_stage_by_channel(channel_one)
+        assert stage.channel_id == channel_one.id
         assert stage.channel_name == stage_name
         assert stage.expires_at == expires_at
         assert stage.guild_id == guild.id
@@ -97,9 +86,9 @@ def test_fetch_stage_by_guild_and_stage_name(bot_instance):
             await conn.execute('''
                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
                 VALUES ($1, $2, $3, $4, $5)
-            ''', stage_channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+            ''', channel_one.id, expires_at, guild.id, member_one.id, stage_name)
         stage = await Stage.fetch_stage_by_guild_and_stage_name(guild, stage_name)
-        assert stage.channel_id == stage_channel_one.id
+        assert stage.channel_id == channel_one.id
         assert stage.channel_name == stage_name
         assert stage.expires_at == expires_at
         assert stage.guild_id == guild.id
@@ -121,7 +110,7 @@ def test_fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(bot_insta
             await conn.execute('''
                 INSERT INTO stage_coordinators (channel_id, discord_snowflake, guild_id, room_name)
                 VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)
-            ''', stage_channel_one.id, member_one.id, guild.id, stage_name, stage_channel_one.id, member_two.id, guild.id, stage_name)
+            ''', channel_one.id, member_one.id, guild.id, stage_name, channel_one.id, member_two.id, guild.id, stage_name)
         coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(guild, stage_name)
         assert len(coordinator_ids) == 2
         assert coordinator_ids == {111111111, 222222222}
@@ -146,24 +135,24 @@ def test_update_stage_by_channel_and_temporary_coordinator_ids(bot_instance):
             await conn.execute('''
                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
                 VALUES ($1, $2, $3, $4, $5)
-            ''', stage_channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+            ''', channel_one.id, expires_at, guild.id, member_one.id, stage_name)
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO stage_coordinators (channel_id, discord_snowflake, guild_id, room_name)
                 VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)
-            ''', stage_channel_one.id, member_three.id, guild.id, stage_name, stage_channel_one.id, member_four.id, guild.id, stage_name)
+            ''', channel_one.id, member_three.id, guild.id, stage_name, channel_one.id, member_four.id, guild.id, stage_name)
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
                 SELECT expires_at, initiator_id FROM active_stages
                 WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
-            ''', stage_channel_one.id, guild.id, stage_name)
-        stage = Stage(row['expires_at'], stage_channel_one.id, stage_name, guild.id, row['initiator_id'])
-        await stage.update_stage_by_channel_and_temporary_coordinator_ids(stage_channel_one, temporary_coordinator_ids)
+            ''', channel_one.id, guild.id, stage_name)
+        stage = Stage(row['expires_at'], channel_one.id, stage_name, guild.id, row['initiator_id'])
+        await stage.update_stage_by_channel_and_temporary_coordinator_ids(channel_one, temporary_coordinator_ids)
         async with bot.db_pool.acquire() as conn:
             second_row = await conn.fetch('''
                 SELECT discord_snowflake FROM stage_coordinators
                 WHERE channel_id = $1 AND guild_id = $2
-            ''', stage_channel_one.id, guild.id)
+            ''', channel_one.id, guild.id)
         if second_row:
             temporary_stage_coordinator_ids = {c['discord_snowflake'] for c in second_row}
         assert len(temporary_stage_coordinator_ids) == 2
@@ -185,23 +174,23 @@ def test_update_stage_by_channel_initiator_and_temporary_coordinator_ids(bot_ins
             await conn.execute('''
                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
                 VALUES ($1, $2, $3, $4, $5)
-            ''', stage_channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+            ''', channel_one.id, expires_at, guild.id, member_one.id, stage_name)
             await conn.execute('''
                 INSERT INTO stage_coordinators (channel_id, discord_snowflake, guild_id, room_name)
                 VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)
-            ''', stage_channel_one.id, member_three.id, guild.id, stage_name, stage_channel_one.id, member_four.id, guild.id, stage_name)
+            ''', channel_one.id, member_three.id, guild.id, stage_name, channel_one.id, member_four.id, guild.id, stage_name)
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
                 SELECT expires_at, initiator_id FROM active_stages
                 WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
-            ''', stage_channel_one.id, guild.id, stage_name)
-        stage = Stage(row['expires_at'], stage_channel_one.id, stage_name, guild.id, row['initiator_id'])
-        await stage.update_stage_by_channel_initiator_and_temporary_coordinator_ids(stage_channel_one, member_one.id, temporary_coordinator_ids)
+            ''', channel_one.id, guild.id, stage_name)
+        stage = Stage(row['expires_at'], channel_one.id, stage_name, guild.id, row['initiator_id'])
+        await stage.update_stage_by_channel_initiator_and_temporary_coordinator_ids(channel_one, member_one.id, temporary_coordinator_ids)
         async with bot.db_pool.acquire() as conn:
             second_row = await conn.fetch('''
                 SELECT discord_snowflake FROM stage_coordinators
                 WHERE channel_id = $1 AND guild_id = $2
-            ''', stage_channel_one.id, guild.id)
+            ''', channel_one.id, guild.id)
         if second_row:
             temporary_stage_coordinator_ids = {c['discord_snowflake'] for c in second_row}
         assert temporary_stage_coordinator_ids == {member_three.id, member_four.id}

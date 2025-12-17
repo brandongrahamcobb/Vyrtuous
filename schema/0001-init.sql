@@ -28,7 +28,7 @@ CREATE TABLE active_caps (
     channel_id BIGINT DEFAULT -1,
     room_name TEXT DEFAULT '',
     moderation_type TEXT NOT NULL CHECK (moderation_type IN ('ban', 'mute', 'tmute')),
-    duration TEXT NOT NULL,
+    duration_seconds INTEGER NOT NULL,
     PRIMARY KEY (guild_id, channel_id, room_name, moderation_type)
 );
 

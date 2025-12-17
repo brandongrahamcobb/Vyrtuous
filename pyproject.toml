@@ -23,10 +23,9 @@ quart = "^0.20.0"
 python-dotenv = "^1.2.1"
 docker = "^7.1.0"
 debugpy = "^1.8.18"
-discord-py = "^2.6.4"
-discord = "^2.3.2"
 pytest = "^9.0.2"
 pytest-asyncio = "^1.3.0"
+discord-py = {git = "https://github.com/Rapptz/discord.py.git"}
 
 [tool.poetry.scripts]
 vyrtuous = "vyrtuous.main:run"

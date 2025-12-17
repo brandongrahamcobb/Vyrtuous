@@ -63,20 +63,20 @@ class AdminCommands(commands.Cog):
             return await interaction.response.send_message(content=f'\U0001F6AB Invalid moderation type. Must be one of: {", ".join(valid_types)}')
         duration_obj = Duration()
         duration_obj.load_from_combined_duration_str(duration)
-        expires_at = duration_obj.output_datetime()
+        duration_seconds = duration_obj.build_timedelta().total_seconds()
         duration_display = duration_obj.output_display()
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                'SELECT duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3 AND room_name=$4',
-                interaction.guild.id, channel_obj.id, moderation_type, channel_obj.name
+                'SELECT duration_seconds FROM active_caps WHERE channel_id=$1 AND guild_id=$2 AND moderation_type=$3 AND room_name=$4',
+                channel_obj.id, interaction.guild.id, moderation_type, channel_obj.name
             )
-            original_duration = row['duration'] if row else None
+            original_duration = row['duration_seconds'] if row else None
             await conn.execute('''
-                INSERT INTO active_caps (guild_id, channel_id, moderation_type, duration, room_name)
+                INSERT INTO active_caps (channel_id, duration_seconds, guild_id, moderation_type, room_name)
                 VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (guild_id, channel_id, moderation_type, room_name)
-                DO UPDATE SET duration = EXCLUDED.duration
-            ''', interaction.guild.id, channel_obj.id, moderation_type, duration, channel_obj.name)
+                ON CONFLICT (channel_id, guild_id, moderation_type, room_name)
+                DO UPDATE SET duration_seconds = EXCLUDED.duration_seconds
+            ''', channel_obj.id, duration_seconds, interaction.guild.id, moderation_type, channel_obj.name)
         if original_duration:
             msg = f'{self.emoji.get_random_emoji()} Cap changed on {channel_obj.mention} for {moderation_type} from {original_duration} to {duration_display}.'
         else:
@@ -104,20 +104,20 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Invalid moderation type. Must be one of: {", ".join(valid_types)}')
         duration_obj = Duration()
         duration_obj.load_from_combined_duration_str(duration)
-        expires_at = duration_obj.output_datetime()
+        duration_seconds = duration_obj.build_timedelta().total_seconds()
         duration_display = duration_obj.output_display()
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                'SELECT duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3 AND room_name=$4',
-                ctx.guild.id, channel_obj.id, moderation_type, channel_obj.name
+                'SELECT duration_seconds FROM active_caps WHERE channel_id=$1 AND guild_id=$2 AND moderation_type=$3 AND room_name=$4',
+                channel_obj.id, ctx.guild.id, moderation_type, channel_obj.name
             )
-            original_duration = row['duration'] if row else None
+            original_duration = row['duration_seconds'] if row else None
             await conn.execute('''
-                INSERT INTO active_caps (guild_id, channel_id, moderation_type, duration, room_name)
+                INSERT INTO active_caps (channel_id, duration_seconds, guild_id, moderation_type, room_name)
                 VALUES ($1, $2, $3, $4, $5)
-                ON CONFLICT (guild_id, channel_id, moderation_type, room_name)
-                DO UPDATE SET duration = EXCLUDED.duration
-            ''', ctx.guild.id, channel_obj.id, moderation_type, duration, channel_obj.name)
+                ON CONFLICT (channel_id, guild_id, moderation_type, room_name)
+                DO UPDATE SET duration_seconds = EXCLUDED.duration_seconds
+            ''', channel_obj.id, duration_seconds, ctx.guild.id, moderation_type, channel_obj.name)
         if original_duration:
             msg = f'{self.emoji.get_random_emoji()} Cap changed on {channel_obj.mention} for {moderation_type} from {original_duration} to {duration_display}.'
         else:

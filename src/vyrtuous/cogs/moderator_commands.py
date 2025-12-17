@@ -320,7 +320,7 @@ class ModeratorCommands(commands.Cog):
                 return await interaction.response.send_message(content='\U0001F6AB Only owners or developers can list all caps.')
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT channel_id, moderation_type, duration FROM active_caps WHERE guild_id=$1",
+                    "SELECT channel_id, duration_seconds, moderation_type FROM active_caps WHERE guild_id=$1",
                     interaction.guild.id
                 )
             if not rows:
@@ -329,7 +329,7 @@ class ModeratorCommands(commands.Cog):
             for row in rows:
                 ch = interaction.guild.get_channel(row["channel_id"])
                 ch_name = ch.mention if ch else f'Channel ID `{row["channel_id"]}`'
-                lines.append(f'**{row["moderation_type"]} in {ch_name}** → `{row["duration"]}`')
+                lines.append(f'**{row["moderation_type"]} in {ch_name}** → `{Duration.convert_timedelta_seconds(row["duration_seconds"])}`')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
@@ -348,8 +348,8 @@ class ModeratorCommands(commands.Cog):
         if not caps:
             return await interaction.response.send_message(content='\U0001F6AB No caps found for this channel.')
         lines = [
-            f'**{moderation_type} in {channel_obj.mention}** → `{duration}`'
-            for moderation_type, duration in caps
+            f'**{moderation_type} in {channel_obj.mention}** → `{Duration.convert_timedelta_seconds(duration_seconds)}`'
+            for duration_seconds, moderation_type in caps
         ]
         embed = discord.Embed(
             title=f"Active Caps for {channel_obj.mention}",
@@ -374,7 +374,7 @@ class ModeratorCommands(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Only owners or developers can list all caps.')
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT channel_id, moderation_type, duration FROM active_caps WHERE guild_id=$1",
+                    "SELECT channel_id, duration_seconds, moderation_type FROM active_caps WHERE guild_id=$1",
                     ctx.guild.id
                 )
             if not rows:
@@ -383,7 +383,7 @@ class ModeratorCommands(commands.Cog):
             for row in rows:
                 ch = ctx.guild.get_channel(row["channel_id"])
                 ch_name = ch.mention if ch else f'Channel ID `{row["channel_id"]}`'
-                lines.append(f'**{row["moderation_type"]} in {ch_name}** → `{row["duration"]}`')
+                lines.append(f'**{row["moderation_type"]} in {ch_name}** → `{Duration.convert_timedelta_seconds(row["duration_seconds"])}`')
             embed = discord.Embed(
                 title='All Active Caps in Server',
                 description='\n'.join(lines),
@@ -396,7 +396,7 @@ class ModeratorCommands(commands.Cog):
         caps = await Cap.get_caps_for_channel(ctx.guild.id, channel_obj.id)
         if not caps:
             return await self.handler.send_message(ctx, content='\U0001F6AB No caps found for this channel.')
-        lines = [f'**{mtype} in {channel_obj.mention}** → `{duration}`' for mtype, duration in caps]
+        lines = [f'**{mtype} in {channel_obj.mention}** → `{Duration.convert_timedelta_seconds(duration_seconds)}`' for duration_seconds, mtype in caps]
         embed = discord.Embed(
             title=f'Active Caps for {channel_obj.mention}',
             description='\n'.join(lines),
@@ -422,7 +422,7 @@ class ModeratorCommands(commands.Cog):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                return await interaction.response.send_message(ctx, content='\U0001F6AB Only owners, developers or administrators can list all aliases across the server.')
+                return await interaction.response.send_message(content='\U0001F6AB Only owners, developers or administrators can list all aliases across the server.')
             aliases = await Alias.fetch_command_aliases_by_guild(interaction.guild)
             if not aliases:
                 return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
@@ -440,7 +440,7 @@ class ModeratorCommands(commands.Cog):
             return await paginator.start()
         else:
             if channel_obj is None or channel_obj.type != discord.ChannelType.voice:
-                return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
             aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
             if not aliases:
                 return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
@@ -531,7 +531,7 @@ class ModeratorCommands(commands.Cog):
         try:
             msg = await channel_obj.fetch_message(message_id)
             if channel_obj.type != discord.ChannelType.text:
-                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+                return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
         except:
             logger.warning('No message with this ID exists.')
         if not msg:
@@ -622,7 +622,7 @@ class ModeratorCommands(commands.Cog):
                         title=f'\U0001F6A9 Flag records for {channel_obj.name}',
                         color=discord.Color.red()
                     )
-                    embed.add_field(name=f'{guild.name}', value='\n'.join(formatted_lines), inline=False)
+                    embed.add_field(name=f'{interaction.guild.name}', value='\n'.join(formatted_lines), inline=False)
                     pages.append(embed)
             if not pages:
                 return await interaction.response.send_message(content=f'\U0001F6AB No flagged users currently in {interaction.guild.name}.')
@@ -775,7 +775,7 @@ class ModeratorCommands(commands.Cog):
                     created_at = discord.utils.format_dt(row['created_at'],style='R') if row['created_at'] else ''
                     lines.append(f'• {m.display_name} — <@{uid}> — {created_at}')
                 if not lines:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No new vegans currently in {guild.name}.')
+                    return await interaction.response.send_message(content=f'\U0001F6AB No new vegans currently in {interaction.guild.name}.')
                 chunk_size = 18
                 pages = []
                 for i in range(0, len(lines), chunk_size):
@@ -844,7 +844,7 @@ class ModeratorCommands(commands.Cog):
                     created_at = discord.utils.format_dt(row['created_at'], style='R') if row['created_at'] else ''
                     lines.append(f'• {m.display_name} — <@{uid}> — {created_at}')
                 if not lines:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No new vegans currently in {guild.name}.')
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No new vegans currently in {ctx.guild.name}.')
                 chunk_size = 18
                 pages = []
                 for i in range(0, len(lines), chunk_size):
@@ -932,7 +932,7 @@ class ModeratorCommands(commands.Cog):
                     continue
                 lines.append(f'• {member_obj.display_name} — <@{uid}> — {Duration.output_display_from_datetime(r["expires_at"])}')
             if not lines:
-                return await interaction.response.send_message(content=f'\U0001F6AB No muted users currently in {guild.name}.')
+                return await interaction.response.send_message(content=f'\U0001F6AB No muted users currently in {interaction.name}.')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
@@ -963,7 +963,7 @@ class ModeratorCommands(commands.Cog):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                return await interaction.response.send_message(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''
                     SELECT discord_snowflake, channel_id, room_name, expires_at, COALESCE(reason, 'No reason provided') AS reason
@@ -1428,7 +1428,7 @@ class ModeratorCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower()=='all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await interaction.response.send_message(ctx, content='\U0001F6AB Only owners, developers and administrators can list all text-mutes across the server.')
+                    return await interaction.response.send_message(content='\U0001F6AB Only owners, developers and administrators can list all text-mutes across the server.')
                 records = await conn.fetch('''SELECT discord_snowflake, channel_id, room_name, reason, expires_at FROM active_text_mutes WHERE guild_id = $1 ORDER BY room_name, channel_id, discord_snowflake''', interaction.guild.id)
                 if not records:
                     return await interaction.response.send_message(content=f'\U0001F6AB No users are currently text-muted in {interaction.guild.name}.')

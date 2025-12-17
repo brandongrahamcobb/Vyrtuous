@@ -172,6 +172,22 @@ class Duration:
             base_time = self.now
         return base_time + delta
         
+    @classmethod
+    def convert_timedelta_seconds(cls, seconds: int) -> str:
+        if seconds == 0:
+            return "0"  # or "permanent" depending on your convention
+        sign = "+" if seconds > 0 else "-"
+        seconds_abs = abs(seconds)
+        days, remainder = divmod(seconds_abs, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, _ = divmod(remainder, 60)
+        if days > 0:
+            return f"{sign}{days}d"
+        elif hours > 0:
+            return f"{sign}{hours}h"
+        else:
+            return f"{sign}{minutes}m"
+        
     def output_datetime(self) -> Optional[datetime]:
         if self.validate_permanent():
             return None

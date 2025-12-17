@@ -169,9 +169,9 @@ class Aliases(commands.Cog):
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
             caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
-            active_cap = next((c for c in caps if c[0] == 'ban'), None)
+            active_cap = next((c for c in caps if c[1] == 'ban'), None)
             if active_cap:
-                duration_obj.load_from_combined_duration_str(active_cap[1])
+                duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
                 cap_expires_at = duration_obj.output_datetime()
             else:
                 cap_expires_at = timedelta(days=7) + self.now
@@ -391,9 +391,9 @@ class Aliases(commands.Cog):
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
             caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
-            active_cap = next((c for c in caps if c[0] == 'tmute'), None)
+            active_cap = next((c for c in caps if c[1] == 'tmute'), None)
             if active_cap:
-                duration_obj.load_from_combined_duration_str(active_cap[1])
+                duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
                 cap_expires_at = duration_obj.output_datetime()
             else:
                 cap_expires_at = timedelta(days=7) + self.now
@@ -482,9 +482,9 @@ class Aliases(commands.Cog):
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
             caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
-            active_cap = next((c for c in caps if c[0] == 'mute'), None)
+            active_cap = next((c for c in caps if c[1] == 'mute'), None)
             if active_cap:
-                duration_obj.load_from_combined_duration_str(active_cap[1])
+                duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
                 cap_expires_at = duration_obj.output_datetime()
             else:
                 cap_expires_at = timedelta(days=7) + self.now

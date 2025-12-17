@@ -23,7 +23,7 @@ class Cap:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
-                'SELECT moderation_type, duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2',
+                'SELECT duration_seconds, moderation_type FROM active_caps WHERE guild_id=$1 AND channel_id=$2',
                 guild_id, channel_id
             )
-            return [(r['moderation_type'], r['duration']) for r in rows]
+            return [(r['duration_seconds'], r['moderation_type']) for r in rows]

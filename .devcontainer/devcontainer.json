@@ -3,7 +3,6 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "vyrtuous",
   "workspaceFolder": "/app",
-  
   "customizations": {
     "vscode": {
       "extensions": [
@@ -12,17 +11,21 @@
         "ms-azuretools.vscode-docker"
       ],
       "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python"
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "files.exclude": {
+            "**/backups": true
+        },
+        "search.exclude": {
+            "**/backups": true
+        }
       }
     }
   },
-  
   "forwardPorts": [5678, 8080],
   "remoteUser": "root",
   
   "remoteEnv": {
     "DEBUGPY": "1"
   },
-
   "overrideCommand": true
 }
