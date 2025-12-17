@@ -144,7 +144,7 @@ class DevCommands(commands.Cog):
             db.create_backup_directory()
             backup_file = db.execute_backup()
             if backup_file:
-                await interaction.response.send_message(file=discord.File(backup.file_name))
+                await interaction.response.send_message(file=discord.File(db.file_name))
             else:
                 await interaction.response.send_message(content=f'\U0001F6AB Failed to create backup.')
         except Exception as e:
@@ -162,7 +162,7 @@ class DevCommands(commands.Cog):
             db.create_backup_directory()
             backup_file = db.execute_backup()
             if backup_file:
-                await self.handler.send_message(ctx, file=discord.File(backup.file_name))
+                await self.handler.send_message(ctx, file=discord.File(db.file_name))
             else:
                 await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to create backup.')
         except Exception as e:
@@ -259,7 +259,7 @@ class DevCommands(commands.Cog):
                 return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
             is_owner = room.room_owner == interaction.user
             await room.update_temporary_room_name_and_room_snowflake(channel_obj, new_channel.name)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.room_snowflake)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.channel_id)
             if aliases:
                 for alias_obj in aliases:
                     await alias_obj.update_command_aliases_with_channel(channel_obj)
@@ -274,11 +274,11 @@ class DevCommands(commands.Cog):
                 )
             await conn.execute(
                 'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
-                room.room_snowflake, channel_obj.id
+                room.channel_id, channel_obj.id
             )
             await conn.execute(
                 'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
-                room.room_snowflake, channel_obj.id
+                room.channel_id, channel_obj.id
             )
             return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
     
@@ -302,7 +302,7 @@ class DevCommands(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
             is_owner = room.room_owner == ctx.author
             await room.update_temporary_room_name_and_room_snowflake(channel_obj, channel_obj.name)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.room_snowflake)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.channel_id)
             if aliases:
                 for alias_obj in aliases:
                     await alias_obj.update_command_aliases_with_channel(channel_obj)
@@ -317,11 +317,11 @@ class DevCommands(commands.Cog):
                 )
             await conn.execute(
                 'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
-                room.room_snowflake, channel_obj.id
+                room.channel_id, channel_obj.id
             )
             await conn.execute(
                 'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
-                room.room_snowflake, channel_obj.id
+                room.channel_id, channel_obj.id
             )
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
 

@@ -794,9 +794,9 @@ class AdminCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB No temporary rooms found.')
         lines = []
         for room in rooms:
-            room_id = room.room_snowflake
+            room_id = room.channel_id
             channel_obj = await self.channel_service.resolve_channel(interaction, room_id)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.room_snowflake)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.channel_id)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
                 continue
@@ -826,9 +826,9 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB No temporary rooms found.')
         lines = []
         for room in rooms:
-            room_id = room.room_snowflake
+            room_id = room.channel_id
             channel_obj = await self.channel_service.resolve_channel(ctx, room_id)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.room_snowflake)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.channel_id)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
                 continue
