@@ -17,6 +17,4 @@ COPY src/ ./src/
 
 RUN poetry install
 
-EXPOSE 5678
-
 CMD ["python", "-m", "vyrtuous.main"]
