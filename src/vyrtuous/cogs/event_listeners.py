@@ -172,7 +172,7 @@ class EventListeners(commands.Cog):
                             ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
                             DO UPDATE SET expires_at = NOW() + interval '1 hour'
                         ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)#                            
-                if before.mute and not after.mute:
+                if before.mute and not after.mute and before.channel:
                     result = await conn.execute('''
                         DELETE FROM active_voice_mutes
                         WHERE guild_id = $1

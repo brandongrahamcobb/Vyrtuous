@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.bot.discord_bot import DiscordBot
 import asyncpg
