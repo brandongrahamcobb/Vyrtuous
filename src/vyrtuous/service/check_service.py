@@ -327,10 +327,11 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, member: discord.M
             return 'Administrator', 4
         elif await member_is_developer(user):
             return 'Developer', 3
-        elif await member_is_coordinator(channel, user):
-            return 'Coordinator', 2
-        elif await member_is_moderator(channel, user):
-            return 'Moderator', 1
+        if channel:
+            if await member_is_coordinator(channel, user):
+                return 'Coordinator', 2
+            elif await member_is_moderator(channel, user):
+                return 'Moderator', 1
         else:
             return None, 0
     sender_role, sender_rank = await get_highest_role(sender)
