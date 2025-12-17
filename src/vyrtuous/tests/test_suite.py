@@ -75,6 +75,8 @@ async def bot_instance():
     password: Optional[str] = os.getenv('POSTGRES_PASSWORD')
     user: Optional[str] = os.getenv('POSTGRES_USER')
     dsn = f"postgres://{user}:{password}@{host}:{5432}/{database}"
+    if not all([database, host, password, user]):
+        pytest.skip("Database environment variables not set")
     db_pool = await asyncpg.create_pool(dsn=dsn)
     config = {
         'discord_command_prefix': '!',
