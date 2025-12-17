@@ -312,13 +312,14 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, member: discord.M
     elif isinstance(message_ctx_or_interaction, discord.Message):
         sender = message_ctx_or_interaction.author
     else:
-        return False, None
+        return 'Everyone', 0
     CUSTOM_ROLE_RANKS = {
         'Owner': 5,
         'Administrator': 4,
         'Developer': 3,
         'Coordinator': 2,
-        'Moderator': 1
+        'Moderator': 1,
+        'Everyone': 0
     }
     async def get_highest_role(user):
         if await member_is_owner(user):
@@ -333,7 +334,7 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, member: discord.M
             elif await member_is_moderator(channel, user):
                 return 'Moderator', 1
         else:
-            return None, 0
+            return 'Everyone', 0
     sender_role, sender_rank = await get_highest_role(sender)
     target_role, target_rank = await get_highest_role(member)
     return sender_rank > target_rank, target_role
