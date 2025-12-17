@@ -163,7 +163,7 @@ class Aliases(commands.Cog):
                 if action in ('delete', 'overwrite') and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
                 updated_reason = reason_obj.output_display()
-            if expires_at and expires_at <= datetime.now(timezone.utc): datetime = datetime.now(timezone.utc):
+            if expires_at and expires_at <= datetime.now(timezone.utc):
                 return await message.reply(content='\U0001F6AB You cannot reduce a ban below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
@@ -173,7 +173,7 @@ class Aliases(commands.Cog):
                 duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
                 cap_expires_at = duration_obj.output_datetime()
             else:
-                cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc): datetime = datetime.now(timezone.utc)
+                cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
             if existing_ban and expires_at:
                 if not expires_at < existing_ban['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator') or expires_at <= cap_expires_at):
                     return await message.reply(content='\U0001F6AB Only coordinators can ban for longer than the channel cap.')

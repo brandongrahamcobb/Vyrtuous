@@ -49,7 +49,7 @@ class OwnerCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a developer.')
         if not member_obj:
             return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
+        success = await has_equal_or_higher_role(interaction, member_obj, None)
         if not success:
             return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {interaction.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
@@ -94,7 +94,7 @@ class OwnerCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.bot:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a developer.')
-        success = await has_equal_or_higher_role(ctx.message, member_obj, channel_obj)
+        success = await has_equal_or_higher_role(ctx.message, member_obj, None)
         if not success:
             return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {ctx.guild.name}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
