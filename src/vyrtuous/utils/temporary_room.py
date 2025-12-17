@@ -24,11 +24,10 @@ class TemporaryRoom:
         
     def __init__(self, guild: discord.Guild, channel_id: Optional[str], room_owner: discord.Member):
         self.bot = DiscordBot.get_instance()
-        self.channel = self.bot.get_channel(channel_id)
+        self.channel = guild.get_channel(channel_id)
         self.channel_id: Optional[int] = channel_id
         self.guild = guild
         self.is_temp_room: Optional[bool] = True
-        self.room_snowflake: Optional[int] = channel_id 
         if self.channel:
             self.room_name: Optional[str] = self.channel.name
         else:
@@ -66,7 +65,7 @@ class TemporaryRoom:
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (guild_snowflake, room_name)
                 DO UPDATE SET owner_snowflake=$3, room_snowflake=$4
-            ''', self.guild.id, self.channel.name, self.room_owner.id, self.channel.id)
+            ''', self.guild.id, self.room_name, self.room_owner.id, self.channel_id)
 
     @classmethod
     async def fetch_temporary_room_by_channel(cls, channel: discord.abc.GuildChannel):
@@ -113,7 +112,7 @@ class TemporaryRoom:
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
                 'UPDATE temporary_rooms SET owner_snowflake=$1 WHERE guild_snowflake=$2 AND room_snowflake=$3 AND room_name=$4',
-                member.id, self.guild.id, self.channel.id, self.channel.name
+                member.id, self.guild.id, self.channel_id, self.room_name
             )
             
     async def update_temporary_room_name_and_room_snowflake(self, channel: discord.abc.GuildChannel, room_name: Optional[str]):

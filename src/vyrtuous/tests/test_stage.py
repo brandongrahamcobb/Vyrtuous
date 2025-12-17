@@ -46,6 +46,7 @@ def test_fetch_stage_temporary_coordinator_ids_by_channel(bot_instance):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -57,6 +58,7 @@ def test_fetch_stage_temporary_coordinator_ids_by_channel(bot_instance):
         assert coordinator_ids == {111111111, 222222222}
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
     asyncio.get_event_loop().run_until_complete(inner())
 
@@ -65,6 +67,7 @@ def test_fetch_stage_by_channel(bot_instance):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -79,6 +82,7 @@ def test_fetch_stage_by_channel(bot_instance):
         assert stage.initiator_id == member_one.id
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
     asyncio.get_event_loop().run_until_complete(inner())
 
@@ -87,6 +91,7 @@ def test_fetch_stage_by_guild_and_stage_name(bot_instance):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -101,6 +106,7 @@ def test_fetch_stage_by_guild_and_stage_name(bot_instance):
         assert stage.initiator_id == member_one.id
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
     asyncio.get_event_loop().run_until_complete(inner())
 
@@ -109,6 +115,7 @@ def test_fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(bot_insta
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -120,6 +127,7 @@ def test_fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(bot_insta
         assert coordinator_ids == {111111111, 222222222}
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
     asyncio.get_event_loop().run_until_complete(inner())
 
@@ -132,24 +140,37 @@ def test_update_stage_by_channel_and_temporary_coordinator_ids(bot_instance):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
                 VALUES ($1, $2, $3, $4, $5)
             ''', stage_channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO stage_coordinators (channel_id, discord_snowflake, guild_id, room_name)
                 VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)
             ''', stage_channel_one.id, member_three.id, guild.id, stage_name, stage_channel_one.id, member_four.id, guild.id, stage_name)
-        stage = await Stage.fetch_stage_by_channel(stage_channel_one)
+        async with bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow('''
+                SELECT expires_at, initiator_id FROM active_stages
+                WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
+            ''', stage_channel_one.id, guild.id, stage_name)
+        stage = Stage(row['expires_at'], stage_channel_one.id, stage_name, guild.id, row['initiator_id'])
         await stage.update_stage_by_channel_and_temporary_coordinator_ids(stage_channel_one, temporary_coordinator_ids)
-        updated_stage = await Stage.fetch_stage_by_channel(stage_channel_one)
-        coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_channel(stage_channel_one)
-        assert len(coordinator_ids) == 2
-        assert coordinator_ids == {member_three.id, member_four.id}
+        async with bot.db_pool.acquire() as conn:
+            second_row = await conn.fetch('''
+                SELECT discord_snowflake FROM stage_coordinators
+                WHERE channel_id = $1 AND guild_id = $2
+            ''', stage_channel_one.id, guild.id)
+        if second_row:
+            temporary_stage_coordinator_ids = {c['discord_snowflake'] for c in second_row}
+        assert len(temporary_stage_coordinator_ids) == 2
+        assert temporary_stage_coordinator_ids == {member_three.id, member_four.id}
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
     asyncio.get_event_loop().run_until_complete(inner())
 
@@ -158,6 +179,7 @@ def test_update_stage_by_channel_initiator_and_temporary_coordinator_ids(bot_ins
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -168,12 +190,23 @@ def test_update_stage_by_channel_initiator_and_temporary_coordinator_ids(bot_ins
                 INSERT INTO stage_coordinators (channel_id, discord_snowflake, guild_id, room_name)
                 VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)
             ''', stage_channel_one.id, member_three.id, guild.id, stage_name, stage_channel_one.id, member_four.id, guild.id, stage_name)
-        stage = await Stage.fetch_stage_by_channel(stage_channel_one)
+        async with bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow('''
+                SELECT expires_at, initiator_id FROM active_stages
+                WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
+            ''', stage_channel_one.id, guild.id, stage_name)
+        stage = Stage(row['expires_at'], stage_channel_one.id, stage_name, guild.id, row['initiator_id'])
         await stage.update_stage_by_channel_initiator_and_temporary_coordinator_ids(stage_channel_one, member_one.id, temporary_coordinator_ids)
-        updated_stage = await Stage.fetch_stage_by_channel(stage_channel_one)
-        coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_channel(stage_channel_one)
-        assert coordinator_ids == {member_three.id, member_four.id}
+        async with bot.db_pool.acquire() as conn:
+            second_row = await conn.fetch('''
+                SELECT discord_snowflake FROM stage_coordinators
+                WHERE channel_id = $1 AND guild_id = $2
+            ''', stage_channel_one.id, guild.id)
+        if second_row:
+            temporary_stage_coordinator_ids = {c['discord_snowflake'] for c in second_row}
+        assert temporary_stage_coordinator_ids == {member_three.id, member_four.id}
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM stage_coordinators WHERE guild_id = 123456789')
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
     asyncio.get_event_loop().run_until_complete(inner())
