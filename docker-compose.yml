@@ -3,8 +3,6 @@ services:
   db:
     image: postgres
     restart: always
-    ports:
-      - "5432:5432"
     env_file:
       - .env
     volumes:
@@ -23,11 +21,6 @@ services:
         condition: service_healthy
     env_file:
       - .env
-    expose:
-      - "5678"
-      - "8080"
-    ports:
-      - "5678:5678"
     volumes:
       - vyrtuous-backups:/app/backups
       - vyrtuous-config:/root/.config/vyrtuous
