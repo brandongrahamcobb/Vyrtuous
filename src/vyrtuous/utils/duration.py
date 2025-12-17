@@ -18,8 +18,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 class Duration:
-    
-    now: datetime = datetime.now(timezone.utc)
             
     def __init__(self):
         self.base: Optional[datetime] = None
@@ -169,7 +167,7 @@ class Duration:
         if self.base:
             base_time = self.base
         else:
-            base_time = self.now
+            base_time = datetime.now(timezone.utc)
         return base_time + delta
         
     @classmethod
@@ -217,7 +215,7 @@ class Duration:
     def output_display_from_datetime(cls, dt: Optional[datetime]) -> Optional[str]:
         if dt is None:
             return "permanent"
-        delta = dt - cls.now
+        delta = dt - datetime.now(timezone.utc)
         seconds = int(delta.total_seconds())
         if seconds == 0:
             return "now"
