@@ -237,7 +237,7 @@ def test_update_temporary_room_owner_snowflake(bot_instance):
                 DO UPDATE SET owner_snowflake=$2, room_snowflake=$4
             ''', guild.id, member_one.id, temporary_channel_one.name, temporary_channel_one.id)
         room = TemporaryRoom(guild, temporary_channel_one.id, member_one)
-        room.update_temporary_room_owner_snowflake(member_two.id)
+        await room.update_temporary_room_owner_snowflake(member_two)
         async with bot.db_pool.acquire() as conn:
             room_one = await conn.fetchrow(
                 'SELECT owner_snowflake, room_name, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_snowflake=$2',
@@ -245,7 +245,7 @@ def test_update_temporary_room_owner_snowflake(bot_instance):
             )
         assert room_one['room_snowflake'] == temporary_channel_one.id
         assert room_one['room_name'] == temporary_channel_one.name
-        assert room_one['owner_snowflake'] == member_one.id
+        assert room_one['owner_snowflake'] == member_two.id
         async with bot.db_pool.acquire() as conn:
             await conn.execute('DELETE FROM temporary_rooms WHERE guild_snowflake = 123456789')
     asyncio.get_event_loop().run_until_complete(inner())
@@ -263,7 +263,7 @@ def test_update_temporary_room_name_and_room_snowflake(bot_instance):
                 DO UPDATE SET owner_snowflake=$2, room_snowflake=$4
             ''', guild.id, member_one.id, temporary_channel_one.name, temporary_channel_one.id)
         room = TemporaryRoom(guild, temporary_channel_one.id, member_one)
-        room.update_temporary_room_name_and_room_snowflake(temporary_channel_two.name, temporary_channel_two.id)
+        await room.update_temporary_room_name_and_room_snowflake(temporary_channel_two, temporary_channel_two.name)
         async with bot.db_pool.acquire() as conn:
             room_one = await conn.fetchrow(
                 'SELECT owner_snowflake, room_name, room_snowflake FROM temporary_rooms WHERE guild_snowflake=$1 AND room_snowflake=$2',
