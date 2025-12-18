@@ -88,32 +88,33 @@ class Statistics:
     @classmethod
     def build_statistic_embeds(cls, message: discord.Message, moderation_type: Optional[str], member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, highest_role: Optional[str] = ''):
         guild = message.guild
-        time_left = expires_at - datetime.now(timezone.utc)
-        hours_left = round(time_left.total_seconds() / 3600, 1)
-        days_left = time_left.days
-        duration_info = f'**Type:** {moderation_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
-        duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
-        if expires_at is None:
+        if expires_at is not None:
+            time_left = expires_at - datetime.now(timezone.utc)
+            hours_left = round(time_left.total_seconds() / 3600, 1)
+            days_left = time_left.days
+            duration_info = f'**Type:** {moderation_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
+            duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
+            if is_modification:
+                color, duration_type, duration_emoji = 0xFF6B35, '⏰ Modified', '📅'
+            else:
+                color, duration_type, duration_emoji = 0xFF8C00, '⏱️ Temporary', '⏰'
+        else:
             color, duration_type, duration_emoji = 0xDC143C, '🔒 Permanent', '♾️'
             duration_info = f'**Type:** {moderation_type}\n**Duration:** {duration_display}\n**Status:** Permanent'
-        elif is_modification:
-            color, duration_type, duration_emoji = 0xFF6B35, '⏰ Modified', '📅'
-        else:
-            color, duration_type, duration_emoji = 0xFF8C00, '⏱️ Temporary', '⏰'
             
-        if moderation_type.lower() == 'ban':
+        if moderation_type and moderation_type.lower() == 'ban':
             if is_modification:
                 title = '🔄 Ban Modified'
             else:
                 title = '🔨 User Banned'
             action = 'banned'
-        elif moderation_type.lower() == 'voice_mute':
+        elif moderation_type and moderation_type.lower() == 'voice_mute':
             if is_modification:
                 title = '🔄 Voice Mute Modified'
             else:
                 title = '🎙️ User Voice Muted'
             action = 'voice muted'
-        elif moderation_type.lower() == 'text_mute':
+        elif moderation_type and moderation_type.lower() == 'text_mute':
             if is_modification:
                 title = '🔄 Text Mute Modified'
             else:
@@ -121,11 +122,13 @@ class Statistics:
             action = 'text muted'
         else:
             title = None
-            embed_user.description = None
             action = None
             
         embed_user = discord.Embed(title=f"{title} - User Identity", color=color, timestamp=datetime.now(timezone.utc))
-        embed_user.description = f"**Target:** {member.mention} {action} in {channel.mention}"
+        if not action:
+            embed_user.description = None
+        else:
+            embed_user.description = f"**Target:** {member.mention} {action} in {channel.mention}"
         embed_user.set_thumbnail(url=message.author.display_avatar.url)
         user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
         if member.joined_at:

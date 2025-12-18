@@ -392,19 +392,20 @@ class AdminCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid text channel.')
         current_channels = Statistics.get_statistic_channels().setdefault(interaction.guild.id, [])
         async with self.bot.db_pool.acquire() as conn:
-            existing = await conn.fetchrow(
-                'SELECT * FROM statistic_channels WHERE guild_id=$1 AND channel_id=$2;',
-                interaction.guild.id, channel_obj.id
-            )
-            if existing:
-                new_status = not existing['enabled']
-                await conn.execute(
-                    'UPDATE statistic_channels SET enabled=$1 WHERE guild_id=$2 AND channel_id=$3;',
-                    new_status, interaction.guild.id, channel_obj.id
+            for log_channel in current_channels:
+                existing = await conn.fetchrow(
+                    'SELECT * FROM statistic_channels WHERE guild_id=$1 AND channel_id=$2;',
+                    interaction.guild.id, log_channel.id
                 )
-                msg = f'{self.emoji.get_random_emoji()} Logging for {channel_obj.mention} toggled {"on" if new_status else "off"}.'
-            else:
-                msg = f'\U0001F6AB No logging for {channel_obj.mention} exists'
+                if existing:
+                    new_status = not existing['enabled']
+                    await conn.execute(
+                        'UPDATE statistic_channels SET enabled=$1 WHERE guild_id=$2 AND channel_id=$3;',
+                        new_status, interaction.guild.id, channel_obj.id
+                    )
+                    msg = f'{self.emoji.get_random_emoji()} Logging for {channel_obj.mention} toggled {"on" if new_status else "off"}.'
+                else:
+                    msg = f'\U0001F6AB No logging for {channel_obj.mention} exists'
         await Statistics.load_channels()
         await interaction.response.send_message(content=msg, allowed_mentions=discord.AllowedMentions.none())
         
@@ -423,19 +424,20 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid text channel.')
         current_channels = Statistics.get_statistic_channels().setdefault(ctx.guild.id, [])
         async with self.bot.db_pool.acquire() as conn:
-            existing = await conn.fetchrow(
-                'SELECT * FROM statistic_channels WHERE guild_id=$1 AND channel_id=$2;',
-                ctx.guild.id, channel_obj.id
-            )
-            if existing:
-                new_status = not existing['enabled']
-                await conn.execute(
-                    'UPDATE statistic_channels SET enabled=$1 WHERE guild_id=$2 AND channel_id=$3;',
-                    new_status, ctx.guild.id, channel_obj.id
+            for log_channel in current_channels:
+                existing = await conn.fetchrow(
+                    'SELECT * FROM statistic_channels WHERE guild_id=$1 AND channel_id=$2;',
+                    ctx.guild.id, log_channel.id
                 )
-                msg = f'{self.emoji.get_random_emoji()} Logging for {channel_obj.mention} toggled {"on" if new_status else "off"}.'
-            else:
-                msg = f'\U0001F6AB No logging for {channel_obj.mention} exists'
+                if existing:
+                    new_status = not existing['enabled']
+                    await conn.execute(
+                        'UPDATE statistic_channels SET enabled=$1 WHERE guild_id=$2 AND channel_id=$3;',
+                        new_status, ctx.guild.id, channel_obj.id
+                    )
+                    msg = f'{self.emoji.get_random_emoji()} Logging for {channel_obj.mention} toggled {"on" if new_status else "off"}.'
+                else:
+                    msg = f'\U0001F6AB No logging for {channel_obj.mention} exists'
         await Statistics.load_channels()
         await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
         

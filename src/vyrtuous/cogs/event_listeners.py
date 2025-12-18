@@ -25,6 +25,7 @@ from vyrtuous.service.discord_message_service import DiscordMessageService, Pagi
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.stage import Stage
+from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.vegans import Vegans
 from vyrtuous.utils.temporary_room import TemporaryRoom
 
@@ -312,6 +313,7 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        await Statistics.load_channels()
         if getattr(self, "_ready_done", False):
             return
         self._ready_done = True
