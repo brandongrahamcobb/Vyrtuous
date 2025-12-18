@@ -530,8 +530,6 @@ class ModeratorCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         try:
             msg = await channel_obj.fetch_message(message_id)
-            if channel_obj.type != discord.ChannelType.text:
-                return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
         except:
             logger.warning('No message with this ID exists.')
         if not msg:
