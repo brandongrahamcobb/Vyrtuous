@@ -502,6 +502,9 @@ class ModeratorCommands(commands.Cog):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_obj, interaction.author)
+        if member_permission_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator', 'Moderator'):
+            return await interaction.response.send_message(content=f'\U0001F6AB You are not permitted to delete messages in {channel_obj.mention}.')
         try:
             msg = await channel_obj.fetch_message(int(message_id))
         except:
@@ -528,6 +531,9 @@ class ModeratorCommands(commands.Cog):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_obj, ctx.author)
+        if member_permission_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator', 'Moderator'):
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not permitted to delete messages in {channel_obj.mention}.')
         try:
             msg = await channel_obj.fetch_message(message_id)
         except:
