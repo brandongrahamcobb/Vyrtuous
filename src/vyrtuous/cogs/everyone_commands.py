@@ -327,7 +327,7 @@ class EveryoneCommands(commands.Cog):
                     pages.append(embed)
             elif target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await interaction.response.send_message(ctx, content='\U0001F6AB You are not authorized to list all developers.')
+                    return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all developers.')
                 rows = await conn.fetch(
                     'SELECT discord_snowflake, developer_guild_ids FROM users WHERE array_length(developer_guild_ids, 1) > 0'
                 )
