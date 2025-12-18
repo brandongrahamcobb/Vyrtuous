@@ -108,7 +108,7 @@ async def is_coordinator(ctx_or_interaction_or_message):
         )
     if not user_row:
         raise NotCoordinator()
-    elif user_row.get('coordinator_channel_ids'):
+    elif not user_row.get('coordinator_channel_ids'):
         raise NotCoordinator()
     return True
     

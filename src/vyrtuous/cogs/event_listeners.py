@@ -29,6 +29,7 @@ from vyrtuous.utils.vegans import Vegans
 from vyrtuous.utils.temporary_room import TemporaryRoom
 
 import discord
+import inspect
 import time
 
 class EventListeners(commands.Cog):
@@ -277,8 +278,8 @@ class EventListeners(commands.Cog):
             return
         if message.author.bot:
             return
-        prefix = await self.bot.get_prefix(message)
-        if prefix != self.config['discord_command_prefix']:
+        prefix = self.config['discord_command_prefix']
+        if not message.content.startswith(prefix):
             return
         content = message.content[len(prefix):].strip()
         if not content:

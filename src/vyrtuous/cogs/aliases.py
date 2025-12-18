@@ -488,7 +488,7 @@ class Aliases(commands.Cog):
             else:
                 cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
             if existing_mute and expires_at:
-                if not expires_at < existing_mute['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator') or expires_at <= cap_expires_at):
+                if not expires_at < existing_mute['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') or expires_at <= cap_expires_at):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can mute for longer than the channel cap.')
             else:
                 if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
