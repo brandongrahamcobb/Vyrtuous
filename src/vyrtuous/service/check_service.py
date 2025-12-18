@@ -340,15 +340,15 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, member: discord.M
 
 async def is_owner_developer_administrator_coordinator(ctx_or_interaction_or_message, channel: discord.abc.GuildChannel, member: discord.Member) -> str:
     checks = (
-        ("Owner", is_system_owner),
-        ("Owner", is_guild_owner),
-        ("Developer", is_developer),
-        ("Administrator", is_administrator),
-        ("Coordinator", lambda ctx: member_is_coordinator(channel, member))
+        ("Administrator", lambda: is_administrator(ctx_or_interaction_or_message)),
+        ("Coordinator", lambda: member_is_coordinator(channel, member)),
+        ("Developer", lambda: is_developer(ctx_or_interaction_or_message)),
+        ("Owner", lambda: is_guild_owner(ctx_or_interaction_or_message)),
+        ("Owner", lambda: is_system_owner(ctx_or_interaction_or_message)),
     )
     for role_name, check in checks:
         try:
-            if await check(ctx_or_interaction_or_message):
+            if await check():
                 return role_name
         except commands.CheckFailure:
             continue
