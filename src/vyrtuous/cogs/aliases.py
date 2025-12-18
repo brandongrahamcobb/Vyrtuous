@@ -160,7 +160,7 @@ class Aliases(commands.Cog):
             else:
                 reason_obj.load_new_reason(updated_reason)
                 action = reason_obj.interpret_action(duration_obj.get_prefix())
-                if action in ('delete', 'overwrite') and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
+                if action in ('delete', 'overwrite') and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
                     return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
                 updated_reason = reason_obj.output_display()
             if expires_at and expires_at <= datetime.now(timezone.utc):
@@ -175,10 +175,10 @@ class Aliases(commands.Cog):
             else:
                 cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
             if existing_ban and expires_at:
-                if not expires_at < existing_ban['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator') or expires_at <= cap_expires_at):
+                if not expires_at < existing_ban['expires_at'] and (executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') or expires_at <= cap_expires_at):
                     return await message.reply(content='\U0001F6AB Only coordinators can ban for longer than the channel cap.')
             else:
-                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
+                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can ban for longer than the channel cap.')
         try:
             await channel_obj.set_permissions(member_obj, view_channel=False, reason=f'{updated_reason}')
@@ -400,7 +400,7 @@ class Aliases(commands.Cog):
                 if not expires_at < existing_text_mute['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') or expires_at <= cap_expires_at):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can text-mute for longer than the channel cap.')
             else:
-                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
+                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can textmute- for longer than the channel cap.')
             is_in_channel = False
             if channel_obj:
@@ -488,10 +488,10 @@ class Aliases(commands.Cog):
             else:
                 cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
             if existing_mute and expires_at:
-                if not expires_at < existing_mute['expires_at'] and not (executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') or expires_at <= cap_expires_at):
+                if not expires_at < existing_mute['expires_at'] and (executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') or expires_at <= cap_expires_at):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can mute for longer than the channel cap.')
             else:
-                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator','Coordinator'):
+                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can mute for longer than the channel cap.')
         try:
             async with self.bot.db_pool.acquire() as conn:
