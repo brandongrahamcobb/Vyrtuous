@@ -550,7 +550,7 @@ class Aliases(commands.Cog):
                 FROM active_bans
                 WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
             ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
-            if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator'):
+            if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent bans.')
             try:
                 if channel_obj:
@@ -678,7 +678,7 @@ class Aliases(commands.Cog):
             ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
             if not row:
                 return await message.reply(content=f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
-            if row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator'):
+            if row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
             await conn.execute('''
                 DELETE FROM active_voice_mutes
@@ -751,7 +751,7 @@ class Aliases(commands.Cog):
                 FROM active_text_mutes
                 WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
             ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
-            if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator'):
+            if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent text mutes.')
             try:
                 await channel_obj.set_permissions(member_obj, send_messages=None)
