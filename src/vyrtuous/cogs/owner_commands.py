@@ -45,7 +45,7 @@ class OwnerCommands(commands.Cog):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(interaction, member)
-        if member_obj.bot:
+        if member_obj.id == interaction.guild.me.id:
             return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a developer.')
         if not member_obj:
             return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
@@ -92,7 +92,7 @@ class OwnerCommands(commands.Cog):
         member_obj = await self.member_service.resolve_member(ctx, member)
         if not member_obj:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == ctx.guild.me.id:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a developer.')
         success = await has_equal_or_higher_role(ctx.message, member_obj, None)
         if not success:
@@ -138,7 +138,7 @@ class OwnerCommands(commands.Cog):
         member_obj = await self.member_service.resolve_member(interaction, member)
         if not member_obj:
             return await interaction.response.send_message(content='\U0001F6AB Could not resolve the member.')
-        if member_obj.bot:
+        if member_obj.id == interaction.guild.me.id:
             return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a superhero.')
         state = Vegans.toggle_state()
         if state:
@@ -163,7 +163,7 @@ class OwnerCommands(commands.Cog):
         member_obj = await self.member_service.resolve_member(ctx, member)
         if not member_obj:
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve the member.')
-        if member_obj.bot:
+        if member_obj.id == ctx.guild.me.id:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a superhero.')
         state = Vegans.toggle_state()
         if state:

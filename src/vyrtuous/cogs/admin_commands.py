@@ -185,7 +185,7 @@ class AdminCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         if channel_obj.type != discord.ChannelType.voice:
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        if member_obj.bot:
+        if member_obj.id == interaction.guild.me.id:
             return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a coordinator.')
         success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
         if not success:
@@ -233,7 +233,7 @@ class AdminCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         if channel_obj.type != discord.ChannelType.voice:
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-        if member_obj.bot:
+        if member_obj.id == ctx.guild.me.id:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a coordinator.')
         success = await has_equal_or_higher_role(ctx.message, member_obj, channel_obj)
         if not success:
@@ -676,7 +676,7 @@ class AdminCommands(commands.Cog):
         member_obj = await self.member_service.resolve_member(interaction, member)
         if not member_obj:
             return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from target: `{member}`.')
-        if member_obj.bot:
+        if member_obj.id == interaction.guild.me.id:
             return await interaction.response.send_message(content='\U0001F6AB You cannot server mute the bot.')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
@@ -737,7 +737,7 @@ class AdminCommands(commands.Cog):
         member_obj = await self.member_service.resolve_member(ctx, member)
         if not member_obj:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.bot:
+        if member_obj.id == ctx.guild.me.id:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot server mute the bot.')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('SELECT server_mute_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)

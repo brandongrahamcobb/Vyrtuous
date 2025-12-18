@@ -188,7 +188,7 @@ class EveryoneCommands(commands.Cog):
                     if m:
                         lines.append(f'• {m.display_name} — <@{uid}>')
                 if not lines:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No coordinators currently in {guild.name}.')
+                    return await interaction.response.send_message(content=f'\U0001F6AB No coordinators currently in {interaction.guild.name}.')
                 pages = []
                 chunk_size = 18
                 for i in range(0, len(lines), chunk_size):
@@ -375,7 +375,7 @@ class EveryoneCommands(commands.Cog):
             pages = []
             member_obj = await self.member_service.resolve_member(ctx, target)
             highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-            if member_obj and member_obj.bot:
+            if member_obj and member_obj.id == ctx.guild.me.id:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot list in the guilds the bot is a developer.')
             elif target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -700,7 +700,7 @@ class EveryoneCommands(commands.Cog):
                     )
                     for room in subset:
                         embed.add_field(
-                            name=r['room_name'],
+                            name=room['room_name'],
                             value=f'• Channel: {room.channel.mention}',
                             inline=False
                         )
@@ -767,7 +767,7 @@ class EveryoneCommands(commands.Cog):
             elif await member_is_developer(member): developers.append(member)
             elif await member_is_administrator(member): administrators.append(member)
             elif await member_is_coordinator(channel_obj, member): coordinators.append(member)
-            elif await imember_is_moderator(channel_obj, member): moderators.append(member)
+            elif await member_is_moderator(channel_obj, member): moderators.append(member)
         def fmt(users): return ', '.join(u.mention for u in users) if users else '*None*'
         msg = (
             f'\U0001F50D **Survey results for {channel_obj.mention}:**\n'
@@ -800,7 +800,7 @@ class EveryoneCommands(commands.Cog):
             elif await member_is_developer(member): developers.append(member)
             elif await member_is_administrator(member): administrators.append(member)
             elif await member_is_coordinator(channel_obj, member): coordinators.append(member)
-            elif await imember_is_moderator(channel_obj, member): moderators.append(member)
+            elif await member_is_moderator(channel_obj, member): moderators.append(member)
         def fmt(users): return ', '.join(u.mention for u in users) if users else '*None*'
         msg = (
             f'\U0001F50D **Survey results for {channel_obj.mention}:**\n'

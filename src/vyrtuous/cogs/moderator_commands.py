@@ -51,7 +51,7 @@ class ModeratorCommands(commands.Cog):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(interaction, target)
-        if member_obj and member_obj.bot:
+        if member_obj and member_obj.id == interaction.guild.me.id:
             return await interaction.response.send_message(content='\U0001F6AB You cannot list bans on the bot.')
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         if member_obj:
@@ -187,7 +187,7 @@ class ModeratorCommands(commands.Cog):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(ctx, target)
-        if member_obj and member_obj.bot:
+        if member_obj and member_obj.id == ctx.guild.me.id:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot list bans on the bot.')
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
         if member_obj:
@@ -554,7 +554,7 @@ class ModeratorCommands(commands.Cog):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
         member_obj = await self.member_service.resolve_member(interaction, target)
-        if member_obj and member_obj.bot:
+        if member_obj and member_obj.id == interaction.guild.me.id:
             return await interaction.response.send_message(content='\U0001F6AB You cannot list flags on the bot.')
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         if member_obj:
@@ -640,7 +640,7 @@ class ModeratorCommands(commands.Cog):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(ctx, target)
-        if member_obj and member_obj.bot:
+        if member_obj and member_obj.id == ctx.guild.me.id:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot list flags on the bot.')
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
         if member_obj:
@@ -801,7 +801,7 @@ class ModeratorCommands(commands.Cog):
         member_obj = await self.member_service.resolve_member(ctx, target)
         if member_obj:
             target = None
-        if member_obj and member_obj.bot:
+        if member_obj and member_obj.id == ctx.guild.me.id:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot get a vegan status for the bot.')
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
         async with self.bot.db_pool.acquire() as conn:
