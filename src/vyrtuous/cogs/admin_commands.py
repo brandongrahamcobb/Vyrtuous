@@ -289,7 +289,7 @@ class AdminCommands(commands.Cog):
             action = None
             row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             current_channel_ids = row.get('coordinator_channel_ids', []) if row else []
-            if channel_obj.id in current_channel_ids:
+            if current_channel_ids and channel_obj.id in current_channel_ids:
                 await conn.execute('UPDATE users SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
                 action = 'revoked'
             else:
@@ -337,7 +337,10 @@ class AdminCommands(commands.Cog):
             action = None
             row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             current_channel_ids = row.get('coordinator_channel_ids', []) if row else []
-            if not current_channel_ids:
+            if current_channel_ids and channel_obj.id in current_channel_ids:
+                await conn.execute('UPDATE users SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
+                action = 'revoked'
+            else:
                 await conn.execute('''
                     INSERT INTO users (discord_snowflake, coordinator_channel_ids)
                     VALUES ($1, ARRAY[$2]::BIGINT[])
@@ -349,10 +352,6 @@ class AdminCommands(commands.Cog):
                     ),
                     updated_at = NOW()
                 ''', member_obj.id, channel_obj.id)
-                action = 'granted'
-            elif channel_obj.id in current_channel_ids:
-                await conn.execute('UPDATE users SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
-                action = 'revoked'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)

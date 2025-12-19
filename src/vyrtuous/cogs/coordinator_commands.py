@@ -64,7 +64,7 @@ class CoordinatorCommands(commands.Cog):
             action = None
             row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             current_channel_ids = row.get('moderator_channel_ids', []) if row else []
-            if channel_obj.id in current_channel_ids:
+            if current_channel_ids and channel_obj.id in current_channel_ids:
                 await conn.execute('''
                     UPDATE users
                     SET moderator_channel_ids = array_remove(
@@ -123,7 +123,7 @@ class CoordinatorCommands(commands.Cog):
             action = None
             row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             current_channel_ids = row.get('moderator_channel_ids', []) if row else []
-            if channel_obj.id in current_channel_ids:
+            if current_channel_ids and channel_obj.id in current_channel_ids:
                 await conn.execute('''
                     UPDATE users
                     SET moderator_channel_ids = array_remove(
