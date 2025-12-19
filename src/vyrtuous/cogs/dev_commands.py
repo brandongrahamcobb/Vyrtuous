@@ -89,7 +89,7 @@ class DevCommands(commands.Cog):
         
     # DONE
     @commands.command(name='alias', help='Set an alias for a cow, uncow, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, or unrole action.')
-#    @is_owner_developer_predicator()
+    @is_owner_developer_predicator()
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
