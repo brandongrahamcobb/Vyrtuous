@@ -160,6 +160,5 @@ class Paginator:
                     break
                 await self.message.remove_reaction(reaction.emoji, user)
             except asyncio.TimeoutError:
-                await self.message.clear_reactions()
                 break
 

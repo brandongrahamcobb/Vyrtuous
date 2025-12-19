@@ -65,7 +65,15 @@ class CoordinatorCommands(commands.Cog):
             row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             current_channel_ids = row.get('moderator_channel_ids', []) if row else []
             if channel_obj.id in current_channel_ids:
-                await conn.execute('UPDATE users SET moderator_channel_ids = array_remove(moderator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
+                await conn.execute('''
+                    UPDATE users
+                    SET moderator_channel_ids = array_remove(
+                        COALESCE(moderator_channel_ids, ARRAY[]::BIGINT[]),
+                        $2
+                    ),
+                    updated_at = NOW()
+                    WHERE discord_snowflake = $1
+                ''', member_obj.id, channel_obj.id)
                 action = 'revoked'
             else:
                 await conn.execute('''
@@ -116,7 +124,15 @@ class CoordinatorCommands(commands.Cog):
             row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
             current_channel_ids = row.get('moderator_channel_ids', []) if row else []
             if channel_obj.id in current_channel_ids:
-                await conn.execute('UPDATE users SET moderator_channel_ids = array_remove(moderator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
+                await conn.execute('''
+                    UPDATE users
+                    SET moderator_channel_ids = array_remove(
+                        COALESCE(moderator_channel_ids, ARRAY[]::BIGINT[]),
+                        $2
+                    ),
+                    updated_at = NOW()
+                    WHERE discord_snowflake = $1
+                ''', member_obj.id, channel_obj.id)
                 action = 'revoked'
             else:
                 await conn.execute('''
