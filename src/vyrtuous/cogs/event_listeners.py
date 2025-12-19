@@ -21,6 +21,7 @@ from discord.ext import commands
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
+from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
@@ -37,6 +38,7 @@ class EventListeners(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
+        self.channel_service = ChannelService()
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.db_pool)
@@ -121,6 +123,47 @@ class EventListeners(commands.Cog):
         room = await TemporaryRoom.fetch_temporary_room_by_channel(channel=channel)
         if room:
             self.deleted_rooms[channel.name] = room
+    
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before, after):
+        if before.name == after.name:
+            return
+        guild_id = after.guild.id
+        channel_id = after.id
+        new_name = after.name
+        old_name = before.name
+        async with self.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE active_stages
+                SET room_name = $4
+                WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+            ''', guild_id, channel_id, old_name, new_name)
+            await conn.execute('''
+                UPDATE stage_coordinators
+                SET room_name = $4
+                WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+            ''', guild_id, channel_id, old_name, new_name)
+            await conn.execute('''
+                UPDATE active_voice_mutes
+                SET room_name = $4
+                WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+            ''', guild_id, channel_id, old_name, new_name)
+            await conn.execute('''
+                UPDATE active_bans
+                SET room_name = $4
+                WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+            ''', guild_id, channel_id, old_name, new_name)
+            await conn.execute('''
+                UPDATE active_text_mutes
+                SET room_name = $4
+                WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+            ''', guild_id, channel_id, old_name, new_name)
+            await conn.execute('''
+                UPDATE active_caps
+                SET room_name = $4
+                WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
+            ''', guild_id, channel_id, old_name, new_name)
+
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
@@ -173,7 +216,7 @@ class EventListeners(commands.Cog):
                             VALUES ($1, $2, $3, $4, $5)
                             ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
                             DO UPDATE SET expires_at = NOW() + interval '1 hour'
-                        ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)#                            
+                        ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)                           
                 if before.mute and not after.mute and before.channel:
                     result = await conn.execute('''
                         DELETE FROM active_voice_mutes

@@ -936,7 +936,7 @@ class ModeratorCommands(commands.Cog):
                     continue
                 lines.append(f'• {member_obj.display_name} — <@{uid}> — {Duration.output_display_from_datetime(r["expires_at"])}')
             if not lines:
-                return await interaction.response.send_message(content=f'\U0001F6AB No muted users currently in {interaction.name}.')
+                return await interaction.response.send_message(content=f'\U0001F6AB No muted users currently in {interaction.guild.name}.')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
