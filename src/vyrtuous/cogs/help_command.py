@@ -37,11 +37,11 @@ class Help(commands.Cog):
         self.bot.db_pool = bot.db_pool
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.permission_page_title_pairs = [
-            ('Owner', '`Owner` inherits `developer`.'),
-            ('Developer', '`Developer` inherits `administrator`.'),
-            ('Administrator', '`Administrator` inherits `coordinator`.'),
-            ('Coordinator', '`Coordinator` inherits `moderator`.'),
-            ('Moderator', 'Moderators can use these commands.'),
+            ('Owner', '`Owner` inherits `Developer`.'),
+            ('Developer', '`Developer` inherits `Administrator`.'),
+            ('Administrator', '`Administrator` inherits `Coordinator`.'),
+            ('Coordinator', '`Coordinator` inherits `Moderator`.'),
+            ('Moderator', '`Moderator` inherits `Everyone`.'),
             ('Everyone', 'Commands available to everyone.')
         ]
 

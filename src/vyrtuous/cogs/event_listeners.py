@@ -201,6 +201,7 @@ class EventListeners(commands.Cog):
                 return    
 
             if after.channel:                    
+                should_be_muted = False
                 if not before.mute and after.mute:
                     if member.id in Vegans.get_vegans():
                         embed = discord.Embed(
@@ -216,7 +217,8 @@ class EventListeners(commands.Cog):
                             VALUES ($1, $2, $3, $4, $5)
                             ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
                             DO UPDATE SET expires_at = NOW() + interval '1 hour'
-                        ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)                           
+                        ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)           
+                        should_be_muted = True                
                 if before.mute and not after.mute and before.channel:
                     result = await conn.execute('''
                         DELETE FROM active_voice_mutes
@@ -236,21 +238,15 @@ class EventListeners(commands.Cog):
                         AND room_name = $4
                         AND target = $5
                 ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)
-                if existing_mute_row and not after.mute:
+                if existing_mute_row:
+                    should_be_muted = True
+                if after.mute != should_be_muted:
                     try:
-                        await member.edit(mute=True, reason=f'Enforcing mute in {after.channel.name} (found in arrays)')
+                        await member.edit(mute=should_be_muted, reason=f'Setting mute to {should_be_muted} in {after.channel.name}')
                     except discord.Forbidden:
-                        logger.debug(f'No permission to mute {member.display_name}')
+                        logger.debug(f'No permission to edit mute for {member.display_name}')
                     except discord.HTTPException as e:
-                        logger.debug(f'Failed to mute {member.display_name}: {e}')
-                elif not existing_mute_row and after.mute:
-                    try:
-                        await member.edit(mute=False, reason=f'Auto-unmuting in {after.channel.name} (no mute record)')
-                    except discord.Forbidden:
-                        logger.debug(f'No permission to unmute {member.display_name}')
-                    except discord.HTTPException as e:
-                        logger.debug(f'Failed to unmute {member.display_name}: {e}')
-                await self.print_flags(member, after.channel)
+                        logger.debug(f'Failed to edit mute for {member.display_name}: {e}')
                 
 #                    explicit_deny_roles = []
 #                    for role in member.roles:
@@ -320,7 +316,7 @@ class EventListeners(commands.Cog):
     async def on_message(self, message: discord.Message):
         if not message.guild:
             return
-        if message.author.bot:
+        if message.author.id == message.guild.me.id:
             return
         prefix = self.config['discord_command_prefix']
         if not message.content.startswith(prefix):

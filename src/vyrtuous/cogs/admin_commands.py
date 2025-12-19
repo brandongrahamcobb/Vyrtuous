@@ -881,6 +881,93 @@ class AdminCommands(commands.Cog):
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been server {action} for reason: {reason}', allowed_mentions=discord.AllowedMentions.none())
 
     # DONE
+    @app_commands.command(name='temp', description='Toggle a temporary room and assign an owner.')
+    @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
+    @is_owner_developer_predicator()
+    async def toggle_temp_room_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: Optional[str] = None,
+        owner: Optional[str] = None
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='This command must be used in a server.')
+        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        if not isinstance(channel_obj, discord.VoiceChannel):
+            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+        action = None
+        if room:
+            async with self.bot.db_pool.acquire() as conn:
+                if room.room_owner:
+                    await conn.execute(
+                        'UPDATE users SET moderator_channel_ids=array_remove(moderator_channel_ids,$1), updated_at=NOW() '
+                        'WHERE discord_snowflake=$2',
+                        channel_obj.id,
+                        room.room_owner.id
+                    )
+                await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+                await Alias.delete_all_command_aliases_by_channel(channel_obj)
+            action = 'removed'
+        else:
+            member_obj = await self.member_service.resolve_member(interaction, owner)
+            temporary_room = TemporaryRoom(interaction.guild, channel_obj.id, member_obj)
+            async with self.bot.db_pool.acquire() as conn:
+                await temporary_room.insert_into_temporary_rooms()
+                await conn.execute(
+                    'UPDATE users SET moderator_channel_ids = CASE WHEN NOT $1=ANY(moderator_channel_ids) '
+                    'THEN array_append(moderator_channel_ids,$1) ELSE moderator_channel_ids END, updated_at=NOW() '
+                    'WHERE discord_snowflake=$2',
+                    channel_obj.id,
+                    member_obj.id
+                )
+            action = f'created and owned by {member_obj.mention}'
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} has been {action}.', allowed_mentions=discord.AllowedMentions.none())
+        
+    # DONE
+    @commands.command(name='temp', help='Toggle a temporary room and assign an owner.')
+    @is_owner_developer_predicator()
+    async def toggle_temp_room_text_command(
+        self,
+        ctx: commands.Context,
+        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        owner: Optional[str] = commands.parameter(default=None, description='Tag a member or include their Discord ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        if not isinstance(channel_obj, discord.VoiceChannel):
+            return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+        room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+        action = None
+        if room:
+            async with ctx.bot.db_pool.acquire() as conn:
+                if room.room_owner:
+                    await conn.execute(
+                        'UPDATE users SET moderator_channel_ids=array_remove(moderator_channel_ids,$1), updated_at=NOW() '
+                        'WHERE discord_snowflake=$2',
+                        channel_obj.id,
+                        room.room_owner.id
+                    )
+                await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+                await Alias.delete_all_command_aliases_by_channel(channel_obj)
+            action = 'removed'
+        else:
+            member_obj = await self.member_service.resolve_member(ctx, owner)
+            temporary_room = TemporaryRoom(ctx.guild, channel_obj.id, member_obj)
+            async with ctx.bot.db_pool.acquire() as conn:
+                await temporary_room.insert_into_temporary_rooms()
+                await conn.execute(
+                    'UPDATE users SET moderator_channel_ids = CASE WHEN NOT $1=ANY(moderator_channel_ids) '
+                    'THEN array_append(moderator_channel_ids,$1) ELSE moderator_channel_ids END, updated_at=NOW() '
+                    'WHERE discord_snowflake=$2',
+                    channel_obj.id,
+                    member_obj.id
+                )
+            action = f'created and owned by {member_obj.mention}'
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} has been {action}.', allowed_mentions=discord.AllowedMentions.none())
+
+    # DONE
     @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.')
     @is_owner_developer_administrator_predicator()
     async def check_temp_rooms_app_command(self, interaction: discord.Interaction):
