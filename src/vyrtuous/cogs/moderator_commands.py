@@ -103,8 +103,8 @@ class ModeratorCommands(commands.Cog):
                 bans = await conn.fetch('''
                     SELECT channel_id, expires_at, reason
                     FROM active_bans
-                    WHERE guild_id=$1 AND discord_snowflake=$2 AND room_name = $3
-                ''', interaction.guild.id, member_obj.id, channel_obj.name)
+                    WHERE guild_id=$1 AND discord_snowflake=$2
+                ''', interaction.guild.id, member_obj.id)
             bans = [b for b in bans if interaction.guild.get_channel(b['channel_id'])]
             if not bans: return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
             embed = discord.Embed(
@@ -233,7 +233,7 @@ class ModeratorCommands(commands.Cog):
             return await paginator.start()
         elif member_obj:
             async with self.bot.db_pool.acquire() as conn:
-                bans = await conn.fetch('''SELECT channel_id,expires_at,reason FROM active_bans WHERE guild_id=$1 AND discord_snowflake=$2 AND room_name = $3''', ctx.guild.id, member_obj.id, channel_obj.name)
+                bans = await conn.fetch('''SELECT channel_id,expires_at,reason FROM active_bans WHERE guild_id=$1 AND discord_snowflake=$2''', ctx.guild.id, member_obj.id)
             bans = [b for b in bans if ctx.guild.get_channel(b['channel_id'])]
             if not bans:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
@@ -906,7 +906,7 @@ class ModeratorCommands(commands.Cog):
             return await paginator.start()
         if member_obj:
             async with self.bot.db_pool.acquire() as conn:
-                records = await conn.fetch('''SELECT guild_id, channel_id, expires_at, reason FROM active_voice_mutes WHERE discord_snowflake=$1 AND guild_id=$2 AND target='user' AND room_name=$3''', member_obj.id, interaction.guild.id, channel_obj.name)
+                records = await conn.fetch('''SELECT guild_id, channel_id, expires_at, reason FROM active_voice_mutes WHERE discord_snowflake=$1 AND guild_id=$2 AND target='user''', member_obj.id, interaction.guild.id)
             records = [r for r in records if interaction.guild.get_channel(r['channel_id'])]
             if not records:
                 return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
@@ -1010,8 +1010,7 @@ class ModeratorCommands(commands.Cog):
                     WHERE discord_snowflake = $1
                       AND guild_id = $2
                       AND target = 'user'
-                      AND room_name = $3
-                ''', member_obj.id, ctx.guild.id, channel_obj.name)
+                ''', member_obj.id, ctx.guild.id)
             records = [r for r in records if ctx.guild.get_channel(r['channel_id'])]
             if not records:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
@@ -1458,7 +1457,7 @@ class ModeratorCommands(commands.Cog):
                 paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif member_obj:
-                records = await conn.fetch('''SELECT channel_id, room_name, reason, expires_at FROM active_text_mutes WHERE discord_snowflake = $1 AND guild_id = $2 AND room_name = $3''', member_obj.id, interaction.guild.id, channel_obj.name)
+                records = await conn.fetch('''SELECT channel_id, room_name, reason, expires_at FROM active_text_mutes WHERE discord_snowflake = $1 AND guild_id = $2''', member_obj.id, interaction.guild.id)
                 if not records: return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
                 for r in records:
