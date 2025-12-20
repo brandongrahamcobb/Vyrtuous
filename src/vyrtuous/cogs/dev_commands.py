@@ -495,6 +495,7 @@ class DevCommands(commands.Cog):
                     list(role_ids),
                     list(guild_ids)
                 )
-        await self.handler.send_message(ctx, content=f'Administrator role `{role_obj.name}` removed.')         
+        await self.handler.send_message(ctx, content=f'Administrator role `{role_obj.name}` removed.')   
+              
 async def setup(bot: DiscordBot):
     await bot.add_cog(DevCommands(bot))

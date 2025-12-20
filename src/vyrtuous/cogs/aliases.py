@@ -211,7 +211,7 @@ class Aliases(commands.Cog):
             color=discord.Color.orange()
         )
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
+        await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
         end_time = time.perf_counter()
         counter = TimeToComplete()
         elapsed = counter.time_elapsed_measurement(start_time, end_time)
@@ -425,7 +425,7 @@ class Aliases(commands.Cog):
             color=discord.Color.orange()
         )
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        return await Statistics.send_statistic(message, 'text_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
+        return await Statistics.send_statistic(message, 'text_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
     
     # DONE
     async def handle_voice_mute_alias(self, message: discord.Message, alias: Alias, args):
@@ -523,7 +523,7 @@ class Aliases(commands.Cog):
                 color=discord.Color.orange()
             )
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        await Statistics.send_statistic(message, 'voice_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), highest_role)
+        await Statistics.send_statistic(message, 'voice_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
 
     # DONE
     async def handle_unban_alias(self, message: discord.Message, alias: Alias, args):

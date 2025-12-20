@@ -316,7 +316,7 @@ class EventListeners(commands.Cog):
     async def on_message(self, message: discord.Message):
         if not message.guild:
             return
-        if message.author.id == message.guild.me.id:
+        if message.author.id == self.bot.user.id:
             return
         prefix = self.config['discord_command_prefix']
         if not message.content.startswith(prefix):

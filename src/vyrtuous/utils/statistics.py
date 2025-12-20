@@ -92,7 +92,7 @@ class Statistics:
             time_left = expires_at - datetime.now(timezone.utc)
             hours_left = round(time_left.total_seconds() / 3600, 1)
             days_left = time_left.days
-            duration_info = f'**Type:** {moderation_type}\n**Duration:** {duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
+            duration_info = f'**Type:** {moderation_type}\n**Duration:**\n{duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
             duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
             if is_modification:
                 color, duration_type, duration_emoji = 0xFF6B35, '⏰ Modified', '📅'

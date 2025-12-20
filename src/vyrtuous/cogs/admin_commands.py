@@ -910,7 +910,7 @@ class AdminCommands(commands.Cog):
             action = 'removed'
         else:
             member_obj = await self.member_service.resolve_member(interaction, owner)
-            temporary_room = TemporaryRoom(interaction.guild, channel_obj.id, member_obj)
+            temporary_room = TemporaryRoom(interaction.guild, channel_obj.id, channel_obj.name, member_obj)
             async with self.bot.db_pool.acquire() as conn:
                 await temporary_room.insert_into_temporary_rooms()
                 await conn.execute(
@@ -953,7 +953,7 @@ class AdminCommands(commands.Cog):
             action = 'removed'
         else:
             member_obj = await self.member_service.resolve_member(ctx, owner)
-            temporary_room = TemporaryRoom(ctx.guild, channel_obj.id, member_obj)
+            temporary_room = TemporaryRoom(ctx.guild, channel_obj.id, channel_obj.name, member_obj)
             async with ctx.bot.db_pool.acquire() as conn:
                 await temporary_room.insert_into_temporary_rooms()
                 await conn.execute(
