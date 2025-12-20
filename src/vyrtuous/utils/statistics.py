@@ -95,11 +95,11 @@ class Statistics:
             duration_info = f'**Type:** {moderation_type}\n**Duration:**\n{duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
             duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
             if is_modification:
-                color, duration_type, duration_emoji = 0xFF6B35, '⏰ Modified', '📅'
+                color, duration_type = 0xFF6B35, '⏰ Modified'
             else:
-                color, duration_type, duration_emoji = 0xFF8C00, '⏱️ Temporary', '⏰'
+                color, duration_type = 0xFF8C00, '⏱️ Temporary'
         else:
-            color, duration_type, duration_emoji = 0xDC143C, '🔒 Permanent', '♾️'
+            color, duration_type = 0xDC143C, '♾️ Permanent'
             duration_info = f'**Type:** {moderation_type}\n**Duration:** {duration_display}\n**Status:** Permanent'
             
         if moderation_type and moderation_type.lower() == 'ban':
@@ -133,16 +133,16 @@ class Statistics:
         user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
         if member.joined_at:
             user_priority += f"\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
-        embed_user.add_field(name='👤 Target User (Priority Info)', value=user_priority, inline=False)
+        embed_user.add_field(name='👤 Target User', value=user_priority, inline=False)
         exec_priority = f"**Moderator:** {message.author.display_name} (@{message.author.name})\n**Mod ID:** `{message.author.id}`\n**Top Role:** {highest_role or message.author.top_role.mention}"
         embed_user.add_field(name='👮‍♂️ Executed By', value=exec_priority, inline=True)
         ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Command Used:** `{command_used}`"
         embed_user.add_field(name='📱 Command Context', value=ctx_info, inline=True)
-        embed_user.add_field(name=f'**Type:** {duration_type}\n {duration_emoji} Duration', value=duration_info, inline=False)
+        embed_user.add_field(name=f'**Type:** {duration_type}', value=duration_info, inline=False)
         embed_user.add_field(name='📝 Reason', value=f'```{reason if reason else "No reason provided"}```', inline=False)
         embed_user.set_footer(text=f"Ref: {member.id}-{channel.id} | Msg: {message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
         embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
-        embed_duration.add_field(name=f'{duration_emoji} Duration', value=duration_info, inline=False)
+        embed_duration.add_field(name=f'{duration_type}', value=duration_info, inline=False)
         action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '\U0001F6AB No'}\n**Action Type:** {'Modification' if is_modification else 'New'}\n**Server:** {guild.name} (`{guild.id}`)"
         embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
