@@ -22,41 +22,13 @@ import asyncpg
 
 class TemporaryRoom:
         
-    def __init__(self, guild: discord.Guild, channel_id: Optional[str], room_owner: discord.Member):
+    def __init__(self, guild: discord.Guild, channel_id: Optional[str], room_name: Optional[str], room_owner: discord.Member):
         self.bot = DiscordBot.get_instance()
-        self.channel = guild.get_channel(channel_id)
         self.channel_id: Optional[int] = channel_id
         self.guild = guild
         self.is_temp_room: Optional[bool] = True
-        if self.channel:
-            self.room_name: Optional[str] = self.channel.name
-        else:
-            self.room_name = None
+        self.room_name = room_name
         self.room_owner = room_owner
-
-    def load_channel(self, channel_obj: discord.abc.GuildChannel):
-        if channel_obj and isinstance(channel_obj, discord.abc.GuildChannel):
-            self.channel = channel_obj
-        else:
-            raise ValueError(f"Invalid channel.")
-        
-    def load_guild(self, guild_obj: discord.Guild):
-        if guild_obj and isinstance(guild_obj, discord.Guild):
-            self.guild = guild_obj
-        else:
-            raise ValueError(f"Invalid guild.")
-        
-    def load_room_name(self, room_name_str: Optional[str]):
-        if room_name_str and room_name_str.strip():
-            self.room_name = room_name_str
-        else:
-            raise ValueError(f"Invalid room name.")
-        
-    def load_room_owner(self, room_owner_obj: discord.Member):
-        if room_owner_obj:
-            self.room_owner = room_owner_obj
-        else:
-            raise ValueError(f"Invalid room owner.")
 
     async def insert_into_temporary_rooms(self):
         async with self.bot.db_pool.acquire() as conn:
@@ -78,7 +50,7 @@ class TemporaryRoom:
             if not room:
                 return None
             member = channel.guild.get_member(room['owner_snowflake'])
-            return TemporaryRoom(guild=channel.guild, channel_id=channel.id, room_owner=member)
+            return TemporaryRoom(guild=channel.guild, channel_id=channel.id, room_name=channel.name, room_owner=member)
             
     @classmethod
     async def fetch_temporary_rooms_by_guild_and_member(cls, guild: discord.Guild, member: discord.Member):
@@ -92,7 +64,7 @@ class TemporaryRoom:
                 return None
             temporary_rooms = []
             for row in rows:
-                temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_owner=member))
+                temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_name=row['room_name'], room_owner=member))
             return temporary_rooms
             
     @classmethod
@@ -106,7 +78,7 @@ class TemporaryRoom:
             if not room:
                 return None
             member = guild.get_member(room['owner_snowflake'])
-            return TemporaryRoom(guild=guild, channel_id=room['room_snowflake'], room_owner=member)
+            return TemporaryRoom(guild=guild, channel_id=room['room_snowflake'], room_name=room['room_name'], room_owner=member)
             
     async def update_temporary_room_owner_snowflake(self, member: discord.Member):
         async with self.bot.db_pool.acquire() as conn:
@@ -146,7 +118,7 @@ class TemporaryRoom:
                 for row in rows:
                     member = guild.get_member(row['owner_snowflake'])
                     channel = guild.get_channel(row['room_snowflake'])
-                    temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_owner=member))
+                    temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_name=row['room_name'], room_owner=member))
                 return temporary_rooms
             raise Exception('No temporary rooms found for {guild.name}.')
         except Exception:
@@ -167,7 +139,7 @@ class TemporaryRoom:
                 temporary_rooms = []
                 for row in rows:
                     member = guild.get_member(row['owner_snowflake'])
-                    temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_owner=member))
+                    temporary_rooms.append(TemporaryRoom(guild=guild, channel_id=row['room_snowflake'], room_name=row['room_name'], room_owner=member))
                 guilds[guild] = temporary_rooms
             if not guilds:
                 return None

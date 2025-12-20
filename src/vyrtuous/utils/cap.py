@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 
 class Cap:
@@ -27,3 +28,12 @@ class Cap:
                 guild_id, channel_id
             )
             return [(r['duration_seconds'], r['moderation_type']) for r in rows]
+
+    @classmethod
+    async def delete_cap_by_channel_moderation_type_and_room_name(self, channel_id: Optional[int], guild_id: Optional[int], moderation_type: Optional[str], room_name: Optional[str]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+              await conn.execute('''
+                DELETE FROM active_caps
+                WHERE channel_id=$1 AND guild_id=$2 AND moderation_type=$3 AND room_name=$4
+            ''', channel_id, guild_id, moderation_type, room_name)
