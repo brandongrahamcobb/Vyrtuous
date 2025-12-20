@@ -167,7 +167,7 @@ class Aliases(commands.Cog):
                 return await message.reply(content='\U0001F6AB You cannot reduce a ban below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.fetch_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[1] == 'ban'), None)
             if active_cap:
                 duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
@@ -389,7 +389,7 @@ class Aliases(commands.Cog):
                 return await message.reply(content='\U0001F6AB You cannot reduce a text-mute below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.fetch_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[1] == 'tmute'), None)
             if active_cap:
                 duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
@@ -397,7 +397,7 @@ class Aliases(commands.Cog):
             else:
                 cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
             if existing_text_mute and expires_at:
-                if not expires_at < existing_text_mute['expires_at'] and not ((executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') and expires_at >= cap_expires_at)):
+                if not expires_at < existing_text_mute['expires_at'] and ((executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') and expires_at >= cap_expires_at)):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can text-mute for longer than the channel cap.')
             else:
                 if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
@@ -480,7 +480,7 @@ class Aliases(commands.Cog):
                 return await message.reply(content='\U0001F6AB You cannot reduce a mute below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await Cap.get_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.fetch_caps_for_channel(message.guild.id, channel_obj.id)
             active_cap = next((c for c in caps if c[1] == 'mute'), None)
             if active_cap:
                 duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))

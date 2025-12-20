@@ -20,7 +20,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 class Cap:
  
     @classmethod
-    async def get_caps_for_channel(self, guild_id: int, channel_id: int) -> list[tuple[str, str]]:
+    async def fetch_caps_for_channel(self, guild_id: int, channel_id: int) -> list[tuple[str, str]]:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch(

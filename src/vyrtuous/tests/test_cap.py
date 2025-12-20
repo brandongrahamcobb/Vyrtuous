@@ -26,7 +26,7 @@ moderation_type_one = 'mute'
 duration_seconds_two = timedelta(hours=7).total_seconds()
 moderation_type_two = 'ban'
 
-def test_get_caps_for_channel(bot_instance):
+def test_fetch_caps_for_channel(bot_instance):
     async def inner():
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
@@ -38,7 +38,7 @@ def test_get_caps_for_channel(bot_instance):
                 ON CONFLICT (channel_id, guild_id, moderation_type, room_name)
                 DO UPDATE SET duration_seconds=$2, moderation_type=$4
             ''', channel_one.id, duration_seconds_one, guild.id, moderation_type_one, channel_one.name, duration_seconds_two, moderation_type_two, channel_one.name)
-        caps = await Cap.get_caps_for_channel(guild.id, channel_one.id)
+        caps = await Cap.fetch_caps_for_channel(guild.id, channel_one.id)
         assert len(caps) == 2
         assert caps[0][0] == duration_seconds_one
         assert caps[0][1] == moderation_type_one

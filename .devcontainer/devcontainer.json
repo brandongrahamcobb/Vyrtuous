@@ -23,9 +23,4 @@
   },
   "forwardPorts": [5678, 8080],
   "remoteUser": "root",
-  
-  "remoteEnv": {
-    "DEBUGPY": "1"
-  },
-  "overrideCommand": true
 }

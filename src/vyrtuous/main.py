@@ -17,6 +17,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.bot.discord_client import DiscordClient
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import PATH_LOG
 from vyrtuous.utils.database import Database
@@ -24,13 +25,15 @@ from vyrtuous.utils.setup_logging import logger, setup_logging
 
 import asyncio
 import debugpy
+import pytest
+import subprocess
 
 async def main():
 
     config = Config().get_config()
-    if config['release_mode'] == 'False':
-        debugpy.listen(("0.0.0.0", 5678))
-        debugpy.wait_for_client() 
+    # if config['release_mode'] == 'False':
+    #     debugpy.listen(("127.0.0.1", 5678))
+    #     debugpy.wait_for_client() 
         
     setup_logging(config, PATH_LOG)
     db_pool = await Database().database_init()
@@ -39,9 +42,8 @@ async def main():
         config=config,
         db_pool=db_pool
     )
+    await discord_bot.start(config['vyrtuous_api_key'])
     
-    await discord_bot.start(config['discord_api_key'])
-
 if __name__ == '__main__':
     try:
         asyncio.run(main())

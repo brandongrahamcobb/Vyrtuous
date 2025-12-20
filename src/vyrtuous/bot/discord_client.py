@@ -1,4 +1,4 @@
-''' discord_bot.py This is essentially a stripped version of Rapptz advanced_startup.py.
+''' discord_client.py This is essentially a stripped version of Rapptz advanced_startup.py.
 
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
@@ -15,41 +15,28 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext import commands
 from vyrtuous.inc.helpers import DISCORD_COGS
 from vyrtuous.utils.setup_logging import logger
 import asyncpg
 import discord
 
-class DiscordBot(commands.Bot):
+class DiscordClient(discord.Client):
     
     _instance = None
         
-    def __init__(self, *, config, db_pool: asyncpg.Pool, **kwargs): # oauth_token,
+    def __init__(self, *, config, db_pool: asyncpg.Pool, **kwargs):
         try:
-            DiscordBot._instance = self
+            DiscordClient._instance = self
             intents = discord.Intents.all()
-            super().__init__(command_prefix=config['discord_command_prefix'],
-                             help_command=None,
-                             intents=intents,
-                             **kwargs)
+            super().__init__(intents=intents, **kwargs)
             self.config = config
             self.db_pool = db_pool
             self.testing_guild_id = self.config['discord_testing_guild_snowflake']
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {e}')
 
-    async def setup_hook(self) -> None:
-        for cog in DISCORD_COGS:
-            await self.load_extension(cog)
-
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
             raise RuntimeError("DiscordBot instance has not been created yet")
         return cls._instance
-    
-    async def process_commands(self, message):
-        ctx = await self.get_context(message)
-        if ctx.command is not None:
-            await self.invoke(ctx)

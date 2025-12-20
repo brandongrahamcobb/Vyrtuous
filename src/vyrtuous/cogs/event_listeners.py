@@ -84,12 +84,12 @@ class EventListeners(commands.Cog):
                     for alias in aliases:
                         await alias.update_command_aliases_with_channel(channel=channel)
                 try:
-                    old_stage = await Stage.fetch_stage_by_guild_and_stage_name(guild=guild, stage_name=old_name)
+                    old_stage = await Stage.fetch_stage_by_guild_id_and_channel_name(guild_id=guild.id, channel_name=old_name)
                 except Exception:
                     old_stage = None
                 if old_stage:
-                    old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_and_stage_name(guild=guild, stage_name=old_name)
-                    await old_stage.update_stage_by_channel_and_temporary_coordinator_ids(stage_channel=channel, temporary_stage_coordinator_ids=old_stage_temporary_coordinator_ids)
+                    old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_id_and_channel_name(guild_id=guild.id, channel_name=old_name)
+                    await old_stage.update_stage_by_channel_id_name(channel_id=channel.id, channel_name=channel.name)
                 await conn.execute('''
                     UPDATE users
                     SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),

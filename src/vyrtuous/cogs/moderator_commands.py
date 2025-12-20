@@ -344,7 +344,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         if channel_obj.type != discord.ChannelType.voice:
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        caps = await Cap.get_caps_for_channel(interaction.guild.id, channel_obj.id)
+        caps = await Cap.fetch_caps_for_channel(interaction.guild.id, channel_obj.id)
         if not caps:
             return await interaction.response.send_message(content='\U0001F6AB No caps found for this channel.')
         lines = [
@@ -393,7 +393,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
         if channel_obj.type != discord.ChannelType.voice:
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-        caps = await Cap.get_caps_for_channel(ctx.guild.id, channel_obj.id)
+        caps = await Cap.fetch_caps_for_channel(ctx.guild.id, channel_obj.id)
         if not caps:
             return await self.handler.send_message(ctx, content='\U0001F6AB No caps found for this channel.')
         lines = [f'**{mtype} in {channel_obj.mention}** → `{Duration.convert_timedelta_seconds(duration_seconds)}`' for duration_seconds, mtype in caps]
