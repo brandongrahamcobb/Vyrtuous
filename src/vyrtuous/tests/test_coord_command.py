@@ -68,6 +68,8 @@ async def test_coord_command(bot, bot_channel, client_channel, guild, self_membe
     channel_value = client_channel.mention
     member_value = self_member.mention
     assert any(emoji in response for emoji in Emojis.EMOJIS)
+    channel_value = client_channel.mention if channel_ref else client_channel.name
+    member_value = self_member.mention if member_ref else self_member.name
     assert any(val in response for val in [channel_value])
     assert any(val in response for val in [member_value])
     await admin_cleanup(guild.id, self_member.id)

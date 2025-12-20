@@ -26,21 +26,21 @@ import pytest_asyncio
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,action,target_type,target_id",
+    "command,action,target_type,target_id,channel_ref,member_ref",
     [
-        ("mlog", "create", "general", None),
-        ("mlog", "modify", "general", None),
-        ("mlog", "delete", "general", None),
-        ("mlog", "create", "channel", "client_channel"),
-        ("mlog", "modify", "channel", "client_channel"),
-        ("mlog", "delete", "channel", "client_channel"),
-        ("mlog", "create", "member", "self_member"),
-        ("mlog", "modify", "member", "dummy_member"),
-        ("mlog", "delete", "member", "self_member"),
+        ("mlog", "create", "general", None, None, None),
+        ("mlog", "modify", "general", None, None, None),
+        ("mlog", "delete", "general", None, None, None),
+        ("mlog", "create", "channel", "client_channel", "channel", None),
+        ("mlog", "modify", "channel", "client_channel", "channel", None),
+        ("mlog", "delete", "channel", "client_channel", "channel", None),
+        ("mlog", "create", "member", "self_member", None, "member"),
+        ("mlog", "modify", "member", "dummy_member", None, "member"),
+        ("mlog", "delete", "member", "self_member", None, "member")
     ]
 )
 
-async def test_mlog_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str]):
+async def test_mlog_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
     await admin_initiation(guild.id, self_member.id)
     target_obj = {
         "client_channel": client_channel,
@@ -74,8 +74,8 @@ async def test_mlog_command(bot, bot_channel, client_channel, text_channel, guil
             text_channel.type = discord.ChannelType.text
             await bot.invoke(ctx)
     response = client_channel.messages[0]
-    channel_value = client_channel.mention
-    member_value = self_member.mention
+    channel_value = client_channel.mention if channel_ref else client_channel.name
+    member_value = self_member.mention if member_ref else self_member.name
     assert any(emoji in response for emoji in Emojis.EMOJIS)
     assert any(val in response for val in [channel_value])
     assert any(val in response for val in [member_value])

@@ -16,6 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bot.discord_client import DiscordClient
@@ -23,6 +24,7 @@ from vyrtuous.config import Config
 from vyrtuous.inc.helpers import *
 import asyncio
 import asyncpg
+import discord
 import os
 import pytest
 import pytest_asyncio
@@ -33,31 +35,18 @@ async def async_send(self, content):
     self.messages.append(content)
     return MockMessage(content=content, guild=self.guild, id=123, author=self_member_obj)
 
-MockMember = lambda id, name, bot=True: type(
-    'MockMember',
-    (),
-    {
-        'bot': bot,
-        'id': id,
-        'name': name,
-        'mention': f'<@{id}>'
-    }
-)()
-# MockMessage = lambda content, channel, guild, id, member, *args, **kwargs: type(
-#     'MockMessage',
-#     (),
-#     {
-#         'author': member,
-#         'content': content,
-#         'channel': channel,
-#         'bot': False,
-#         'guild': guild,
-#         'id': id,
-#         'attachments': [],
-#         '_state': False
-#     }
-# )()
-
+def make_member(id, name, bot=True, voice_channel=False):
+    return type(
+        'MockMember',
+        (),
+        {
+            'bot': bot,
+            'id': id,
+            'name': name,
+            'mention': f'<@{id}>',
+            'voice': SimpleNamespace(channel=voice_channel, mute=False)
+        }
+    )()
 class MockMessage:
     def __init__(self, *, content, channel, guild, id, author):
         self.content = content
@@ -71,61 +60,69 @@ class MockMessage:
         self._state = None
 
 expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-self_member_obj = MockMember(id=config['discord_testing_self_member_snowflake'], name="Person 1")
-self_member_obj.bot = False
-dummy_member_obj = MockMember(id=config['discord_testing_dummy_member_snowflake'], name="Person 2")
+self_member_obj = make_member(id=config['discord_testing_self_member_snowflake'], name="Person 1")
+self_member_obj.bot = True
+dummy_member_obj = make_member(id=config['discord_testing_dummy_member_snowflake'], name="Person 2")
 
-
-member_three = MockMember(id=333333333, name="Person 3")
-member_four = MockMember(id=444444444, name="Person 4")
-
-def make_guild(id, display_name, members, channel_defs):
+def make_guild(id, display_name, members, channel_defs, owner_id):
     guild = type(
         'MockGuild',
         (),
         {
             'id': id,
             'display_name': display_name,
-            '_members': members or {},
-            '_channels': {},  # placeholder, will fill below
+            'owner_id': owner_id,
+            '_members': members,
+            '_channels': {},
             'get_member': lambda self, member_id: self._members.get(member_id),
             'get_channel': lambda self, channel_id: self._channels.get(channel_id)
         }
     )()
-    channels = {
-        cid: make_mock_channel(cid, name, guild)
-        for cid, name in channel_defs.items()
-    }
+    channels = {}
+    for cid, (name, channel_type) in channel_defs.items():
+        channels[cid] = make_mock_channel(cid, name, guild, channel_type)
     guild._channels = channels
+    for member in members.values():
+        client_channel = list(channels.values())[0]
+        member.voice.channel = client_channel
+        client_channel.members.append(member)
     return guild
 
-def make_mock_channel(id, name, guild):
+def make_mock_channel(id, name, guild, channel_type=None):
     channel = type(
         'MockChannel',
         (),
         {
-            'id': id,
-            'name': name,
+            'channel_type': channel_type,
             'guild': guild,
+            'id': id,
+            'members': [],
             'mention': f'<@{id}>',
             'messages': [],
-            'send': async_send
+            'name': name,
+            'send': async_send,
+            'type': channel_type
         }
     )()
     return channel
 
+members = {
+    self_member_obj.id: self_member_obj,
+    dummy_member_obj.id: dummy_member_obj
+}
+
+channel_defs = {
+    config['discord_testing_first_channel_snowflake']: ("Test Voice Channel", discord.ChannelType.voice),
+    config['discord_testing_second_channel_snowflake']: ("Test Stage Channel", discord.ChannelType.stage_voice),
+    config['discord_testing_text_channel_snowflake']: ("Test Text Channel", discord.ChannelType.text)
+}
+
 guild_obj = make_guild(
     id=config['discord_testing_guild_snowflake'],
     display_name="Test Guild",
-    channel_defs={
-        config['discord_testing_first_channel_snowflake']: "Test Voice Channel",
-        config['discord_testing_second_channel_snowflake']: "Test Voice Channel 2",
-        config['discord_testing_text_channel_snowflake']: "Test Text Channel"
-    },
-    members={
-        config['discord_testing_self_member_snowflake']: self_member_obj,
-        config['discord_testing_dummy_member_snowflake']: dummy_member_obj
-    }
+    channel_defs=channel_defs,
+    members=members,
+    owner_id = self_member_obj.id
 )
 
 bot_channel_obj = guild_obj.get_channel(config['discord_testing_first_channel_snowflake'])

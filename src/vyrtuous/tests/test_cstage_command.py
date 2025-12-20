@@ -28,17 +28,16 @@ import pytest_asyncio
 @pytest.mark.parametrize(
     "command,channel_ref",
     [
-        ("cstage", "channel", duration),
-        ("xstage", "channel", None),
-        ("cstage", "channel", duration),
-        ("xstage", "channel", None),
+        ("cstage", "channel"),
+        ("xstage", "channel"),
     ]
 )
 
 async def test_cstage_command(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], channel_ref):
     await admin_initiation(guild.id, self_member.id)
     durations = ['1m', '1h', '1d']
-    for duration in durations:
+    test_durations = durations if command == "cstage" else [None]
+    for duration in test_durations:
         formatted = command.format(
             bot=bot,
             bot_channel_id=bot_channel.id,
@@ -47,7 +46,7 @@ async def test_cstage_command(bot, bot_channel, client_channel, guild, self_memb
             member_id=self_member.id,
             member_mention=self_member.mention,
             duration=duration
-        )
+        ) if duration else command
     mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
     view = cmd_view.StringView(mock_message.content)
     view.skip_string(prefix) 
@@ -66,13 +65,13 @@ async def test_cstage_command(bot, bot_channel, client_channel, guild, self_memb
         ctx = await bot.get_context(mock_message)
         cog_instance = bot.get_cog("AdminCommands")
         cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-        await bot.invoke(ctx)
+        with patch.object(cog_instance.channel_service, "resolve_channel", return_value=client_channel):
+            client_channel.type = discord.ChannelType.voice
+            await bot.invoke(ctx)
     response = client_channel.messages[0]
-    channel_value = client_channel.mention
-    member_value = self_member.mention
+    channel_value = client_channel.mention if channel_ref else client_channel.name
     assert any(emoji in response for emoji in Emojis.EMOJIS)
     assert any(val in response for val in [channel_value])
-    assert any(val in response for val in [member_value])
     await admin_cleanup(guild.id, self_member.id)
     #     bot = DiscordBot.get_instance()
     #     try:

@@ -66,8 +66,8 @@ async def test_chown_commands(bot, bot_channel, client_channel, guild, self_memb
         cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
         await bot.invoke(ctx)
     response = client_channel.messages[0]
-    channel_value = client_channel.mention
-    member_value = self_member.mention
+    channel_value = client_channel.mention if channel_ref else client_channel.name
+    member_value = self_member.mention if member_ref else self_member.name
     assert any(emoji in response for emoji in Emojis.EMOJIS) 
     assert any(val in response for val in [channel_value])
     assert any(val in response for val in [member_value])

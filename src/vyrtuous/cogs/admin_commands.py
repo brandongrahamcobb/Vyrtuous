@@ -460,6 +460,7 @@ class AdminCommands(commands.Cog):
                         DO UPDATE SET expires_at=EXCLUDED.expires_at
                     ''', ctx.guild.id, user.id, channel_obj.id, expires_at, 'Stage active', channel_obj.name)
                     if user.voice and user.voice.channel.id == channel_obj.id:
+                        print("testestest")
                         await user.edit(mute=True)
                     muted.append(user)
                 except Exception as e:
