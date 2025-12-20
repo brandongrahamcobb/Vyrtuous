@@ -118,7 +118,7 @@ class Statistics:
             if is_modification:
                 title = '🔄 Text Mute Modified'
             else:
-                title = '🔇 User Text Muted'
+                title = '📝 User Text Muted'
             action = 'text muted'
         else:
             title = None
