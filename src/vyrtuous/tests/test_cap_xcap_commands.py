@@ -1,28 +1,26 @@
-from discord.ext import commands
-from discord.ext.commands import Context, view as cmd_view
+''' test_cap_xcap_commands.py The purpose of this program is to black box test the Cap commands.
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+'''
+from discord.ext.commands import view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
-from unittest.mock import AsyncMock, PropertyMock, patch
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.bot.discord_client import DiscordClient
-from vyrtuous.cogs.admin_commands import AdminCommands
-from vyrtuous.config import Config
-from vyrtuous.inc.helpers import *
-from vyrtuous.service.discord_message_service import DiscordMessageService
+from unittest.mock import PropertyMock, patch
 from vyrtuous.tests.test_suite import *
-from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.database import Database
-from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.stage import Stage
-from vyrtuous.utils.statistics import Statistics
-from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.utils.setup_logging import logger, setup_logging
-
-import asyncio
-import discord
 import pytest
-import pytest_asyncio
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
