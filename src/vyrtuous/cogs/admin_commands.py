@@ -239,7 +239,7 @@ class AdminCommands(commands.Cog):
         if not room:
             return await interaction.response.send_message(content=f'{channel_obj.mention} is not a temporary room.')
         await room.update_temporary_room_owner_snowflake(member_obj)
-        return await interaction.response.send_message(content=f'Ownership of {channel_obj.mention} has been transferred to {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Ownership of {channel_obj.mention} has been transferred to {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             
     # DONE
     @commands.command(name='chown', help='Change the owner of a temporary room.')
@@ -260,7 +260,7 @@ class AdminCommands(commands.Cog):
         if not room:
             return await self.handler.send_message(ctx, content=f'{channel_obj.mention} is not a temporary room.')
         await room.update_temporary_room_owner_snowflake(member_obj)
-        return await self.handler.send_message(ctx, content=f'Ownership of {channel_obj.mention} has been transferred to {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Ownership of {channel_obj.mention} has been transferred to {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         
     # DONE
     @app_commands.command(name='coord', description='Grants/revokes coordinator access for a specific voice channel.')

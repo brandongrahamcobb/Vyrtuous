@@ -32,6 +32,38 @@ import pytest_asyncio
 config = Config().get_config()
 
 
+def make_mock_state():
+    async def mock_send_message(channel_id, content=None, **kwargs):
+        """Mock HTTP send_message method"""
+        return {
+            'id': '123456789',
+            'channel_id': channel_id,
+            'content': content or '',
+            'embeds': kwargs.get('embeds', []),
+            'author': {'id': '123456789', 'username': 'TestBot'}
+        }
+
+    def mock_create_message(channel, data):
+        """Mock create_message to convert API response to Message object"""
+        # Return a MockMessage instead of trying to create a real discord.Message
+        return MockMessage(
+            content=data.get('content', ''),
+            channel=channel,
+            guild=channel.guild,
+            id=data.get('id', '123456789'),
+            author=channel.guild._members.get(list(channel.guild._members.keys())[0]) if channel.guild._members else None,
+            embeds=data.get('embeds', [])
+        )
+    mock_http = SimpleNamespace(
+        allowed_mentions=None,
+        send_message=mock_send_message
+    )
+    return SimpleNamespace(  # ADD THIS RETURN
+        allowed_mentions=None,
+        http=mock_http,
+        create_message=mock_create_message
+    )
+
 def make_member(id, name, bot=True, voice_channel=False):
     async def edit(self, **kwargs):
         for k, v in kwargs.items():
@@ -50,7 +82,7 @@ def make_member(id, name, bot=True, voice_channel=False):
         }
     )()
 class MockMessage:
-    def __init__(self, *, content, channel, guild, id, author, embeds=None):
+    def __init__(self, *, content, channel, guild, id, author, embeds=None, allowed_mentions=False, _state=None):
         self.content = content
         self.channel = channel
         self.guild = guild
@@ -59,7 +91,27 @@ class MockMessage:
         self.bot = False
         self.attachments = []
         self.embeds = embeds or []
-        self._state = None
+        self._state = _state or make_mock_state()
+        self.allowed_mentions = allowed_mentions
+        self.reactions = []
+        self.edited_embeds = []
+    
+    async def add_reaction(self, emoji):
+        self.reactions.append(emoji)
+    
+    async def remove_reaction(self, emoji, user):
+        if emoji in self.reactions:
+            self.reactions.remove(emoji)
+    
+    async def clear_reactions(self):
+        self.reactions.clear()
+    
+    async def edit(self, *, embed=None, content=None):
+        if embed:
+            self.edited_embeds.append(embed)
+        if content is not None:
+            self.content = content
+        return self
 
 expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 self_member_obj = make_member(id=config['discord_testing_self_member_snowflake'], name="Person 1")
@@ -90,9 +142,38 @@ def make_guild(id, display_name, members, channel_defs, owner_id, roles):
         client_channel = list(channels.values())[0]
         member.voice.channel = client_channel
         client_channel.members.append(member)
+    guild.me._state = make_mock_state()
     return guild
 
 def make_mock_channel(id, name, guild, channel_type=None):
+    async def async_send(content=None, embed=None, embeds=None, allowed_mentions=None, **kwargs):
+        """Send implementation for this mock channel"""
+        if isinstance(allowed_mentions, bool):
+            allowed_mentions = None
+        
+        # Handle embeds properly
+        if embed is not None:
+            if isinstance(embed, bool):
+                embed_list = []
+            else:
+                embed_list = [embed]
+        elif embeds is not None:
+            if isinstance(embeds, bool):
+                embed_list = []
+            else:
+                embed_list = embeds if isinstance(embeds, list) else [embeds]
+        else:
+            embed_list = []
+        
+        return MockMessage(
+            content=content or "",
+            channel=channel,
+            guild=guild,
+            id='123456789',
+            author=guild._members.get(list(guild._members.keys())[0]) if guild._members else None,
+            embeds=embed_list,
+            allowed_mentions=allowed_mentions
+        )
     channel = type(
         'MockChannel',
         (),
@@ -103,7 +184,9 @@ def make_mock_channel(id, name, guild, channel_type=None):
             'mention': f'<@{id}>',
             'messages': [],
             'name': name,
-            'type': channel_type
+            'send': async_send,
+            'type': channel_type,
+            '_state': make_mock_state()
         }
     )()
     return channel
@@ -166,6 +249,7 @@ async def bot():
     for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.event_listeners', 'vyrtuous.cogs.aliases'):
         await bot.load_extension(cog)
     type(bot).guilds = property(lambda self: [guild_obj])
+    bot._state = SimpleNamespace(allowed_mentions=None)
     yield bot
     await db_pool.close()
 
