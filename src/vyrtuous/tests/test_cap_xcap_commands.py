@@ -30,9 +30,7 @@ def generate_cap_test_cases():
     cases = []
     for mod_type in moderation_types:
         for duration in durations:
-            # Add cap command
             cases.append((f"cap {{voice_channel_one_id}} {mod_type} {duration}", "channel", f"{mod_type} {duration}"))
-            # Add corresponding xcap command right after
             cases.append((f"xcap {{voice_channel_one_id}} {mod_type}", "channel", mod_type))
     return cases
 

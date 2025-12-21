@@ -17,6 +17,7 @@
 '''
 from types import SimpleNamespace
 from vyrtuous.inc.helpers import *
+import asyncio
 
 def make_mock_state():
 
@@ -160,3 +161,6 @@ def make_mock_channel(id, name, guild, channel_type=None):
             '_state': make_mock_state()
         }
     )()
+
+async def mock_wait_for(event, timeout=None, check=None):
+    raise asyncio.TimeoutError()
