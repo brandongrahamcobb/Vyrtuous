@@ -352,6 +352,7 @@ class AdminCommands(commands.Cog):
                     ),
                     updated_at = NOW()
                 ''', member_obj.id, channel_obj.id)
+                action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)

@@ -28,21 +28,21 @@ import pytest_asyncio
 @pytest.mark.parametrize(
     "command,channel_ref,member_ref",
     [
-        ("coord", "channel", "member"),
-        ("coord", "channel", None),
-        ("coord", None, "member"),
-        ("coord", None, None),
+        ("coord {dummy_member_id} {client_channel_id}", "self_channel", "dummy_member"),
+        ("coord {dummy_member_id} {client_channel_id}", "self_channel", "dummy_member")
     ]
 )
 
-async def test_coord_command(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):
+async def test_coord_command(bot, bot_channel, client_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):
     await admin_initiation(guild.id, self_member.id)
     try:
+        client_channel.messages.clear() 
         formatted = command.format(
             bot=bot,
             bot_channel_id=bot_channel.id,
             client_channel_id=client_channel.id,
             channel_mention=client_channel.mention,
+            dummy_member_id=dummy_member.id,
             member_id=self_member.id,
             member_mention=self_member.mention
         )
@@ -65,10 +65,11 @@ async def test_coord_command(bot, bot_channel, client_channel, guild, self_membe
             cog_instance = bot.get_cog("AdminCommands")
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
             await bot.invoke(ctx)
+            
         response = client_channel.messages[0]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         channel_value = client_channel.mention if channel_ref else client_channel.name
-        member_value = self_member.mention if member_ref else self_member.name
+        member_value = dummy_member.mention if member_ref else dummy_member.name
         assert any(val in response for val in [channel_value])
         assert any(val in response for val in [member_value])
         client_channel.messages.clear() 

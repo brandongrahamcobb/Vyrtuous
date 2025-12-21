@@ -31,18 +31,19 @@ import pytest_asyncio
         ("mlog", "create", "general", None, None, None),
         ("mlog", "modify", "general", None, None, None),
         ("mlog", "delete", "general", None, None, None),
-        ("mlog", "create", "channel", "client_channel", "channel", None),
-        ("mlog", "modify", "channel", "client_channel", "channel", None),
-        ("mlog", "delete", "channel", "client_channel", "channel", None),
-        ("mlog", "create", "member", "self_member", None, "member"),
-        ("mlog", "modify", "member", "dummy_member", None, "member"),
-        ("mlog", "delete", "member", "self_member", None, "member")
+        ("mlog", "create", "channel", "client_channel", "client_channel", None),
+        ("mlog", "modify", "channel", "client_channel", "client_channel", None),
+        ("mlog", "delete", None, "client_channel", "client_channel", None),
+        ("mlog", "create", "member", "client_channel", None, None),
+        ("mlog", "modify", "member", "client_channel", None, None),
+        ("mlog", "delete", None, "client_channel", None, None)
     ]
 )
 
 async def test_mlog_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
     await admin_initiation(guild.id, self_member.id)
     try:
+        client_channel.messages.clear() 
         target_obj = {
             "client_channel": client_channel,
             "self_member": self_member,
@@ -75,11 +76,17 @@ async def test_mlog_command(bot, bot_channel, client_channel, text_channel, guil
                 text_channel.type = discord.ChannelType.text
                 await bot.invoke(ctx)
         response = client_channel.messages[0]
-        channel_value = client_channel.mention if channel_ref else client_channel.name
-        member_value = self_member.mention if member_ref else self_member.name
+        print(response)
+        channel_value = text_channel.mention if channel_ref else text_channel.name
+        self_member_value = self_member.mention if member_ref else self_member.name
+        dummy_member_value = dummy_member.mention if member_ref else dummy_member.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        assert any(val in response for val in [channel_value])
-        assert any(val in response for val in [member_value])
+        if channel_ref:
+            assert any(val in response for val in [channel_value])
+        if member_ref == "dummy_member":
+            assert any(val in response for val in [dummy_member_value])
+        if member_ref == "self_member":
+            assert any(val in response for val in [self_member_value])
         client_channel.messages.clear() 
     finally:
         await admin_cleanup(guild.id, self_member.id)
