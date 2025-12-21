@@ -35,8 +35,8 @@ def make_mock_state():
             'params': params
         }
 
-    async def create_message(channel=None, data=None, **kwargs):
-        msg = make_mock_message(channel=channel, data=data)
+    async def create_message(channel=None, embeds=None, **kwargs):
+        msg = make_mock_message(channel=channel, embeds=embeds)
         if hasattr(channel, "messages"):
             channel.messages.append(msg)
         return msg
@@ -53,7 +53,7 @@ def make_mock_state():
         create_message=make_mock_message
     )
 
-def make_mock_member(bot=True, id=None, name=None, voice_channel=False):
+def make_mock_member(bot=True, guild=None, id=None, name=None, voice_channel=False):
 
     async def edit(self, **kwargs):
         for k, v in kwargs.items():
@@ -66,6 +66,7 @@ def make_mock_member(bot=True, id=None, name=None, voice_channel=False):
         {
             'bot': bot,
             'edit': edit,
+            'guild': guild,
             'id': id,
             'name': name,
             'mention': f'<@{id}>',
@@ -73,10 +74,7 @@ def make_mock_member(bot=True, id=None, name=None, voice_channel=False):
         }
     )()
 
-def make_mock_message(allowed_mentions=None, author=None, content=None, channel=None, data=None, embeds=None, guild=None, id=None, **kwargs):
-    if data:
-        content = data.get("content")
-        embeds = data.get("embeds")
+def make_mock_message(allowed_mentions=None, author=None, content=None, channel=None, embeds=None, guild=None, id=None, **kwargs):
 
     async def add_reaction(self, emoji):
         self.reactions.append(emoji)
@@ -118,6 +116,7 @@ def make_mock_message(allowed_mentions=None, author=None, content=None, channel=
     )()
 
 def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_id=None, roles=None):
+    bot = make_mock_member(guild=None, id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
     guild = type(
         'MockGuild',
         (),
@@ -125,7 +124,7 @@ def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_i
             'id': id,
             '_channels': {},
             'get_channel': lambda self, channel_id: self._channels.get(channel_id),
-            'me': members.get(PRIVILEGED_AUTHOR_ID),
+            'me': bot,
             '_members': members,
             'get_member': lambda self, member_id: self._members.get(member_id),
             'name': name,
@@ -141,6 +140,7 @@ def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_i
         client_channel = list(channels.values())[0]
         member.voice.channel = client_channel
         client_channel.members.append(member)
+    guild.add_member = lambda member: guild._members.update({member.id: member})
     return guild
 
 def make_mock_channel(channel_type=None, guild=None, id=None, name=None):

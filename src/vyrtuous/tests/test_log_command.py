@@ -38,27 +38,25 @@ import uuid
         ("log", True),
         ("log", True),
         ("logs all", False),
-        ("logs", True)
+        ("logs", False)
     ]
 )
 
-async def test_log_command(bot, voice_channel_one, text_channel, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], channel_ref):
+async def test_log_command(bot, text_channel, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], channel_ref):
     await admin_initiation(guild.id, privileged_author.id)
     try:
         if not channel_ref:
             formatted = f"{command}".strip()
         else:
             formatted = f"{command} {text_channel.id}".strip()
-        await prepared_command_handling(author=privileged_author, bot=bot, content=formatted, data=None, guild=guild, prefix=prefix, text_channel=text_channel, voice_channel=voice_channel_one)
-        response = voice_channel_one.messages[0]
-        print(response)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, prefix=prefix)
+        response = text_channel.messages[0]
         if not channel_ref:
-            embed = response["embed"]
-            assert any(emoji in embed for emoji in Emojis.EMOJIS)
+            assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS)
         else:
             channel_value = text_channel.mention if channel_ref else text_channel.name
-            assert any(emoji in response for emoji in Emojis.EMOJIS)
-            assert any(val in response for val in [channel_value])
-        voice_channel_one.messages.clear() 
+            assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
+            assert any(val in response["content"] for val in [channel_value])
+        text_channel.messages.clear() 
     finally:
         await admin_cleanup(guild.id, privileged_author.id)

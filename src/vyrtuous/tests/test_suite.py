@@ -28,18 +28,6 @@ import os
 import pytest
 import pytest_asyncio
 
-privileged_author_obj = make_mock_member(
-    bot=True,
-    id=PRIVILEGED_AUTHOR_ID,
-    name=PRIVILEGED_AUTHOR_NAME
-)
-
-not_privileged_author_obj = make_mock_member(
-    bot=False,
-    id=NOT_PRIVILEGED_AUTHOR_ID,
-    name=NOT_PRIVILEGED_AUTHOR_NAME
-)
-
 guild_obj = make_mock_guild(
     channel_defs={
         VOICE_CHANNEL_ONE_ID: (
@@ -56,11 +44,8 @@ guild_obj = make_mock_guild(
         )
     },
     id=GUILD_ID,
-    members={
-        PRIVILEGED_AUTHOR_ID: privileged_author_obj,
-        NOT_PRIVILEGED_AUTHOR_ID: not_privileged_author_obj
-    },
     name=GUILD_NAME,
+    members={},
     owner_id=PRIVILEGED_AUTHOR_ID,
     roles={
         ROLE_ID: SimpleNamespace(
@@ -69,6 +54,23 @@ guild_obj = make_mock_guild(
         )
     }
 )
+
+privileged_author_obj = make_mock_member(
+    bot=True,
+    guild=guild_obj,
+    id=PRIVILEGED_AUTHOR_ID,
+    name=PRIVILEGED_AUTHOR_NAME
+)
+
+not_privileged_author_obj = make_mock_member(
+    bot=False,
+    guild=guild_obj,
+    id=NOT_PRIVILEGED_AUTHOR_ID,
+    name=NOT_PRIVILEGED_AUTHOR_NAME
+)
+
+guild_obj.add_member(privileged_author_obj)
+guild_obj.add_member(not_privileged_author_obj)
 
 voice_channel_one_obj = guild_obj._channels[VOICE_CHANNEL_ONE_ID]
 voice_channel_two_obj = guild_obj._channels[VOICE_CHANNEL_TWO_ID]
@@ -145,7 +147,10 @@ def prefix(config):
 
 def make_capturing_send(channel, author):
     async def capturing_send(self, ctx, content=None, embed=None, allowed_mentions=None, **kwargs): 
-        channel.messages.append(content)
+        channel.messages.append({
+            'content': content,  # Store the content
+            'embed': embed       # Store the embed
+        })
         return make_mock_message(
             allowed_mentions=allowed_mentions,
             author=author,

@@ -41,11 +41,11 @@ async def admin_initiation(guild_id: Optional[int], privileged_author_id: Option
             DO UPDATE SET developer_guild_ids = $2, updated_at = NOW()
         ''', int(privileged_author_id), [int(guild_id)])
     
-async def prepared_command_handling(author, bot, channel, content, data, guild, prefix):
-    mock_message = make_mock_message(allowed_mentions=True, author=author, channel=channel, content=content, data=data, embeds=[], guild=guild, id=MESSAGE_ID)
+async def prepared_command_handling(author, bot, channel, content, guild, prefix):
+    mock_message = make_mock_message(allowed_mentions=True, author=author, channel=channel, content=content, embeds=[], guild=guild, id=MESSAGE_ID)
     view = cmd_view.StringView(f"{prefix}{mock_message.content}")
     view.skip_string(prefix)
-    mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
+    mock_bot_user = make_mock_member(guild=guild, id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
     with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
         mock_user.return_value = mock_bot_user
         view = cmd_view.StringView(mock_message.content)
@@ -82,7 +82,7 @@ async def prepared_command_handling(author, bot, channel, content, data, guild, 
                     return isinstance(obj, cls)
             with patch("vyrtuous.cogs.admin_commands.isinstance", side_effect=mock_isinstance):
                 if channel.type == discord.ChannelType.text:
-                    with patch("vyrtuous.utils.statistics.Statistics.get_statistic_voice_channels", return_value=fake_channels):
+                    with patch("vyrtuous.utils.statistics.Statistics.get_statistic_channels", return_value=fake_channels):
                         await bot.invoke(ctx)
                 else:
                     await bot.invoke(ctx)

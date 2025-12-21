@@ -40,7 +40,7 @@ async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, pr
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id
         )
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, data=None, guild=guild, prefix=prefix)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, guild=guild, prefix=prefix)
         response = voice_channel_one.messages[0]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)

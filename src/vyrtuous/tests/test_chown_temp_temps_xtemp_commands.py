@@ -53,7 +53,7 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, privileg
             member_mention=privileged_author.mention,
         )
         bot.wait_for = mock_wait_for
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, data=None, guild=guild, prefix=prefix)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, guild=guild, prefix=prefix)
         response = voice_channel_one.messages[0]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         member_value = privileged_author.mention if member_ref else privileged_author.name

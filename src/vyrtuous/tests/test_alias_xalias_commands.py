@@ -66,7 +66,7 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
             command=command,
             role=str(ROLE_ID) if role_ref else ""
         ).strip()
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, data=None, guild=guild, prefix=prefix)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, guild=guild, prefix=prefix)
         response = voice_channel_one.messages[0]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
