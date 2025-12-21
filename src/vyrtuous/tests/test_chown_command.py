@@ -36,39 +36,42 @@ import pytest_asyncio
     ]
 )
 
-async def test_chown_commands(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):
-    formatted = command.format(
-        bot=bot,
-        bot_channel_id=bot_channel.id,
-        client_channel_id=client_channel.id,
-        channel_mention=client_channel.mention,
-        member_id=self_member.id,
-        member_mention=self_member.mention,
-    )
+async def test_chown_commands(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
     await admin_initiation(guild.id, self_member.id)
-    mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
-    view = cmd_view.StringView(mock_message.content)
-    view.skip_string(prefix) 
-    async def capturing_send(self, ctx, content=None, allowed_mentions=None, **kwargs):
-        client_channel.messages.append(content)
-        return MockMessage(
-            content=content,
-            channel=ctx.channel,
-            guild=ctx.guild,
-            id='123456789',
-            author=self_member
+    try:
+        formatted = command.format(
+            bot=bot,
+            bot_channel_id=bot_channel.id,
+            client_channel_id=client_channel.id,
+            channel_mention=client_channel.mention,
+            member_id=self_member.id,
+            member_mention=self_member.mention,
         )
-    mock_bot_user = SimpleNamespace(id='123456789', bot=True)
-    with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
-        mock_user.return_value = mock_bot_user
-        ctx = await bot.get_context(mock_message)
-        cog_instance = bot.get_cog("AdminCommands")
-        cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-        await bot.invoke(ctx)
-    response = client_channel.messages[0]
-    channel_value = client_channel.mention if channel_ref else client_channel.name
-    member_value = self_member.mention if member_ref else self_member.name
-    assert any(emoji in response for emoji in Emojis.EMOJIS) 
-    assert any(val in response for val in [channel_value])
-    assert any(val in response for val in [member_value])
-    await admin_cleanup(guild.id, self_member.id)
+        mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
+        view = cmd_view.StringView(mock_message.content)
+        view.skip_string(prefix) 
+        async def capturing_send(self, ctx, content=None, allowed_mentions=None, **kwargs):
+            client_channel.messages.append(content)
+            return MockMessage(
+                content=content,
+                channel=ctx.channel,
+                guild=ctx.guild,
+                id='123456789',
+                author=self_member
+            )
+        mock_bot_user = SimpleNamespace(id='123456789', bot=True)
+        with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
+            mock_user.return_value = mock_bot_user
+            ctx = await bot.get_context(mock_message)
+            cog_instance = bot.get_cog("AdminCommands")
+            cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
+            await bot.invoke(ctx)
+        response = client_channel.messages[0]
+        channel_value = client_channel.mention if channel_ref else client_channel.name
+        member_value = self_member.mention if member_ref else self_member.name
+        assert any(emoji in response for emoji in Emojis.EMOJIS) 
+        assert any(val in response for val in [channel_value])
+        assert any(val in response for val in [member_value])
+        client_channel.messages.clear() 
+    finally:
+        await admin_cleanup(guild.id, self_member.id)

@@ -380,67 +380,6 @@ class DevCommands(commands.Cog):
         else:
             await ctx.send('\N{OK HAND SIGN}')
                 
-    # DONE
-    @app_commands.command(name='xalias', description='Deletes an alias.')
-    @is_owner_developer_predicator()
-    @app_commands.describe(alias_name='Include an alias name')
-    async def delete_alias_app_command(
-        self,
-        interaction: discord.Interaction,
-        alias_name: Optional[str] = None
-    ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
-        if not alias_name or not alias_name.strip():
-            return await interaction.response.send_message(content='\U0001F6AB `alias_name` cannot be empty.')
-        aliases = await Alias.fetch_command_aliases_by_guild(interaction.guild)
-        if not aliases:
-            return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
-        found = False
-        for alias in aliases:
-            if alias.alias_name:
-                await Alias.delete_command_alias_by_guild_and_alias_name(interaction.guild, alias.alias_name)
-                found = True
-                break
-        if not found:
-            return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` not found.')
-        channel_obj = await self.channel_service.resolve_channel(interaction, alias.channel_id)
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,$2,$3,$4,$5,$6)
-                ''', 'delete_alias', None, interaction.user.id, interaction.guild.id, channel_obj.id, f'Deleted alias {alias_name}')
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Deleted alias `{alias_name}` from `{alias.alias_type}`.')
-
-    # DONE
-    @commands.command(name='xalias', help='Deletes an alias.')
-    @is_owner_developer_predicator()
-    async def delete_alias_text_command(
-        self,
-        ctx: commands.Context,
-        alias_name: Optional[str] = commands.parameter(default=None, description='Include an alias name')
-    ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        if not alias_name or not alias_name.strip():
-            return await self.handler.send_message(ctx, content='\U0001F6AB `alias_name` cannot be empty.')
-        aliases = await Alias.fetch_command_aliases_by_guild(ctx.guild)
-        if not aliases:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB No aliases found.')
-        found = False
-        for alias in aliases:
-            if alias.alias_name:
-                await Alias.delete_command_alias_by_guild_and_alias_name(ctx.guild, alias.alias_name)
-                found = True
-                break
-        if not found:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{alias_name}` not found.')
-        channel_obj = await self.channel_service.resolve_channel(ctx, alias.channel_id)
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO moderation_logs(action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES($1,$2,$3,$4,$5,$6)
-            ''', 'delete_alias', None, ctx.author.id, ctx.guild.id, channel_obj.id, f'Deleted alias {alias_name}')
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Deleted alias `{alias_name}` from `{alias.alias_type}`.')
-
     @app_commands.command(name='xtrole', description='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()
     async def revoke_administrator_to_role_app_command(self, interaction: discord.Interaction, role: Optional[str]):

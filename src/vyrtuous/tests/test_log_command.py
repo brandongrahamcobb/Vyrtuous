@@ -23,37 +23,50 @@ import asyncio
 import discord
 import pytest
 import pytest_asyncio
+import uuid
+
+@pytest_asyncio.fixture(scope="function")
+async def active_mlog(bot, client_channel, text_channel, guild, self_member, prefix: str):
+    mock_bot_user = SimpleNamespace(id=123456789, bot=True)
+    async def capturing_send(self, ctx, content=None, **kwargs):
+        client_channel.messages.append(content)
+        return MockMessage(
+            content=content,
+            channel=ctx.channel,
+            guild=ctx.guild,
+            id=str(uuid.uuid4()),
+            author=self_member
+        )
+    with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
+        mock_user.return_value = mock_bot_user
+        ctx = await bot.get_context(MockMessage(
+            content=f"{prefix}mlog {text_channel.id} create general",
+            channel=client_channel,
+            guild=guild,
+            id=str(uuid.uuid4()),
+            author=self_member
+        ))
+        cog_instance = bot.get_cog("AdminCommands")
+        cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
+        with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel):
+            await bot.invoke(ctx)
+    yield text_channel
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,action,target_type,target_id,channel_ref,member_ref",
+    "command,channel_ref",
     [
-        ("mlog", "create", "general", None, None, None),
-        ("mlog", "modify", "general", None, None, None),
-        ("mlog", "delete", "general", None, None, None),
-        ("mlog", "create", "channel", "client_channel", "channel", None),
-        ("mlog", "modify", "channel", "client_channel", "channel", None),
-        ("mlog", "delete", "channel", "client_channel", "channel", None),
-        ("mlog", "create", "member", "self_member", None, "member"),
-        ("mlog", "modify", "member", "dummy_member", None, "member"),
-        ("mlog", "delete", "member", "self_member", None, "member")
+        ("log", True),
+        ("log", True)
     ]
 )
 
-@pytest_asyncio.fixture(scope="function")
-async def test_mlog_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
+async def test_log_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], channel_ref, active_mlog):
     await admin_initiation(guild.id, self_member.id)
     try:
-        target_obj = {
-            "client_channel": client_channel,
-            "self_member": self_member,
-            "dummy_member": dummy_member
-        }.get(target_id, None)
-        if target_obj:
-            target_str = target_obj.id
-            formatted = f"{command} {text_channel.id} {action} {target_type} {target_str}".strip()
-        else:
-            formatted = f"{command} {text_channel.id} {action} {target_type}".strip()
+        channel = active_mlog
+        formatted = f"{command} {channel.id}".strip()
         mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
         view = cmd_view.StringView(mock_message.content)
         view.skip_string(prefix) 
@@ -72,15 +85,15 @@ async def test_mlog_command(bot, bot_channel, client_channel, text_channel, guil
             ctx = await bot.get_context(mock_message)
             cog_instance = bot.get_cog("AdminCommands")
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel):
-                text_channel.type = discord.ChannelType.text
-                await bot.invoke(ctx)
+            fake_channels = {guild.id: [text_channel]}
+            with patch("vyrtuous.utils.statistics.Statistics.get_statistic_channels", return_value=fake_channels):
+                with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel_obj):
+                    await bot.invoke(ctx)
         response = client_channel.messages[0]
-        channel_value = client_channel.mention if channel_ref else client_channel.name
-        member_value = self_member.mention if member_ref else self_member.name
+        print(response)
+        channel_value = text_channel.mention if channel_ref else text_channel.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         assert any(val in response for val in [channel_value])
-        assert any(val in response for val in [member_value])
         client_channel.messages.clear() 
     finally:
         await admin_cleanup(guild.id, self_member.id)

@@ -31,9 +31,6 @@ import pytest_asyncio
 
 config = Config().get_config()
 
-async def async_send(self, content):
-    self.messages.append(content)
-    return MockMessage(content=content, guild=self.guild, id=123, author=self_member_obj)
 
 def make_member(id, name, bot=True, voice_channel=False):
     return type(
@@ -64,18 +61,19 @@ self_member_obj = make_member(id=config['discord_testing_self_member_snowflake']
 self_member_obj.bot = True
 dummy_member_obj = make_member(id=config['discord_testing_dummy_member_snowflake'], name="Person 2")
 
-def make_guild(id, display_name, members, channel_defs, owner_id):
+def make_guild(id, display_name, members, channel_defs, owner_id, roles):
     guild = type(
         'MockGuild',
         (),
         {
             'id': id,
             'display_name': display_name,
-            'owner_id': owner_id,
-            '_members': members,
             '_channels': {},
+            'get_channel': lambda self, channel_id: self._channels.get(channel_id),
+            '_members': members,
             'get_member': lambda self, member_id: self._members.get(member_id),
-            'get_channel': lambda self, channel_id: self._channels.get(channel_id)
+            'owner_id': owner_id,
+            "get_role": lambda self, role_id: roles.get(role_id),
         }
     )()
     channels = {}
@@ -93,14 +91,12 @@ def make_mock_channel(id, name, guild, channel_type=None):
         'MockChannel',
         (),
         {
-            'channel_type': channel_type,
             'guild': guild,
             'id': id,
             'members': [],
             'mention': f'<@{id}>',
             'messages': [],
             'name': name,
-            'send': async_send,
             'type': channel_type
         }
     )()
@@ -117,17 +113,36 @@ channel_defs = {
     config['discord_testing_text_channel_snowflake']: ("Test Text Channel", discord.ChannelType.text)
 }
 
+mock_role = SimpleNamespace(id=987654321, mention="<@&987654321>")
+roles = {mock_role.id: mock_role}
+
 guild_obj = make_guild(
     id=config['discord_testing_guild_snowflake'],
     display_name="Test Guild",
     channel_defs=channel_defs,
     members=members,
-    owner_id = self_member_obj.id
+    owner_id=self_member_obj.id,
+    roles=roles
 )
 
-bot_channel_obj = guild_obj.get_channel(config['discord_testing_first_channel_snowflake'])
-client_channel_obj = guild_obj.get_channel(config['discord_testing_second_channel_snowflake']) 
-text_channel_obj = guild_obj.get_channel(config['discord_testing_text_channel_snowflake']) 
+bot_channel_obj = make_mock_channel(
+    id=config['discord_testing_first_channel_snowflake'],
+    name="Voice Channel 1",
+    guild=guild_obj,
+    channel_type=discord.ChannelType.voice
+)
+client_channel_obj = make_mock_channel(
+    id=config['discord_testing_second_channel_snowflake'],
+    name="Voice Channel 2",
+    guild=guild_obj,
+    channel_type=discord.ChannelType.voice
+)
+text_channel_obj = make_mock_channel(
+    id=config['discord_testing_text_channel_snowflake'],
+    name="text-channel",
+    guild=guild_obj,
+    channel_type=discord.ChannelType.text
+)
 new_expires_at = datetime.now(timezone.utc) + timedelta(hours=2)
 
 @pytest_asyncio.fixture(scope="function")
@@ -142,10 +157,11 @@ async def bot():
     db_pool = await asyncpg.create_pool(dsn=dsn)
     config = Config().get_config()
     bot = DiscordBot(config=config, db_pool=db_pool)
-    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.event_listeners'):
+    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.event_listeners', 'vyrtuous.cogs.aliases'):
         await bot.load_extension(cog)
     type(bot).guilds = property(lambda self: [guild_obj])
     yield bot
+    await db_pool.close()
 
 @pytest_asyncio.fixture(scope="function")
 async def client():
@@ -161,6 +177,7 @@ async def client():
     client = DiscordClient(config=config, db_pool=db_pool)
     type(bot).guilds = property(lambda self: [guild_obj])
     yield client
+    await db_pool.close()
 
 @pytest.fixture(scope="function")
 def bot_channel():
@@ -222,3 +239,4 @@ async def admin_initiation(guild_id: Optional[int], self_member_id: Optional[int
             ON CONFLICT (discord_snowflake) 
             DO UPDATE SET developer_guild_ids = $2, updated_at = NOW()
         ''', int(self_member_id), [int(guild_id)])
+
