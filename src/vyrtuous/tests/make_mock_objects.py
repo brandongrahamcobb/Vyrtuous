@@ -115,7 +115,7 @@ def make_mock_guild(id, name, members, channel_defs, owner_id, roles):
             'get_channel': lambda self, channel_id: self._channels.get(channel_id),
             'me': members.get(PRIVILEGED_AUTHOR_ID),
             '_members': members,
-            'get_member': lambda self, member_id: self._members.get(PRIVILEGED_AUTHOR_ID),
+            'get_member': lambda self, member_id: self._members.get(member_id),
             'name': name,
             'owner_id': owner_id,
             "get_role": lambda self, role_id: roles.get(role_id),

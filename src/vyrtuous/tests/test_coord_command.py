@@ -14,10 +14,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext.commands import view as cmd_view
+from discord.ext.commands import Context, view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import PropertyMock, patch
+from vyrtuous.inc.helpers import *
+from vyrtuous.tests.test_admin_helpers import *
 from vyrtuous.tests.test_suite import *
 from vyrtuous.utils.emojis import Emojis
 import pytest
@@ -26,50 +28,49 @@ import pytest
 @pytest.mark.parametrize(
     "command,channel_ref,member_ref",
     [
-        ("coord {dummy_member_id} {client_channel_id}", "self_channel", "dummy_member"),
-        ("coord {dummy_member_id} {client_channel_id}", "self_channel", "dummy_member")
+        ("coord {not_privileged_author_id} {voice_channel_one_id}", "voice_channel_one", "not_privileged_author"),
+        ("coord {not_privileged_author_id} {voice_channel_one_id}", "voice_channel_one", "not_privileged_author")
     ]
 )
 
-async def test_coord_command(bot, bot_channel, client_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):
-    await admin_initiation(guild.id, self_member.id)
+async def test_coord_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):
+    await admin_initiation(guild.id, privileged_author.id)
     try:
-        client_channel.messages.clear() 
+        voice_channel_one.messages.clear() 
         formatted = command.format(
             bot=bot,
-            bot_channel_id=bot_channel.id,
-            client_channel_id=client_channel.id,
-            channel_mention=client_channel.mention,
-            dummy_member_id=dummy_member.id,
-            member_id=self_member.id,
-            member_mention=self_member.mention
+            voice_channel_one_id=voice_channel_one.id,
+            channel_mention=voice_channel_one.mention,
+            not_privileged_author_id=not_privileged_author.id
         )
-        mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
+        mock_message = make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=f"{prefix}{formatted}", embeds=[], guild=guild, id=MESSAGE_ID)
         view = cmd_view.StringView(mock_message.content)
         view.skip_string(prefix) 
-        async def capturing_send(self, ctx, content=None, allowed_mentions=None, **kwargs):
-            client_channel.messages.append(content)
-            return MockMessage(
-                content=content,
-                channel=ctx.channel,
-                guild=ctx.guild,
-                id='123456789',
-                author=self_member
-            )
-        mock_bot_user = SimpleNamespace(id='123456789', bot=True)
+        mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
+        capturing_send = make_capturing_send(voice_channel_one, privileged_author)
         with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
             mock_user.return_value = mock_bot_user
-            ctx = await bot.get_context(mock_message)
+            ctx = Context(
+                message=mock_message,
+                bot=bot,
+                prefix=prefix,
+                view=view
+            )
+            command_name = formatted.split()[0]
+            ctx.command = bot.get_command(command_name)
+            ctx.invoked_with = command_name
+            view.skip_string(command_name)
+            view.skip_ws() 
             cog_instance = bot.get_cog("AdminCommands")
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
             await bot.invoke(ctx)
-            
-        response = client_channel.messages[0]
+        response = voice_channel_one.messages[0]
+        print(response)
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        channel_value = client_channel.mention if channel_ref else client_channel.name
-        member_value = dummy_member.mention if member_ref else dummy_member.name
+        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
+        member_value = not_privileged_author.mention if member_ref else not_privileged_author.name
         assert any(val in response for val in [channel_value])
         assert any(val in response for val in [member_value])
-        client_channel.messages.clear() 
+        voice_channel_one.messages.clear() 
     finally:
-        await admin_cleanup(guild.id, self_member.id)
+        await admin_cleanup(guild.id, privileged_author.id)

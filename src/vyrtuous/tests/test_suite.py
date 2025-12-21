@@ -34,7 +34,7 @@ privileged_author_obj = make_mock_member(
     name=PRIVILEGED_AUTHOR_NAME
 )
 
-not_priveleged_author_obj = make_mock_member(
+not_privileged_author_obj = make_mock_member(
     bot=False,
     id=NOT_PRIVILEGED_AUTHOR_ID,
     name=NOT_PRIVILEGED_AUTHOR_NAME
@@ -58,7 +58,7 @@ guild_obj = make_mock_guild(
     id=GUILD_ID,
     members={
         PRIVILEGED_AUTHOR_ID: privileged_author_obj,
-        NOT_PRIVILEGED_AUTHOR_ID: not_priveleged_author_obj
+        NOT_PRIVILEGED_AUTHOR_ID: not_privileged_author_obj
     },
     name=GUILD_NAME,
     owner_id=PRIVILEGED_AUTHOR_ID,
@@ -144,7 +144,7 @@ def privileged_author():
 
 @pytest.fixture(scope="function")
 def not_privileged_author():
-    return not_priveleged_author_obj
+    return not_privileged_author_obj
 
 
 @pytest.fixture(scope="function")
