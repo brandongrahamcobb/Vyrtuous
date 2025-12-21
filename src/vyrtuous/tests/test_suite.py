@@ -33,11 +33,16 @@ config = Config().get_config()
 
 
 def make_member(id, name, bot=True, voice_channel=False):
+    async def edit(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        return self
     return type(
         'MockMember',
         (),
         {
             'bot': bot,
+            'edit': edit,
             'id': id,
             'name': name,
             'mention': f'<@{id}>',
@@ -69,6 +74,7 @@ def make_guild(id, display_name, members, channel_defs, owner_id, roles):
             'id': id,
             '_channels': {},
             'get_channel': lambda self, channel_id: self._channels.get(channel_id),
+            'me': members.get(config['discord_testing_self_member_snowflake']),
             '_members': members,
             'get_member': lambda self, member_id: self._members.get(member_id),
             'name': display_name,
