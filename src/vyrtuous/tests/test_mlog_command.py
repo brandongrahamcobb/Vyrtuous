@@ -53,18 +53,17 @@ async def test_mlog_command(bot, text_channel, voice_channel_one, guild, privile
         else:
             formatted = f"{command} {text_channel.id} {action} {target_type}".strip()
         await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, prefix=prefix)
-        response = text_channel.messages[0]
-        print(response)
+        response = text_channel.messages[0]["content"]
         channel_value = text_channel.mention if channel_ref else text_channel.name
-        self_member_value = privileged_author.mention if member_ref else privileged_author.name
-        dummy_member_value = not_privileged_author.mention if member_ref else not_privileged_author.name
-        assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
+        privileged_author_value = privileged_author.mention if member_ref else privileged_author.name
+        not_privileged_author_value = not_privileged_author.mention if member_ref else not_privileged_author.name
+        assert any(emoji in response for emoji in Emojis.EMOJIS)
         if channel_ref:
-            assert any(val in response["content"] for val in [channel_value])
+            assert any(val in response for val in [channel_value])
         if member_ref == "not_privileged_author":
-            assert any(val in response["content"] for val in [dummy_member_value])
+            assert any(val in response for val in [not_privileged_author_value])
         if member_ref == "privileged_author":
-            assert any(val in response["content"] for val in [self_member_value])
+            assert any(val in response for val in [privileged_author_value])
         text_channel.messages.clear() 
     finally:
         await admin_cleanup(guild.id, privileged_author.id)

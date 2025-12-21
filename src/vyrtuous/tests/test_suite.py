@@ -148,8 +148,8 @@ def prefix(config):
 def make_capturing_send(channel, author):
     async def capturing_send(self, ctx, content=None, embed=None, allowed_mentions=None, **kwargs): 
         channel.messages.append({
-            'content': content,  # Store the content
-            'embed': embed       # Store the embed
+            'content': content,
+            'embed': embed
         })
         return make_mock_message(
             allowed_mentions=allowed_mentions,

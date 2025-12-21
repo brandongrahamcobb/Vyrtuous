@@ -987,7 +987,7 @@ class AdminCommands(commands.Cog):
         for i in range(0, len(lines), chunks):
             step = lines[i:i + chunks]
             embed = discord.Embed(
-                title=f"Temporary Rooms in {interaction.guild.name}",
+                title=f"{self.emoji.get_random_emoji()} Temporary Rooms in {interaction.guild.name}",
                 description='\n'.join(step),
                 color=discord.Color.blue()
             )
@@ -1019,7 +1019,7 @@ class AdminCommands(commands.Cog):
         for i in range(0, len(lines), chunk_size):
             step = lines[i:i + chunk_size]
             embed = discord.Embed(
-                title=f"Temporary Rooms in {ctx.guild.name}",
+                title=f"{self.emoji.get_random_emoji()} Temporary Rooms in {ctx.guild.name}",
                 description='\n'.join(step),
                 color=discord.Color.blue()
             )

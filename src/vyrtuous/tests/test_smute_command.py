@@ -18,6 +18,7 @@ from discord.ext.commands import view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import PropertyMock, patch
+from vyrtuous.tests.test_admin_helpers import admin_cleanup, admin_initiation, prepared_command_handling
 from vyrtuous.tests.test_suite import *
 from vyrtuous.utils.emojis import Emojis
 import pytest
@@ -26,38 +27,20 @@ import pytest
 @pytest.mark.parametrize(
     "command,member_ref",
     [
-        ("smute", "dummy_member"),
-        ("smute", "dummy_member")
+        ("smute", "True"),
+        ("smute", "True")
     ]
 )
 
-async def test_coord_command(bot, bot_channel, client_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], member_ref):
-    await admin_initiation(guild.id, self_member.id)
+async def test_coord_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
+    await admin_initiation(guild.id, privileged_author.id)
     try:
-        formatted = f"{command} {dummy_member_obj.id}"
-        mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
-        view = cmd_view.StringView(mock_message.content)
-        view.skip_string(prefix) 
-        async def capturing_send(self, ctx, content=None, allowed_mentions=None, **kwargs):
-            client_channel.messages.append(content)
-            return MockMessage(
-                content=content,
-                channel=ctx.channel,
-                guild=ctx.guild,
-                id='123456789',
-                author=self_member
-            )
-        mock_bot_user = SimpleNamespace(id='123456789', bot=True)
-        with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
-            mock_user.return_value = mock_bot_user
-            ctx = await bot.get_context(mock_message)
-            cog_instance = bot.get_cog("AdminCommands")
-            cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            await bot.invoke(ctx)
-        response = client_channel.messages[0]
+        formatted = f"{command} {not_privileged_author.id}"
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, guild=guild, prefix=prefix)
+        response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        member_value = dummy_member.mention if member_ref else dummy_member.name
+        member_value = not_privileged_author.mention
         assert any(val in response for val in [member_value])
-        client_channel.messages.clear() 
+        voice_channel_one.messages.clear() 
     finally:
-        await admin_cleanup(guild.id, self_member.id)
+        await admin_cleanup(guild.id, privileged_author.id)

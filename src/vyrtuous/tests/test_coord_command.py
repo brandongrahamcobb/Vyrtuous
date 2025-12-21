@@ -44,7 +44,7 @@ async def test_coord_command(bot, voice_channel_one, guild, privileged_author, n
             not_privileged_author_id=not_privileged_author.id
         )
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, guild=guild, prefix=prefix)
-        response = voice_channel_one.messages[0]
+        response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         member_value = not_privileged_author.mention if member_ref else not_privileged_author.name

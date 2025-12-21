@@ -146,6 +146,10 @@ def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_i
 def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
 
     async def async_send(self, allowed_mentions=None, content=None, embed=None, embeds=None, **kwargs):
+        self.messages.append({
+            'content': content,
+            'embed': embed
+        })
         msg = make_mock_message(
             allowed_mentions=allowed_mentions,
             author=guild._members.get(list(guild._members.keys())[0]) if guild._members else None,
@@ -155,10 +159,6 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
             guild=guild,
             id=id
         )
-        if content:
-            self.messages.append(content)
-        elif embed or (embeds and len(embeds) > 0):
-            self.messages.append("[Paginator embed]")
         return msg
 
     return type(

@@ -55,14 +55,15 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, privileg
         bot.wait_for = mock_wait_for
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, guild=guild, prefix=prefix)
         response = voice_channel_one.messages[0]
+        print(response)
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         member_value = privileged_author.mention if member_ref else privileged_author.name
         if "temps" in command:
-            assert "Paginator embed" in response
+            assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
         else:
-            assert any(emoji in response for emoji in Emojis.EMOJIS) 
-            assert any(val in response for val in [channel_value])
+            assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
+            assert any(val in response["content"] for val in [channel_value])
         if member_ref:
-            assert any(val in response for val in [member_value])
+            assert any(val in response["content"] for val in [member_value])
     finally:
         await admin_cleanup(guild.id, privileged_author.id)
