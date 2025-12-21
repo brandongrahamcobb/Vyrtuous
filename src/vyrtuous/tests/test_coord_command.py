@@ -43,29 +43,8 @@ async def test_coord_command(bot, voice_channel_one, guild, privileged_author, n
             channel_mention=voice_channel_one.mention,
             not_privileged_author_id=not_privileged_author.id
         )
-        mock_message = make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=f"{prefix}{formatted}", embeds=[], guild=guild, id=MESSAGE_ID)
-        view = cmd_view.StringView(mock_message.content)
-        view.skip_string(prefix) 
-        mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
-        capturing_send = make_capturing_send(voice_channel_one, privileged_author)
-        with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
-            mock_user.return_value = mock_bot_user
-            ctx = Context(
-                message=mock_message,
-                bot=bot,
-                prefix=prefix,
-                view=view
-            )
-            command_name = formatted.split()[0]
-            ctx.command = bot.get_command(command_name)
-            ctx.invoked_with = command_name
-            view.skip_string(command_name)
-            view.skip_ws() 
-            cog_instance = bot.get_cog("AdminCommands")
-            cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            await bot.invoke(ctx)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, data=None, guild=guild, prefix=prefix)
         response = voice_channel_one.messages[0]
-        print(response)
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         member_value = not_privileged_author.mention if member_ref else not_privileged_author.name
