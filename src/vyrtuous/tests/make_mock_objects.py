@@ -63,7 +63,7 @@ def make_mock_member(id, name, bot=True, voice_channel=False):
         }
     )()
 
-def make_mock_message(allowed_mentions, author, content, channel, embeds, guild, id, _state):
+def make_mock_message(allowed_mentions, author, content, channel, embeds, guild, id):
 
     async def add_reaction(self, emoji):
         self.reactions.append(emoji)
@@ -94,13 +94,13 @@ def make_mock_message(allowed_mentions, author, content, channel, embeds, guild,
             'channel': channel,
             'clear_reactions': clear_reactions,
             'edit': edit,
-            'edited_embeds'
+            'edited_embeds': [],
             'embeds': embeds,
             'guild': guild,
             'id': id,
             'reactions': [],
             'remove_reaction': remove_reaction,
-            '_state': _state
+            '_state': make_mock_state()
         }
     )()
 

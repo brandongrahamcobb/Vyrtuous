@@ -65,7 +65,7 @@ guild_obj = make_mock_guild(
     roles={
         ROLE_ID: SimpleNamespace(
             id=ROLE_ID,
-            mention="<@&{ROLE_ID}>"
+            mention=f"<@&{ROLE_ID}>"
         )
     }
 )
@@ -161,17 +161,19 @@ def prefix(config):
     prefix = config['discord_command_prefix']
     yield prefix
 
-async def capturing_send(self, ctx, content=None, embed=None, allowed_mentions=None, **kwargs):
-    voice_channel_one.messages.append(content)
-    return make_mock_message(
-        allowed_mentions=allowed_mentions,
-        author=privileged_author_obj,
-        channel=voice_channel_one,
-        content=content,
-        embeds=[embed],
-        guild=ctx.guild,
-        id=MESSAGE_ID
-    )
+def make_capturing_send(channel, author):
+    async def capturing_send(self, ctx, content=None, embed=None, allowed_mentions=None, **kwargs): 
+        channel.messages.append(content)  # Use parameter
+        return make_mock_message(
+            allowed_mentions=allowed_mentions,
+            author=author,  # Use parameter
+            channel=channel,  # Use parameter
+            content=content,
+            embeds=[embed],
+            guild=ctx.guild,
+            id=MESSAGE_ID
+        )
+    return capturing_send
 
 async def edit(self, **kwargs):
     for k, v in kwargs.items():
