@@ -52,45 +52,20 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, privileg
             member_id=privileged_author.id,
             member_mention=privileged_author.mention,
         )
-        mock_message = make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=f"{prefix}{formatted}", embeds=[], guild=guild, id=MESSAGE_ID)
-        view = cmd_view.StringView(mock_message.content)
-        view.skip_string(prefix) 
         bot.wait_for = mock_wait_for
-        async def mock_channel_send(content=None, embed=None, embeds=None, **kwargs):
-            print(f"Channel.send called - content: {content}, embed: {embed}")
-            if content:
-                voice_channel_one.messages.append(content)
-            elif embed:
-                voice_channel_one.messages.append(f"[Paginator embed]")
-            return make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=content, embeds=[embed], guild=guild, id=MESSAGE_ID)
-        original_channel_send = voice_channel_one.send
-        voice_channel_one.send = mock_channel_send
-        mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
-        capturing_send = make_capturing_send(voice_channel_one, privileged_author)
-        with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
-            mock_user.return_value = mock_bot_user
-            view = cmd_view.StringView(mock_message.content)
-            view.skip_string(prefix)
-            ctx = Context(
-                message=mock_message,
-                bot=bot,
-                prefix=prefix,
-                view=view
-            )
-            command_name = formatted.split()[0]
-            ctx.command = bot.get_command(command_name)
-            ctx.invoked_with = command_name
-            view.skip_string(command_name)
-            view.skip_ws() 
-            ctx.send = mock_channel_send
-            cog_instance = bot.get_cog("AdminCommands")
-            cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            with patch.object(cog_instance.channel_service, "resolve_channel", return_value=voice_channel_one):
-                voice_channel_one.type = discord.ChannelType.voice
-                with patch("vyrtuous.cogs.admin_commands.isinstance", side_effect=lambda obj, cls: True if cls == discord.VoiceChannel else isinstance(obj, cls)):
-                    await bot.invoke(ctx)
+        # async def mock_channel_send(content=None, embed=None, embeds=None, **kwargs):
+        #     print(f"Channel.send called - content: {content}, embed: {embed}")
+        #     if content:
+        #         voice_channel_one.messages.append(content)
+        #     elif embed:
+        #         voice_channel_one.messages.append(f"[Paginator embed]")
+        #     return make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=content, embeds=[embed], guild=guild, id=MESSAGE_ID)
+        # original_channel_send = voice_channel_one.send
+        # voice_channel_one.send = mock_channel_send
+        with patch("vyrtuous.cogs.admin_commands.isinstance", side_effect=lambda obj, cls: True if cls == discord.VoiceChannel else isinstance(obj, cls)):
+            await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, data=None, guild=guild, prefix=prefix)
         response = voice_channel_one.messages[0]
-        print(response)
+        # print(response)
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         member_value = privileged_author.mention if member_ref else privileged_author.name
         if "temps" in command:

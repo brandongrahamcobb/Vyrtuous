@@ -21,7 +21,7 @@ import asyncio
 
 def make_mock_state():
 
-    async def send_message(channel_id, content=None, embeds=None, **kwargs):
+    async def send_message(channel_id=None, content=None, embeds=None, params=None, **kwargs):
         return {
             'author': {
                 'id': PRIVILEGED_AUTHOR_ID,
@@ -31,6 +31,7 @@ def make_mock_state():
             'content': content,
             'embeds': embeds,
             'id': MESSAGE_ID,
+            'params': params
         }
 
     mock_http = SimpleNamespace(
@@ -44,7 +45,7 @@ def make_mock_state():
         create_message=make_mock_message
     )
 
-def make_mock_member(id, name, bot=True, voice_channel=False):
+def make_mock_member(bot=True, id=None, name=None, voice_channel=False):
 
     async def edit(self, **kwargs):
         for k, v in kwargs.items():
@@ -64,7 +65,10 @@ def make_mock_member(id, name, bot=True, voice_channel=False):
         }
     )()
 
-def make_mock_message(allowed_mentions, author, content, channel, embeds, guild, id):
+def make_mock_message(allowed_mentions=None, author=None, content=None, channel=None, data=None, embeds=None, guild=None, id=None):
+    if data:
+        content = data.get("content")
+        embeds = data.get("embeds")
 
     async def add_reaction(self, emoji):
         self.reactions.append(emoji)
@@ -105,7 +109,7 @@ def make_mock_message(allowed_mentions, author, content, channel, embeds, guild,
         }
     )()
 
-def make_mock_guild(id, name, members, channel_defs, owner_id, roles):
+def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_id=None, roles=None):
     guild = type(
         'MockGuild',
         (),
@@ -123,7 +127,7 @@ def make_mock_guild(id, name, members, channel_defs, owner_id, roles):
     )()
     channels = {}
     for cid, (name, channel_type) in channel_defs.items():
-        channels[cid] = make_mock_channel(cid, name, guild, channel_type)
+        channels[cid] = make_mock_channel(channel_type=channel_type, guild=guild, id=cid, name=name)
     guild._channels = channels
     for member in members.values():
         client_channel = list(channels.values())[0]
@@ -131,25 +135,29 @@ def make_mock_guild(id, name, members, channel_defs, owner_id, roles):
         client_channel.members.append(member)
     return guild
 
-def make_mock_channel(id, name, guild, channel_type=None):
+def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
 
-    async def async_send(self, content=None, embed=None, embeds=None, allowed_mentions=None, **kwargs):
+    async def async_send(self, allowed_mentions=None, content=None, embed=None, embeds=None, **kwargs):
         msg = make_mock_message(
             allowed_mentions=allowed_mentions,
             author=guild._members.get(list(guild._members.keys())[0]) if guild._members else None,
+            channel=self,
             content=content,
-            embeds=embeds,
+            embeds=embeds or ([embed] if embed else []),
             guild=guild,
-            id=id,
-            _state=make_mock_state()
+            id=id
         )
-        self.messages.append(msg)
+        if content:
+            self.messages.append(msg)
+        else:
+            self.messages.append("Paginator embed")
         return msg
 
     return type(
         'MockChannel',
         (),
         {
+            '_state': make_mock_state(),
             'guild': guild,
             'id': id,
             'members': [],
@@ -157,8 +165,7 @@ def make_mock_channel(id, name, guild, channel_type=None):
             'messages': [],
             'name': name,
             'send': async_send,
-            'type': channel_type,
-            '_state': make_mock_state()
+            'type': channel_type
         }
     )()
 

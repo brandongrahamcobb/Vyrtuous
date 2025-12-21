@@ -15,10 +15,14 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from discord.ext.commands import Context, view as cmd_view
 from typing import Optional
+from unittest.mock import PropertyMock, patch
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.make_mock_objects import *
+from vyrtuous.tests.make_mock_objects import make_mock_member, make_mock_message
+from vyrtuous.tests.test_suite import make_capturing_send
+import discord
 
 async def admin_cleanup(guild_id: Optional[int], privileged_author_id: Optional[int]):
     bot = DiscordBot.get_instance()
@@ -36,3 +40,30 @@ async def admin_initiation(guild_id: Optional[int], privileged_author_id: Option
             ON CONFLICT (discord_snowflake) 
             DO UPDATE SET developer_guild_ids = $2, updated_at = NOW()
         ''', int(privileged_author_id), [int(guild_id)])
+    
+async def prepared_command_handling(author, bot, channel, content, data, guild, prefix):
+    mock_message = make_mock_message(allowed_mentions=True, author=author, channel=channel, content=content, data=data, embeds=[], guild=guild, id=MESSAGE_ID)
+    view = cmd_view.StringView(f"{prefix}{mock_message.content}")
+    view.skip_string(prefix)
+    mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
+    with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
+        mock_user.return_value = mock_bot_user
+        view = cmd_view.StringView(mock_message.content)
+        view.skip_string(prefix)
+        ctx = Context(
+            bot=bot,
+            message=mock_message,
+            prefix=prefix,
+            view=view
+        )
+        command_name = content.lstrip(prefix).split()[0]
+        ctx.command = bot.get_command(command_name)
+        ctx.invoked_with = command_name
+        view.skip_string(command_name)
+        view.skip_ws() 
+        cog_instance = bot.get_cog("AdminCommands")
+        capturing_send = make_capturing_send(channel, author)
+        cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
+        with patch.object(cog_instance.channel_service, "resolve_channel", return_value=channel):
+            channel.type = discord.ChannelType.voice
+            await bot.invoke(ctx)

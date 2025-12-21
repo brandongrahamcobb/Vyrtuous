@@ -14,10 +14,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext.commands import view as cmd_view
+from discord.ext.commands import Context, view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import PropertyMock, patch
+from vyrtuous.inc.helpers import *
+from vyrtuous.tests.make_mock_objects import *
+from vyrtuous.tests.test_admin_helpers import *
 from vyrtuous.tests.test_suite import *
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.setup_logging import logger, setup_logging
@@ -28,75 +31,64 @@ import pytest
 import pytest_asyncio
 import uuid
 
-@pytest_asyncio.fixture(scope="function")
-async def active_mlog(bot, client_channel, text_channel, guild, self_member, prefix: str):
-    mock_bot_user = SimpleNamespace(id=123456789, bot=True)
-    async def capturing_send(self, ctx, content=None, **kwargs):
-        client_channel.messages.append(content)
-        return MockMessage(
-            content=content,
-            channel=ctx.channel,
-            guild=ctx.guild,
-            id=str(uuid.uuid4()),
-            author=self_member
-        )
-    with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
-        mock_user.return_value = mock_bot_user
-        ctx = await bot.get_context(MockMessage(
-            content=f"{prefix}mlog {text_channel.id} create general",
-            channel=client_channel,
-            guild=guild,
-            id=str(uuid.uuid4()),
-            author=self_member
-        ))
-        cog_instance = bot.get_cog("AdminCommands")
-        cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-        with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel):
-            await bot.invoke(ctx)
-        client_channel.messages.clear() 
-    yield text_channel
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command,channel_ref",
     [
         ("log", True),
-        ("log", True)
+        ("log", True),
+        ("logs all", False),
+        ("logs", True)
     ]
 )
 
-async def test_log_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], channel_ref, active_mlog):
-    await admin_initiation(guild.id, self_member.id)
+async def test_log_command(bot, voice_channel_one, text_channel, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], channel_ref):
+    await admin_initiation(guild.id, privileged_author.id)
     try:
-        channel = active_mlog
-        formatted = f"{command} {channel.id}".strip()
-        mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
+        if not channel_ref:
+            formatted = f"{command}".strip()
+        else:
+            formatted = f"{command} {text_channel.id}".strip()
+        mock_message = make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=f"{prefix}{formatted}", embeds=[], guild=guild, id=MESSAGE_ID)
         view = cmd_view.StringView(mock_message.content)
         view.skip_string(prefix) 
-        async def capturing_send(self, ctx, content=None, allowed_mentions=None, **kwargs):
-            client_channel.messages.append(content)
-            return MockMessage(
-                content=content,
-                channel=ctx.channel,
-                guild=ctx.guild,
-                id='123456789',
-                author=self_member
-            )
-        mock_bot_user = SimpleNamespace(id='123456789', bot=True)
+        capturing_send = make_capturing_send(voice_channel_one, privileged_author)
+        mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
         with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
             mock_user.return_value = mock_bot_user
-            ctx = await bot.get_context(mock_message)
+            ctx = Context(
+                message=mock_message,
+                bot=bot,
+                prefix=prefix,
+                view=view
+            )
+            command_name = formatted.split()[0]
+            ctx.command = bot.get_command(command_name)
+            ctx.invoked_with = command_name
+            view.skip_string(command_name)
+            view.skip_ws() 
             cog_instance = bot.get_cog("AdminCommands")
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            fake_channels = {guild.id: [text_channel]}
+            fake_channels = {
+                guild.id: [
+                    {
+                        "channel_id": text_channel.id,
+                        "channel_name": text_channel.name,
+                        "enabled": False
+                    }
+                ]
+            }
             with patch("vyrtuous.utils.statistics.Statistics.get_statistic_channels", return_value=fake_channels):
                 with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel_obj):
                     await bot.invoke(ctx)
-        response = client_channel.messages[0]
-        channel_value = text_channel.mention if channel_ref else text_channel.name
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
-        assert any(val in response for val in [channel_value])
-        client_channel.messages.clear() 
+        response = voice_channel_one.messages[0]
+        if not channel_ref:
+            embed = response["embed"]
+            assert any(emoji in embed for emoji in Emojis.EMOJIS)
+        else:
+            channel_value = text_channel.mention if channel_ref else text_channel.name
+            assert any(emoji in response for emoji in Emojis.EMOJIS)
+            assert any(val in response for val in [channel_value])
+        voice_channel_one.messages.clear() 
     finally:
-        await admin_cleanup(guild.id, self_member.id)
+        await admin_cleanup(guild.id, privileged_author.id)

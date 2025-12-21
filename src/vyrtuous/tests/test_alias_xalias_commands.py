@@ -17,7 +17,6 @@
 from discord.ext.commands import Context, view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
-from unittest.mock import PropertyMock, patch
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.test_admin_helpers import *
 from vyrtuous.tests.test_suite import *
@@ -59,38 +58,15 @@ import pytest
 async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], alias_type, alias_name, channel_ref, role_ref):
     await admin_initiation(guild.id, privileged_author.id)
     try:
-        channel_token = voice_channel_one.mention if channel_ref else ""
-        if role_ref:
-            formatted = f"{command} {alias_type} {alias_name} {channel_token} {ROLE_ID}".strip()
-        elif command == 'alias':
-            formatted = f"{command} {alias_type} {alias_name} {channel_token}".strip()
-        elif command == 'xalias':
-            formatted = f"{command} {alias_name}".strip()
-        mock_message = make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=f"{prefix}{formatted}", embeds=[], guild=guild, id=MESSAGE_ID)
-        view = cmd_view.StringView(mock_message.content)
-        view.skip_string(prefix) 
-        mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
-        with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
-            mock_user.return_value = mock_bot_user
-            view = cmd_view.StringView(mock_message.content)
-            view.skip_string(prefix)
-            ctx = Context(
-                message=mock_message,
-                bot=bot,
-                prefix=prefix,
-                view=view
-            )
-            command_name = formatted.split()[0]
-            ctx.command = bot.get_command(command_name)
-            ctx.invoked_with = command_name
-            view.skip_string(command_name)
-            view.skip_ws() 
-            cog_instance = bot.get_cog("AdminCommands")
-            capturing_send = make_capturing_send(voice_channel_one, privileged_author)
-            cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            with patch.object(cog_instance.channel_service, "resolve_channel", return_value=voice_channel_one):
-                voice_channel_one.type = discord.ChannelType.voice
-                await bot.invoke(ctx)
+        channel_token = voice_channel_one.mention
+        formatted = "{command} {alias_type} {alias_name} {channel} {role}".format(
+            alias_name=alias_name,
+            alias_type=alias_type or "",
+            channel=voice_channel_one.mention if channel_ref else "",
+            command=command,
+            role=str(ROLE_ID) if role_ref else ""
+        ).strip()
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, data=None, guild=guild, prefix=prefix)
         response = voice_channel_one.messages[0]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
