@@ -34,8 +34,15 @@ def make_mock_state():
             'params': params
         }
 
+    async def create_message(channel=None, data=None, **kwargs):
+        msg = make_mock_message(channel=channel, data=data)
+        if hasattr(channel, "messages"):
+            channel.messages.append(msg)
+        return msg
+
     mock_http = SimpleNamespace(
         allowed_mentions=None,
+        create_message=create_message,
         send_message=send_message
     )
 
@@ -65,7 +72,7 @@ def make_mock_member(bot=True, id=None, name=None, voice_channel=False):
         }
     )()
 
-def make_mock_message(allowed_mentions=None, author=None, content=None, channel=None, data=None, embeds=None, guild=None, id=None):
+def make_mock_message(allowed_mentions=None, author=None, content=None, channel=None, data=None, embeds=None, guild=None, id=None, **kwargs):
     if data:
         content = data.get("content")
         embeds = data.get("embeds")
@@ -100,7 +107,7 @@ def make_mock_message(allowed_mentions=None, author=None, content=None, channel=
             'clear_reactions': clear_reactions,
             'edit': edit,
             'edited_embeds': [],
-            'embeds': embeds,
+            'embeds': embeds or [],
             'guild': guild,
             'id': id,
             'reactions': [],
@@ -148,9 +155,9 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
             id=id
         )
         if content:
-            self.messages.append(msg)
-        else:
-            self.messages.append("Paginator embed")
+            self.messages.append(content)
+        elif embed or (embeds and len(embeds) > 0):
+            self.messages.append("[Paginator embed]")
         return msg
 
     return type(

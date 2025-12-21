@@ -53,17 +53,7 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, privileg
             member_mention=privileged_author.mention,
         )
         bot.wait_for = mock_wait_for
-        # async def mock_channel_send(content=None, embed=None, embeds=None, **kwargs):
-        #     print(f"Channel.send called - content: {content}, embed: {embed}")
-        #     if content:
-        #         voice_channel_one.messages.append(content)
-        #     elif embed:
-        #         voice_channel_one.messages.append(f"[Paginator embed]")
-        #     return make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=content, embeds=[embed], guild=guild, id=MESSAGE_ID)
-        # original_channel_send = voice_channel_one.send
-        # voice_channel_one.send = mock_channel_send
-        with patch("vyrtuous.cogs.admin_commands.isinstance", side_effect=lambda obj, cls: True if cls == discord.VoiceChannel else isinstance(obj, cls)):
-            await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, data=None, guild=guild, prefix=prefix)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, data=None, guild=guild, prefix=prefix)
         response = voice_channel_one.messages[0]
         # print(response)
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name

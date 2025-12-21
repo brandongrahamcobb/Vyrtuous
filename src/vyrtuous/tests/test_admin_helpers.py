@@ -58,6 +58,7 @@ async def prepared_command_handling(author, bot, channel, content, data, guild, 
         )
         command_name = content.lstrip(prefix).split()[0]
         ctx.command = bot.get_command(command_name)
+        ctx.send = channel.send.__get__(channel, type(channel))
         ctx.invoked_with = command_name
         view.skip_string(command_name)
         view.skip_ws() 
@@ -66,4 +67,5 @@ async def prepared_command_handling(author, bot, channel, content, data, guild, 
         cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
         with patch.object(cog_instance.channel_service, "resolve_channel", return_value=channel):
             channel.type = discord.ChannelType.voice
-            await bot.invoke(ctx)
+            with patch("vyrtuous.cogs.admin_commands.isinstance", side_effect=lambda obj, cls: True if cls == discord.VoiceChannel else isinstance(obj, cls)):
+                await bot.invoke(ctx)
