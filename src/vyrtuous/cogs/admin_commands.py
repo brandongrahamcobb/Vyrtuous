@@ -1149,7 +1149,7 @@ class AdminCommands(commands.Cog):
                 ctx.guild.id, channel_obj.id, moderation_type, channel_obj.name
             )
             if row:
-                original_duration = row['duration_second']
+                original_duration = row['duration_seconds']
                 msg = f'{self.emoji.get_random_emoji()} Cap deleted on {channel_obj.mention} for {moderation_type} of duration {original_duration}.'
             else:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB No caps exist in {channel_obj.mention} for {moderation_type}.')
