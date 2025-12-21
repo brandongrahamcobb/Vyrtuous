@@ -45,7 +45,7 @@ def make_member(id, name, bot=True, voice_channel=False):
         }
     )()
 class MockMessage:
-    def __init__(self, *, content, channel, guild, id, author):
+    def __init__(self, *, content, channel, guild, id, author, embeds=None):
         self.content = content
         self.channel = channel
         self.guild = guild
@@ -53,7 +53,7 @@ class MockMessage:
         self.author = author
         self.bot = False
         self.attachments = []
-        self.embeds = []
+        self.embeds = embeds or []
         self._state = None
 
 expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -67,11 +67,11 @@ def make_guild(id, display_name, members, channel_defs, owner_id, roles):
         (),
         {
             'id': id,
-            'display_name': display_name,
             '_channels': {},
             'get_channel': lambda self, channel_id: self._channels.get(channel_id),
             '_members': members,
             'get_member': lambda self, member_id: self._members.get(member_id),
+            'name': display_name,
             'owner_id': owner_id,
             "get_role": lambda self, role_id: roles.get(role_id),
         }

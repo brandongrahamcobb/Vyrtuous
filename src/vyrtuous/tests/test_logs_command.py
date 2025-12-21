@@ -53,29 +53,32 @@ async def active_mlog(bot, client_channel, text_channel, guild, self_member, pre
         client_channel.messages.clear() 
     yield text_channel
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command,channel_ref",
     [
-        ("log", True),
-        ("log", True)
+        ("logs", "all"),
+        ("logs", True)
     ]
 )
 
-async def test_log_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], channel_ref, active_mlog):
+async def test_logs_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], channel_ref, active_mlog):
     await admin_initiation(guild.id, self_member.id)
     try:
-        channel = active_mlog
-        formatted = f"{command} {channel.id}".strip()
+        if channel_ref == "all":
+            arg = "all"
+        else:
+            arg = active_mlog.id
+        formatted = f"{command} {arg}".strip()
         mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
         view = cmd_view.StringView(mock_message.content)
         view.skip_string(prefix) 
-        async def capturing_send(self, ctx, content=None, allowed_mentions=None, **kwargs):
-            client_channel.messages.append(content)
+        async def capturing_send(self, ctx, content=None, embed=None, allowed_mentions=None, **kwargs):
+            client_channel.messages.append({'content': content, 'embed': embed})
             return MockMessage(
                 content=content,
                 channel=ctx.channel,
+                embeds=[embed] if embed else [],
                 guild=ctx.guild,
                 id='123456789',
                 author=self_member
@@ -91,10 +94,11 @@ async def test_log_command(bot, bot_channel, client_channel, text_channel, guild
                 with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel_obj):
                     await bot.invoke(ctx)
         response = client_channel.messages[0]
-        print(response)
         channel_value = text_channel.mention if channel_ref else text_channel.name
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
-        assert any(val in response for val in [channel_value])
+        embed = response["embed"]
+        assert any(emoji in embed.title for emoji in Emojis.EMOJIS)
+        field_text = "".join(f.name + f.value for f in embed.fields)
+        assert str(text_channel.id) in field_text
         client_channel.messages.clear() 
     finally:
         await admin_cleanup(guild.id, self_member.id)
