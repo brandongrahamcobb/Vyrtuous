@@ -93,12 +93,11 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
                 voice_channel_one.type = discord.ChannelType.voice
                 await bot.invoke(ctx)
         response = voice_channel_one.messages[0]
-        print(response)
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         if command == "alias":
             if alias_type in ('role', 'unrole'):
-                assert str(ROLE_ID) in response
+                assert str(ROLE_ID) in response or f"<@&{ROLE_ID}>" in response
             else:
                 assert any(val in response for val in [channel_value])
     finally:
