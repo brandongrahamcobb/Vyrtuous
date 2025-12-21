@@ -40,7 +40,6 @@ import pytest_asyncio
     ]
 )
 
-@pytest_asyncio.fixture(scope="function")
 async def test_mlog_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
     await admin_initiation(guild.id, self_member.id)
     try:

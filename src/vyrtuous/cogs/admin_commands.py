@@ -1112,11 +1112,11 @@ class AdminCommands(commands.Cog):
             return await interaction.response.send_message(content=f'\U0001F6AB Invalid moderation type. Must be one of: {", ".join(valid_types)}')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                'SELECT duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3 AND room_name=$4',
+                'SELECT duration_seconds FROM active_caps WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3 AND room_name=$4',
                 interaction.guild.id, channel_obj.id, moderation_type, channel_obj.name
             )
             if row:
-                original_duration = row['duration']
+                original_duration = row['duration_seconds']
                 msg = f'{self.emoji.get_random_emoji()} Cap deleted on {channel_obj.mention} for {moderation_type} of duration {original_duration}.'
             else:
                 return await interaction.response.send_message(content=f'\U0001F6AB No caps exist in {channel_obj.mention} for {moderation_type}.')
@@ -1145,11 +1145,11 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB Invalid moderation type. Must be one of: {", ".join(valid_types)}')
         async with self.bot.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                'SELECT duration FROM active_caps WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3 AND room_name=$4',
+                'SELECT duration_seconds FROM active_caps WHERE guild_id=$1 AND channel_id=$2 AND moderation_type=$3 AND room_name=$4',
                 ctx.guild.id, channel_obj.id, moderation_type, channel_obj.name
             )
             if row:
-                original_duration = row['duration']
+                original_duration = row['duration_second']
                 msg = f'{self.emoji.get_random_emoji()} Cap deleted on {channel_obj.mention} for {moderation_type} of duration {original_duration}.'
             else:
                 return await self.handler.send_message(ctx, content=f'\U0001F6AB No caps exist in {channel_obj.mention} for {moderation_type}.')
