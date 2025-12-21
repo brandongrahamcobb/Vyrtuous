@@ -18,11 +18,12 @@ from discord.ext.commands import view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import PropertyMock, patch
+from vyrtuous.inc.helpers import *
+from vyrtuous.tests.test_admin_helpers import *
 from vyrtuous.tests.test_suite import *
 from vyrtuous.utils.emojis import Emojis
 import discord
 import pytest
-import uuid
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -55,48 +56,36 @@ import uuid
     ]
 )
 
-async def test_alias_xalias_command(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], alias_type, alias_name, channel_ref, role_ref):
-    await admin_initiation(guild.id, self_member.id)
-    client_channel.messages.clear() 
+async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], alias_type, alias_name, channel_ref, role_ref):
+    await admin_initiation(guild.id, privileged_author.id)
+    voice_channel_one.messages.clear() 
     try:
-        channel_token = client_channel.mention if channel_ref else ""
-        role_token = "987654321" if role_ref else ""
-        if role_token:
-            formatted = f"{command} {alias_type} {alias_name} {channel_token} {role_token}".strip()
+        channel_token = voice_channel_one.mention if channel_ref else ""
+        if ROLE_ID:
+            formatted = f"{command} {alias_type} {alias_name} {channel_token} {ROLE_ID}".strip()
         elif command == 'alias':
             formatted = f"{command} {alias_type} {alias_name} {channel_token}".strip()
         elif command == 'xalias':
             formatted = f"{command} {alias_name}".strip()
-        print(formatted)
-        id = str(uuid.uuid4())
-        mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id=id, author=self_member)
+        mock_message = make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=f"{prefix}{formatted}", embeds=[], guild=guild, id=MESSAGE_ID, _state=None)
         view = cmd_view.StringView(mock_message.content)
         view.skip_string(prefix) 
-        async def capturing_send(self, ctx, content=None, allowed_mentions=None, **kwargs):
-            client_channel.messages.append(content)
-            return MockMessage(
-                content=content,
-                channel=ctx.channel,
-                guild=ctx.guild,
-                id=id,
-                author=self_member
-            )
-        mock_bot_user = SimpleNamespace(id='123456789', bot=True)
+        mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
         with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
             mock_user.return_value = mock_bot_user
             ctx = await bot.get_context(mock_message)
             cog_instance = bot.get_cog("AdminCommands")
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            with patch.object(cog_instance.channel_service, "resolve_channel", return_value=client_channel):
-                client_channel.type = discord.ChannelType.voice
+            with patch.object(cog_instance.channel_service, "resolve_channel", return_value=voice_channel_one):
+                voice_channel_one.type = discord.ChannelType.voice
                 await bot.invoke(ctx)
-        response = client_channel.messages[0]
-        channel_value = client_channel.mention if channel_ref else client_channel.name
+        response = voice_channel_one.messages[0]
+        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         if command == "alias":
             if alias_type in ('role', 'unrole'):
-                assert role_token in response or f"<@&{role_token}>" in response
+                assert ROLE_ID in response or f"<@&{ROLE_ID}>" in response
             else:
                 assert any(val in response for val in [channel_value])
     finally:
-        await admin_cleanup(guild.id, self_member.id)
+        await admin_cleanup(guild.id, PRIVILEGED_AUTHOR_ID)

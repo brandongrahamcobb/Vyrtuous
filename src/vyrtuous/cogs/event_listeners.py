@@ -247,6 +247,7 @@ class EventListeners(commands.Cog):
                         logger.debug(f'No permission to edit mute for {member.display_name}')
                     except discord.HTTPException as e:
                         logger.debug(f'Failed to edit mute for {member.display_name}: {e}')
+                await print_flags(member, after.channel)
                 
 #                    explicit_deny_roles = []
 #                    for role in member.roles:

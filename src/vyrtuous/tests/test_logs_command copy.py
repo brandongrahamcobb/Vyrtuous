@@ -72,6 +72,16 @@ async def test_logs_command(bot, bot_channel, client_channel, text_channel, guil
         mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
         view = cmd_view.StringView(mock_message.content)
         view.skip_string(prefix) 
+        async def capturing_send(self, ctx, content=None, embed=None, allowed_mentions=None, **kwargs):
+            client_channel.messages.append({'content': content, 'embed': embed})
+            return MockMessage(
+                content=content,
+                channel=ctx.channel,
+                embeds=[embed] if embed else [],
+                guild=ctx.guild,
+                id='123456789',
+                author=self_member
+            )
         mock_bot_user = SimpleNamespace(id='123456789', bot=True)
         with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
             mock_user.return_value = mock_bot_user
