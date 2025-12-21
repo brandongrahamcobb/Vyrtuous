@@ -56,7 +56,7 @@ import uuid
     ]
 )
 
-async def test_alias_command(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], alias_type, alias_name, channel_ref, role_ref):
+async def test_alias_xalias_command(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], alias_type, alias_name, channel_ref, role_ref):
     await admin_initiation(guild.id, self_member.id)
     client_channel.messages.clear() 
     try:

@@ -94,7 +94,6 @@ async def test_logs_command(bot, bot_channel, client_channel, text_channel, guil
                 with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel_obj):
                     await bot.invoke(ctx)
         response = client_channel.messages[0]
-        channel_value = text_channel.mention if channel_ref else text_channel.name
         embed = response["embed"]
         assert any(emoji in embed.title for emoji in Emojis.EMOJIS)
         field_text = "".join(f.name + f.value for f in embed.fields)

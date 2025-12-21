@@ -23,51 +23,30 @@ import asyncio
 import discord
 import pytest
 import pytest_asyncio
-import uuid
-
-@pytest_asyncio.fixture(scope="function")
-async def active_mlog(bot, client_channel, text_channel, guild, self_member, prefix: str):
-    mock_bot_user = SimpleNamespace(id=123456789, bot=True)
-    async def capturing_send(self, ctx, content=None, **kwargs):
-        client_channel.messages.append(content)
-        return MockMessage(
-            content=content,
-            channel=ctx.channel,
-            guild=ctx.guild,
-            id=str(uuid.uuid4()),
-            author=self_member
-        )
-    with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
-        mock_user.return_value = mock_bot_user
-        ctx = await bot.get_context(MockMessage(
-            content=f"{prefix}mlog {text_channel.id} create general",
-            channel=client_channel,
-            guild=guild,
-            id=str(uuid.uuid4()),
-            author=self_member
-        ))
-        cog_instance = bot.get_cog("AdminCommands")
-        cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-        with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel):
-            await bot.invoke(ctx)
-        client_channel.messages.clear() 
-    yield text_channel
-
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,channel_ref",
+    "command,channel_ref,member_ref",
     [
-        ("log", True),
-        ("log", True)
+        ("temp {client_channel_id} {member_id}", None, "member"),
+        ("chown {client_channel_id} {member_id}", "channel", "member"),
+        ("xtemp {client_channel_id} {client_channel_id}", "channel", None),
+        ("temp {channel_mention} {member_mention}", None, "member"),
+        ("chown {channel_mention} {member_mention}", "channel", "member")
     ]
 )
 
-async def test_log_command(bot, bot_channel, client_channel, text_channel, guild, self_member, dummy_member, prefix: Optional[str], command: Optional[str], channel_ref, active_mlog):
+async def test_chown_temp_xtemp_commands(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
     await admin_initiation(guild.id, self_member.id)
     try:
-        channel = active_mlog
-        formatted = f"{command} {channel.id}".strip()
+        formatted = command.format(
+            bot=bot,
+            bot_channel_id=bot_channel.id,
+            client_channel_id=client_channel.id,
+            channel_mention=client_channel.mention,
+            member_id=self_member.id,
+            member_mention=self_member.mention,
+        )
         mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
         view = cmd_view.StringView(mock_message.content)
         view.skip_string(prefix) 
@@ -86,14 +65,13 @@ async def test_log_command(bot, bot_channel, client_channel, text_channel, guild
             ctx = await bot.get_context(mock_message)
             cog_instance = bot.get_cog("AdminCommands")
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            fake_channels = {guild.id: [text_channel]}
-            with patch("vyrtuous.utils.statistics.Statistics.get_statistic_channels", return_value=fake_channels):
-                with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel_obj):
-                    await bot.invoke(ctx)
+            await bot.invoke(ctx)
         response = client_channel.messages[0]
-        channel_value = text_channel.mention if channel_ref else text_channel.name
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
+        channel_value = client_channel.mention if channel_ref else client_channel.name
+        member_value = self_member.mention if member_ref else self_member.name
+        assert any(emoji in response for emoji in Emojis.EMOJIS) 
         assert any(val in response for val in [channel_value])
+        assert any(val in response for val in [member_value])
         client_channel.messages.clear() 
     finally:
         await admin_cleanup(guild.id, self_member.id)

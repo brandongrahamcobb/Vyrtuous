@@ -9,7 +9,7 @@ from vyrtuous.cogs.admin_commands import AdminCommands
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.discord_message_service import DiscordMessageService
-from vyrtuous.tests.test_suite import MockMessage, bot, bot_channel, client_channel, client, config, self_member, dummy_member, guild
+from vyrtuous.tests.test_suite import *
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.duration import Duration
@@ -26,17 +26,18 @@ import pytest_asyncio
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,channel_ref,member_ref",
+    "command,channel_ref,duration",
     [
-        ("temp {client_channel_id} {member_id}", None, "member"),
-        ("chown {client_channel_id} {member_id}", "channel", "member"),
-        ("xtemp {client_channel_id} {client_channel_id}", "channel", None),
-        ("temp {channel_mention} {member_mention}", None, "member"),
-        ("chown {channel_mention} {member_mention}", "channel", "member")
+        ("cstage", "channel", '1m'),
+        ("xstage", "channel", None),
+        ("cstage", "channel", '1h'),
+        ("xstage", "channel", None),
+        ("cstage", "channel", '1d'),
+        ("xstage", "channel", None)
     ]
 )
 
-async def test_chown_commands(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
+async def test_cstage_xstage_command(bot, bot_channel, client_channel, guild, self_member, prefix: Optional[str], command: Optional[str], duration, channel_ref):
     await admin_initiation(guild.id, self_member.id)
     try:
         formatted = command.format(
@@ -46,6 +47,7 @@ async def test_chown_commands(bot, bot_channel, client_channel, guild, self_memb
             channel_mention=client_channel.mention,
             member_id=self_member.id,
             member_mention=self_member.mention,
+            duration=duration
         )
         mock_message = MockMessage(content=f"{prefix}{formatted}", channel=client_channel, guild=guild, id='123456789', author=self_member)
         view = cmd_view.StringView(mock_message.content)
@@ -65,13 +67,13 @@ async def test_chown_commands(bot, bot_channel, client_channel, guild, self_memb
             ctx = await bot.get_context(mock_message)
             cog_instance = bot.get_cog("AdminCommands")
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            await bot.invoke(ctx)
+            with patch.object(cog_instance.channel_service, "resolve_channel", return_value=client_channel):
+                client_channel.type = discord.ChannelType.voice
+                await bot.invoke(ctx)
         response = client_channel.messages[0]
         channel_value = client_channel.mention if channel_ref else client_channel.name
-        member_value = self_member.mention if member_ref else self_member.name
-        assert any(emoji in response for emoji in Emojis.EMOJIS) 
+        assert any(emoji in response for emoji in Emojis.EMOJIS)
         assert any(val in response for val in [channel_value])
-        assert any(val in response for val in [member_value])
         client_channel.messages.clear() 
     finally:
         await admin_cleanup(guild.id, self_member.id)

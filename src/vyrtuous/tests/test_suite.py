@@ -108,8 +108,8 @@ members = {
 }
 
 channel_defs = {
-    config['discord_testing_first_channel_snowflake']: ("Test Voice Channel", discord.ChannelType.voice),
-    config['discord_testing_second_channel_snowflake']: ("Test Stage Channel", discord.ChannelType.stage_voice),
+    config['discord_testing_first_channel_snowflake']: ("Test Voice Channel 1", discord.ChannelType.voice),
+    config['discord_testing_second_channel_snowflake']: ("Test Voice Channel 2", discord.ChannelType.voice),
     config['discord_testing_text_channel_snowflake']: ("Test Text Channel", discord.ChannelType.text)
 }
 
