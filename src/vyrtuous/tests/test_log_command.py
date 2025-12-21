@@ -49,39 +49,9 @@ async def test_log_command(bot, voice_channel_one, text_channel, guild, privileg
             formatted = f"{command}".strip()
         else:
             formatted = f"{command} {text_channel.id}".strip()
-        mock_message = make_mock_message(allowed_mentions=True, author=privileged_author, channel=voice_channel_one, content=f"{prefix}{formatted}", embeds=[], guild=guild, id=MESSAGE_ID)
-        view = cmd_view.StringView(mock_message.content)
-        view.skip_string(prefix) 
-        capturing_send = make_capturing_send(voice_channel_one, privileged_author)
-        mock_bot_user = make_mock_member(id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
-        with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
-            mock_user.return_value = mock_bot_user
-            ctx = Context(
-                message=mock_message,
-                bot=bot,
-                prefix=prefix,
-                view=view
-            )
-            command_name = formatted.split()[0]
-            ctx.command = bot.get_command(command_name)
-            ctx.invoked_with = command_name
-            view.skip_string(command_name)
-            view.skip_ws() 
-            cog_instance = bot.get_cog("AdminCommands")
-            cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-            fake_channels = {
-                guild.id: [
-                    {
-                        "channel_id": text_channel.id,
-                        "channel_name": text_channel.name,
-                        "enabled": False
-                    }
-                ]
-            }
-            with patch("vyrtuous.utils.statistics.Statistics.get_statistic_channels", return_value=fake_channels):
-                with patch.object(cog_instance.channel_service, "resolve_channel", return_value=text_channel_obj):
-                    await bot.invoke(ctx)
+        await prepared_command_handling(author=privileged_author, bot=bot, content=formatted, data=None, guild=guild, prefix=prefix, text_channel=text_channel, voice_channel=voice_channel_one)
         response = voice_channel_one.messages[0]
+        print(response)
         if not channel_ref:
             embed = response["embed"]
             assert any(emoji in embed for emoji in Emojis.EMOJIS)

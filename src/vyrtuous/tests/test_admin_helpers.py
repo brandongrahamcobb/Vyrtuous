@@ -1,5 +1,5 @@
 
-''' test_suite.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
+''' test_admin_helpers.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -61,11 +61,28 @@ async def prepared_command_handling(author, bot, channel, content, data, guild, 
         ctx.send = channel.send.__get__(channel, type(channel))
         ctx.invoked_with = command_name
         view.skip_string(command_name)
-        view.skip_ws() 
+        view.skip_ws()
+        fake_channels = {}
+        if channel.type == discord.ChannelType.text:
+            fake_channels = {
+                guild.id: [
+                    {"channel_id": channel.id, "channel_name": channel.name, "enabled": False}
+                ]
+            }
         cog_instance = bot.get_cog("AdminCommands")
         capturing_send = make_capturing_send(channel, author)
         cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
         with patch.object(cog_instance.channel_service, "resolve_channel", return_value=channel):
-            channel.type = discord.ChannelType.voice
-            with patch("vyrtuous.cogs.admin_commands.isinstance", side_effect=lambda obj, cls: True if cls == discord.VoiceChannel else isinstance(obj, cls)):
-                await bot.invoke(ctx)
+            def mock_isinstance(obj, cls):
+                if cls == discord.VoiceChannel:
+                    return hasattr(obj, 'type') and obj.type == discord.ChannelType.voice
+                elif cls == discord.TextChannel:
+                    return hasattr(obj, 'type') and obj.type == discord.ChannelType.text
+                else:
+                    return isinstance(obj, cls)
+            with patch("vyrtuous.cogs.admin_commands.isinstance", side_effect=mock_isinstance):
+                if channel.type == discord.ChannelType.text:
+                    with patch("vyrtuous.utils.statistics.Statistics.get_statistic_voice_channels", return_value=fake_channels):
+                        await bot.invoke(ctx)
+                else:
+                    await bot.invoke(ctx)

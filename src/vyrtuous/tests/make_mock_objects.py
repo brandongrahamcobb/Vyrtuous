@@ -1,5 +1,5 @@
 
-''' test_suite.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
+''' make_mock_objects.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 from types import SimpleNamespace
 from vyrtuous.inc.helpers import *
 import asyncio
+import discord
 
 def make_mock_state():
 
@@ -168,7 +169,7 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
             'guild': guild,
             'id': id,
             'members': [],
-            'mention': f'<@{id}>',
+            'mention': f'<#{id}>',
             'messages': [],
             'name': name,
             'send': async_send,

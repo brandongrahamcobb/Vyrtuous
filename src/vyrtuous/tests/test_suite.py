@@ -47,7 +47,7 @@ guild_obj = make_mock_guild(
             discord.ChannelType.voice
         ),
         VOICE_CHANNEL_TWO_ID: (
-            VOICE_CHANNEL_ONE_NAME,
+            VOICE_CHANNEL_TWO_NAME,
             discord.ChannelType.voice
         ),
         TEXT_CHANNEL_ID: (
@@ -70,26 +70,9 @@ guild_obj = make_mock_guild(
     }
 )
 
-voice_channel_one_obj = make_mock_channel(
-    channel_type=discord.ChannelType.voice,
-    guild=guild_obj,
-    id=VOICE_CHANNEL_ONE_ID,
-    name=VOICE_CHANNEL_ONE_NAME
-)
-
-voice_channel_two_obj = make_mock_channel(
-    channel_type=discord.ChannelType.voice,
-    guild=guild_obj,
-    id=VOICE_CHANNEL_TWO_ID,
-    name=VOICE_CHANNEL_TWO_NAME
-)
-
-text_channel_obj = make_mock_channel(
-    channel_type=discord.ChannelType.text,
-    guild=guild_obj,
-    id=TEXT_CHANNEL_ID,
-    name=TEXT_CHANNEL_NAME
-)
+voice_channel_one_obj = guild_obj._channels[VOICE_CHANNEL_ONE_ID]
+voice_channel_two_obj = guild_obj._channels[VOICE_CHANNEL_TWO_ID]
+text_channel_obj = guild_obj._channels[TEXT_CHANNEL_ID]
 
 @pytest_asyncio.fixture(scope="function")
 async def bot():
@@ -146,7 +129,6 @@ def privileged_author():
 def not_privileged_author():
     return not_privileged_author_obj
 
-
 @pytest.fixture(scope="function")
 def guild():
     return guild_obj
@@ -163,11 +145,11 @@ def prefix(config):
 
 def make_capturing_send(channel, author):
     async def capturing_send(self, ctx, content=None, embed=None, allowed_mentions=None, **kwargs): 
-        channel.messages.append(content)  # Use parameter
+        channel.messages.append(content)
         return make_mock_message(
             allowed_mentions=allowed_mentions,
-            author=author,  # Use parameter
-            channel=channel,  # Use parameter
+            author=author,
+            channel=channel,
             content=content,
             embeds=[embed],
             guild=ctx.guild,
