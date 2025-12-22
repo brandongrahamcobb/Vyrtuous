@@ -27,11 +27,6 @@ class DiscordMessageService:
         self.bot = bot
         
     async def send_message(self, ctx: commands.Context, *, content: str=None, file: discord.File=None, embed: discord.Embed=None, allowed_mentions: discord.AllowedMentions=discord.AllowedMentions.all()):
-        print(f"DEBUG send_message:")
-        print(f"  ctx.guild: {ctx.guild}")
-        print(f"  ctx.channel: {ctx.channel}")
-        print(f"  isinstance(ctx.channel, discord.abc.GuildChannel): {isinstance(ctx.channel, discord.abc.GuildChannel)}")
-        
         can_send = ctx.guild and isinstance(ctx.channel, discord.abc.GuildChannel) and ctx.channel.permissions_for(ctx.guild.me).send_messages
         if can_send:
             try:

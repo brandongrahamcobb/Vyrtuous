@@ -288,9 +288,9 @@ class EventListeners(commands.Cog):
                     overwrite.view_channel = False
                     await channel.set_permissions(member, overwrite=overwrite, reason='Reinstating active channel ban')
                 except discord.Forbidden:
-                    print(f'Missing permissions to ban in channel {channel.id}')
+                    logger.warning(f'Missing permissions to ban in channel {channel.id}')
                 except discord.HTTPException as e:
-                    print(f'Failed to apply ban for {member} in {channel.id}: {e}')
+                    logger.warning(f'Failed to apply ban for {member} in {channel.id}: {e}')
             for row in text_mutes:
                 channel = guild.get_channel(row['channel_id'])
                 if not channel or not isinstance(channel, discord.TextChannel):
@@ -300,9 +300,9 @@ class EventListeners(commands.Cog):
                     overwrite.send_messages = False
                     await channel.set_permissions(member, overwrite=overwrite, reason='Reinstating text mute')
                 except discord.Forbidden:
-                    print(f'Missing permissions to text mute in channel {channel.id}')
+                    logger.warning(f'Missing permissions to text mute in channel {channel.id}')
                 except discord.HTTPException as e:
-                    print(f'Failed to apply text mute for {member} in {channel.id}: {e}')
+                    logger.warning(f'Failed to apply text mute for {member} in {channel.id}: {e}')
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):

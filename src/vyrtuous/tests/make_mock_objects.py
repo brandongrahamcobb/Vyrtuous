@@ -65,6 +65,7 @@ def make_mock_member(bot=True, guild=None, id=None, name=None, voice_channel=Fal
         (),
         {
             'bot': bot,
+            'display_name': name,
             'edit': edit,
             'guild': guild,
             'id': id,
@@ -129,6 +130,7 @@ def make_mock_guild(bot, channel_defs=None, id=None, name=None, members=None, ow
             'name': name,
             'owner_id': owner_id,
             "get_role": lambda self, role_id: roles.get(role_id),
+            "roles": {}
         }
     )()
     channels = {}

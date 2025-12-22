@@ -50,7 +50,7 @@ class EveryoneCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             records = await conn.fetch('''SELECT discord_snowflake FROM users WHERE $1=ANY(administrator_guild_ids) ORDER BY discord_snowflake''', interaction.guild.id)
             if not records:
-                return await interaction.response.send_message(content=f'\U0001F6AB No admins found in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No admins found in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
             description_lines = []
             for record in records:
                 uid = record['discord_snowflake']
@@ -61,7 +61,7 @@ class EveryoneCommands(commands.Cog):
             for i in range(0,len(description_lines),chunk_size):
                 chunk = description_lines[i:i+chunk_size]
                 embed = discord.Embed(
-                    title=f'🔑 Administrators in {interaction.guild.name}',
+                    title=f'{self.emoji.get_random_emoji()} Administrators in {interaction.guild.name}',
                     color=discord.Color.blurple()
                 )
                 embed.add_field(name='Admins', value='\n'.join(chunk), inline=False)
@@ -85,7 +85,7 @@ class EveryoneCommands(commands.Cog):
                 ORDER BY discord_snowflake
             ''', ctx.guild.id)
             if not records:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No admins found in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No admins found in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
             description_lines = []
             for record in records:
                 uid = record['discord_snowflake']
@@ -99,7 +99,7 @@ class EveryoneCommands(commands.Cog):
             for i in range(0, len(description_lines), chunk_size):
                 chunk = description_lines[i:i + chunk_size]
                 embed = discord.Embed(
-                    title=f'🔑 Administrators in {ctx.guild.name}',
+                    title=f'{self.emoji.get_random_emoji()} Administrators in {ctx.guild.name}',
                     color=discord.Color.blurple()
                 )
                 embed.add_field(name='Admins', value='\n'.join(chunk), inline=False)
@@ -129,7 +129,7 @@ class EveryoneCommands(commands.Cog):
                 query = 'SELECT unnest(coordinator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE coordinator_channel_ids IS NOT NULL'
                 rows = await conn.fetch(query)
                 if not rows:
-                    return await interaction.response.send_message(content='\U0001F6AB No coordinators found in any voice channels.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators found in any voice channels.')
                 channel_map = defaultdict(list)
                 for row in rows:
                     channel_map[row['channel_id']].append(row['discord_snowflake'])
@@ -138,7 +138,7 @@ class EveryoneCommands(commands.Cog):
                     vc = interaction.guild.get_channel(ch_id)
                     vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
                     embed = discord.Embed(
-                        title=f'🧭 Coordinators for {vc_name}',
+                        title=f'{self.emoji.get_random_emoji()} Coordinators for {vc_name}',
                         color=discord.Color.gold())
                     for uid in user_ids:
                         m = interaction.guild.get_member(uid)
@@ -154,7 +154,7 @@ class EveryoneCommands(commands.Cog):
                 if row:
                     channels.extend(row.get('coordinator_channel_ids') or [])
                 if not channels:
-                    return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.display_name} is not a coordinator in any channels.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a coordinator in any channels.')
                 channel_mentions = []
                 for ch_id in channels:
                     if not ch_id:
@@ -166,7 +166,7 @@ class EveryoneCommands(commands.Cog):
                 for i in range(0, len(channel_mentions), chunk_size):
                     chunk = channel_mentions[i:i+chunk_size]
                     embed = discord.Embed(
-                        title=f'🧭 {member_obj.display_name} is a coordinator in:',
+                        title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is a coordinator in:',
                         description = '\n'.join(f'• {ch}' for ch in chunk),
                         color = discord.Color.gold()
                     )
@@ -180,7 +180,7 @@ class EveryoneCommands(commands.Cog):
                 rows = await conn.fetch(query, channel_obj.id)
                 rows = list({r['discord_snowflake']: r for r in rows}.values())
                 if not rows:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No coordinators found for {channel_obj.mention}.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators found for {channel_obj.mention}.')
                 lines = []
                 for r in rows:
                     uid = r['discord_snowflake']
@@ -188,13 +188,13 @@ class EveryoneCommands(commands.Cog):
                     if m:
                         lines.append(f'• {m.display_name} — <@{uid}>')
                 if not lines:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No coordinators currently in {interaction.guild.name}.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators currently in {interaction.guild.name}.')
                 pages = []
                 chunk_size = 18
                 for i in range(0, len(lines), chunk_size):
                     chunk = lines[i:i+chunk_size]
                     embed = discord.Embed(
-                        title=f'🧭 Coordinators for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Coordinators for {channel_obj.name}',
                         description='\n'.join(chunk),
                         color=discord.Color.gold()
                     )
@@ -223,7 +223,7 @@ class EveryoneCommands(commands.Cog):
                 query = 'SELECT unnest(coordinator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE coordinator_channel_ids IS NOT NULL'
                 rows = await conn.fetch(query)
                 if not rows:
-                    return await self.handler.send_message(ctx, content='\U0001F6AB No coordinators found in any voice channels.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found in any voice channels.')
                 channel_map = defaultdict(list)
                 for row in rows: channel_map[row['channel_id']].append(row['discord_snowflake'])
                 pages = []
@@ -231,7 +231,7 @@ class EveryoneCommands(commands.Cog):
                     vc = ctx.guild.get_channel(ch_id)
                     vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
                     embed = discord.Embed(
-                        title = f'🧭 Coordinators for {vc_name}',
+                        title = f'{self.emoji.get_random_emoji()} Coordinators for {vc_name}',
                         color = discord.Color.gold()
                     )
                     for uid in user_ids:
@@ -248,7 +248,7 @@ class EveryoneCommands(commands.Cog):
                 if row:
                     channels.extend(row.get('coordinator_channel_ids') or [])
                 if not channels:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.display_name} is not a coordinator in any channels.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a coordinator in any channels.')
                 channel_mentions  =[]
                 for ch_id in channels:
                     if not ch_id:
@@ -260,7 +260,7 @@ class EveryoneCommands(commands.Cog):
                 for i in range(0, len(channel_mentions), chunk_size):
                     chunk = channel_mentions[i:i+chunk_size]
                     embed = discord.Embed(
-                        title=f'🧭 {member_obj.display_name} is a coordinator in:',
+                        title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is a coordinator in:',
                         description='\n'.join(f'• {ch}' for ch in chunk),
                         color=discord.Color.gold()
                     )
@@ -274,7 +274,7 @@ class EveryoneCommands(commands.Cog):
                 rows = await conn.fetch(query, channel_obj.id)
                 rows = list({r['discord_snowflake']: r for r in rows}.values())
                 if not rows:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No coordinators found for {channel_obj.mention}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found for {channel_obj.mention}.')
                 lines = []
                 for r in rows:
                     uid = r['discord_snowflake']
@@ -282,13 +282,13 @@ class EveryoneCommands(commands.Cog):
                     if m:
                         lines.append(f'• {m.display_name} — <@{uid}>')
                 if not lines:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No coordinators currently in {ctx.guild.name}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators currently in {ctx.guild.name}.')
                 pages = []
                 chunk_size = 18
                 for i in range(0, len(lines), chunk_size):
                     chunk = lines[i:i+chunk_size]
                     embed = discord.Embed(
-                        title=f'🧭 Coordinators for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Coordinators for {channel_obj.name}',
                         description='\n'.join(chunk),
                         color=discord.Color.gold()
                     )
@@ -316,7 +316,7 @@ class EveryoneCommands(commands.Cog):
                     interaction.guild.id
                 )
                 if not rows:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No developers are configured in {interaction.guild.name}.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No developers are configured in {interaction.guild.name}.')
                 for row in rows:
                     user = interaction.guild.get_member(row['discord_snowflake'])
                     name = user.display_name if user else f'User ID {row["discord_snowflake"]}'
@@ -332,13 +332,13 @@ class EveryoneCommands(commands.Cog):
                     'SELECT discord_snowflake, developer_guild_ids FROM users WHERE array_length(developer_guild_ids, 1) > 0'
                 )
                 if not rows:
-                    return await interaction.response.send_message(content='\U0001F6AB No developers are configured.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No developers are configured.')
                 for row in rows:
                     user = self.bot.get_user(row['discord_snowflake'])
                     name = user.name if user else f'User ID {row["discord_snowflake"]}'
                     guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
                     embed = discord.Embed(
-                        title = f'Developer: {name}',
+                        title = f'{self.emoji.get_random_emoji()} Developer: {name}',
                         description = ', '.join(guilds) if guilds else 'No known guilds',
                         color = discord.Color.blurple()
                     )
@@ -351,10 +351,10 @@ class EveryoneCommands(commands.Cog):
                     member_obj.id
                 )
                 if not row or not row['developer_guild_ids']:
-                    return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not a developer in any guilds.', allowed_mentions=discord.AllowedMentions.none())
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not a developer in any guilds.', allowed_mentions=discord.AllowedMentions.none())
                 guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
                 embed = discord.Embed(
-                    title = f'Developer guilds for {member_obj.display_name}',
+                    title = f'{self.emoji.get_random_emoji()} Developer guilds for {member_obj.display_name}',
                     description = ', '.join(guilds) if guilds else 'No known guilds',
                     color = discord.Color.blurple()
                 )
@@ -381,19 +381,19 @@ class EveryoneCommands(commands.Cog):
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all developers.')
                 rows = await conn.fetch('SELECT discord_snowflake, developer_guild_ids FROM users WHERE array_length(developer_guild_ids, 1) > 0')
-                if not rows: return await self.handler.send_message(ctx, content='\U0001F6AB No developers are configured.')
+                if not rows: return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No developers are configured.')
                 for row in rows:
                     user = self.bot.get_user(row['discord_snowflake'])
                     name = user.name if user else f'User ID {row["discord_snowflake"]}'
                     guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
-                    embed = discord.Embed(title=f'Developer: {name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
+                    embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Developer: {name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
                     pages.append(embed)
             elif member_obj:
                 row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
                 if not row or not row['developer_guild_ids']:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is not a developer in any guilds.', allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not a developer in any guilds.', allowed_mentions=discord.AllowedMentions.none())
                 guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
-                embed = discord.Embed(title=f'Developer guilds for {member_obj.display_name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
+                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Developer guilds for {member_obj.display_name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
                 pages.append(embed)
             else:
                 rows = await conn.fetch('SELECT discord_snowflake FROM users WHERE $1 = ANY(developer_guild_ids)', ctx.guild.id)
@@ -401,7 +401,7 @@ class EveryoneCommands(commands.Cog):
                 for row in rows:
                     user = ctx.guild.get_member(row['discord_snowflake'])
                     name = user.display_name if user else f'User ID {row["discord_snowflake"]}'
-                    embed = discord.Embed(title=f'Developer: {name}', color=discord.Color.blurple())
+                    embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Developer: {name}', color=discord.Color.blurple())
                     pages.append(embed)
         paginator = Paginator(self.bot, ctx, pages)
         return await paginator.start()
@@ -428,7 +428,7 @@ class EveryoneCommands(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch(query)
             if not rows:
-                return await interaction.response.send_message(content='\U0001F6AB No moderators found in any voice channels.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found in any voice channels.')
             channel_map = defaultdict(list)
             for row in rows:
                 channel_map[row['channel_id']].append(row['discord_snowflake'])
@@ -436,7 +436,7 @@ class EveryoneCommands(commands.Cog):
             for ch_id, user_ids in sorted(channel_map.items()):
                 vc = interaction.guild.get_channel(ch_id)
                 vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-                embed = discord.Embed(title=f'\U0001F6E1 Moderators for {vc_name}', color=discord.Color.magenta())
+                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Moderators for {vc_name}', color=discord.Color.magenta())
                 for uid in user_ids:
                     m = interaction.guild.get_member(uid)
                     name = m.display_name if m else f'User ID {uid}'
@@ -449,13 +449,13 @@ class EveryoneCommands(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 row = await conn.fetchrow(query, member_obj.id)
             if not row or not row['moderator_channel_ids']:
-                return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.display_name} is not a moderator in any channels.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
             channel_mentions = [interaction.guild.get_channel(ch_id).mention if interaction.guild.get_channel(ch_id) else f'Unknown Channel ({ch_id})' for ch_id in row['moderator_channel_ids']]
             chunk_size = 18
             pages = []
             for i in range(0, len(channel_mentions), chunk_size):
                 chunk = channel_mentions[i:i + chunk_size]
-                embed = discord.Embed(title=f'🛡️ {member_obj.display_name} moderates:', description='\n'.join(f'• {ch}' for ch in chunk), color=discord.Color.magenta())
+                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} moderates:', description='\n'.join(f'• {ch}' for ch in chunk), color=discord.Color.magenta())
                 pages.append(embed)
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
@@ -466,7 +466,7 @@ class EveryoneCommands(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch(query, channel_obj.id)
             if not rows:
-                return await interaction.response.send_message(content=f'\U0001F6AB No moderators found for {channel_obj.mention}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
             lines = []
             for row in rows:
                 uid = row['discord_snowflake']
@@ -475,12 +475,12 @@ class EveryoneCommands(commands.Cog):
                     continue
                 lines.append(f'• {m.display_name} — <@{uid}>')
             if not lines:
-                return await interaction.response.send_message(content=f'\U0001F6AB No moderators currently in {interaction.guild.name}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators currently in {interaction.guild.name}.')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
                 chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(title=f'\U0001F6E1 Moderators for {channel_obj.name}', description='\n'.join(chunk), color=discord.Color.magenta())
+                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Moderators for {channel_obj.name}', description='\n'.join(chunk), color=discord.Color.magenta())
                 pages.append(embed)
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
@@ -506,7 +506,7 @@ class EveryoneCommands(commands.Cog):
                 query = 'SELECT unnest(moderator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE moderator_channel_ids IS NOT NULL'
                 rows = await conn.fetch(query)
                 if not rows:
-                    return await self.handler.send_message(ctx, content='\U0001F6AB No moderators found in any voice channels.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found in any voice channels.')
                 channel_map = defaultdict(list)
                 for row in rows:
                     channel_map[row['channel_id']].append(row['discord_snowflake'])
@@ -515,7 +515,7 @@ class EveryoneCommands(commands.Cog):
                     vc = ctx.guild.get_channel(ch_id)
                     vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
                     embed = discord.Embed(
-                        title=f'\U0001F6E1 Moderators for {vc_name}',
+                        title=f'{self.emoji.get_random_emoji()} Moderators for {vc_name}',
                         color=discord.Color.magenta()
                     )
                     for uid in user_ids:
@@ -531,7 +531,7 @@ class EveryoneCommands(commands.Cog):
                 channels = []
                 if row:
                     channels.extend(row.get('moderator_channel_ids') or [])
-                if not channels: return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.display_name} is not a moderator in any channels.')
+                if not channels: return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
                 channel_mentions = []
                 for ch_id in channels:
                     if not ch_id: continue
@@ -542,7 +542,7 @@ class EveryoneCommands(commands.Cog):
                 for i in range(0, len(channel_mentions), chunk_size):
                     chunk = channel_mentions[i:i+chunk_size]
                     embed = discord.Embed(
-                        title=f'🛡️ {member_obj.display_name} moderates:',
+                        title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} moderates:',
                         description='\n'.join(f'• {ch}' for ch in chunk),
                         color=discord.Color.magenta()
                     )
@@ -556,7 +556,7 @@ class EveryoneCommands(commands.Cog):
                 rows = await conn.fetch(query,channel_obj.id)
                 rows = list({r['discord_snowflake']:r for r in rows}.values())
                 if not rows:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators found for {channel_obj.mention}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
                 lines = []
                 for r in rows:
                     uid = r['discord_snowflake']
@@ -564,13 +564,13 @@ class EveryoneCommands(commands.Cog):
                     if not m: continue
                     lines.append(f'• {m.display_name} — <@{uid}>')
                 if not lines:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No moderators currently in {ctx.guild.name}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators currently in {ctx.guild.name}.')
                 pages = []
                 chunk_size = 18
                 for i in range(0,len(lines),chunk_size):
                     chunk = lines[i:i+chunk_size]
                     embed = discord.Embed(
-                        title=f'\U0001F6E1 Moderators for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Moderators for {channel_obj.name}',
                         description='\n'.join(chunk),
                         color=discord.Color.magenta()
                     )
@@ -597,13 +597,13 @@ class EveryoneCommands(commands.Cog):
                     return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all owners.')
                 rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild(interaction.guild)
                 if not rooms:
-                    return await interaction.response.send_message(content='\U0001F6AB No temporary rooms exist.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No temporary rooms exist.')
                 pages = []
                 chunk = 12
                 for i in range(0, len(rooms), chunk):
                     subset = rooms[i:i+chunk]
                     embed = discord.Embed(
-                        title='📊 Temporary Rooms',
+                        title=f'{self.emoji.get_random_emoji()} Temporary Rooms',
                         color=discord.Color.blurple()
                     )
                     for room in subset:
@@ -618,13 +618,13 @@ class EveryoneCommands(commands.Cog):
             if member_obj:
                 rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild_and_member(interaction.guild, member_obj)
                 if not rooms:
-                    return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.display_name} does not own any temporary rooms.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()}{member_obj.display_name} does not own any temporary rooms.')
                 pages = []
                 chunk = 12
                 for i in range(0, len(rooms), chunk):
                     subset = rooms[i:i+chunk]
                     embed = discord.Embed(
-                        title=f'📊 Temporary Rooms Owned by {member_obj.display_name}',
+                        title=f'{self.emoji.get_random_emoji()} Temporary Rooms Owned by {member_obj.display_name}',
                         color=discord.Color.blurple()
                     )
                     for room in subset:
@@ -639,9 +639,9 @@ class EveryoneCommands(commands.Cog):
             if channel_obj:
                 room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
                 if not room:
-                    return await interaction.response.send_message(content=f'\U0001F6AB {channel_obj.mention} is not a temporary room.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {channel_obj.mention} is not a temporary room.')
                 embed = discord.Embed(
-                    title=f'📊 Temporary Room Info for {channel_obj.name}',
+                    title=f'{self.emoji.get_random_emoji()} Temporary Room Info for {channel_obj.name}',
                     color=discord.Color.blurple()
                 )
                 embed.add_field(name='Room Name', value=room.room_name, inline=False)
@@ -668,13 +668,13 @@ class EveryoneCommands(commands.Cog):
                     return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all owners.')
                 rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild(ctx.guild)
                 if not rooms:
-                    return await self.handler.send_message(ctx, content='\U0001F6AB No temporary rooms exist.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No temporary rooms exist.')
                 pages = []
                 chunk = 12
                 for i in range(0, len(rooms), chunk):
                     subset = rooms[i:i+chunk]
                     embed = discord.Embed(
-                        title='📊 Temporary Rooms',
+                        title=f'{self.emoji.get_random_emoji()} Temporary Rooms',
                         color=discord.Color.blurple()
                     )
                     for room in subset:
@@ -689,13 +689,13 @@ class EveryoneCommands(commands.Cog):
             if member_obj:
                 rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild_and_member(ctx.guild, member_obj)
                 if not rooms:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.display_name} does not own any temporary rooms.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} does not own any temporary rooms.')
                 pages = []
                 chunk = 12
                 for i in range(0, len(rooms), chunk):
                     subset = rooms[i:i+chunk]
                     embed = discord.Embed(
-                        title=f'📊 Temporary Rooms Owned by {member_obj.display_name}',
+                        title=f'{self.emoji.get_random_emoji()} Temporary Rooms Owned by {member_obj.display_name}',
                         color=discord.Color.blurple()
                     )
                     for room in subset:
@@ -710,9 +710,9 @@ class EveryoneCommands(commands.Cog):
             if channel_obj:
                 room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
                 if not room:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {channel_obj.mention} is not a temporary room.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {channel_obj.mention} is not a temporary room.')
                 embed = discord.Embed(
-                    title=f'📊 Temporary Room Info for {channel_obj.name}',
+                    title=f'{self.emoji.get_random_emoji()} Temporary Room Info for {channel_obj.name}',
                     color=discord.Color.blurple()
                 )
                 embed.add_field(name='Room Name', value=room.room_name, inline=False)
@@ -727,7 +727,7 @@ class EveryoneCommands(commands.Cog):
         self,
         interaction: discord.Interaction
     ):
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()}  Pong!')
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Pong!')
 
     # DONE
     @commands.command(name='ping', description='Ping the bot!')
@@ -735,7 +735,7 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context
     ):
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()}  Pong!')
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Pong!')
 
     # DONE
     @app_commands.command(name='roleid', description='Get the ID of a role by name in this server.')
@@ -751,7 +751,7 @@ class EveryoneCommands(commands.Cog):
         if role:
             await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Role `{role.name}` has ID `{role.id}`.')
         else:
-            await interaction.response.send_message(content=f'\U0001F6AB No role named "{role_name}" found in this server.')
+            await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No role named "{role_name}" found in this server.')
 
     # DONE
     @commands.command(name='roleid', help='Get the ID of a role by name in this server.')
@@ -762,7 +762,7 @@ class EveryoneCommands(commands.Cog):
         if role:
             await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Role `{role.name}` has ID `{role.id}`.')
         else:
-            await self.handler.send_message(ctx, content=f'\U0001F6AB No role named "{role_name}" found in this server.')
+            await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No role named "{role_name}" found in this server.')
     
     # DONE
     @app_commands.command(name='survey', description='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
@@ -786,7 +786,7 @@ class EveryoneCommands(commands.Cog):
             elif await member_is_moderator(channel_obj, member): moderators.append(member)
         def fmt(users): return ', '.join(u.mention for u in users) if users else '*None*'
         msg = (
-            f'\U0001F50D **Survey results for {channel_obj.mention}:**\n'
+            f'{self.emoji.get_random_emoji()} **Survey results for {channel_obj.mention}:**\n'
             f'\n**Owners:** {fmt(owners)}'
             f'\n**Developers:** {fmt(developers)}'
             f'\n**Administrators:** {fmt(administrators)}'
@@ -808,7 +808,7 @@ class EveryoneCommands(commands.Cog):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        if not isinstance(channel_obj, (discord.VoiceChannel, discord.StageChannel)):
+        if not isinstance(channel_obj, discord.VoiceChannel):
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid voice or stage channel.')
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
@@ -819,7 +819,7 @@ class EveryoneCommands(commands.Cog):
             elif await member_is_moderator(channel_obj, member): moderators.append(member)
         def fmt(users): return ', '.join(u.mention for u in users) if users else '*None*'
         msg = (
-            f'\U0001F50D **Survey results for {channel_obj.mention}:**\n'
+            f'{self.emoji.get_random_emoji()} **Survey results for {channel_obj.mention}:**\n'
             f'\n**Owners:** {fmt(owners)}'
             f'\n**Developers:** {fmt(developers)}'
             f'\n**Administrators:** {fmt(administrators)}'

@@ -461,7 +461,6 @@ class AdminCommands(commands.Cog):
                         DO UPDATE SET expires_at=EXCLUDED.expires_at
                     ''', ctx.guild.id, user.id, channel_obj.id, expires_at, 'Stage active', channel_obj.name)
                     if user.voice and user.voice.channel.id == channel_obj.id:
-                        print("testestest")
                         await user.edit(mute=True)
                     muted.append(user)
                 except Exception as e:
@@ -1017,9 +1016,6 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         if not isinstance(channel_obj, discord.VoiceChannel):
-            print(f"channel_obj is of type: {type(channel_obj.type)}")
-            print(f"channel_obj.type == discord.ChannelType.voice: {channel_obj.type == discord.ChannelType.voice}")
-            print(f"channel_obj.type == discord.ChannelType.text: {channel_obj.type == discord.ChannelType.text}")
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
         room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
         action = None
