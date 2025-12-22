@@ -36,6 +36,7 @@ import pytest
 async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref_one, channel_ref_two):
     await admin_initiation(guild.id, privileged_author.id)
     try:
+        voice_channel_one.messages.clear() 
         source_id = voice_channel_one.id
         target_id = voice_channel_two.id
         formatted = command.format(
@@ -49,6 +50,5 @@ async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, pri
         channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
         assert any(val in response for val in [channel_value_one])
         assert any(val in response for val in [channel_value_two])
-        voice_channel_one.messages.clear() 
     finally:
         await admin_cleanup(guild.id, privileged_author.id)

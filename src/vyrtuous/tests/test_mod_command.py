@@ -19,7 +19,7 @@ from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import PropertyMock, patch
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.test_admin_helpers import admin_cleanup, admin_initiation
+from vyrtuous.tests.test_coord_helpers import coord_cleanup, coord_initiation
 from vyrtuous.tests.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
 import pytest
@@ -28,20 +28,20 @@ import pytest
 @pytest.mark.parametrize(
     "command,channel_ref,member_ref",
     [
-        ("coord {not_privileged_author_id} {voice_channel_one_id}", True, True),
-        ("coord {not_privileged_author_id} {voice_channel_one_id}", True, True)
+        ("mod {not_privileged_author_id} {voice_channel_one_id}", True, True),
+        ("mod {not_privileged_author_id} {voice_channel_one_id}", True, True)
     ]
 )
 
-async def test_coord_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):
-    await admin_initiation(guild.id, privileged_author.id)
+async def test_mod_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):
+    await coord_initiation(voice_channel_one.id, guild.id, privileged_author.id)
     try:
-        voice_channel_one.messages.clear()
+        voice_channel_one.messages.clear() 
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id,
             not_privileged_author_id=not_privileged_author.id
         )
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="CoordinatorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.coordinator_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
@@ -49,4 +49,4 @@ async def test_coord_command(bot, voice_channel_one, guild, privileged_author, n
         assert any(val in response for val in [channel_value])
         assert any(val in response for val in [member_value])
     finally:
-        await admin_cleanup(guild.id, privileged_author.id)
+        await coord_cleanup(voice_channel_one.id, guild.id, privileged_author.id)

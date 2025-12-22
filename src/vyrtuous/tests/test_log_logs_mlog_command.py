@@ -44,7 +44,7 @@ import pytest
     ]
 )
 
-async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
+async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
     await admin_initiation(guild.id, privileged_author.id)
     try:
         text_channel.messages.clear() 
@@ -60,7 +60,6 @@ async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild
                 formatted = f"{command} {action}".strip()
         await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         response = text_channel.messages[0]
-        print(response)
         channel_value = text_channel.mention if channel_ref else text_channel.name
         privileged_author_value = privileged_author.mention if member_ref else privileged_author.name
         not_privileged_author_value = not_privileged_author.mention if member_ref else not_privileged_author.name
@@ -72,6 +71,5 @@ async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild
             assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS)
         if member_ref:
             assert any(val in response["content"] for val in [privileged_author_value])
-        text_channel.messages.clear() 
     finally:
         await admin_cleanup(guild.id, privileged_author.id)

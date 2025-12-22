@@ -34,12 +34,12 @@ import pytest
 async def test_smute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
     await admin_initiation(guild.id, privileged_author.id)
     try:
+        voice_channel_one.messages.clear() 
         formatted = f"{command} {not_privileged_author.id}"
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         member_value = not_privileged_author.mention
         assert any(val in response for val in [member_value])
-        voice_channel_one.messages.clear() 
     finally:
         await admin_cleanup(guild.id, privileged_author.id)

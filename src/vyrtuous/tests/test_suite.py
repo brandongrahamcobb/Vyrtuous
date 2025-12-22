@@ -31,55 +31,57 @@ import os
 import pytest
 import pytest_asyncio
 
-guild_obj = make_mock_guild(
-    channel_defs={
-        VOICE_CHANNEL_ONE_ID: (
-            VOICE_CHANNEL_ONE_NAME,
-            discord.ChannelType.voice
-        ),
-        VOICE_CHANNEL_TWO_ID: (
-            VOICE_CHANNEL_TWO_NAME,
-            discord.ChannelType.voice
-        ),
-        TEXT_CHANNEL_ID: (
-            TEXT_CHANNEL_NAME,
-            discord.ChannelType.text
-        )
-    },
-    id=GUILD_ID,
-    name=GUILD_NAME,
-    members={},
-    owner_id=PRIVILEGED_AUTHOR_ID,
-    roles={
-        ROLE_ID: SimpleNamespace(
-            id=ROLE_ID,
-            members=[],
-            mention=f"<@&{ROLE_ID}>",
-            name=ROLE_NAME
-        )
-    }
-)
+@pytest.fixture(scope="function")
+def guild(bot):
+    guild_obj = make_mock_guild(
+        bot=bot,
+        channel_defs={
+            VOICE_CHANNEL_ONE_ID: (
+                VOICE_CHANNEL_ONE_NAME,
+                discord.ChannelType.voice
+            ),
+            VOICE_CHANNEL_TWO_ID: (
+                VOICE_CHANNEL_TWO_NAME,
+                discord.ChannelType.voice
+            ),
+            TEXT_CHANNEL_ID: (
+                TEXT_CHANNEL_NAME,
+                discord.ChannelType.text
+            )
+        },
+        id=GUILD_ID,
+        name=GUILD_NAME,
+        members={},
+        owner_id=PRIVILEGED_AUTHOR_ID,
+        roles={
+            ROLE_ID: SimpleNamespace(
+                id=ROLE_ID,
+                members=[],
+                mention=f"<@&{ROLE_ID}>",
+                name=ROLE_NAME
+            )
+        }
+    )
+    
+    privileged_author_obj = make_mock_member(
+        bot=True,
+        guild=guild_obj,
+        id=PRIVILEGED_AUTHOR_ID,
+        name=PRIVILEGED_AUTHOR_NAME
+    )
+    
+    not_privileged_author_obj = make_mock_member(
+        bot=False,
+        guild=guild_obj,
+        id=NOT_PRIVILEGED_AUTHOR_ID,
+        name=NOT_PRIVILEGED_AUTHOR_NAME
+    )
+    
+    guild_obj.add_member(privileged_author_obj)
+    guild_obj.add_member(not_privileged_author_obj)
+    guild_obj.me = privileged_author_obj
 
-privileged_author_obj = make_mock_member(
-    bot=True,
-    guild=guild_obj,
-    id=PRIVILEGED_AUTHOR_ID,
-    name=PRIVILEGED_AUTHOR_NAME
-)
-
-not_privileged_author_obj = make_mock_member(
-    bot=False,
-    guild=guild_obj,
-    id=NOT_PRIVILEGED_AUTHOR_ID,
-    name=NOT_PRIVILEGED_AUTHOR_NAME
-)
-
-guild_obj.add_member(privileged_author_obj)
-guild_obj.add_member(not_privileged_author_obj)
-
-voice_channel_one_obj = guild_obj._channels[VOICE_CHANNEL_ONE_ID]
-voice_channel_two_obj = guild_obj._channels[VOICE_CHANNEL_TWO_ID]
-text_channel_obj = guild_obj._channels[TEXT_CHANNEL_ID]
+    return guild_obj
 
 @pytest_asyncio.fixture(scope="function")
 async def bot():
@@ -93,7 +95,7 @@ async def bot():
     db_pool = await asyncpg.create_pool(dsn=dsn)
     config = Config().get_config()
     bot = DiscordBot(config=config, db_pool=db_pool)
-    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.aliases', 'vyrtuous.cogs.dev_commands', 'vyrtuous.cogs.event_listeners', 'vyrtuous.cogs.owner_commands'):
+    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.aliases', 'vyrtuous.cogs.dev_commands', 'vyrtuous.cogs.coordinator_commands', 'vyrtuous.cogs.event_listeners', 'vyrtuous.cogs.owner_commands'):
         await bot.load_extension(cog)
     type(bot).guilds = property(lambda self: [guild_obj])
     bot._state = make_mock_state()
@@ -117,28 +119,24 @@ async def client():
     await db_pool.close()
 
 @pytest.fixture(scope="function")
-def voice_channel_one():
-    return voice_channel_one_obj
+def voice_channel_one(guild):
+    return guild.channels[VOICE_CHANNEL_ONE_ID]
 
 @pytest.fixture(scope="function")
-def voice_channel_two():
-    return voice_channel_two_obj
+def voice_channel_two(guild):
+    return guild.channels[VOICE_CHANNEL_TWO_ID]
 
 @pytest.fixture(scope="function")
-def text_channel():
-    return text_channel_obj
+def text_channel(guild):
+    return guild.channels[TEXT_CHANNEL_ID]
 
 @pytest.fixture(scope="function")
-def privileged_author():
-    return privileged_author_obj
+def privileged_author(guild):
+    return guild.get_member(PRIVILEGED_AUTHOR_ID)
 
 @pytest.fixture(scope="function")
-def not_privileged_author():
-    return not_privileged_author_obj
-
-@pytest.fixture(scope="function")
-def guild():
-    return guild_obj
+def not_privileged_author(guild):
+    return guild.get_member(NOT_PRIVILEGED_AUTHOR_ID)
 
 @pytest.fixture(scope="function")
 def config(bot):
@@ -177,7 +175,7 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
     mock_message = make_mock_message(allowed_mentions=True, author=author, channel=channel, content=content, embeds=[], guild=guild, id=MESSAGE_ID)
     view = cmd_view.StringView(f"{prefix}{mock_message.content}")
     view.skip_string(prefix)
-    mock_bot_user = make_mock_member(guild=guild, id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
+    mock_bot_user = guild.me
     with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
         mock_user.return_value = mock_bot_user
         view = cmd_view.StringView(mock_message.content)
@@ -208,6 +206,11 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                     "vyrtuous.service.check_service.is_owner",
                     new=AsyncMock(return_value=True)
                 ))
+            elif cog == "CoordinatorCommands":
+                stack.enter_context(patch(
+                    "vyrtuous.service.check_service.is_coordinator",
+                    new=AsyncMock(return_value=True)
+                ))
             capturing_send = make_capturing_send(channel, author)
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
             def mock_isinstance(obj, cls):
@@ -223,7 +226,11 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
             if hasattr(cog_instance, "channel_service"):
                 stack.enter_context(patch.object(cog_instance.channel_service, "resolve_channel", return_value=channel))
             if hasattr(cog_instance, "member_service"):
-                stack.enter_context(patch.object(cog_instance.member_service, "resolve_member", return_value=author))
+                def smart_resolve_member(ctx, member_id_or_mention):
+                    member_id = int(str(member_id_or_mention).replace('<@', '').replace('>', ''))
+                    return guild.get_member(member_id)
+                if hasattr(cog_instance, "member_service"):
+                    stack.enter_context(patch.object(cog_instance.member_service, "resolve_member", side_effect=smart_resolve_member))
             stack.enter_context(patch(isinstance_patch, side_effect=mock_isinstance))
             stack.enter_context(patch(
                 "vyrtuous.bot.discord_bot.DiscordBot.tree",

@@ -24,19 +24,25 @@ from vyrtuous.tests.make_mock_objects import make_mock_member, make_mock_message
 from vyrtuous.tests.test_suite import make_capturing_send
 import discord
 
-async def admin_cleanup(guild_id: Optional[int], privileged_author_id: Optional[int]):
+async def coord_cleanup(channel_id: Optional[int], guild_id: Optional[int], privileged_author_id: Optional[int]):
     bot = DiscordBot.get_instance()
     async with bot.db_pool.acquire() as conn:
         await conn.execute('''
-            UPDATE users SET administrator_guild_ids=$2 WHERE discord_snowflake=$1
-        ''', int(privileged_author_id), [int(guild_id)])
+            UPDATE users SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1
+        ''', privileged_author_id, channel_id)
 
-async def admin_initiation(guild_id: Optional[int], privileged_author_id: Optional[int]):
+async def coord_initiation(channel_id: Optional[int], guild_id: Optional[int], privileged_author_id: Optional[int]):
     bot = DiscordBot.get_instance()
     async with bot.db_pool.acquire() as conn:
         await conn.execute('''
-            INSERT INTO users (discord_snowflake, developer_guild_ids, updated_at, created_at)
-            VALUES ($1, $2, NOW(), NOW())
-            ON CONFLICT (discord_snowflake) 
-            DO UPDATE SET developer_guild_ids = $2, updated_at = NOW()
-        ''', int(privileged_author_id), [int(guild_id)])
+            INSERT INTO users (discord_snowflake, coordinator_channel_ids)
+            VALUES ($1, ARRAY[$2]::BIGINT[])
+            ON CONFLICT (discord_snowflake) DO UPDATE
+            SET coordinator_channel_ids = (
+                SELECT ARRAY(SELECT DISTINCT unnest(
+                    COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
+                ))
+            ),
+            updated_at = NOW()
+        ''', privileged_author_id, channel_id)
+    

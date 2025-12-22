@@ -37,6 +37,7 @@ def generate_cap_test_cases():
 async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref):
     await admin_initiation(guild.id, privileged_author.id)
     try:
+        voice_channel_one.messages.clear() 
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id
         )
@@ -46,6 +47,5 @@ async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, pr
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         if channel_ref:
             assert any(val in response for val in [channel_value])
-        voice_channel_one.messages.clear() 
     finally:
         await admin_cleanup(guild.id, privileged_author.id)

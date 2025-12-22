@@ -22,11 +22,11 @@ import discord
 
 def make_mock_state():
 
-    async def send_message(channel_id=None, content=None, embeds=None, params=None, **kwargs):
+    async def send_message(author=None, channel_id=None, content=None, embeds=None, params=None, **kwargs):
         return {
             'author': {
-                'id': PRIVILEGED_AUTHOR_ID,
-                'username': PRIVILEGED_AUTHOR_NAME
+                'id': author.id,
+                'username': author.name
             },
             'channel_id': channel_id,
             'content': content,
@@ -115,21 +115,17 @@ def make_mock_message(allowed_mentions=None, author=None, content=None, channel=
         }
     )()
 
-def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_id=None, roles=None):
-    bot = make_mock_member(guild=None, id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
-    for role in roles.values():
-        if not hasattr(role, "members"):
-            role.members = []
+def make_mock_guild(bot, channel_defs=None, id=None, name=None, members=None, owner_id=None, roles=None):
     guild = type(
         'MockGuild',
         (),
         {
             'id': id,
-            '_channels': {},
-            'get_channel': lambda self, channel_id: self._channels.get(channel_id),
+            'channels': {},
+            'get_channel': lambda self, channel_id: self.channels.get(channel_id),
             'me': bot,
-            '_members': members,
-            'get_member': lambda self, member_id: self._members.get(member_id),
+            'members': members,
+            'get_member': lambda self, member_id: self.members.get(member_id),
             'name': name,
             'owner_id': owner_id,
             "get_role": lambda self, role_id: roles.get(role_id),
@@ -138,19 +134,19 @@ def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_i
     channels = {}
     for cid, (name, channel_type) in channel_defs.items():
         channels[cid] = make_mock_channel(channel_type=channel_type, guild=guild, id=cid, name=name)
-    guild._channels = channels
+    guild.channels = channels
     for member in (members or {}).values():
         client_channel = list(channels.values())[0]
         member.voice.channel = client_channel
         client_channel.members.append(member)
         for role in roles.values():
             role.members.append(member)
-    guild.add_member = lambda member: guild._members.update({member.id: member})
+    guild.add_member = lambda member: guild.members.update({member.id: member})
     return guild
 
 def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
 
-    async def async_send(self, allowed_mentions=None, content=None, embed=None, embeds=None, file=None, **kwargs):
+    async def async_send(self, allowed_mentions=None, author=None, content=None, embed=None, embeds=None, file=None, **kwargs):
         self.messages.append({
             'content': content,
             'embed': embed,
@@ -158,7 +154,7 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
         })
         msg = make_mock_message(
             allowed_mentions=allowed_mentions,
-            author=guild._members.get(list(guild._members.keys())[0]) if guild._members else None,
+            author=author,
             channel=self,
             content=content,
             embeds=embeds or ([embed] if embed else []),

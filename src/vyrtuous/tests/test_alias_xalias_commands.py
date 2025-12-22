@@ -58,14 +58,12 @@ import pytest
 async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], alias_type, alias_name, channel_ref, role_ref):
     await admin_initiation(guild.id, privileged_author.id)
     try:
+        voice_channel_one.messages.clear() 
         channel_token = voice_channel_one.mention
-        formatted = "{command} {alias_type} {alias_name} {channel} {role}".format(
-            alias_name=alias_name,
-            alias_type=alias_type or "",
-            channel=voice_channel_one.mention if channel_ref else "",
-            command=command,
-            role=str(ROLE_ID) if role_ref else ""
-        ).strip()
+        if channel_ref and role_ref:
+            formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id} {ROLE_ID}"
+        else:
+            formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id}"
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
@@ -75,6 +73,5 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
                 assert str(ROLE_ID) in response or f"<@&{ROLE_ID}>" in response
             else:
                 assert any(val in response for val in [channel_value])
-        voice_channel_one.messages.clear() 
     finally:
         await admin_cleanup(guild.id, PRIVILEGED_AUTHOR_ID)

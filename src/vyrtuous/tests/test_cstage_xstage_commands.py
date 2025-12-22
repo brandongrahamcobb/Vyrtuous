@@ -42,6 +42,7 @@ import pytest
 async def test_cstage_xstage_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], duration, channel_ref):
     await admin_initiation(guild.id, privileged_author.id)
     try:
+        voice_channel_one.messages.clear() 
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id,
             duration=duration
@@ -51,6 +52,5 @@ async def test_cstage_xstage_command(bot, voice_channel_one, guild, privileged_a
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         assert any(val in response for val in [channel_value])
-        voice_channel_one.messages.clear() 
     finally:
         await admin_cleanup(guild.id, privileged_author.id)

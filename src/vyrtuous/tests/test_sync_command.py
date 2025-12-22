@@ -41,9 +41,9 @@ import pytest
 async def test_sync_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], spec):
     await dev_initiation(guild.id, privileged_author.id)
     try:
+        voice_channel_one.messages.clear() 
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        voice_channel_one.messages.clear() 
     finally:
         await dev_cleanup(guild.id, privileged_author.id)

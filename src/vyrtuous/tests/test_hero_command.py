@@ -28,12 +28,12 @@ import pytest
 @pytest.mark.parametrize(
     "command,member_ref",
     [
-        ("dev {not_privileged_author_id}", True),
-        ("dev {not_privileged_author_id}", True),
+        ("hero {not_privileged_author_id}", True),
+        ("hero {not_privileged_author_id}", True),
     ]
 )
 
-async def test_dev_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], not_privileged_author, command: Optional[str], member_ref):
+async def test_hero_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], not_privileged_author, command: Optional[str], member_ref):
     voice_channel_one.messages.clear() 
     formatted = command.format(
         not_privileged_author_id=not_privileged_author.id

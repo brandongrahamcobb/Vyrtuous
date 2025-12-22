@@ -36,13 +36,12 @@ import pytest
 async def test_trole_xtrole_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], role_id, role_ref):
     await dev_initiation(guild.id, privileged_author.id)
     try:
+        voice_channel_one.messages.clear() 
         channel_token = voice_channel_one.mention
         formatted = f"{command} {role_id}"
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
-        print(response)
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         assert str(ROLE_NAME) in response
-        voice_channel_one.messages.clear() 
     finally:
         await dev_cleanup(guild.id, privileged_author.id)
