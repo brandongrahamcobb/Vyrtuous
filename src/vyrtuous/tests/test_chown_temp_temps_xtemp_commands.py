@@ -20,8 +20,8 @@ from typing import Optional
 from unittest.mock import PropertyMock, patch
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.make_mock_objects import *
-from vyrtuous.tests.test_admin_helpers import *
-from vyrtuous.tests.test_suite import *
+from vyrtuous.tests.test_admin_helpers import admin_cleanup, admin_initiation
+from vyrtuous.tests.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
 import asyncio
 import discord
@@ -31,14 +31,15 @@ import pytest
 @pytest.mark.parametrize(
     "command,channel_ref,member_ref",
     [
-        ("temp {voice_channel_one_id} {member_id}", "channel", "member"),
-        ("temps all", None, None),
-        ("temps {voice_channel_one_id}", None, None),
-        ("chown {voice_channel_one_id} {member_id}", "channel", "member"),
-        ("temp {voice_channel_one_id}", "channel", None),
-        ("temp {channel_mention} {member_mention}", "channel", "member"),
-        ("chown {channel_mention} {member_mention}", "channel", "member"),
-        ("temp {voice_channel_one_id}", "channel", None)
+        ("temp {voice_channel_one_id} {member_id}", True, True),
+        ("temps all", False, False),
+        ("temps {voice_channel_one_id}", True, False),
+        ("chown {voice_channel_one_id} {member_id}", True, True),
+        ("temp {voice_channel_one_id}", True, False),
+        ("temp {channel_mention} {member_mention}", True, True),
+        ("chown {channel_mention} {member_mention}", True, True),
+        ("migrate \"{channel_name}\" {voice_channel_one_id}", True, False),
+        ("temp {voice_channel_one_id}", True, None)
     ]
 )
 
@@ -48,12 +49,13 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, privileg
         voice_channel_one.messages.clear() 
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id,
+            channel_name=voice_channel_one.name,
             channel_mention=voice_channel_one.mention,
             member_id=privileged_author.id,
             member_mention=privileged_author.mention,
         )
         bot.wait_for = mock_wait_for
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, guild=guild, prefix=prefix)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]
         print(response)
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name

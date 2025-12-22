@@ -145,10 +145,11 @@ def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_i
 
 def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
 
-    async def async_send(self, allowed_mentions=None, content=None, embed=None, embeds=None, **kwargs):
+    async def async_send(self, allowed_mentions=None, content=None, embed=None, embeds=None, file=None, **kwargs):
         self.messages.append({
             'content': content,
-            'embed': embed
+            'embed': embed,
+            'file': file
         })
         msg = make_mock_message(
             allowed_mentions=allowed_mentions,
@@ -173,6 +174,7 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
             'messages': [],
             'name': name,
             'send': async_send,
+            'send_messages': True,
             'type': channel_type
         }
     )()

@@ -1,4 +1,4 @@
-''' test_rmv_command.py The purpose of this program is to black box test the rmv command.
+''' test_backup_command.py The purpose of this program is to black box test the backup command.
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@ from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import PropertyMock, patch
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.test_admin_helpers import admin_cleanup, admin_initiation
+from vyrtuous.tests.test_dev_helpers import dev_cleanup, dev_initiation
 from vyrtuous.tests.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one, voice_channel_two
 from vyrtuous.utils.emojis import Emojis
 import discord
@@ -27,28 +27,21 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,channel_ref_one,channel_ref_two",
+    "command",
     [
-        ("rmv {source_id} {target_id}", True, True)
+        ("clear {voice_channel_one_id}")
     ]
 )
 
-async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref_one, channel_ref_two):
-    await admin_initiation(guild.id, privileged_author.id)
+async def test_clear_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str]):
+    await dev_initiation(guild.id, privileged_author.id)
     try:
-        source_id = voice_channel_one.id
-        target_id = voice_channel_two.id
         formatted = command.format(
-            source_id=source_id,
-            target_id=target_id
+            voice_channel_one_id=voice_channel_one.id
         )
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
-        channel_value_one = voice_channel_one.mention if channel_ref_one else voice_channel_one.name
-        channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
-        assert any(val in response for val in [channel_value_one])
-        assert any(val in response for val in [channel_value_two])
+        assert any(emoji in response for emoji in Emojis.EMOJIS) 
         voice_channel_one.messages.clear() 
     finally:
-        await admin_cleanup(guild.id, privileged_author.id)
+        await dev_cleanup(guild.id, privileged_author.id)

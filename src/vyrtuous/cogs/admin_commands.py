@@ -606,6 +606,93 @@ class AdminCommands(commands.Cog):
         await self.handler.send_message(ctx, embed=embed)
 
     # DONE
+    @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.')
+    @app_commands.describe(old_name='Old temporary room name', new_channel='New channel to migrate to')
+    @is_owner_developer_predicator()
+    async def migrate_temp_room_app_command(
+        self,
+        interaction: discord.Interaction,
+        old_name: str,
+        new_channel: discord.abc.GuildChannel
+    ):
+        if not interaction.guild:
+            return await interaction.response.send_message(content='This command must be used in a server.')
+        async with self.bot.db_pool.acquire() as conn:
+            room = await TemporaryRoom.fetch_temporary_room_by_guild_and_room_name(interaction.guild, old_name)
+            if not room:
+                return await interaction.response.send_message(content=f'\U0001F6AB No temporary room named `{old_name}` found.')
+            channel_obj = await self.channel_service.resolve_channel(interaction, new_channel.id)
+            if channel_obj.type != discord.ChannelType.voice:
+                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+            is_owner = room.room_owner == interaction.user
+            await room.update_temporary_room_name_and_room_snowflake(channel_obj, new_channel.name)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.channel_id)
+            if aliases:
+                for alias_obj in aliases:
+                    await alias_obj.update_command_aliases_with_channel(channel_obj)
+            tables = [
+                'active_bans','active_text_mutes','active_voice_mutes',
+                'active_stages','stage_coordinators','active_caps'
+            ]
+            for table in tables:
+                await conn.execute(
+                    f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
+                    interaction.guild.id, old_name, channel_obj.name, channel_obj.id
+                )
+            await conn.execute(
+                'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
+                room.channel_id, channel_obj.id
+            )
+            await conn.execute(
+                'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
+                room.channel_id, channel_obj.id
+            )
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
+    
+    # DONE
+    @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
+    @is_owner_developer_predicator()
+    async def migrate_temp_room_text_command(
+        self,
+        ctx: commands.Context,
+        old_name: str, #Optional[str] = commands.parameter(default=None, description='Provide a channel name'),
+        new_channel: str #Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+    ):
+        if not ctx.guild:
+            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        async with self.bot.db_pool.acquire() as conn:
+            room = await TemporaryRoom.fetch_temporary_room_by_guild_and_room_name(ctx.guild, old_name)
+            if not room:
+                return await self.handler.send_message(ctx, content=f'No temporary room named `{old_name}` found.')
+            channel_obj = await self.channel_service.resolve_channel(ctx, new_channel)
+            if channel_obj.type != discord.ChannelType.voice:
+                return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+            is_owner = room.room_owner == ctx.author
+            await room.update_temporary_room_name_and_room_snowflake(channel_obj, channel_obj.name)
+            aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.channel_id)
+            if aliases:
+                for alias_obj in aliases:
+                    await alias_obj.update_command_aliases_with_channel(channel_obj)
+            tables = [
+                'active_bans','active_text_mutes','active_voice_mutes',
+                'active_stages','stage_coordinators','active_caps'
+            ]
+            for table in tables:
+                await conn.execute(
+                    f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
+                    ctx.guild.id, old_name, channel_obj.name, channel_obj.id
+                )
+            await conn.execute(
+                'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
+                room.channel_id, channel_obj.id
+            )
+            await conn.execute(
+                'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
+                room.channel_id, channel_obj.id
+            )
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
+
+    # DONE
     @app_commands.command(name='mlog', description='Create, modify, or delete a log channel.')
     @app_commands.describe(
         channel='Tag a channel or include its snowflake ID',
@@ -876,7 +963,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @app_commands.command(name='temp', description='Toggle a temporary room and assign an owner.')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
-    @is_owner_developer_predicator()
+    @is_owner_developer_administrator_predicator()
     async def toggle_temp_room_app_command(
         self,
         interaction: discord.Interaction,
@@ -919,7 +1006,7 @@ class AdminCommands(commands.Cog):
         
     # DONE
     @commands.command(name='temp', help='Toggle a temporary room and assign an owner.')
-    @is_owner_developer_predicator()
+    @is_owner_developer_administrator_predicator()
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,

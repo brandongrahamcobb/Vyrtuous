@@ -1,4 +1,4 @@
-''' test_smute_command.py The purpose of this program is to black box test the smute command.
+''' test_backup_command.py The purpose of this program is to black box test the backup command.
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -17,29 +17,33 @@
 from discord.ext.commands import view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
-from vyrtuous.tests.test_admin_helpers import admin_cleanup, admin_initiation
-from vyrtuous.tests.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
+from unittest.mock import PropertyMock, patch
+from vyrtuous.inc.helpers import *
+from vyrtuous.tests.test_dev_helpers import dev_cleanup, dev_initiation
+from vyrtuous.tests.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one, voice_channel_two
 from vyrtuous.utils.emojis import Emojis
+import asyncio
+import discord
 import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,member_ref",
+    "command,spec",
     [
-        ("smute", "True"),
-        ("smute", "True")
-    ]
+        ("sync", None),
+        ("sync ~", "~"),
+        ("sync *", "*"),
+        ("sync ^", "^"),
+    ],
+    ids=["default", "guild_only", "copy_global", "clear"]
 )
 
-async def test_smute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
-    await admin_initiation(guild.id, privileged_author.id)
+async def test_sync_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], spec):
+    await dev_initiation(guild.id, privileged_author.id)
     try:
-        formatted = f"{command} {not_privileged_author.id}"
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        member_value = not_privileged_author.mention
-        assert any(val in response for val in [member_value])
         voice_channel_one.messages.clear() 
     finally:
-        await admin_cleanup(guild.id, privileged_author.id)
+        await dev_cleanup(guild.id, privileged_author.id)

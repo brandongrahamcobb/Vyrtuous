@@ -50,6 +50,12 @@ class DiscordMessageService:
         if allowed_mentions is not None:
             kwargs['allowed_mentions'] = allowed_mentions
         await send_func(**kwargs)
+    
+    async def send_dm( self, user: discord.abc.User, *, content: str = None, file: discord.File = None, embed: discord.Embed = None, allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.all()):
+        dm_channel = user.dm_channel
+        if dm_channel is None:
+            dm_channel = await user.create_dm()
+        await self._send_message(lambda **kw: dm_channel.send(**kw), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
          
 class AppPaginator(discord.ui.View):
     def __init__(self, bot: DiscordBot, interaction: discord.Interaction, pages, *, timeout=60):

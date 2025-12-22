@@ -15,8 +15,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from discord.ext.commands import Context, view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bot.discord_client import DiscordClient
 from vyrtuous.config import Config
@@ -88,7 +90,7 @@ async def bot():
     db_pool = await asyncpg.create_pool(dsn=dsn)
     config = Config().get_config()
     bot = DiscordBot(config=config, db_pool=db_pool)
-    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.event_listeners', 'vyrtuous.cogs.aliases'):
+    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.aliases', 'vyrtuous.cogs.dev_commands', 'vyrtuous.cogs.event_listeners'):
         await bot.load_extension(cog)
     type(bot).guilds = property(lambda self: [guild_obj])
     bot._state = make_mock_state()
@@ -146,10 +148,11 @@ def prefix(config):
     yield prefix
 
 def make_capturing_send(channel, author):
-    async def capturing_send(self, ctx, content=None, embed=None, allowed_mentions=None, **kwargs): 
+    async def capturing_send(self, ctx, allowed_mentions=None, content=None, embed=None, file=None, **kwargs): 
         channel.messages.append({
             'content': content,
-            'embed': embed
+            'embed': embed,
+            'file': file
         })
         return make_mock_message(
             allowed_mentions=allowed_mentions,
@@ -166,3 +169,56 @@ async def edit(self, **kwargs):
     for k, v in kwargs.items():
         setattr(self, k, v)
     return self
+
+async def prepared_command_handling(author, bot, channel, cog, content, guild, isinstance_patch, prefix):
+    mock_message = make_mock_message(allowed_mentions=True, author=author, channel=channel, content=content, embeds=[], guild=guild, id=MESSAGE_ID)
+    view = cmd_view.StringView(f"{prefix}{mock_message.content}")
+    view.skip_string(prefix)
+    mock_bot_user = make_mock_member(guild=guild, id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
+    with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
+        mock_user.return_value = mock_bot_user
+        view = cmd_view.StringView(mock_message.content)
+        view.skip_string(prefix)
+        ctx = Context(
+            bot=bot,
+            message=mock_message,
+            prefix=prefix,
+            view=view
+        )
+        command_name = content.lstrip(prefix).split()[0]
+        ctx.command = bot.get_command(command_name)
+        ctx.send = channel.send.__get__(channel, type(channel))
+        ctx.invoked_with = command_name
+        view.skip_string(command_name)
+        view.skip_ws()
+        fake_channels = {}
+        if channel.type == discord.ChannelType.text:
+            fake_channels = {
+                guild.id: [
+                    {"channel_id": channel.id, "channel_name": channel.name, "enabled": False}
+                ]
+            }
+        cog_instance = bot.get_cog(cog)
+        capturing_send = make_capturing_send(channel, author)
+        cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
+        def mock_isinstance(obj, cls):
+            if cls == discord.VoiceChannel:
+                return hasattr(obj, 'type') and obj.type == discord.ChannelType.voice
+            elif cls == discord.TextChannel:
+                return hasattr(obj, 'type') and obj.type == discord.ChannelType.text
+            else:
+                return isinstance(obj, cls)
+        with (
+            patch.object(bot, "load_extension", new_callable=AsyncMock),
+            patch.object(bot, "reload_extension", new_callable=AsyncMock),
+            patch.object(bot, "unload_extension", new_callable=AsyncMock),
+            patch.object(cog_instance.channel_service, "resolve_channel", return_value=channel),
+            patch(isinstance_patch, side_effect=mock_isinstance),
+            patch("vyrtuous.bot.discord_bot.DiscordBot.tree", new_callable=PropertyMock, 
+                  return_value=MagicMock(
+                      sync=AsyncMock(return_value=[]),
+                      copy_global_to=MagicMock(),
+                      clear_commands=MagicMock()
+                  ))
+        ):
+            await bot.invoke(ctx)
