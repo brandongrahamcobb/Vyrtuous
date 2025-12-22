@@ -98,7 +98,7 @@ async def bot():
     for cog in DISCORD_COGS:
         if cog != "vyrtuous.cogs.scheduled_tasks":
             await bot.load_extension(cog)
-    type(bot).guilds = property(lambda self: [guild_obj])
+    type(bot).guilds = property(lambda self: [guild])
     bot._state = make_mock_state()
     yield bot
     await db_pool.close()
@@ -154,7 +154,8 @@ def make_capturing_send(channel, author):
         channel.messages.append({
             'content': content,
             'embed': embed,
-            'file': file
+            'file': file,
+            'id': MESSAGE_ID
         })
         return make_mock_message(
             allowed_mentions=allowed_mentions,
@@ -207,11 +208,6 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                     "vyrtuous.service.check_service.is_owner",
                     new=AsyncMock(return_value=True)
                 ))
-            elif cog == "CoordinatorCommands":
-                stack.enter_context(patch(
-                    "vyrtuous.service.check_service.is_coordinator",
-                    new=AsyncMock(return_value=True)
-                ))
             capturing_send = make_capturing_send(channel, author)
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
             def mock_isinstance(obj, cls):
@@ -248,4 +244,16 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                     clear_commands=MagicMock()
                 )
             ))
+            async def fetch_message(message_id):
+                for msg in channel.messages:
+                    if msg["id"] == message_id:
+                        # Wrap the dict and add a delete method
+                        async def delete(self=None):
+                            if self is None:
+                                self = msg
+                            channel.messages.remove(self)
+                            return self
+                        return SimpleNamespace(**msg, delete=delete)
+            channel.fetch_message = fetch_message.__get__(channel)
+            stack.enter_context(patch.object(channel, "fetch_message", new=AsyncMock(side_effect=fetch_message)))
             await bot.invoke(ctx)

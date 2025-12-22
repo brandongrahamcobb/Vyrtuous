@@ -150,7 +150,8 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
         self.messages.append({
             'content': content,
             'embed': embed,
-            'file': file
+            'file': file,
+            'id': MESSAGE_ID
         })
         msg = make_mock_message(
             allowed_mentions=allowed_mentions,

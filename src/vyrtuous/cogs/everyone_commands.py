@@ -721,6 +721,22 @@ class EveryoneCommands(commands.Cog):
                 return await self.handler.send_message(ctx, embed=embed)
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not interpret the target. Provide "all", a channel, or a member.')
     
+       # DONE
+    @app_commands.command(name='ping', description='Ping the bot!')
+    async def ping_app_command(
+        self,
+        interaction: discord.Interaction
+    ):
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()}  Pong!')
+
+    # DONE
+    @commands.command(name='ping', description='Ping the bot!')
+    async def ping_text_command(
+        self,
+        ctx: commands.Context
+    ):
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()}  Pong!')
+
     # DONE
     @app_commands.command(name='roleid', description='Get the ID of a role by name in this server.')
     @app_commands.describe(role_name='The name of the role to look up')
