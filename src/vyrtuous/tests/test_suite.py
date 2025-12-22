@@ -95,8 +95,9 @@ async def bot():
     db_pool = await asyncpg.create_pool(dsn=dsn)
     config = Config().get_config()
     bot = DiscordBot(config=config, db_pool=db_pool)
-    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.aliases', 'vyrtuous.cogs.dev_commands', 'vyrtuous.cogs.coordinator_commands', 'vyrtuous.cogs.event_listeners', 'vyrtuous.cogs.owner_commands'):
-        await bot.load_extension(cog)
+    for cog in DISCORD_COGS:
+        if cog != "vyrtuous.cogs.scheduled_tasks":
+            await bot.load_extension(cog)
     type(bot).guilds = property(lambda self: [guild_obj])
     bot._state = make_mock_state()
     yield bot
@@ -227,8 +228,14 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                 stack.enter_context(patch.object(cog_instance.channel_service, "resolve_channel", return_value=channel))
             if hasattr(cog_instance, "member_service"):
                 def smart_resolve_member(ctx, member_id_or_mention):
-                    member_id = int(str(member_id_or_mention).replace('<@', '').replace('>', ''))
-                    return guild.get_member(member_id)
+                    if member_id_or_mention is None:
+                        return None
+                    raw = str(member_id_or_mention).strip()
+                    if raw.startswith("<@") and raw.endswith(">"):
+                        raw = raw.replace("<@", "").replace(">", "").lstrip("!")
+                    if not raw.isdigit():
+                        return None
+                    return ctx.guild.get_member(int(raw))
                 if hasattr(cog_instance, "member_service"):
                     stack.enter_context(patch.object(cog_instance.member_service, "resolve_member", side_effect=smart_resolve_member))
             stack.enter_context(patch(isinstance_patch, side_effect=mock_isinstance))

@@ -68,7 +68,7 @@ class ModeratorCommands(commands.Cog):
                     ORDER BY channel_id, room_name, expires_at NULLS LAST
                 ''', interaction.guild.id)
             if not rows:
-                return await interaction.response.send_message(content=f'\U0001F6AB No active bans found in {interaction.guild.name}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active bans found in {interaction.guild.name}.')
             grouped = defaultdict(list)
             for row in rows: grouped[row['channel_id']].append(row)
             pages = []
@@ -76,7 +76,7 @@ class ModeratorCommands(commands.Cog):
                 ch = interaction.guild.get_channel(ch_id)
                 ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
                 embed = discord.Embed(
-                    title=f'\u26D4 Ban records for {ch_name}',
+                    title=f'{self.emoji.get_random_emoji()} Ban records for {ch_name}',
                     color=discord.Color.red()
                 )
                 for record in records:
@@ -106,9 +106,9 @@ class ModeratorCommands(commands.Cog):
                     WHERE guild_id=$1 AND discord_snowflake=$2
                 ''', interaction.guild.id, member_obj.id)
             bans = [b for b in bans if interaction.guild.get_channel(b['channel_id'])]
-            if not bans: return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
+            if not bans: return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
             embed = discord.Embed(
-                title=f'\u26D4 Ban records for {member_obj.display_name}',
+                title=f'{self.emoji.get_random_emoji()} Ban records for {member_obj.display_name}',
                 color=discord.Color.red()
             )
             for record in bans:
@@ -140,7 +140,7 @@ class ModeratorCommands(commands.Cog):
                     ORDER BY expires_at NULLS LAST
                 ''', interaction.guild.id, channel_obj.id, channel_obj.name)
             if not bans:
-                return await interaction.response.send_message(content=f'\U0001F6AB No active bans found for {channel_obj.mention}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active bans found for {channel_obj.mention}.')
             lines = []
             for record in bans:
                 uid = record['discord_snowflake']
@@ -161,13 +161,13 @@ class ModeratorCommands(commands.Cog):
                         time_left = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
                 lines.append(f'• {name} — {time_left} — <@{uid}>')
             if not lines:
-                return await interaction.response.send_message(content=f'\U0001F6AB No active bans for users currently in {interaction.guild.name}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active bans for users currently in {interaction.guild.name}.')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
                 chunk = lines[i:i + chunk_size]
                 embed = discord.Embed(
-                    title=f'\u26D4 Ban records for {channel_obj.name}',
+                    title=f'{self.emoji.get_random_emoji()} Ban records for {channel_obj.name}',
                     description='\n'.join(chunk),
                     color=discord.Color.red()
                 )
@@ -199,7 +199,7 @@ class ModeratorCommands(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('''SELECT discord_snowflake, channel_id, room_name, expires_at, reason FROM active_bans WHERE guild_id = $1 ORDER BY channel_id, room_name, expires_at NULLS LAST''', ctx.guild.id)
             if not rows:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No active bans found in {ctx.guild.name}.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active bans found in {ctx.guild.name}.')
             grouped = defaultdict(list)
             for row in rows:
                 grouped[row['channel_id']].append(row)
@@ -208,7 +208,7 @@ class ModeratorCommands(commands.Cog):
                 ch = ctx.guild.get_channel(ch_id)
                 ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
                 embed = discord.Embed(
-                    title = f'\u26D4 Ban records for {ch_name}',
+                    title = f'{self.emoji.get_random_emoji()} Ban records for {ch_name}',
                     color = discord.Color.red()
                 )
                 for record in records:
@@ -236,9 +236,9 @@ class ModeratorCommands(commands.Cog):
                 bans = await conn.fetch('''SELECT channel_id,expires_at,reason FROM active_bans WHERE guild_id=$1 AND discord_snowflake=$2''', ctx.guild.id, member_obj.id)
             bans = [b for b in bans if ctx.guild.get_channel(b['channel_id'])]
             if not bans:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
             embed = discord.Embed(
-                title=f'\u26D4 Ban records for {member_obj.display_name}',
+                title=f'{self.emoji.get_random_emoji()} Ban records for {member_obj.display_name}',
                 color=discord.Color.red()
             )
             for record in bans:
@@ -265,7 +265,7 @@ class ModeratorCommands(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 bans = await conn.fetch('''SELECT discord_snowflake,expires_at,reason FROM active_bans WHERE guild_id=$1 AND channel_id=$2 AND room_name = $3 ORDER BY expires_at NULLS LAST''', ctx.guild.id, channel_obj.id, channel_obj.name)
             if not bans:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No active bans found for {channel_obj.mention}.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active bans found for {channel_obj.mention}.')
             lines = []
             for record in bans:
                 uid = record['discord_snowflake']
@@ -287,13 +287,13 @@ class ModeratorCommands(commands.Cog):
                         time_left = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
                 lines.append(f'• {name} — {time_left} — <@{uid}>')
             if not lines:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No active bans for users currently in {ctx.guild.name}.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active bans for users currently in {ctx.guild.name}.')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
                 chunk = lines[i:i+chunk_size]
                 embed = discord.Embed(
-                    title = f'\u26D4 Ban records for {channel_obj.name}',
+                    title = f'{self.emoji.get_random_emoji()} Ban records for {channel_obj.name}',
                     description = '\n'.join(chunk),
                     color = discord.Color.red()
                 )
@@ -324,7 +324,7 @@ class ModeratorCommands(commands.Cog):
                     interaction.guild.id
                 )
             if not rows:
-                return await interaction.response.send_message(content='\U0001F6AB No caps found server-wide.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No caps found server-wide.')
             lines = []
             for row in rows:
                 ch = interaction.guild.get_channel(row["channel_id"])
@@ -334,7 +334,7 @@ class ModeratorCommands(commands.Cog):
             pages = []
             for i in range(0, len(lines), chunk_size):
                 embed = discord.Embed(
-                    title="All Active Caps in Server",
+                    title="{self.emoji.get_random_emoji()} All Active Caps in Server",
                     description="\n".join(lines[i:i+chunk_size]),
                     color=discord.Color.red()
                 )
@@ -346,7 +346,7 @@ class ModeratorCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
         caps = await Cap.fetch_caps_for_channel(interaction.guild.id, channel_obj.id)
         if not caps:
-            return await interaction.response.send_message(content='\U0001F6AB No caps found for this channel.')
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No caps found for this channel.')
         lines = [
             f'**{moderation_type} in {channel_obj.mention}** → `{Duration.convert_timedelta_seconds(duration_seconds)}`'
             for duration_seconds, moderation_type in caps
@@ -378,14 +378,14 @@ class ModeratorCommands(commands.Cog):
                     ctx.guild.id
                 )
             if not rows:
-                return await self.handler.send_message(ctx, content='\U0001F6AB No caps found server-wide.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No caps found server-wide.')
             lines = []
             for row in rows:
                 ch = ctx.guild.get_channel(row["channel_id"])
                 ch_name = ch.mention if ch else f'Channel ID `{row["channel_id"]}`'
                 lines.append(f'**{row["moderation_type"]} in {ch_name}** → `{Duration.convert_timedelta_seconds(row["duration_seconds"])}`')
             embed = discord.Embed(
-                title='All Active Caps in Server',
+                title=f'{self.emoji.get_random_emoji()} All Active Caps in Server',
                 description='\n'.join(lines),
                 color=discord.Color.red()
             )
@@ -395,7 +395,7 @@ class ModeratorCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
         caps = await Cap.fetch_caps_for_channel(ctx.guild.id, channel_obj.id)
         if not caps:
-            return await self.handler.send_message(ctx, content='\U0001F6AB No caps found for this channel.')
+            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No caps found for this channel.')
         lines = [f'**{mtype} in {channel_obj.mention}** → `{Duration.convert_timedelta_seconds(duration_seconds)}`' for duration_seconds, mtype in caps]
         embed = discord.Embed(
             title=f'Active Caps for {channel_obj.mention}',
@@ -425,16 +425,16 @@ class ModeratorCommands(commands.Cog):
                 return await interaction.response.send_message(content='\U0001F6AB Only owners, developers or administrators can list all aliases across the server.')
             aliases = await Alias.fetch_command_aliases_by_guild(interaction.guild)
             if not aliases:
-                return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found.')
             lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
-                return await interaction.response.send_message(content='\U0001F6AB No aliases found in this server.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found in this server.')
             pages = []
             chunk_size = 18
             for i in range(0, len(lines), chunk_size):
                 chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(title='All Aliases in Server', description='\n'.join(chunk), color=discord.Color.blue())
+                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} All Aliases in Server', description='\n'.join(chunk), color=discord.Color.blue())
                 pages.append(embed)
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
@@ -443,11 +443,11 @@ class ModeratorCommands(commands.Cog):
                 return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
             aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
             if not aliases:
-                return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found.')
             lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
-                return await interaction.response.send_message(content=f'\U0001F6AB No aliases found for the requested target: {target if target else channel_obj.mention}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found for the requested target: {target if target else channel_obj.mention}.')
         await interaction.response.send_message(embed=embed)
         
     # DONE
@@ -467,7 +467,7 @@ class ModeratorCommands(commands.Cog):
             lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
-                return await self.handler.send_message(ctx, content='\U0001F6AB No aliases found in this server.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No aliases found in this server.')
             pages = []
             chunk_size = 18
             for i in range(0, len(lines), chunk_size):
@@ -481,12 +481,12 @@ class ModeratorCommands(commands.Cog):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
             aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
             if not aliases:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No aliases found.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No aliases found.')
             lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No aliases found for the requested target: {target if target else channel_obj.mention}.')
-        embed = discord.Embed(title=f'Aliases for {channel_obj.mention}', description='\n'.join(lines), color=discord.Color.blue())
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No aliases found for the requested target: {target if target else channel_obj.mention}.')
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Aliases for {channel_obj.mention}', description='\n'.join(lines), color=discord.Color.blue())
         await self.handler.send_message(ctx, embed=embed)
  
     # DONE
@@ -510,7 +510,7 @@ class ModeratorCommands(commands.Cog):
         except:
             logger.warning('No message with this ID exists.')
         if not msg:
-            return await interaction.response.send_message(content=f'\U0001F6AB No message with ID `{message_id}` found in `{channel_obj.name}`.')
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No message with ID `{message_id}` found in `{channel_obj.name}`.')
         try:
             await msg.delete()
             return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Message `{message_id}` deleted successfully.')
@@ -539,7 +539,7 @@ class ModeratorCommands(commands.Cog):
         except:
             logger.warning('No message with this ID exists.')
         if not msg:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB No message with ID `{message_id}` found in `{channel_obj.name}`.')
+            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No message with ID `{message_id}` found in `{channel_obj.name}`.')
         try:
             await msg.delete()
             return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Message `{message_id}` deleted successfully.')
@@ -569,7 +569,7 @@ class ModeratorCommands(commands.Cog):
                 return await interaction.response.send_message(content='\U0001F6AB Only owners, developers or administrators can list flags across all channels.')
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('SELECT channel_id, discord_snowflake FROM active_flags WHERE guild_id=$1', interaction.guild.id)
-            if not rows: return await interaction.response.send_message(content='\U0001F6AB No users are flagged in any voice channels.')
+            if not rows: return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are flagged in any voice channels.')
             channel_map = defaultdict(list)
             for row in rows: channel_map[row['channel_id']].append(row['discord_snowflake'])
             pages = []
@@ -577,7 +577,7 @@ class ModeratorCommands(commands.Cog):
                 ch = interaction.guild.get_channel(ch_id)
                 ch_name = ch.mention if ch else f'Unknown Channel ({ch_id})'
                 embed = discord.Embed(
-                    title=f'\U0001F6A9 Flag records for {ch_name}',
+                    title=f'{self.emoji.get_random_emoji()} Flag records for {ch_name}',
                     color=discord.Color.yellow()
                 )
                 for uid in user_ids:
@@ -592,7 +592,7 @@ class ModeratorCommands(commands.Cog):
                 rows = await conn.fetch('SELECT channel_id, reason FROM active_flags WHERE guild_id=$1 AND discord_snowflake=$2', interaction.guild.id, member_obj.id)
             rows = [r for r in rows if interaction.guild.get_channel(r['channel_id'])]
             if not rows:
-                return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not flagged in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
             lines = []
             for r in rows:
                 ch = interaction.guild.get_channel(r['channel_id'])
@@ -600,18 +600,18 @@ class ModeratorCommands(commands.Cog):
                 reason = r['reason'] or "No reason given"
                 lines.append(f'• {ch_name} — {reason}')
             embed=discord.Embed(
-                title=f'\U0001F6A9 Flag records for {member_obj.display_name}',
+                title=f'{self.emoji.get_random_emoji()} Flag records for {member_obj.display_name}',
                 description='\n'.join(lines),
                 color=discord.Color.orange()
             )
-            return await interaction.response.send_message(embed=embed,allowed_mentions=discord.AllowedMentions.none())
+            return await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         elif channel_obj:
             if channel_obj.type != discord.ChannelType.voice:
                 return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('SELECT discord_snowflake FROM active_flags WHERE guild_id=$1 AND channel_id=$2', interaction.guild.id, channel_obj.id)
             if not rows:
-                return await interaction.response.send_message(content=f'\U0001F6AB No users are flagged for {channel_obj.mention}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are flagged for {channel_obj.mention}.')
             pages = []
             chunk_size = 18
             for i in range(0, len(rows), chunk_size):
@@ -623,13 +623,13 @@ class ModeratorCommands(commands.Cog):
                     formatted_lines.append(f'• {m.display_name} — <@{uid}>')
                 if formatted_lines:
                     embed=discord.Embed(
-                        title=f'\U0001F6A9 Flag records for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Flag records for {channel_obj.name}',
                         color=discord.Color.red()
                     )
                     embed.add_field(name=f'{interaction.guild.name}', value='\n'.join(formatted_lines), inline=False)
                     pages.append(embed)
             if not pages:
-                return await interaction.response.send_message(content=f'\U0001F6AB No flagged users currently in {interaction.guild.name}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No flagged users currently in {interaction.guild.name}.')
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
     
@@ -669,7 +669,7 @@ class ModeratorCommands(commands.Cog):
                 ch = ctx.guild.get_channel(ch_id)
                 ch_name = ch.mention if ch else f'Unknown Channel ({ch_id})'
                 embed = discord.Embed(
-                    title=f'\U0001F6A9 Flag records for {ch_name}',
+                    title=f'{self.emoji.get_random_emoji()} Flag records for {ch_name}',
                     color=discord.Color.yellow()
                 )
                 for uid in user_ids:
@@ -696,7 +696,7 @@ class ModeratorCommands(commands.Cog):
                     reason = r['reason'] or "No reason given"
                     lines.append(f'• {ch_name} — {reason}')
                 embed = discord.Embed(
-                    title=f'\U0001F6A9 Flag records for {member_obj.display_name}',
+                    title=f'{self.emoji.get_random_emoji()} Flag records for {member_obj.display_name}',
                     description='\n'.join(lines),
                     color=discord.Color.orange()
                 )
@@ -723,7 +723,7 @@ class ModeratorCommands(commands.Cog):
                     formatted_lines.append(f'• {member_obj.display_name} — <@{uid}>')
                 if formatted_lines:
                     embed = discord.Embed(
-                        title=f'\U0001F6A9 Flag records for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Flag records for {channel_obj.name}',
                         color=discord.Color.red()
                     )
                     embed.add_field(name=f'{ctx.guild.name}', value='\n'.join(formatted_lines), inline=False)
@@ -751,7 +751,7 @@ class ModeratorCommands(commands.Cog):
             if member_obj:
                 rows = await conn.fetch('''SELECT channel_id, created_at FROM active_cows WHERE guild_id=$1 AND discord_snowflake=$2''', interaction.guild.id, member_obj.id)
                 if not rows:
-                    return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not cowed in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not cowed in any channels.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
                 for r in rows:
                     ch = interaction.guild.get_channel(r['channel_id'])
@@ -759,7 +759,7 @@ class ModeratorCommands(commands.Cog):
                     created_at = discord.utils.format_dt(r['created_at'],style='R') if r['created_at'] else ''
                     lines.append(f'• {ch_name} — {created_at}')
                 embed=discord.Embed(
-                    title=f'🐮 {member_obj.display_name}',
+                    title=f'{self.emoji.get_random_emoji()} {member_obj.display_name}',
                     description='\n'.join(lines),
                     color=discord.Color.green()
                 )
@@ -769,7 +769,7 @@ class ModeratorCommands(commands.Cog):
                     return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
                 rows = await conn.fetch('''SELECT discord_snowflake, created_at FROM active_cows WHERE guild_id=$1 AND channel_id=$2''', interaction.guild.id, channel_obj.id)
                 if not rows:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No users are cowed in {channel_obj.mention}.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are cowed in {channel_obj.mention}.')
                 lines = []
                 for row in rows:
                     uid = row['discord_snowflake']
@@ -779,13 +779,13 @@ class ModeratorCommands(commands.Cog):
                     created_at = discord.utils.format_dt(row['created_at'],style='R') if row['created_at'] else ''
                     lines.append(f'• {m.display_name} — <@{uid}> — {created_at}')
                 if not lines:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No new vegans currently in {interaction.guild.name}.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No new vegans currently in {interaction.guild.name}.')
                 chunk_size = 18
                 pages = []
                 for i in range(0, len(lines), chunk_size):
                     chunk=lines[i:i+chunk_size]
                     embed=discord.Embed(
-                        title=f'🐮 Vegan records for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Vegan records for {channel_obj.name}',
                         description='\n'.join(chunk),
                         color=discord.Color.green()
                     )
@@ -816,7 +816,7 @@ class ModeratorCommands(commands.Cog):
                     WHERE guild_id = $1 AND discord_snowflake = $2
                 ''', ctx.guild.id, member_obj.id)
                 if not rows:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is not cowed in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not cowed in any channels.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
                 for r in rows:
                     ch = ctx.guild.get_channel(r['channel_id'])
@@ -824,7 +824,7 @@ class ModeratorCommands(commands.Cog):
                     created_at = discord.utils.format_dt(r['created_at'], style='R') if r['created_at'] else ''
                     lines.append(f'• {ch_name} — {created_at}')
                 embed = discord.Embed(
-                    title=f'🐮 {member_obj.display_name}',
+                    title=f'{self.emoji.get_random_emoji()} {member_obj.display_name}',
                     description='\n'.join(lines),
                     color=discord.Color.green()
                 )
@@ -838,7 +838,7 @@ class ModeratorCommands(commands.Cog):
                     WHERE guild_id = $1 AND channel_id = $2
                 ''', ctx.guild.id, channel_obj.id)
                 if not rows:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are cowed in {channel_obj.mention}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No users are cowed in {channel_obj.mention}.')
                 lines = []
                 for row in rows:
                     uid = row['discord_snowflake']
@@ -848,13 +848,13 @@ class ModeratorCommands(commands.Cog):
                     created_at = discord.utils.format_dt(row['created_at'], style='R') if row['created_at'] else ''
                     lines.append(f'• {m.display_name} — <@{uid}> — {created_at}')
                 if not lines:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No new vegans currently in {ctx.guild.name}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No new vegans currently in {ctx.guild.name}.')
                 chunk_size = 18
                 pages = []
                 for i in range(0, len(lines), chunk_size):
                     chunk = lines[i:i + chunk_size]
                     embed = discord.Embed(
-                        title=f'🐮 Vegan records for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Vegan records for {channel_obj.name}',
                         description='\n'.join(chunk),
                         color=discord.Color.green()
                     )
@@ -883,7 +883,7 @@ class ModeratorCommands(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''SELECT discord_snowflake, channel_id, room_name, expires_at, COALESCE(reason,'No reason provided') AS reason FROM active_voice_mutes WHERE guild_id=$1 AND target='user' ORDER BY channel_id, room_name, discord_snowflake''', interaction.guild.id)
             if not records:
-                return await interaction.response.send_message(content=f'\U0001F6AB No muted users currently in {interaction.guild.name}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No muted users currently in {interaction.guild.name}.')
             grouped = defaultdict(list)
             for r in records:
                 grouped[r['channel_id']].append(r)
@@ -893,7 +893,7 @@ class ModeratorCommands(commands.Cog):
                 channel_name = channel.mention if channel else f'Unknown Channel ({channel_id})'
                 chunk_size = 18
                 for i in range(0, len(user_entries), chunk_size):
-                    embed = discord.Embed(title=f'\U0001F507 Mutes records for {channel_name}', color=discord.Color.orange())
+                    embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Mutes records for {channel_name}', color=discord.Color.orange())
                     for r in user_entries[i:i + chunk_size]:
                         user_id = r['discord_snowflake']
                         member = interaction.guild.get_member(user_id)
@@ -909,14 +909,14 @@ class ModeratorCommands(commands.Cog):
                 records = await conn.fetch('''SELECT guild_id, channel_id, expires_at, reason FROM active_voice_mutes WHERE discord_snowflake=$1 AND guild_id=$2 AND target='user''', member_obj.id, interaction.guild.id)
             records = [r for r in records if interaction.guild.get_channel(r['channel_id'])]
             if not records:
-                return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
             lines = []
             for r in records:
                 ch = interaction.guild.get_channel(r['channel_id'])
                 ch_mention = ch.mention if ch else f'`{r["channel_id"]}`'
                 lines.append(f'• {ch_mention} — {r["reason"]} — {Duration.output_display_from_datetime(r["expires_at"])}')
             embed = discord.Embed(
-                title=f'\U0001F507 Mute records for {member_obj.display_name}',
+                title=f'{self.emoji.get_random_emoji()} Mute records for {member_obj.display_name}',
                 description='\n'.join(lines),
                 color=discord.Color.orange()
             )
@@ -927,7 +927,7 @@ class ModeratorCommands(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 records = await conn.fetch('''SELECT guild_id, channel_id, expires_at, reason, discord_snowflake FROM active_voice_mutes WHERE channel_id=$1 AND guild_id=$2 AND target='user' AND room_name=$3''', channel_obj.id, interaction.guild.id, channel_obj.name)
             if not records:
-                return await interaction.response.send_message(content=f'\U0001F6AB No users are currently muted in {channel_obj.mention}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are currently muted in {channel_obj.mention}.')
             lines = []
             for r in records:
                 uid = r['discord_snowflake']
@@ -936,13 +936,13 @@ class ModeratorCommands(commands.Cog):
                     continue
                 lines.append(f'• {member_obj.display_name} — <@{uid}> — {Duration.output_display_from_datetime(r["expires_at"])}')
             if not lines:
-                return await interaction.response.send_message(content=f'\U0001F6AB No muted users currently in {interaction.guild.name}.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No muted users currently in {interaction.guild.name}.')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
                 chunk = lines[i:i + chunk_size]
                 embed = discord.Embed(
-                    title=f'\U0001F507 Mute records for {channel_obj.name}',
+                    title=f'{self.emoji.get_random_emoji()} Mute records for {channel_obj.name}',
                     color=discord.Color.orange()
                 )
                 embed.add_field(name=f'{interaction.guild.name}', value='\n'.join(chunk), inline=False)
@@ -977,7 +977,7 @@ class ModeratorCommands(commands.Cog):
                     ORDER BY channel_id, room_name, discord_snowflake
                 ''', ctx.guild.id)
             if not records:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No muted users currently in {ctx.guild.name}.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No muted users currently in {ctx.guild.name}.')
             grouped = defaultdict(list)
             for record in records:
                 grouped[record['channel_id']].append(record)
@@ -988,7 +988,7 @@ class ModeratorCommands(commands.Cog):
                 chunk_size = 18
                 for i in range(0, len(user_entries), chunk_size):
                     embed = discord.Embed(
-                        title=f'\U0001F507 Mutes records for {channel_name}',
+                        title=f'{self.emoji.get_random_emoji()} Mutes records for {channel_name}',
                         color=discord.Color.orange()
                     )
                     for record in user_entries[i:i + chunk_size]:
@@ -1013,7 +1013,7 @@ class ModeratorCommands(commands.Cog):
                 ''', member_obj.id, ctx.guild.id)
             records = [r for r in records if ctx.guild.get_channel(r['channel_id'])]
             if not records:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
             description_lines = []
             for record in records:
                 channel_obj = ctx.guild.get_channel(record['channel_id'])
@@ -1021,7 +1021,7 @@ class ModeratorCommands(commands.Cog):
                 reason = record['reason']
                 duration_str = Duration.output_display_from_datetime(record['expires_at'])
                 description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
-            embed = discord.Embed(title=f'\U0001F507 Mute records for {member_obj.display_name}', description='\n'.join(description_lines), color=discord.Color.orange())
+            embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Mute records for {member_obj.display_name}', description='\n'.join(description_lines), color=discord.Color.orange())
             return await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
         elif channel_obj:
             if channel_obj.type != discord.ChannelType.voice:
@@ -1036,7 +1036,7 @@ class ModeratorCommands(commands.Cog):
                       AND room_name = $3
                 ''', channel_obj.id, ctx.guild.id, channel_obj.name)
                 if not records:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are currently muted in {channel_obj.mention}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No users are currently muted in {channel_obj.mention}.')
                 description_lines = []
                 for record in records:
                     uid = record['discord_snowflake']
@@ -1047,12 +1047,12 @@ class ModeratorCommands(commands.Cog):
                     duration_str = Duration.output_display_from_datetime(record['expires_at'])
                     description_lines.append(f'• {name} — <@{uid}> — {duration_str}')
                 if not description_lines:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No muted users currently in {channel_obj.mention}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No muted users currently in {channel_obj.mention}.')
                 chunk_size = 18
                 pages = []
                 for i in range(0, len(description_lines), chunk_size):
                     chunk = description_lines[i:i + chunk_size]
-                    embed = discord.Embed(title=f'\U0001F507 Mute records for {channel_obj.name}', color=discord.Color.orange())
+                    embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Mute records for {channel_obj.name}', color=discord.Color.orange())
                     embed.add_field(name=f'{ctx.guild.name}', value='\n'.join(chunk), inline=False)
                     pages.append(embed)
                 paginator = Paginator(self.bot, ctx, pages)
@@ -1080,14 +1080,14 @@ class ModeratorCommands(commands.Cog):
                 WHERE guild_id=$1
             ''', interaction.guild.id)
             if not records:
-                return await interaction.response.send_message(content='\U0001F6AB No active stage found.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage found.')
             stage = await conn.fetchrow('''
                 SELECT initiator_id
                 FROM active_stages
                 WHERE guild_id=$1 AND channel_id=$2 AND room_name=$3
             ''', interaction.guild.id, channel_obj.id, channel_obj.name)
             if not stage:
-                return await interaction.response.send_message(content='\U0001F6AB No active stage found.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage found.')
             if member_obj.id == stage['initiator_id']:
                 return await interaction.response.send_message(content='\U0001F6AB You cannot mute the stage initiator.')
             highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
@@ -1127,14 +1127,14 @@ class ModeratorCommands(commands.Cog):
                 WHERE guild_id=$1
             ''', ctx.guild.id)
             if not records:
-                return await self.handler.send_message(ctx, content='\U0001F6AB No active stage found.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage found.')
             stage = await conn.fetchrow('''
                 SELECT initiator_id
                 FROM active_stages
                 WHERE guild_id=$1 AND channel_id=$2 AND room_name=$3
             ''', ctx.guild.id, channel_obj.id, channel_obj.name)
             if not stage:
-                return await self.handler.send_message(ctx, content='\U0001F6AB No active stage found.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage found.')
             if member_obj.id == stage['initiator_id']:
                 return await self.handler.send_message(ctx, content='\U0001F6AB You cannot mute the stage initiator.')
             highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
@@ -1170,7 +1170,7 @@ class ModeratorCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             stage = await conn.fetchrow('SELECT initiator_id, channel_id, room_name FROM active_stages WHERE guild_id=$1', interaction.guild.id)
             if not stage:
-                return await interaction.response.send_message(content='\U000026A0\U0000FE0F No active stage found.')
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage found.')
             if member_obj.id == stage['initiator_id']:
                 return await interaction.response.send_message(content='\U0001F6AB Cannot change the initiator role.')
             is_coordinator = await conn.fetchval('''
@@ -1219,7 +1219,7 @@ class ModeratorCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             stage = await conn.fetchrow('SELECT initiator_id, channel_id, room_name FROM active_stages WHERE guild_id=$1', ctx.guild.id)
             if not stage:
-                return await self.handler.send_message(ctx, content='\U0001F6AB No active stage found.')
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage found.')
             if member_obj.id == stage['initiator_id']:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Cannot change the initiator role.')
             is_coordinator = await conn.fetchval('''
@@ -1235,7 +1235,6 @@ class ModeratorCommands(commands.Cog):
                     if member_obj.voice and not member_obj.voice.mute:
                         await member_obj.edit(mute=True)
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been demoted from stage coordinator.', allowed_mentions=discord.AllowedMentions.none())
-                    
                 else:
                     await conn.execute('''
                         INSERT INTO stage_coordinators (guild_id, channel_id, room_name, discord_snowflake)
@@ -1275,11 +1274,11 @@ class ModeratorCommands(commands.Cog):
                     WHERE s.guild_id=$1 GROUP BY s.channel_id, s.room_name, s.initiator_id, s.expires_at ORDER BY s.channel_id
                 ''', interaction.guild.id)
                 if not stages:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No active stages in {interaction.guild.name}.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stages in {interaction.guild.name}.')
                 pages, chunk_size = [], 8
                 for i in range(0, len(stages), chunk_size):
                     embed = discord.Embed(
-                        title=f'\U0001F399 Active Stages in {interaction.guild.name}',
+                        title=f'{self.emoji.get_random_emoji()} Active Stages in {interaction.guild.name}',
                         color=discord.Color.purple()
                     )
                     for s in stages[i:i+chunk_size]:
@@ -1293,7 +1292,7 @@ class ModeratorCommands(commands.Cog):
                 SELECT initiator_id, expires_at FROM active_stages WHERE guild_id=$1 AND channel_id=$2 AND room_name = $3
             ''', interaction.guild.id, channel_obj.id, channel_obj.name)
             if not stage:
-                return await interaction.response.send_message(content=f'\U0001F6AB No active stage in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             mutes = await conn.fetch('''
                 SELECT discord_snowflake, expires_at, reason FROM active_voice_mutes WHERE guild_id=$1 AND channel_id=$2 AND target='room' AND room_name = $3
             ''', interaction.guild.id, channel_obj.id, channel_obj.name)
@@ -1315,7 +1314,7 @@ class ModeratorCommands(commands.Cog):
             pages, chunk_size = [], 18
             for i in range(0, len(description.splitlines()), chunk_size):
                 embed=discord.Embed(
-                    title=f'\U0001F399 Stage info for {channel_obj.mention}',
+                    title=f'{self.emoji.get_random_emoji()} Stage info for {channel_obj.mention}',
                     description='\n'.join(description.splitlines()[i:i+chunk_size]),
                     color=discord.Color.purple()
                 )
@@ -1349,11 +1348,11 @@ class ModeratorCommands(commands.Cog):
                     ORDER BY s.channel_id
                 ''', ctx.guild.id, channel_obj.name)
                 if not stages:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No active stages in {ctx.guild.name}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stages in {ctx.guild.name}.')
                 pages, chunk_size = [], 8
                 for i in range(0, len(stages), chunk_size):
                     embed = discord.Embed(
-                        title=f'\U0001F399 Active Stages in {ctx.guild.name}',
+                        title=f'{self.emoji.get_random_emoji()} Active Stages in {ctx.guild.name}',
                         color=discord.Color.purple()
                     )
                     for s in stages[i:i+chunk_size]:
@@ -1369,7 +1368,7 @@ class ModeratorCommands(commands.Cog):
                 WHERE guild_id=$1 AND channel_id=$2 AND room_name = $3
             ''', ctx.guild.id, channel_obj.id, channel_obj.name)
             if not stage:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB No active stage in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             mutes = await conn.fetch('''
                 SELECT discord_snowflake, expires_at, reason
                 FROM active_voice_mutes
@@ -1404,7 +1403,7 @@ class ModeratorCommands(commands.Cog):
             pages, chunk_size = [], 18
             for i in range(0, len(description.splitlines()), chunk_size):
                 embed = discord.Embed(
-                    title=f'\U0001F399 Stage info for {channel_obj.mention}',
+                    title=f'{self.emoji.get_random_emoji()} Stage info for {channel_obj.mention}',
                     description='\n'.join(description.splitlines()[i:i+chunk_size]),
                     color=discord.Color.purple()
                 )
@@ -1434,7 +1433,7 @@ class ModeratorCommands(commands.Cog):
                     return await interaction.response.send_message(content='\U0001F6AB Only owners, developers and administrators can list all text-mutes across the server.')
                 records = await conn.fetch('''SELECT discord_snowflake, channel_id, room_name, reason, expires_at FROM active_text_mutes WHERE guild_id = $1 ORDER BY room_name, channel_id, discord_snowflake''', interaction.guild.id)
                 if not records:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No users are currently text-muted in {interaction.guild.name}.')
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {interaction.guild.name}.')
                 grouped = defaultdict(list)
                 for r in records:
                     grouped[r['channel_id']].append(r)
@@ -1444,7 +1443,7 @@ class ModeratorCommands(commands.Cog):
                     ch_name = ch.mention
                     for i in range(0, len(entries), chunk_size):
                         embed= discord.Embed(
-                            title=f'\U0001F4DA Text-mute records for {ch_name}',
+                            title=f'{self.emoji.get_random_emoji()} Text-mute records for {ch_name}',
                             color=discord.Color.orange()
                         )
                         for e in entries[i:i+chunk_size]:
@@ -1467,7 +1466,7 @@ class ModeratorCommands(commands.Cog):
                 pages, chunk_size = [], 18
                 for i in range(0, len(lines), chunk_size):
                     embed = discord.Embed(
-                        title=f'\U0001F4DA Text-mute records for {member_obj.display_name}',
+                        title=f'{self.emoji.get_random_emoji()} Text-mute records for {member_obj.display_name}',
                         description='\n'.join(lines[i:i+chunk_size]),
                         color=discord.Color.orange()
                     )
@@ -1477,7 +1476,7 @@ class ModeratorCommands(commands.Cog):
             elif channel_obj:
                 records = await conn.fetch('''SELECT discord_snowflake, room_name, reason, expires_at FROM active_text_mutes WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3''', channel_obj.id, interaction.guild.id, channel_obj.name)
                 if not records:
-                    return await interaction.response.send_message(content=f'\U0001F6AB No users are currently text-muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
                 for r in records:
                     user = interaction.guild.get_member(r['discord_snowflake'])
@@ -1488,7 +1487,7 @@ class ModeratorCommands(commands.Cog):
                 pages, chunk_size = [], 18
                 for i in range(0, len(lines), chunk_size):
                     embed = discord.Embed(
-                        title=f'\U0001F4DA Text-mute records for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Text-mute records for {channel_obj.name}',
                         description='\n'.join(lines[i:i+chunk_size]),
                         color=discord.Color.orange()
                     )
@@ -1523,7 +1522,7 @@ class ModeratorCommands(commands.Cog):
                     ORDER BY room_name, channel_id, discord_snowflake
                 ''', ctx.guild.id)
                 if not records:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are currently text-muted in {ctx.guild.name}.')
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {ctx.guild.name}.')
                 grouped = defaultdict(list)
                 for r in records:
                     key = (r['channel_id'], r['room_name'])
@@ -1536,7 +1535,7 @@ class ModeratorCommands(commands.Cog):
                         ch_name = f"{ch_name}"
                     for i in range(0, len(entries), chunk_size):
                         embed = discord.Embed(
-                            title=f'\U0001F4DA Text-mute records for {ch_name}',
+                            title=f'{self.emoji.get_random_emoji()} Text-mute records for {ch_name}',
                             color=discord.Color.orange()
                         )
                         for e in entries[i:i + chunk_size]:
@@ -1555,7 +1554,7 @@ class ModeratorCommands(commands.Cog):
                     WHERE discord_snowflake = $1 AND guild_id = $2
                 ''', member_obj.id, ctx.guild.id)
                 if not records:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB {member_obj.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
                 for r in records:
                     ch = ctx.guild.get_channel(r['channel_id'])
@@ -1567,7 +1566,7 @@ class ModeratorCommands(commands.Cog):
                 pages, chunk_size = [], 18
                 for i in range(0, len(lines), chunk_size):
                     embed = discord.Embed(
-                        title=f'\U0001F4DA Text-mute records for {member_obj.display_name}',
+                        title=f'{self.emoji.get_random_emoji()} Text-mute records for {member_obj.display_name}',
                         description='\n'.join(lines[i:i+chunk_size]),
                         color=discord.Color.orange()
                     )
@@ -1581,7 +1580,7 @@ class ModeratorCommands(commands.Cog):
                     WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
                 ''', channel_obj.id, ctx.guild.id, channel_obj.name)
                 if not records:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No users are currently text-muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
                 lines = []
                 for r in records:
                     user = ctx.guild.get_member(r['discord_snowflake'])
@@ -1591,7 +1590,7 @@ class ModeratorCommands(commands.Cog):
                 pages, chunk_size = [], 18
                 for i in range(0, len(lines), chunk_size):
                     embed = discord.Embed(
-                        title=f'\U0001F4DA Text-mute records for {channel_obj.name}',
+                        title=f'{self.emoji.get_random_emoji()} Text-mute records for {channel_obj.name}',
                         description='\n'.join(lines[i:i+chunk_size]),
                         color=discord.Color.orange()
                     )
