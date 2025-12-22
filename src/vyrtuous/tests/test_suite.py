@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from contextlib import ExitStack
 from discord.ext.commands import Context, view as cmd_view
 from types import SimpleNamespace
 from typing import Optional
@@ -92,7 +93,7 @@ async def bot():
     db_pool = await asyncpg.create_pool(dsn=dsn)
     config = Config().get_config()
     bot = DiscordBot(config=config, db_pool=db_pool)
-    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.aliases', 'vyrtuous.cogs.dev_commands', 'vyrtuous.cogs.event_listeners'):
+    for cog in ('vyrtuous.cogs.admin_commands', 'vyrtuous.cogs.aliases', 'vyrtuous.cogs.dev_commands', 'vyrtuous.cogs.event_listeners', 'vyrtuous.cogs.owner_commands'):
         await bot.load_extension(cog)
     type(bot).guilds = property(lambda self: [guild_obj])
     bot._state = make_mock_state()
@@ -201,26 +202,36 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                 ]
             }
         cog_instance = bot.get_cog(cog)
-        capturing_send = make_capturing_send(channel, author)
-        cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
-        def mock_isinstance(obj, cls):
-            if cls == discord.VoiceChannel:
-                return hasattr(obj, 'type') and obj.type == discord.ChannelType.voice
-            elif cls == discord.TextChannel:
-                return hasattr(obj, 'type') and obj.type == discord.ChannelType.text
-            else:
-                return isinstance(obj, cls)
-        with (
-            patch.object(bot, "load_extension", new_callable=AsyncMock),
-            patch.object(bot, "reload_extension", new_callable=AsyncMock),
-            patch.object(bot, "unload_extension", new_callable=AsyncMock),
-            patch.object(cog_instance.channel_service, "resolve_channel", return_value=channel),
-            patch(isinstance_patch, side_effect=mock_isinstance),
-            patch("vyrtuous.bot.discord_bot.DiscordBot.tree", new_callable=PropertyMock, 
-                  return_value=MagicMock(
-                      sync=AsyncMock(return_value=[]),
-                      copy_global_to=MagicMock(),
-                      clear_commands=MagicMock()
-                  ))
-        ):
+        with ExitStack() as stack:
+            if cog == "OwnerCommands":
+                stack.enter_context(patch(
+                    "vyrtuous.service.check_service.is_owner",
+                    new=AsyncMock(return_value=True)
+                ))
+            capturing_send = make_capturing_send(channel, author)
+            cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
+            def mock_isinstance(obj, cls):
+                if cls == discord.VoiceChannel:
+                    return hasattr(obj, 'type') and obj.type == discord.ChannelType.voice
+                elif cls == discord.TextChannel:
+                    return hasattr(obj, 'type') and obj.type == discord.ChannelType.text
+                else:
+                    return isinstance(obj, cls)
+            stack.enter_context(patch.object(bot, "load_extension", new_callable=AsyncMock))
+            stack.enter_context(patch.object(bot, "reload_extension", new_callable=AsyncMock))
+            stack.enter_context(patch.object(bot, "unload_extension", new_callable=AsyncMock))
+            if hasattr(cog_instance, "channel_service"):
+                stack.enter_context(patch.object(cog_instance.channel_service, "resolve_channel", return_value=channel))
+            if hasattr(cog_instance, "member_service"):
+                stack.enter_context(patch.object(cog_instance.member_service, "resolve_member", return_value=author))
+            stack.enter_context(patch(isinstance_patch, side_effect=mock_isinstance))
+            stack.enter_context(patch(
+                "vyrtuous.bot.discord_bot.DiscordBot.tree",
+                new_callable=PropertyMock,
+                return_value=MagicMock(
+                    sync=AsyncMock(return_value=[]),
+                    copy_global_to=MagicMock(),
+                    clear_commands=MagicMock()
+                )
+            ))
             await bot.invoke(ctx)
