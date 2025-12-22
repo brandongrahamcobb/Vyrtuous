@@ -65,6 +65,7 @@ VOICE_CHANNEL_TWO_NAME = "Voice Channel 2"
 MESSAGE_ID = make_mock_snowflake(100)
 
 ROLE_ID = make_mock_snowflake(200)
+ROLE_NAME = "Role"
 
 GUILD_ID = make_mock_snowflake(500)
 GUILD_NAME = "Guild"

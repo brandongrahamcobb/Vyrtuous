@@ -226,7 +226,7 @@ class DevCommands(commands.Cog):
     # DONE
     @app_commands.command(name='trole', description='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
-    async def grant_administrator_to_role_app_command(self, interaction: discord.Interaction, role: Optional[str]):
+    async def grant_team_to_role_app_command(self, interaction: discord.Interaction, role: Optional[str]):
         guild = interaction.guild
         if not guild:
             return await interaction.response.send_message(content='\U0001F6AB This command must be used in a server.')
@@ -247,11 +247,11 @@ class DevCommands(commands.Cog):
                     role_obj.id,
                     guild.id
                 )
-        await interaction.response.send_message(f'Administrator role `{role_obj.name}` synced.')
+        await interaction.response.send_message(f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` granted for all members with `{role_obj.name}`.')
     
     @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
-    async def grant_administrator_to_role_text_command(self, ctx: commands.Context, role: Optional[str]):
+    async def grant_team_to_role_text_command(self, ctx: commands.Context, role: Optional[str]):
         guild = ctx.guild
         role_id = int(role.replace('<@&','').replace('>',''))
         role_obj = guild.get_role(role_id)
@@ -270,7 +270,7 @@ class DevCommands(commands.Cog):
                     role_obj.id,
                     guild.id
                 )
-        await self.handler.send_message(ctx, content=f'Administrator role `{role_obj.name}` synced.')
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` granted for all members with `{role_obj.name}`.')
 
     # DONE
     @app_commands.command(name='unload', description='Unloads a cog by name "vyrtuous.cog.<cog_name>".')
@@ -321,7 +321,7 @@ class DevCommands(commands.Cog):
                     list(role_ids),
                     list(guild_ids)
                 )
-        await interaction.response.send_message(f'Administrator role `{role_obj.name}` removed.')
+        await interaction.response.send_message(f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` revoked for all members with `{role_obj.name}`.')
      
     @commands.command(name='xtrole', help='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()
@@ -348,7 +348,7 @@ class DevCommands(commands.Cog):
                     list(role_ids),
                     list(guild_ids)
                 )
-        await self.handler.send_message(ctx, content=f'Administrator role `{role_obj.name}` removed.')   
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` revoked for all members with `{role_obj.name}`.')   
               
 async def setup(bot: DiscordBot):
     await bot.add_cog(DevCommands(bot))

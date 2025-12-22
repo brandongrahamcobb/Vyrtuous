@@ -117,6 +117,9 @@ def make_mock_message(allowed_mentions=None, author=None, content=None, channel=
 
 def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_id=None, roles=None):
     bot = make_mock_member(guild=None, id=PRIVILEGED_AUTHOR_ID, name=PRIVILEGED_AUTHOR_NAME)
+    for role in roles.values():
+        if not hasattr(role, "members"):
+            role.members = []
     guild = type(
         'MockGuild',
         (),
@@ -136,10 +139,12 @@ def make_mock_guild(channel_defs=None, id=None, name=None, members=None, owner_i
     for cid, (name, channel_type) in channel_defs.items():
         channels[cid] = make_mock_channel(channel_type=channel_type, guild=guild, id=cid, name=name)
     guild._channels = channels
-    for member in members.values():
+    for member in (members or {}).values():
         client_channel = list(channels.values())[0]
         member.voice.channel = client_channel
         client_channel.members.append(member)
+        for role in roles.values():
+            role.members.append(member)
     guild.add_member = lambda member: guild._members.update({member.id: member})
     return guild
 

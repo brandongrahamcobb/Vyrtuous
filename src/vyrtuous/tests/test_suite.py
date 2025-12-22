@@ -52,7 +52,9 @@ guild_obj = make_mock_guild(
     roles={
         ROLE_ID: SimpleNamespace(
             id=ROLE_ID,
-            mention=f"<@&{ROLE_ID}>"
+            members=[],
+            mention=f"<@&{ROLE_ID}>",
+            name=ROLE_NAME
         )
     }
 )
