@@ -31,9 +31,9 @@ import subprocess
 async def main():
 
     config = Config().get_config()
-    # if config['release_mode'] == 'False':
-    #     debugpy.listen(("127.0.0.1", 5678))
-    #     debugpy.wait_for_client() 
+    if config['release_mode'] == 'False':
+        debugpy.listen(("127.0.0.1", 5678))
+        debugpy.wait_for_client() 
         
     setup_logging(config, PATH_LOG)
     db_pool = await Database().database_init()
