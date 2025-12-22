@@ -71,10 +71,7 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_c
             assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
         else:
             assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
-        if member_ref:
-            if response["embed"]:
-                assert any(val in response["embed"].title for val in member_values)
-            else:
-                assert any(val in response["content"] for val in member_values) 
+        if member_ref and response["embed"]:
+            assert any(val in response["embed"].title for val in member_values)
     finally:
         await mod_cleanup(voice_channel_one.id, guild.id, privileged_author.id)

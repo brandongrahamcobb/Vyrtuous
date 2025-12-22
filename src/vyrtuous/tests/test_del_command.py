@@ -34,11 +34,9 @@ async def test_del_commands(bot, voice_channel_one, guild, not_privileged_author
         voice_channel_one.messages.clear() 
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content="ping", guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]
-        print(response)
         message_id = response["id"]
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=f"del {message_id}", guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[-1]
-        print(response)
         assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
         assert str(MESSAGE_ID) in response["content"]
     finally:
