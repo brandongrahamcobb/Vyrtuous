@@ -18,7 +18,6 @@
 from types import SimpleNamespace
 from vyrtuous.inc.helpers import *
 import asyncio
-import discord
 
 def make_mock_state():
 

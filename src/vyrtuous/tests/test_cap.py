@@ -16,7 +16,7 @@
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # '''
 # from datetime import timedelta
-# from vyrtuous.tests.test_suite import *
+# from vyrtuous.tests.black_box.test_suite import *
 # from vyrtuous.utils.cap import Cap
 # import asyncio
 # import pytest

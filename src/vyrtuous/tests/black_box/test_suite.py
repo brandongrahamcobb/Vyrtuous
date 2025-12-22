@@ -24,7 +24,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bot.discord_client import DiscordClient
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.make_mock_objects import *
+from vyrtuous.tests.black_box.make_mock_objects import *
 import asyncpg
 import discord
 import os

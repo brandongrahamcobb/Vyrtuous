@@ -14,33 +14,28 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext.commands import Context, view as cmd_view
-from types import SimpleNamespace
 from typing import Optional
-from unittest.mock import PropertyMock, patch
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.make_mock_objects import *
-from vyrtuous.tests.test_mod_helpers import mod_cleanup, mod_initiation
-from vyrtuous.tests.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
+from vyrtuous.tests.black_box.make_mock_objects import *
+from vyrtuous.tests.black_box.test_mod_helpers import mod_cleanup, mod_initiation
+from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
-import asyncio
-import discord
 import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command",
     [
-        ("roleid Role")
+        ("ping")
     ]
 )
 
-async def test_roleid_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str]):    
+async def test_ping_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str]):    
     await mod_initiation(voice_channel_one.id, guild.id, privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]
-        assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
+        assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) and "Pong!" in response["content"]
     finally:
         await mod_cleanup(voice_channel_one.id, guild.id, privileged_author.id)

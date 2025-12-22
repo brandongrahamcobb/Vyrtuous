@@ -14,11 +14,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext.commands import view as cmd_view
-from types import SimpleNamespace
 from typing import Optional
-from vyrtuous.tests.test_coord_helpers import coord_cleanup, coord_initiation
-from vyrtuous.tests.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
+from vyrtuous.tests.black_box.test_admin_helpers import admin_cleanup, admin_initiation
+from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
@@ -26,18 +24,20 @@ import pytest
 @pytest.mark.parametrize(
     "command,member_ref",
     [
-        ("rmute", "True"),
-        ("rmute", "True")
+        ("smute", "True"),
+        ("smute", "True")
     ]
 )
 
-async def test_rmute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
-    await coord_initiation(voice_channel_one.id, guild.id, privileged_author.id)
+async def test_smute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
+    await admin_initiation(guild.id, privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
-        formatted = f"{command} {voice_channel_one.id}"
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="CoordinatorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.coordinator_commands.isinstance", prefix=prefix)
+        formatted = f"{command} {not_privileged_author.id}"
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
+        member_value = not_privileged_author.mention
+        assert any(val in response for val in [member_value])
     finally:
-        await coord_cleanup(voice_channel_one.id, guild.id, privileged_author.id)
+        await admin_cleanup(guild.id, privileged_author.id)

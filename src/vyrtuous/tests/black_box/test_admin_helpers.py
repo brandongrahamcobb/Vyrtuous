@@ -15,14 +15,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext.commands import Context, view as cmd_view
 from typing import Optional
-from unittest.mock import PropertyMock, patch
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import *
-from vyrtuous.tests.make_mock_objects import make_mock_member, make_mock_message
-from vyrtuous.tests.test_suite import make_capturing_send
-import discord
 
 async def admin_cleanup(guild_id: Optional[int], privileged_author_id: Optional[int]):
     bot = DiscordBot.get_instance()

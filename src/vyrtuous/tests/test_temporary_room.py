@@ -16,7 +16,7 @@
 #     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # '''
 # from vyrtuous.bot.discord_bot import DiscordBot
-# from vyrtuous.tests.test_suite import *
+# from vyrtuous.tests.black_box.test_suite import *
 # from vyrtuous.utils.temporary_room import TemporaryRoom
 # import asyncio
 # import asyncpg

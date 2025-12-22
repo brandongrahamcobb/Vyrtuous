@@ -14,14 +14,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from discord.ext.commands import Context, view as cmd_view
-from types import SimpleNamespace
 from typing import Optional
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.test_admin_helpers import admin_cleanup, admin_initiation
-from vyrtuous.tests.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one
+from vyrtuous.tests.black_box.test_admin_helpers import admin_cleanup, admin_initiation
+from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
-import discord
 import pytest
 
 @pytest.mark.asyncio

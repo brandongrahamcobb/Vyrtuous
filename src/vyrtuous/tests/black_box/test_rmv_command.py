@@ -1,4 +1,4 @@
-''' test_cap_xcap_commands.py The purpose of this program is to black box test the Cap commands.
+''' test_rmv_command.py The purpose of this program is to black box test the rmv command.
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -14,38 +14,37 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from types import SimpleNamespace
 from typing import Optional
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.test_admin_helpers import admin_cleanup, admin_initiation
-from vyrtuous.tests.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one
+from vyrtuous.tests.black_box.test_admin_helpers import admin_cleanup, admin_initiation
+from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one, voice_channel_two
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
-def generate_cap_test_cases():
-    durations = ['1m', '1h', '1d']
-    moderation_types = ['ban', 'mute', 'tmute']
-    cases = []
-    for mod_type in moderation_types:
-        for duration in durations:
-            cases.append((f"cap {{voice_channel_one_id}} {mod_type} {duration}", "channel"))
-            cases.append((f"xcap {{voice_channel_one_id}} {mod_type}", "channel"))
-    return cases
-
 @pytest.mark.asyncio
-@pytest.mark.parametrize("command,channel_ref", generate_cap_test_cases())
-async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref):
+@pytest.mark.parametrize(
+    "command,channel_ref_one,channel_ref_two",
+    [
+        ("rmv {source_id} {target_id}", True, True)
+    ]
+)
+
+async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref_one, channel_ref_two):
     await admin_initiation(guild.id, privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
+        source_id = voice_channel_one.id
+        target_id = voice_channel_two.id
         formatted = command.format(
-            voice_channel_one_id=voice_channel_one.id
+            source_id=source_id,
+            target_id=target_id
         )
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
-        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        if channel_ref:
-            assert any(val in response for val in [channel_value])
+        channel_value_one = voice_channel_one.mention if channel_ref_one else voice_channel_one.name
+        channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
+        assert any(val in response for val in [channel_value_one])
+        assert any(val in response for val in [channel_value_two])
     finally:
         await admin_cleanup(guild.id, privileged_author.id)
