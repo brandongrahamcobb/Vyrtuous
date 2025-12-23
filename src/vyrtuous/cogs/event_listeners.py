@@ -25,13 +25,14 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
+from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.statistics import Statistics
-from vyrtuous.utils.vegans import Vegans
 from vyrtuous.utils.temporary_room import TemporaryRoom
+from vyrtuous.utils.time_to_complete import TimeToComplete
+from vyrtuous.utils.vegans import Vegans
 
 import discord
-import inspect
 import time
 
 class EventListeners(commands.Cog):
@@ -90,18 +91,8 @@ class EventListeners(commands.Cog):
                 if old_stage:
                     old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_id_and_channel_name(guild_id=guild.id, channel_name=old_name)
                     await old_stage.update_stage_by_channel_id_name(channel_id=channel.id, channel_name=channel.name)
-                await conn.execute('''
-                    UPDATE users
-                    SET coordinator_channel_ids = array_replace(coordinator_channel_ids, $1, $2),
-                        updated_at = NOW()
-                    WHERE $1 = ANY(coordinator_channel_ids)
-                ''', old_id, channel.id)
-                await conn.execute('''
-                    UPDATE users
-                    SET moderator_channel_ids = array_replace(moderator_channel_ids, $1, $2),
-                        updated_at = NOW()
-                    WHERE $1 = ANY(moderator_channel_ids)
-                ''', old_id, channel.id)
+                await Coordinator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
+                await Moderator.update_source_channel_id_to_target_channel_id(source_channel_id=old_id, target_channel_id=channel.id)
             await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
@@ -315,6 +306,7 @@ class EventListeners(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        start_time = time.perf_counter()
         if not message.guild:
             return
         if message.author.id == self.bot.user.id:
@@ -332,6 +324,11 @@ class EventListeners(commands.Cog):
         if not alias:
             return
         await self.dispatch_alias(message, alias, args)
+        end_time = time.perf_counter()
+        counter = TimeToComplete()
+        elapsed = counter.time_elapsed_measurement(start_time, end_time)
+        if not counter.is_around_one_second(elapsed):
+            logger.info(f'Alias {alias.alias_name} command execution time: {elapsed:.4f} seconds.')
     
     async def dispatch_alias(self, message: discord.Message, alias: Alias, args):
         if not alias.handler:

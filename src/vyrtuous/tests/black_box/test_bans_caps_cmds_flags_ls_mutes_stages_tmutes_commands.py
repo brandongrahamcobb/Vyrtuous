@@ -17,7 +17,7 @@
 from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.black_box.make_mock_objects import *
-from vyrtuous.tests.black_box.test_mod_helpers import mod_cleanup, mod_initiation
+from vyrtuous.utils.moderator import Moderator
 from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
 import pytest
@@ -26,32 +26,32 @@ import pytest
 @pytest.mark.parametrize(
     "command,channel_ref,member_ref",
     [
-        ("bans {voice_channel_one_id}", True, True),
+        ("bans {voice_channel_one_id}", True, False),
         ("bans {member_id}", False, True),
         ("bans all", False, False),
-        ("caps {voice_channel_one_id}", True, True),
+        ("caps {voice_channel_one_id}", True, False),
         ("caps all", False, False),
         ("cmds {voice_channel_one_id} {member_id}", True, True),
         ("cmds all", False, False),
-        ("flags {voice_channel_one_id}", True, True),
+        ("flags {voice_channel_one_id}", True, False),
         ("flags {member_id}", False, True),
         ("flags all", False, False),
-        ("ls {voice_channel_one_id}", True, True),
+        ("ls {voice_channel_one_id}", True, False),
         ("ls {member_id}", False, True),
         ("ls all", False, False),
-        ("mutes {voice_channel_one_id}", True, True),
+        ("mutes {voice_channel_one_id}", True, False),
         ("mutes {member_id}", False, True),
         ("mutes all", False, False),
-        ("stages {voice_channel_one_id}", True, True),
+        ("stages {voice_channel_one_id}", True, False),
         ("stages all", False, False),
-        ("tmutes {voice_channel_one_id}", True, True),
+        ("tmutes {voice_channel_one_id}", True, False),
         ("tmutes {member_id}", False, True),
         ("tmutes all", False, False),
     ]
 )
 
 async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
-    await mod_initiation(voice_channel_one.id, guild.id, privileged_author.id)
+    await Moderator.grant(channel_id=voice_channel_one.id, guild_id=guild.id, member_id=privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -69,4 +69,4 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_c
         if member_ref and response["embed"]:
             assert any(val in response["embed"].title for val in member_values)
     finally:
-        await mod_cleanup(voice_channel_one.id, guild.id, privileged_author.id)
+        await Moderator.revoke(channel_id=voice_channel_one.id, member_id=privileged_author.id)

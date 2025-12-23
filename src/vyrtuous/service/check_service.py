@@ -18,6 +18,8 @@
 
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.coordinator import Coordinator
+from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.setup_logging import logger
 
 import discord
@@ -80,14 +82,8 @@ async def is_moderator(ctx_or_interaction_or_message):
         user_id = ctx_or_interaction_or_message.author.id
     else:
         user_id = None
-    async with bot.db_pool.acquire() as conn:
-        user_row = await conn.fetchrow(
-            'SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1',
-            user_id
-        )
-    if not user_row:
-        raise NotModerator()
-    elif not user_row.get('moderator_channel_ids'):
+    moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx_or_interaction_or_message.guild.id, member_id=user_id)
+    if not moderator_channel_ids:
         raise NotModerator()
     return True
 
@@ -101,14 +97,8 @@ async def is_coordinator(ctx_or_interaction_or_message):
         user_id = ctx_or_interaction_or_message.author.id
     else:
         user_id = None
-    async with bot.db_pool.acquire() as conn:
-        user_row = await conn.fetchrow(
-            'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1',
-            user_id
-        )
-    if not user_row:
-        raise NotCoordinator()
-    elif not user_row.get('coordinator_channel_ids'):
+    coordinators_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx_interaction_or_message.guild.id, member_id=user_id)
+    if not coordinator_channel_ids:
         raise NotCoordinator()
     return True
     
@@ -290,20 +280,16 @@ async def member_is_administrator(member: discord.Member) -> bool:
     return member.guild.id in (row['administrator_guild_ids'] or [])
 
 async def member_is_coordinator(channel: discord.VoiceChannel, member: discord.Member) -> bool:
-    bot = DiscordBot.get_instance()
-    async with bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1', member.id)
-    if not row:
+    coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=channel.guild.id, member_id=member.id)
+    if not coordinator_channel_ids:
         return False
-    return channel.id in (row['coordinator_channel_ids'] or [])
+    return channel.id in coordinator_channel_ids
 
 async def member_is_moderator(channel: discord.VoiceChannel, member: discord.Member) -> bool:
-    bot = DiscordBot.get_instance()
-    async with bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1', member.id)
-    if not row:
+    moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild=channel.guild.id, member_id=member.id)
+    if not moderator_channel_ids:
         return False
-    return channel.id in (row['moderator_channel_ids'] or [])
+    return channel.id in moderator_channel_ids
 
 async def has_equal_or_higher_role(message_ctx_or_interaction, member: discord.Member, channel: discord.abc.GuildChannel):
     bot = DiscordBot.get_instance()

@@ -25,6 +25,7 @@ class TemporaryRoom:
     def __init__(self, guild: discord.Guild, channel_id: Optional[str], room_name: Optional[str], room_owner: discord.Member):
         self.bot = DiscordBot.get_instance()
         self.channel_id: Optional[int] = channel_id
+        self.channel_mention = f"<@{channel_id}>"
         self.guild = guild
         self.is_temp_room: Optional[bool] = True
         self.room_name = room_name

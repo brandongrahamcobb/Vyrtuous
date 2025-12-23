@@ -24,8 +24,10 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.check_service import *
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.utils.alias import Alias
+from vyrtuous.utils.coordinator import Coordinator
 from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
@@ -287,23 +289,13 @@ class AdminCommands(commands.Cog):
             return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a coordinator because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             action = None
-            row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
-            current_channel_ids = row.get('coordinator_channel_ids', []) if row else []
-            if current_channel_ids and channel_obj.id in current_channel_ids:
-                await conn.execute('UPDATE users SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
+            coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
+            if coordinator_channel_ids and channel_obj.id in coordinator_channel_ids:
+                await Coordinator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=member_obj.id)
                 action = 'revoked'
             else:
-                await conn.execute('''
-                    INSERT INTO users (discord_snowflake, coordinator_channel_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (discord_snowflake) DO UPDATE
-                    SET coordinator_channel_ids = (
-                        SELECT ARRAY(SELECT DISTINCT unnest(
-                            COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
-                        ))
-                    ),
-                    updated_at = NOW()
-                ''', member_obj.id, channel_obj.id)
+                coordinator = Coordinator(channel_id=channel_obj.id, guild_id=interaction.guild.id, member_id=member_obj.id)
+                coordinator.set_channel_id_for_member()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -335,23 +327,13 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not toggle {member_obj.mention}'s coordinator role because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             action = None
-            row = await conn.fetchrow('SELECT coordinator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
-            current_channel_ids = row.get('coordinator_channel_ids', []) if row else []
-            if current_channel_ids and channel_obj.id in current_channel_ids:
-                await conn.execute('UPDATE users SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $2), updated_at = NOW() WHERE discord_snowflake = $1', member_obj.id, channel_obj.id)
+            coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
+            if coordinator_channel_ids and channel_obj.id in coordinator_channel_ids:
+                await Coordinator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=member_obj.id)
                 action = 'revoked'
             else:
-                await conn.execute('''
-                    INSERT INTO users (discord_snowflake, coordinator_channel_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (discord_snowflake) DO UPDATE
-                    SET coordinator_channel_ids = (
-                        SELECT ARRAY(SELECT DISTINCT unnest(
-                            COALESCE(users.coordinator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
-                        ))
-                    ),
-                    updated_at = NOW()
-                ''', member_obj.id, channel_obj.id)
+                coordinator = Coordinator(channel_id=channel_obj.id, guild_id=ctx.guild.id, member_id=member_obj.id)
+                coordinator.set_channel_id_for_member()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -638,14 +620,8 @@ class AdminCommands(commands.Cog):
                     f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
                     interaction.guild.id, old_name, channel_obj.name, channel_obj.id
                 )
-            await conn.execute(
-                'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
-                room.channel_id, channel_obj.id
-            )
-            await conn.execute(
-                'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
-                room.channel_id, channel_obj.id
-            )
+            await Coordinator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
+            await Moderator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
             return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
     
     # DONE
@@ -681,14 +657,9 @@ class AdminCommands(commands.Cog):
                     f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
                     ctx.guild.id, old_name, channel_obj.name, channel_obj.id
                 )
-            await conn.execute(
-                'UPDATE users SET coordinator_channel_ids=array_replace(coordinator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(coordinator_channel_ids)',
-                room.channel_id, channel_obj.id
-            )
-            await conn.execute(
-                'UPDATE users SET moderator_channel_ids=array_replace(moderator_channel_ids, $1::bigint, $2::bigint) WHERE $1=ANY(moderator_channel_ids)',
-                room.channel_id, channel_obj.id
-            )
+
+                await Coordinator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
+            await Moderator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
 
     # DONE
@@ -979,12 +950,7 @@ class AdminCommands(commands.Cog):
         if room:
             async with self.bot.db_pool.acquire() as conn:
                 if room.room_owner:
-                    await conn.execute(
-                        'UPDATE users SET moderator_channel_ids=array_remove(moderator_channel_ids,$1), updated_at=NOW() '
-                        'WHERE discord_snowflake=$2',
-                        channel_obj.id,
-                        room.room_owner.id
-                    )
+                    await Moderator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=room.room_owner.id)
                 await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
                 await Alias.delete_all_command_aliases_by_channel(channel_obj)
             action = 'removed'
@@ -993,13 +959,8 @@ class AdminCommands(commands.Cog):
             temporary_room = TemporaryRoom(interaction.guild, channel_obj.id, channel_obj.name, member_obj)
             async with self.bot.db_pool.acquire() as conn:
                 await temporary_room.insert_into_temporary_rooms()
-                await conn.execute(
-                    'UPDATE users SET moderator_channel_ids = CASE WHEN NOT $1=ANY(moderator_channel_ids) '
-                    'THEN array_append(moderator_channel_ids,$1) ELSE moderator_channel_ids END, updated_at=NOW() '
-                    'WHERE discord_snowflake=$2',
-                    channel_obj.id,
-                    member_obj.id
-                )
+                moderator = Moderator(channel_id=channel_obj.id, guild_id=interaction.guild.id, member_id=member_obj.id)
+                moderator.set_channel_id_for_member()
             action = f'created and owned by {member_obj.mention}'
         await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} has been {action}.', allowed_mentions=discord.AllowedMentions.none())
         
@@ -1022,12 +983,7 @@ class AdminCommands(commands.Cog):
         if room:
             async with ctx.bot.db_pool.acquire() as conn:
                 if room.room_owner:
-                    await conn.execute(
-                        'UPDATE users SET moderator_channel_ids=array_remove(moderator_channel_ids,$1), updated_at=NOW() '
-                        'WHERE discord_snowflake=$2',
-                        channel_obj.id,
-                        room.room_owner.id
-                    )
+                    await Moderator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=room.room_owner.id)
                 await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
                 await Alias.delete_all_command_aliases_by_channel(channel_obj)
             action = 'removed'
@@ -1036,13 +992,8 @@ class AdminCommands(commands.Cog):
             temporary_room = TemporaryRoom(ctx.guild, channel_obj.id, channel_obj.name, member_obj)
             async with ctx.bot.db_pool.acquire() as conn:
                 await temporary_room.insert_into_temporary_rooms()
-                await conn.execute(
-                    'UPDATE users SET moderator_channel_ids = CASE WHEN NOT $1=ANY(moderator_channel_ids) '
-                    'THEN array_append(moderator_channel_ids,$1) ELSE moderator_channel_ids END, updated_at=NOW() '
-                    'WHERE discord_snowflake=$2',
-                    channel_obj.id,
-                    member_obj.id
-                )
+                moderator = Moderator(channel_id=channel_obj.id, guild_id=ctx.guild.id, member_id=member_obj.id)
+                moderator.set_channel_id_for_member()
             action = f'created and owned by {member_obj.mention}'
         await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} has been {action}.', allowed_mentions=discord.AllowedMentions.none())
 

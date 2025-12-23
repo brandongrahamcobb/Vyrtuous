@@ -17,7 +17,7 @@
 from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.black_box.make_mock_objects import *
-from vyrtuous.tests.black_box.test_mod_helpers import mod_cleanup, mod_initiation
+from vyrtuous.utils.moderator import Moderator
 from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
 import pytest
@@ -43,7 +43,7 @@ import pytest
 )
 
 async def test_admins_coords_devs_mods_owners_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
-    await mod_initiation(voice_channel_one.id, guild.id, privileged_author.id)
+    await Moderator.grant(channel_id=voice_channel_one.id, guild_id=guild.id, member_id=privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -61,4 +61,4 @@ async def test_admins_coords_devs_mods_owners_commands(bot, voice_channel_one, g
         if member_ref and response["embed"]:
             assert any(val in response["embed"].title for val in member_values)
     finally:
-        await mod_cleanup(voice_channel_one.id, guild.id, privileged_author.id)
+        await Moderator.revoke(channel_id=voice_channel_one.id, member_id=privileged_author.id)

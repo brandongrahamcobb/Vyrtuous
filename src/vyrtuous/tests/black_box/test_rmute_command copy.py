@@ -15,7 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
-from vyrtuous.tests.black_box.test_coord_helpers import coord_cleanup, coord_initiation
+from vyrtuous.utils.coordinator import Coordinator
 from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
 import pytest
@@ -30,7 +30,7 @@ import pytest
 )
 
 async def test_rmute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
-    await coord_initiation(voice_channel_one.id, guild.id, privileged_author.id)
+    await Coordinator.grant(channel_id=voice_channel_one.id, guild_id=guild.id, member_id=privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
         formatted = f"{command} {voice_channel_one.id}"
@@ -38,4 +38,4 @@ async def test_rmute_command(bot, voice_channel_one, guild, privileged_author, n
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
     finally:
-        await coord_cleanup(voice_channel_one.id, guild.id, privileged_author.id)
+        await Coordinator.revoke(channel_id=voice_channel_one.id, member_id=privileged_author.id)

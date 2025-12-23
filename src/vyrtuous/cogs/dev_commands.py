@@ -87,15 +87,10 @@ class DevCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         if channel_obj.type != discord.ChannelType.voice:
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                UPDATE users
-                SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $1::bigint),
-                    moderator_channel_ids = array_remove(moderator_channel_ids, $1::bigint),
-                    updated_at = NOW()
-            ''', channel_obj.id)
-            await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
-        Alias.delete_all_command_aliases_by_channel(channel_obj)
+        await Moderator.delete_channel_ids_for_channel_id(channel_id=channel_obj.id)
+        await Coordinator.delete_channel_ids_for_channel_id(channel_id=channel_obj.id)
+        await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+        await Alias.delete_all_command_aliases_by_channel(channel_obj)
         await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
 
     # DONE
@@ -111,15 +106,10 @@ class DevCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         if channel_obj.type != discord.ChannelType.voice:
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                UPDATE users
-                SET coordinator_channel_ids = array_remove(coordinator_channel_ids, $1::bigint),
-                    moderator_channel_ids = array_remove(moderator_channel_ids, $1::bigint),
-                    updated_at = NOW()
-            ''', channel_obj.id)
-            await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
-        Alias.delete_all_command_aliases_by_channel(channel_obj)
+        await Moderator.delete_channel_ids_for_channel_id(channel_id=channel_obj.id)
+        await Coordinator.delete_channel_ids_for_channel_id(channel_id=channel_obj.id)
+        await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+        await Alias.delete_all_command_aliases_by_channel(channel_obj)
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Removed channel {channel_obj.mention} from all users and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
     
     @app_commands.command(name='load', description='Loads a cog by name "vyrtuous.cog.<cog_name>.')

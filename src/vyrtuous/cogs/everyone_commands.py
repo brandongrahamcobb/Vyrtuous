@@ -24,6 +24,7 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.setup_logging import logger
    
@@ -126,13 +127,12 @@ class EveryoneCommands(commands.Cog):
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all coordinators.')
-                query = 'SELECT unnest(coordinator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE coordinator_channel_ids IS NOT NULL'
-                rows = await conn.fetch(query)
-                if not rows:
+                coordinators = await Coordinator.fetch_all_coordinators_in_guild(guild_id=interaction.guild.id)
+                if not coordinators:
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators found in any voice channels.')
                 channel_map = defaultdict(list)
-                for row in rows:
-                    channel_map[row['channel_id']].append(row['discord_snowflake'])
+                for coordinator in coordinators:
+                    channel_map[coordinator.channel_id].append(coordinator.member_id)
                 pages = []
                 for ch_id, user_ids in sorted(channel_map.items()):
                     vc = interaction.guild.get_channel(ch_id)
@@ -148,15 +148,11 @@ class EveryoneCommands(commands.Cog):
                 paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif member_obj:
-                query = 'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1'
-                row = await conn.fetchrow(query, member_obj.id)
-                channels = []
-                if row:
-                    channels.extend(row.get('coordinator_channel_ids') or [])
-                if not channels:
+                coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
+                if not coordinator_channel_ids:
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a coordinator in any channels.')
                 channel_mentions = []
-                for ch_id in channels:
+                for ch_id in coordinator_channel_ids:
                     if not ch_id:
                         continue
                     vc = interaction.guild.get_channel(ch_id)
@@ -176,7 +172,7 @@ class EveryoneCommands(commands.Cog):
             elif channel_obj:
                 if channel_obj.type != discord.ChannelType.voice:
                     return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-                query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(coordinator_channel_ids)'
+                discord_snowflakes = await Coordinator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=interaction.guild.id)
                 rows = await conn.fetch(query, channel_obj.id)
                 rows = list({r['discord_snowflake']: r for r in rows}.values())
                 if not rows:
@@ -220,12 +216,12 @@ class EveryoneCommands(commands.Cog):
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all coordinators.')
-                query = 'SELECT unnest(coordinator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE coordinator_channel_ids IS NOT NULL'
-                rows = await conn.fetch(query)
-                if not rows:
+                coordinators = await Coordinator.fetch_all_coordinators_in_guild(guild_id=ctx.guild.id)
+                if not coordinators:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found in any voice channels.')
                 channel_map = defaultdict(list)
-                for row in rows: channel_map[row['channel_id']].append(row['discord_snowflake'])
+                for coordinator in coordinators:
+                    channel_map[coordinator.channel_id].append(coordinator.member_id)
                 pages = []
                 for ch_id, user_ids in sorted(channel_map.items()):
                     vc = ctx.guild.get_channel(ch_id)
@@ -242,15 +238,11 @@ class EveryoneCommands(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             elif member_obj:
-                query = 'SELECT coordinator_channel_ids FROM users WHERE discord_snowflake=$1'
-                row = await conn.fetchrow(query, member_obj.id)
-                channels = []
-                if row:
-                    channels.extend(row.get('coordinator_channel_ids') or [])
-                if not channels:
+                coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
+                if not coordinator_channel_ids:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a coordinator in any channels.')
                 channel_mentions  =[]
-                for ch_id in channels:
+                for ch_id in coordinator_channel_ids:
                     if not ch_id:
                         continue
                     vc = ctx.guild.get_channel(ch_id)
@@ -270,14 +262,12 @@ class EveryoneCommands(commands.Cog):
             elif channel_obj:
                 if channel_obj.type != discord.ChannelType.voice:
                     return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-                query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(coordinator_channel_ids)'
-                rows = await conn.fetch(query, channel_obj.id)
-                rows = list({r['discord_snowflake']: r for r in rows}.values())
-                if not rows:
+                discord_snowflakes = await Coordinator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=ctx.guild.id)
+                if not discord_snowflakes:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found for {channel_obj.mention}.')
                 lines = []
-                for r in rows:
-                    uid = r['discord_snowflake']
+                for discord_snowflake in discord_snowflake:
+                    uid = discord_snowflake
                     m = ctx.guild.get_member(uid)
                     if m:
                         lines.append(f'• {m.display_name} — <@{uid}>')
@@ -424,14 +414,12 @@ class EveryoneCommands(commands.Cog):
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all moderators.')
-            query = '''SELECT unnest(moderator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE moderator_channel_ids IS NOT NULL'''
-            async with self.bot.db_pool.acquire() as conn:
-                rows = await conn.fetch(query)
-            if not rows:
+            moderators = await Moderator.fetch_all_moderators_in_guild(guild_id=interaction.guild.id)
+            if not moderators:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found in any voice channels.')
             channel_map = defaultdict(list)
-            for row in rows:
-                channel_map[row['channel_id']].append(row['discord_snowflake'])
+            for moderator in moderators:
+                channel_map[moderator["channel_id"]].append(moderator["discord_snowflake"])
             pages = []
             for ch_id, user_ids in sorted(channel_map.items()):
                 vc = interaction.guild.get_channel(ch_id)
@@ -445,12 +433,10 @@ class EveryoneCommands(commands.Cog):
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         if member_obj:
-            query = '''SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1'''
-            async with self.bot.db_pool.acquire() as conn:
-                row = await conn.fetchrow(query, member_obj.id)
-            if not row or not row['moderator_channel_ids']:
+            moderator_channel_ids = await Moderator.fetch_channel_ids_for_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
+            if not moderator_channel_ids:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
-            channel_mentions = [interaction.guild.get_channel(ch_id).mention if interaction.guild.get_channel(ch_id) else f'Unknown Channel ({ch_id})' for ch_id in row['moderator_channel_ids']]
+            channel_mentions = [interaction.guild.get_channel(ch_id).mention if interaction.guild.get_channel(ch_id) else f'Unknown Channel ({ch_id})' for ch_id in moderator_channel_ids]
             chunk_size = 18
             pages = []
             for i in range(0, len(channel_mentions), chunk_size):
@@ -462,18 +448,15 @@ class EveryoneCommands(commands.Cog):
         if channel_obj:
             if channel_obj.type != discord.ChannelType.voice:
                 return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-            query = '''SELECT discord_snowflake FROM users WHERE $1=ANY(moderator_channel_ids)'''
-            async with self.bot.db_pool.acquire() as conn:
-                rows = await conn.fetch(query, channel_obj.id)
-            if not rows:
+            discord_snowflakes = await Moderator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=interaction.guild.id)
+            if not discord_snowflakes:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
             lines = []
-            for row in rows:
-                uid = row['discord_snowflake']
-                m = interaction.guild.get_member(uid)
+            for discord_snowflake in discord_snowflakes:
+                m = interaction.guild.get_member(discord_snowflake)
                 if not m:
                     continue
-                lines.append(f'• {m.display_name} — <@{uid}>')
+                lines.append(f'• {m.display_name} — <@{discord_snowflake}>')
             if not lines:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators currently in {interaction.guild.name}.')
             chunk_size = 18
@@ -503,13 +486,12 @@ class EveryoneCommands(commands.Cog):
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
-                query = 'SELECT unnest(moderator_channel_ids) AS channel_id, discord_snowflake FROM users WHERE moderator_channel_ids IS NOT NULL'
-                rows = await conn.fetch(query)
-                if not rows:
+                moderators = await Moderator.fetch_all_moderators_in_guild(guild_id=ctx.guild.id)
+                if not moderators:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found in any voice channels.')
                 channel_map = defaultdict(list)
-                for row in rows:
-                    channel_map[row['channel_id']].append(row['discord_snowflake'])
+                for moderator in moderators:
+                    channel_map[moderator.channel_id].append(moderator.member_id)
                 pages = []
                 for ch_id,user_ids in sorted(channel_map.items()):
                     vc = ctx.guild.get_channel(ch_id)
@@ -526,12 +508,12 @@ class EveryoneCommands(commands.Cog):
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             elif member_obj:
-                query = 'SELECT moderator_channel_ids FROM users WHERE discord_snowflake=$1'
-                row = await conn.fetchrow(query, member_obj.id)
+                moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
                 channels = []
-                if row:
-                    channels.extend(row.get('moderator_channel_ids') or [])
-                if not channels: return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
+                if moderator_channel_ids:
+                    channels.extend(moderator_channel_ids)
+                if not channels:
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
                 channel_mentions = []
                 for ch_id in channels:
                     if not ch_id: continue
@@ -552,14 +534,12 @@ class EveryoneCommands(commands.Cog):
             elif channel_obj:
                 if channel_obj.type != discord.ChannelType.voice:
                     return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-                query = 'SELECT discord_snowflake FROM users WHERE $1=ANY(moderator_channel_ids)'
-                rows = await conn.fetch(query,channel_obj.id)
-                rows = list({r['discord_snowflake']:r for r in rows}.values())
-                if not rows:
+                discord_snowflakes = await Moderator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=ctx.guild.id)
+                if not discord_snowflakes:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
                 lines = []
-                for r in rows:
-                    uid = r['discord_snowflake']
+                for discord_snowflake in discord_snowflakes:
+                    uid = discord_snowflake
                     m = ctx.guild.get_member(uid)
                     if not m: continue
                     lines.append(f'• {m.display_name} — <@{uid}>')
@@ -680,7 +660,7 @@ class EveryoneCommands(commands.Cog):
                     for room in subset:
                         embed.add_field(
                             name=room.room_name,
-                            value=f'• Owner: {room.room_owner.display_name}\n• Channel: {room.channel.mention}',
+                            value=f'• Owner: {room.room_owner.display_name}\n• Channel: {room.channel_mention}',
                             inline=False
                         )
                     pages.append(embed)
@@ -700,8 +680,8 @@ class EveryoneCommands(commands.Cog):
                     )
                     for room in subset:
                         embed.add_field(
-                            name=room['room_name'],
-                            value=f'• Channel: {room.channel.mention}',
+                            name=room.room_name,
+                            value=f'• Channel: {room.channel_mention}',
                             inline=False
                         )
                     pages.append(embed)

@@ -25,7 +25,6 @@ from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.reason import Reason
-from vyrtuous.utils.time_to_complete import TimeToComplete
 from vyrtuous.utils.vegans import Vegans
 from vyrtuous.utils.emojis import Emojis
 
@@ -117,7 +116,6 @@ class Aliases(commands.Cog):
         self.vegans = Vegans.get_vegans()
     
     async def handle_ban_alias(self, message: discord.Message, alias: Alias, args):
-        start_time = time.perf_counter()
         executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
         if executor_role == 'Everyone':
             return await message.reply(content='\U0001F6AB You are not permitted to ban users.')
@@ -212,11 +210,6 @@ class Aliases(commands.Cog):
         )
         await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
         await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
-        end_time = time.perf_counter()
-        counter = TimeToComplete()
-        elapsed = counter.time_elapsed_measurement(start_time, end_time)
-        if not counter.is_around_one_second(elapsed):
-            logger.info(f'Alias ban command execution time: {elapsed:.4f} seconds.')
 
     # DONE
     async def handle_cow_alias(self, message: discord.Message, alias: Alias, args):

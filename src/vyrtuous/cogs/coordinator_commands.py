@@ -17,13 +17,14 @@
 '''
 from discord import app_commands
 from typing import Optional
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.check_service import *
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.moderator import Moderator
 
 class CoordinatorCommands(commands.Cog):
 
@@ -62,31 +63,13 @@ class CoordinatorCommands(commands.Cog):
             return await interaction.response.send_message(content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             action = None
-            row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
-            current_channel_ids = row.get('moderator_channel_ids', []) if row else []
-            if current_channel_ids and channel_obj.id in current_channel_ids:
-                await conn.execute('''
-                    UPDATE users
-                    SET moderator_channel_ids = array_remove(
-                        COALESCE(moderator_channel_ids, ARRAY[]::BIGINT[]),
-                        $2
-                    ),
-                    updated_at = NOW()
-                    WHERE discord_snowflake = $1
-                ''', member_obj.id, channel_obj.id)
+            moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
+            if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
+                await Moderator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=member_obj.id)
                 action = 'revoked'
             else:
-                await conn.execute('''
-                    INSERT INTO users (discord_snowflake, moderator_channel_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (discord_snowflake) DO UPDATE
-                    SET moderator_channel_ids = (
-                        SELECT ARRAY(SELECT DISTINCT unnest(
-                            COALESCE(users.moderator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
-                        ))
-                    ),
-                    updated_at = NOW()
-                ''', member_obj.id, channel_obj.id)
+                moderator = Moderator(channel_id=channel_obj.id, guild_id=interaction.guild.id, member_id=member_obj.id)
+                moderator.set_channel_id_for_member()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -121,31 +104,13 @@ class CoordinatorCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             action = None
-            row = await conn.fetchrow('SELECT moderator_channel_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
-            current_channel_ids = row.get('moderator_channel_ids', []) if row else []
-            if current_channel_ids and channel_obj.id in current_channel_ids:
-                await conn.execute('''
-                    UPDATE users
-                    SET moderator_channel_ids = array_remove(
-                        COALESCE(moderator_channel_ids, ARRAY[]::BIGINT[]),
-                        $2
-                    ),
-                    updated_at = NOW()
-                    WHERE discord_snowflake = $1
-                ''', member_obj.id, channel_obj.id)
+            moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
+            if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
+                await Moderator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=member_obj.id)
                 action = 'revoked'
             else:
-                await conn.execute('''
-                    INSERT INTO users (discord_snowflake, moderator_channel_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (discord_snowflake) DO UPDATE
-                    SET moderator_channel_ids = (
-                        SELECT ARRAY(SELECT DISTINCT unnest(
-                            COALESCE(users.moderator_channel_ids, ARRAY[]::BIGINT[]) || ARRAY[$2]::BIGINT[]
-                        ))
-                    ),
-                    updated_at = NOW()
-                ''', member_obj.id, channel_obj.id)
+                moderator = Moderator(channel_id=channel_obj.id, guild_id=ctx.guild.id, member_id=member_obj.id)
+                moderator.set_channel_id_for_member()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)

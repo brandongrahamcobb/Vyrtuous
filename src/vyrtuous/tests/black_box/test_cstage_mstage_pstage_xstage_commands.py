@@ -18,7 +18,7 @@ from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.black_box.make_mock_objects import *
 from vyrtuous.tests.black_box.test_admin_helpers import admin_cleanup, admin_initiation
-from vyrtuous.tests.black_box.test_mod_helpers import mod_cleanup, mod_initiation
+from vyrtuous.utils.moderator import Moderator
 from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
 import pytest
@@ -50,7 +50,7 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
             await admin_initiation(guild.id, privileged_author.id)
             await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         else:
-            await mod_initiation(voice_channel_one.id, guild.id, privileged_author.id)
+            await Moderator.grant(channel_id=voice_channel_one.id, guild_id=guild.id, member_id=privileged_author.id)
             await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
@@ -64,4 +64,4 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
         if "cstage" in command or "xstage" in command:
             await admin_cleanup(guild.id, privileged_author.id)
         else:
-            await mod_cleanup(voice_channel_one.id, guild.id, privileged_author.id)
+            await Moderator.revoke(channel_id=voice_channel_one.id, member_id=privileged_author.id)
