@@ -21,7 +21,10 @@ import discord
 import asyncpg
 
 class Coordinator:
-        
+
+    PLURAL = "Coordinators"
+    SINGULAR = "Coordinator"
+
     def __init__(self, channel_id: Optional[str], guild_id: Optional[int], member_id: Optional[str]):
         self.bot = DiscordBot.get_instance()
         self.channel_id: Optional[int] = channel_id
@@ -84,7 +87,7 @@ class Coordinator:
             return [row['member_snowflake'] for row in rows]
 
     @classmethod
-    async def fetch_all_coordinators_in_guild(cls, guild_id: Optional[int]):
+    async def fetch_all_members_in_guild(cls, guild_id: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''

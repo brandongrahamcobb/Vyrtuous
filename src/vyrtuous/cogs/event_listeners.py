@@ -204,31 +204,32 @@ class EventListeners(commands.Cog):
                         await after.channel.send(embed=embed)
                     else:
                         await conn.execute('''
-                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, room_name, target)
-                            VALUES ($1, $2, $3, $4, $5)
+                            INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, room_name, target, expires_at)
+                            VALUES ($1, $2, $3, $4, $5, NOW() + interval '1 hour')
                             ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
                             DO UPDATE SET expires_at = NOW() + interval '1 hour'
                         ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)           
-                        should_be_muted = True                
-                if before.mute and not after.mute and before.channel:
-                    result = await conn.execute('''
-                        DELETE FROM active_voice_mutes
+                        should_be_muted = True 
+                if not should_be_muted:               
+                    if before.mute and not after.mute and before.channel:
+                        result = await conn.execute('''
+                            DELETE FROM active_voice_mutes
+                            WHERE guild_id = $1
+                                AND discord_snowflake = $2
+                                AND channel_id = $3
+                                AND room_name = $4
+                                AND target = $5
+                                AND expires_at IS NOT NULL
+                        ''', member.guild.id, member.id, before.channel.id, after.channel.name, target)
+                    existing_mute_row = await conn.fetchrow('''
+                        SELECT expires_at
+                        FROM active_voice_mutes
                         WHERE guild_id = $1
                             AND discord_snowflake = $2
                             AND channel_id = $3
                             AND room_name = $4
                             AND target = $5
-                            AND expires_at IS NOT NULL
-                    ''', member.guild.id, member.id, before.channel.id, after.channel.name, target)
-                existing_mute_row = await conn.fetchrow('''
-                    SELECT expires_at
-                    FROM active_voice_mutes
-                    WHERE guild_id = $1
-                        AND discord_snowflake = $2
-                        AND channel_id = $3
-                        AND room_name = $4
-                        AND target = $5
-                ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)
+                    ''', member.guild.id, member.id, after.channel.id, after.channel.name, target)
                 if existing_mute_row:
                     should_be_muted = True
                 if after.mute != should_be_muted:

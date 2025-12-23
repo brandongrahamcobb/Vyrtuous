@@ -23,6 +23,7 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
+from vyrtuous.utils.all import All
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.temporary_room import TemporaryRoom
@@ -127,74 +128,26 @@ class EveryoneCommands(commands.Cog):
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all coordinators.')
-                coordinators = await Coordinator.fetch_all_coordinators_in_guild(guild_id=interaction.guild.id)
+                coordinators = await Coordinator.fetch_all_members_in_guild(guild_id=interaction.guild.id)
                 if not coordinators:
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators found in any voice channels.')
-                channel_map = defaultdict(list)
-                for coordinator in coordinators:
-                    channel_map[coordinator.channel_id].append(coordinator.member_id)
-                pages = []
-                for ch_id, user_ids in sorted(channel_map.items()):
-                    vc = interaction.guild.get_channel(ch_id)
-                    vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} Coordinators for {vc_name}',
-                        color=discord.Color.gold())
-                    for uid in user_ids:
-                        m = interaction.guild.get_member(uid)
-                        name = m.display_name if m else f'User ID {uid}'
-                        embed.add_field(name=f'{interaction.guild.name}', value=f'• {name} (<@{uid}>)', inline=False)
-                    pages.append(embed)
+                pages = await All.create_show_all_members_pages(guild_name=interaction.guild.name, members=coordinators, member_type=Coordinator)
                 paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif member_obj:
                 coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
                 if not coordinator_channel_ids:
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a coordinator in any channels.')
-                channel_mentions = []
-                for ch_id in coordinator_channel_ids:
-                    if not ch_id:
-                        continue
-                    vc = interaction.guild.get_channel(ch_id)
-                    channel_mentions.append(vc.mention if vc else f'Unknown Channel ({ch_id})')
-                embeds = []
-                chunk_size = 18
-                for i in range(0, len(channel_mentions), chunk_size):
-                    chunk = channel_mentions[i:i+chunk_size]
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is a coordinator in:',
-                        description = '\n'.join(f'• {ch}' for ch in chunk),
-                        color = discord.Color.gold()
-                    )
-                    embeds.append(embed)
-                paginator = AppPaginator(self.bot, interaction, embeds)
+                pages = await All.create_show_all_member_channels_pages(member_channel_ids=coordinator_channel_ids, member_name=member_obj.display_name, member_type=Coordinator)
+                paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif channel_obj:
                 if channel_obj.type != discord.ChannelType.voice:
                     return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
                 discord_snowflakes = await Coordinator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=interaction.guild.id)
-                rows = await conn.fetch(query, channel_obj.id)
-                rows = list({r['discord_snowflake']: r for r in rows}.values())
-                if not rows:
+                if not discord_snowflakes:
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators found for {channel_obj.mention}.')
-                lines = []
-                for r in rows:
-                    uid = r['discord_snowflake']
-                    m = interaction.guild.get_member(uid)
-                    if m:
-                        lines.append(f'• {m.display_name} — <@{uid}>')
-                if not lines:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators currently in {interaction.guild.name}.')
-                pages = []
-                chunk_size = 18
-                for i in range(0, len(lines), chunk_size):
-                    chunk = lines[i:i+chunk_size]
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} Coordinators for {channel_obj.name}',
-                        description='\n'.join(chunk),
-                        color=discord.Color.gold()
-                    )
-                    pages.append(embed)
+                pages = await All.create_show_all_members_in_channel_pages(channel_name=channel_obj.name, member_ids=discord_snowflakes, member_type=Coordinator)
                 paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
         
@@ -216,48 +169,18 @@ class EveryoneCommands(commands.Cog):
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all coordinators.')
-                coordinators = await Coordinator.fetch_all_coordinators_in_guild(guild_id=ctx.guild.id)
+                coordinators = await Coordinator.fetch_all_members_in_guild(guild_id=ctx.guild.id)
                 if not coordinators:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found in any voice channels.')
-                channel_map = defaultdict(list)
-                for coordinator in coordinators:
-                    channel_map[coordinator.channel_id].append(coordinator.member_id)
-                pages = []
-                for ch_id, user_ids in sorted(channel_map.items()):
-                    vc = ctx.guild.get_channel(ch_id)
-                    vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-                    embed = discord.Embed(
-                        title = f'{self.emoji.get_random_emoji()} Coordinators for {vc_name}',
-                        color = discord.Color.gold()
-                    )
-                    for uid in user_ids:
-                        m = ctx.guild.get_member(uid)
-                        name = m.display_name if m else f'User ID {uid}'
-                        embed.add_field(name=f'{ctx.guild.name}', value=f'• {name} (<@{uid}>)', inline=False)
-                    pages.append(embed)
+                pages = await All.create_show_all_members_pages(guild_name=ctx.guild.name, members=coordinators, member_type=Coordinator)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             elif member_obj:
                 coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
                 if not coordinator_channel_ids:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a coordinator in any channels.')
-                channel_mentions  =[]
-                for ch_id in coordinator_channel_ids:
-                    if not ch_id:
-                        continue
-                    vc = ctx.guild.get_channel(ch_id)
-                    channel_mentions.append(vc.mention if vc else f'Unknown Channel ({ch_id})')
-                embeds = []
-                chunk_size = 18
-                for i in range(0, len(channel_mentions), chunk_size):
-                    chunk = channel_mentions[i:i+chunk_size]
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is a coordinator in:',
-                        description='\n'.join(f'• {ch}' for ch in chunk),
-                        color=discord.Color.gold()
-                    )
-                    embeds.append(embed)
-                paginator = Paginator(self.bot, ctx, embeds)
+                pages = await All.create_show_all_member_channels_pages(member_channel_ids=coordinator_channel_ids, member_name=member_obj.display_name, member_type=Coordinator)
+                paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             elif channel_obj:
                 if channel_obj.type != discord.ChannelType.voice:
@@ -265,24 +188,7 @@ class EveryoneCommands(commands.Cog):
                 discord_snowflakes = await Coordinator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=ctx.guild.id)
                 if not discord_snowflakes:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found for {channel_obj.mention}.')
-                lines = []
-                for discord_snowflake in discord_snowflake:
-                    uid = discord_snowflake
-                    m = ctx.guild.get_member(uid)
-                    if m:
-                        lines.append(f'• {m.display_name} — <@{uid}>')
-                if not lines:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators currently in {ctx.guild.name}.')
-                pages = []
-                chunk_size = 18
-                for i in range(0, len(lines), chunk_size):
-                    chunk = lines[i:i+chunk_size]
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} Coordinators for {channel_obj.name}',
-                        description='\n'.join(chunk),
-                        color=discord.Color.gold()
-                    )
-                    pages.append(embed)
+                pages = await All.create_show_all_members_in_channel_pages(channel_name=channel_obj.name, member_ids=discord_snowflakes, member_type=Coordinator)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
     
@@ -417,32 +323,14 @@ class EveryoneCommands(commands.Cog):
             moderators = await Moderator.fetch_all_moderators_in_guild(guild_id=interaction.guild.id)
             if not moderators:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found in any voice channels.')
-            channel_map = defaultdict(list)
-            for moderator in moderators:
-                channel_map[moderator["channel_id"]].append(moderator["discord_snowflake"])
-            pages = []
-            for ch_id, user_ids in sorted(channel_map.items()):
-                vc = interaction.guild.get_channel(ch_id)
-                vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Moderators for {vc_name}', color=discord.Color.magenta())
-                for uid in user_ids:
-                    m = interaction.guild.get_member(uid)
-                    name = m.display_name if m else f'User ID {uid}'
-                    embed.add_field(name=f'{interaction.guild.name}', value=f'• {name} (<@{uid}>)', inline=False)
-                pages.append(embed)
+            pages = await All.create_show_all_members_pages(guild_name=interaction.guild.name, members=moderators, member_type=Moderator)
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         if member_obj:
             moderator_channel_ids = await Moderator.fetch_channel_ids_for_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
             if not moderator_channel_ids:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
-            channel_mentions = [interaction.guild.get_channel(ch_id).mention if interaction.guild.get_channel(ch_id) else f'Unknown Channel ({ch_id})' for ch_id in moderator_channel_ids]
-            chunk_size = 18
-            pages = []
-            for i in range(0, len(channel_mentions), chunk_size):
-                chunk = channel_mentions[i:i + chunk_size]
-                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} moderates:', description='\n'.join(f'• {ch}' for ch in chunk), color=discord.Color.magenta())
-                pages.append(embed)
+            pages = await All.create_show_all_member_channels_pages(member_channel_ids=moderator_channel_ids, member_name=member_obj.display_name, member_type=Moderator)
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         if channel_obj:
@@ -451,20 +339,7 @@ class EveryoneCommands(commands.Cog):
             discord_snowflakes = await Moderator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=interaction.guild.id)
             if not discord_snowflakes:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
-            lines = []
-            for discord_snowflake in discord_snowflakes:
-                m = interaction.guild.get_member(discord_snowflake)
-                if not m:
-                    continue
-                lines.append(f'• {m.display_name} — <@{discord_snowflake}>')
-            if not lines:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators currently in {interaction.guild.name}.')
-            chunk_size = 18
-            pages = []
-            for i in range(0, len(lines), chunk_size):
-                chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Moderators for {channel_obj.name}', description='\n'.join(chunk), color=discord.Color.magenta())
-                pages.append(embed)
+            pages = await All.create_show_all_members_in_channel_pages(channel_name=channel_obj.name, member_ids=discord_snowflakes, member_type=Moderator)
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         
@@ -486,50 +361,18 @@ class EveryoneCommands(commands.Cog):
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
-                moderators = await Moderator.fetch_all_moderators_in_guild(guild_id=ctx.guild.id)
+                moderators = await Moderator.fetch_all_members_in_guild(guild_id=ctx.guild.id)
                 if not moderators:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found in any voice channels.')
-                channel_map = defaultdict(list)
-                for moderator in moderators:
-                    channel_map[moderator.channel_id].append(moderator.member_id)
-                pages = []
-                for ch_id,user_ids in sorted(channel_map.items()):
-                    vc = ctx.guild.get_channel(ch_id)
-                    vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} Moderators for {vc_name}',
-                        color=discord.Color.magenta()
-                    )
-                    for uid in user_ids:
-                        m = ctx.guild.get_member(uid)
-                        name = m.display_name if m else f'User ID {uid}'
-                        embed.add_field(name=f'{ctx.guild.name}',value=f'• {name} (<@{uid}>)',inline=False)
-                    pages.append(embed)
+                pages = await All.create_show_all_members_pages(guild_name=ctx.guild.name, members=moderators, member_type=Moderator)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             elif member_obj:
                 moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
-                channels = []
-                if moderator_channel_ids:
-                    channels.extend(moderator_channel_ids)
-                if not channels:
+                if not moderator_channel_ids:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
-                channel_mentions = []
-                for ch_id in channels:
-                    if not ch_id: continue
-                    vc = ctx.guild.get_channel(ch_id)
-                    channel_mentions.append(vc.mention if vc else f'Unknown Channel ({ch_id})')
-                embeds = []
-                chunk_size = 18
-                for i in range(0, len(channel_mentions), chunk_size):
-                    chunk = channel_mentions[i:i+chunk_size]
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} moderates:',
-                        description='\n'.join(f'• {ch}' for ch in chunk),
-                        color=discord.Color.magenta()
-                    )
-                    embeds.append(embed)
-                paginator = Paginator(self.bot, ctx, embeds)
+                pages = await All.create_show_all_member_channels_pages(member_channel_ids=moderator_channel_ids, member_name=member_obj.display_name, member_type=Moderator)
+                paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             elif channel_obj:
                 if channel_obj.type != discord.ChannelType.voice:
@@ -537,24 +380,7 @@ class EveryoneCommands(commands.Cog):
                 discord_snowflakes = await Moderator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=ctx.guild.id)
                 if not discord_snowflakes:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
-                lines = []
-                for discord_snowflake in discord_snowflakes:
-                    uid = discord_snowflake
-                    m = ctx.guild.get_member(uid)
-                    if not m: continue
-                    lines.append(f'• {m.display_name} — <@{uid}>')
-                if not lines:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators currently in {ctx.guild.name}.')
-                pages = []
-                chunk_size = 18
-                for i in range(0,len(lines),chunk_size):
-                    chunk = lines[i:i+chunk_size]
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} Moderators for {channel_obj.name}',
-                        description='\n'.join(chunk),
-                        color=discord.Color.magenta()
-                    )
-                    pages.append(embed)
+                pages = await All.create_show_all_members_in_channel_pages(channel_name=channel_obj.name, member_ids=discord_snowflakes, member_type=Moderator)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
 
@@ -643,12 +469,7 @@ class EveryoneCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(ctx, target)
             member_obj = await self.member_service.resolve_member(ctx, target)
             highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-            if target and target.lower() == 'all':
-                if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all owners.')
-                rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild(ctx.guild)
-                if not rooms:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No temporary rooms exist.')
+            def make_pages(rooms):
                 pages = []
                 chunk = 12
                 for i in range(0, len(rooms), chunk):
@@ -664,27 +485,21 @@ class EveryoneCommands(commands.Cog):
                             inline=False
                         )
                     pages.append(embed)
+                return pages
+            if target and target.lower() == 'all':
+                if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                    return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all owners.')
+                rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild(ctx.guild)
+                if not rooms:
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No temporary rooms exist.')
+                pages = make_pages(rooms)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             if member_obj:
                 rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild_and_member(ctx.guild, member_obj)
                 if not rooms:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} does not own any temporary rooms.')
-                pages = []
-                chunk = 12
-                for i in range(0, len(rooms), chunk):
-                    subset = rooms[i:i+chunk]
-                    embed = discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} Temporary Rooms Owned by {member_obj.display_name}',
-                        color=discord.Color.blurple()
-                    )
-                    for room in subset:
-                        embed.add_field(
-                            name=room.room_name,
-                            value=f'• Channel: {room.channel_mention}',
-                            inline=False
-                        )
-                    pages.append(embed)
+                pages = make_pages(rooms)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             if channel_obj:
@@ -759,22 +574,30 @@ class EveryoneCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
-            if await member_is_owner(member): owners.append(member)
-            elif await member_is_developer(member): developers.append(member)
-            elif await member_is_administrator(member): administrators.append(member)
-            elif await member_is_coordinator(channel_obj, member): coordinators.append(member)
-            elif await member_is_moderator(channel_obj, member): moderators.append(member)
-        def fmt(users): return ', '.join(u.mention for u in users) if users else '*None*'
-        msg = (
-            f'{self.emoji.get_random_emoji()} **Survey results for {channel_obj.mention}:**\n'
-            f'\n**Owners:** {fmt(owners)}'
-            f'\n**Developers:** {fmt(developers)}'
-            f'\n**Administrators:** {fmt(administrators)}'
-            f'\n**Coordinators:** {fmt(coordinators)}'
-            f'\n**Moderators:** {fmt(moderators)}'
-            f'\n\nTotal surveyed: {len(channel_obj.members)}'
+        match True:
+            case _ if await member_is_owner(member):
+                owners.append(member)
+            case _ if await member_is_developer(member):
+                developers.append(member)
+            case _ if await member_is_administrator(member):
+                administrators.append(member)
+            case _ if await member_is_coordinator(channel_obj, member):
+                coordinators.append(member)
+            case _ if await member_is_moderator(channel_obj, member):
+                moderators.append(member)
+        def fmt(users):
+            return ', '.join(u.mention for u in users) if users else '*None*'
+        embed = discord.Embed(
+            title=f"{self.emoji.get_random_emoji()} Survey results for {channel_obj.name}",
+            description=f"Total surveyed: {len(channel_obj.members)}",
+            color=discord.Color.blurple()
         )
-        await interaction.response.send_message(content=msg, allowed_mentions=discord.AllowedMentions.none())
+        embed.add_field(name="Owners", value=fmt(owners), inline=False)
+        embed.add_field(name="Developers", value=fmt(developers), inline=False)
+        embed.add_field(name="Administrators", value=fmt(administrators), inline=False)
+        embed.add_field(name="Coordinators", value=fmt(coordinators), inline=False)
+        embed.add_field(name="Moderators", value=fmt(moderators), inline=False)
+        await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
     
     # DONE
     @commands.command(name='survey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
@@ -792,22 +615,30 @@ class EveryoneCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid voice or stage channel.')
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
-            if await member_is_owner(member): owners.append(member)
-            elif await member_is_developer(member): developers.append(member)
-            elif await member_is_administrator(member): administrators.append(member)
-            elif await member_is_coordinator(channel_obj, member): coordinators.append(member)
-            elif await member_is_moderator(channel_obj, member): moderators.append(member)
-        def fmt(users): return ', '.join(u.mention for u in users) if users else '*None*'
-        msg = (
-            f'{self.emoji.get_random_emoji()} **Survey results for {channel_obj.mention}:**\n'
-            f'\n**Owners:** {fmt(owners)}'
-            f'\n**Developers:** {fmt(developers)}'
-            f'\n**Administrators:** {fmt(administrators)}'
-            f'\n**Coordinators:** {fmt(coordinators)}'
-            f'\n**Moderators:** {fmt(moderators)}'
-            f'\n\nTotal surveyed: {len(channel_obj.members)}'
+        match True:
+            case _ if await member_is_owner(member):
+                owners.append(member)
+            case _ if await member_is_developer(member):
+                developers.append(member)
+            case _ if await member_is_administrator(member):
+                administrators.append(member)
+            case _ if await member_is_coordinator(channel_obj, member):
+                coordinators.append(member)
+            case _ if await member_is_moderator(channel_obj, member):
+                moderators.append(member)
+        def fmt(users):
+            return ', '.join(u.mention for u in users) if users else '*None*'
+        embed = discord.Embed(
+            title=f"{self.emoji.get_random_emoji()} Survey results for {channel_obj.name}",
+            description=f"Total surveyed: {len(channel_obj.members)}",
+            color=discord.Color.blurple()
         )
-        await self.handler.send_message(ctx, content=msg, allowed_mentions=discord.AllowedMentions.none())
+        embed.add_field(name="Owners", value=fmt(owners), inline=False)
+        embed.add_field(name="Developers", value=fmt(developers), inline=False)
+        embed.add_field(name="Administrators", value=fmt(administrators), inline=False)
+        embed.add_field(name="Coordinators", value=fmt(coordinators), inline=False)
+        embed.add_field(name="Moderators", value=fmt(moderators), inline=False)
+        await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
         
 async def setup(bot: DiscordBot):
     cog = EveryoneCommands(bot)

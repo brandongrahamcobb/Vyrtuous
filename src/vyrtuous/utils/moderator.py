@@ -21,12 +21,16 @@ import discord
 import asyncpg
 
 class Moderator:
-        
+
+    PLURAL = "Moderators"
+    SINGULAR = "Moderator"
+
     def __init__(self, channel_id: Optional[str], guild_id: Optional[int], member_id: Optional[str]):
         self.bot = DiscordBot.get_instance()
         self.channel_id: Optional[int] = channel_id
         self.guild_id = guild_id
         self.member_id: Optional[int] = member_id
+
 
     @classmethod
     async def update_source_channel_id_to_target_channel_id(cls, source_channel_id: Optional[int], target_channel_id: Optional[int]):
@@ -84,7 +88,7 @@ class Moderator:
             return [row['member_snowflake'] for row in rows]
 
     @classmethod
-    async def fetch_all_moderators_in_guild(cls, guild_id: Optional[int]):
+    async def fetch_all_members_in_guild(cls, guild_id: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
