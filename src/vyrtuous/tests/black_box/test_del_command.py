@@ -24,7 +24,7 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_del_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str]):  
-    await Moderator.grant(channel_id=voice_channel_one.id, guild_id=guild.id, member_id=privileged_author.id)
+    await Moderator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content="ping", guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
@@ -35,4 +35,4 @@ async def test_del_commands(bot, voice_channel_one, guild, not_privileged_author
         assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
         assert str(MESSAGE_ID) in response["content"]
     finally:
-        await Moderator.revoke(channel_id=voice_channel_one.id, member_id=privileged_author.id)
+        await Moderator.revoke(channel_snowflake=voice_channel_one.id, member_snowflake=privileged_author.id)

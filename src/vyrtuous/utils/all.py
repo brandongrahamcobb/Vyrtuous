@@ -26,66 +26,83 @@ class All:
         self.bot = DiscordBot.get_instance()
 
     @classmethod
-    async def create_show_all_members_pages(cls, guild_name: Optional[str], members, member_type):
-        bot = DiscordBot.get_instance()
-        emoji = Emojis()
-        channel_map = defaultdict(list)
-        for member in members:
-            channel_map[member.channel_id].append(member.member_id)
-        pages = []
-        for ch_id, user_ids in sorted(channel_map.items()):
-            vc = bot.get_channel(ch_id)
-            vc_name = vc.mention if vc else f'Unknown Channel ({ch_id})'
-            embed = discord.Embed(
-                title=f'{emoji.get_random_emoji()} {member_type.PLURAL} for {vc_name}',
-                color=discord.Color.gold())
-            for uid in user_ids:
-                m = bot.get_user(uid)
-                name = m.display_name if m else f'User ID {uid}'
-                embed.add_field(name=f'{guild_name}', value=f'• {name} (<@{uid}>)', inline=False)
-            pages.append(embed)
-        return pages
-
-
-    @classmethod
-    async def create_show_all_channels_pages(cls, member_channel_ids: list[str | None], member_name: Optional[str], member_type):
+    async def create_pages_to_show_channels(cls, channel_snowflakes: list[int | None], member_type):
+        if channel_snowflakes is None:
+            return None
         bot = DiscordBot.get_instance()
         emoji = Emojis()
         channel_mentions = []
-        for ch_id in member_channel_ids:
-            if not ch_id:
+        for channel_snowflake in channel_snowflakes:
+            if not channel_snowflake:
                 continue
-            vc = bot.get_channel(ch_id)
-            channel_mentions.append(vc.mention if vc else f'Unknown Channel ({ch_id})')
+            channel = bot.get_channel(channel_snowflake)
+            channel_mentions.append(channel.mention if vc else f'Unknown Channel ({channel_snowflake})')
         pages = []
         chunk_size = 18
         for i in range(0, len(channel_mentions), chunk_size):
             chunk = channel_mentions[i:i+chunk_size]
             embed = discord.Embed(
-                title=f'{emoji.get_random_emoji()} {member_name} is a {member_type.SINGULAR} in:',
-                description = '\n'.join(f'• {ch}' for ch in chunk),
+                title=f'{emoji.get_random_emoji()} {member_type.SINGULAR}',
+                description = '\n'.join(f'• {channel}' for channel in chunk),
                 color = discord.Color.gold()
             )
             pages.append(embed)
         return pages
 
     @classmethod
-    async def create_show_all_members_in_channel_pages(cls, channel_name: Optional[str], member_ids: list[str | None], member_type):
+    async def create_pages_to_show_guilds_by_members(cls, members, member_type):
+        if members is None:
+            return None
+        bot = DiscordBot.get_instance()
+        emoji = Emojis()
+        pages = []
+        for member in members:
+            user = bot.get_user(member.member_snowflake)
+            name = user.name if user else f'User ID {member.member_snowflake}'
+            embed = discord.Embed(
+                title = f'{emoji.get_random_emoji()} {member_type.PLURAL}',
+                description = ', '.join(str(member.guild_snowflakes)) if member.guild_snowflakes else 'No known guilds',
+                color = discord.Color.blurple()
+            )
+            pages.append(embed)
+        return pages
+
+    @classmethod
+    async def create_pages_to_show_members(cls, members, member_type):
+        if members is None:
+            return None
         bot = DiscordBot.get_instance()
         emoji = Emojis()
         lines = []
-        for member_id in member_ids:
-            m = bot.get_user(member_id)
-            if m:
-                lines.append(f'• {m.display_name} — <@{member_id}>')
+        for member in members:
+            user = bot.get_user(member.member_snowflake)
+            if user:
+                lines.append(f'• {user.display_name} — <@{member.member_snowflake}>')
         pages = []
         chunk_size = 18
         for i in range(0, len(lines), chunk_size):
             chunk = lines[i:i+chunk_size]
             embed = discord.Embed(
-                title=f'{emoji.get_random_emoji()} {member_type.PLURAL} for {channel_name}',
+                title=f'{emoji.get_random_emoji()} {member_type.PLURAL}',
                 description='\n'.join(chunk),
                 color=discord.Color.gold()
             )
             pages.append(embed)
+        return pages
+
+    @classmethod
+    async def create_pages_to_show_guilds_by_member(cls, guilds, member_snowflake, member_type):
+        if guilds is None:
+            return None
+        bot = DiscordBot.get_instance()
+        emoji = Emojis()
+        pages = []
+        user = bot.get_user(member_snowflake)
+        name = user.name if user else f'User ID {member_snowflake}'
+        embed = discord.Embed(
+            title = f'{emoji.get_random_emoji()} {member_type.PLURAL}',
+            description = ', '.join(guilds) if guilds else 'No known guilds',
+            color = discord.Color.blurple()
+        )
+        pages.append(embed)
         return pages

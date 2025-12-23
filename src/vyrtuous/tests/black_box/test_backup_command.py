@@ -16,7 +16,7 @@
 '''
 from typing import Optional
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.test_dev_helpers import dev_cleanup, dev_initiation
+from vyrtuous.utils.developer import Developer
 from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one, voice_channel_two
 import pytest
 
@@ -29,11 +29,11 @@ import pytest
 )
 
 async def test_backup_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str]):
-    await dev_initiation(guild.id, privileged_author.id)
+    await Developer.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["file"]
         assert  "backup" in response.filename
     finally:
-        await dev_cleanup(guild.id, privileged_author.id)
+        await Developer.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id)

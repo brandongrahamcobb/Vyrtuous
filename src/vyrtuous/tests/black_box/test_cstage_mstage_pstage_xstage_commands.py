@@ -50,7 +50,7 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
             await admin_initiation(guild.id, privileged_author.id)
             await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         else:
-            await Moderator.grant(channel_id=voice_channel_one.id, guild_id=guild.id, member_id=privileged_author.id)
+            await Moderator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
             await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
@@ -64,4 +64,4 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
         if "cstage" in command or "xstage" in command:
             await admin_cleanup(guild.id, privileged_author.id)
         else:
-            await Moderator.revoke(channel_id=voice_channel_one.id, member_id=privileged_author.id)
+            await Moderator.revoke(channel_snowflake=voice_channel_one.id, member_snowflake=privileged_author.id)

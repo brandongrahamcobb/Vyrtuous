@@ -65,11 +65,11 @@ class CoordinatorCommands(commands.Cog):
             action = None
             moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
             if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
-                await Moderator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=member_obj.id)
+                await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
                 action = 'revoked'
             else:
-                moderator = Moderator(channel_id=channel_obj.id, guild_id=interaction.guild.id, member_id=member_obj.id)
-                moderator.set_channel_id_for_member()
+                moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                moderator.set_by_channel_and_member()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -104,13 +104,13 @@ class CoordinatorCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             action = None
-            moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
+            moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
-                await Moderator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=member_obj.id)
+                await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
                 action = 'revoked'
             else:
-                moderator = Moderator(channel_id=channel_obj.id, guild_id=ctx.guild.id, member_id=member_obj.id)
-                moderator.set_channel_id_for_member()
+                moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                moderator.set_by_channel_and_member()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)

@@ -25,88 +25,92 @@ class Coordinator:
     PLURAL = "Coordinators"
     SINGULAR = "Coordinator"
 
-    def __init__(self, channel_id: Optional[str], guild_id: Optional[int], member_id: Optional[str]):
+    def __init__(self, channel_snowflake: Optional[str], guild_snowflake: Optional[int], member_snowflake: Optional[str]):
         self.bot = DiscordBot.get_instance()
-        self.channel_id: Optional[int] = channel_id
-        self.guild_id = guild_id
-        self.member_id: Optional[int] = member_id
+        self.channel_snowflake: Optional[int] = channel_snowflake
+        self.guild_snowflake = guild_snowflake
+        self.member_snowflake: Optional[int] = member_snowflake
 
     @classmethod
-    async def update_source_channel_id_to_target_channel_id(cls, source_channel_id: Optional[int], target_channel_id: Optional[int]):
+    async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE coordinators SET channel_snowflake=$2 WHERE channel_snowflake=$1
-            ''', source_channel_id, target_channel_id)
+            ''', source_channel_snowflake, target_channel_snowflake)
 
     @classmethod
-    async def delete_channel_id_for_member_id(cls, channel_id: Optional[int], member_id: Optional[int]):
+    async def delete_by_channel_and_member(cls, channel_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 DELETE FROM coordinators WHERE channel_snowflake=$1 AND member_snowflake=$2
-            ''', channel_id, member_id)
+            ''', channel_snowflake, member_snowflake)
 
     @classmethod
-    async def delete_channel_ids_for_channel_id(cls, channel_id: Optional[int]):
+    async def delete_channel(cls, channel_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 DELETE FROM coordinators WHERE channel_snowflake=$1
-            ''', channel_id)
+            ''', channel_snowflake)
 
-    async def set_channel_id_for_member(self):
+    async def set_by_channel_and_member(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO coordinators (channel_snowflake, guild_snowflake, member_snowflake)
-                VALUES ($1,$2,$3)
+                INSERT INTO coordinators (channel_snowflake, created_at, guild_snowflake, member_snowflake)
+                VALUES ($1, NOW(), $2, $3)
                 ON CONFLICT DO NOTHING
-            ''', self.channel_id, self.guild_id, self.member_id)
+            ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake)
 
     @classmethod
-    async def fetch_channel_ids_for_guild_id_and_member_id(cls, guild_id: Optional[int], member_id: Optional[int]):
+    async def fetch_channels_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT channel_snowflake
                 FROM coordinators
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
-            ''', guild_id, member_id)
+            ''', guild_snowflake, member_snowflake)
             return [row['channel_snowflake'] for row in rows]
 
     @classmethod
-    async def fetch_discord_snowflakes_for_channel_id(cls, guild_id: Optional[int], channel_id: Optional[int]):
+    async def fetch_members_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT member_snowflake
                 FROM coordinators
-                WHERE guild_snowflake=$1 AND channel_snowflake=$2
-            ''', guild_id, channel_id)
-            return [row['member_snowflake'] for row in rows]
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
+            ''', channel_snowflake, guild_snowflake)
+        coordinators = []
+        if rows:
+            for row in rows:
+                coordinators.append(Coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row["member_snowflake"]))
+        return coordinators
 
     @classmethod
-    async def fetch_all_members_in_guild(cls, guild_id: Optional[int]):
+    async def fetch_members_by_guild(cls, guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT channel_snowflake, member_snowflake
                 FROM coordinators
                 WHERE guild_snowflake=$1
-            ''', guild_id)
+            ''', guild_snowflake)
             coordinators = []
             for row in rows:
                 moderators.append(
-                    Coordinator(channel_id=row['channel_snowflake'],guild_id=guild_id,member_id=row['member_snowflake'])
+                    Coordinator(channel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
                 )
             return coordinators
 
     @classmethod
-    async def revoke(cls, channel_id: Optional[int], member_id: Optional[int]):
-        await cls.delete_channel_id_for_member_id(channel_id=channel_id, member_id=member_id)
+    async def revoke(cls, channel_snowflake: Optional[int], member_snowflake: Optional[int]):
+        await cls.delete_by_channel_and_member(channel_snowflake=channel_snowflake, member_snowflake=member_snowflake)
 
     @classmethod
-    async def grant(cls, channel_id: Optional[int], guild_id: Optional[int], member_id: Optional[int]):
-        coordinator = Coordinator(channel_id=channel_id, guild_id=guild_id, member_id=member_id)
-        await coordinator.set_channel_id_for_member()
+    async def grant(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
+        coordinator = Coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        await coordinator.set_by_channel_and_member()

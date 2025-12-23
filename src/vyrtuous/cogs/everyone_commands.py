@@ -24,6 +24,7 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
 from vyrtuous.utils.all import All
+from vyrtuous.utils.developer import Developer
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.temporary_room import TemporaryRoom
@@ -117,40 +118,25 @@ class EveryoneCommands(commands.Cog):
         interaction : discord.Interaction,
         target : Optional[str] = None
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content="This command must be used in a server.")
         member_obj = await self.member_service.resolve_member(interaction, target)
-        if member_obj:
-            target = None
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
-        async with self.bot.db_pool.acquire() as conn:
-            highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-            if target and target.lower() == 'all':
-                if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all coordinators.')
-                coordinators = await Coordinator.fetch_all_members_in_guild(guild_id=interaction.guild.id)
-                if not coordinators:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators found in any voice channels.')
-                pages = await All.create_show_all_members_pages(guild_name=interaction.guild.name, members=coordinators, member_type=Coordinator)
-                paginator = AppPaginator(self.bot, interaction, pages)
-                return await paginator.start()
-            elif member_obj:
-                coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
-                if not coordinator_channel_ids:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a coordinator in any channels.')
-                pages = await All.create_show_all_member_channels_pages(member_channel_ids=coordinator_channel_ids, member_name=member_obj.display_name, member_type=Coordinator)
-                paginator = AppPaginator(self.bot, interaction, pages)
-                return await paginator.start()
-            elif channel_obj:
-                if channel_obj.type != discord.ChannelType.voice:
-                    return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-                discord_snowflakes = await Coordinator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=interaction.guild.id)
-                if not discord_snowflakes:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators found for {channel_obj.mention}.')
-                pages = await All.create_show_all_members_in_channel_pages(channel_name=channel_obj.name, member_ids=discord_snowflakes, member_type=Coordinator)
-                paginator = AppPaginator(self.bot, interaction, pages)
-                return await paginator.start()
-        
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        if target and target.lower() == 'all':
+            if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all coordinators.')
+            coordinators = await Coordinator.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
+            pages = await All.create_pages_to_show_guilds_by_members(members=coordinators, member_type=Coordinator)
+        elif member_obj:
+            channel_snowflakes = await Coordinator.fetch_channels_by_guild_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            pages = await All.create_pages_to_show_channels(channel_snowflakes=channel_snowflakes, member_type=Coordinator)
+        elif channel_obj:
+            coordinators = await Coordinator.fetch_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            pages = await All.create_pages_to_show_members(members=coordinators, member_type=Coordinator)
+        if pages:
+            paginator = AppPaginator(self.bot, interaction, pages)
+            return await paginator.start()
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No coordinators found.')
+
     # DONE
     @commands.command(name='coords', help='Lists coordinators for a specific voice channel, all, or a member.')
     async def list_coordinators_text_command(
@@ -158,39 +144,25 @@ class EveryoneCommands(commands.Cog):
         ctx: commands.Context,
         target: Optional[str] = commands.parameter(default=None, description='Voice channel name, mention, ID, "all", or member ID')
     ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(ctx, target)
-        if member_obj:
-            target=None
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
-        async with ctx.bot.db_pool.acquire() as conn:
-            highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-            if target and target.lower() == 'all':
-                if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all coordinators.')
-                coordinators = await Coordinator.fetch_all_members_in_guild(guild_id=ctx.guild.id)
-                if not coordinators:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found in any voice channels.')
-                pages = await All.create_show_all_members_pages(guild_name=ctx.guild.name, members=coordinators, member_type=Coordinator)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
-            elif member_obj:
-                coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
-                if not coordinator_channel_ids:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a coordinator in any channels.')
-                pages = await All.create_show_all_member_channels_pages(member_channel_ids=coordinator_channel_ids, member_name=member_obj.display_name, member_type=Coordinator)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
-            elif channel_obj:
-                if channel_obj.type != discord.ChannelType.voice:
-                    return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-                discord_snowflakes = await Coordinator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=ctx.guild.id)
-                if not discord_snowflakes:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found for {channel_obj.mention}.')
-                pages = await All.create_show_all_members_in_channel_pages(channel_name=channel_obj.name, member_ids=discord_snowflakes, member_type=Coordinator)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        if target and target.lower() == 'all':
+            if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all coordinators.')
+            coordinators = await Coordinator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
+            pages = await All.create_pages_to_show_guilds_by_members(members=coordinators, member_type=Coordinator)
+        elif member_obj:
+            channel_snowflakes = await Coordinator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            pages = await All.create_pages_to_show_channels(channel_snowflakes=channel_snowflakes, member_type=Coordinator)
+        elif channel_obj:
+            coordinators = await Coordinator.fetch_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            pages = await All.create_pages_to_show_members(members=coordinators, member_type=Coordinator)
+        if pages:
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found.', allowed_mentions=discord.AllowedMentions.none())
+            
     
     # DONE
     @app_commands.command(name='devs', description='Lists developers.')
@@ -200,63 +172,23 @@ class EveryoneCommands(commands.Cog):
         interaction : discord.Interaction,
         target : Optional[str] = None
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
-        async with self.bot.db_pool.acquire() as conn:
-            pages = []
-            member_obj = await self.member_service.resolve_member(interaction, target)
-            highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-            if target is None:
-                rows = await conn.fetch(
-                    'SELECT discord_snowflake FROM users WHERE $1 = ANY(developer_guild_ids)',
-                    interaction.guild.id
-                )
-                if not rows:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No developers are configured in {interaction.guild.name}.')
-                for row in rows:
-                    user = interaction.guild.get_member(row['discord_snowflake'])
-                    name = user.display_name if user else f'User ID {row["discord_snowflake"]}'
-                    embed = discord.Embed(
-                        title = f'Developer: {name}',
-                        color = discord.Color.blurple()
-                    )
-                    pages.append(embed)
-            elif target.lower() == 'all':
-                if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all developers.')
-                rows = await conn.fetch(
-                    'SELECT discord_snowflake, developer_guild_ids FROM users WHERE array_length(developer_guild_ids, 1) > 0'
-                )
-                if not rows:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No developers are configured.')
-                for row in rows:
-                    user = self.bot.get_user(row['discord_snowflake'])
-                    name = user.name if user else f'User ID {row["discord_snowflake"]}'
-                    guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
-                    embed = discord.Embed(
-                        title = f'{self.emoji.get_random_emoji()} Developer: {name}',
-                        description = ', '.join(guilds) if guilds else 'No known guilds',
-                        color = discord.Color.blurple()
-                    )
-                    pages.append(embed)
-            else:
-                if not member_obj:
-                    return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {target}.')
-                row = await conn.fetchrow(
-                    'SELECT developer_guild_ids FROM users WHERE discord_snowflake=$1',
-                    member_obj.id
-                )
-                if not row or not row['developer_guild_ids']:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not a developer in any guilds.', allowed_mentions=discord.AllowedMentions.none())
-                guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
-                embed = discord.Embed(
-                    title = f'{self.emoji.get_random_emoji()} Developer guilds for {member_obj.display_name}',
-                    description = ', '.join(guilds) if guilds else 'No known guilds',
-                    color = discord.Color.blurple()
-                )
-                pages.append(embed)
-        paginator = AppPaginator(self.bot, interaction, pages)
-        return await paginator.start()
+        member_obj = await self.member_service.resolve_member(interaction, target)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        if target and target.lower() == 'all':
+            if highest_role not in ('Owner', 'Developer'):
+                return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all developers.')
+            developers = await Developer.fetch_members()
+            pages = await All.create_pages_to_show_guilds_by_members(members=developers, member_type=Developer)
+        elif member_obj:
+            guilds = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
+            pages = await All.create_pages_to_show_members_by_guild(guilds=guilds, member_snowflake=member_obj.id, member_type=Developer)
+        else:
+            developers = await Developer.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
+            pages = await All.create_pages_to_show_members(members=developers, member_type=Developer)
+        if pages:
+            paginator = AppPaginator(self.bot, interaction, pages)
+            return await paginator.start()
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No developers found.')
         
     # DONE
     @commands.command(name='devs', help='Lists developers.')
@@ -265,42 +197,23 @@ class EveryoneCommands(commands.Cog):
         ctx: commands.Context,
         target: Optional[str] = commands.parameter(default=None, description='"all", or user mention/ID')
     ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        async with self.bot.db_pool.acquire() as conn:
-            pages = []
-            member_obj = await self.member_service.resolve_member(ctx, target)
-            highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-            if member_obj and member_obj.id == ctx.guild.me.id:
-                return await self.handler.send_message(ctx, content='\U0001F6AB You cannot list in the guilds the bot is a developer.')
-            elif target and target.lower() == 'all':
-                if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all developers.')
-                rows = await conn.fetch('SELECT discord_snowflake, developer_guild_ids FROM users WHERE array_length(developer_guild_ids, 1) > 0')
-                if not rows: return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No developers are configured.')
-                for row in rows:
-                    user = self.bot.get_user(row['discord_snowflake'])
-                    name = user.name if user else f'User ID {row["discord_snowflake"]}'
-                    guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
-                    embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Developer: {name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
-                    pages.append(embed)
-            elif member_obj:
-                row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
-                if not row or not row['developer_guild_ids']:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not a developer in any guilds.', allowed_mentions=discord.AllowedMentions.none())
-                guilds = [self.bot.get_guild(gid).name for gid in row['developer_guild_ids'] if self.bot.get_guild(gid)]
-                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Developer guilds for {member_obj.display_name}', description=', '.join(guilds) if guilds else 'No known guilds', color=discord.Color.blurple())
-                pages.append(embed)
-            else:
-                rows = await conn.fetch('SELECT discord_snowflake FROM users WHERE $1 = ANY(developer_guild_ids)', ctx.guild.id)
-                if not rows: return await self.handler.send_message(ctx, content=f'\U0001F6AB No developers are configured in {ctx.guild.name}.')
-                for row in rows:
-                    user = ctx.guild.get_member(row['discord_snowflake'])
-                    name = user.display_name if user else f'User ID {row["discord_snowflake"]}'
-                    embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Developer: {name}', color=discord.Color.blurple())
-                    pages.append(embed)
-        paginator = Paginator(self.bot, ctx, pages)
-        return await paginator.start()
+        member_obj = await self.member_service.resolve_member(ctx, target)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        if target and target.lower() == 'all':
+            if highest_role not in ('Owner', 'Developer'):
+                return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all developers.')
+            developers = await Developer.fetch_members()
+            pages = await All.create_pages_to_show_guilds_by_members(members=developers, member_type=Developer)
+        elif member_obj:
+            guilds = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
+            pages = await All.create_pages_to_show_guilds_by_member(guilds=guilds, member_snowflake=member_obj.id, member_type=Developer)
+        else:
+            developers = await Developer.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
+            pages = await All.create_pages_to_show_members(members=developers, member_type=Developer)
+        if pages:
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No developers found.')
         
     # DONE
     @app_commands.command(name='mods', description='Lists moderator statistics.')
@@ -310,38 +223,24 @@ class EveryoneCommands(commands.Cog):
         interaction: discord.Interaction,
         target: Optional[str] = None
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
-        member_obj = await self.member_service.resolve_member(interaction, target)
-        if member_obj:
-            target = None
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
+        member_obj = await self.member_service.resolve_member(interaction, target)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all moderators.')
-            moderators = await Moderator.fetch_all_moderators_in_guild(guild_id=interaction.guild.id)
-            if not moderators:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found in any voice channels.')
-            pages = await All.create_show_all_members_pages(guild_name=interaction.guild.name, members=moderators, member_type=Moderator)
+            moderators = await Moderator.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
+            pages = await All.create_pages_to_show_members(members=moderators, member_type=Moderator)
+        elif member_obj:
+            channel_snowflakes = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            pages = await All.create_pages_to_show_channels(channel_snowflakes=channel_snowflakes, member_type=Moderator)
+        elif channel_obj:
+            moderators = await Moderator.fetch_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            pages = await All.create_pages_to_show_members(members=moderators, member_type=Moderator)
+        if pages:
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
-        if member_obj:
-            moderator_channel_ids = await Moderator.fetch_channel_ids_for_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
-            if not moderator_channel_ids:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
-            pages = await All.create_show_all_member_channels_pages(member_channel_ids=moderator_channel_ids, member_name=member_obj.display_name, member_type=Moderator)
-            paginator = AppPaginator(self.bot, interaction, pages)
-            return await paginator.start()
-        if channel_obj:
-            if channel_obj.type != discord.ChannelType.voice:
-                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-            discord_snowflakes = await Moderator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=interaction.guild.id)
-            if not discord_snowflakes:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
-            pages = await All.create_show_all_members_in_channel_pages(channel_name=channel_obj.name, member_ids=discord_snowflakes, member_type=Moderator)
-            paginator = AppPaginator(self.bot, interaction, pages)
-            return await paginator.start()
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
         
     # DONE
     @commands.command(name='mods',help='Lists moderator statistics.')
@@ -357,32 +256,21 @@ class EveryoneCommands(commands.Cog):
             target = None
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        async with ctx.bot.db_pool.acquire() as conn:
-            if target and target.lower() == 'all':
-                if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
-                moderators = await Moderator.fetch_all_members_in_guild(guild_id=ctx.guild.id)
-                if not moderators:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found in any voice channels.')
-                pages = await All.create_show_all_members_pages(guild_name=ctx.guild.name, members=moderators, member_type=Moderator)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
-            elif member_obj:
-                moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
-                if not moderator_channel_ids:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} is not a moderator in any channels.')
-                pages = await All.create_show_all_member_channels_pages(member_channel_ids=moderator_channel_ids, member_name=member_obj.display_name, member_type=Moderator)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
-            elif channel_obj:
-                if channel_obj.type != discord.ChannelType.voice:
-                    return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-                discord_snowflakes = await Moderator.fetch_discord_snowflakes_for_channel_id(channel_id=channel_obj.id, guild_id=ctx.guild.id)
-                if not discord_snowflakes:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found for {channel_obj.mention}.')
-                pages = await All.create_show_all_members_in_channel_pages(channel_name=channel_obj.name, member_ids=discord_snowflakes, member_type=Moderator)
-                paginator = Paginator(self.bot, ctx, pages)
-                return await paginator.start()
+        if target and target.lower() == 'all':
+            if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all moderators.')
+            moderators = await Moderator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
+            pages = await All.create_pages_to_show_members(members=moderators, member_type=Moderator)
+        elif member_obj:
+            channel_snowflakes = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            pages = await All.create_pages_to_show_channels(channel_snowflakes=channel_snowflakes, member_type=Moderator)
+        elif channel_obj:
+            moderators = await Moderator.fetch_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            pages = await All.create_pages_to_show_members(members=moderators, member_type=Moderator)
+        if pages:
+            paginator = Paginator(self.bot, ctx, pages)
+            return await paginator.start()
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No moderators found.')
 
     # DONE
     @app_commands.command(name='owners', description='Show temporary room stats for "all", a channel, or a member.')
@@ -574,17 +462,17 @@ class EveryoneCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
-        match True:
-            case _ if await member_is_owner(member):
-                owners.append(member)
-            case _ if await member_is_developer(member):
-                developers.append(member)
-            case _ if await member_is_administrator(member):
-                administrators.append(member)
-            case _ if await member_is_coordinator(channel_obj, member):
-                coordinators.append(member)
-            case _ if await member_is_moderator(channel_obj, member):
-                moderators.append(member)
+            match True:
+                case _ if await member_is_owner(member):
+                    owners.append(member)
+                case _ if await member_is_developer(member):
+                    developers.append(member)
+                case _ if await member_is_administrator(member):
+                    administrators.append(member)
+                case _ if await member_is_coordinator(channel_obj, member):
+                    coordinators.append(member)
+                case _ if await member_is_moderator(channel_obj, member):
+                    moderators.append(member)
         def fmt(users):
             return ', '.join(u.mention for u in users) if users else '*None*'
         embed = discord.Embed(
@@ -615,17 +503,17 @@ class EveryoneCommands(commands.Cog):
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid voice or stage channel.')
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
-        match True:
-            case _ if await member_is_owner(member):
-                owners.append(member)
-            case _ if await member_is_developer(member):
-                developers.append(member)
-            case _ if await member_is_administrator(member):
-                administrators.append(member)
-            case _ if await member_is_coordinator(channel_obj, member):
-                coordinators.append(member)
-            case _ if await member_is_moderator(channel_obj, member):
-                moderators.append(member)
+            match True:
+                case _ if await member_is_owner(member):
+                    owners.append(member)
+                case _ if await member_is_developer(member):
+                    developers.append(member)
+                case _ if await member_is_administrator(member):
+                    administrators.append(member)
+                case _ if await member_is_coordinator(channel_obj, member):
+                    coordinators.append(member)
+                case _ if await member_is_moderator(channel_obj, member):
+                    moderators.append(member)
         def fmt(users):
             return ', '.join(u.mention for u in users) if users else '*None*'
         embed = discord.Embed(

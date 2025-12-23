@@ -291,11 +291,11 @@ class AdminCommands(commands.Cog):
             action = None
             coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
             if coordinator_channel_ids and channel_obj.id in coordinator_channel_ids:
-                await Coordinator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=member_obj.id)
+                await Coordinator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
                 action = 'revoked'
             else:
                 coordinator = Coordinator(channel_id=channel_obj.id, guild_id=interaction.guild.id, member_id=member_obj.id)
-                coordinator.set_channel_id_for_member()
+                coordinator.set_by_channel_and_member()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -327,13 +327,13 @@ class AdminCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not toggle {member_obj.mention}'s coordinator role because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             action = None
-            coordinator_channel_ids = await Coordinator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=ctx.guild.id, member_id=member_obj.id)
+            coordinator_channel_ids = await Coordinator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             if coordinator_channel_ids and channel_obj.id in coordinator_channel_ids:
-                await Coordinator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=member_obj.id)
+                await Coordinator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
                 action = 'revoked'
             else:
-                coordinator = Coordinator(channel_id=channel_obj.id, guild_id=ctx.guild.id, member_id=member_obj.id)
-                coordinator.set_channel_id_for_member()
+                coordinator = Coordinator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                coordinator.set_by_channel_and_member()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -620,8 +620,8 @@ class AdminCommands(commands.Cog):
                     f'UPDATE {table} SET room_name=$3, channel_id=$4 WHERE guild_id=$1 AND room_name=$2',
                     interaction.guild.id, old_name, channel_obj.name, channel_obj.id
                 )
-            await Coordinator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
-            await Moderator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
+            await Coordinator.update_by_source_and_target(source_channel_snowflake=room.channel_id, target_channel_snowflake=channel_obj.id)
+            await Moderator.update_by_source_and_target(source_channel_snowflake=room.channel_id, target_channel_snowflake=channel_obj.id)
             return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
     
     # DONE
@@ -658,8 +658,8 @@ class AdminCommands(commands.Cog):
                     ctx.guild.id, old_name, channel_obj.name, channel_obj.id
                 )
 
-                await Coordinator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
-            await Moderator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
+                await Coordinator.update_by_source_and_target(source_channel_snowflake=room.channel_id, target_channel_snowflake=channel_obj.id)
+            await Moderator.update_by_source_and_target(source_channel_snowflake=room.channel_id, target_channel_snowflake=channel_obj.id)
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
 
     # DONE
@@ -950,7 +950,7 @@ class AdminCommands(commands.Cog):
         if room:
             async with self.bot.db_pool.acquire() as conn:
                 if room.room_owner:
-                    await Moderator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=room.room_owner.id)
+                    await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=room.room_owner.id)
                 await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
                 await Alias.delete_all_command_aliases_by_channel(channel_obj)
             action = 'removed'
@@ -959,8 +959,8 @@ class AdminCommands(commands.Cog):
             temporary_room = TemporaryRoom(interaction.guild, channel_obj.id, channel_obj.name, member_obj)
             async with self.bot.db_pool.acquire() as conn:
                 await temporary_room.insert_into_temporary_rooms()
-                moderator = Moderator(channel_id=channel_obj.id, guild_id=interaction.guild.id, member_id=member_obj.id)
-                moderator.set_channel_id_for_member()
+                moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                moderator.set_by_channel_and_member()
             action = f'created and owned by {member_obj.mention}'
         await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} has been {action}.', allowed_mentions=discord.AllowedMentions.none())
         
@@ -983,7 +983,7 @@ class AdminCommands(commands.Cog):
         if room:
             async with ctx.bot.db_pool.acquire() as conn:
                 if room.room_owner:
-                    await Moderator.delete_channel_id_for_member_id(channel_id=channel_obj.id, member_id=room.room_owner.id)
+                    await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=room.room_owner.id)
                 await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
                 await Alias.delete_all_command_aliases_by_channel(channel_obj)
             action = 'removed'
@@ -992,8 +992,8 @@ class AdminCommands(commands.Cog):
             temporary_room = TemporaryRoom(ctx.guild, channel_obj.id, channel_obj.name, member_obj)
             async with ctx.bot.db_pool.acquire() as conn:
                 await temporary_room.insert_into_temporary_rooms()
-                moderator = Moderator(channel_id=channel_obj.id, guild_id=ctx.guild.id, member_id=member_obj.id)
-                moderator.set_channel_id_for_member()
+                moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                moderator.set_by_channel_and_member()
             action = f'created and owned by {member_obj.mention}'
         await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} has been {action}.', allowed_mentions=discord.AllowedMentions.none())
 

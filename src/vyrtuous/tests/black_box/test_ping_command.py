@@ -30,12 +30,8 @@ import pytest
     ]
 )
 
-async def test_ping_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str]):    
-    await Moderator.grant(channel_id=voice_channel_one.id, guild_id=guild.id, member_id=privileged_author.id)
-    try:
-        voice_channel_one.messages.clear() 
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]
-        assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) and "Pong!" in response["content"]
-    finally:
-        await Moderator.revoke(channel_id=voice_channel_one.id, member_id=privileged_author.id)
+async def test_ping_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str]): 
+    voice_channel_one.messages.clear() 
+    await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
+    response = voice_channel_one.messages[0]
+    assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) and "Pong!" in response["content"]

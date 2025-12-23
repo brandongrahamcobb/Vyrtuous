@@ -91,8 +91,8 @@ class EventListeners(commands.Cog):
                 if old_stage:
                     old_stage_temporary_coordinator_ids = await Stage.fetch_stage_temporary_coordinator_ids_by_guild_id_and_channel_name(guild_id=guild.id, channel_name=old_name)
                     await old_stage.update_stage_by_channel_id_name(channel_id=channel.id, channel_name=channel.name)
-                await Coordinator.update_source_channel_id_to_target_channel_id(source_channel_id=room.channel_id, target_channel_id=channel_obj.id)
-                await Moderator.update_source_channel_id_to_target_channel_id(source_channel_id=old_id, target_channel_id=channel.id)
+                await Coordinator.update_by_source_and_target(source_channel_snowflake=room.channel_id, target_channel_snowflake=channel_obj.id)
+                await Moderator.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
             await conn.execute('UPDATE active_bans SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_text_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)
             await conn.execute('UPDATE active_voice_mutes SET channel_id=$3 WHERE guild_id=$1 AND room_name=$2', guild.id, name, channel.id)

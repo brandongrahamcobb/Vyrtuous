@@ -30,7 +30,7 @@ import pytest
 )
 
 async def test_xrmute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
-    await Coordinator.grant(channel_id=voice_channel_one.id, guild_id=guild.id, member_id=privileged_author.id)
+    await Coordinator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
     try:
         voice_channel_one.messages.clear() 
         formatted = f"{command} {voice_channel_one.id}"
@@ -38,4 +38,4 @@ async def test_xrmute_command(bot, voice_channel_one, guild, privileged_author, 
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
     finally:
-        await Coordinator.revoke(channel_id=voice_channel_one.id, member_id=privileged_author.id)
+        await Coordinator.revoke(channel_snowflake=voice_channel_one.id, member_snowflake=privileged_author.id)
