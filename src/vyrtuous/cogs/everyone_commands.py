@@ -23,6 +23,7 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
+from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.all import All
 from vyrtuous.utils.developer import Developer
 from vyrtuous.utils.emojis import Emojis
@@ -48,29 +49,13 @@ class EveryoneCommands(commands.Cog):
         self,
         interaction: discord.Interaction
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in a server.')
-        async with self.bot.db_pool.acquire() as conn:
-            records = await conn.fetch('''SELECT discord_snowflake FROM users WHERE $1=ANY(administrator_guild_ids) ORDER BY discord_snowflake''', interaction.guild.id)
-            if not records:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No admins found in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
-            description_lines = []
-            for record in records:
-                uid = record['discord_snowflake']
-                member_obj = await self.member_service.resolve_member(interaction, uid)
-                description_lines.append(f'• {member_obj.display_name} — {member_obj.mention}' if member_obj else f'• User ID `{uid}` (not in guild)')
-            chunk_size = 18
-            pages = []
-            for i in range(0,len(description_lines),chunk_size):
-                chunk = description_lines[i:i+chunk_size]
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} Administrators in {interaction.guild.name}',
-                    color=discord.Color.blurple()
-                )
-                embed.add_field(name='Admins', value='\n'.join(chunk), inline=False)
-                pages.append(embed)
+        administrators = await Administrator.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
+        pages = await All.create_pages_to_show_members(members=administrators, member_type=Administrator)
+        if pages:
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
+        else:
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No admins found in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
             
     # DONE
     @commands.command(name='admins', help='Lists all members with server mute privileges in this guild.')
@@ -78,37 +63,13 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context
     ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
-        async with self.bot.db_pool.acquire() as conn:
-            records = await conn.fetch('''
-                SELECT discord_snowflake
-                FROM users
-                WHERE $1 = ANY(administrator_guild_ids)
-                ORDER BY discord_snowflake
-            ''', ctx.guild.id)
-            if not records:
-                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No admins found in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
-            description_lines = []
-            for record in records:
-                uid = record['discord_snowflake']
-                member_obj = await self.member_service.resolve_member(ctx, uid)
-                if member_obj:
-                    description_lines.append(f'• {member_obj.display_name} — {member_obj.mention}')
-                else:
-                    description_lines.append(f'• User ID `{uid}` (not in guild)')
-            chunk_size = 18
-            pages = []
-            for i in range(0, len(description_lines), chunk_size):
-                chunk = description_lines[i:i + chunk_size]
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} Administrators in {ctx.guild.name}',
-                    color=discord.Color.blurple()
-                )
-                embed.add_field(name='Admins', value='\n'.join(chunk), inline=False)
-                pages.append(embed)
+        administrators = await Administrator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
+        pages = await All.create_pages_to_show_members(members=administrators, member_type=Administrator)
+        if pages:
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
+        else:
+            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No admins found in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
     
     # DONE
     @app_commands.command(name='coords', description='Lists coordinators for a specific voice channel, all, or a member.')
@@ -289,7 +250,7 @@ class EveryoneCommands(commands.Cog):
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all owners.')
-                rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild(interaction.guild)
+                rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=interaction.guild.id)
                 if not rooms:
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No temporary rooms exist.')
                 pages = []
@@ -303,14 +264,14 @@ class EveryoneCommands(commands.Cog):
                     for room in subset:
                         embed.add_field(
                             name=room.room_name,
-                            value=f'• Owner: {room.room_owner.display_name}\n• Channel: {room.channel.mention}',
+                            value=f'• Owner: {room.member_mention}\n• Channel: {room.channel_mention}',
                             inline=False
                         )
                     pages.append(embed)
                 paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             if member_obj:
-                rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild_and_member(interaction.guild, member_obj)
+                rooms = await TemporaryRoom.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 if not rooms:
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()}{member_obj.display_name} does not own any temporary rooms.')
                 pages = []
@@ -331,15 +292,16 @@ class EveryoneCommands(commands.Cog):
                 paginator = AppPaginator(self.bot, interaction, pages)
                 return await paginator.start()
             if channel_obj:
-                room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+                room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                 if not room:
                     return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {channel_obj.mention} is not a temporary room.')
                 embed = discord.Embed(
                     title=f'{self.emoji.get_random_emoji()} Temporary Room Info for {channel_obj.name}',
                     color=discord.Color.blurple()
                 )
+                member = self.bot.get_user(room.member_snowflake)
                 embed.add_field(name='Room Name', value=room.room_name, inline=False)
-                embed.add_field(name='Owner', value=f'{room.room_owner.display_name} ({room.room_owner.mention})', inline=False)
+                embed.add_field(name='Owner', value=f'{member.display_name} ({member.mention})', inline=False)
                 embed.add_field(name='Channel', value=channel_obj.mention, inline=False)
                 return await interaction.response.send_message(embed=embed)
             return await interaction.response.send_message(content='\U0001F6AB Could not interpret the target. Provide "all", a channel, or a member.')
@@ -366,10 +328,11 @@ class EveryoneCommands(commands.Cog):
                         title=f'{self.emoji.get_random_emoji()} Temporary Rooms',
                         color=discord.Color.blurple()
                     )
+                    member = self.bot.get_user(room.member_snowflake)
                     for room in subset:
                         embed.add_field(
                             name=room.room_name,
-                            value=f'• Owner: {room.room_owner.display_name}\n• Channel: {room.channel_mention}',
+                            value=f'• Owner: {member.display_name}\n• Channel: {room.channel_mention}',
                             inline=False
                         )
                     pages.append(embed)
@@ -377,21 +340,21 @@ class EveryoneCommands(commands.Cog):
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all owners.')
-                rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild(ctx.guild)
+                rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=ctx.guild.id)
                 if not rooms:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No temporary rooms exist.')
                 pages = make_pages(rooms)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             if member_obj:
-                rooms = await TemporaryRoom.fetch_temporary_rooms_by_guild_and_member(ctx.guild, member_obj)
+                rooms = await TemporaryRoom.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 if not rooms:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.display_name} does not own any temporary rooms.')
                 pages = make_pages(rooms)
                 paginator = Paginator(self.bot, ctx, pages)
                 return await paginator.start()
             if channel_obj:
-                room = await TemporaryRoom.fetch_temporary_room_by_channel(channel_obj)
+                room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                 if not room:
                     return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {channel_obj.mention} is not a temporary room.')
                 embed = discord.Embed(
@@ -399,7 +362,7 @@ class EveryoneCommands(commands.Cog):
                     color=discord.Color.blurple()
                 )
                 embed.add_field(name='Room Name', value=room.room_name, inline=False)
-                embed.add_field(name='Owner', value=f"{room.room_owner.display_name} ({room.room_owner.mention})", inline=False)
+                embed.add_field(name='Owner', value=f"'{member.display_name} ({member.mention})", inline=False)
                 embed.add_field(name='Channel', value=channel_obj.mention, inline=False)
                 return await self.handler.send_message(ctx, embed=embed)
             return await self.handler.send_message(ctx, content='\U0001F6AB Could not interpret the target. Provide "all", a channel, or a member.')
@@ -428,8 +391,6 @@ class EveryoneCommands(commands.Cog):
         interaction: discord.Interaction,
         role_name: str
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in a server.')
         role = discord.utils.get(interaction.guild.roles, name=role_name)
         if role:
             await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Role `{role.name}` has ID `{role.id}`.')
@@ -439,8 +400,6 @@ class EveryoneCommands(commands.Cog):
     # DONE
     @commands.command(name='roleid', help='Get the ID of a role by name in this server.')
     async def get_role_id(self, ctx: commands.Context, *, role_name: str):
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in a server.')
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if role:
             await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Role `{role.name}` has ID `{role.id}`.')
@@ -489,7 +448,6 @@ class EveryoneCommands(commands.Cog):
     
     # DONE
     @commands.command(name='survey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
-    @is_owner_developer_predicator()
     async def stage_survey_text_command(
         self,
         ctx: commands.Context,

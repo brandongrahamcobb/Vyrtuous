@@ -16,8 +16,8 @@
 '''
 from typing import Optional
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.test_admin_helpers import admin_cleanup, admin_initiation
-from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one
+from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, role, voice_channel_one
+from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
@@ -26,34 +26,34 @@ import pytest
     "command,alias_type,alias_name,channel_ref,role_ref",
     [
         ("alias", "ban", "testban", True, False),
-        ("xalias", None, "testban", None, None),
+        ("xalias", None, "testban", False, False),
         ("alias", "unban", "testunban", True, False),
-        ("xalias", None, "testunban", None, None),
+        ("xalias", None, "testunban", False, False),
         ("alias", "mute", "testmute", True, False),
-        ("xalias", None, "testmute", None, None),
+        ("xalias", None, "testmute", False, False),
         ("alias", "unmute", "testunmute", True, False),
-        ("xalias", None, "testunmute", None, None),
+        ("xalias", None, "testunmute", False, False),
         ("alias", "flag", "testflag", True, False),
-        ("xalias", None, "testflag",  None, None),
+        ("xalias", None, "testflag",  False, False),
         ("alias", "unflag", "testunflag", True, False),
-        ("xalias", None, "testunflag", None, None),
+        ("xalias", None, "testunflag", False, False),
         ("alias", "cow", "testcow", True, False),
-        ("xalias", None, "testcow", None, None),
+        ("xalias", None, "testcow", False, False),
         ("alias", "uncow", "testuncow", True, False),
-        ("xalias", None, "testuncow", None, None),
+        ("xalias", None, "testuncow", False, False),
         ("alias", "tmute", "testtmute", True, False),
-        ("xalias", None, "testtmute", None, None),
+        ("xalias", None, "testtmute", False, False),
         ("alias", "untmute", "testuntmute", True, False),
-        ("xalias", None, "testuntmute", None, None),
+        ("xalias", None, "testuntmute", False, False),
         ("alias", "role", "testrole", True, True),
-        ("xalias", None, "testrole", None, None),
+        ("xalias", None, "testrole", False, False),
         ("alias", "unrole", "testunrole", True, True),
-        ("xalias", None, "testunrole", None, None)
+        ("xalias", None, "testunrole", False, False)
     ]
 )
 
-async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], alias_type, alias_name, channel_ref, role_ref):
-    await admin_initiation(guild.id, privileged_author.id)
+async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], role, alias_type, alias_name, channel_ref, role_ref):
+    await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
     try:
         voice_channel_one.messages.clear() 
         channel_token = voice_channel_one.mention
@@ -73,4 +73,4 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
             else:
                 assert any(val in response for val in [channel_value])
     finally:
-        await admin_cleanup(guild.id, PRIVILEGED_AUTHOR_ID)
+        await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)

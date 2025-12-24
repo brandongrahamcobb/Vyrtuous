@@ -23,6 +23,7 @@ from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.check_service import *
+from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator
 
@@ -63,13 +64,13 @@ class CoordinatorCommands(commands.Cog):
             return await interaction.response.send_message(content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         async with self.bot.db_pool.acquire() as conn:
             action = None
-            moderator_channel_ids = await Moderator.fetch_channel_ids_for_guild_id_and_member_id(guild_id=interaction.guild.id, member_id=member_obj.id)
+            moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
                 await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
                 action = 'revoked'
             else:
                 moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                moderator.set_by_channel_and_member()
+                await moderator.create()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -110,7 +111,7 @@ class CoordinatorCommands(commands.Cog):
                 action = 'revoked'
             else:
                 moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                moderator.set_by_channel_and_member()
+                await moderator.create()
                 action = 'granted'
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -138,20 +139,14 @@ class CoordinatorCommands(commands.Cog):
                 if member.id == interaction.user.id:
                     continue
                 try:
-                    row = await conn.fetchrow('''
-                        SELECT 1 FROM active_voice_mutes
-                        WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target='user'
-                        AND (expires_at IS NULL OR expires_at > NOW())
-                    ''', interaction.guild.id, member.id, channel_obj.id)
-                    if row:
+                    voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
+                    if voice_mute:
                         skipped_members.append(member)
                         continue
                     if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
                         await member.edit(mute=True)
-                    await conn.execute('''
-                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, target, room_name, expires_at, reason)
-                        VALUES ($1, $2, $3, 'user', '', NULL, $4)
-                    ''', interaction.guild.id, member.id, channel_obj.id, 'Muted via room_mute')
+                    voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
+                    voice_mute.create()
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
@@ -186,20 +181,14 @@ class CoordinatorCommands(commands.Cog):
                 if member.id == ctx.author.id:
                     continue
                 try:
-                    row = await conn.fetchrow('''
-                        SELECT 1 FROM active_voice_mutes
-                        WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target='user'
-                        AND (expires_at IS NULL OR expires_at > NOW())
-                    ''', ctx.guild.id, member.id, channel_obj.id)
-                    if row:
+                    voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
+                    if voice_mute:
                         skipped_members.append(member)
                         continue
                     if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
                         await member.edit(mute=True)
-                    await conn.execute('''
-                        INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, target, room_name, expires_at, reason)
-                        VALUES ($1, $2, $3, 'user', '', NULL, $4)
-                    ''', ctx.guild.id, member.id, channel_obj.id, 'Muted via room_mute')
+                    voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
+                    voice_mute.create()
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
@@ -233,20 +222,13 @@ class CoordinatorCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             for member in channel_obj.members:
                 try:
-                    row = await conn.fetchrow('''
-                        SELECT 1 FROM active_voice_mutes
-                        WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target='user'
-                        AND (expires_at IS NULL OR expires_at > NOW())
-                    ''', interaction.guild.id, member.id, channel_obj.id)
-                    if not row:
+                    voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
+                    if not voice_mute:
                         skipped_members.append(member)
                         continue
                     if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
                         await member.edit(mute=False)
-                    await conn.execute('''
-                        DELETE FROM active_voice_mutes
-                        WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target='user'
-                    ''', interaction.guild.id, member.id, channel_obj.id)
+                    await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="user")
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
@@ -281,20 +263,13 @@ class CoordinatorCommands(commands.Cog):
                 if member.id == ctx.author.id:
                     continue
                 try:
-                    row = await conn.fetchrow('''
-                        SELECT 1 FROM active_voice_mutes
-                        WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target='user'
-                        AND (expires_at IS NULL OR expires_at > NOW())
-                    ''', ctx.guild.id, member.id, channel_obj.id)
-                    if not row:
+                    voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
+                    if not voice_mute:
                         skipped_members.append(member)
                         continue
                     if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
                         await member.edit(mute=False)
-                    await conn.execute('''
-                        DELETE FROM active_voice_mutes
-                        WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target='user'
-                    ''', ctx.guild.id, member.id, channel_obj.id)
+                    await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="user")
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)

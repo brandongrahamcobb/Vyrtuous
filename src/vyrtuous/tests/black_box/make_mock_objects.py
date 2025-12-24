@@ -129,7 +129,7 @@ def make_mock_guild(bot, channel_defs=None, id=None, name=None, members=None, ow
             'name': name,
             'owner_id': owner_id,
             "get_role": lambda self, role_id: roles.get(role_id),
-            "roles": {}
+            "roles": roles
         }
     )()
     channels = {}

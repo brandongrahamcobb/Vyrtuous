@@ -25,74 +25,22 @@ import time
 
 class Stage:
 
-    def __init__(self, stage_expires_at: datetime, stage_channel_id: Optional[int], stage_channel_name: Optional[str], stage_guild_id: Optional[str], stage_initiator_id: Optional[int]):
-        self.channel_id: Optional[int] = stage_channel_id
-        self.channel_name: Optional[str] = stage_channel_name
-        self.expires_at: Optional[datetime] = stage_expires_at
-        self.guild_id: Optional[int] = stage_guild_id
-        self.initiator_id: Optional[int] = stage_initiator_id
+    def __init__(self, channel_snowflake: Optional[int], expires_at: Optional[datetime], guild_snowflake: Optional[str], member_snowflake: Optional[int]):
+        self.channel_snowflake = channel_snowflake
+        self.expires_at = expires_at
+        self.guild_snowflake = guild_snowflake
+        self.member_snowflake = member_snowflake
 
     @classmethod
-    async def fetch_stage_by_guild_id_channel_id_and_channel_name(cls, guild_id: Optional[int], channel_id: Optional[int], channel_name: Optional[str]):
-        try:
-            bot = DiscordBot.get_instance()
-            async with bot.db_pool.acquire() as conn:
-                row = await conn.fetchrow('''
-                    SELECT expires_at, initiator_id FROM active_stages
-                    WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
-                ''', channel_id, guild_id, channel_name)
-                if row:
-                    return Stage(row['expires_at'], channel_id,  channel_name, guild_id, row['initiator_id'])
-                raise Exception(f'No active stage found for <#{channel_id}>.')
-        except Exception:
-            raise
-
-    @classmethod
-    async def fetch_stage_by_guild_id_and_channel_name(cls, guild_id: Optional[int], channel_name: Optional[str]):
-        try:
-            bot = DiscordBot.get_instance()
-            async with bot.db_pool.acquire() as conn:
-                row = await conn.fetchrow('''
-                    SELECT channel_id, expires_at, initiator_id FROM active_stages
-                    WHERE guild_id = $1 AND room_name = $2
-                ''', guild_id, channel_name)
-                if row:
-                    return Stage(row['expires_at'], row['channel_id'], channel_name, guild_id, row['initiator_id'])
-                raise Exception(f'No active stage for `{channel_name}`.')
-        except Exception:
-            raise
-    
-    @classmethod
-    async def fetch_stage_temporary_coordinator_ids_by_guild_id_and_channel_name(cls, guild_id: Optional[int], channel_name: Optional[str]):
-        try:
-            bot = DiscordBot.get_instance()
-            async with bot.db_pool.acquire() as conn:
-                row = await conn.fetch('''
-                    SELECT discord_snowflake FROM stage_coordinators
-                    WHERE guild_id = $1 AND room_name = $2
-                ''', guild_id, channel_name)
-                if row:
-                    temporary_stage_coordinator_ids = {c['discord_snowflake'] for c in row}
-                    return temporary_stage_coordinator_ids
-                raise Exception('No temporary stage coordinators for this stage.')
-        except Exception:
-            raise
-
-    @classmethod
-    async def fetch_stage_temporary_coordinator_ids_by_channel_id(cls, channel_id: Optional[int]):
-        try:
-            bot = DiscordBot.get_instance()
-            async with bot.db_pool.acquire() as conn:
-                row = await conn.fetch('''
-                    SELECT discord_snowflake FROM stage_coordinators
-                    WHERE channel_id = $1
-                ''', channel_id)
-                if row:
-                    temporary_stage_coordinator_ids = {c['discord_snowflake'] for c in row}
-                    return temporary_stage_coordinator_ids
-                raise Exception('No temporary stage coordinators for this stage.')
-        except Exception:
-            raise
+    async def fetch_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], ):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow('''
+                SELECT expires_at, member_snowflake FROM active_stages
+                WHERE channel_snowflake = $1 AND guild_snowflake = $2
+            ''', channel_snowflake, guild_snowflake)
+            if row:
+                return Stage(channel_snowflake=channel_snowflake, expires_at=row['expires_at'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
 
     async def send_stage_ask_to_speak_message(self, join_log: dict[int, discord.Member], member: discord.Member):
         bot = DiscordBot.get_instance()
@@ -101,33 +49,113 @@ class Stage:
         if len(join_log[member.id]) < 1:
             join_log[member.id].append(now)
             embed = discord.Embed(
-                title=f"\U0001F399 {self.stage_channel_id} — Stage Mode",
+                title=f"\U0001F399 {self.channel_snowflake} — Stage Mode",
                 description=f"Ends <t:{int(self.expires_at.timestamp())}:R>",
                 color=discord.Color.green()
             )
             embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
-            await bot.get_channel(self.channel_id).send(embed=embed)
+            await bot.get_channel(self.channel_snowflake).send(embed=embed)
 
-    async def update_stage_by_channel_id_name(self, channel_id: Optional[int], channel_name: Optional[str]):
+    @classmethod
+    async def update_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_stages SET channel_id=$1
-                WHERE guild_id=$2 AND room_name=$3
-            ''', channel_id, self.guild_id, channel_name)
-            await conn.execute('''
-                UPDATE stage_coordinators SET channel_id=$1
-                WHERE guild_id=$2 AND room_name=$3
-            ''', channel_id.id, self.guild_id, channel_name)
+                UPDATE active_stages SET channel_snowflake=$1
+                WHERE guild_snowflake=$2
+            ''', channel_snowflake, guild_snowflake)
 
-    async def update_stage_by_channel_id_name_initiator_id_and_temporary_coordinator_ids(self, channel_id: Optional[int], channel_name: Optional[str], stage_initiator_id: Optional[int], temporary_stage_coordinator_ids: set[int]):
+    @classmethod
+    async def fetch_by_guild(cls, guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT
+                    s.channel_snowflake,
+                    s.member_snowflake,
+                    s.expires_at,
+                    COALESCE(COUNT(v.member_snowflake), 0) AS active_mutes
+                FROM active_stages s
+                LEFT JOIN active_voice_mutes v
+                    ON s.guild_snowflake = v.guild_snowflake
+                   AND s.channel_snowflake = v.channel_snowflake
+                   AND v.target = 'room'
+                   AND (v.expires_at IS NULL OR v.expires_at > NOW())
+                WHERE s.guild_snowflake = $1
+                GROUP BY
+                    s.channel_snowflake,
+                    s.member_snowflake,
+                    s.expires_at
+                ORDER BY s.channel_snowflake
+            ''', guild_snowflake)
+        stages = []
+        if rows:
+            for row in rows:
+                stages.append(Stage(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake']))
+
+    @classmethod
+    async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_stages SET channel_id=$1, initiator_id=$3
-                WHERE guild_id=$2 AND room_name=$4
-            ''', channel_id, self.guild_id, stage_initiator_id, channel_name)
+                UPDATE active_stages SET channel_snowflake=$2 WHERE channel_snowflake = $1
+            ''', source_channel_snowflake, target_channel_snowflake)
+
+    @classmethod
+    async def fetch_by_guild_and_channel(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow('''
+                SELECT
+                    s.channel_snowflake,
+                    s.member_snowflake,
+                    s.expires_at,
+                    COALESCE(COUNT(v.member_snowflake), 0) AS active_mutes
+                FROM active_stages s
+                LEFT JOIN active_voice_mutes v
+                    ON s.guild_snowflake = v.guild_snowflake
+                   AND s.channel_snowflake = v.channel_snowflake
+                   AND v.target = 'room'
+                   AND (v.expires_at IS NULL OR v.expires_at > NOW())
+                WHERE s.channel_snowflake = $1
+                  AND s.guild_snowflake = $2
+                GROUP BY
+                    s.channel_snowflake,
+                    s.member_snowflake,
+                    s.expires_at
+            ''', channel_snowflake, guild_snowflake)
+        if row:
+            return Stage(channel_snowflake=channel_snowflake, expires_at=row['expires_at'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
+
+    async def create(self):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE stage_coordinators SET channel_id=$1
-                WHERE discord_snowflake=ANY($2) AND guild_id=$3 AND room_name=$4
-            ''', channel_id, list(temporary_stage_coordinator_ids), self.guild_id, channel_name)
+                INSERT INTO active_stages (channel_snowflake, expires_at, guild_snowflake, member_snowflake)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT DO NOTHING
+            ''', self.channel_snowflake, self.expires_at, self.guild_snowflake, self.member_snowflake)
+
+    @classmethod
+    async def fetch_by_expired(cls, now: Optional[datetime]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, updated_at
+                FROM active_stages
+                WHERE expires_at IS NOT NULL AND expires_at <= $1
+            ''', now)
+        expired_stages = []
+        for row in rows:
+            expired_stages.append(Stage(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
+        return expired_stages
+
+
+    @classmethod
+    async def delete_by_channel_and_guild(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                DELETE FROM active_stages
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
+            ''', channel_snowflake, guild_snowflake)

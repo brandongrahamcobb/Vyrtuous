@@ -23,6 +23,7 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.member_service import MemberService
+from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.emojis import Emojis
@@ -89,7 +90,7 @@ class DevCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
         await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
-        await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+        await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         await Alias.delete_all_command_aliases_by_channel(channel_obj)
         await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
 
@@ -101,14 +102,10 @@ class DevCommands(commands.Cog):
         ctx: commands.Context,
         channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        if channel_obj.type != discord.ChannelType.voice:
-            return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
         await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
-        await TemporaryRoom.delete_temporary_room_by_channel(channel_obj)
+        await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         await Alias.delete_all_command_aliases_by_channel(channel_obj)
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Removed channel {channel_obj.mention} from all users and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
     
@@ -222,21 +219,9 @@ class DevCommands(commands.Cog):
             return await interaction.response.send_message(content='\U0001F6AB This command must be used in a server.')
         role_id = int(role.replace('<@&','').replace('>',''))
         role_obj = guild.get_role(role_id)
-        async with self.bot.db_pool.acquire() as conn:
-            for member in role_obj.members:
-                await conn.execute(
-                    '''
-                    INSERT INTO users (discord_snowflake, administrator_role_ids, administrator_guild_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[], ARRAY[$3]::BIGINT[])
-                    ON CONFLICT (discord_snowflake)
-                    DO UPDATE SET
-                        administrator_role_ids = ARRAY(SELECT DISTINCT unnest(users.administrator_role_ids || $2)),
-                        administrator_guild_ids = ARRAY(SELECT DISTINCT unnest(users.administrator_guild_ids || $3))
-                    ''',
-                    member.id,
-                    role_obj.id,
-                    guild.id
-                )
+        for member in role_obj.members:
+            administrator = Administrator(guild_snowflakes=[interaction.guild.id], member_snowflake=member.id, role_snowflakes=[role_obj.id])
+            administrator.create()
         await interaction.response.send_message(f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` granted for all members with `{role_obj.name}`.')
     
     @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
@@ -245,21 +230,9 @@ class DevCommands(commands.Cog):
         guild = ctx.guild
         role_id = int(role.replace('<@&','').replace('>',''))
         role_obj = guild.get_role(role_id)
-        async with self.bot.db_pool.acquire() as conn:
-            for member in role_obj.members:
-                await conn.execute(
-                    '''
-                    INSERT INTO users (discord_snowflake, administrator_role_ids, administrator_guild_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[], ARRAY[$3]::BIGINT[])
-                    ON CONFLICT (discord_snowflake)
-                    DO UPDATE SET
-                        administrator_role_ids = ARRAY(SELECT DISTINCT unnest(users.administrator_role_ids || $2)),
-                        administrator_guild_ids = ARRAY(SELECT DISTINCT unnest(users.administrator_guild_ids || $3))
-                    ''',
-                    member.id,
-                    role_obj.id,
-                    guild.id
-                )
+        for member in role_obj.members:
+            administrator = Administrator(guild_snowflakes=[interaction.guild.id], member_snowflake=member.id, role_snowflakes=[role_obj.id])
+            administrator.create()
         await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` granted for all members with `{role_obj.name}`.')
 
     # DONE
@@ -287,57 +260,35 @@ class DevCommands(commands.Cog):
     @app_commands.command(name='xtrole', description='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()
     async def revoke_administrator_to_role_app_command(self, interaction: discord.Interaction, role: Optional[str]):
-        guild = interaction.guild
-        if not guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
         role_id = int(role.replace('<@&','').replace('>',''))
-        role_obj = guild.get_role(role_id)
-        async with self.bot.db_pool.acquire() as conn:
-            for member in role_obj.members:
-                row = await conn.fetchrow(
-                    'SELECT administrator_role_ids, administrator_guild_ids FROM users WHERE discord_snowflake=$1',
-                    member.id
-                )
-                if not row:
-                    continue
-                role_ids = set(row['administrator_role_ids'] or [])
-                guild_ids = set(row['administrator_guild_ids'] or [])
-                role_ids.discard(role_obj.id)
-                if not (role_ids & {r.id for r in member.roles}):
-                    guild_ids.discard(guild.id)
-                await conn.execute(
-                    'UPDATE users SET administrator_role_ids=$2, administrator_guild_ids=$3 WHERE discord_snowflake=$1',
-                    member.id,
-                    list(role_ids),
-                    list(guild_ids)
-                )
+        role_obj = interaction.guild.get_role(role_id)
+        for member in role_obj.members:
+            administrator = await Administrator.fetch_member(member.id)
+            if not administrator:
+                continue
+            guild_snowflakes = set(administrator.guild_snowflakes)
+            role_snowflakes = set(administrator.role_snowflakes)
+            role_snowflakes.discard(role_obj.id)
+            if not (role_snowflakes & {r.id for r in member.roles}):
+                guild_snowflakes.discard(interaction.guild.id)
+            await Administrator.update_guild_and_role_for_member(guild_snowflakes=list(guild_snowflakes), member_snowflake=member.id, role_snowflakes=list(role_snowflakes))
         await interaction.response.send_message(f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` revoked for all members with `{role_obj.name}`.')
      
     @commands.command(name='xtrole', help='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()
     async def revoke_administrator_to_role_text_command(self, ctx: commands.Context, role: Optional[str]):
-        guild = ctx.guild
         role_id = int(role.replace('<@&','').replace('>',''))
-        role_obj = guild.get_role(role_id)
-        async with self.bot.db_pool.acquire() as conn:
-            for member in role_obj.members:
-                row = await conn.fetchrow(
-                    'SELECT administrator_role_ids, administrator_guild_ids FROM users WHERE discord_snowflake=$1',
-                    member.id
-                )
-                if not row:
-                    continue
-                role_ids = set(row['administrator_role_ids'] or [])
-                guild_ids = set(row['administrator_guild_ids'] or [])
-                role_ids.discard(role_obj.id)
-                if not (role_ids & {r.id for r in member.roles}):
-                    guild_ids.discard(guild.id)
-                await conn.execute(
-                    'UPDATE users SET administrator_role_ids=$2, administrator_guild_ids=$3 WHERE discord_snowflake=$1',
-                    member.id,
-                    list(role_ids),
-                    list(guild_ids)
-                )
+        role_obj = ctx.guild.get_role(role_id)
+        for member in role_obj.members:
+            administrator = await Administrator.fetch_member(member_snowflake=member.id)
+            if not administrator:
+                continue
+            guild_snowflakes = set(administrator.guild_snowflakes)
+            role_snowflakes = set(administrator.role_snowflakes)
+            role_snowflakes.discard(role_obj.id)
+            if not (role_snowflakes & {r.id for r in member.roles}):
+                guild_snowflakes.discard(ctx.guild.id)
+            await Administrator.update_guild_and_role_for_member(guild_snowflakes=list(guild_snowflakes), member_snowflake=member.id, role_snowflakes=list(role_snowflakes))
         await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` revoked for all members with `{role_obj.name}`.')   
               
 async def setup(bot: DiscordBot):

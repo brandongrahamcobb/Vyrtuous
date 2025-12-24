@@ -19,8 +19,12 @@ from datetime import datetime, timezone
 from discord.ext import commands, tasks
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
+from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.setup_logging import logger
+from vyrtuous.utils.text_mute import TextMute
+from vyrtuous.utils.stage import Stage
+from vyrtuous.utils.voice_mute import VoiceMute
 
 import discord
 
@@ -43,48 +47,19 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_stages.start()
         if not self.check_active_bans.is_running():
             self.check_active_bans.start()
-
-    @tasks.loop(minutes=5)
-    async def check_active_bans(self):
-        async with self.bot.db_pool.acquire() as conn:
-            for guild in self.bot.guilds:
-                for channel in guild.channels:
-                    if not isinstance(channel, (discord.TextChannel, discord.VoiceChannel)):
-                        continue
-                    for member in channel.members:
-                        perms = channel.permissions_for(member)
-                        if not perms.view_channel:
-                            break
-                        ban = await conn.fetchrow('''
-                            SELECT expires_at
-                            FROM active_bans
-                            WHERE guild_id = $1
-                              AND discord_snowflake = $2
-                              AND channel_id = $3
-                              AND room_name = $4
-                        ''', guild.id, member.id, channel.id, channel.name)
-                        if ban:
-                            expires_at = ban['expires_at']
-                            now = datetime.now(timezone.utc)
-                            if expires_at is None or expires_at > now:
-                                await channel.set_permissions(member, overwrite=discord.PermissionOverwrite(view_channel=False))
                                 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
         try:
             now = datetime.now(timezone.utc)
             async with self.bot.db_pool.acquire() as conn:
-                expired = await conn.fetch('''
-                    SELECT guild_id, discord_snowflake, channel_id, room_name
-                    FROM active_bans
-                    WHERE expires_at <= $1
-                ''', now)
-                for record in expired:
+                expired_bans = await Ban.fetch_by_expired(now=now)
+                for expired_ban in expired_bans:
                     try:
-                        user_id = record['discord_snowflake']
-                        guild_id = record['guild_id']
-                        channel_id = record['channel_id']
-                        room_name = record['room_name']
+                        user_id = expired_ban.discord_snowflake
+                        guild_id = expired_ban.guild_id
+                        channel_id = expired_ban.channel_id
+                        room_name = expired_ban.room_name
                         guild = self.bot.get_guild(guild_id)
                         channel = self.bot.get_channel(channel_id)
                         if not channel and guild:
@@ -94,10 +69,7 @@ class ScheduledTasks(commands.Cog):
                                 channel = None
                         if channel is None:
                             logger.info(f'Channel {channel_id} not found, cleaning up expired ban')
-                            await conn.execute('''
-                                DELETE FROM active_bans
-                                WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                            ''', guild_id, user_id, channel_id, room_name)
+                            await Ban.delete_by_channel_guild_and_member(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=user_id)
                             continue
                         member = guild.get_member(user_id)
                         if member is None:
@@ -105,15 +77,9 @@ class ScheduledTasks(commands.Cog):
                                 member = await guild.fetch_member(user_id)
                             except discord.NotFound:
                                 logger.info(f'Member {user_id} not found in guild {guild_id}, cleaning up expired ban')
-                                await conn.execute('''
-                                    DELETE FROM active_bans
-                                    WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                                ''', guild_id, user_id, channel_id, room_name)
+                                await Ban.delete_by_channel_guild_and_member(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=user_id)
                                 continue
-                        await conn.execute('''
-                            DELETE FROM active_bans
-                            WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                        ''', guild_id, user_id, channel_id, room_name)
+                        await Ban.delete_by_channel_guild_and_member(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=user_id)
                         try:
                             await channel.set_permissions(member, overwrite=None)
                             logger.info(f'Removed ban override for user {user_id} in channel {channel_id}')
@@ -132,18 +98,13 @@ class ScheduledTasks(commands.Cog):
         try:
             now = datetime.now(timezone.utc)
             async with self.bot.db_pool.acquire() as conn:
-                expired = await conn.fetch('''
-                    SELECT guild_id, discord_snowflake, channel_id, target, room_name
-                    FROM active_voice_mutes
-                    WHERE expires_at IS NOT NULL AND expires_at <= $1
-                ''', now)
-                for record in expired:
+                expired_voice_mutes = await VoiceMute.fetch_by_expired(now=now)
+                for expired_voice_mute in expired_voice_mutes:
                     try:
-                        guild_id = record['guild_id']
-                        user_id = record['discord_snowflake']
-                        channel_id = record['channel_id']
-                        target = record['target']
-                        room_name = record['room_name']
+                        guild_id = expired_voice_mute.guild_snowflake
+                        user_id = expired_voice_mute.member_snowflake
+                        channel_id = expired_voice_mute.channel_snowflake
+                        target = expired_voice_mute.target
                         guild = self.bot.get_guild(guild_id)
                         channel = self.bot.get_channel(channel_id)
                         if not channel and guild:
@@ -153,10 +114,7 @@ class ScheduledTasks(commands.Cog):
                                 channel = None
                         if channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired voice mute')
-                            await conn.execute('''
-                                DELETE FROM active_voice_mutes
-                                WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target=$4 AND room_name=$5
-                            ''', guild_id, user_id, channel_id, target, room_name)
+                            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_id, guild_snowflake=guild.id, target=target)
                             continue
                         member = guild.get_member(user_id)
                         if member is None:
@@ -164,15 +122,9 @@ class ScheduledTasks(commands.Cog):
                                 member = await guild.fetch_member(user_id)
                             except discord.NotFound:
                                 logger.info(f'Member {user_id} not found in guild {guild_id}, cleaning up expired voice mute')
-                                await conn.execute('''
-                                    DELETE FROM active_voice_mutes
-                                    WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target=$4 AND room_name=$5
-                                ''', guild_id, user_id, channel_id, target, room_name)
+                                await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild.id, member_snowflake=member.id, target="user")
                                 continue
-                        await conn.execute('''
-                            DELETE FROM active_voice_mutes
-                            WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND target=$4 AND room_name=$5
-                        ''', guild_id, user_id, channel_id, target, room_name)
+                        await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild.id, member_snowflake=member.id, target="user")
                         if member.voice and member.voice.channel and member.voice.channel.id == channel_id:
                             try:
                                 await member.edit(mute=False)
@@ -207,23 +159,9 @@ class ScheduledTasks(commands.Cog):
                         channel_id = record['channel_id']
                         room_name = record['room_name']
                         guild = self.bot.get_guild(guild_id)
-                        muted_members = await conn.fetch('''
-                            SELECT discord_snowflake
-                            FROM active_voice_mutes
-                            WHERE guild_id = $1 AND channel_id = $2 AND target = $3 AND room_name = $4
-                        ''', guild_id, channel_id, 'room', room_name)
-                        await conn.execute('''
-                            DELETE FROM active_voice_mutes
-                            WHERE guild_id = $1 AND channel_id = $2 AND target = 'room' AND room_name = $3
-                        ''', guild_id, channel_id, room_name)
-                        await conn.execute('''
-                            DELETE FROM stage_coordinators
-                            WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
-                        ''', guild_id, channel_id, room_name)
-                        await conn.execute('''
-                            DELETE FROM active_stages
-                            WHERE guild_id = $1 AND channel_id = $2 AND room_name = $3
-                        ''', guild_id, channel_id, room_name)
+                        voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=member.id, target="room")
+                        await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, target="room")
+                        await Stage.delete_by_channel_and_guild(channel_snowflake=channel_id, guild_snowflake=guild_id)
                         if guild:
                             for member_record in muted_members:
                                 user_id = member_record['discord_snowflake']
@@ -257,19 +195,14 @@ class ScheduledTasks(commands.Cog):
         try:
             now = datetime.now(timezone.utc)
             async with self.bot.db_pool.acquire() as conn:
-                expired = await conn.fetch('''
-                    SELECT guild_id, discord_snowflake, channel_id, room_name
-                    FROM active_text_mutes
-                    WHERE expires_at IS NOT NULL AND expires_at <= $1
-                ''', now)
+                expired_text_mutes = await TextMute.fetch_by_expired(now)
                 if not expired:
                     return
-                for record in expired:
+                for expired_text_mute in expired_text_mute:
                     try:
-                        user_id = record['discord_snowflake']
-                        guild_id = record['guild_id']
-                        channel_id = record['channel_id']
-                        room_name = record['room_name']
+                        user_id = expired_text_mute.member_snowflake
+                        guild_id = expired_text_mute.guild_snowflake
+                        channel_id = expired_text_mute.channel_snowflake
                         guild = self.bot.get_guild(guild_id)
                         channel = self.bot.get_channel(channel_id)
                         if not channel and guild:
@@ -279,10 +212,7 @@ class ScheduledTasks(commands.Cog):
                                 channel = None
                         if guild is None or channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired text mute')
-                            await conn.execute('''
-                                DELETE FROM active_text_mutes
-                                WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                            ''', guild_id, user_id, channel_id, room_name)
+                            await TextMute.delete_by_channel_guild_and_member(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=user_id)
                             continue
                         member = guild.get_member(user_id)
                         if member is None:
@@ -290,15 +220,9 @@ class ScheduledTasks(commands.Cog):
                                 member = await guild.fetch_member(user_id)
                             except discord.NotFound:
                                 logger.info(f'Member {user_id} not found in guild {guild_id}, cleaning up expired text mute')
-                                await conn.execute('''
-                                    DELETE FROM active_text_mutes
-                                    WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                                ''', guild_id, user_id, channel_id, room_name)
+                                await TextMute.delete_by_channel_guild_and_member(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=user_id)
                                 continue
-                        await conn.execute('''
-                            DELETE FROM active_text_mutes
-                            WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-                        ''', guild_id, user_id, channel_id, room_name)
+                        await TextMute.delete_by_channel_guild_and_member(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=user_id)
                         try:
                             await channel.set_permissions(member, send_messages=None)
                             logger.info(f'Removed text mute override for user {user_id} in channel {channel_id}')

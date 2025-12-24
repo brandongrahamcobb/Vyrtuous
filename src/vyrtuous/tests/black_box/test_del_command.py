@@ -23,7 +23,7 @@ from vyrtuous.utils.emojis import Emojis
 import pytest
 
 @pytest.mark.asyncio
-async def test_del_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str]):  
+async def test_del_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str]):  
     await Moderator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
     try:
         voice_channel_one.messages.clear() 

@@ -132,6 +132,13 @@ def text_channel(guild):
     return guild.channels[TEXT_CHANNEL_ID]
 
 @pytest.fixture(scope="function")
+def role(guild):
+    roles_list = list(guild.roles.values())
+    for role in roles_list:
+        if role.id == ROLE_ID:
+            return role
+
+@pytest.fixture(scope="function")
 def privileged_author(guild):
     return guild.get_member(PRIVILEGED_AUTHOR_ID)
 
@@ -149,7 +156,7 @@ def prefix(config):
     prefix = config['discord_command_prefix']
     yield prefix
 
-def make_capturing_send(channel, author):
+async def make_capturing_send(channel, author):
     async def capturing_send(self, ctx, allowed_mentions=None, content=None, embed=None, file=None, **kwargs): 
         channel.messages.append({
             'content': content,
@@ -208,7 +215,7 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                     "vyrtuous.service.check_service.is_owner",
                     new=AsyncMock(return_value=True)
                 ))
-            capturing_send = make_capturing_send(channel, author)
+            capturing_send = await make_capturing_send(channel, author)
             cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
             def mock_isinstance(obj, cls):
                 if cls == discord.VoiceChannel:
@@ -247,7 +254,6 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
             async def fetch_message(message_id):
                 for msg in channel.messages:
                     if msg["id"] == message_id:
-                        # Wrap the dict and add a delete method
                         async def delete(self=None):
                             if self is None:
                                 self = msg
@@ -255,5 +261,6 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                             return self
                         return SimpleNamespace(**msg, delete=delete)
             channel.fetch_message = fetch_message.__get__(channel)
-            stack.enter_context(patch.object(channel, "fetch_message", new=AsyncMock(side_effect=fetch_message)))
+            stack.enter_context(patch.object(channel, "fetch_message", new=fetch_message))
+            stack.enter_context(patch("discord.utils.get", side_effect=lambda iterable, name=None: next((r for r in iterable if getattr(r, "name", None) == name), None )))
             await bot.invoke(ctx)

@@ -21,11 +21,14 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.utils.alias import Alias
+from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.duration import Duration
-from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.reason import Reason
+from vyrtuous.utils.statistics import Statistics
+from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.vegans import Vegans
+from vyrtuous.utils.voice_mute import VoiceMute
 from vyrtuous.utils.emojis import Emojis
 
 import time
@@ -137,20 +140,13 @@ class Aliases(commands.Cog):
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to ban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
-            existing_ban = await conn.fetchrow('''
-                SELECT expires_at, reason
-                FROM active_bans
-                WHERE guild_id = $1
-                    AND discord_snowflake = $2
-                    AND channel_id = $3
-                    AND room_name = $4
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
+            existing_ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             duration_obj = Duration()
             reason_obj = Reason()
             duration_obj.load_from_combined_duration_str(duration)
             if existing_ban and duration not in ['+', '=', '-']:
-                expires_at = existing_ban['expires_at']
-                old_reason = existing_ban['reason']
+                expires_at = existing_ban.expires_at
+                old_reason = existing_ban.reason
                 reason_obj.load_old_reason(old_reason)
             if duration not in ['+', '=', '-']:
                 expires_at = duration_obj.output_datetime()
@@ -165,7 +161,7 @@ class Aliases(commands.Cog):
                 return await message.reply(content='\U0001F6AB You cannot reduce a ban below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await Cap.fetch_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id)
             active_cap = next((c for c in caps if c[1] == 'ban'), None)
             if active_cap:
                 duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
@@ -193,12 +189,8 @@ class Aliases(commands.Cog):
                 logger.exception(f'Unexpected error while disconnecting user: {e}')
                 raise
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO active_bans (guild_id, discord_snowflake, channel_id, reason, expires_at, room_name)
-                VALUES ($1,$2,$3,$4,$5,$6)
-                ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name) DO UPDATE
-                SET reason=$4, expires_at=$5
-            ''', message.guild.id, member_obj.id, channel_obj.id, updated_reason, expires_at, channel_obj.name)
+            ban = Ban(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=updated_reason)
+            await ban.create()
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1, $2, $3, $4, $5, $6)
@@ -357,17 +349,13 @@ class Aliases(commands.Cog):
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to text-mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
-            existing_text_mute = await conn.fetchrow('''
-                SELECT expires_at, reason
-                FROM active_text_mutes
-                WHERE guild_id=$1 AND discord_snowflake=$2 AND channel_id=$3 AND room_name=$4
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
+            existing_text_mute = await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             duration_obj = Duration()
             reason_obj = Reason()
             duration_obj.load_from_combined_duration_str(duration)
             if existing_text_mute and duration not in ['+', '=', '-']:
-                expires_at = existing_text_mute['expires_at']
-                old_reason = existing_text_mute['reason']
+                expires_at = existing_text_mute.expires_at
+                old_reason = existing_text_mute.reason
                 reason_obj.load_old_reason(old_reason)
             if duration not in ['+', '=', '-']:
                 expires_at = duration_obj.output_datetime()
@@ -382,7 +370,7 @@ class Aliases(commands.Cog):
                 return await message.reply(content='\U0001F6AB You cannot reduce a text-mute below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await Cap.fetch_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id)
             active_cap = next((c for c in caps if c[1] == 'tmute'), None)
             if active_cap:
                 duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
@@ -390,7 +378,7 @@ class Aliases(commands.Cog):
             else:
                 cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
             if existing_text_mute and expires_at:
-                if not expires_at < existing_text_mute['expires_at'] and ((executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') and expires_at >= cap_expires_at)):
+                if not expires_at < existing_text_mute.expires_at and ((executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') and expires_at >= cap_expires_at)):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can text-mute for longer than the channel cap.')
             else:
                 if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
@@ -401,12 +389,8 @@ class Aliases(commands.Cog):
                     await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False)
                 except discord.Forbidden:
                     return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully text-muted.', allowed_mentions=discord.AllowedMentions.none())
-            await conn.execute('''
-                INSERT INTO active_text_mutes (guild_id, discord_snowflake, channel_id, reason, expires_at, room_name)
-                VALUES ($1,$2,$3,$4,$5,$6)
-                ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name) DO UPDATE
-                SET reason=$4, expires_at=$5
-            ''', message.guild.id, member_obj.id, channel_obj.id, updated_reason, expires_at, channel_obj.name)
+            text_mute = TextMute(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=updated_reason)
+            await text_mute.create()
             await conn.execute('''
                 INSERT INTO moderation_logs
                 (action_type,target_discord_snowflake,executor_discord_snowflake,guild_id,channel_id,reason)
@@ -445,20 +429,13 @@ class Aliases(commands.Cog):
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed voice mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
-            existing_mute = await conn.fetchrow('''
-                SELECT expires_at, reason
-                FROM active_voice_mutes
-                WHERE guild_id = $1
-                  AND discord_snowflake = $2
-                  AND channel_id = $3
-                  AND room_name = $4
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, target="user")
             duration_obj = Duration()
             reason_obj = Reason()
             duration_obj.load_from_combined_duration_str(duration)
-            if existing_mute and duration not in ['+', '=', '-']:
-                expires_at = existing_mute['expires_at']
-                old_reason = existing_mute['reason']
+            if voice_mute and duration not in ['+', '=', '-']:
+                expires_at = voice_mute.expires_at
+                old_reason = voice_mute.reason
                 reason_obj.load_old_reason(old_reason)
             if duration not in ['+', '=', '-']:
                 expires_at = duration_obj.output_datetime()
@@ -473,29 +450,23 @@ class Aliases(commands.Cog):
                 return await message.reply(content='\U0001F6AB You cannot reduce a mute below the current time.')
             duration_obj.load_base(expires_at)
             duration_display = duration_obj.output_display()
-            caps = await Cap.fetch_caps_for_channel(message.guild.id, channel_obj.id)
+            caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id)
             active_cap = next((c for c in caps if c[1] == 'mute'), None)
             if active_cap:
                 duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
                 cap_expires_at = duration_obj.output_datetime()
             else:
                 cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
-            if existing_mute and expires_at:
-                if not expires_at < existing_mute['expires_at'] and ((executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') and expires_at >= cap_expires_at)):
+            if voice_mute and expires_at:
+                if not expires_at < voice_mute.expires_at and ((executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') and expires_at >= cap_expires_at)):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can mute for longer than the channel cap.')
             else:
                 if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
                     return await message.reply(content='\U0001F6AB Only coordinators and above can mute for longer than the channel cap.')
         try:
             async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('''
-                    INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, reason, target, room_name)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
-                    DO UPDATE SET
-                        expires_at = EXCLUDED.expires_at,
-                        reason = EXCLUDED.reason
-                ''', message.guild.id, member_obj.id, channel_obj.id, expires_at, updated_reason, 'user', channel_obj.name)
+                voice_mute = VoiceMute(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, target="user")
+                voice_mute.set()
                 await conn.execute('''
                     INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                     VALUES ($1, $2, $3, $4, $5, $6)
@@ -538,11 +509,7 @@ class Aliases(commands.Cog):
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('''
-                SELECT expires_at
-                FROM active_bans
-                WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
+            bans = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent bans.')
             try:
@@ -550,10 +517,7 @@ class Aliases(commands.Cog):
                     await channel_obj.set_permissions(member_obj, overwrite=None)
             except discord.Forbidden:
                 return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unbanned.', allowed_mentions=discord.AllowedMentions.none())
-            await conn.execute('''
-                DELETE FROM active_bans
-                WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
+            await Ban.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
@@ -660,27 +624,12 @@ class Aliases(commands.Cog):
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('''
-                SELECT expires_at
-                FROM active_voice_mutes
-                WHERE guild_id = $1
-                  AND discord_snowflake = $2
-                  AND channel_id = $3
-                  AND room_name = $4
-                  AND target = 'user'
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
-            if not row:
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member.id, target="user")
+            if not voice_mute:
                 return await message.reply(content=f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
             if row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
-            await conn.execute('''
-                DELETE FROM active_voice_mutes
-                WHERE guild_id = $1
-                  AND discord_snowflake = $2
-                  AND channel_id = $3
-                  AND room_name = $4
-                  AND target = $5
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name, 'user')
+            await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member.id, target="user")
             if member_obj.voice and member_obj.voice.channel:
                 try:
                     await member_obj.edit(mute=False)
@@ -739,21 +688,14 @@ class Aliases(commands.Cog):
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to untext-mute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('''
-                SELECT expires_at
-                FROM active_text_mutes
-                WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
-            if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+            text_mute = await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
+            if text_mute and text_mute.expires_at is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent text mutes.')
             try:
                 await channel_obj.set_permissions(member_obj, send_messages=None)
             except discord.Forbidden:
                 return await message.reply(content=f"\U0001F6AB {member_obj.mention} was not successfully untext-muted.", allowed_mentions=discord.AllowedMentions.none())
-            await conn.execute('''
-                DELETE FROM active_text_mutes
-                WHERE guild_id = $1 AND discord_snowflake = $2 AND channel_id = $3 AND room_name = $4
-            ''', message.guild.id, member_obj.id, channel_obj.id, channel_obj.name)
+            await TextMute.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1, $2, $3, $4, $5, $6)', 'untmute', member_obj.id, message.author.id, message.guild.id, channel_obj.id, 'Untextmuted a user')
         return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s text muted in {channel_obj.mention} has been removed.', allowed_mentions=discord.AllowedMentions.none())
 

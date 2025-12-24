@@ -197,3 +197,11 @@ class Alias:
                 'UPDATE command_aliases SET channel_id=$2 WHERE guild_id=$1 AND alias_type=$3 AND alias_name=$4',
                 self.guild_id, channel.id, self.alias_type, self.alias_name
             )
+
+    @classmethod
+    async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE command_aliases SET channel_snowflake=$2 WHERE channel_snowflake = $1
+            ''', source_channel_snowflake, target_channel_snowflake)

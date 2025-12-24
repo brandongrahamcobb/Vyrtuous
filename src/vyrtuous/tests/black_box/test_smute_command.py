@@ -15,8 +15,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
-from vyrtuous.tests.black_box.test_admin_helpers import admin_cleanup, admin_initiation
-from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
+from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, role, voice_channel_one
+from vyrtuous.utils.administrator import Administrator
+from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
@@ -29,8 +30,8 @@ import pytest
     ]
 )
 
-async def test_smute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
-    await admin_initiation(guild.id, privileged_author.id)
+async def test_smute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], role, command: Optional[str], member_ref):
+    await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
     try:
         voice_channel_one.messages.clear() 
         formatted = f"{command} {not_privileged_author.id}"
@@ -40,4 +41,4 @@ async def test_smute_command(bot, voice_channel_one, guild, privileged_author, n
         member_value = not_privileged_author.mention
         assert any(val in response for val in [member_value])
     finally:
-        await admin_cleanup(guild.id, privileged_author.id)
+        await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)

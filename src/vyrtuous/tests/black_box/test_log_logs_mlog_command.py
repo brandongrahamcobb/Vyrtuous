@@ -15,8 +15,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
-from vyrtuous.tests.black_box.test_admin_helpers import admin_cleanup, admin_initiation
-from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, text_channel, voice_channel_one
+from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, role, text_channel, voice_channel_one
+from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
@@ -40,8 +40,8 @@ import pytest
     ]
 )
 
-async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
-    await admin_initiation(guild.id, privileged_author.id)
+async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
+    await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
     try:
         text_channel.messages.clear() 
         if command == "mlog":
@@ -68,4 +68,4 @@ async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild
         if member_ref:
             assert any(val in response["content"] for val in [privileged_author_value])
     finally:
-        await admin_cleanup(guild.id, privileged_author.id)
+        await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)

@@ -47,7 +47,7 @@ class Moderator:
                 DELETE FROM moderators WHERE channel_snowflake=$1 AND member_snowflake=$2
             ''', channel_snowflake, member_snowflake)
 
-    async def set_by_channel_and_member(self):
+    async def create(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -112,4 +112,4 @@ class Moderator:
     @classmethod
     async def grant(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         moderator = Moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-        await moderator.set_by_channel_and_member()
+        await moderator.create()

@@ -17,9 +17,9 @@
 from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.black_box.make_mock_objects import *
-from vyrtuous.tests.black_box.test_admin_helpers import admin_cleanup, admin_initiation
+from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, role, voice_channel_one
+from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.moderator import Moderator
-from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
@@ -29,7 +29,6 @@ import pytest
     [
         ("cstage {voice_channel_one_id}", '1m', True, False),
         ("mstage {not_privileged_author_id}", None, False, True),
-        ("pstage {not_privileged_author_id}", None, False, True),
         ("xstage {voice_channel_one_id}", None, True, False),
         ("cstage {voice_channel_one_id}", '1h', True, False),
         ("xstage {voice_channel_one_id}", None, True, False),
@@ -38,7 +37,7 @@ import pytest
     ]
 )
 
-async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], duration, channel_ref, member_ref):
+async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], role, command: Optional[str], duration, channel_ref, member_ref):
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -47,7 +46,7 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
                 duration=duration
             )
         if "cstage" in command or "xstage" in command:
-            await admin_initiation(guild.id, privileged_author.id)
+            await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
             await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         else:
             await Moderator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
@@ -62,6 +61,6 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
             assert any(val in response for val in [member_value])
     finally:
         if "cstage" in command or "xstage" in command:
-            await admin_cleanup(guild.id, privileged_author.id)
+            await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
         else:
             await Moderator.revoke(channel_snowflake=voice_channel_one.id, member_snowflake=privileged_author.id)

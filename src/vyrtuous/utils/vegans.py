@@ -16,6 +16,9 @@
 '''
 from vyrtuous.bot.discord_bot import DiscordBot
 
+from vyrtuous.utils.ban import Ban
+from vyrtuous.utils.text_mute import TextMute
+from vyrtuous.utils.voice_mute import VoiceMute
 import discord
 
 class Vegans:
@@ -26,25 +29,29 @@ class Vegans:
     @classmethod
     async def unrestrict(cls, guild: discord.Guild, member: discord.Member):
         bot = DiscordBot.get_instance()
-        uid = member.id
-        async with bot.db_pool.acquire() as conn:
-            ban_rows = await conn.fetch('SELECT channel_id FROM active_bans WHERE discord_snowflake=$1', uid)
-            mute_rows = await conn.fetch('SELECT channel_id FROM active_voice_mutes WHERE discord_snowflake=$1', uid)
-            text_rows = await conn.fetch('SELECT channel_id FROM active_text_mutes WHERE discord_snowflake=$1', uid)
-        for r in ban_rows:
-            try: await guild.unban(discord.Object(id=uid), reason='Toggle OFF')
-            except: pass
-        for r in mute_rows:
-            ch = guild.get_channel(r['channel_id'])
-            if ch and member.voice and member.voice.mute: await member.edit(mute=False)
-        for r in text_rows:
-            ch = guild.get_channel(r['channel_id'])
-            text_mute_role = discord.utils.get(guild.roles, name='TextMuted')
-            if ch and text_mute_role and text_mute_role in member.roles: await member.remove_roles(text_mute_role)
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute('DELETE FROM active_bans WHERE discord_snowflake=$1', uid)
-            await conn.execute('DELETE FROM active_voice_mutes WHERE discord_snowflake=$1', uid)
-            await conn.execute('DELETE FROM active_text_mutes WHERE discord_snowflake=$1', uid)
+        bans = await Ban.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
+        text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
+        voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=guild.id, member_snowflake=member.id, target="user")
+        if bans:
+            for ban in bans:
+                try:
+                    await guild.unban(discord.Object(id=member.id), reason='Toggle bans')
+                except:
+                    pass
+        if text_mutes:
+            for text_mute in text_mutes:
+                ch = guild.get_channel(text_mute.channel_snowflake)
+                text_mute_role = discord.utils.get(guild.roles, name='Toggle text mutes')
+                if ch and text_mute_role and text_mute_role in member.roles:
+                    await member.remove_roles(text_mute_role)
+        if voice_mutes:
+            for voice_mute in voice_mutes:
+                ch = guild.get_channel(voice_mute.channel_snowflake)
+                if ch and member.voice and member.voice.mute:
+                    await member.edit(mute=False)
+        await Ban.delete_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
+        await TextMute.delete_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
+        await VoiceMute.delete_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
 
     @classmethod
     def add_vegan(cls, member_id: int):

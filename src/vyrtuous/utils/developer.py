@@ -75,7 +75,7 @@ class Developer:
             ''', member_snowflake)
         guilds = []
         for row in rows:
-            guilds.append(bot.get_guild(row["guild_snowflakes"]))
+            guilds.append(bot.get_guild(row["guild_snowflake"]))
         return guilds
 
     @classmethod
