@@ -156,5 +156,34 @@ CREATE TABLE active_stages (
     expires_at TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (guild_snowflake, channel_snowflake)
 );
+
+ALTER TABLE command_aliases RENAME TO command_aliases_old;
+CREATE TABLE command_aliases (
+    alias_name TEXT NOT NULL,
+    alias_type TEXT NOT NULL CHECK (alias_type IN (
+        'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'
+    )),
+    channel_snowflake BIGINT DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (alias_name, alias_type, guild_snowflake)
+);
+INSERT INTO command_aliases (
+    alias_name,
+    alias_type,
+    channel_snowflake,
+    guild_snowflake,
+    role_snowflake
+)
+SELECT
+    alias_name,
+    alias_type,
+    channel_id,
+    guild_id,
+    role_id
+FROM command_aliases_old;

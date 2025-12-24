@@ -124,3 +124,17 @@ class Ban:
             ''', channel_snowflake, guild_snowflake)
         if row:
             return Ban(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason'])
+
+    @classmethod
+    async def fetch_by_expired(cls, now: Optional[datetime]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason
+                FROM active_bans
+                WHERE expires_at IS NOT NULL AND expires_at <= $1
+            ''', now)
+        expired_bans = []
+        for row in rows:
+            expired_bans.append(Ban(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
+        return expired_bans

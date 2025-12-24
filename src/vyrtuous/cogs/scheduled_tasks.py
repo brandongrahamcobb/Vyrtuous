@@ -45,8 +45,6 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_text_mutes.start()
         if not self.check_expired_stages.is_running():
             self.check_expired_stages.start()
-        if not self.check_active_bans.is_running():
-            self.check_active_bans.start()
                                 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
@@ -147,24 +145,18 @@ class ScheduledTasks(commands.Cog):
         try:
             now = datetime.now(timezone.utc)
             async with self.bot.db_pool.acquire() as conn:
-                expired = await conn.fetch('''
-                    SELECT guild_id, channel_id, room_name
-                    FROM active_stages
-                    WHERE expires_at IS NOT NULL
-                      AND expires_at <= $1
-                ''', now)
-                for record in expired:
+                expired_stages = await Stage.fetch_by_expired(now)
+                for record in expired_stages:
                     try:
                         guild_id = record['guild_id']
                         channel_id = record['channel_id']
-                        room_name = record['room_name']
                         guild = self.bot.get_guild(guild_id)
-                        voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=member.id, target="room")
+                        voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, target="room")
                         await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, target="room")
                         await Stage.delete_by_channel_and_guild(channel_snowflake=channel_id, guild_snowflake=guild_id)
                         if guild:
-                            for member_record in muted_members:
-                                user_id = member_record['discord_snowflake']
+                            for voice_mute in voice_mutes:
+                                user_id = voice_mute.member_snowflake
                                 member = guild.get_member(user_id)
                                 if member is None:
                                     try:
@@ -196,7 +188,7 @@ class ScheduledTasks(commands.Cog):
             now = datetime.now(timezone.utc)
             async with self.bot.db_pool.acquire() as conn:
                 expired_text_mutes = await TextMute.fetch_by_expired(now)
-                if not expired:
+                if not expired_text_mutes:
                     return
                 for expired_text_mute in expired_text_mute:
                     try:

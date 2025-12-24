@@ -83,15 +83,11 @@ class DevCommands(commands.Cog):
         interaction: discord.Interaction,
         channel: Optional[str] = None
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-        if channel_obj.type != discord.ChannelType.voice:
-            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        await Moderator.delete_channel(channel_snowflake=channel_obj.id)
+        await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
+        await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-        await Alias.delete_all_command_aliases_by_channel(channel_obj)
         await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
 
     # DONE
@@ -103,10 +99,10 @@ class DevCommands(commands.Cog):
         channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ) -> None:
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        await Moderator.delete_channel(channel_snowflake=channel_obj.id)
+        await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
+        await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-        await Alias.delete_all_command_aliases_by_channel(channel_obj)
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Removed channel {channel_obj.mention} from all users and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
     
     @app_commands.command(name='load', description='Loads a cog by name "vyrtuous.cog.<cog_name>.')

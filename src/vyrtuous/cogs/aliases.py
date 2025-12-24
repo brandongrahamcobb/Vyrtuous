@@ -135,7 +135,7 @@ class Aliases(commands.Cog):
                 return await message.reply(content=f'\U0001F6AB You cannot ban a superhero.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot ban the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to ban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
@@ -216,7 +216,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot cow the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to cow this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
@@ -262,7 +262,7 @@ class Aliases(commands.Cog):
         if member_obj:
             if member_obj.id in self.vegans:
                 return await message.reply(content=f'\U0001F6AB You cannot flag a superhero.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
@@ -314,15 +314,15 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot give the bot a role.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unrole this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
-        role_obj = message.guild.get_role(alias.role_id)
+        role_obj = message.guild.get_role(alias.role_snowflake)
         if not role_obj:
-            return await message.reply(content=f"\U000026A0\U0000FE0F Could not resolve role with ID `{alias.role_id}`.")
+            return await message.reply(content=f"\U000026A0\U0000FE0F Could not resolve role with ID `{alias.role_snowflake}`.")
         if role_obj in member_obj.roles:
             return await message.reply(content=f'\U0001F6AB{member_obj.mention} already has {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         try:
@@ -341,7 +341,7 @@ class Aliases(commands.Cog):
         updated_reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.' #'Optional reason (required for 7 days or more)')
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         member_obj = await self.member_service.resolve_member(message, member)
         if not member_obj or member_obj.id in self.vegans:
             return await message.reply(content=f'\U0001F6AB Invalid target member: {member}.')
@@ -414,7 +414,7 @@ class Aliases(commands.Cog):
         updated_reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.' #'Optional reason (required for 7 days or more)')
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
         member_obj = await self.member_service.resolve_member(message, member)
@@ -502,7 +502,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot unban the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
@@ -537,7 +537,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot uncow the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to uncow this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
@@ -578,7 +578,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot unflag the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unflag this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
@@ -619,7 +619,7 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot unmute the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unmute this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
@@ -653,13 +653,13 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot unrole the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
         if not allowed:
             return await message.reply(content=f'\U0001F6AB You are not allowed to unrole this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
-        role_obj = message.guild.get_role(alias.role_id)
+        role_obj = message.guild.get_role(alias.role_snowflake)
         if not role_obj:
-            return await message.reply(content=f"\U0001F6AB Could not resolve role with ID `{alias.role_id}`.")
+            return await message.reply(content=f"\U0001F6AB Could not resolve role with ID `{alias.role_snowflake}`.")
         if role_obj not in member_obj.roles:
             return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} does not have {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
         try:
@@ -681,7 +681,7 @@ class Aliases(commands.Cog):
              return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj.id == message.guild.me.id:
             return await message.reply(content='\U0001F6AB You cannot undo a textmute on the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_id)
+        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
         if not channel_obj:
             return await message.reply(content='\U0001F6AB Could not resolve a valid channel from the alias.')
         allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)

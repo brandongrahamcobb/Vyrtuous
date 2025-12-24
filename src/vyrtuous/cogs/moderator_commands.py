@@ -398,7 +398,7 @@ class ModeratorCommands(commands.Cog):
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 return await interaction.response.send_message(content='\U0001F6AB Only owners, developers or administrators can list all aliases across the server.')
-            aliases = await Alias.fetch_command_aliases_by_guild(interaction.guild)
+            aliases = await Alias.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not aliases:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found.')
             lines.extend(Alias.format_aliases(aliases))
@@ -416,7 +416,7 @@ class ModeratorCommands(commands.Cog):
         else:
             if channel_obj is None or channel_obj.type != discord.ChannelType.voice:
                 return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-            aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
+            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             if not aliases:
                 return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found.')
             lines.extend(Alias.format_aliases(aliases))
@@ -438,7 +438,7 @@ class ModeratorCommands(commands.Cog):
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 return await self.handler.send_message(ctx, content='\U0001F6AB Only owners, developers and administrators can list all aliases across the server.')
-            aliases = await Alias.fetch_command_aliases_by_guild(ctx.guild)
+            aliases = await Alias.fetch_by_guild(guild_snowflake=ctx.guild.id)
             lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
@@ -454,7 +454,7 @@ class ModeratorCommands(commands.Cog):
         else:
             if channel_obj is None or channel_obj.type != discord.ChannelType.voice:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-            aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
+            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             if not aliases:
                 return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No aliases found.')
             lines.extend(Alias.format_aliases(aliases))
@@ -855,10 +855,7 @@ class ModeratorCommands(commands.Cog):
             return await interaction.response.send_message(content=f'You are not the owner nor have elevated permission to migrate rooms.')
         await TemporaryRoom.update_by_source_and_target(guild_snowflake=ctx.guild.id, room_name=channel_obj.id, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
         new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=channel_obj.name)
-        aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.channel_snowflake)
-        if aliases:
-            for alias_obj in aliases:
-                await alias_obj.update_command_aliases_with_channel(channel_obj)
+        await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
         await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
         await Cap.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
         await Coordinator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
@@ -886,10 +883,7 @@ class ModeratorCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f'You are not the owner nor have elevated permission to migrate rooms.')
         await TemporaryRoom.update_by_source_and_target(guild_snowflake=ctx.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
         new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=ctx.guild.id, room_name=channel_obj.name)
-        aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, new_room.channel_snowflake)
-        if aliases:
-            for alias_obj in aliases:
-                await alias_obj.update_command_aliases_with_channel(channel_obj)
+        await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
         await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
         await Cap.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
         await Coordinator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)

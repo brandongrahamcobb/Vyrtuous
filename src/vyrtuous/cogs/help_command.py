@@ -45,25 +45,22 @@ class Help(commands.Cog):
             ('Everyone', 'Commands available to everyone.')
         ]
 
-    async def get_channel_alias_help(self, channel: discord.abc.GuildChannel) -> list[str]:
-        aliases = await Alias.fetch_command_aliases_by_channel(channel)
-        if not aliases:
-            return []
-    
-        grouped = defaultdict(list)
-        for alias in aliases:
-            grouped[alias.alias_type].append(alias.alias_name)
-    
-        lines = []
-        for alias_type, alias_names in grouped.items():
-            help_lines = self.aliases_cog.alias_help.get(alias_type)
-            if not help_lines:
-                continue
-            for alias_name in alias_names:
-                lines.append(f'**{alias_name}**')
-                for line in help_lines:
-                    lines.append(f'• {line}')
-        return lines
+    async def get_channel_alias_help(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]) -> list[str]:
+        aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
+        if aliases:
+            grouped = defaultdict(list)
+            for alias in aliases:
+                grouped[alias.alias_type].append(alias.alias_name)
+            lines = []
+            for alias_type, alias_names in grouped.items():
+                help_lines = self.aliases_cog.alias_help.get(alias_type)
+                if not help_lines:
+                    continue
+                for alias_name in alias_names:
+                    lines.append(f'**{alias_name}**')
+                    for line in help_lines:
+                        lines.append(f'• {line}')
+            return lines
         
     async def get_available_commands(self, bot, ctx_or_interaction) -> list[commands.Command]:
         available = []
@@ -114,8 +111,8 @@ class Help(commands.Cog):
         cmd = self.bot.get_command(name.lower())
         if cmd:
             return ("command", cmd)
-        alias = await Alias.fetch_command_alias_by_guild_and_alias_name(ctx_or_interaction.guild, name.lower())
-        if alias and alias.channel_id == ctx_or_interaction.channel.id:
+        alias = await Alias.fetch_by_guild_and_name(alias_name=name.lower(), guild_snowflake=ctx_or_interaction.guild.id)
+        if alias and alias.channel_snowflake == ctx_or_interaction.channel.id:
             return ("alias", alias)
         return (None, None)
 
@@ -143,27 +140,20 @@ class Help(commands.Cog):
         return func
 
     async def get_permission_filtered_aliases(self, ctx_or_interaction):
-        # Fetch all aliases in this channel
-        aliases = await Alias.fetch_command_aliases_by_channel(ctx_or_interaction.channel)
-        if not aliases:
-            return {}
-    
-        # Map alias_type → list of alias instances
-        grouped = defaultdict(list)
-        for alias in aliases:
-            grouped[alias.alias_type].append(alias)
-    
-        # Map permission level → list of alias strings
-        perm_alias_map = defaultdict(list)
-        for alias_type, alias_list in grouped.items():
-            # Determine permission level for this alias type (you can define mapping in Aliases cog)
-            perm_level = self.aliases_cog.alias_type_to_permission_level.get(alias_type, 'Everyone')
-            for a in alias_list:
-                help_lines = self.aliases_cog.alias_help.get(alias_type, [])
-                perm_alias_map[perm_level].append(
-                    f'**{a.alias_name}**\n' + '\n'.join(f'• {line}' for line in help_lines)
-                )
-        return perm_alias_map
+        aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx_or_interaction.channel.id, guild_snowflake=ctx_or_interaction.guild.id)
+        if aliases:
+            grouped = defaultdict(list)
+            for alias in aliases:
+                grouped[alias.alias_type].append(alias)
+            perm_alias_map = defaultdict(list)
+            for alias_type, alias_list in grouped.items():
+                perm_level = self.aliases_cog.alias_type_to_permission_level.get(alias_type, 'Everyone')
+                for a in alias_list:
+                    help_lines = self.aliases_cog.alias_help.get(alias_type, [])
+                    perm_alias_map[perm_level].append(
+                        f'**{a.alias_name}**\n' + '\n'.join(f'• {line}' for line in help_lines)
+                    )
+            return perm_alias_map
     
     @app_commands.command(name='help', description='Show command information or your available commands.')
     @app_commands.describe(command_name='The command to view details for.')
@@ -226,7 +216,7 @@ class Help(commands.Cog):
                 return await interaction.response.send_message(embed=embed)
         all_commands = await self.get_available_commands(bot, interaction)
         permission_groups = await self.group_commands_by_permission(bot, interaction, all_commands)
-        aliases = await Alias.fetch_command_aliases_by_channel(interaction.channel)
+        aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
@@ -327,7 +317,7 @@ class Help(commands.Cog):
                 return await self.handler.send_message(ctx, embed=embed)
         all_commands = await self.get_available_commands(bot, ctx)
         permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
-        aliases = await Alias.fetch_command_aliases_by_channel(ctx.channel)
+        aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:

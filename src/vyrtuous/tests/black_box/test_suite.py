@@ -115,7 +115,7 @@ async def client():
     db_pool = await asyncpg.create_pool(dsn=dsn)
     config = Config().get_config()
     client = DiscordClient(config=config, db_pool=db_pool)
-    type(bot).guilds = property(lambda self: [guild_obj])
+    type(bot).guilds = property(lambda self: [guild])
     yield client
     await db_pool.close()
 

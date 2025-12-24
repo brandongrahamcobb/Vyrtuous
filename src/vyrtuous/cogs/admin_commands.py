@@ -71,19 +71,19 @@ class AdminCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         if channel_obj.type != discord.ChannelType.voice:
             return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        old_aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
+        old_aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         if old_aliases:
             for old_alias in old_aliases:
                 if old_alias.alias_name == alias_name:
-                    return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` ({alias_type}) already exists and is set to  <@{old_alias.channel_id}>.')
+                    return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` ({alias_type}) already exists and is set to  <@{old_alias.channel_snowflake}>.')
         if alias_type in ('role', 'unrole') and not role:
             return await interaction.response.send_message(content='\U0001F6AB Role ID is required for role/unrole aliases.')
         if role:
             role_id = int(role.replace('<@&','').replace('>',''))
         else:
             role_id = None
-        alias_obj = Alias(interaction.guild.id, channel_obj.id, alias_type, alias_name, role_id)
-        await alias_obj.insert_into_command_aliases()
+        alias = Alias(alias_name=alias_name, alias_type=alias_type, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, role_snowflake=role_id)
+        await alias.create()
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -116,19 +116,19 @@ class AdminCommands(commands.Cog):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         if channel_obj.type != discord.ChannelType.voice:
             return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-        old_aliases = await Alias.fetch_command_aliases_by_channel(channel_obj)
+        old_aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         if old_aliases:
             for old_alias in old_aliases:
                 if old_alias.alias_name == alias_name:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{old_alias.alias_name}` ({old_alias.alias_type}) already exists and is set to <@{old_alias.channel_id}>.')
+                    return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{old_alias.alias_name}` ({old_alias.alias_type}) already exists and is set to <@{old_alias.channel_snowflake}>.')
         if alias_type in ('role', 'unrole') and not role:
             return await self.handler.send_message(ctx, content='\U0001F6AB Role ID is required for role/unrole aliases.')
         if role:
             role_id = int(role.replace('<@&','').replace('>',''))
         else:
             role_id = None
-        alias_obj = Alias(ctx.guild.id, channel_obj.id, alias_type, alias_name, role_id)
-        await alias_obj.insert_into_command_aliases()
+        alias = Alias(alias_name=alias_name, alias_type=alias_type, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, role_snowflake=role_id)
+        await alias.create()
         async with ctx.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -777,7 +777,7 @@ class AdminCommands(commands.Cog):
                 if room.member_snowflake:
                     await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=room.member_snowflake)
                 await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                await Alias.delete_all_command_aliases_by_channel(channel_obj)
+                await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             action = 'removed'
         else:
             member_obj = await self.member_service.resolve_member(interaction, owner)
@@ -802,11 +802,9 @@ class AdminCommands(commands.Cog):
         room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         action = None
         if room:
-            async with ctx.bot.db_pool.acquire() as conn:
-                if room.member_snowflake:
-                    await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=room.member_snowflake)
-                await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                await Alias.delete_all_command_aliases_by_channel(channel_obj)
+            await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=room.member_snowflake)
+            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             action = 'removed'
         else:
             member_obj = await self.member_service.resolve_member(ctx, owner)
@@ -829,12 +827,12 @@ class AdminCommands(commands.Cog):
         for room in rooms:
             room_id = room.channel_snowflake
             channel_obj = await self.channel_service.resolve_channel(interaction, room_id)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(interaction.guild.id, room.channel_snowflake)
+            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
                 continue
-            for alias_obj in aliases:
-                lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
+            for alias in aliases:
+                lines.append(f"  ↳ {alias.alias_name} ({alias.alias_type})")
         pages = []
         chunks = 18
         for i in range(0, len(lines), chunks):
@@ -859,12 +857,12 @@ class AdminCommands(commands.Cog):
         for room in rooms:
             room_id = room.channel_snowflake
             channel_obj = await self.channel_service.resolve_channel(ctx, room_id)
-            aliases = await Alias.fetch_command_aliases_by_channel_id(ctx.guild.id, room.channel_snowflake)
+            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             lines.append(f"{channel_obj.mention} ({room_id})")
             if not aliases:
                 continue
-            for alias_obj in aliases:
-                lines.append(f"  ↳ {alias_obj.alias_name} ({alias_obj.alias_type})")
+            for alias in aliases:
+                lines.append(f"  ↳ {alias.alias_name} ({alias.alias_type})")
         pages = []
         chunk_size = 18
         for i in range(0, len(lines), chunk_size):
@@ -889,18 +887,11 @@ class AdminCommands(commands.Cog):
     ):
         if not alias_name or not alias_name.strip():
             return await interaction.response.send_message(content='\U0001F6AB `alias_name` cannot be empty.')
-        aliases = await Alias.fetch_command_aliases_by_guild(interaction.guild)
-        if not aliases:
+        alias = await Alias.fetch_by_guild_and_name(alias_name=alias_name, guild_snowflake=interaction.guild.id)
+        if not alias:
             return await interaction.response.send_message(content=f'\U0001F6AB No aliases found.')
-        found = False
-        for alias in aliases:
-            if alias.alias_name:
-                await Alias.delete_command_alias_by_guild_and_alias_name(interaction.guild, alias.alias_name)
-                found = True
-                break
-        if not found:
-            return await interaction.response.send_message(content=f'\U0001F6AB Alias `{alias_name}` not found.')
-        channel_obj = await self.channel_service.resolve_channel(interaction, alias.channel_id)
+        await Alias.delete_by_guild_and_name(alias_name=alias.alias_name, guild_snowflake=interaction.guild.id)
+        channel_obj = await self.channel_service.resolve_channel(interaction, alias.channel_snowflake)
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,$2,$3,$4,$5,$6)
@@ -917,18 +908,11 @@ class AdminCommands(commands.Cog):
     ) -> None:
         if not alias_name or not alias_name.strip():
             return await self.handler.send_message(ctx, content='\U0001F6AB `alias_name` cannot be empty.')
-        aliases = await Alias.fetch_command_aliases_by_guild(ctx.guild)
-        if not aliases:
+        alias = await Alias.fetch_by_guild_and_name(alias_name=alias_name, guild_snowflake=ctx.guild.id)
+        if not alias:
             return await self.handler.send_message(ctx, content=f'\U0001F6AB No aliases found.')
-        found = False
-        for alias in aliases:
-            if alias.alias_name:
-                await Alias.delete_command_alias_by_guild_and_alias_name(ctx.guild, alias.alias_name)
-                found = True
-                break
-        if not found:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Alias `{alias_name}` not found.')
-        channel_obj = await self.channel_service.resolve_channel(ctx, alias.channel_id)
+        await Alias.delete_by_guild_and_name(alias_name=alias.alias_name, guild_snowflake=ctx.guild.id)
+        channel_obj = await self.channel_service.resolve_channel(ctx, alias.channel_snowflake)
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO moderation_logs(action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES($1,$2,$3,$4,$5,$6)

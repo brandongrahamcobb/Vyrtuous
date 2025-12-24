@@ -26,6 +26,7 @@ from vyrtuous.service.discord_message_service import DiscordMessageService, Pagi
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
+from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.statistics import Statistics
@@ -239,7 +240,7 @@ class EventListeners(commands.Cog):
         parts = content.split()
         alias_name = parts[0]
         args = parts[1:]
-        alias = await Alias.fetch_command_alias_by_guild_and_alias_name(message.guild, alias_name)
+        alias = await Alias.fetch_by_guild_and_name(alias_name=alias_name, guild_snowflake=message.guild)
         if not alias:
             return
         await self.dispatch_alias(message, alias, args)
