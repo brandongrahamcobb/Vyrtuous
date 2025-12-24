@@ -51,7 +51,8 @@ import pytest
 )
 
 async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
-    await Moderator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    moderator = Moderator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    await moderator.grant()
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -69,4 +70,4 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_c
         if member_ref and response["embed"]:
             assert any(val in response["embed"].title for val in member_values)
     finally:
-        await Moderator.revoke(channel_snowflake=voice_channel_one.id, member_snowflake=privileged_author.id)
+        await moderator.revoke()

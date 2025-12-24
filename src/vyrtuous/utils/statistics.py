@@ -179,7 +179,7 @@ class Statistics:
             return statistics
 
     @classmethod
-    async def update_by_channel_guild_snowflakes_and_type(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], snowflakes: list[int|None], statistic_type: Optional[str]):
+    async def update_by_channel_guild_and_type(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], snowflakes: list[int|None], statistic_type: Optional[str]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -198,7 +198,7 @@ class Statistics:
                 WHERE channel_snowflake=$1 AND guild_snowflake=$3
             ''', channel_snowflake, enabled, guild_snowflake)
 
-    async def create(self):
+    async def grant(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''

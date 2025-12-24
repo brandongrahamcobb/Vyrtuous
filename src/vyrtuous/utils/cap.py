@@ -56,7 +56,7 @@ class Cap:
         if row:
             return (row['duration_seconds'], row['moderation_type'])
 
-    async def create(self):
+    async def grant(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''

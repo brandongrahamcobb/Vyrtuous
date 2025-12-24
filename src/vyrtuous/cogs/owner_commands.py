@@ -23,6 +23,7 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.vegans import Vegans
 
 class OwnerCommands(commands.Cog):
@@ -40,44 +41,28 @@ class OwnerCommands(commands.Cog):
     async def create_developer_app_command(
         self,
         interaction: discord.Interaction,
-        member: Optional[str] = None
+        member: AppMemberSnowflake
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
+        action = None
         member_obj = await self.member_service.resolve_member(interaction, member)
-        if member_obj.id == interaction.guild.me.id:
-            return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a developer.')
-        if not member_obj:
-            return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        success = await has_equal_or_higher_role(interaction, member_obj, None)
-        if not success:
-            return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {interaction.guild.name}.")
-        async with self.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
-            action = None
-            developer_guild_ids = row['developer_guild_ids'] if row and row['developer_guild_ids'] is not None else []
-            if interaction.guild.id in developer_guild_ids:
-                await conn.execute('''
-                    UPDATE users
-                    SET developer_guild_ids = array_remove(developer_guild_ids, $2),
-                        updated_at = NOW()
-                    WHERE discord_snowflake = $1
-                ''', member_obj.id, interaction.guild.id)
+        if member_obj:
+            if member_obj.id == interaction.guild.me.id:
+                return
+            success = await has_equal_or_higher_role(interaction, member_obj, None)
+            if not success:
+                return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {interaction.guild.name}.")
+            guilds = []
+            developers = await Developer.fetch_by_member(member_snowflake=member_obj.id)
+            for developer in developers:
+                guilds.append(developer['guild_snowflake'])
+            if interaction.guild.id in guilds:
+                await Developer.update_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 action = 'revoked'
             else:
-                await conn.execute('''
-                    INSERT INTO users (discord_snowflake, developer_guild_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (discord_snowflake) DO UPDATE
-                    SET developer_guild_ids = (
-                        SELECT ARRAY(
-                            SELECT DISTINCT unnest(users.developer_guild_ids || EXCLUDED.developer_guild_ids)
-                        )
-                    ),
-                    updated_at = NOW()
-                ''', member_obj.id, interaction.guild.id)
+                developer = Developer(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                await developer.grant()
                 action = 'granted'
-        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer access has been {action} in {interaction.guild.name}.")
+        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} Developer access has been {action} in {interaction.guild.name}.")
         
     # DONE
     @commands.command(name='dev', help="Grants/revokes a user's permissions to a bot developer.")
@@ -85,44 +70,28 @@ class OwnerCommands(commands.Cog):
     async def create_developer_text_command(
         self,
         ctx: commands.Context,
-        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
     ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        action = None
         member_obj = await self.member_service.resolve_member(ctx, member)
-        if not member_obj:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.id == ctx.guild.me.id:
-            return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a developer.')
-        success = await has_equal_or_higher_role(ctx.message, member_obj, None)
-        if not success:
-            return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {ctx.guild.name}.")
-        async with self.bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake = $1', member_obj.id)
-            action = None
-            developer_guild_ids = row['developer_guild_ids'] if row and row['developer_guild_ids'] is not None else []
-            if ctx.guild.id in developer_guild_ids:
-                await conn.execute('''
-                    UPDATE users
-                    SET developer_guild_ids = array_remove(developer_guild_ids, $2),
-                        updated_at = NOW()
-                    WHERE discord_snowflake = $1
-                ''', member_obj.id, ctx.guild.id)
+        if member_obj:
+            if member_obj.id == ctx.guild.me.id:
+                return
+            success = await has_equal_or_higher_role(ctx.message, member_obj, None)
+            if not success:
+                return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to toggle {member_obj.mention}'s role as a developer because they are a higher/or equivalent role than you in {ctx.guild.name}.")
+            guilds = []
+            developers = await Developer.fetch_by_member(member_snowflake=member_obj.id)
+            for developer in developers:
+                guilds.append(developer['guild_snowflake'])
+            if ctx.guild.id in guilds:
+                await Developer.update_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 action = 'revoked'
-            else:    
-                await conn.execute('''
-                    INSERT INTO users (discord_snowflake, developer_guild_ids)
-                    VALUES ($1, ARRAY[$2]::BIGINT[])
-                    ON CONFLICT (discord_snowflake) DO UPDATE
-                    SET developer_guild_ids = (
-                        SELECT ARRAY(
-                            SELECT DISTINCT unnest(users.developer_guild_ids || EXCLUDED.developer_guild_ids)
-                        )
-                    ),
-                    updated_at = NOW()
-                ''', member_obj.id, ctx.guild.id)
+            else:
+                developer = Developer(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                await developer.grant()
                 action = 'granted'
-        await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s developer access has been {action} in {ctx.guild.name}.")
+        await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} Developer access has been {action} in {ctx.guild.name}.")
         
     # DONE
     @app_commands.command(name='hero', description='Grants/revokes invincibility for a member.')
@@ -131,24 +100,21 @@ class OwnerCommands(commands.Cog):
     async def vegan_hero_app_command(
         self,
         interaction: discord.Interaction,
-        member: Optional[str] = None
+        member: AppMemberSnowflake
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
+        state = None
         member_obj = await self.member_service.resolve_member(interaction, member)
-        if not member_obj:
-            return await interaction.response.send_message(content='\U0001F6AB Could not resolve the member.')
-        if member_obj.id == interaction.guild.me.id:
-            return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a superhero.')
-        state = Vegans.toggle_state()
-        if state:
-            Vegans.add_vegan(member_obj.id)
-            for channel in interaction.guild.channels:
+        if member_obj:
+            if member_obj.id == interaction.guild.me.id:
+                return
+            state = Vegans.toggle_state()
+            if state:
+                Vegans.add_vegan(member_obj.id)
                 await Vegans.unrestrict(interaction.guild, member_obj)
-        else:
-            Vegans.remove_vegan(member_obj.id)
-        state = 'ON' if state else 'OFF'
-        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Superhero mode turned {state} for {member_obj.mention}.')
+            else:
+                Vegans.remove_vegan(member_obj.id)
+            state = 'ON' if state else 'OFF'
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Superhero mode turned {state}.')
            
     # DONE
     @commands.command(name='hero', help='Grants/revokes invincibility for a member.')
@@ -156,24 +122,21 @@ class OwnerCommands(commands.Cog):
     async def vegan_hero_text_command(
         self,
         ctx: commands.Context,
-        member: Optional[str] = commands.parameter(description='Tag a member or include their snowflake ID')
+        member: MemberSnowflake = commands.parameter(description='Tag a member or include their snowflake ID')
     ):
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        state = None
         member_obj = await self.member_service.resolve_member(ctx, member)
-        if not member_obj:
-            return await self.handler.send_message(ctx, content='\U0001F6AB Could not resolve the member.')
-        if member_obj.id == ctx.guild.me.id:
-            return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a superhero.')
-        state = Vegans.toggle_state()
-        if state:
-            Vegans.add_vegan(member_obj.id)
-            for channel in ctx.guild.channels:
+        if member_obj:
+            if member_obj.id == ctx.guild.me.id:
+                return
+            state = Vegans.toggle_state()
+            if state:
+                Vegans.add_vegan(member_obj.id)
                 await Vegans.unrestrict(ctx.guild, member_obj)
-        else:
-            Vegans.remove_vegan(member_obj.id)
-        state = f'ON' if state else f'OFF'
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Superhero modeturned {state} for {member_obj.mention}.')
+            else:
+                Vegans.remove_vegan(member_obj.id)
+            state = f'ON' if state else f'OFF'
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Superhero mode turned {state}.')
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(OwnerCommands(bot))

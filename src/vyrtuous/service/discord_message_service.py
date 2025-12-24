@@ -18,6 +18,7 @@
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
+from vyrtuous.utils.emojis import Emojis
 
 import asyncio
 import discord
@@ -61,6 +62,7 @@ class AppPaginator(discord.ui.View):
     def __init__(self, bot: DiscordBot, interaction: discord.Interaction, pages, *, timeout=60):
         super().__init__(timeout=timeout)
         self.bot = bot
+        self.emoji = Emojis()
         self.interaction = interaction
         self.pages = pages
         self.current_page = 0
@@ -68,8 +70,13 @@ class AppPaginator(discord.ui.View):
         
     async def start(self):
         if not self.pages:
+            embed = discord.Embed(
+                title=f"{self.emoji.get_random_emoji()}",
+                description="No results found.",
+                color=discord.Color.red()
+            )
             return await self.interaction.response.send_message(
-                'There are no pages to display.',
+                embed=embed,
                 ephemeral=True
             )
         embed = self.pages[self.current_page]
@@ -115,11 +122,19 @@ class Paginator:
     def __init__(self, bot: DiscordBot, ctx_or_channel, pages):
         self.bot = bot
         self.ctx_or_channel = ctx_or_channel
+        self.emoji = Emojis()
         self.pages = pages
         self.current_page = 0
         self.message = None
 
     async def start(self):
+        if not self.pages:
+            embed = discord.Embed(
+                title=f"{self.emoji.get_random_emoji()}",
+                description="No results found.",
+                color=discord.Color.red()
+            )
+            return await self.ctx_or_channel.send(embed=embed)
         if isinstance(self.ctx_or_channel, commands.Context):
             messageable = self.ctx_or_channel
             author = self.ctx_or_channel.author

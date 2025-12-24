@@ -32,7 +32,7 @@ class TemporaryRoom:
         self.member_snowflake = member_snowflake
         self.room_name = room_name
 
-    async def create(self):
+    async def grant(self):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO temporary_rooms (channel_snowflake, guild_snowflake, member_snowflake, room_name)

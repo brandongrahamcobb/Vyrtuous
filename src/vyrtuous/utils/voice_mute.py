@@ -63,7 +63,7 @@ class VoiceMute:
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND target=$3
             ''', channel_snowflake, guild_snowflake, target)
 
-    async def create(self):
+    async def grant(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''

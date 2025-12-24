@@ -55,9 +55,8 @@ class Coordinator:
                 DELETE FROM coordinators WHERE channel_snowflake=$1
             ''', channel_snowflake)
 
-    async def create(self):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
+    async def grant(self):
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO coordinators (channel_snowflake, created_at, guild_snowflake, member_snowflake)
                 VALUES ($1, NOW(), $2, $3)
@@ -106,11 +105,8 @@ class Coordinator:
                 )
             return coordinators
 
-    @classmethod
-    async def revoke(cls, channel_snowflake: Optional[int], member_snowflake: Optional[int]):
-        await cls.delete_by_channel_and_member(channel_snowflake=channel_snowflake, member_snowflake=member_snowflake)
-
-    @classmethod
-    async def grant(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
-        coordinator = Coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-        await coordinator.create()
+    async def revoke(self):
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                DELETE FROM coordinators WHERE channel_snowflake=$1 AND member_snowflake=$2
+            ''', self.channel_snowflake, self.member_snowflake)

@@ -30,7 +30,8 @@ import pytest
 )
 
 async def test_clear_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str]):
-    await Developer.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    developer = Developer(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    await developer.grant()
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -40,4 +41,4 @@ async def test_clear_command(bot, voice_channel_one, guild, privileged_author, p
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS) 
     finally:
-        await Developer.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+        await developer.revoke()

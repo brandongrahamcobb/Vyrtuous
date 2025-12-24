@@ -24,75 +24,62 @@ class Developer:
     PLURAL = "Developers"
     SINGULAR = "Developer"
 
-    def __init__(self, guild_snowflakes: Optional[int], member_snowflake: Optional[str]):
+    def __init__(self, guild_snowflake: Optional[int], member_snowflake: Optional[str]):
         self.bot = DiscordBot.get_instance()
-        self.guild_snowflakes = guild_snowflakes
+        self.guild_snowflake = guild_snowflake
         self.member_snowflake: list[int|None] = member_snowflake
 
-    @classmethod
-    async def grant(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:   
+    async def grant(self):
+        async with self.bot.db_pool.acquire() as conn:   
             await conn.execute('''
                 INSERT INTO developers (created_at, guild_snowflake, member_snowflake)
                 VALUES (NOW(), $1, $2)
                 ON CONFLICT DO NOTHING
-            ''', guild_snowflake, member_snowflake)
+            ''', self.guild_snowflake, self.member_snowflake)
 
-    @classmethod       
-    async def revoke(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
+    async def revoke(self):
+        async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 DELETE FROM developers
                 WHERE guild_snowflake = $1 AND member_snowflake = $2
-            ''', guild_snowflake, member_snowflake)
+            ''', self.guild_snowflake, self.member_snowflake)
     
     @classmethod
-    async def fetch_members(cls):
+    async def fetch_all(cls):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT
-                    array_agg(guild_snowflake ORDER BY guild_snowflake) AS guild_snowflakes,
-                    member_snowflake
+                SELECT guild_snowflake, member_snowflake
                 FROM developers
-                GROUP BY member_snowflake
+                ORDER BY member_snowflake
             ''')
         developers = []
         for row in rows:
-            developers.append(
-                Developer(guild_snowflakes=row["guild_snowflakes"], member_snowflake=row["member_snowflake"])
-            )
+            developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
         return developers
 
     @classmethod
-    async def fetch_guilds_by_member(cls, member_snowflake: Optional[int]):
+    async def fetch_by_member(cls, member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT guild_snowflake FROM developers WHERE member_snowflake=$1
             ''', member_snowflake)
-        guilds = []
+        developers = []
         for row in rows:
-            guilds.append(bot.get_guild(row["guild_snowflake"]))
-        return guilds
+            developers.append(Developer(guild_snowflake=row['guild_snowflake'], member_snowflake=member_snowflake))
+        return developers
 
     @classmethod
-    async def fetch_members_by_guild(cls, guild_snowflake):
+    async def fetch_by_guild(cls, guild_snowflake):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT
-                    member_snowflake,
-                    array_agg(guild_snowflake ORDER BY guild_snowflake) AS guild_snowflakes
+                SELECT guild_snowflake, member_snowflake
                 FROM developers
                 WHERE guild_snowflake = $1
-                GROUP BY member_snowflake
             ''', guild_snowflake)
         developers = []
         for row in rows:
-            developers.append(
-                Developer(guild_snowflakes=row["guild_snowflakes"], member_snowflake=row["member_snowflake"])
-            )
+            developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
         return developers

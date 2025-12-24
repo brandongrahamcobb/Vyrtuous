@@ -9,7 +9,7 @@ class ServerMute:
         self.member_snowflake = member_snowflake
         self.reason = reason
 
-    async def create(self):
+    async def grant(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''

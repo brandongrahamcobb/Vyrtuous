@@ -23,10 +23,12 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.check_service import *
 from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.member_service import MemberService
+from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.temporary_room import TemporaryRoom
 
 class DevCommands(commands.Cog):
@@ -37,6 +39,7 @@ class DevCommands(commands.Cog):
         self.emoji = Emojis()
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.member_service = MemberService()
+        self.role_service = RoleService()
     
     # DONE
     @app_commands.command(name='backup', description='Creates a backup of the database and uploads it.')
@@ -81,7 +84,7 @@ class DevCommands(commands.Cog):
     async def clear_channel_access_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None
+        channel: AppChannelSnowflake
     ):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -96,7 +99,7 @@ class DevCommands(commands.Cog):
     async def clear_channel_access_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ) -> None:
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
@@ -209,27 +212,31 @@ class DevCommands(commands.Cog):
     # DONE
     @app_commands.command(name='trole', description='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
-    async def grant_team_to_role_app_command(self, interaction: discord.Interaction, role: Optional[str]):
-        guild = interaction.guild
-        if not guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command must be used in a server.')
-        role_id = int(role.replace('<@&','').replace('>',''))
-        role_obj = guild.get_role(role_id)
-        for member in role_obj.members:
-            administrator = Administrator(guild_snowflakes=[interaction.guild.id], member_snowflake=member.id, role_snowflakes=[role_obj.id])
-            administrator.create()
-        await interaction.response.send_message(f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` granted for all members with `{role_obj.name}`.')
+    async def grant_team_to_role_app_command(
+        self,
+        interaction: discord.Interaction,
+        role: AppRoleSnowflake
+    ):
+        role_obj = await self.role_service.resolve_role(interaction, role)
+        if role_obj:
+            for member in role_obj.members:
+                administrator = Administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
+                await administrator.grant()
+        await interaction.response.send_message(f'{self.emoji.get_random_emoji()} Team role granted for members.')
     
     @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
-    async def grant_team_to_role_text_command(self, ctx: commands.Context, role: Optional[str]):
-        guild = ctx.guild
-        role_id = int(role.replace('<@&','').replace('>',''))
-        role_obj = guild.get_role(role_id)
-        for member in role_obj.members:
-            administrator = Administrator(guild_snowflakes=[interaction.guild.id], member_snowflake=member.id, role_snowflakes=[role_obj.id])
-            administrator.create()
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` granted for all members with `{role_obj.name}`.')
+    async def grant_team_to_role_text_command(
+        self,
+        ctx: commands.Context,
+        role: RoleSnowflake
+    ):
+        role_obj = await self.role_service.resolve_role(ctx, role)
+        if role_obj:
+            for member in role_obj.members:
+                administrator = Administrator(guild_snowflakes=[ctx.guild.id], member_snowflake=member.id, role_snowflakes=[role_obj.id])
+                await administrator.grant()
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role granted for members.')
 
     # DONE
     @app_commands.command(name='unload', description='Unloads a cog by name "vyrtuous.cog.<cog_name>".')
@@ -253,39 +260,54 @@ class DevCommands(commands.Cog):
         else:
             await self.handler.send_message(ctx, content='\N{OK HAND SIGN}')
                 
-    @app_commands.command(name='xtrole', description='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()
-    async def revoke_administrator_to_role_app_command(self, interaction: discord.Interaction, role: Optional[str]):
-        role_id = int(role.replace('<@&','').replace('>',''))
-        role_obj = interaction.guild.get_role(role_id)
-        for member in role_obj.members:
-            administrator = await Administrator.fetch_member(member.id)
-            if not administrator:
-                continue
-            guild_snowflakes = set(administrator.guild_snowflakes)
-            role_snowflakes = set(administrator.role_snowflakes)
-            role_snowflakes.discard(role_obj.id)
-            if not (role_snowflakes & {r.id for r in member.roles}):
-                guild_snowflakes.discard(interaction.guild.id)
-            await Administrator.update_guild_and_role_for_member(guild_snowflakes=list(guild_snowflakes), member_snowflake=member.id, role_snowflakes=list(role_snowflakes))
-        await interaction.response.send_message(f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` revoked for all members with `{role_obj.name}`.')
-     
+    async def revoke_administrator_to_role_app_command(
+        self,
+        interaction: discord.Interaction,
+        role: AppRoleSnowflake
+    ):
+        role_obj = await self.role_service.resolve_role(interaction, role)
+        if role_obj:
+            for member in role_obj.members:
+                administrator = await Administrator.fetch_member(member.id)
+                if not administrator:
+                    continue
+                if administrator.role_snowflake == role_obj.id:
+                    administrator.role_snowflake = None
+                if administrator.role_snowflake not in {r.id for r in member.roles}:
+                    if administrator.guild_snowflake == interaction.guild.id:
+                        administrator.guild_snowflake = None
+                await Administrator.update_guild_and_role_for_member(
+                    guild_snowflake=administrator.guild_snowflake,
+                    member_snowflake=member.id,
+                    role_snowflake=administrator.role_snowflake
+                )
+        await interaction.response.send_message(f"{self.emoji.get_random_emoji()} Team role revoked for members.")
+
     @commands.command(name='xtrole', help='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()
-    async def revoke_administrator_to_role_text_command(self, ctx: commands.Context, role: Optional[str]):
-        role_id = int(role.replace('<@&','').replace('>',''))
-        role_obj = ctx.guild.get_role(role_id)
-        for member in role_obj.members:
-            administrator = await Administrator.fetch_member(member_snowflake=member.id)
-            if not administrator:
-                continue
-            guild_snowflakes = set(administrator.guild_snowflakes)
-            role_snowflakes = set(administrator.role_snowflakes)
-            role_snowflakes.discard(role_obj.id)
-            if not (role_snowflakes & {r.id for r in member.roles}):
-                guild_snowflakes.discard(ctx.guild.id)
-            await Administrator.update_guild_and_role_for_member(guild_snowflakes=list(guild_snowflakes), member_snowflake=member.id, role_snowflakes=list(role_snowflakes))
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role `{role_obj.name}` revoked for all members with `{role_obj.name}`.')   
-              
+    async def revoke_administrator_to_role_text_command(
+        self,
+        ctx: commands.Context,
+        role: RoleSnowflake
+    ):
+        role_obj = await self.role_service.resolve_role(ctx, role)
+        if role_obj:
+            for member in role_obj.members:
+                administrator = await Administrator.fetch_member(member_snowflake=member.id)
+                if not administrator:
+                    continue
+                if administrator.role_snowflake == role_obj.id:
+                    administrator.role_snowflake = None
+                if administrator.role_snowflake not in {r.id for r in member.roles}:
+                    if administrator.guild_snowflake == ctx.guild.id:
+                        administrator.guild_snowflake = None
+                await Administrator.update_guild_and_role_for_member(
+                    guild_snowflake=administrator.guild_snowflake,
+                    member_snowflake=member.id,
+                    role_snowflake=administrator.role_snowflake
+                )
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role revoked for members.')     
+
 async def setup(bot: DiscordBot):
     await bot.add_cog(DevCommands(bot))

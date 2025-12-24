@@ -128,8 +128,8 @@ async def is_developer(ctx_or_interaction_or_message):
         user_id = ctx_or_interaction_or_message.author.id
     else:
         user_id = None
-    guilds = await Developer.fetch_guilds_by_member(user_id)
-    if not guilds:
+    developers = await Developer.fetch_by_member(member_snowflake=user_id)
+    if not developers:
         raise NotDeveloper()
     return True
 
@@ -263,7 +263,7 @@ async def member_is_administrator(member: discord.Member) -> bool:
     administrator = await Administrator.fetch_member(member.id)
     if not administrator:
         return False
-    return member.guild.id in administrator.guild_snowflakes
+    return member.guild.id == administrator.guild_snowflake
 
 async def member_is_coordinator(channel: discord.VoiceChannel, member: discord.Member) -> bool:
     channel_snowflakes = await Coordinator.fetch_channels_by_guild_and_member(guild_snowflake=channel.guild.id, member_snowflake=member.id)
@@ -340,3 +340,4 @@ async def is_owner_developer_administrator_coordinator_moderator_via_channel_mem
         except commands.CheckFailure:
             continue
     return "Everyone"
+

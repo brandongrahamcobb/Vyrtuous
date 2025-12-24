@@ -23,6 +23,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.check_service import *
 from vyrtuous.service.member_service import MemberService
+from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.coordinator import Coordinator
@@ -30,6 +31,7 @@ from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.server_mute import ServerMute
+from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.temporary_room import TemporaryRoom
@@ -44,6 +46,7 @@ class AdminCommands(commands.Cog):
         self.emoji = Emojis()
         self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
         self.member_service = MemberService()
+        self.role_service = RoleService()
     
     # DONE
     @app_commands.command(name='alias', description='Set an alias for a Vyrtuous action.')
@@ -57,18 +60,18 @@ class AdminCommands(commands.Cog):
     async def create_alias_app_command(
         self,
         interaction: discord.Interaction,
-        alias_name: Optional[str] = None,
-        alias_type: Optional[str] = None,
-        channel: Optional[str] = None,
-        role: Optional[str] = None
+        alias_name: Optional[str],
+        alias_type: Optional[str],
+        channel: AppChannelSnowflake,
+        role: AppRoleSnowflake
     ):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-        if role:
-            role_id = int(role.replace('<@&','').replace('>',''))
-        else:
-            role_id = None
-        alias = Alias(alias_name=alias_name, alias_type=alias_type, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, role_snowflake=role_id)
-        await alias.create()
+        role_snowflake = None
+        role_obj = await self.role_service.resolve_role(interaction, role)
+        if role_obj:
+            role_snowflake = role_obj.id
+        alias = Alias(alias_name=alias_name, alias_type=alias_type, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, role_snowflake=role_snowflake)
+        await alias.grant()
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -84,17 +87,17 @@ class AdminCommands(commands.Cog):
         ctx: commands.Context,
         alias_name: Optional[str] = commands.parameter(default=None, description='Alias/Pseudonym'),
         alias_type: Optional[str] = commands.parameter(default=None, description='One of: `cow`, `uncow`, `mute`, `unmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
         *,
-        role: Optional[str] = commands.parameter(default=None, description='Role ID (only for role/unrole)')
+        role: RoleSnowflake = commands.parameter(default=None, description='Role ID (only for role/unrole)')
     ) -> None:
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        if role:
-            role_id = int(role.replace('<@&','').replace('>',''))
-        else:
-            role_id = None
-        alias = Alias(alias_name=alias_name, alias_type=alias_type, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, role_snowflake=role_id)
-        await alias.create()
+        role_snowflake = None
+        role_obj = await self.role_service.resolve_role(ctx, role)
+        if role_obj:
+            role_snowflake = role_obj.id
+        alias = Alias(alias_name=alias_name, alias_type=alias_type, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, role_snowflake=role_snowflake)
+        await alias.grant()
         async with ctx.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -125,7 +128,7 @@ class AdminCommands(commands.Cog):
             await Cap.update_by_channel_and_duration(channel_snowflake=channel_obj.id, duration=duration_seconds)
         else:
             cap = Cap(channel_snowflake=channel_obj.id, duration=duration_seconds, guild_snowflake=interaction.guild.id, moderation_type=moderation_type)
-            await cap.create()
+            await cap.grant()
         return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Cap created successfully.')
     
     # DONE
@@ -134,7 +137,7 @@ class AdminCommands(commands.Cog):
     async def cap_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
         moderation_type: Optional[str] = commands.parameter(default=None, description='One of: `mute`, `ban`, `tmute`'),
         *,
         duration: Optional[str] = commands.parameter(default='24h', description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default')
@@ -148,7 +151,7 @@ class AdminCommands(commands.Cog):
             await Cap.update_by_channel_and_duration(channel_snowflake=channel_obj.id, duration=duration_seconds)
         else:
             cap = Cap(channel_snowflake=channel_obj.id, duration=duration_seconds, guild_snowflake=ctx.guild.id, moderation_type=moderation_type)
-            await cap.create()
+            await cap.grant()
         return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Cap created successfully.')
     
     # DONE
@@ -158,14 +161,14 @@ class AdminCommands(commands.Cog):
     async def change_temp_room_owner_app_command(
         self,
         interaction,
-        channel: Optional[str],
-        member: Optional[str]
+        channel: AppChannelSnowflake,
+        member: AppMemberSnowflake
     ):
         member_obj = await self.member_service.resolve_member(interaction, member)
         if member_obj:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
             await TemporaryRoom.update_owner(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Ownership transfered successfully.')
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Ownership transfered successfully.')
             
     # DONE
     @commands.command(name='chown', help='Change the owner of a temporary room.')
@@ -173,14 +176,14 @@ class AdminCommands(commands.Cog):
     async def change_temp_room_owner_text_command(
         self,
         ctx,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or provide it\'s snowflake ID'),
-        member: Optional[str] = commands.parameter(default=None, description='Tag a user or provide their snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or provide it\'s snowflake ID'),
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a user or provide their snowflake ID')
     ):
         member_obj = await self.member_service.resolve_member(ctx, member)
         if member_obj:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
             await TemporaryRoom.update_owner(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Ownership transfered successfully.')
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Ownership transfered successfully.')
         
     # DONE
     @app_commands.command(name='coord', description='Grants/revokes coordinator access for a specific voice channel.')
@@ -189,9 +192,10 @@ class AdminCommands(commands.Cog):
     async def create_coordinator_app_command(
         self,
         interaction: discord.Interaction,
-        member: Optional[str] = None,
-        channel: Optional[str] = None
+        member: AppMemberSnowflake,
+        channel: AppChannelSnowflake
     ):
+        action = None
         member_obj = await self.member_service.resolve_member(interaction, member)
         if member_obj:
             if member_obj.id == interaction.guild.me.id:
@@ -206,13 +210,13 @@ class AdminCommands(commands.Cog):
                         action = 'revoked'
                     else:
                         coordinator = Coordinator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                        await coordinator.create()
+                        await coordinator.grant()
                         action = 'granted'
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1,$2,$3,$4,$5,$6)
                     ''', 'toggled_coordinator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, f'Coordinator access {action}')
-                return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} Cooridinator access has been {action}.")
+        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} Cooridinator access has been {action}.")
 
     # DONE
     @commands.command(name='coord', help='Grants/revokes coordinator access for a specific voice channel.')
@@ -220,9 +224,10 @@ class AdminCommands(commands.Cog):
     async def create_coordinator_text_command(
         self,
         ctx: commands.Context,
-        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
+        action = None
         member_obj = await self.member_service.resolve_member(ctx, member)
         if member_obj:
             if member_obj.id == ctx.guild.me.id:
@@ -237,13 +242,13 @@ class AdminCommands(commands.Cog):
                         action = 'revoked'
                     else:
                         coordinator = Coordinator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                        await coordinator.create()
+                        await coordinator.grant()
                         action = 'granted'
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1,$2,$3,$4,$5,$6)
                     ''', 'toggled_coordinator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Coordinator access {action}')
-                return await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} Cooridinator access has been {action}.")
+        return await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} Cooridinator access has been {action}.")
         
    # DONE
     @app_commands.command(name='cstage', description='Create a stage in the current or specified channel.')
@@ -252,7 +257,7 @@ class AdminCommands(commands.Cog):
     async def stage_create_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None,
+        channel: AppChannelSnowflake,
         duration: str = '1'
     ):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
@@ -262,13 +267,13 @@ class AdminCommands(commands.Cog):
         duration_display = duration_obj.output_display()
         skipped, muted, failed = [], [], []
         stage = Stage(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=interaction.guild.id, member_snowflake=interaction.user.id)
-        await stage.create()
+        await stage.grant()
         for member in channel_obj.members:
             if is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel=channel_obj, member=member) or member.id == interaction.user.id:
                 skipped.append(member)
                 continue
             voice_mute = await VoiceMute(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="room", reason="Stage mute")
-            await voice_mute.create()
+            await voice_mute.grant()
             try:
                 if member.voice and member.voice.channel.id == channel_obj.id:
                     await member.edit(mute=True)
@@ -297,7 +302,7 @@ class AdminCommands(commands.Cog):
     async def stage_create_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
         *,
         duration: str = '1'
     ):
@@ -308,13 +313,13 @@ class AdminCommands(commands.Cog):
         duration_display = duration_obj.output_display()
         skipped, muted, failed = [], [], []
         stage = Stage(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=ctx.guild.id, member_snowflake=ctx.author.id)
-        await stage.create()
+        await stage.grant()
         for member in channel_obj.members:
             if is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel=channel_obj, member=member) or member.id == ctx.author.id:
                 skipped.append(member)
                 continue
             voice_mute = await VoiceMute(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="room", reason="Stage mute")
-            await voice_mute.create()
+            await voice_mute.grant()
             try:
                 if member.voice and member.voice.channel.id == channel_obj.id:
                     await member.edit(mute=True)
@@ -344,7 +349,7 @@ class AdminCommands(commands.Cog):
     async def toggle_log_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None
+        channel: AppChannelSnowflake
     ):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         statistics = Statistics.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -361,7 +366,7 @@ class AdminCommands(commands.Cog):
     async def toggle_log_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(description='Tag a channel or include its snowflake ID')
     ):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         statistics = Statistics.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
@@ -440,7 +445,7 @@ class AdminCommands(commands.Cog):
     async def modify_log_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None,
+        channel: AppChannelSnowflake,
         action: Optional[str] = None,
         statistic_type: Optional[str] = None,
         snowflakes: Optional[str] = None
@@ -449,11 +454,11 @@ class AdminCommands(commands.Cog):
         match action.lower():
             case 'create':
                 statistics = Statistics(channel_snowflake=channel_obj.id, enabled=True, guild_snowflake=interaction.guild.id, statistic_type=statistic_type, snowflakes=snowflakes)
-                await statistics.create()
+                await statistics.grant()
             case 'delete':
                 await Statistics.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             case 'modify':
-                await Statistics.update_by_channel_guild_snowflakes_and_type(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, statistic_type=statistic_type, snowflakes=snowflakes)
+                await Statistics.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, statistic_type=statistic_type, snowflakes=snowflakes)
         return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Modified statistics successfully.')
         
     # DONE
@@ -462,7 +467,7 @@ class AdminCommands(commands.Cog):
     async def modify_log_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
         action: Optional[str] = commands.parameter(default=None, description='create | modify | delete'),
         statistic_type: Optional[str] = commands.parameter(default=None, description='Type of logs: member, channel, general'),
         *snowflakes: Optional[int]
@@ -471,31 +476,34 @@ class AdminCommands(commands.Cog):
         match action.lower():
             case 'create':
                 statistics = Statistics(channel_snowflake=channel_obj.id, enabled=True, guild_snowflake=ctx.guild.id, snowflakes=snowflakes, statistic_type=statistic_type)
-                await statistics.create()
+                await statistics.grant()
             case 'delete':
                 await Statistics.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             case 'modify':
-                await Statistics.update_by_channel_guild_snowflakes_and_type(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, snowflakes=snowflakes, statistic_type=statistic_type)
+                await Statistics.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, snowflakes=snowflakes, statistic_type=statistic_type)
         await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Modified statistics successfully.')
 
     # DONE
     @app_commands.command(name='rmv', description='Move all the members in one room to another.')
-    @app_commands.describe(source_id='Tag the source channel or include its snowflake ID',target_id='Tag the target channel or include its snowflake ID')
+    @app_commands.describe(
+        source_channel='Tag the source channel or include its snowflake ID',
+        target_channel='Tag the target channel or include its snowflake ID'
+    )
     @is_owner_developer_administrator_predicator()
     async def room_move_all_app_command(
         self,
         interaction: discord.Interaction,
-        source_id: Optional[str] = None,
-        target_id: Optional[str] = None
+        source_channel: AppChannelSnowflake,
+        target_channel: AppChannelSnowflake
     ):
-        source_channel = interaction.guild.get_channel(int(source_id))
-        target_channel = interaction.guild.get_channel(int(target_id))
-        for member in source_channel.members:
+        source_channel_obj = await self.channel_service.resolve_channel(interaction, source_channel)
+        target_channel_obj = await self.channel_service.resolve_channel(interaction, target_channel)
+        for member in source_channel_obj.members:
             try:
-                await member.move_to(target_channel)
+                await member.move_to(target_channel_obj)
             except discord.Forbidden:
                 logger.warning(f'\U0001F6AB Missing permissions to move {member}.')
-        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Moved all members from {source_channel.mention} to {target_channel.mention}.')
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Moved members.')
         
     # DONE
     @commands.command(name='rmv', help='Move all the members in one room to another.')
@@ -503,17 +511,17 @@ class AdminCommands(commands.Cog):
     async def room_move_all_text_command(
         self,
         ctx: commands.Context,
-        source_id: Optional[int] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
-        target_id: Optional[int] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        source_channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        target_channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
-        source_channel = ctx.guild.get_channel(source_id)
-        target_channel = ctx.guild.get_channel(target_id)
-        for member in source_channel.members:
+        source_channel_obj = await self.channel_service.resolve_channel(ctx, source_channel)
+        target_channel_obj = await self.channel_service.resolve_channel(ctx, target_channel)
+        for member in source_channel_obj.members:
             try:
-                await member.move_to(target_channel)
+                await member.move_to(target_channel_obj)
             except discord.Forbidden:
                 logger.warning(f'Missing permissions to move {member}.')
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Moved all members.')
+        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Moved members.')
             
     # DONE
     @app_commands.command(name='smute', description='Mutes or unmutes a member throughout the entire guild.')
@@ -522,7 +530,7 @@ class AdminCommands(commands.Cog):
     async def toggle_server_mute_app_command(
         self,
         interaction: discord.Interaction,
-        member: Optional[str] = None,
+        member: AppMemberSnowflake,
         reason: Optional[str] = 'No reason provided'
     ):
         member_obj = await self.member_service.resolve_member(interaction, member)
@@ -533,7 +541,7 @@ class AdminCommands(commands.Cog):
                 server_mute = await ServerMute.fetch_by_member(member_snowflake=member_obj.id)
                 if not server_mute:
                     server_mute = ServerMute(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, reason=reason)
-                    server_mute.create()
+                    server_mute.grant()
                     action = 'muted'
                     should_be_muted = True
                 else:
@@ -549,7 +557,7 @@ class AdminCommands(commands.Cog):
                     INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                     VALUES ($1,$2,$3,$4,$5,$6)
                 ''', 'toggled_server_mute', member_obj.id, interaction.user.id, interaction.guild.id, None, f'Server {action}')
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Server mute successful.')
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Server mute successful.')
             
     # DONE
     @commands.command(name='smute', help='Mutes or unmutes a member throughout the entire guild.')
@@ -557,7 +565,7 @@ class AdminCommands(commands.Cog):
     async def toggle_server_mute_text_command(
         self,
         ctx: commands.Context,
-        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
         *,
         reason: Optional[str] = commands.parameter(default='No reason provided', description='Optional reason (required for 7 days or more)')
     ) -> None:
@@ -569,7 +577,7 @@ class AdminCommands(commands.Cog):
                 server_mute = await ServerMute.fetch_by_member(member_snowflake=member_obj.id)
                 if not server_mute:
                     server_mute = ServerMute(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, reason=reason)
-                    await server_mute.create()
+                    await server_mute.grant()
                     action = 'muted'
                     should_be_muted = True
                 else:
@@ -585,7 +593,7 @@ class AdminCommands(commands.Cog):
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1,$2,$3,$4,$5,$6)
                     ''', 'toggled_server_mute', member_obj.id, ctx.author.id, ctx.guild.id, None, f'Server {action}')
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Server mute successful.')
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Server mute successful.')
 
     # DONE
     @app_commands.command(name='temp', description='Toggle a temporary room and assign an owner.')
@@ -594,9 +602,10 @@ class AdminCommands(commands.Cog):
     async def toggle_temp_room_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None,
-        owner: Optional[str] = None
+        channel: AppChannelSnowflake,
+        owner: AppMemberSnowflake
     ):
+        action = None
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         if room:
@@ -607,11 +616,12 @@ class AdminCommands(commands.Cog):
             action = 'removed'
         else:
             member_obj = await self.member_service.resolve_member(interaction, owner)
-            temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
-            await temporary_room.create()
-            moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-            await moderator.create()
-            action = f'created'
+            if member_obj:
+                temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
+                await temporary_room.grant()
+                moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                await moderator.grant()
+                action = f'created'
         await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room {action}.')
         
     # DONE
@@ -620,9 +630,10 @@ class AdminCommands(commands.Cog):
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
-        owner: Optional[str] = commands.parameter(default=None, description='Tag a member or include their Discord ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        owner: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their Discord ID')
     ):
+        action = None
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         if room:
@@ -632,17 +643,19 @@ class AdminCommands(commands.Cog):
             action = f'removed'
         else:
             member_obj = await self.member_service.resolve_member(ctx, owner)
-            temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
-            await temporary_room.create()
-            moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-            await moderator.create()
-            action = f'created'
+            if member_obj:
+                temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
+                await temporary_room.grant()
+                moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                await moderator.grant()
+                action = f'created'
         await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room {action}.')
 
     # DONE
     @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.')
     @is_owner_developer_administrator_predicator()
     async def check_temp_rooms_app_command(self, interaction: discord.Interaction):
+        pages = []
         rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=interaction.guild.id)
         if rooms:
             lines = []
@@ -653,7 +666,6 @@ class AdminCommands(commands.Cog):
                 if aliases:
                     for alias in aliases:
                         lines.append(f"  ↳ {alias.alias_name} ({alias.alias_type})")
-            pages = []
             chunks = 18
             for i in range(0, len(lines), chunks):
                 step = lines[i:i + chunks]
@@ -664,12 +676,14 @@ class AdminCommands(commands.Cog):
                 )
                 pages.append(embed)
             paginator = AppPaginator(self.bot, interaction, pages)
-            await paginator.start()
+            return await paginator.start()
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No temporary rooms found.')
         
     # DONE
     @commands.command(name='temps', help='List temporary rooms with matching command aliases.')
     @is_owner_developer_administrator_predicator()
     async def check_temp_rooms_text_command(self, ctx: commands.Context):
+        pages = []
         rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=ctx.guild.id)
         if rooms:
             lines = []
@@ -680,7 +694,6 @@ class AdminCommands(commands.Cog):
                 if aliases:
                     for alias in aliases:
                         lines.append(f"  ↳ {alias.alias_name} ({alias.alias_type})")
-            pages = []
             chunk_size = 18
             for i in range(0, len(lines), chunk_size):
                 step = lines[i:i + chunk_size]
@@ -690,8 +703,8 @@ class AdminCommands(commands.Cog):
                     color=discord.Color.blue()
                 )
                 pages.append(embed)
-            paginator = Paginator(self.bot, ctx, pages)
-            await paginator.start()
+        paginator = Paginator(self.bot, ctx, pages)
+        return await paginator.start()
         
     # DONE
     @app_commands.command(name='xalias', description='Deletes an alias.')
@@ -737,7 +750,7 @@ class AdminCommands(commands.Cog):
     async def undo_cap_interaction(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None,
+        channel: AppChannelSnowflake,
         moderation_type: Optional[str] = None
     ):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
@@ -750,7 +763,7 @@ class AdminCommands(commands.Cog):
     async def undo_cap_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
         moderation_type: Optional[str] = commands.parameter(default=None, description='One of: `mute`, `ban`, `tmute`')
     ):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
@@ -764,7 +777,7 @@ class AdminCommands(commands.Cog):
     async def stage_quit_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None
+        channel: AppChannelSnowflake
     ):
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         stage = await Stage.fetch_by_guild_and_channel(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -790,7 +803,7 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         stage = await Stage.fetch_by_guild_and_channel(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)

@@ -53,10 +53,10 @@ import pytest
 )
 
 async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], role, alias_type, alias_name, channel_ref, role_ref):
-    await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    await administrator.grant()
     try:
-        voice_channel_one.messages.clear() 
-        channel_token = voice_channel_one.mention
+        voice_channel_one.messages.clear()
         if channel_ref and role_ref:
             formatted = f"{command} {alias_name} {alias_type} {voice_channel_one.id} {ROLE_ID}"
         elif channel_ref:
@@ -68,4 +68,4 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
     finally:
-        await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+        await administrator.revoke()

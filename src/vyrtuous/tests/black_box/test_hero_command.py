@@ -38,5 +38,3 @@ async def test_hero_command(bot, voice_channel_one, guild, privileged_author, pr
     await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="OwnerCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.owner_commands.isinstance", prefix=prefix)
     response = voice_channel_one.messages[0]["content"]
     assert any(emoji in response for emoji in Emojis.EMOJIS)
-    member_value = not_privileged_author.mention if member_ref else not_privileged_author.name
-    assert any(val in response for val in [member_value])

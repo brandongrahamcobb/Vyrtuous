@@ -28,6 +28,7 @@ from vyrtuous.utils.all import All
 from vyrtuous.utils.developer import Developer
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator
+from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.setup_logging import logger
    
@@ -138,13 +139,15 @@ class EveryoneCommands(commands.Cog):
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 return await interaction.response.send_message(content='\U0001F6AB You are not authorized to list all developers.')
-            developers = await Developer.fetch_members()
+            developers = await Developer.fetch_all()
             pages = await All.create_pages_to_show_guilds_by_members(members=developers, member_type=Developer)
         elif member_obj:
-            guilds = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
+            developers = await Developer.fetch_by_member(member_snowflake=member_obj.id)
+            for developer in developers:
+                guilds.append(developer['guild_snowflake'])
             pages = await All.create_pages_to_show_members_by_guild(guilds=guilds, member_snowflake=member_obj.id, member_type=Developer)
         else:
-            developers = await Developer.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
+            developers = await Developer.fetch_by_guild(guild_snowflake=interaction.guild.id)
             pages = await All.create_pages_to_show_members(members=developers, member_type=Developer)
         if pages:
             paginator = AppPaginator(self.bot, interaction, pages)
@@ -163,13 +166,16 @@ class EveryoneCommands(commands.Cog):
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 return await self.handler.send_message(ctx, content='\U0001F6AB You are not authorized to list all developers.')
-            developers = await Developer.fetch_members()
+            developers = await Developer.fetch_all()
             pages = await All.create_pages_to_show_guilds_by_members(members=developers, member_type=Developer)
         elif member_obj:
-            guilds = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
+            guilds = []
+            developers = await Developer.fetch_by_member(member_snowflake=member_obj.id)
+            for developer in developers:
+                guilds.append(developer['guild_snowflake'])
             pages = await All.create_pages_to_show_guilds_by_member(guilds=guilds, member_snowflake=member_obj.id, member_type=Developer)
         else:
-            developers = await Developer.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
+            developers = await Developer.fetch_by_guild(guild_snowflake=ctx.guild.id)
             pages = await All.create_pages_to_show_members(members=developers, member_type=Developer)
         if pages:
             paginator = Paginator(self.bot, ctx, pages)
@@ -412,7 +418,7 @@ class EveryoneCommands(commands.Cog):
     async def stage_survey_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None
+        channel: AppChannelSnowflake
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
@@ -452,7 +458,7 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')

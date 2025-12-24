@@ -63,7 +63,7 @@ class Alias:
                     lines.append(f'`{alias.alias_name}`')
         return lines
 
-    async def create(self):
+    async def grant(self):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO command_aliases (alias_name, alias_type, channel_snowflake, created_at, guild_snowflake, role_snowflake)

@@ -34,7 +34,8 @@ def generate_cap_test_cases():
 @pytest.mark.asyncio
 @pytest.mark.parametrize("command,channel_ref", generate_cap_test_cases())
 async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], channel_ref):
-    await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    await administrator.grant()
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -45,4 +46,4 @@ async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, pr
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
     finally:
-        await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+        await administrator.revoke()

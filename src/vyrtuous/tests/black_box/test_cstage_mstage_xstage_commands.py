@@ -38,26 +38,24 @@ import pytest
 )
 
 async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], role, command: Optional[str], duration, channel_ref, member_ref):
-    try:
-        voice_channel_one.messages.clear() 
-        formatted = command.format(
-                not_privileged_author_id=not_privileged_author.id,
-                voice_channel_one_id=voice_channel_one.id,
-                duration=duration
-            )
-        if "cstage" in command or "xstage" in command:
-            await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
-            await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        else:
-            await Moderator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-            await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]
-        if response['embed']:
-            assert any(emoji in response['embed'].title for emoji in Emojis.EMOJIS)
-        else:
-            assert any(emoji in response['content'] for emoji in Emojis.EMOJIS)
-    finally:
-        if "cstage" in command or "xstage" in command:
-            await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
-        else:
-            await Moderator.revoke(channel_snowflake=voice_channel_one.id, member_snowflake=privileged_author.id)
+    voice_channel_one.messages.clear() 
+    formatted = command.format(
+            not_privileged_author_id=not_privileged_author.id,
+            voice_channel_one_id=voice_channel_one.id,
+            duration=duration
+        )
+    if "cstage" in command or "xstage" in command:
+        administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+        await administrator.grant()
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        await administrator.revoke()
+    else:
+        moderator = Moderator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+        await moderator.grant()
+        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
+        await moderator.revoke()
+    response = voice_channel_one.messages[0]
+    if response['embed']:
+        assert any(emoji in response['embed'].title for emoji in Emojis.EMOJIS)
+    else:
+        assert any(emoji in response['content'] for emoji in Emojis.EMOJIS)

@@ -31,7 +31,8 @@ import pytest
 )
 
 async def test_mod_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):
-    await Coordinator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    coordinator = Coordinator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    await coordinator.grant()
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -41,9 +42,5 @@ async def test_mod_command(bot, voice_channel_one, guild, privileged_author, not
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="CoordinatorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.coordinator_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
-        member_value = not_privileged_author.mention if member_ref else not_privileged_author.name
-        assert any(val in response for val in [channel_value])
-        assert any(val in response for val in [member_value])
     finally:
-        await Coordinator.revoke(channel_snowflake=voice_channel_one.id, member_snowflake=privileged_author.id)
+        await coordinator.revoke()

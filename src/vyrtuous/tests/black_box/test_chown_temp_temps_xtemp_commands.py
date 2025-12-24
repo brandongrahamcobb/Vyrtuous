@@ -27,7 +27,7 @@ import pytest
     "command,channel_ref,member_ref",
     [
         ("temp {voice_channel_one_id} {member_id}", True, True),
-        ("temps all", False, False),
+        ("temps", False, False),
         ("temps {voice_channel_one_id}", True, False),
         ("chown {voice_channel_one_id} {member_id}", True, True),
         ("temp {voice_channel_one_id}", True, False),
@@ -39,7 +39,8 @@ import pytest
 )
 
 async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], role, command: Optional[str], channel_ref, member_ref):    
-    await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    await administrator.grant()
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -62,4 +63,4 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, not_priv
         else:
             assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
     finally:
-        await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+        await administrator.revoke()

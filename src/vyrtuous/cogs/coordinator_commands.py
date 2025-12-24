@@ -23,9 +23,9 @@ from vyrtuous.service.discord_message_service import DiscordMessageService
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.check_service import *
-from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator
+from vyrtuous.utils.snowflake import *
 
 class CoordinatorCommands(commands.Cog):
 
@@ -43,40 +43,38 @@ class CoordinatorCommands(commands.Cog):
     async def create_moderator_app_command(
         self,
         interaction: discord.Interaction,
-        member: Optional[str] = None,
-        channel: Optional[str] = None
+        member: AppMemberSnowflake,
+        channel: AppChannelSnowflake
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
+        action = None
         member_obj = await self.member_service.resolve_member(interaction, member)
-        if not member_obj:
-            return await interaction.response.send_message(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.id == interaction.guild.me.id:
-            return await interaction.response.send_message(content='\U0001F6AB You cannot make the bot a moderator.')
-        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-        if channel_obj.type != discord.ChannelType.voice:
-            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
-        channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_obj, interaction.user)
-        if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-            return await interaction.response.send_message(content=f'\U0001F6AB You are not permitted to grant/revoke moderator status for {channel_obj.mention}..')
-        success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
-        if not success:
-            return await interaction.response.send_message(content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
-        async with self.bot.db_pool.acquire() as conn:
-            action = None
-            moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-            if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
-                await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
-                action = 'revoked'
-            else:
-                moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                await moderator.create()
-                action = 'granted'
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                VALUES ($1,$2,$3,$4,$5,$6)
-            ''', 'toggled_moderator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, f'Moderator access {action}')
-        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s moderator access has been {action} in {channel_obj.mention}")
+        if member_obj:
+            if member_obj.id == interaction.guild.me.id:
+                return
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            if channel_obj.type != discord.ChannelType.voice:
+                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+            channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_obj, interaction.user)
+            if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                return await interaction.response.send_message(content=f'\U0001F6AB You are not permitted to grant/revoke moderator status for {channel_obj.mention}..')
+            success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
+            if not success:
+                return await interaction.response.send_message(content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            async with self.bot.db_pool.acquire() as conn:
+                action = None
+                moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
+                    await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+                    action = 'revoked'
+                else:
+                    moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                    await moderator.grant()
+                    action = 'granted'
+                await conn.execute('''
+                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                    VALUES ($1,$2,$3,$4,$5,$6)
+                ''', 'toggled_moderator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, f'Moderator access {action}')
+        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} Moderator access has been {action}.")
               
     # DONE
     @commands.command(name='mod', help='Grants/revokes a user to `Moderator` for a specific channel.')
@@ -84,40 +82,38 @@ class CoordinatorCommands(commands.Cog):
     async def create_moderator_text_command(
         self,
         ctx: commands.Context,
-        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+        action = None
         member_obj = await self.member_service.resolve_member(ctx, member)
-        if not member_obj:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
-        if member_obj.id == ctx.guild.me.id:
-            return await self.handler.send_message(ctx, content='\U0001F6AB You cannot make the bot a moderator.')
-        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        if channel_obj.type != discord.ChannelType.voice:
-            return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
-        channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_obj, ctx.author)
-        if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not permitted to grant/revoke moderator status for {channel_obj.mention}.')
-        success = await has_equal_or_higher_role(ctx.message, member_obj, channel_obj)
-        if not success:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
-        async with self.bot.db_pool.acquire() as conn:
-            action = None
-            moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-            if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
-                await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
-                action = 'revoked'
-            else:
-                moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                await moderator.create()
-                action = 'granted'
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                VALUES ($1,$2,$3,$4,$5,$6)
-            ''', 'toggled_moderator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Moderator access {action}')
-        return await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s moderator access has been {action} in {channel_obj.mention}.")
+        if member_obj:
+            if member_obj.id == ctx.guild.me.id:
+                return
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            if channel_obj.type != discord.ChannelType.voice:
+                return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
+            channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_obj, ctx.author)
+            if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not permitted to grant/revoke moderator status for {channel_obj.mention}.')
+            success = await has_equal_or_higher_role(ctx.message, member_obj, channel_obj)
+            if not success:
+                return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            async with self.bot.db_pool.acquire() as conn:
+                action = None
+                moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
+                    await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+                    action = 'revoked'
+                else:
+                    moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                    await moderator.grant()
+                    action = 'granted'
+                await conn.execute('''
+                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                    VALUES ($1,$2,$3,$4,$5,$6)
+                ''', 'toggled_moderator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Moderator access {action}')
+        return await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} Moderator access has been {action}.")
  
     # DONE
     @app_commands.command(name='rmute', description='Mutes all members in a VC (except yourself).')
@@ -126,7 +122,7 @@ class CoordinatorCommands(commands.Cog):
     async def room_mute_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None
+        channel: AppChannelSnowflake
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in a server.')
@@ -146,7 +142,7 @@ class CoordinatorCommands(commands.Cog):
                     if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
                         await member.edit(mute=True)
                     voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
-                    voice_mute.create()
+                    await voice_mute.grant()
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
@@ -168,7 +164,7 @@ class CoordinatorCommands(commands.Cog):
     async def room_mute_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
@@ -188,7 +184,7 @@ class CoordinatorCommands(commands.Cog):
                     if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
                         await member.edit(mute=True)
                     voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
-                    voice_mute.create()
+                    await voice_mute.grant()
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)
@@ -211,7 +207,7 @@ class CoordinatorCommands(commands.Cog):
     async def room_unmute_app_command(
         self,
         interaction: discord.Interaction,
-        channel: Optional[str] = None
+        channel: AppChannelSnowflake
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='This command must be used in a server.')
@@ -250,7 +246,7 @@ class CoordinatorCommands(commands.Cog):
     async def room_unmute_text_command(
         self,
         ctx: commands.Context,
-        channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
         if not ctx.guild:
             return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')

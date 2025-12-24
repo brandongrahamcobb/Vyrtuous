@@ -29,6 +29,7 @@ from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.setup_logging import logger
+from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.text_mute import TextMute
@@ -53,14 +54,8 @@ class ModeratorCommands(commands.Cog):
         interaction: discord.Interaction,
         target: Optional[str] = None
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(interaction, target)
-        if member_obj and member_obj.id == interaction.guild.me.id:
-            return await interaction.response.send_message(content='\U0001F6AB You cannot list bans on the bot.')
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
-        if member_obj:
-            target = None
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -172,8 +167,6 @@ class ModeratorCommands(commands.Cog):
         ctx: commands.Context,
         target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
     ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(ctx, target)
         if member_obj and member_obj.id == ctx.guild.me.id:
             return await self.handler.send_message(ctx, content='\U0001F6AB You cannot list bans on the bot.')
@@ -294,8 +287,6 @@ class ModeratorCommands(commands.Cog):
         interaction: discord.Interaction,
         target: Optional[str] = None
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
@@ -343,8 +334,6 @@ class ModeratorCommands(commands.Cog):
         ctx: commands.Context,
         target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention')
     ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -389,8 +378,6 @@ class ModeratorCommands(commands.Cog):
         interaction: discord.Interaction,
         target: Optional[str] = None
     ):
-        if interaction.guild is None:
-            return await interaction.response.send_message(content='This command must be used in a server.')
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         found_aliases = False
         lines = []
@@ -428,9 +415,11 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name='cmds', help='List command aliases routed to a specific channel, temp room, or all channels if "all" is provided.')
     @is_owner_developer_administrator_coordinator_moderator_predicator()
-    async def list_commands_text_command(self, ctx: commands.Context, target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or temp room name')) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
+    async def list_commands_text_command(
+        self,
+        ctx: commands.Context,
+        target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or temp room name')
+    ) -> None:
         channel_obj = await self.channel_service.resolve_channel(ctx, target)
         found_aliases = False
         lines = []
@@ -466,13 +455,16 @@ class ModeratorCommands(commands.Cog):
  
     # DONE
     @app_commands.command(name='del', description='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
-    @app_commands.describe(message_id='Message snowflake ID', channel='Tag a channel or include its snowflake ID')
+    @app_commands.describe(
+        message='Message snowflake ID',
+        channel='Tag a channel or include its snowflake ID'
+    )
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def delete_message_app_command(
         self,
         interaction: discord.Interaction,
-        message_id: Optional[str],
-        channel: Optional[str]
+        message: AppMessageSnowflake,
+        channel: AppChannelSnowflake
     ):
         if not interaction.guild:
             return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
@@ -481,14 +473,14 @@ class ModeratorCommands(commands.Cog):
         if member_permission_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator', 'Moderator'):
             return await interaction.response.send_message(content=f'\U0001F6AB You are not permitted to delete messages in {channel_obj.mention}.')
         try:
-            msg = await channel_obj.fetch_message(int(message_id))
+            msg = await channel_obj.fetch_message(message)
         except:
             logger.warning('No message with this ID exists.')
         if not msg:
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No message with ID `{message_id}` found in `{channel_obj.name}`.')
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No message with ID `{message}` found in `{channel_obj.name}`.')
         try:
             await msg.delete()
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Message `{message_id}` deleted successfully.')
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Message `{message}` deleted successfully.')
         except discord.Forbidden:
             logger.warning('Missing permissions to delete the message.')
         return await interaction.response.send_message(content='\U0001F6AB Failed to delete the message.')
@@ -499,23 +491,23 @@ class ModeratorCommands(commands.Cog):
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
-        message_id: Optional[int] = commands.parameter(default=None, description='Message snowflake'),
+        message: MessageSnowflake = commands.parameter(default=None, description='Message snowflake'),
         *,
-        channel: Optional[str] = commands.parameter(default=None, description='Channel or snowflake')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Channel or snowflake')
     ):
         channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_obj, ctx.author)
         if member_permission_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator', 'Moderator'):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not permitted to delete messages in {channel_obj.mention}.')
         try:
-            msg = await channel_obj.fetch_message(message_id)
+            msg = await channel_obj.fetch_message(message)
         except:
             logger.warning('No message with this ID exists.')
         if not msg:
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No message with ID `{message_id}` found in `{channel_obj.name}`.')
+            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No message with ID `{message}` found in `{channel_obj.name}`.')
         try:
             await msg.delete()
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Message `{message_id}` deleted successfully.')
+            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Message `{message}` deleted successfully.')
         except discord.Forbidden:
             logger.warning('Missing permissions to delete the message.')
         return await self.handler.send_message(ctx, content='\U0001F6AB Failed to delete the message.')
@@ -837,33 +829,35 @@ class ModeratorCommands(commands.Cog):
 
  # DONE
     @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.')
-    @app_commands.describe(old_name='Old temporary room name', new_channel='New channel to migrate to')
+    @app_commands.describe(
+        old_name='Old temporary room name',
+        channel='New channel to migrate to'
+    )
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def migrate_temp_room_app_command(
         self,
         interaction: discord.Interaction,
         old_name: str,
-        new_channel: discord.abc.GuildChannel
+        channel: AppChannelSnowflake
     ):
         old_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=old_name)
-        if not old_room:
-            return await interaction.response.send_message(content=f'\U0001F6AB No temporary room named `{old_name}` found.')
-        channel_obj = await self.channel_service.resolve_channel(interaction, new_channel.id)
-        is_owner = old_room.member_snowflake == interaction.user.id
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if highest_role not in ('Owner', 'Developer', 'Administrator') or not is_owner:
-            return await interaction.response.send_message(content=f'You are not the owner nor have elevated permission to migrate rooms.')
-        await TemporaryRoom.update_by_source_and_target(guild_snowflake=ctx.guild.id, room_name=channel_obj.id, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=channel_obj.name)
-        await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Cap.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Coordinator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Moderator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
+        if old_room:
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            is_owner = old_room.member_snowflake == interaction.user.id
+            highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+            if highest_role not in ('Owner', 'Developer', 'Administrator') or not is_owner:
+                return await interaction.response.send_message(content=f'You are not the owner nor have elevated permission to migrate rooms.')
+            await TemporaryRoom.update_by_source_and_target(guild_snowflake=interaction.guild.id, room_name=channel_obj.id, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=channel_obj.name)
+            await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Cap.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Coordinator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Moderator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel}.')
     
     # DONE
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
@@ -872,26 +866,25 @@ class ModeratorCommands(commands.Cog):
         self,
         ctx: commands.Context,
         old_name: Optional[str] = commands.parameter(default=None, description='Provide a channel name'),
-        new_channel: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
         old_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=ctx.guild.id, room_name=old_name)
-        if not old_room:
-            return await self.handler.send_message(ctx, content=f'No temporary room named `{old_name}` found.')
-        channel_obj = await self.channel_service.resolve_channel(ctx, new_channel)
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if highest_role not in ('Owner', 'Developer', 'Administrator') or not is_owner:
-            return await self.handler.send_message(ctx, content=f'You are not the owner nor have elevated permission to migrate rooms.')
-        await TemporaryRoom.update_by_source_and_target(guild_snowflake=ctx.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=ctx.guild.id, room_name=channel_obj.name)
-        await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Cap.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Coordinator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Moderator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention} and renamed to `{channel_obj.name}`.')
+        if old_room:
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+            if highest_role not in ('Owner', 'Developer', 'Administrator') or not is_owner:
+                return await self.handler.send_message(ctx, content=f'You are not the owner nor have elevated permission to migrate rooms.')
+            await TemporaryRoom.update_by_source_and_target(guild_snowflake=ctx.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=ctx.guild.id, room_name=channel_obj.name)
+            await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Cap.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Coordinator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Moderator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel}.')
 
     # DONE
     @app_commands.command(name='mutes', description='Lists mute statistics.')
@@ -901,11 +894,7 @@ class ModeratorCommands(commands.Cog):
         interaction: discord.Interaction,
         target: Optional[str] = None
     ):
-        if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
         member_obj = await self.member_service.resolve_member(interaction, target)
-        if member_obj:
-            target = None
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
@@ -934,7 +923,7 @@ class ModeratorCommands(commands.Cog):
                     pages.append(embed)
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
-        if member_obj:
+        elif member_obj:
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target="user")
             voice_mutes = [voice_mute for voice_mute in voice_mutes if interaction.guild.get_channel(voice_mute.channel_snowflake)]
             if not voice_mutes:
@@ -984,8 +973,6 @@ class ModeratorCommands(commands.Cog):
         ctx: commands.Context,
         target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
     ) -> None:
-        if not ctx.guild:
-            return await self.handler.send_message(ctx, content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(ctx, target)
         if member_obj:
             target = None
@@ -1068,25 +1055,24 @@ class ModeratorCommands(commands.Cog):
     async def stage_mute_app_command(
         self,
         interaction: discord.Interaction,
-        member: Optional[str] = None,
-        channel: Optional[str] = None
+        member: AppMemberSnowflake,
+        channel: AppChannelSnowflake
     ):
         member_obj = await self.member_service.resolve_member(interaction, member)
-        if not member_obj:
-            return await interaction.response.send_message(content=f'\U0001F6AB Invalid member for {member}.')
-        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-        stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-        if not stage:
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage found.')
-        success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
-        if not success:
-            return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.")
-        try:
-            await member_obj.edit(mute=not member_obj.voice.mute)
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
-        except Exception as e:
-            logger.warning(f'Failed to toggle mute: {e}')
-        return await interaction.response.send_message(content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.')
+        if member_obj:
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            if not stage:
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage found.')
+            success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
+            if not success:
+                return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.")
+            try:
+                await member_obj.edit(mute=not member_obj.voice.mute)
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
+            except Exception as e:
+                logger.warning(f'Failed to toggle mute: {e}')
+        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Toggled mute.')
                 
     # DONE
     @commands.command(name='mstage', help='Mute/unmute a member in the active stage.')
@@ -1094,25 +1080,23 @@ class ModeratorCommands(commands.Cog):
     async def stage_mute_text_command(
         self,
         ctx: commands.Context,
-        member: Optional[str] = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-        channel: Optional[str] = commands.parameter(default=None, description="Tag a channel or include it's snowflake ID")
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description="Tag a channel or include it's snowflake ID")
     ) -> None:
         member_obj = await self.member_service.resolve_member(ctx, member)
-        if not member_obj:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB Could not resolve a valid member from target: `{member}`.')
-        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-        if not stage:
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage found.')
-        success = await has_equal_or_higher_role(ctx, member_obj, channel_obj)
-        if not success:
-            return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.")
-        try:
-            await member_obj.edit(mute=not member_obj.voice.mute)
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
-        except Exception as e:
-            logger.warning(f'Failed to toggle mute: {e}')
-        return await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.')
+        if member_obj:
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            if not stage:
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage found.')
+            success = await has_equal_or_higher_role(ctx, member_obj, channel_obj)
+            if not success:
+                return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.")
+            try:
+                await member_obj.edit(mute=not member_obj.voice.mute)
+            except Exception as e:
+                logger.warning(f'Failed to toggle mute: {e}')
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Toggled mute.')
     
     # DONE
     @app_commands.command(name='stages', description='Lists stage mute statistics.')

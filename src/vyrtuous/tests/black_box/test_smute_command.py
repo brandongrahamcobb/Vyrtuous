@@ -31,7 +31,8 @@ import pytest
 )
 
 async def test_smute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], role, command: Optional[str], member_ref):
-    await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    await administrator.grant()
     try:
         voice_channel_one.messages.clear() 
         formatted = f"{command} {not_privileged_author.id}"
@@ -39,4 +40,4 @@ async def test_smute_command(bot, voice_channel_one, guild, privileged_author, n
         response = voice_channel_one.messages[0]["content"]
         assert any(emoji in response for emoji in Emojis.EMOJIS)
     finally:
-        await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+        await administrator.revoke()

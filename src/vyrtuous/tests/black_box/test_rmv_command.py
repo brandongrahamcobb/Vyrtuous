@@ -30,7 +30,8 @@ import pytest
 )
 
 async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], channel_ref_one, channel_ref_two):
-    await Administrator.grant(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    await administrator.grant()
     try:
         voice_channel_one.messages.clear() 
         source_id = voice_channel_one.id
@@ -45,4 +46,4 @@ async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, pri
         channel_value_one = voice_channel_one.mention if channel_ref_one else voice_channel_one.name
         channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
     finally:
-        await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+        await administrator.revoke()

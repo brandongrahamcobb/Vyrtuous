@@ -43,7 +43,8 @@ import pytest
 )
 
 async def test_admins_coords_devs_mods_owners_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
-    await Moderator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    moderator = Moderator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    await moderator.grant()
     try:
         voice_channel_one.messages.clear() 
         formatted = command.format(
@@ -59,4 +60,4 @@ async def test_admins_coords_devs_mods_owners_commands(bot, voice_channel_one, g
         else:
             assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
     finally:
-        await Moderator.revoke(channel_snowflake=voice_channel_one.id, member_snowflake=privileged_author.id)
+        await moderator.revoke()

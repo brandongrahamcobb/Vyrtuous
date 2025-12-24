@@ -127,80 +127,78 @@ class Aliases(commands.Cog):
         if not message.guild:
             return await message.reply(content='\U0001F6AB This command can only be used in servers.')
         member_obj = await self.member_service.resolve_member(message, member)
-        if not member_obj:
-            return await message.reply(content=f'\U0001F6AB Could not resolve a valid member from input: {member}.')
         if member_obj:
             if member_obj.id in self.vegans:
-                return await message.reply(content=f'\U0001F6AB You cannot ban a superhero.')
-        if member_obj.id == message.guild.me.id:
-            return await message.reply(content='\U0001F6AB You cannot ban the bot.')
-        channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
-        allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
-        if not allowed:
-            return await message.reply(content=f'\U0001F6AB You are not allowed to ban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
-        async with self.bot.db_pool.acquire() as conn:
-            existing_ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
-            duration_obj = Duration()
-            reason_obj = Reason()
-            duration_obj.load_from_combined_duration_str(duration)
-            if existing_ban and duration not in ['+', '=', '-']:
-                expires_at = existing_ban.expires_at
-                old_reason = existing_ban.reason
-                reason_obj.load_old_reason(old_reason)
-            if duration not in ['+', '=', '-']:
-                expires_at = duration_obj.output_datetime()
-                action = None
-            else:
-                reason_obj.load_new_reason(updated_reason)
-                action = reason_obj.interpret_action(duration_obj.get_prefix())
-                if action in ('delete', 'overwrite') and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
-                    return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
-                updated_reason = reason_obj.output_display()
-            if expires_at and expires_at <= datetime.now(timezone.utc):
-                return await message.reply(content='\U0001F6AB You cannot reduce a ban below the current time.')
-            duration_obj.load_base(expires_at)
-            duration_display = duration_obj.output_display()
-            caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id)
-            active_cap = next((c for c in caps if c[1] == 'ban'), None)
-            if active_cap:
-                duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
-                cap_expires_at = duration_obj.output_datetime()
-            else:
-                cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
-            if existing_ban and expires_at:
-                if not expires_at < existing_ban['expires_at'] and ((executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') and expires_at >= cap_expires_at)):
-                    return await message.reply(content='\U0001F6AB Only coordinators can ban for longer than the channel cap.')
-            else:
-                if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
-                    return await message.reply(content='\U0001F6AB Only coordinators and above can ban for longer than the channel cap.')
-        try:
-            await channel_obj.set_permissions(member_obj, view_channel=False, reason=f'{updated_reason}')
-        except discord.Forbidden:
-            return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully banned.')
-        is_in_channel = False
-        if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
-            is_in_channel = True
+                raise 
+            if member_obj.id == message.guild.me.id:
+                return
+            channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
+            allowed, highest_role = await has_equal_or_higher_role(message, member=member_obj, channel=channel_obj)
+            if not allowed:
+                return await message.reply(content=f'\U0001F6AB You are not allowed to ban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+            async with self.bot.db_pool.acquire() as conn:
+                existing_ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
+                duration_obj = Duration()
+                reason_obj = Reason()
+                duration_obj.load_from_combined_duration_str(duration)
+                if existing_ban and duration not in ['+', '=', '-']:
+                    expires_at = existing_ban.expires_at
+                    old_reason = existing_ban.reason
+                    reason_obj.load_old_reason(old_reason)
+                if duration not in ['+', '=', '-']:
+                    expires_at = duration_obj.output_datetime()
+                    action = None
+                else:
+                    reason_obj.load_new_reason(updated_reason)
+                    action = reason_obj.interpret_action(duration_obj.get_prefix())
+                    if action in ('delete', 'overwrite') and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
+                        return await message.reply(content='\U0001F6AB Only coordinators are allowed to overwrite the reason.')
+                    updated_reason = reason_obj.output_display()
+                if expires_at and expires_at <= datetime.now(timezone.utc):
+                    return await message.reply(content='\U0001F6AB You cannot reduce a ban below the current time.')
+                duration_obj.load_base(expires_at)
+                duration_display = duration_obj.output_display()
+                caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id)
+                active_cap = next((c for c in caps if c[1] == 'ban'), None)
+                if active_cap:
+                    duration_obj.load_from_combined_duration_str(Duration.convert_timedelta_seconds(active_cap[0]))
+                    cap_expires_at = duration_obj.output_datetime()
+                else:
+                    cap_expires_at = timedelta(days=7) + datetime.now(timezone.utc)
+                if existing_ban and expires_at:
+                    if not expires_at < existing_ban['expires_at'] and ((executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator') and expires_at >= cap_expires_at)):
+                        return await message.reply(content='\U0001F6AB Only coordinators can ban for longer than the channel cap.')
+                else:
+                    if expires_at is None and executor_role not in ('Owner',  'Developer', 'Administrator', 'Coordinator'):
+                        return await message.reply(content='\U0001F6AB Only coordinators and above can ban for longer than the channel cap.')
             try:
-                await member_obj.move_to(None, reason=f'{updated_reason}')
+                await channel_obj.set_permissions(member_obj, view_channel=False, reason=f'{updated_reason}')
             except discord.Forbidden:
-                await message.reply(content=f'\U0001F6AB Could not disconnect {member_obj.mention} from {channel_obj.mention}.')
-            except Exception as e:
-                logger.exception(f'Unexpected error while disconnecting user: {e}')
-                raise
-        async with self.bot.db_pool.acquire() as conn:
-            ban = Ban(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=updated_reason)
-            await ban.create()
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                VALUES ($1, $2, $3, $4, $5, $6)
-            ''', 'ban', member_obj.id, message.author.id, message.guild.id, channel_obj.id, updated_reason)
-        embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been banned",
-            description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason}",
-            color=discord.Color.orange()
-        )
-        await message.reply(embed=embed)
-        return await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
+                return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully banned.')
+            is_in_channel = False
+            if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
+                is_in_channel = True
+                try:
+                    await member_obj.move_to(None, reason=f'{updated_reason}')
+                except discord.Forbidden:
+                    await message.reply(content=f'\U0001F6AB Could not disconnect {member_obj.mention} from {channel_obj.mention}.')
+                except Exception as e:
+                    logger.exception(f'Unexpected error while disconnecting user: {e}')
+                    raise
+            async with self.bot.db_pool.acquire() as conn:
+                ban = Ban(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=updated_reason)
+                await ban.grant()
+                await conn.execute('''
+                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                ''', 'ban', member_obj.id, message.author.id, message.guild.id, channel_obj.id, updated_reason)
+            embed = discord.Embed(
+                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been banned",
+                description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason}",
+                color=discord.Color.orange()
+            )
+            await message.reply(embed=embed)
+            return await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
 
     # DONE
     async def handle_cow_alias(self, message: discord.Message, alias: Alias, args):
@@ -389,7 +387,7 @@ class Aliases(commands.Cog):
                 except discord.Forbidden:
                     return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully text-muted.')
             text_mute = TextMute(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=updated_reason)
-            await text_mute.create()
+            await text_mute.grant()
             await conn.execute('''
                 INSERT INTO moderation_logs
                 (action_type,target_discord_snowflake,executor_discord_snowflake,guild_id,channel_id,reason)

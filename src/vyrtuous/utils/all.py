@@ -61,7 +61,7 @@ class All:
             name = user.name if user else f'User ID {member.member_snowflake}'
             embed = discord.Embed(
                 title = f'{emoji.get_random_emoji()} {member_type.PLURAL}',
-                description = ', '.join(str(member.guild_snowflakes)) if member.guild_snowflakes else 'No known guilds',
+                description = ', '.join(str(member.guild_snowflake)) if member.guild_snowflake else 'No known guilds',
                 color = discord.Color.blurple()
             )
             pages.append(embed)

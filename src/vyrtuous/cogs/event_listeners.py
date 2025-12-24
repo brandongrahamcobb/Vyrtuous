@@ -52,7 +52,7 @@ class EventListeners(commands.Cog):
         self.deleted_rooms = {}
 
     @commands.Cog.listener()
-    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+    async def on_guild_channel_grant(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
         name = channel.name
         for c in guild.channels:
@@ -148,7 +148,7 @@ class EventListeners(commands.Cog):
                     else:
                         expires_at = datetime.utcnow() + timedelta(hours=1)
                         voice_mute = await VoiceMute(channel_snowflake=after.channel.id, expires_at=expires_at, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target=target)
-                        voice_mute.create()       
+                        await voice_mute.grant()       
                         should_be_muted = True 
                 if not should_be_muted:               
                     if before.mute and not after.mute and before.channel:
