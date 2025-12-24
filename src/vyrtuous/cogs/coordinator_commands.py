@@ -61,7 +61,7 @@ class CoordinatorCommands(commands.Cog):
             return await interaction.response.send_message(content=f'\U0001F6AB You are not permitted to grant/revoke moderator status for {channel_obj.mention}..')
         success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
         if not success:
-            return await interaction.response.send_message(content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            return await interaction.response.send_message(content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             action = None
             moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -76,7 +76,7 @@ class CoordinatorCommands(commands.Cog):
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
             ''', 'toggled_moderator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, f'Moderator access {action}')
-        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s moderator access has been {action} in {channel_obj.mention}", allowed_mentions=discord.AllowedMentions.none())
+        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s moderator access has been {action} in {channel_obj.mention}")
               
     # DONE
     @commands.command(name='mod', help='Grants/revokes a user to `Moderator` for a specific channel.')
@@ -102,7 +102,7 @@ class CoordinatorCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not permitted to grant/revoke moderator status for {channel_obj.mention}.')
         success = await has_equal_or_higher_role(ctx.message, member_obj, channel_obj)
         if not success:
-            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             action = None
             moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -117,7 +117,7 @@ class CoordinatorCommands(commands.Cog):
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
             ''', 'toggled_moderator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Moderator access {action}')
-        return await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s moderator access has been {action} in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
+        return await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} {member_obj.mention}'s moderator access has been {action} in {channel_obj.mention}.")
  
     # DONE
     @app_commands.command(name='rmute', description='Mutes all members in a VC (except yourself).')
@@ -160,7 +160,7 @@ class CoordinatorCommands(commands.Cog):
             summary += f'\n\U000026A0\U0000FE0F Skipped {len(skipped_members)}.'
         if failed_members:
             summary += f'\n\U0001F6AB Failed to mute {len(failed_members)}.'
-        return await interaction.response.send_message(content=summary, allowed_mentions=discord.AllowedMentions.none())
+        return await interaction.response.send_message(content=summary)
 
     # DONE
     @commands.command(name='rmute', help='Mutes all members in a VC (except yourself).')
@@ -202,7 +202,7 @@ class CoordinatorCommands(commands.Cog):
             summary += f'\n\U000026A0\U0000FE0F Skipped {len(skipped_members)}.'
         if failed_members:
             summary += f'\n\U0001F6AB Failed to mute {len(failed_members)}.'
-        return await self.handler.send_message(ctx, content=summary, allowed_mentions=discord.AllowedMentions.none())
+        return await self.handler.send_message(ctx, content=summary)
 
     # DONE
     @app_commands.command(name='xrmute', description='Unmutes all members in a VC (except yourself).')
@@ -242,7 +242,7 @@ class CoordinatorCommands(commands.Cog):
             summary += f'\n\U000026A0\U0000FE0F Skipped {len(skipped_members)}.'
         if failed_members:
             summary += f'\n\U0001F6AB Failed to unmute {len(failed_members)}.'
-        return await interaction.response.send_message(content=summary, allowed_mentions=discord.AllowedMentions.none())
+        return await interaction.response.send_message(content=summary)
     
     # DONE
     @commands.command(name='xrmute', help='Unmutes all members in a VC (except yourself).')
@@ -283,7 +283,7 @@ class CoordinatorCommands(commands.Cog):
             summary += f'\n\U000026A0\U0000FE0F Skipped {len(skipped_members)}.'
         if failed_members:
             summary += f'\n\U0001F6AB Failed to unmute {len(failed_members)}.'
-        return await self.handler.send_message(ctx, content=summary, allowed_mentions=discord.AllowedMentions.none())
+        return await self.handler.send_message(ctx, content=summary)
     
 async def setup(bot: DiscordBot):
     await bot.add_cog(CoordinatorCommands(bot))

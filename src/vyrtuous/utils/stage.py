@@ -98,8 +98,19 @@ class Stage:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_stages SET channel_snowflake=$2 WHERE channel_snowflake = $1
+                UPDATE active_stages
+                SET channel_snowflake=$2 WHERE channel_snowflake = $1
             ''', source_channel_snowflake, target_channel_snowflake)
+    
+    @classmethod
+    async def update_by_channel_enabled_and_guild(cls, channel_snowflake: Optional[int], enabled: Optional[bool], guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE statistic_channels
+                SET enabled=$2
+                WHERE channel_id=$1 AND guild_id=$3 
+            ''', channel_snowflake, enabled, guild_snowflake)
 
     @classmethod
     async def fetch_by_guild_and_channel(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
@@ -149,7 +160,6 @@ class Stage:
         for row in rows:
             expired_stages.append(Stage(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
         return expired_stages
-
 
     @classmethod
     async def delete_by_channel_and_guild(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):

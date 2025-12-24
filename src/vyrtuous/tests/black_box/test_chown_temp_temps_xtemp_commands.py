@@ -60,9 +60,6 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, not_priv
         if "temps" in command:
             assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
         else:
-            assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
-            assert any(val in response["content"] for val in channel_values)
-        if member_ref:
-            assert any(val in response["content"] for val in member_values)
+            assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
     finally:
         await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)

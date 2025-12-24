@@ -88,7 +88,7 @@ class DevCommands(commands.Cog):
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
         await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
+        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.')
 
     # DONE
     @commands.command(name='clear', help='Removes a specific channel ID from all users, including temp-room associations and all related records.')
@@ -103,7 +103,7 @@ class DevCommands(commands.Cog):
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
         await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Removed channel {channel_obj.mention} from all users and deleted all associated records.', allowed_mentions=discord.AllowedMentions.none())
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Removed channel {channel_obj.mention} from all users and deleted all associated records.')
     
     @app_commands.command(name='load', description='Loads a cog by name "vyrtuous.cog.<cog_name>.')
     @is_owner_developer_predicator()

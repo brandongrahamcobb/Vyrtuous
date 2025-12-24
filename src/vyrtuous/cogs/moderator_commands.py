@@ -101,7 +101,7 @@ class ModeratorCommands(commands.Cog):
         if member_obj:
             bans = await Ban.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             bans = [b for b in bans if interaction.guild.get_channel(b.channel_snowflake)]
-            if not bans: return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
+            if not bans: return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not banned in any channels.')
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} Ban records for {member_obj.display_name}',
                 color=discord.Color.red()
@@ -221,7 +221,7 @@ class ModeratorCommands(commands.Cog):
         elif member_obj:
             bans = await Ban.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             if not bans:
-                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not banned in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not banned in any channels.')
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} Ban records for {member_obj.display_name}',
                 color=discord.Color.red()
@@ -565,7 +565,7 @@ class ModeratorCommands(commands.Cog):
                 rows = await conn.fetch('SELECT channel_id, reason FROM active_flags WHERE guild_id=$1 AND discord_snowflake=$2', interaction.guild.id, member_obj.id)
             rows = [r for r in rows if interaction.guild.get_channel(r['channel_id'])]
             if not rows:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged in any voice channels.')
             lines = []
             for r in rows:
                 ch = interaction.guild.get_channel(r['channel_id'])
@@ -577,7 +577,7 @@ class ModeratorCommands(commands.Cog):
                 description='\n'.join(lines),
                 color=discord.Color.orange()
             )
-            return await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            return await interaction.response.send_message(embed=embed)
         elif channel_obj:
             if channel_obj.type != discord.ChannelType.voice:
                 return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
@@ -661,7 +661,7 @@ class ModeratorCommands(commands.Cog):
                 ''', ctx.guild.id, member_obj.id)
                 rows = [r for r in rows if ctx.guild.get_channel(r['channel_id'])]
                 if not rows:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged in any voice channels.')
                 lines = []
                 for r in rows:
                     ch = ctx.guild.get_channel(r['channel_id'])
@@ -724,7 +724,7 @@ class ModeratorCommands(commands.Cog):
             if member_obj:
                 rows = await conn.fetch('''SELECT channel_id, created_at FROM active_cows WHERE guild_id=$1 AND discord_snowflake=$2''', interaction.guild.id, member_obj.id)
                 if not rows:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not cowed in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not cowed in any channels.')
                 lines = []
                 for r in rows:
                     ch = interaction.guild.get_channel(r['channel_id'])
@@ -789,7 +789,7 @@ class ModeratorCommands(commands.Cog):
                     WHERE guild_id = $1 AND discord_snowflake = $2
                 ''', ctx.guild.id, member_obj.id)
                 if not rows:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not cowed in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not cowed in any channels.')
                 lines = []
                 for r in rows:
                     ch = ctx.guild.get_channel(r['channel_id'])
@@ -938,7 +938,7 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target="user")
             voice_mutes = [voice_mute for voice_mute in voice_mutes if interaction.guild.get_channel(voice_mute.channel_snowflake)]
             if not voice_mutes:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not muted in any voice channels.')
             lines = []
             for voice_mute in voice_mutes:
                 ch = interaction.guild.get_channel(voice_mute.channel_snowflake)
@@ -949,7 +949,7 @@ class ModeratorCommands(commands.Cog):
                 description='\n'.join(lines),
                 color=discord.Color.orange()
             )
-            return await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            return await interaction.response.send_message(embed=embed)
         elif channel_obj:
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="user")
             if not voice_mutes:
@@ -1024,7 +1024,7 @@ class ModeratorCommands(commands.Cog):
         if member_obj:
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target="user")
             if not voice_mutes:
-                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not muted in any voice channels.', allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not muted in any voice channels.')
             description_lines = []
             for voice_mute in voice_mutes:
                 channel_obj = ctx.guild.get_channel(voice_mute.channel_snowflake)
@@ -1033,7 +1033,7 @@ class ModeratorCommands(commands.Cog):
                 duration_str = Duration.output_display_from_datetime(voice_mute.expires_at)
                 description_lines.append(f'• {channel_mention} — {reason} — {duration_str}')
             embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Mute records for {member_obj.display_name}', description='\n'.join(description_lines), color=discord.Color.orange())
-            return await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, embed=embed)
         elif channel_obj:
             if channel_obj.type != discord.ChannelType.voice:
                 return await self.handler.send_message(ctx, content='\U0001F6AB Please specify a valid target.')
@@ -1080,13 +1080,13 @@ class ModeratorCommands(commands.Cog):
             return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage found.')
         success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
         if not success:
-            return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
+            return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.")
         try:
             await member_obj.edit(mute=not member_obj.voice.mute)
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.', allowed_mentions=discord.AllowedMentions.none())
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
         except Exception as e:
             logger.warning(f'Failed to toggle mute: {e}')
-        return await interaction.response.send_message(content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        return await interaction.response.send_message(content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.')
                 
     # DONE
     @commands.command(name='mstage', help='Mute/unmute a member in the active stage.')
@@ -1106,13 +1106,13 @@ class ModeratorCommands(commands.Cog):
             return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage found.')
         success = await has_equal_or_higher_role(ctx, member_obj, channel_obj)
         if not success:
-            return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.", allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.")
         try:
             await member_obj.edit(mute=not member_obj.voice.mute)
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.', allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
         except Exception as e:
             logger.warning(f'Failed to toggle mute: {e}')
-        return await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        return await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to toggle mute for {member_obj.mention}.')
     
     # DONE
     @app_commands.command(name='stages', description='Lists stage mute statistics.')
@@ -1151,7 +1151,7 @@ class ModeratorCommands(commands.Cog):
                 return await paginator.start()
             stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not stage:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage in {channel_obj.mention}.')
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="room")
             initiator = interaction.guild.get_member(stage.member_snowflake)
             initiator_name = initiator.mention if initiator else f'`{stage.member_snowflake}`'
@@ -1210,7 +1210,7 @@ class ModeratorCommands(commands.Cog):
                 return await paginator.start()
             stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             if not stage:
-                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No active stage in {channel_obj.mention}.')
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target="room")
             initiator = ctx.guild.get_member(stage.member_snowflake)
             initiator_name = initiator.mention if initiator else f'`{stage.member_snowflake}`'
@@ -1284,7 +1284,7 @@ class ModeratorCommands(commands.Cog):
             elif member_obj:
                 text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 if not text_mutes:
-                    return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                    return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not text-muted in any channels.')
                 lines = []
                 for text_mute in text_mutes:
                     ch = interaction.guild.get_channel(text_mutes.channel_snowflake)
@@ -1303,7 +1303,7 @@ class ModeratorCommands(commands.Cog):
             elif channel_obj:
                 text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                 if not text_mutes:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {channel_obj.mention}.')
                 lines = []
                 for text_mute in text_mutes:
                     user = interaction.guild.get_member(text_mute.member_snowflake)
@@ -1374,7 +1374,7 @@ class ModeratorCommands(commands.Cog):
             elif member_obj:
                 text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 if not text_mutes:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not text-muted in any channels.', allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not text-muted in any channels.')
                 lines = []
                 for r in text_mutes:
                     ch = ctx.guild.get_channel(r.channel_snowflake)
@@ -1395,7 +1395,7 @@ class ModeratorCommands(commands.Cog):
             elif channel_obj:
                 text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                 if not text_mutes:
-                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {channel_obj.mention}.')
                 lines = []
                 for r in text_mutes:
                     user = ctx.guild.get_member(r.discord_snowflake)

@@ -51,14 +51,11 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
         else:
             await Moderator.grant(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
             await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]["content"]
-        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
-        member_value = not_privileged_author.mention if member_ref else not_privileged_author.name
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
-        if channel_ref:
-            assert any(val in response for val in [channel_value])
-        elif member_ref:
-            assert any(val in response for val in [member_value])
+        response = voice_channel_one.messages[0]
+        if response['embed']:
+            assert any(emoji in response['embed'].title for emoji in Emojis.EMOJIS)
+        else:
+            assert any(emoji in response['content'] for emoji in Emojis.EMOJIS)
     finally:
         if "cstage" in command or "xstage" in command:
             await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)

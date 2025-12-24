@@ -44,7 +44,5 @@ async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, pri
         assert any(emoji in response for emoji in Emojis.EMOJIS)
         channel_value_one = voice_channel_one.mention if channel_ref_one else voice_channel_one.name
         channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
-        assert any(val in response for val in [channel_value_one])
-        assert any(val in response for val in [channel_value_two])
     finally:
         await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)

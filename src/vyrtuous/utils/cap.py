@@ -87,3 +87,21 @@ class Cap:
         for row in rows:
             caps.append(Cap(channel_snowflake=row['channel_snowflake'], duration=row['duration_seconds'], guild_snowflake=row['guild_snowflake']))
         return caps
+    
+    @classmethod
+    async def update_by_channel_and_duration(cls, channel_snowflake: Optional[int], duration: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE active_caps SET duration_seconds=$2 WHERE channel_snowflake=$1
+            ''', channel_snowflake, duration)
+
+    @property
+    def moderation_type(self):
+        return self._moderation_type
+    
+    @moderation_type.setter
+    def moderation_type(self, moderation_type: Optional[str]):
+        if moderation_type not in ('ban', 'mute', 'tmute'):
+            raise ValueError("Invalid moderation_type.")
+        self._moderation_type = moderation_type

@@ -150,7 +150,7 @@ class VoiceMute:
     def target(self):
         return self._target
 
-    @property
+    @target.setter
     def target(self, target):
         if target not in ["room", "user"]:
             raise ValueError("Invalid target.")

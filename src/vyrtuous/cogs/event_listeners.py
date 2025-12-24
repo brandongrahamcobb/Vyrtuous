@@ -29,7 +29,6 @@ from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
-from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.text_mute import TextMute
@@ -270,7 +269,6 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        await Statistics.load_channels()
         if getattr(self, "_ready_done", False):
             return
         self._ready_done = True

@@ -55,7 +55,7 @@ class EveryoneCommands(commands.Cog):
             paginator = AppPaginator(self.bot, interaction, pages)
             return await paginator.start()
         else:
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No admins found in {interaction.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No admins found in {interaction.guild.name}.')
             
     # DONE
     @commands.command(name='admins', help='Lists all members with server mute privileges in this guild.')
@@ -69,7 +69,7 @@ class EveryoneCommands(commands.Cog):
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
         else:
-            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No admins found in {ctx.guild.name}.', allowed_mentions=discord.AllowedMentions.none())
+            return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No admins found in {ctx.guild.name}.')
     
     # DONE
     @app_commands.command(name='coords', description='Lists coordinators for a specific voice channel, all, or a member.')
@@ -122,7 +122,7 @@ class EveryoneCommands(commands.Cog):
         if pages:
             paginator = Paginator(self.bot, ctx, pages)
             return await paginator.start()
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found.', allowed_mentions=discord.AllowedMentions.none())
+        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} No coordinators found.')
             
     
     # DONE
@@ -444,7 +444,7 @@ class EveryoneCommands(commands.Cog):
         embed.add_field(name="Administrators", value=fmt(administrators), inline=False)
         embed.add_field(name="Coordinators", value=fmt(coordinators), inline=False)
         embed.add_field(name="Moderators", value=fmt(moderators), inline=False)
-        await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        await interaction.response.send_message(embed=embed)
     
     # DONE
     @commands.command(name='survey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
@@ -484,7 +484,7 @@ class EveryoneCommands(commands.Cog):
         embed.add_field(name="Administrators", value=fmt(administrators), inline=False)
         embed.add_field(name="Coordinators", value=fmt(coordinators), inline=False)
         embed.add_field(name="Moderators", value=fmt(moderators), inline=False)
-        await self.handler.send_message(ctx, embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        await self.handler.send_message(ctx, embed=embed)
         
 async def setup(bot: DiscordBot):
     cog = EveryoneCommands(bot)

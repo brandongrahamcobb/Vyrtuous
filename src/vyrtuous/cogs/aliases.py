@@ -115,7 +115,6 @@ class Aliases(commands.Cog):
         self.emoji = Emojis()
         self.channel_service = ChannelService()
         self.member_service = MemberService()
-        self.statistics = Statistics()
         self.vegans = Vegans.get_vegans()
     
     async def handle_ban_alias(self, message: discord.Message, alias: Alias, args):
@@ -177,14 +176,14 @@ class Aliases(commands.Cog):
         try:
             await channel_obj.set_permissions(member_obj, view_channel=False, reason=f'{updated_reason}')
         except discord.Forbidden:
-            return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully banned.', allowed_mentions=discord.AllowedMentions.none())
+            return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully banned.')
         is_in_channel = False
         if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
             is_in_channel = True
             try:
                 await member_obj.move_to(None, reason=f'{updated_reason}')
             except discord.Forbidden:
-                await message.reply(content=f'\U0001F6AB Could not disconnect {member_obj.mention} from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                await message.reply(content=f'\U0001F6AB Could not disconnect {member_obj.mention} from {channel_obj.mention}.')
             except Exception as e:
                 logger.exception(f'Unexpected error while disconnecting user: {e}')
                 raise
@@ -200,8 +199,8 @@ class Aliases(commands.Cog):
             description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason}",
             color=discord.Color.orange()
         )
-        await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
-        await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
+        await message.reply(embed=embed)
+        return await Statistics.send_statistic(message, 'ban', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
 
     # DONE
     async def handle_cow_alias(self, message: discord.Message, alias: Alias, args):
@@ -239,10 +238,10 @@ class Aliases(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             already_cowed = await conn.fetchval(select_sql, member_obj.id, channel_obj.id)
             if already_cowed:
-                return await message.reply(content=f'\U0001F6AB {member_obj.mention} is already going vegan.', allowed_mentions=discord.AllowedMentions.none())
+                return await message.reply(content=f'\U0001F6AB {member_obj.mention} is already going vegan.')
             created_at = await conn.fetchval(insert_log_sql, 'cow', member_obj.id, message.author.id, message.guild.id, channel_obj.id, 'Cowed a user')
             await conn.execute(insert_cow_sql, message.guild.id, member_obj.id, channel_obj.id, created_at)
-            await message.reply(content=f'\U0001F525 {member_obj.mention} is going vegan!!! \U0001F525', allowed_mentions=discord.AllowedMentions.none())
+            await message.reply(content=f'\U0001F525 {member_obj.mention} is going vegan!!! \U0001F525')
     
     # DONE
     async def handle_flag_alias(self, message: discord.Message, alias: Alias, args):
@@ -299,7 +298,7 @@ class Aliases(commands.Cog):
             embed.add_field(name='User', value=member_obj.mention, inline=True)
             embed.add_field(name='Channel', value=channel_obj.mention, inline=False)
             embed.add_field(name='Reason', value=updated_reason, inline=False)
-            await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+            await message.reply(embed=embed)
    
     # DONE
     async def handle_role_alias(self, message: discord.Message, alias: Alias, args):
@@ -324,12 +323,12 @@ class Aliases(commands.Cog):
         if not role_obj:
             return await message.reply(content=f"\U000026A0\U0000FE0F Could not resolve role with ID `{alias.role_snowflake}`.")
         if role_obj in member_obj.roles:
-            return await message.reply(content=f'\U0001F6AB{member_obj.mention} already has {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            return await message.reply(content=f'\U0001F6AB{member_obj.mention} already has {role_obj.mention}.')
         try:
             await member_obj.add_roles(role_obj, reason=f'Added role')
         except discord.Forbidden:
-            return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully roled.', allowed_mentions=discord.AllowedMentions.none())
-        return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully roled.')
+        return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} was given {role_obj.mention}.')
     
     # DONE
     async def handle_text_mute_alias(self, message: discord.Message, alias: Alias, args):
@@ -388,7 +387,7 @@ class Aliases(commands.Cog):
                 try:
                     await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False)
                 except discord.Forbidden:
-                    return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully text-muted.', allowed_mentions=discord.AllowedMentions.none())
+                    return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully text-muted.')
             text_mute = TextMute(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=updated_reason)
             await text_mute.create()
             await conn.execute('''
@@ -401,7 +400,7 @@ class Aliases(commands.Cog):
             description=f"**User:** {member_obj.mention}\n**Channel/Room:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason}",
             color=discord.Color.orange()
         )
-        await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        await message.reply(embed=embed)
         return await Statistics.send_statistic(message, 'text_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
     
     # DONE
@@ -480,13 +479,13 @@ class Aliases(commands.Cog):
             try:
                 await member_obj.edit(mute=True)
             except discord.Forbidden:
-                return await message.reply(content=f"\U0001F6AB {member_obj.mention} was not successfully voice muted.", allowed_mentions=discord.AllowedMentions.none())
+                return await message.reply(content=f"\U0001F6AB {member_obj.mention} was not successfully voice muted.")
         embed = discord.Embed(
                 title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} is voice muted",
                 description=f"**User:** {member_obj.mention}\n**Channel:** {channel_obj.mention}\n**Duration:** {duration_display}\n**Reason:** {updated_reason}",
                 color=discord.Color.orange()
             )
-        await message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        await message.reply(embed=embed)
         await Statistics.send_statistic(message, 'voice_mute', member_obj, channel_obj, duration_display, updated_reason, expires_at, alias.alias_name, is_in_channel, bool(action), executor_role)
 
     # DONE
@@ -516,13 +515,13 @@ class Aliases(commands.Cog):
                 if channel_obj:
                     await channel_obj.set_permissions(member_obj, overwrite=None)
             except discord.Forbidden:
-                return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unbanned.', allowed_mentions=discord.AllowedMentions.none())
+                return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unbanned.')
             await Ban.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
             ''', 'unban', member_obj.id, message.author.id, message.guild.id, channel_obj.id, f'Unbanned a user from room `{channel_obj.name}`')
-        return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been unbanned from {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+        return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been unbanned from {channel_obj.mention}.')
 
     # DONE
     async def handle_uncow_alias(self, message: discord.Message, alias: Alias, args):
@@ -554,13 +553,13 @@ class Aliases(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 is_flagged = await conn.fetchval(select_sql, message.guild.id, member_obj.id, channel_obj.id)
                 if not is_flagged:
-                    return await message.reply(content=f'\U0001F6AB {member_obj.mention} has no active record in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    return await message.reply(content=f'\U0001F6AB {member_obj.mention} has no active record in {channel_obj.mention}.')
                 await conn.execute(update_sql, message.guild.id, member_obj.id, channel_obj.id)
                 await conn.execute('''
                     INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                     VALUES ($1, $2, $3, $4, $5, $6)
                 ''', 'uncow', member_obj.id, message.author.id, message.guild.id, channel_obj.id, 'Uncowed a user')
-                await message.reply(content=f'👎 {member_obj.mention} is no longer going vegan. 👎', allowed_mentions=discord.AllowedMentions.none())
+                await message.reply(content=f'👎 {member_obj.mention} is no longer going vegan. 👎')
         except Exception as e:
             logger.warning(f'Database error occurred: {e}')
             raise
@@ -595,13 +594,13 @@ class Aliases(commands.Cog):
             async with self.bot.db_pool.acquire() as conn:
                 is_flagged = await conn.fetchval(select_sql, message.guild.id, member_obj.id, channel_obj.id)
                 if not is_flagged:
-                    return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged for {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                    return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged for {channel_obj.mention}.')
                 await conn.execute(update_sql, message.guild.id, member_obj.id, channel_obj.id)
                 await conn.execute('''
                     INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                     VALUES ($1, $2, $3, $4, $5, $6)
                 ''', 'unflag', member_obj.id, message.author.id, message.guild.id, channel_obj.id, 'Unflagged a user')
-                await message.reply(content=f'{self.emoji.get_random_emoji()} Unflagged {member_obj.mention} for channel {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                await message.reply(content=f'{self.emoji.get_random_emoji()} Unflagged {member_obj.mention} for channel {channel_obj.mention}.')
         except Exception as e:
             logger.warning(f'Database error occurred: {e}')
             raise
@@ -626,7 +625,7 @@ class Aliases(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member.id, target="user")
             if not voice_mute:
-                return await message.reply(content=f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+                return await message.reply(content=f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.')
             if row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
             await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member.id, target="user")
@@ -634,7 +633,7 @@ class Aliases(commands.Cog):
                 try:
                     await member_obj.edit(mute=False)
                 except discord.Forbidden:
-                    return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unmuted.', allowed_mentions=discord.AllowedMentions.none())
+                    return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unmuted.')
             await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,  $2, $3, $4, $5, $6)', 'unmute', member_obj.id, message.author.id, message.guild.id, channel_obj.id, 'Unmuted a member')
         if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
             return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been unmuted in {channel_obj.mention}.',  allowed_mentions=discord.AllowedMentions.none())
@@ -661,12 +660,12 @@ class Aliases(commands.Cog):
         if not role_obj:
             return await message.reply(content=f"\U0001F6AB Could not resolve role with ID `{alias.role_snowflake}`.")
         if role_obj not in member_obj.roles:
-            return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} does not have {role_obj.mention}.', allowed_mentions=discord.AllowedMentions.none())
+            return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} does not have {role_obj.mention}.')
         try:
             await member_obj.remove_roles(role_obj)
         except discord.Forbidden:
-            return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unroled.', allowed_mentions=discord.AllowedMentions.none())
-        return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} had {role_obj.mention} removed.', allowed_mentions=discord.AllowedMentions.none())
+            return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unroled.')
+        return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} had {role_obj.mention} removed.')
     
     # DONE
     async def handle_untextmute_alias(self, message: discord.Message, alias: Alias, args):
@@ -694,10 +693,10 @@ class Aliases(commands.Cog):
             try:
                 await channel_obj.set_permissions(member_obj, send_messages=None)
             except discord.Forbidden:
-                return await message.reply(content=f"\U0001F6AB {member_obj.mention} was not successfully untext-muted.", allowed_mentions=discord.AllowedMentions.none())
+                return await message.reply(content=f"\U0001F6AB {member_obj.mention} was not successfully untext-muted.")
             await TextMute.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             await conn.execute('INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1, $2, $3, $4, $5, $6)', 'untmute', member_obj.id, message.author.id, message.guild.id, channel_obj.id, 'Untextmuted a user')
-        return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s text muted in {channel_obj.mention} has been removed.', allowed_mentions=discord.AllowedMentions.none())
+        return await message.reply(content=f'{self.emoji.get_random_emoji()} {member_obj.mention}\'s text muted in {channel_obj.mention} has been removed.')
 
 async def setup(bot: DiscordBot):
     cog = Aliases(bot)

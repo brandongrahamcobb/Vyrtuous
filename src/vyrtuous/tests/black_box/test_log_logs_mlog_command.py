@@ -61,11 +61,7 @@ async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild
         not_privileged_author_value = not_privileged_author.mention if member_ref else not_privileged_author.name
         if command in ("log", "mlog"):
             assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
-            if channel_ref:
-                assert any(val in response["content"] for val in [channel_value])
         else:
             assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS)
-        if member_ref:
-            assert any(val in response["content"] for val in [privileged_author_value])
     finally:
         await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)

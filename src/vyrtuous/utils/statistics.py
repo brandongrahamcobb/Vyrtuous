@@ -24,26 +24,16 @@ import discord
 
 class Statistics:
         
-    statistic_channels: dict[int, list[dict]] = {}
+    ACTION_TYPES = ['create', 'delete', 'modify']
+    STATISTIC_TYPES = ['channel', 'general', 'member']
 
-    @classmethod
-    async def load_channels(cls):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('SELECT guild_id, channel_id, type, snowflakes, enabled FROM statistic_channels;')
-            statistic_channels: dict[int, list[dict]] = {}
-            for r in rows:
-                statistic_channels.setdefault(r['guild_id'], []).append({
-                    "channel_id": r['channel_id'],
-                    "type": r['type'] or "general",
-                    "snowflakes": r['snowflakes'] or [],
-                    "enabled": r['enabled']
-                })
-            cls.statistic_channels = statistic_channels
-            
-    @classmethod
-    def get_statistic_channels(cls):
-        return cls.statistic_channels
+    def __init__(self, channel_snowflake: Optional[int], enabled: Optional[bool], guild_snowflake: Optional[int], snowflakes: list[int|None], statistic_type: Optional[str]):
+        self.action: Optional[str]
+        self.channel_snowflake = channel_snowflake
+        self.enabled = enabled
+        self.guild_snowflake = guild_snowflake
+        self.snowflakes = snowflakes
+        self.statistic_type = statistic_type
 
     @classmethod
     async def send_statistic(
@@ -61,29 +51,20 @@ class Statistics:
         highest_role: Optional[str] = 'Everyone'
     ):
         bot = DiscordBot.get_instance()
-        guild_id = message.guild.id
-        statistic_channels = cls.get_statistic_channels()
-        if guild_id not in statistic_channels:
-            print(f"No statistic channels for guild {guild_id}")
-            return
-        for entry in statistic_channels[guild_id]:
-            log_channel = bot.get_channel(entry["channel_id"])
-            if not log_channel:
-                continue
-            log_type = entry.get("type")
-            snowflakes = entry.get("snowflakes") or []
-            if log_type == "member" and member.id not in snowflakes:
-                continue
-            if log_type == "channel" and channel and channel.id not in snowflakes:
-                continue
-            pages = cls.build_statistic_embeds(
-                    message=message, moderation_type=moderation_type,member=member, channel=channel, duration_display=duration_display,
-                    reason=reason, executor=message.author, expires_at=expires_at,
-                    command_used=command_used, was_in_channel=was_in_channel,
-                    is_modification=is_modification, highest_role=highest_role
-                )
-            paginator = Paginator(bot, log_channel, pages)
-            await paginator.start()
+        statistics = await Statistics.fetch_all()
+        for statistic in statistics:
+            if message.guild.id == statistic.channel_snowflake:
+                channel = bot.get_channel(statistic.channel_snowflake)
+                statistic_type = statistic.statistic_type
+                snowflakes = statistic.snowflakes
+                pages = cls.build_statistic_embeds(
+                        message=message, moderation_type=moderation_type,member=member, channel=channel, duration_display=duration_display,
+                        reason=reason, executor=message.author, expires_at=expires_at,
+                        command_used=command_used, was_in_channel=was_in_channel,
+                        is_modification=is_modification, highest_role=highest_role
+                    )
+                paginator = Paginator(bot, channel, pages)
+                await paginator.start()
 
     @classmethod
     def build_statistic_embeds(cls, message: discord.Message, moderation_type: Optional[str], member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, highest_role: Optional[str] = ''):
@@ -156,3 +137,91 @@ class Statistics:
                     reason_embed.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
                     embeds.append(reason_embed)
         return embeds
+
+
+    @classmethod
+    async def delete_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                DELETE FROM statistic_channels
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
+            ''', channel_snowflake, guild_snowflake)
+
+    @classmethod
+    async def fetch_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type
+                FROM statistic_channels
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
+            ''', channel_snowflake, guild_snowflake)
+        statistics = []
+        if rows:
+            for row in rows:
+                statistics.append(Statistics(channel_snowflake=channel_snowflake, enabled=row['enabled'], guild_snowflake=guild_snowflake, snowflakes=row['snowflakes'], statistic_type=row['statistic_type']))
+            return statistics
+
+    @classmethod
+    async def fetch_by_guild(cls, guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type
+                FROM statistic_channels
+                WHERE guild_snowflake=$1
+            ''', guild_snowflake)
+        statistics = []
+        if rows:
+            for row in rows:
+                statistics.append(Statistics(channel_snowflake=row['channel_snowflake'], enabled=row['enabled'], guild_snowflake=guild_snowflake, snowflakes=row['snowflakes'], statistic_type=row['statistic_type']))
+            return statistics
+
+    @classmethod
+    async def update_by_channel_guild_snowflakes_and_type(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], snowflakes: list[int|None], statistic_type: Optional[str]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE statistic_channels
+                SET snowflakes=$3, statistic_type=$4, enabled=TRUE
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
+            ''', channel_snowflake, guild_snowflake, snowflakes, statistic_type)
+
+    @classmethod
+    async def update_by_channel_enabled_and_guild(cls, channel_snowflake: Optional[int], enabled: Optional[bool], guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                UPDATE statistic_channels
+                SET enabled=$2
+                WHERE channel_snowflake=$1 AND guild_snowflake=$3
+            ''', channel_snowflake, enabled, guild_snowflake)
+
+    async def create(self):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO statistic_channels (channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type)
+                VALUES ($1, TRUE, $2, $3, $4)
+            ''', self.channel_snowflake, self.guild_snowflake, self.snowflakes, self.statistic_type)
+
+    @property
+    def action(self):
+        self._action
+
+    @action.setter
+    def action(self, action: Optional[str]):
+        if action not in self.ACTION_TYPES:
+            raise ValueError('Invalid action.')
+        self._action = action
+
+    @property
+    def statistic_type(self):
+        return self._statistic_type
+
+    @statistic_type.setter
+    def statistic_type(self, statistic_type: Optional[str]):
+        if statistic_type not in self.STATISTIC_TYPES:
+            raise ValueError('Invalid statistic type.')
+        self._statistic_type = statistic_type

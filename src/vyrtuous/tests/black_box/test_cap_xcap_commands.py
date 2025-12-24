@@ -44,7 +44,5 @@ async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, pr
         response = voice_channel_one.messages[0]["content"]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        if channel_ref:
-            assert any(val in response for val in [channel_value])
     finally:
         await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)

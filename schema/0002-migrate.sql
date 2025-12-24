@@ -187,3 +187,30 @@ SELECT
     guild_id,
     role_id
 FROM command_aliases_old;
+
+ALTER TABLE statistic_channels RENAME TO statistic_channels_old;
+
+CREATE TABLE statistic_channels (
+    channel_snowflake BIGINT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    enabled BOOLEAN DEFAULT FALSE,
+    guild_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    snowflakes BIGINT[],
+    statistic_type TEXT DEFAULT 'general',
+    PRIMARY KEY (channel_snowflake, guild_snowflake)
+);
+INSERT INTO statistic_channels (
+    channel_snowflake,
+    enabled,
+    guild_snowflake,
+    snowflakes,
+    statistic_type
+)
+SELECT
+    channel_id,
+    enabled,
+    guild_id,
+    snowflakes,
+    type
+FROM statistic_channels_old;

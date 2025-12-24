@@ -68,9 +68,9 @@ async def send_check_failure_embed(ctx_or_interaction_or_message, error: command
     )
     embed.set_footer(text='Contact a bot admin if you think this is a mistake.')
     if isinstance(ctx_or_interaction_or_message, discord.Interaction):
-        return await ctx_or_interaction_or_message.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        return await ctx_or_interaction_or_message.response.send_message(embed=embed)
     elif isinstance(ctx_or_interaction_or_message, commands.Context) or isinstance(ctx_or_interaction_or_message, discord.Message):
-        return await ctx_or_interaction_or_message.reply(embed=embed, allowed_mentions=discord.AllowedMentions.none())
+        return await ctx_or_interaction_or_message.reply(embed=embed)
     else:
         return None
 

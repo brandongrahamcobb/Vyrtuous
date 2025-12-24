@@ -167,3 +167,13 @@ class Alias:
                 UPDATE command_aliases SET channel_snowflake=$2
                 WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
+
+    @property
+    def alias_type(self):
+        return self._alias_type
+    
+    @alias_type.setter
+    def alias_type(self, alias_type: Optional[str]):
+        if alias_type not in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'):
+            raise ValueError("Invalid alias_type.")
+        self._alias_type = alias_type

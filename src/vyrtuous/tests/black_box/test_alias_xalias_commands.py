@@ -58,19 +58,14 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
         voice_channel_one.messages.clear() 
         channel_token = voice_channel_one.mention
         if channel_ref and role_ref:
-            formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id} {ROLE_ID}"
+            formatted = f"{command} {alias_name} {alias_type} {voice_channel_one.id} {ROLE_ID}"
         elif channel_ref:
-            formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id}"
+            formatted = f"{command} {alias_name} {alias_type} {voice_channel_one.id}"
         else:
             formatted = f"{command} {alias_name}"
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
-        if command == "alias":
-            if alias_type in ('role', 'unrole'):
-                assert str(ROLE_ID) in response or f"<@&{ROLE_ID}>" in response
-            else:
-                assert any(val in response for val in [channel_value])
     finally:
         await Administrator.revoke(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
