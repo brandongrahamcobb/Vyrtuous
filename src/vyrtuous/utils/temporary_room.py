@@ -124,5 +124,5 @@ class TemporaryRoom:
             ''')
         if rows:
             for row in rows:
-                members.append(TemporaryRoom(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], room_name=row['room_name']))
+                temporary_rooms.append(TemporaryRoom(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], room_name=row['room_name']))
         return temporary_rooms

@@ -1,0 +1,71 @@
+''' discord_message_service.py  The purpose of this program is to handle messages in Discord.
+
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+'''
+from discord.ext import commands
+from discord.ext import commands
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.setup_logging import logger
+from vyrtuous.utils.snowflake import *
+import discord
+
+class MessageService:
+
+    def __init__(self, bot: DiscordBot, db_pool):
+        self.bot = bot
+
+    async def send_message(self, ctx_or_interaction, *, content: str = None, file: discord.File = None, embed: discord.Embed = None, allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(), ephemeral: bool = None):
+        if isinstance(ctx_or_interaction, commands.Context):
+            can_send = ctx_or_interaction.guild and isinstance(ctx_or_interaction.channel, discord.abc.GuildChannel) and ctx_or_interaction.channel.permissions_for(ctx_or_interaction.guild.me).send_messages
+            if can_send:
+                try:
+                    return await self._send_message(lambda **kw: ctx_or_interaction.reply(**kw), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+                except discord.HTTPException as e:
+                    if getattr(e, 'code', None) == 50035:
+                        return await self._send_message(lambda **kw: ctx_or_interaction.send(**kw), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+                    else:
+                        raise
+            else:
+                return await self.send_dm(ctx_or_interaction.author, content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+        elif isinstance(ctx_or_interaction, discord.Interaction):
+            if ephemeral is None:
+                ephemeral = True
+            if ctx_or_interaction.response.is_done():
+                return await self._send_message(lambda **kw: ctx_or_interaction.followup.send(**kw, ephemeral=ephemeral), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+            else:
+                await self._send_message(lambda **kw: ctx_or_interaction.response.send_message(**kw, ephemeral=ephemeral), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+                return await ctx_or_interaction.original_response()
+        else:
+            raise TypeError("Expected commands.Context or discord.Interaction")
+
+    async def _send_message(self, send_func, *, content: str = None, file: discord.File = None, embed: discord.Embed = None, allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.all()):
+        kwargs = {}
+        if content:
+            kwargs['content'] = content
+        if file:
+            kwargs['file'] = file
+        if embed:
+            kwargs['embed'] = embed
+        if allowed_mentions is not None:
+            kwargs['allowed_mentions'] = allowed_mentions
+        return await send_func(**kwargs)
+
+    async def send_dm(self, user: discord.abc.User, *, content: str = None, file: discord.File = None, embed: discord.Embed = None, allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.all()):
+        dm_channel = user.dm_channel
+        if dm_channel is None:
+            dm_channel = await user.create_dm()
+        return await self._send_message(lambda **kw: dm_channel.send(**kw), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)

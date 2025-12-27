@@ -39,7 +39,7 @@ class ChannelService:
                         return c
                 if value.startswith('<#') and value.endswith('>'):
                     cid = int(value[2:-1])
-                    c = ctx.guild.get_channel(cid)
+                    c = ctx_interaction_or_message.guild.get_channel(cid)
                     if c:
                         logger.debug(f"Channel mention resolved: {c.id}")
                         return c

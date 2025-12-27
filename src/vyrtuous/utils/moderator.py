@@ -30,6 +30,7 @@ class Moderator:
         self.channel_snowflake: Optional[int] = channel_snowflake
         self.guild_snowflake = guild_snowflake
         self.member_snowflake: Optional[int] = member_snowflake
+        self.member_mention: Optional[str] = f"<@{member_snowflake}>"
 
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):

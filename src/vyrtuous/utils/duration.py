@@ -15,84 +15,92 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timedelta, timezone
+from discord import app_commands
+from discord.ext import commands
 from typing import Optional
+import discord
 
-class Duration:
+class DurationObject:
             
-    def __init__(self):
+    day_suffix_types = ['d', 'day', 'days']
+    hour_suffix_types = ['h', 'hr', 'hrs', 'hour', 'hours']
+    minute_suffix_types = ['m', 'min', 'mins', 'minute', 'minutes']
+    prefix_types = ['-', '+', '=']
+    suffix_list = [day_suffix_types, hour_suffix_types, minute_suffix_types]
+
+    def __init__(self, duration_str: str):
+        self.duration_str = duration_str
         self.base: Optional[datetime] = None
         self.number: Optional[int] = None
         self.prefix: Optional[str] = None
         self.suffix: Optional[str] = None
-        self.day_suffix_types = ['d', 'day', 'days']
-        self.hour_suffix_types = ['h', 'hr', 'hrs', 'hour', 'hours']
-        self.minute_suffix_types = ['m', 'min', 'mins', 'minute', 'minutes']
-        self.prefix_types = ['-', '+', '=']
-        self.suffix_list = [self.day_suffix_types, self.hour_suffix_types, self.minute_suffix_types]
 
-    def get_prefix(self, duration: Optional[str]) -> Optional[str]:
-        if duration and duration[0] in self.prefix_types:
-            prefix = duration[0]
-        else:
-            prefix = '+'
-        return prefix
-    
-    def get_number(self, duration: Optional[str]) -> Optional[int]:
-        number_str = ''
-        if not duration:
-            return 0 
-        if duration and duration[0] in self.prefix_types:
-            duration = duration[1:]
-        for char in duration:
-            if char.isdigit():
-                number_str += char
-            else:
-                break
-        if not number_str:
-            raise ValueError('No numeric value found in duration string')
-        number = int(number_str)
-        return number
-    
-    def get_suffix(self, duration: Optional[str]) -> Optional[str]:
-        if duration and duration[0] in self.prefix_types:
-            duration = duration[1:]
-        number_found = False
-        suffix = ''
-        for char in duration:
-            if char.isdigit():
-                number_found = True
-            elif number_found:
-                suffix += char
-        if not suffix:
-            suffix = 'h'
-        suffix = suffix.lower()
-        return suffix
+    def __str__(self):
+        return self._duration_str
 
+    @property
+    def duration_str(self) -> str:
+        return self._duration_str
 
-    def interpret_days_suffix(self):
-        if self.suffix in self.suffix_list[0]:
-            return True
-        else:
-            return False
-            
-    def interpret_hours_suffix(self):
-        if self.suffix in self.suffix_list[1]:
-            return True
-        else:
-            return False
-            
-    def interpret_minutes_suffix(self):
-        if self.suffix in self.suffix_list[2]:
-            return True
-        else:
-            return False
+    @duration_str.setter
+    def duration_str(self, duration: str):
+        if not isinstance(duration, str) or not duration:
+            raise commands.BadArgument("Duration string is invalid.")
+        self._duration_str = duration.strip()
+        self._parse_duration()
+
+    @property
+    def prefix(self) -> str:
+        if self._prefix is None:
+            return '+'
+        if self._prefix not in self.prefix_types:
+            raise ValueError(f"Duration.prefix {self._prefix} is invalid")
+        return self._prefix
+
+    @prefix.setter
+    def prefix(self, value: str):
+        if value not in self.prefix_types:
+            raise commands.BadArgument(f"Duration.prefix {value} is invalid")
+        self._prefix = value
+
+    @property
+    def number(self) -> int:
+        if self._number is None:
+            raise ValueError("Duration.number is unset")
+        return self._number
+
+    @number.setter
+    def number(self, value: int):
+        if not isinstance(value, int) or value < 0:
+            raise commands.BadArgument("Duration.number must be a non-negative integer")
+        self._number = value
+
+    @property
+    def suffix(self) -> str:
+        if self._suffix is None:
+            return 'h'
+        if self._suffix not in sum(self.suffix_list, []):
+            raise ValueError(f"Duration.suffix {self._suffix} is invalid")
+        return self._suffix
+
+    @suffix.setter
+    def suffix(self, value: str):
+        if value.lower() not in sum(self.suffix_list, []):
+            raise commands.BadArgument(f"Duration.suffix {value} is invalid")
+        self._suffix = value.lower()
+
+    @property
+    def base(self) -> datetime:
+        if self._base is None:
+            self._base = datetime.now(timezone.utc)
+        return self._base
+
+    @base.setter
+    def base(self, value: Optional[datetime]):
+        self._base = value or datetime.now(timezone.utc)
     
     def interpret_sign(self) -> Optional[int]:
-        if self.prefix == '-':
-            return -1
-        if self.prefix in ('+', '='): 
-            return 1
-        return 1
+        return -1 if self.prefix == '-' else 1
     
     def interpret_unit(self) -> Optional[str]:
         if self.interpret_days_suffix():
@@ -109,46 +117,14 @@ class Duration:
     
     def load_from_combined_duration_str(self, duration_str: Optional[str]) -> None:
         prefix = self.get_prefix(duration_str)
-        self.load_prefix(prefix)
+        self.prefix = prefix
         number = self.get_number(duration_str)
-        self.load_number(number)
+        self.number = number
         if self.validate_permanent():
             return
         suffix = self.get_suffix(duration_str)
-        self.load_suffix(suffix)
-            
-    def load_number(self, number: Optional[int]) -> None:
-        self.number = number
-        
-    def load_prefix(self, prefix: Optional[str]) -> None:
-        self.prefix = prefix
-        
-    def load_suffix(self, suffix: Optional[str]) -> None:
         self.suffix = suffix
-        
-    def validate_base(self) -> None:
-        if self.base is None:
-           self.base = datetime.now(timezone.utc)
-        
-    def validate_number(self) -> None: 
-        if self.number is None:
-            raise ValueError('Duration.number is unset')
-    
-    def validate_permanent(self) -> bool:
-        return self.number == 0
-        
-    def validate_prefix(self) -> None:
-        if self.prefix is None:
-            raise ValueError('Duration.prefix is unset')
-        if self.prefix not in self.prefix_types:
-            raise ValueError(f'Duration.prefix {self.prefix} is invalid')
-    
-    def validate_suffix(self) -> None:
-        if self.suffix is None:
-            raise ValueError('Duration.suffix is unset')
-        if self.suffix not in sum(self.suffix_list, []):
-            raise ValueError(f'Duration.suffix {self.suffix} is invalid')
-
+            
     def build_timedelta(self):
         sign = self.interpret_sign()
         unit = self.interpret_unit()
@@ -163,79 +139,40 @@ class Duration:
                 return None
                 
     def compute_target_datetime(self) -> Optional[datetime]:
-        delta = self.build_timedelta()
-        if self.base:
-            base_time = self.base
-        else:
-            base_time = datetime.now(timezone.utc)
-        return base_time + delta
-        
-    @classmethod
-    def convert_timedelta_seconds(cls, seconds: int) -> str:
-        if seconds == 0:
-            return "0"  # or "permanent" depending on your convention
-        sign = "+" if seconds > 0 else "-"
-        seconds_abs = abs(seconds)
-        days, remainder = divmod(seconds_abs, 86400)
-        hours, remainder = divmod(remainder, 3600)
-        minutes, _ = divmod(remainder, 60)
-        if days > 0:
-            return f"{sign}{days}d"
-        elif hours > 0:
-            return f"{sign}{hours}h"
-        else:
-            return f"{sign}{minutes}m"
-        
-    def output_datetime(self) -> Optional[datetime]:
-        if self.validate_permanent():
-            return None
-        self.validate_base()
-        self.validate_number()
-        self.validate_prefix()
-        self.validate_suffix()
-        return self.compute_target_datetime()
+        base = base or self.base
+        return base + self.build_timedelta()
     
-    def output_display(self) -> Optional[str]:
-        if self.validate_permanent():
+    def output_display(self) -> str:
+        if self.number == 0:
             return "permanent"
-        self.validate_prefix()
-        self.validate_number()
-        self.validate_suffix()
         sign = self.interpret_sign()
-        number = self.number
         unit = self.interpret_unit()
+        number = self.number
         if sign > 0:
             return f"{number}{unit} from now"
-        elif sign < 0:
-            return f"{number}{unit} ago"
         else:
-            return f"{number}{unit}"
+            return f"{number}{unit} ago"
+
+class Converter(commands.Converter):
     
-    @classmethod
-    def output_display_from_datetime(cls, dt: Optional[datetime]) -> Optional[str]:
-        if dt is None:
-            return "permanent"
-        delta = dt - datetime.now(timezone.utc)
-        seconds = int(delta.total_seconds())
-        if seconds == 0:
-            return "now"
-        sign = 1 if seconds > 0 else -1
-        seconds_abs = abs(seconds)
-        days = seconds_abs // 86400
-        hours = seconds_abs // 3600
-        minutes = seconds_abs // 60
-        match True:
-            case _ if days >= 365:
-                number, unit = days // 365, "years"
-            case _ if days >= 30:
-                number, unit = days // 30, "months"
-            case _ if days >= 7:
-                number, unit = days // 7, "weeks"
-            case _ if days >= 1:
-                number, unit = days, "days"
-            case _ if hours >= 1:
-                number, unit = hours, "hours"
-            case _:
-                number, unit = minutes, "minutes"
-        unit_text = unit.rstrip('s') if number == 1 else unit
-        return f"{number}{unit_text} from now" if sign > 0 else f"{number}{unit_text} ago"
+    def __init__(self, duration=DurationObject):
+        self.duration = duration
+    
+    async def convert(self, ctx: commands.Context, arg):
+        return self.duration(arg).duration
+
+class Transformer(app_commands.Transformer):
+
+    def __init__(self, duration_cls=DurationObject):
+        self.duration_cls = duration_cls
+
+    async def transform(self, interaction: discord.Interaction, arg):
+        return self.duration_cls(arg).duration
+        
+class Duration(Converter):
+    def __init__(self):
+        super().__init__(DurationObject)
+
+class AppDuration(Transformer):
+    def __init__(self):
+        super().__init__(DurationObject)

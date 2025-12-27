@@ -19,19 +19,20 @@ from discord import app_commands
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
-from vyrtuous.service.discord_message_service import DiscordMessageService
+from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.check_service import *
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator
+from vyrtuous.utils.voice_mute import VoiceMute
 from vyrtuous.utils.snowflake import *
 
 class CoordinatorCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-        self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
+        self.handler = MessageService(self.bot, self.bot.db_pool)
         self.channel_service = ChannelService()
         self.emoji = Emojis()
         self.member_service = MemberService()
@@ -53,13 +54,13 @@ class CoordinatorCommands(commands.Cog):
                 return
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
             if channel_obj.type != discord.ChannelType.voice:
-                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+                return await self.handler.send_message(interaction, content='\U0001F6AB Please specify a valid target.')
             channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_obj, interaction.user)
             if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-                return await interaction.response.send_message(content=f'\U0001F6AB You are not permitted to grant/revoke moderator status for {channel_obj.mention}..')
+                return await self.handler.send_message(interaction, content=f'\U0001F6AB You are not permitted to grant/revoke moderator status for {channel_obj.mention}..')
             success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
             if not success:
-                return await interaction.response.send_message(content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
+                return await self.handler.send_message(interaction, content=f'\U0001F6AB You are not allowed to add/remove {member_obj.mention} as a moderator because they are a higher/or equivalent role than you in {channel_obj.mention}.')
             async with self.bot.db_pool.acquire() as conn:
                 action = None
                 moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -74,7 +75,7 @@ class CoordinatorCommands(commands.Cog):
                     INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                     VALUES ($1,$2,$3,$4,$5,$6)
                 ''', 'toggled_moderator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, f'Moderator access {action}')
-        return await interaction.response.send_message(content=f"{self.emoji.get_random_emoji()} Moderator access has been {action}.")
+        return await self.handler.send_message(interaction, content=f"{self.emoji.get_random_emoji()} Moderator access has been {action}.")
               
     # DONE
     @commands.command(name='mod', help='Grants/revokes a user to `Moderator` for a specific channel.')
@@ -125,10 +126,10 @@ class CoordinatorCommands(commands.Cog):
         channel: AppChannelSnowflake
     ):
         if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in a server.')
+            return await self.handler.send_message(interaction, content='\U0001F6AB This command can only be used in a server.')
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         if channel_obj.type != discord.ChannelType.voice:
-            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+            return await self.handler.send_message(interaction, content='\U0001F6AB Please specify a valid target.')
         muted_members, skipped_members, failed_members = [], [], []
         async with self.bot.db_pool.acquire() as conn:
             for member in channel_obj.members:
@@ -156,7 +157,7 @@ class CoordinatorCommands(commands.Cog):
             summary += f'\n\U000026A0\U0000FE0F Skipped {len(skipped_members)}.'
         if failed_members:
             summary += f'\n\U0001F6AB Failed to mute {len(failed_members)}.'
-        return await interaction.response.send_message(content=summary)
+        return await self.handler.send_message(interaction, content=summary)
 
     # DONE
     @commands.command(name='rmute', help='Mutes all members in a VC (except yourself).')
@@ -210,10 +211,10 @@ class CoordinatorCommands(commands.Cog):
         channel: AppChannelSnowflake
     ):
         if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
+            return await self.handler.send_message(interaction, content='This command must be used in a server.')
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         if channel_obj.type != discord.ChannelType.voice:
-            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+            return await self.handler.send_message(interaction, content='\U0001F6AB Please specify a valid target.')
         unmuted_members, skipped_members, failed_members = [], [], []
         async with self.bot.db_pool.acquire() as conn:
             for member in channel_obj.members:
@@ -238,7 +239,7 @@ class CoordinatorCommands(commands.Cog):
             summary += f'\n\U000026A0\U0000FE0F Skipped {len(skipped_members)}.'
         if failed_members:
             summary += f'\n\U0001F6AB Failed to unmute {len(failed_members)}.'
-        return await interaction.response.send_message(content=summary)
+        return await self.handler.send_message(interaction, content=summary)
     
     # DONE
     @commands.command(name='xrmute', help='Unmutes all members in a VC (except yourself).')
@@ -265,7 +266,7 @@ class CoordinatorCommands(commands.Cog):
                         continue
                     if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
                         await member.edit(mute=False)
-                    await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="user")
+                    await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target="user")
                     await conn.execute('''
                         INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                         VALUES ($1, $2, $3, $4, $5, $6)

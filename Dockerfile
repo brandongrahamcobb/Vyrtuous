@@ -11,10 +11,8 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir poetry
 
 COPY pyproject.toml poetry.lock* README.md ./
-COPY vyrtuous.code-workspace ./
 COPY healthcheck.sh ./
-COPY src/ ./src/
 
-RUN poetry install
+RUN poetry install --no-root
 
-CMD ["python", "-m", "src.vyrtuous.main"]
+CMD ["python", "-m", "vyrtuous.main"]

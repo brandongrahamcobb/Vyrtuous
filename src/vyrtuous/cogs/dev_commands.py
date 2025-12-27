@@ -21,7 +21,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.check_service import *
-from vyrtuous.service.discord_message_service import DiscordMessageService
+from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import Administrator
@@ -37,7 +37,7 @@ class DevCommands(commands.Cog):
         self.bot = bot
         self.channel_service = ChannelService()
         self.emoji = Emojis()
-        self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
+        self.handler = MessageService(self.bot, self.bot.db_pool)
         self.member_service = MemberService()
         self.role_service = RoleService()
     
@@ -53,9 +53,9 @@ class DevCommands(commands.Cog):
             db.create_backup_directory()
             backup_file = db.execute_backup()
             if backup_file:
-                await interaction.response.send_message(file=discord.File(db.file_name))
+                await self.handler.send_message(interaction, file=discord.File(db.file_name))
             else:
-                await interaction.response.send_message(content=f'\U0001F6AB Failed to create backup.')
+                await self.handler.send_message(interaction, content=f'\U0001F6AB Failed to create backup.')
         except Exception as e:
             logger.warning(f'Database error occurred: {e}')
           
@@ -91,7 +91,7 @@ class DevCommands(commands.Cog):
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
         await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-        await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.')
+        await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.')
 
     # DONE
     @commands.command(name='clear', help='Removes a specific channel ID from all users, including temp-room associations and all related records.')
@@ -116,9 +116,9 @@ class DevCommands(commands.Cog):
                 await interaction.response.defer(ephemeral=True)
             await interaction.client.load_extension(module)
         except commands.ExtensionError as e:
-            await interaction.response.send_message(f'{e.__class__.__name__}: {e}')
+            await self.handler.send_message(interaction, f'{e.__class__.__name__}: {e}')
         else:
-            await interaction.response.send_message('\N{OK HAND SIGN}')
+            await self.handler.send_message(interaction, '\N{OK HAND SIGN}')
             
     @commands.command(name='load', help='Loads a cog by name "vyrtuous.cog.<cog_name>."')
     @is_owner_developer_predicator()
@@ -139,9 +139,9 @@ class DevCommands(commands.Cog):
                 await interaction.response.defer(ephemeral=True)
             await interaction.client.reload_extension(module)
         except commands.ExtensionError as e:
-            await interaction.response.send_message(f'{e.__class__.__name__}: {e}')
+            await self.handler.send_message(interaction, f'{e.__class__.__name__}: {e}')
         else:
-            await interaction.response.send_message('\N{OK HAND SIGN}')
+            await self.handler.send_message(interaction, '\N{OK HAND SIGN}')
             
     @commands.command(name='reload', help='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
     @is_owner_developer_predicator()
@@ -222,7 +222,7 @@ class DevCommands(commands.Cog):
             for member in role_obj.members:
                 administrator = Administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
                 await administrator.grant()
-        await interaction.response.send_message(f'{self.emoji.get_random_emoji()} Team role granted for members.')
+        await self.handler.send_message(interaction, f'{self.emoji.get_random_emoji()} Team role granted for members.')
     
     @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
@@ -245,9 +245,9 @@ class DevCommands(commands.Cog):
         try:
             await interaction.client.unload_extension(module)
         except commands.ExtensionError as e:
-            await interaction.response.send_message(f'{e.__class__.__name__}: {e}')
+            await self.handler.send_message(interaction, f'{e.__class__.__name__}: {e}')
         else:
-            await interaction.response.send_message('\N{OK HAND SIGN}')
+            await self.handler.send_message(interaction, '\N{OK HAND SIGN}')
 
     # DONE
     @commands.command(name='unload', help='Unload a cog by name "vyrtuous.cog.<cog_name>".')
@@ -282,7 +282,7 @@ class DevCommands(commands.Cog):
                     member_snowflake=member.id,
                     role_snowflake=administrator.role_snowflake
                 )
-        await interaction.response.send_message(f"{self.emoji.get_random_emoji()} Team role revoked for members.")
+        await self.handler.send_message(interaction, f"{self.emoji.get_random_emoji()} Team role revoked for members.")
 
     @commands.command(name='xtrole', help='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()

@@ -29,6 +29,7 @@ class Administrator:
         self.bot = DiscordBot.get_instance()
         self.guild_snowflake = guild_snowflake
         self.member_snowflake: Optional[int] = member_snowflake
+        self.member_mention: Optional[str] = f"<@{member_snowflake}>"
         self.role_snowflake = role_snowflake
     
     async def grant(self):

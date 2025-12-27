@@ -22,7 +22,8 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
-from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.utils.paginator import Paginator
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
@@ -41,7 +42,7 @@ class ModeratorCommands(commands.Cog):
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
         self.emoji = Emojis()
-        self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
+        self.handler = MessageService(self.bot, self.bot.db_pool)
         self.channel_service = ChannelService()
         self.member_service = MemberService()
     
@@ -59,10 +60,10 @@ class ModeratorCommands(commands.Cog):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                return await interaction.response.send_message(content='\U0001F6AB Only owners or developers can list all bans across the server.')
+                return await self.handler.send_message(interaction, content='\U0001F6AB Only owners or developers can list all bans across the server.')
             bans = await Ban.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not bans:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active bans found in {interaction.guild.name}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No active bans found in {interaction.guild.name}.')
             grouped = defaultdict(list)
             for ban in bans:
                 grouped[ban.channel_snowflake].append(ban)
@@ -91,12 +92,12 @@ class ModeratorCommands(commands.Cog):
                     mention = user.name if user else f'`{record["discord_snowflake"]}`'
                     embed.add_field(name='User', value=f'{mention}\nReason: {reason}\nDuration: {duration_str}', inline=False)
                 pages.append(embed)
-            paginator = AppPaginator(self.bot, interaction, pages)
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
         if member_obj:
             bans = await Ban.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             bans = [b for b in bans if interaction.guild.get_channel(b.channel_snowflake)]
-            if not bans: return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not banned in any channels.')
+            if not bans: return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not banned in any channels.')
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} Ban records for {member_obj.display_name}',
                 color=discord.Color.red()
@@ -118,11 +119,11 @@ class ModeratorCommands(commands.Cog):
                         minutes = (seconds % 3600) // 60
                         duration_str = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
                 embed.add_field(name=channel_mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
-            return await interaction.response.send_message(embed=embed)
+            return await self.handler.send_message(interaction, embed=embed)
         elif channel_obj:
             bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not bans:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active bans found for {channel_obj.mention}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No active bans found for {channel_obj.mention}.')
             lines = []
             for ban in bans:
                 uid = ban.member_snowflake
@@ -144,7 +145,7 @@ class ModeratorCommands(commands.Cog):
                         time_left = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
                 lines.append(f'• {name} — {time_left} — <@{uid}>')
             if not lines:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active bans for users currently in {interaction.guild.name}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No active bans for users currently in {interaction.guild.name}.')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
@@ -155,9 +156,9 @@ class ModeratorCommands(commands.Cog):
                     color=discord.Color.red()
                 )
                 pages.append(embed)
-            paginator = AppPaginator(self.bot, interaction, pages)
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
-        return await interaction.response.send_message(content='\U0001F6AB You must specify a member, a text channel or use "all".')
+        return await self.handler.send_message(interaction, content='\U0001F6AB You must specify a member, a text channel or use "all".')
         
     # DONE
     @commands.command(name='bans', description='Lists ban statistics.')
@@ -290,10 +291,10 @@ class ModeratorCommands(commands.Cog):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
-                return await interaction.response.send_message(content='\U0001F6AB Only owners or developers can list all caps.')
+                return await self.handler.send_message(interaction, content='\U0001F6AB Only owners or developers can list all caps.')
             caps = await Cap.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not caps:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No caps found server-wide.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No caps found server-wide.')
             lines = []
             for cap in caps:
                 ch = interaction.guild.get_channel(cap.channel_snowflake)
@@ -308,14 +309,14 @@ class ModeratorCommands(commands.Cog):
                     color=discord.Color.red()
                 )
                 pages.append(embed)
-            paginator = AppPaginator(self.bot, interaction, pages)
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         if channel_obj.type != discord.ChannelType.voice:
-            return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+            return await self.handler.send_message(interaction, content='\U0001F6AB Please specify a valid target.')
         caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         if not caps:
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No caps found for this channel.')
+            return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No caps found for this channel.')
         lines = []
         for cap in caps:
             lines.append(f'**{cap.moderation_type} in {channel_obj.mention}** → `{Duration.convert_timedelta_seconds(cap.duration)}`')
@@ -324,7 +325,7 @@ class ModeratorCommands(commands.Cog):
             description="\n".join(lines),
             color=discord.Color.red()
         )
-        return await interaction.response.send_message(embed=embed)
+        return await self.handler.send_message(interaction, embed=embed)
 
     # DONE
     @commands.command(name='caps', help='List active caps for a channel or all channels if "all" is provided.')
@@ -384,33 +385,33 @@ class ModeratorCommands(commands.Cog):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                return await interaction.response.send_message(content='\U0001F6AB Only owners, developers or administrators can list all aliases across the server.')
+                return await self.handler.send_message(interaction, content='\U0001F6AB Only owners, developers or administrators can list all aliases across the server.')
             aliases = await Alias.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not aliases:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No aliases found.')
             lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found in this server.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No aliases found in this server.')
             pages = []
             chunk_size = 18
             for i in range(0, len(lines), chunk_size):
                 chunk = lines[i:i + chunk_size]
                 embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} All Aliases in Server', description='\n'.join(chunk), color=discord.Color.blue())
                 pages.append(embed)
-            paginator = AppPaginator(self.bot, interaction, pages)
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
         else:
             if channel_obj is None or channel_obj.type != discord.ChannelType.voice:
-                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+                return await self.handler.send_message(interaction, content='\U0001F6AB Please specify a valid target.')
             aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             if not aliases:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No aliases found.')
             lines.extend(Alias.format_aliases(aliases))
             found_aliases = len(lines) > 0
             if not found_aliases:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No aliases found for the requested target: {target if target else channel_obj.mention}.')
-        await interaction.response.send_message(embed=embed)
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No aliases found for the requested target: {target if target else channel_obj.mention}.')
+        await self.handler.send_message(interaction, embed=embed)
         
     # DONE
     @commands.command(name='cmds', help='List command aliases routed to a specific channel, temp room, or all channels if "all" is provided.')
@@ -467,23 +468,23 @@ class ModeratorCommands(commands.Cog):
         channel: AppChannelSnowflake
     ):
         if not interaction.guild:
-            return await interaction.response.send_message(content='\U0001F6AB This command can only be used in servers.')
+            return await self.handler.send_message(interaction, content='\U0001F6AB This command can only be used in servers.')
         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_obj, interaction.author)
         if member_permission_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator', 'Moderator'):
-            return await interaction.response.send_message(content=f'\U0001F6AB You are not permitted to delete messages in {channel_obj.mention}.')
+            return await self.handler.send_message(interaction, content=f'\U0001F6AB You are not permitted to delete messages in {channel_obj.mention}.')
         try:
             msg = await channel_obj.fetch_message(message)
         except:
             logger.warning('No message with this ID exists.')
         if not msg:
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No message with ID `{message}` found in `{channel_obj.name}`.')
+            return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No message with ID `{message}` found in `{channel_obj.name}`.')
         try:
             await msg.delete()
-            return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Message `{message}` deleted successfully.')
+            return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Message `{message}` deleted successfully.')
         except discord.Forbidden:
             logger.warning('Missing permissions to delete the message.')
-        return await interaction.response.send_message(content='\U0001F6AB Failed to delete the message.')
+        return await self.handler.send_message(interaction, content='\U0001F6AB Failed to delete the message.')
 
     # DONE
     @commands.command(name='del', help='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
@@ -521,20 +522,20 @@ class ModeratorCommands(commands.Cog):
         target: Optional[str] = None
     ):
         if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
+            return await self.handler.send_message(interaction, content='This command must be used in a server.')
         member_obj = await self.member_service.resolve_member(interaction, target)
         if member_obj and member_obj.id == interaction.guild.me.id:
-            return await interaction.response.send_message(content='\U0001F6AB You cannot list flags on the bot.')
+            return await self.handler.send_message(interaction, content='\U0001F6AB You cannot list flags on the bot.')
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         if member_obj:
             target=None
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                return await interaction.response.send_message(content='\U0001F6AB Only owners, developers or administrators can list flags across all channels.')
+                return await self.handler.send_message(interaction, content='\U0001F6AB Only owners, developers or administrators can list flags across all channels.')
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('SELECT channel_id, discord_snowflake FROM active_flags WHERE guild_id=$1', interaction.guild.id)
-            if not rows: return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are flagged in any voice channels.')
+            if not rows: return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No users are flagged in any voice channels.')
             channel_map = defaultdict(list)
             for row in rows: channel_map[row['channel_id']].append(row['discord_snowflake'])
             pages = []
@@ -550,14 +551,14 @@ class ModeratorCommands(commands.Cog):
                     mention = m.mention if m else f'<@{uid}>'
                     embed.add_field(name=f'{interaction.guild.name}', value=f'• {mention}', inline=False)
                 pages.append(embed)
-            paginator = AppPaginator(self.bot, interaction, pages)
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
         if member_obj:
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('SELECT channel_id, reason FROM active_flags WHERE guild_id=$1 AND discord_snowflake=$2', interaction.guild.id, member_obj.id)
             rows = [r for r in rows if interaction.guild.get_channel(r['channel_id'])]
             if not rows:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged in any voice channels.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not flagged in any voice channels.')
             lines = []
             for r in rows:
                 ch = interaction.guild.get_channel(r['channel_id'])
@@ -569,14 +570,14 @@ class ModeratorCommands(commands.Cog):
                 description='\n'.join(lines),
                 color=discord.Color.orange()
             )
-            return await interaction.response.send_message(embed=embed)
+            return await self.handler.send_message(interaction, embed=embed)
         elif channel_obj:
             if channel_obj.type != discord.ChannelType.voice:
-                return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+                return await self.handler.send_message(interaction, content='\U0001F6AB Please specify a valid target.')
             async with self.bot.db_pool.acquire() as conn:
                 rows = await conn.fetch('SELECT discord_snowflake FROM active_flags WHERE guild_id=$1 AND channel_id=$2', interaction.guild.id, channel_obj.id)
             if not rows:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are flagged for {channel_obj.mention}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No users are flagged for {channel_obj.mention}.')
             pages = []
             chunk_size = 18
             for i in range(0, len(rows), chunk_size):
@@ -594,8 +595,8 @@ class ModeratorCommands(commands.Cog):
                     embed.add_field(name=f'{interaction.guild.name}', value='\n'.join(formatted_lines), inline=False)
                     pages.append(embed)
             if not pages:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No flagged users currently in {interaction.guild.name}.')
-            paginator = AppPaginator(self.bot, interaction, pages)
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No flagged users currently in {interaction.guild.name}.')
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
     
     # DONE
@@ -707,7 +708,7 @@ class ModeratorCommands(commands.Cog):
         target: Optional[str] = None
     ):
         if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
+            return await self.handler.send_message(interaction, content='This command must be used in a server.')
         member_obj = await self.member_service.resolve_member(interaction, target)
         if member_obj:
             target = None
@@ -716,7 +717,7 @@ class ModeratorCommands(commands.Cog):
             if member_obj:
                 rows = await conn.fetch('''SELECT channel_id, created_at FROM active_cows WHERE guild_id=$1 AND discord_snowflake=$2''', interaction.guild.id, member_obj.id)
                 if not rows:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not cowed in any channels.')
+                    return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not cowed in any channels.')
                 lines = []
                 for r in rows:
                     ch = interaction.guild.get_channel(r['channel_id'])
@@ -728,13 +729,13 @@ class ModeratorCommands(commands.Cog):
                     description='\n'.join(lines),
                     color=discord.Color.green()
                 )
-                return await interaction.response.send_message(embed=embed, allowed_mentions=discord.AllowedMentions.all())
+                return await self.handler.send_message(interaction, embed=embed, allowed_mentions=discord.AllowedMentions.all())
             elif channel_obj:
                 if channel_obj.type != discord.ChannelType.voice:
-                    return await interaction.response.send_message(content='\U0001F6AB Please specify a valid target.')
+                    return await self.handler.send_message(interaction, content='\U0001F6AB Please specify a valid target.')
                 rows = await conn.fetch('''SELECT discord_snowflake, created_at FROM active_cows WHERE guild_id=$1 AND channel_id=$2''', interaction.guild.id, channel_obj.id)
                 if not rows:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are cowed in {channel_obj.mention}.')
+                    return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No users are cowed in {channel_obj.mention}.')
                 lines = []
                 for row in rows:
                     uid = row['discord_snowflake']
@@ -744,7 +745,7 @@ class ModeratorCommands(commands.Cog):
                     created_at = discord.utils.format_dt(row['created_at'],style='R') if row['created_at'] else ''
                     lines.append(f'• {m.display_name} — <@{uid}> — {created_at}')
                 if not lines:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No new vegans currently in {interaction.guild.name}.')
+                    return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No new vegans currently in {interaction.guild.name}.')
                 chunk_size = 18
                 pages = []
                 for i in range(0, len(lines), chunk_size):
@@ -755,7 +756,7 @@ class ModeratorCommands(commands.Cog):
                         color=discord.Color.green()
                     )
                     pages.append(embed)
-                paginator = AppPaginator(self.bot, interaction, pages)
+                paginator = Paginator(self.bot, interaction, pages)
                 return await paginator.start()
                 
     # DONE
@@ -846,7 +847,7 @@ class ModeratorCommands(commands.Cog):
             is_owner = old_room.member_snowflake == interaction.user.id
             highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
             if highest_role not in ('Owner', 'Developer', 'Administrator') or not is_owner:
-                return await interaction.response.send_message(content=f'You are not the owner nor have elevated permission to migrate rooms.')
+                return await self.handler.send_message(interaction, content=f'You are not the owner nor have elevated permission to migrate rooms.')
             await TemporaryRoom.update_by_source_and_target(guild_snowflake=interaction.guild.id, room_name=channel_obj.id, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=channel_obj.name)
             await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
@@ -857,7 +858,7 @@ class ModeratorCommands(commands.Cog):
             await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel}.')
+        return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel}.')
     
     # DONE
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
@@ -899,10 +900,10 @@ class ModeratorCommands(commands.Cog):
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                return await interaction.response.send_message(content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
+                return await self.handler.send_message(interaction, content=f'\U0001F6AB You do not have permission to use this command (`mutes`) in {channel_obj.mention}.')
             voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=interaction.guild.id, target="user")
             if not voice_mutes:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No muted users currently in {interaction.guild.name}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No muted users currently in {interaction.guild.name}.')
             grouped = defaultdict(list)
             for voice_mute in voice_mutes:
                 grouped[voice_mute.channel_snowflake].append(voice_mute)
@@ -921,13 +922,13 @@ class ModeratorCommands(commands.Cog):
                         duration_str = Duration.output_display_from_datetime(r['expires_at'])
                         embed.add_field(name=name, value=f'{mention}\nReason: {r["reason"]}\nDuration: {duration_str}', inline=False)
                     pages.append(embed)
-            paginator = AppPaginator(self.bot, interaction, pages)
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
         elif member_obj:
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target="user")
             voice_mutes = [voice_mute for voice_mute in voice_mutes if interaction.guild.get_channel(voice_mute.channel_snowflake)]
             if not voice_mutes:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not muted in any voice channels.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} is not muted in any voice channels.')
             lines = []
             for voice_mute in voice_mutes:
                 ch = interaction.guild.get_channel(voice_mute.channel_snowflake)
@@ -938,11 +939,11 @@ class ModeratorCommands(commands.Cog):
                 description='\n'.join(lines),
                 color=discord.Color.orange()
             )
-            return await interaction.response.send_message(embed=embed)
+            return await self.handler.send_message(interaction, embed=embed)
         elif channel_obj:
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="user")
             if not voice_mutes:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are currently muted in {channel_obj.mention}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No users are currently muted in {channel_obj.mention}.')
             lines = []
             for voice_mute in voice_mutes:
                 uid = voice_mute.member_snowflake
@@ -951,7 +952,7 @@ class ModeratorCommands(commands.Cog):
                     continue
                 lines.append(f'• {member_obj.display_name} — <@{uid}> — {Duration.output_display_from_datetime(voice_mute.expires_at)}')
             if not lines:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No muted users currently in {interaction.guild.name}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No muted users currently in {interaction.guild.name}.')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
@@ -962,7 +963,7 @@ class ModeratorCommands(commands.Cog):
                 )
                 embed.add_field(name=f'{interaction.guild.name}', value='\n'.join(chunk), inline=False)
                 pages.append(embed)
-            paginator = AppPaginator(self.bot, interaction, pages)
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
 
     # DONE
@@ -1063,16 +1064,16 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
             stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not stage:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage found.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No active stage found.')
             success = await has_equal_or_higher_role(interaction, member_obj, channel_obj)
             if not success:
-                return await interaction.response.send_message(content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.")
+                return await self.handler.send_message(interaction, content=f"\U0001F6AB You are not allowed to mute/unmute {member_obj.mention} because they are a higher/or equivalent role than you in {channel_obj.mention}.")
             try:
                 await member_obj.edit(mute=not member_obj.voice.mute)
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {"muted" if member_obj.voice.mute else "unmuted"}.')
             except Exception as e:
                 logger.warning(f'Failed to toggle mute: {e}')
-        return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} Toggled mute.')
+        return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Toggled mute.')
                 
     # DONE
     @commands.command(name='mstage', help='Mute/unmute a member in the active stage.')
@@ -1108,16 +1109,16 @@ class ModeratorCommands(commands.Cog):
         target: Optional[str] = None
     ):
         if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
+            return await self.handler.send_message(interaction, content='This command must be used in a server.')
         channel_obj = await self.channel_service.resolve_channel(interaction, target)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower() == 'all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await interaction.response.send_message(content='\U0001F6AB Only owners/devs can view all stages.')
+                    return await self.handler.send_message(interaction, content='\U0001F6AB Only owners/devs can view all stages.')
                 stages = await Stage.fetch_by_guild(guild_snowflake=interaction.guild.id)
                 if not stages:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stages in {interaction.guild.name}.')
+                    return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No active stages in {interaction.guild.name}.')
                 pages, chunk_size = [], 8
                 for i in range(0, len(stages), chunk_size):
                     embed = discord.Embed(
@@ -1131,11 +1132,11 @@ class ModeratorCommands(commands.Cog):
                         for voice_mute in voice_mutes:
                             embed.add_field(name=ch_name, value=f'Active stage mutes: {voice_mute.member_snowflake}', inline=False)
                     pages.append(embed)
-                paginator = AppPaginator(self.bot, interaction, pages)
+                paginator = Paginator(self.bot, interaction, pages)
                 return await paginator.start()
             stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not stage:
-                return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No active stage in {channel_obj.mention}.')
+                return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No active stage in {channel_obj.mention}.')
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="room")
             initiator = interaction.guild.get_member(stage.member_snowflake)
             initiator_name = initiator.mention if initiator else f'`{stage.member_snowflake}`'
@@ -1155,7 +1156,7 @@ class ModeratorCommands(commands.Cog):
                     color=discord.Color.purple()
                 )
                 pages.append(embed)
-            paginator = AppPaginator(self.bot, interaction, pages)
+            paginator = Paginator(self.bot, interaction, pages)
             return await paginator.start()
             
     # DONE
@@ -1231,7 +1232,7 @@ class ModeratorCommands(commands.Cog):
         target: Optional[str] = None
     ):
         if not interaction.guild:
-            return await interaction.response.send_message(content='This command must be used in a server.')
+            return await self.handler.send_message(interaction, content='This command must be used in a server.')
         member_obj = await self.member_service.resolve_member(interaction, target)
         if member_obj:
             target = None
@@ -1240,10 +1241,10 @@ class ModeratorCommands(commands.Cog):
         async with self.bot.db_pool.acquire() as conn:
             if target and target.lower()=='all':
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
-                    return await interaction.response.send_message(content='\U0001F6AB Only owners, developers and administrators can list all text-mutes across the server.')
+                    return await self.handler.send_message(interaction, content='\U0001F6AB Only owners, developers and administrators can list all text-mutes across the server.')
                 text_mutes = await TextMute.fetch_by_guild(guild_snowflake=interaction.guild.id)
                 if not text_mutes:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {interaction.guild.name}.')
+                    return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {interaction.guild.name}.')
                 grouped = defaultdict(list)
                 for text_mute in text_mutes:
                     grouped[text_mute.channel_snowflake].append(text_mute)
@@ -1263,12 +1264,12 @@ class ModeratorCommands(commands.Cog):
                             duration_str = Duration.output_display_from_datetime(e.expires_at)
                             embed.add_field(name=mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
                         pages.append(embed)
-                paginator = AppPaginator(self.bot, interaction, pages)
+                paginator = Paginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif member_obj:
                 text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 if not text_mutes:
-                    return await interaction.response.send_message(content=f'\U0001F6AB {member_obj.mention} is not text-muted in any channels.')
+                    return await self.handler.send_message(interaction, content=f'\U0001F6AB {member_obj.mention} is not text-muted in any channels.')
                 lines = []
                 for text_mute in text_mutes:
                     ch = interaction.guild.get_channel(text_mutes.channel_snowflake)
@@ -1282,12 +1283,12 @@ class ModeratorCommands(commands.Cog):
                         color=discord.Color.orange()
                     )
                     pages.append(embed)
-                paginator = AppPaginator(self.bot, interaction, pages)
+                paginator = Paginator(self.bot, interaction, pages)
                 return await paginator.start()
             elif channel_obj:
                 text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                 if not text_mutes:
-                    return await interaction.response.send_message(content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {channel_obj.mention}.')
+                    return await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} No users are currently text-muted in {channel_obj.mention}.')
                 lines = []
                 for text_mute in text_mutes:
                     user = interaction.guild.get_member(text_mute.member_snowflake)
@@ -1303,9 +1304,9 @@ class ModeratorCommands(commands.Cog):
                         color=discord.Color.orange()
                     )
                     pages.append(embed)
-                paginator = AppPaginator(self.bot, interaction, pages)
+                paginator = Paginator(self.bot, interaction, pages)
                 return await paginator.start()
-        return await interaction.response.send_message(content='\U0001F6AB You must specify "all", a member, or a text channel.')
+        return await self.handler.send_message(interaction, content='\U0001F6AB You must specify "all", a member, or a text channel.')
     
     # DONE
     @commands.command(name='tmutes', help='Lists text-mute statistics.')

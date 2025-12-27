@@ -14,6 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from discord.ext import commands
 from typing import Optional, Union
 from vyrtuous.utils.setup_logging import logger
 
@@ -21,39 +22,27 @@ import discord
 
 class MemberService:
 
-    async def resolve_member(self, ctx_interaction_or_message, value: Optional[Union[int, str, discord.Member]]) -> Optional[discord.Member]:
+    async def resolve_member(self, ctx_interaction_or_message, value):
+        guild = ctx_interaction_or_message.guild
+        if isinstance(value, discord.Member):
+            return value
+        if isinstance(value, int):
+            member_id = value
+        elif isinstance(value, str):
+            if value.isdigit():
+                member_id = int(value)
+            elif value.startswith("<@") and value.endswith(">"):
+                member_id = int(value[2:-1].replace("!", ""))
+            else:
+                raise commands.BadArgument("Invalid member identifier")
+        else:
+            raise commands.BadArgument("Invalid member identifier")
+        member = guild.get_member(member_id)
+        if member:
+            return member
         try:
-            if isinstance(value, discord.Member):
-                logger.debug(f"Direct member: {value.id}")
-                return value
-            if isinstance(value, int):
-                m = ctx_interaction_or_message.guild.get_member(value)
-                if not m:
-                    try: m = await ctx_interaction_or_message.guild.fetch_member(value)
-                    except discord.NotFound: m = None
-                if m:
-                    logger.debug(f"Resolved member by int ID: {m.id}")
-                    return m
-            if isinstance(value, str):
-                if value.isdigit():
-                    mid = int(value)
-                    m = ctx_interaction_or_message.guild.get_member(mid)
-                    if not m:
-                        try: m = await ctx_interaction_or_message.guild.fetch_member(mid)
-                        except discord.NotFound: m = None
-                    if m:
-                        logger.debug(f"Resolved member by str ID: {m.id}")
-                        return m
-                if value.startswith('<@') and value.endswith('>'):
-                    mid = int(value[2:-1].replace('!', ''))
-                    m = ctx_interaction_or_message.guild.get_member(mid)
-                    if not m:
-                        try: m = await ctx_interaction_or_message.guild.fetch_member(mid)
-                        except discord.NotFound: m = None
-                    if m:
-                        logger.debug(f"Member mention resolved: {m.id}")
-                        return m
-                    return m
-        except Exception as e:
-            logger.warning(f"Member resolution error: {e}")
-        return None
+            member = await guild.fetch_member(member_id)
+            return member
+        except discord.NotFound:
+            raise commands.BadArgument(f"Member `{member_id}` not found in {ctx_interaction_or_message.guild.name}.")
+

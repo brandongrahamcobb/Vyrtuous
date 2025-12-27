@@ -16,20 +16,22 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from discord.ext import commands
+from typing import Union
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
-from vyrtuous.service.discord_message_service import DiscordMessageService, Paginator
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.utils.paginator import Paginator
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
-from vyrtuous.utils.stage import Stage
+from vyrtuous.utils.server_mute import ServerMute
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.time_to_complete import TimeToComplete
@@ -46,7 +48,7 @@ class EventListeners(commands.Cog):
         self.channel_service = ChannelService()
         self.config = bot.config
         self.db_pool = bot.db_pool
-        self.handler = DiscordMessageService(self.bot, self.db_pool)
+        self.handler = MessageService(self.bot, self.db_pool)
         self.join_log = defaultdict(list)
         self._ready_done = False
         self.deleted_rooms = {}
@@ -67,24 +69,24 @@ class EventListeners(commands.Cog):
             await Alias.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
             await Ban.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
             await Cap.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
-            await Coordinator.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel_obj.id)
+            await Coordinator.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
             await Moderator.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
             await Stage.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
             await TemporaryRoom.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
             await TextMute.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
             await VoiceMute.update_by_source_and_target(source_channel_snowflake=old_id, target_channel_snowflake=channel.id)
-            bans = await Ban.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=user_id)
+            bans = await Ban.fetch_by_guild(guild_snowflake=guild.id)
             for ban in bans:
                 member = self.bot.get_user(ban.member_snowflake)
                 await channel.set_permissions(member, view_channel=False)
-            text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=user_id)
+            text_mutes = await TextMute.fetch_by_guild(guild_snowflake=guild.id)
             for text_mute in text_mutes:
                 member = self.bot.get_user(text_mute.member_snowflake)
                 await channel.set_permissions(member, send_messages=False)
                     
     @commands.Cog.listener()                
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
-        room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=channel.guild.id)
+        room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel.id, guild_snowflake=channel.guild.id)
         if room:
             self.deleted_rooms[channel.name] = room
     
@@ -193,26 +195,28 @@ class EventListeners(commands.Cog):
         async with self.db_pool.acquire() as conn:
             bans = await Ban.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=user_id)
             text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=user_id)
-            for ban in bans:
-                channel = guild.get_channel(ban.channel_snowflake)
-                try:
-                    overwrite = channel.overwrites_for(member)
-                    overwrite.view_channel = False
-                    await channel.set_permissions(member, overwrite=overwrite, reason='Reinstating active channel ban')
-                except discord.Forbidden:
-                    logger.warning(f'Missing permissions to ban in channel {channel.id}')
-                except discord.HTTPException as e:
-                    logger.warning(f'Failed to apply ban for {member} in {channel.id}: {e}')
-            for text_mute in text_mutes:
-                channel = guild.get_channel(text_mute.channel_snowflake)
-                try:
-                    overwrite = channel.overwrites_for(member)
-                    overwrite.send_messages = False
-                    await channel.set_permissions(member, overwrite=overwrite, reason='Reinstating text mute')
-                except discord.Forbidden:
-                    logger.warning(f'Missing permissions to text mute in channel {channel.id}')
-                except discord.HTTPException as e:
-                    logger.warning(f'Failed to apply text mute for {member} in {channel.id}: {e}')
+            if bans:
+                for ban in bans:
+                    channel = guild.get_channel(ban.channel_snowflake)
+                    try:
+                        overwrite = channel.overwrites_for(member)
+                        overwrite.view_channel = False
+                        await channel.set_permissions(member, overwrite=overwrite, reason='Reinstating active channel ban')
+                    except discord.Forbidden:
+                        logger.warning(f'Missing permissions to ban in channel {channel.id}')
+                    except discord.HTTPException as e:
+                        logger.warning(f'Failed to apply ban for {member} in {channel.id}: {e}')
+            if text_mutes:
+                for text_mute in text_mutes:
+                    channel = guild.get_channel(text_mute.channel_snowflake)
+                    try:
+                        overwrite = channel.overwrites_for(member)
+                        overwrite.send_messages = False
+                        await channel.set_permissions(member, overwrite=overwrite, reason='Reinstating text mute')
+                    except discord.Forbidden:
+                        logger.warning(f'Missing permissions to text mute in channel {channel.id}')
+                    except discord.HTTPException as e:
+                        logger.warning(f'Failed to apply text mute for {member} in {channel.id}: {e}')
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -239,7 +243,7 @@ class EventListeners(commands.Cog):
         parts = content.split()
         alias_name = parts[0]
         args = parts[1:]
-        alias = await Alias.fetch_by_guild_and_name(alias_name=alias_name, guild_snowflake=message.guild)
+        alias = await Alias.fetch_by_guild_and_name(alias_name=alias_name, guild_snowflake=message.guild.id)
         if not alias:
             return
         await self.dispatch_alias(message, alias, args)
@@ -256,12 +260,16 @@ class EventListeners(commands.Cog):
         
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
+        if isinstance(error, (commands.BadArgument, commands.CheckFailure)):
+            return await ctx.reply(f'\U0001F6AB {error}')
         if isinstance(error, commands.MissingRequiredArgument):
             missing = error.param.name
-            await ctx.reply(f'\U0001F6AB Missing required argument: `{missing}`')
-            return
-        if isinstance(error, commands.CheckFailure):
-            return await send_check_failure_embed(ctx, error)
+            return await ctx.reply(f'\U0001F6AB Missing required argument: `{missing}`')
+    
+    @commands.Cog.listener()
+    async def on_app_command_error(self, interaction, error):
+        if isinstance(error, (app_commands.BadArgument, app_commands.CheckFailure)):
+            return await self.handler.send_message(interaction, f'\U0001F6AB {error}')
             
 #    @commands.Cog.listener()
 #    async def on_command(self, ctx):
@@ -304,7 +312,7 @@ class EventListeners(commands.Cog):
                 role_snowflakes.discard(role.id)
                 if not role_snowflakes:
                     guild_snowflakes.discard(role.guild)
-                Administrator.update_guilds_and_roles_by_member(guild_snowflake=list(guild_snowflakes), member_snowflake=member_snowflake, role_snowflakes=list(role_snowflakes))
+                Administrator.update_guilds_and_roles_by_member(guild_snowflake=list(guild_snowflakes), member_snowflake=administrator.member_snowflake, role_snowflakes=list(role_snowflakes))
 
         
     async def print_flags(self, member: discord.Member, after_channel: discord.abc.GuildChannel):

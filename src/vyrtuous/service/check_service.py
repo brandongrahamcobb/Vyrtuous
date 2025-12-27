@@ -15,7 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-
+from discord import app_commands
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.administrator import Administrator
@@ -160,12 +160,18 @@ async def is_system_owner(ctx_or_interaction_or_message):
     return True
     
 async def is_owner(ctx_or_interaction_or_message):
-    if await is_system_owner(ctx_or_interaction_or_message):
-        return True
-    if await is_guild_owner(ctx_or_interaction_or_message):
-        return True
+    try:
+        if await is_system_owner(ctx_or_interaction_or_message):
+            return True
+    except commands.CheckFailure:
+        pass
+    try:
+        if await is_guild_owner(ctx_or_interaction_or_message):
+            return True
+    except commands.CheckFailure:
+        pass
     return False
-    
+
 def is_owner_predicator():
     async def predicate(ctx_or_interaction_or_message):
         if await is_owner(ctx_or_interaction_or_message):
@@ -279,36 +285,32 @@ async def member_is_moderator(channel: discord.VoiceChannel, member: discord.Mem
 
 async def has_equal_or_higher_role(message_ctx_or_interaction, member: discord.Member, channel: discord.abc.GuildChannel):
     bot = DiscordBot.get_instance()
+    msg = f"You may not execute this command on {member.mention} because they have equal or higher role than you in {channel.mention}."
     if isinstance(message_ctx_or_interaction, discord.Interaction):
         sender = message_ctx_or_interaction.user
-    elif isinstance(message_ctx_or_interaction, discord.Message):
+    elif isinstance(message_ctx_or_interaction, (commands.Context, discord.Message)):
         sender = message_ctx_or_interaction.author
-    else:
-        return 'Everyone', 0
-    CUSTOM_ROLE_RANKS = {
-        'Owner': 5,
-        'Administrator': 4,
-        'Developer': 3,
-        'Coordinator': 2,
-        'Moderator': 1,
-        'Everyone': 0
-    }
     async def get_highest_role(user):
         if await member_is_owner(user):
-            return 'Owner', 5
+            return 5
         elif await member_is_administrator(user):
-            return 'Administrator', 4
+            return 4
         elif await member_is_developer(user):
-            return 'Developer', 3
+            return 3
         if channel:
             if await member_is_coordinator(channel, user):
-                return 'Coordinator', 2
+                return 2
             elif await member_is_moderator(channel, user):
-                return 'Moderator', 1
-        return 'Everyone', 0
-    sender_role, sender_rank = await get_highest_role(sender)
-    target_role, target_rank = await get_highest_role(member)
-    return sender_rank > target_rank, target_role
+                return 1
+        return 0
+    sender_rank = await get_highest_role(sender)
+    target_rank = await get_highest_role(member)
+    if sender_rank <= target_rank:
+        if isinstance(message_ctx_or_interaction, discord.Interaction):
+            raise app_commands.CheckFailure(msg)
+        else:
+            raise commands.CheckFailure(msg)
+    return True
 
 async def is_owner_developer_administrator_coordinator_via_channel_member(channel: discord.abc.GuildChannel, member: discord.Member) -> str:
     checks = (

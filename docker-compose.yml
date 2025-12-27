@@ -24,7 +24,9 @@ services:
     volumes:
       - vyrtuous-backups:/app/backups
       - vyrtuous-config:/root/.config/vyrtuous
-      - ./src:/app/src:Z
+      - ./src:/app:Z
+      - ./vyrtuous.code-workspace:/app/vyrtuous.code-workspace:Z
+
     healthcheck:
       test: "healthcheck.sh || kill 1"
       interval: 10s

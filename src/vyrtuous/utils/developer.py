@@ -27,7 +27,8 @@ class Developer:
     def __init__(self, guild_snowflake: Optional[int], member_snowflake: Optional[str]):
         self.bot = DiscordBot.get_instance()
         self.guild_snowflake = guild_snowflake
-        self.member_snowflake: list[int|None] = member_snowflake
+        self.member_snowflake: Optional[int] = member_snowflake
+        self.member_mention: Optional[str] = f"<@{member_snowflake}>"
 
     async def grant(self):
         async with self.bot.db_pool.acquire() as conn:   

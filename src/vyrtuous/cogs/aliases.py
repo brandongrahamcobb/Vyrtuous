@@ -507,13 +507,15 @@ class Aliases(commands.Cog):
             return await message.reply(content=f'\U0001F6AB You are not allowed to unban this `{highest_role}` because they are a higher/or equivalent role than you in {channel_obj.mention}.')
         async with self.bot.db_pool.acquire() as conn:
             bans = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
-            if row and row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-                return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent bans.')
-            try:
-                if channel_obj:
-                    await channel_obj.set_permissions(member_obj, overwrite=None)
-            except discord.Forbidden:
-                return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unbanned.')
+            if bans:
+                for ban in bans:
+                    if ban and ban.expires_at is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                        return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent bans.')
+                    try:
+                        if channel_obj:
+                            await channel_obj.set_permissions(member_obj, overwrite=None)
+                    except discord.Forbidden:
+                        return await message.reply(content=f'\U0001F6AB {member_obj.mention} was not successfully unbanned.')
             await Ban.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
@@ -624,7 +626,7 @@ class Aliases(commands.Cog):
             voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member.id, target="user")
             if not voice_mute:
                 return await message.reply(content=f'\U0001F6AB {member_obj.mention} is not muted in {channel_obj.mention}.')
-            if row['expires_at'] is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+            if voice_mute.expires_at is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 return await message.reply(content='\U0001F6AB Coordinator-only for undoing permanent voice mutes.')
             await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member.id, target="user")
             if member_obj.voice and member_obj.voice.channel:

@@ -20,7 +20,8 @@ from discord import app_commands
 from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
-from vyrtuous.service.discord_message_service import AppPaginator, DiscordMessageService, Paginator
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.utils.paginator import Paginator
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
@@ -35,7 +36,7 @@ class Help(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
-        self.handler = DiscordMessageService(self.bot, self.bot.db_pool)
+        self.handler = MessageService(self.bot, self.bot.db_pool)
         self.permission_page_title_pairs = [
             ('Owner', '`Owner` inherits `Developer`.'),
             ('Developer', '`Developer` inherits `Administrator`.'),
@@ -162,7 +163,7 @@ class Help(commands.Cog):
         if command_name:
             kind, obj = await self.resolve_command_or_alias(interaction, command_name)
             if not kind:
-                return await interaction.response.send_message(f'\U0001F6AB Command or alias `{command_name}` not found.')
+                return await self.handler.send_message(interaction, f'\U0001F6AB Command or alias `{command_name}` not found.')
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -201,19 +202,19 @@ class Help(commands.Cog):
                     embed.add_field(name='Usage', value=f'`{" ".join(usage_parts)}`', inline=False)
                     if param_details:
                         embed.add_field(name='Parameters', value='\n'.join(param_details), inline=False)
-                        return await interaction.response.send_message(embed=embed)
+                        return await self.handler.send_message(interaction, embed=embed)
             if kind == "alias":
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
-                    return await interaction.response.send_message(f'\U0001F6AB No help available for `{alias.alias_name}`.')
+                    return await self.handler.send_message(interaction, f'\U0001F6AB No help available for `{alias.alias_name}`.')
                 embed = discord.Embed(
                     title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
                     description=f'Alias for **{alias.alias_type}**',
                     color=discord.Color.green()
                 )
                 embed.add_field(name='Usage', value='\n'.join(f'• {line}' for line in help_lines), inline=False)
-                return await interaction.response.send_message(embed=embed)
+                return await self.handler.send_message(interaction, embed=embed)
         all_commands = await self.get_available_commands(bot, interaction)
         permission_groups = await self.group_commands_by_permission(bot, interaction, all_commands)
         aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
@@ -253,8 +254,8 @@ class Help(commands.Cog):
                 embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            return await interaction.response.send_message('\U0001F6AB No commands available to you.', ephemeral=True)
-        paginator = AppPaginator(bot, interaction, pages)
+            return await self.handler.send_message(interaction, '\U0001F6AB No commands available to you.', ephemeral=True)
+        paginator = Paginator(bot, interaction, pages)
         await paginator.start()
         
     @commands.command(name='help')
