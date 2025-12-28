@@ -159,7 +159,7 @@ class CoordinatorCommands(commands.Cog):
                 except Exception as e:
                     failed_members.append(member)
             voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
-            await voice_mute.grant()
+            await voice_mute.create()
             muted_members.append(member)
             async with self.bot.db_pool.acquire() as conn:
                 await conn.execute('''
@@ -208,7 +208,7 @@ class CoordinatorCommands(commands.Cog):
                 except Exception as e:
                     failed_members.append(member)
             voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
-            await voice_mute.grant()
+            await voice_mute.create()
             muted_members.append(member)
             async with self.bot.db_pool.acquire() as conn:
                 await conn.execute('''

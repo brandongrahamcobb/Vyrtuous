@@ -141,7 +141,7 @@ class Stage:
         if row:
             return Stage(channel_snowflake=channel_snowflake, expires_at=row['expires_at'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
 
-    async def grant(self):
+    async def create(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''

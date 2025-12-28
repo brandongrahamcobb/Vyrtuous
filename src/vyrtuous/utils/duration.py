@@ -37,13 +37,12 @@ class DurationObject:
         self._number: Optional[int] = None
         self._unit: Optional[str] = None
         self._base: Optional[datetime] = None
-        self.duration = duration  # triggers parsing
+        self.duration = duration
 
     def __str__(self):
         if self.number == 0:
             return "permanent"
-        direction = "from now" if self.sign > 0 else "ago"
-        return f"{self.number}{self.unit} {direction}"
+        return f"<t:{int(self.expires_at.timestamp())}:R>"
 
     @property
     def duration(self) -> str:

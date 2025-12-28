@@ -48,7 +48,7 @@ class TextMute:
                 WHERE guild_snowflake=$1 AND member_snowflake=$2 
             ''', guild_snowflake, member_snowflake)
 
-    async def grant(self):
+    async def create(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''

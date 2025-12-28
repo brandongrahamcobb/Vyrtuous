@@ -63,7 +63,6 @@ class Alias:
         self.role_snowflake = role_snowflake
         self.channel_service = ChannelService()
         self.member_service = MemberService()
-        logger.info("test")
         
     @classmethod
     def format_aliases(self, aliases) -> list[str]:
@@ -83,7 +82,6 @@ class Alias:
         return lines
 
     async def create(self):
-        logger.info("test")
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO command_aliases (alias_name, alias_type, channel_snowflake, created_at, guild_snowflake, role_snowflake)

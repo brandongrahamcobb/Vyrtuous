@@ -16,6 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from discord.ui import Button, View
 import asyncio
 import discord
 
@@ -35,16 +36,49 @@ class Paginator:
         self.timeout = timeout
         self.message = None
 
+    class ButtonView(View):
+        def __init__(self, parent):
+            super().__init__(timeout=parent.timeout)
+            self.parent = parent
+            self.update_buttons()
+
+        def update_buttons(self):
+            self.clear_items()
+            self.add_item(Button(
+                label="Previous", style=discord.ButtonStyle.primary,
+                custom_id="prev", disabled=self.parent.current_page == 0
+            ))
+            self.add_item(Button(
+                label="Next", style=discord.ButtonStyle.primary,
+                custom_id="next", disabled=self.parent.current_page == len(self.parent.pages)-1
+            ))
+
+        @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, custom_id="prev")
+        async def prev_button(self, interaction: discord.Interaction, button: Button):
+            self.parent.current_page = max(0, self.parent.current_page - 1)
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.parent.pages[self.parent.current_page], view=self)
+
+        @discord.ui.button(label="Next", style=discord.ButtonStyle.primary, custom_id="next")
+        async def next_button(self, interaction: discord.Interaction, button: Button):
+            self.parent.current_page = min(len(self.parent.pages)-1, self.parent.current_page + 1)
+            self.update_buttons()
+            await interaction.response.edit_message(embed=self.parent.pages[self.parent.current_page], view=self)
+
     async def start(self):
         embed = self.pages[self.current_page]
+
         if isinstance(self.ctx_or_interaction, discord.Interaction):
-            await self.ctx_or_interaction.response.defer()
-            self.message = await self.ctx_or_interaction.followup.send(embed=embed)
+            view = self.ButtonView(self)
+            if not self.ctx_or_interaction.response.is_done():
+                await self.ctx_or_interaction.response.send_message(embed=embed, view=view)
+            self.message = await self.ctx_or_interaction.original_message()
         else:
             self.message = await self.ctx_or_interaction.send(embed=embed)
-        for emoji in self.NAV_EMOJIS:
-            await self.message.add_reaction(emoji)
-        self.bot.loop.create_task(self.wait_for_reactions())
+            for emoji in self.NAV_EMOJIS:
+                await self.message.add_reaction(emoji)
+            self.bot.loop.create_task(self.wait_for_reactions())
+
         return self.message
 
     async def wait_for_reactions(self):

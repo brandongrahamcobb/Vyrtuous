@@ -315,7 +315,6 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(interaction, target)
         except:
             channel_obj = interaction.channel
-            await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         lines = []
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if target and target.lower() == 'all':
@@ -327,12 +326,18 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {interaction.guild.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            lines.extend(Alias.format_aliases(aliases))
+            grouped = defaultdict(list)
+            for alias in aliases:
+                grouped[alias.channel_snowflake].append(alias)
             pages = []
-            chunk_size = 18
-            for i in range(0, len(lines), chunk_size):
-                chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} All Aliases in Server', description='\n'.join(chunk), color=discord.Color.blue())
+            for channel_id, channel_aliases in grouped.items():
+                lines = Alias.format_aliases(channel_aliases)
+                channel_obj = interaction.guild.get_channel(channel_id)
+                embed = discord.Embed(
+                    title=f'{self.emoji.get_random_emoji()} Aliases for {channel_obj.mention}',
+                    description='\n'.join(lines),
+                    color=discord.Color.blue()
+                )
                 pages.append(embed)
         else:
             aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -372,7 +377,6 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(ctx, target)
         except:
             channel_obj = ctx.channel
-            await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         lines = []
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if target and target.lower() == 'all':
@@ -384,12 +388,18 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {ctx.guild.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            lines.extend(Alias.format_aliases(aliases))
+            grouped = defaultdict(list)
+            for alias in aliases:
+                grouped[alias.channel_snowflake].append(alias)
             pages = []
-            chunk_size = 18
-            for i in range(0, len(lines), chunk_size):
-                chunk = lines[i:i + chunk_size]
-                embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} All Aliases in Server', description='\n'.join(chunk), color=discord.Color.blue())
+            for channel_id, channel_aliases in grouped.items():
+                lines = Alias.format_aliases(channel_aliases)
+                channel_obj = ctx.guild.get_channel(channel_id)
+                embed = discord.Embed(
+                    title=f'{self.emoji.get_random_emoji()} Aliases for {channel_obj.mention}',
+                    description='\n'.join(lines),
+                    color=discord.Color.blue()
+                )
                 pages.append(embed)
         else:
             aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)

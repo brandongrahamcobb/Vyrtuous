@@ -128,7 +128,7 @@ class Statistics:
         embed_user.set_footer(text=f"Ref: {member.id}-{channel.id} | Msg: {message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
         embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
         embed_duration.add_field(name=f'{duration_type}', value=duration_info, inline=False)
-        action_details = f"**Was in Channel:** {'✅ Yes' if was_in_channel else '\U000026A0\U0000FE0F No'}\n**Action Type:** {'Modification' if is_modification else 'New'}\n**Server:** {guild.name} (`{guild.id}`)"
+        action_details = f"**Was in Channel:** {'\u2705 Yes' if was_in_channel else '\U000026A0\U0000FE0F No'}\n**Action Type:** {'Modification' if is_modification else 'New'}\n**Server:** {guild.name} (`{guild.id}`)"
         embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
         channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
         embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
@@ -202,7 +202,7 @@ class Statistics:
                 WHERE channel_snowflake=$1 AND guild_snowflake=$3
             ''', channel_snowflake, enabled, guild_snowflake)
 
-    async def grant(self):
+    async def create(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''

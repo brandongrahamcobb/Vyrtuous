@@ -317,22 +317,32 @@ class EveryoneCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             moderators = await Moderator.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
             pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=interaction.guild.id, members=moderators, member_type=Moderator)
+            if not pages:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F No moderators found in {interaction.guild.name}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         elif member_obj:
             channel_snowflakes = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             pages = await All.create_pages_to_show_channels_by_guild_and_member(channel_snowflakes=channel_snowflakes, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, member_type=Moderator)
+            if not pages:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not a moderator in any channels.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         elif channel_obj:
             moderators = await Moderator.fetch_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             pages = await All.create_pages_to_show_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, members=moderators, member_type=Moderator)
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No moderators found in {interaction.guild.name}.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+            if not pages:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not a moderator in any channels.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
+        
     # DONE
     @commands.command(name='mods',help='Lists moderator statistics.')
     async def list_moderators_text_command(
@@ -361,22 +371,32 @@ class EveryoneCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             moderators = await Moderator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
             pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=ctx.guild.id, members=moderators, member_type=Moderator)
+            if not pages:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F No moderators found in {ctx.guild.name}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         elif member_obj:
             channel_snowflakes = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             pages = await All.create_pages_to_show_channels_by_guild_and_member(channel_snowflakes=channel_snowflakes, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, member_type=Moderator)
+            if not pages:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not a moderator in any channels.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         elif channel_obj:
             moderators = await Moderator.fetch_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             pages = await All.create_pages_to_show_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, members=moderators, member_type=Moderator)
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No moderators found in {ctx.guild.name}.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+            if not pages:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {channel_obj.mention} has no moderatiors.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
+
     # DONE
     @app_commands.command(name='owners', description='Show temporary room stats for "all", a channel, or a member.')
     @app_commands.describe(target='"all", a channel mention/ID, or a member mention/ID')

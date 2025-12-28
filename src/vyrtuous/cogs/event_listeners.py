@@ -152,7 +152,7 @@ class EventListeners(commands.Cog):
                     else:
                         expires_at = datetime.utcnow() + timedelta(hours=1)
                         voice_mute = await VoiceMute(channel_snowflake=after.channel.id, expires_at=expires_at, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target=target)
-                        await voice_mute.grant()       
+                        await voice_mute.create()       
                         should_be_muted = True 
                 if not should_be_muted:               
                     if before.mute and not after.mute and before.channel:

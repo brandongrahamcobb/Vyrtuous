@@ -26,13 +26,13 @@ class State:
         "\U0001F4DD": "report"
     }
 
-    def __init__(self, ctx_or_interaction: Union[commands.Context, discord.Interaction, discord.Message], **kwargs):
+    def __init__(self, ctx_or_interaction: Union[commands.Context, discord.Interaction, discord.Message]):
         self.bot = DiscordBot.get_instance()
         self.handler = MessageService(self.bot, self.bot.db_pool)
         self.counter = TimeToComplete()
         self.ctx_or_interaction = ctx_or_interaction
-        self.kwargs = kwargs
         self._reported_users = set()
+        self.is_ephemeral = False
         self.start_time = self._get_start_time(ctx_or_interaction)
         self.current_page = 0
         self.pages = []
@@ -79,11 +79,10 @@ class State:
         self.elapsed = elapsed
         if isinstance(message_obj, list) and message_obj:
             self.pages = message_obj
-            message = await self._send_message(self.pages[self.current_page], paginated=True)
+            message = await self._send_message(embed=self.pages[self.current_page], paginated=True)
             cache[message.id] = {
                 "date": self.start_time,
                 "health_type": health_type,
-                "kwargs": self.kwargs,
                 "speed": elapsed,
                 "success": is_success
             }
@@ -103,7 +102,6 @@ class State:
         cache[message.id] = {
             "date": self.start_time,
             "health_type": health_type,
-            "kwargs": self.kwargs,
             "speed": elapsed,
             "success": is_success
         }
@@ -112,29 +110,33 @@ class State:
         return message
 
     async def _send_message(self, content=None, embed=None, file=None, paginated=False, allowed_mentions=discord.AllowedMentions.none()):
+        kwargs = {
+            "content": content,
+            "embed": embed,
+            "allowed_mentions": allowed_mentions,
+        }
+        if file is not None:
+            kwargs["file"] = file
         if isinstance(self.ctx_or_interaction, discord.Interaction) and not paginated:
-            await self.ctx_or_interaction.response.defer(ephemeral=True)
-            return await self.ctx_or_interaction.followup.send(
-                content=content, embed=embed, file=file, ephemeral=True, allowed_mentions=allowed_mentions
-            )
+            if not self.ctx_or_interaction.response.is_done():
+                await self.ctx_or_interaction.response.defer(ephemeral=True)
+                self.is_ephemeral = True
+            return await self.ctx_or_interaction.followup.send(**kwargs)
         elif isinstance(self.ctx_or_interaction, discord.Interaction) and paginated:
-            await self.ctx_or_interaction.response.defer()
-            return await self.ctx_or_interaction.followup.send(
-                content=content, embed=embed, file=file, allowed_mentions=allowed_mentions
-            )
+            if not self.ctx_or_interaction.response.is_done():
+                await self.ctx_or_interaction.response.defer()
+            return await self.ctx_or_interaction.followup.send(**kwargs)
         else:
-            return await self.ctx_or_interaction.channel.send(
-                content=content, embed=embed, file=file, allowed_mentions=allowed_mentions
-            )
+            return await self.ctx_or_interaction.channel.send(**kwargs)
 
     async def _add_reactions(self, paginated: bool):
-        if not self.message:
+        if not self.message or self.is_ephemeral:
             return
-        await self.message.add_reaction("\u2139\ufe0f")
-        await self.message.add_reaction("\U0001F4DD")
         if paginated:
             await self.message.add_reaction("\u2b05\ufe0f")
             await self.message.add_reaction("\u27a1\ufe0f")
+        await self.message.add_reaction("\u2139\ufe0f")
+        await self.message.add_reaction("\U0001F4DD")
         self.bot.loop.create_task(self._wait_for_reactions())
 
     async def _wait_for_reactions(self):
@@ -147,7 +149,7 @@ class State:
             )
         while True:
             try:
-                reaction, user = await self.bot.wait_for("reaction_add", timeout=300.0, check=check)
+                reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
             except asyncio.TimeoutError:
                 try:
                     await self.message.clear_reactions()
@@ -171,7 +173,7 @@ class State:
             await self.report_issue(user)
 
     async def show_info(self, user):
-        color = self.COLOR_MAP.get(self.kwargs.get("health_type", "error"), 0x5865F2)
+        color = self.COLOR_MAP.get(self.health_type)
         embed = discord.Embed(title="Information Statistics", color=color, timestamp=datetime.now(timezone.utc))
         embed.add_field(name="Date", value=self.start_time.strftime("%Y-%m-%d %H:%M:%S UTC"), inline=True)
         embed.add_field(name="Health", value=self.health_type, inline=True)
