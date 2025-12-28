@@ -36,7 +36,7 @@ async def test_rmute_command(bot, voice_channel_one, guild, privileged_author, n
         voice_channel_one.messages.clear() 
         formatted = f"{command} {voice_channel_one.id}"
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="CoordinatorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.coordinator_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]["content"]
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
+        response = voice_channel_one.messages[0]["embed"]
+        assert any(emoji in response.title for emoji in Emojis.EMOJIS)
     finally:
         await coordinator.revoke()

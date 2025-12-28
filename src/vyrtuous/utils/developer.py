@@ -72,7 +72,7 @@ class Developer:
         return guild_snowflakes
 
     @classmethod
-    async def fetch_by_guild(cls, guild_snowflake):
+    async def fetch_members_by_guild(cls, guild_snowflake):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
@@ -84,3 +84,12 @@ class Developer:
         for row in rows:
             developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
         return developers
+    
+    @classmethod
+    async def delete_by_guild_and_member(cls, guild_snowflake: int, member_snowflake: int):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                DELETE FROM developers
+                WHERE guild_snowflake = $1 AND member_snowflake = $2
+            ''', guild_snowflake, member_snowflake)

@@ -21,21 +21,20 @@ from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.voice_mute import VoiceMute
 import discord
 
-class Vegans:
+class Invincibility:
 
     state: bool = False
-    vegans = set()
+    invincible_members = set()
 
     @classmethod
     async def unrestrict(cls, guild: discord.Guild, member: discord.Member):
-        bot = DiscordBot.get_instance()
         bans = await Ban.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
         text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
         voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=guild.id, member_snowflake=member.id, target="user")
         if bans:
             for ban in bans:
                 try:
-                    await guild.unban(discord.Object(id=member.id), reason='Toggle bans')
+                    await guild.unban(ban.member_snowflake, reason='Toggle bans')
                 except:
                     pass
         if text_mutes:
@@ -54,19 +53,19 @@ class Vegans:
         await VoiceMute.delete_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
 
     @classmethod
-    def add_vegan(cls, member_id: int):
-        cls.vegans.add(member_id)
+    def add_invincible_member(cls, member_id: int):
+        cls.invincible_members.add(member_id)
         
     @classmethod
-    def get_vegans(cls):
-        return cls.vegans
+    def get_invincible_members(cls):
+        return cls.invincible_members
 
     @classmethod
-    def remove_vegan(cls, member_id: int):
-        cls.vegans.discard(member_id)
+    def remove_invincible_member(cls, member_id: int):
+        cls.invincible_members.discard(member_id)
         
     @classmethod
-    def toggle_state(cls):
+    def toggle_enabled(cls):
         cls.state = not cls.state
         return cls.state
 

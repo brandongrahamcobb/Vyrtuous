@@ -41,8 +41,8 @@ async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, pri
             target_id=target_id
         )
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]["content"]
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
+        response = voice_channel_one.messages[0]["embed"]
+        assert any(emoji in response.title for emoji in Emojis.EMOJIS)
         channel_value_one = voice_channel_one.mention if channel_ref_one else voice_channel_one.name
         channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
     finally:

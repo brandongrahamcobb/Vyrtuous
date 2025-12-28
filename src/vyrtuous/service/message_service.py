@@ -17,6 +17,7 @@
 '''
 from discord.ext import commands
 from discord.ext import commands
+from typing import Union
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
@@ -28,31 +29,64 @@ class MessageService:
     def __init__(self, bot: DiscordBot, db_pool):
         self.bot = bot
 
-    async def send_message(self, ctx_or_interaction, *, content: str = None, file: discord.File = None, embed: discord.Embed = None, allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(), ephemeral: bool = None):
-        if isinstance(ctx_or_interaction, commands.Context):
-            can_send = ctx_or_interaction.guild and isinstance(ctx_or_interaction.channel, discord.abc.GuildChannel) and ctx_or_interaction.channel.permissions_for(ctx_or_interaction.guild.me).send_messages
+    async def send_message(
+        self,
+        ctx_or_interaction_or_message: Union[commands.Context, discord.Interaction, discord.Message],
+        *,
+        content: str = None,
+        file: discord.File = None,
+        embed: discord.Embed = None,
+        allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(),
+        ephemeral: bool = None
+    ):
+        if isinstance(ctx_or_interaction_or_message, commands.Context):
+            can_send = ctx_or_interaction_or_message.guild and isinstance(
+                ctx_or_interaction_or_message.channel, discord.abc.GuildChannel
+            ) and ctx_or_interaction_or_message.channel.permissions_for(ctx_or_interaction_or_message.guild.me).send_messages
             if can_send:
                 try:
-                    return await self._send_message(lambda **kw: ctx_or_interaction.reply(**kw), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+                    return await self._send_message(
+                        lambda **kw: ctx_or_interaction_or_message.reply(**kw),
+                        content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
+                    )
                 except discord.HTTPException as e:
                     if getattr(e, 'code', None) == 50035:
-                        return await self._send_message(lambda **kw: ctx_or_interaction.send(**kw), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+                        return await self._send_message(
+                            lambda **kw: ctx_or_interaction_or_message.send(**kw),
+                            content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
+                        )
                     else:
                         raise
             else:
-                return await self.send_dm(ctx_or_interaction.author, content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
-        elif isinstance(ctx_or_interaction, discord.Interaction):
+                return await self.send_dm(
+                    ctx_or_interaction_or_message.author,
+                    content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
+                )
+        elif isinstance(ctx_or_interaction_or_message, discord.Interaction):
             if ephemeral is None:
                 ephemeral = True
-            if ctx_or_interaction.response.is_done():
-                return await self._send_message(lambda **kw: ctx_or_interaction.followup.send(**kw, ephemeral=ephemeral), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
+            if ctx_or_interaction_or_message.response.is_done():
+                return await self._send_message(
+                    lambda **kw: ctx_or_interaction_or_message.followup.send(**kw, ephemeral=ephemeral),
+                    content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
+                )
             else:
-                await self._send_message(lambda **kw: ctx_or_interaction.response.send_message(**kw, ephemeral=ephemeral), content=content, file=file, embed=embed, allowed_mentions=allowed_mentions)
-                return await ctx_or_interaction.original_response()
+                await self._send_message(
+                    lambda **kw: ctx_or_interaction_or_message.response.send_message(**kw, ephemeral=ephemeral),
+                    content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
+                )
+                return await ctx_or_interaction_or_message.original_response()
+        elif isinstance(ctx_or_interaction_or_message, discord.Message):
+            return await self._send_message(
+                lambda **kw: ctx_or_interaction_or_message.reply(**kw),
+                content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
+            )
         else:
-            raise TypeError("Expected commands.Context or discord.Interaction")
+            raise TypeError(
+                "Expected commands.Context, discord.Interaction, or discord.Message"
+            )
 
-    async def _send_message(self, send_func, *, content: str = None, file: discord.File = None, embed: discord.Embed = None, allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.all()):
+    async def _send_message(self, send_func, *, content=None, file=None, embed=None, allowed_mentions=None):
         kwargs = {}
         if content:
             kwargs['content'] = content
@@ -64,7 +98,7 @@ class MessageService:
             kwargs['allowed_mentions'] = allowed_mentions
         return await send_func(**kwargs)
 
-    async def send_dm(self, user: discord.abc.User, *, content: str = None, file: discord.File = None, embed: discord.Embed = None, allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.all()):
+    async def send_dm(self, user: discord.abc.User, *, content=None, file=None, embed=None, allowed_mentions=None):
         dm_channel = user.dm_channel
         if dm_channel is None:
             dm_channel = await user.create_dm()

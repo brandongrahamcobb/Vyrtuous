@@ -338,7 +338,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not aliases:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {interaction.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {channel_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
             lines.extend(Alias.format_aliases(aliases))
@@ -395,7 +395,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             if not aliases:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {ctx.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {channel_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
             lines.extend(Alias.format_aliases(aliases))
@@ -435,13 +435,12 @@ class ModeratorCommands(commands.Cog):
         except:
             channel_obj = interaction.channel
             await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
-        member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_snowflake=channel_obj.id, member_snowflake=interaction.user.id)
+        member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=interaction.user.id)
         if member_permission_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator', 'Moderator'):
             return await state.end(warning='\U000026A0\U0000FE0F You are not permitted to delete messages in {channel_obj.mention}.')
-        try:
-            msg = await channel_obj.fetch_message(message)
-        except:
-            return await state.end(warning='\U000026A0\U0000FE0F Message `{message}` does not exist.')
+        msg = await channel_obj.fetch_message(message)
+        if not msg:
+            return await state.end(warning=f'\U000026A0\U0000FE0F Message `{message}` does not exist.')
         try:
             await msg.delete()
         except discord.Forbidden:
@@ -468,13 +467,12 @@ class ModeratorCommands(commands.Cog):
         except:
             channel_obj = ctx.channel
             await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
-        member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_snowflake=channel_obj.id, member_snowflake=ctx.author.id)
+        member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=ctx.author.id)
         if member_permission_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator', 'Moderator'):
             return await state.end(warning='\U000026A0\U0000FE0F You are not permitted to delete messages in {channel_obj.mention}.')
-        try:
-            msg = await channel_obj.fetch_message(message)
-        except:
-            return await state.end(warning='\U000026A0\U0000FE0F Message `{message}` does not exist.')
+        msg = await channel_obj.fetch_message(message)
+        if not msg:
+            return await state.end(warning=f'\U000026A0\U0000FE0F Message `{message}` does not exist.')
         try:
             await msg.delete()
         except discord.Forbidden:
@@ -764,8 +762,12 @@ class ModeratorCommands(commands.Cog):
             await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            try:
+                return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel_obj.mention}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
-            return await state.end(success=f'\U000026A0\U0000FE0F {self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel_obj.mention}.')
+            return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found called {old_name} in {interaction.guild.name}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     
@@ -789,7 +791,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            is_owner = old_room.member_snowflake == ctx.user.id
+            is_owner = old_room.member_snowflake == ctx.author.id
             highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
             if highest_role not in ('Owner', 'Developer', 'Administrator') or not is_owner:
                 try:
@@ -806,8 +808,12 @@ class ModeratorCommands(commands.Cog):
             await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            try:
+                return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel_obj.mention}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
-            return await state.end(success=f'\U000026A0\U0000FE0F {self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel_obj.mention}.')
+            return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found called {old_name} in {ctx.guild.name}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
@@ -949,7 +955,7 @@ class ModeratorCommands(commands.Cog):
             await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
-            await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
@@ -992,7 +998,7 @@ class ModeratorCommands(commands.Cog):
             await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
-            await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
@@ -1035,7 +1041,7 @@ class ModeratorCommands(commands.Cog):
             await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
             member_obj = await self.member_service.resolve_member(interaction, target)
-            await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
@@ -1121,7 +1127,7 @@ class ModeratorCommands(commands.Cog):
             await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
             member_obj = await self.member_service.resolve_member(ctx, target)
-            await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')

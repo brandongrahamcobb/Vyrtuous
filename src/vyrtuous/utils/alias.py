@@ -15,13 +15,29 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.service.channel_service import ChannelService
+from vyrtuous.service.check_service import *
+from vyrtuous.service.member_service import MemberService
+from vyrtuous.utils.reason import Reason
+from vyrtuous.utils.ban import Ban
+from vyrtuous.utils.flag import Flag
+from vyrtuous.utils.text_mute import TextMute
+from vyrtuous.utils.voice_mute import VoiceMute
 
 import discord
 
 class Alias:
     
+    MODERATION_TABLES = {
+        "Ban": "active_bans",
+        "Flag": "active_flags",
+        "TextMute": "active_text_mutes",
+        "VoiceMute": "active_voice_mutes",
+    }
+
     def __init__(self, alias_name: Optional[str], alias_type: Optional[str], channel_snowflake: Optional[int], guild_snowflake: Optional[int], role_snowflake: Optional[int]):
         self.alias_type = alias_type
         self.alias_name = alias_name
@@ -45,6 +61,9 @@ class Alias:
         }
         self.handler = self.handlers[alias_type]
         self.role_snowflake = role_snowflake
+        self.channel_service = ChannelService()
+        self.member_service = MemberService()
+        logger.info("test")
         
     @classmethod
     def format_aliases(self, aliases) -> list[str]:
@@ -63,7 +82,8 @@ class Alias:
                     lines.append(f'`{alias.alias_name}`')
         return lines
 
-    async def grant(self):
+    async def create(self):
+        logger.info("test")
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO command_aliases (alias_name, alias_type, channel_snowflake, created_at, guild_snowflake, role_snowflake)
@@ -158,6 +178,26 @@ class Alias:
             for row in rows:
                 aliases.append(Alias(alias_name=row['alias_name'], alias_type=row['alias_type'], channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], role_snowflake=row['role_snowflake']))
             return aliases
+    
+    @classmethod
+    async def update_reason(cls, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, moderation_type, updated_reason: str):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute(f'''
+                UPDATE {cls.get_table_name_by_moderation_type(moderation_type)}
+                SET reason=$4, updated_at=NOW()
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
+            ''', channel_snowflake, guild_snowflake, member_snowflake, updated_reason)
+
+    @classmethod
+    async def update_duration(cls, channel_snowflake: int, expires_at, guild_snowflake: int, member_snowflake: int, moderation_type):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute(f'''
+                UPDATE {cls.get_table_name_by_moderation_type(moderation_type)}
+                SET expires_at=$2, updated_at=NOW()
+                WHERE channel_snowflake=$1 AND guild_snowflake=$3 AND member_snowflake=$4
+            ''', channel_snowflake, expires_at, guild_snowflake, member_snowflake)
             
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
@@ -177,3 +217,33 @@ class Alias:
         if alias_type not in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'):
             raise ValueError("Invalid alias_type.")
         self._alias_type = alias_type
+        
+    @classmethod
+    async def check_channel_member_and_permission(cls, alias, member_string, message):
+        try:
+            channel_obj = await cls.channel_service.resolve_channel(message, alias.channel_snowflake)
+            member_obj = await cls.member_service.resolve_member(message, member_string)
+            await has_equal_or_higher_role(message, channel_snowflake=channel_obj.id, guild_snowflake=alias.guild_snowflake, ember_snowflake=member_obj.id, sender_snowflake=message.author.id)
+            if member_obj.id == message.guild.me.id:
+                raise Exception("\U000026A0\U0000FE0F You cannot {alias.alias_type} {message.guild.me.mention}.")
+        except:
+            raise
+
+    @classmethod
+    def get_table_name_by_moderation_type(cls, moderation_type):
+        try:
+            return cls.MODERATION_TABLES[type(moderation_type).__name__]
+        except KeyError:
+            raise ValueError(f"Unknown moderation type: {moderation_type}")
+
+    @classmethod 
+    async def get_existing_moderation(cls, alias, channel_snowflake, guild_snowflake, member_snowflake):
+        match alias.alias_type:
+            case "ban":
+                return await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+            case "flag":
+                return await Flag.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+            case "tmute":
+                return await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+            case "voice_mute":
+                return await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target="user")

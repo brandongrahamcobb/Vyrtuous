@@ -55,6 +55,7 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
         await moderator.revoke()
     response = voice_channel_one.messages[0]
+    print(response)
     if response['embed']:
         assert any(emoji in response['embed'].title for emoji in Emojis.EMOJIS)
     else:

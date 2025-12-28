@@ -24,7 +24,7 @@ from vyrtuous.service.member_service import MemberService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.state import State
-from vyrtuous.utils.vegans import Vegans
+from vyrtuous.utils.invincibility import Invincibility
 
 class OwnerCommands(commands.Cog):
 
@@ -48,18 +48,15 @@ class OwnerCommands(commands.Cog):
         member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
-            await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             await state.end(warning=str(e))
         if member_obj.id == interaction.guild.me.id:
             await state.end(warning="You cannot promote the bot to developer.")
         guilds = []
-        developers = await Developer.fetch_by_member(member_snowflake=member_obj.id)
-        if developers:
-            for developer in developers:
-                guilds.append(developer.guild_snowflake)
-        if interaction.guild.id in guilds:
-            await Developer.update_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
+        if interaction.guild.id in guild_snowflakes:
+            await Developer.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             action = 'revoked'
         else:
             developer = Developer(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -83,18 +80,15 @@ class OwnerCommands(commands.Cog):
         member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
-            await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             await state.end(warning=str(e))
         if member_obj.id == ctx.guild.me.id:
             await state.end(warning="You cannot promote the bot to developer.")
         guilds = []
-        developers = await Developer.fetch_by_member(member_snowflake=member_obj.id)
-        if developers:
-            for developer in developers:
-                guilds.append(developer.guild_snowflake)
-        if ctx.guild.id in guilds:
-            await Developer.update_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+        guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
+        if ctx.guild.id in guild_snowflakes:
+            await Developer.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             action = 'revoked'
         else:
             developer = Developer(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -110,7 +104,7 @@ class OwnerCommands(commands.Cog):
     @app_commands.command(name='hero', description='Grants/revokes invincibility for a member.')
     @app_commands.describe(member='Tag a member or include their snowflake ID')
     @is_owner_predicator()
-    async def vegan_hero_app_command(
+    async def invincibility_app_command(
         self,
         interaction: discord.Interaction,
         member: AppMemberSnowflake
@@ -124,12 +118,12 @@ class OwnerCommands(commands.Cog):
             await state.end(warning=str(e))
         if member_obj.id == interaction.guild.me.id:
             await state.end(warning="You cannot promote the bot to a hero.")
-        enabled = Vegans.toggle_state()
+        enabled = Invincibility.toggle_enabled()
         if enabled:
-            Vegans.add_vegan(member_obj.id)
-            await Vegans.unrestrict(interaction.guild, member_obj)
+            Invincibility.add_invincible_member(member_obj.id)
+            await Invincibility.unrestrict(interaction.guild, member_obj)
         else:
-            Vegans.remove_vegan(member_obj.id)
+            Invincibility.remove_invincible_member(member_obj.id)
         enabled = 'ON' if enabled else 'OFF'
         try:
             await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled} for {member_obj.mention}.')
@@ -139,7 +133,7 @@ class OwnerCommands(commands.Cog):
     # DONE
     @commands.command(name='hero', help='Grants/revokes invincibility for a member.')
     @is_owner_predicator()
-    async def vegan_hero_text_command(
+    async def invincibility_text_command(
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(description='Tag a member or include their snowflake ID')
@@ -153,12 +147,12 @@ class OwnerCommands(commands.Cog):
             await state.end(warning=str(e))
         if member_obj.id == ctx.guild.me.id:
             await state.end(warning="You cannot promote the bot to a hero.")
-        enabled = Vegans.toggle_enabled()
+        enabled = Invincibility.toggle_enabled()
         if enabled:
-            Vegans.add_vegan(member_obj.id)
-            await Vegans.unrestrict(ctx.guild, member_obj)
+            Invincibility.add_invincible_member(member_obj.id)
+            await Invincibility.unrestrict(ctx.guild, member_obj)
         else:
-            Vegans.remove_vegan(member_obj.id)
+            Invincibility.remove_invincible_member(member_obj.id)
         enabled = f'ON' if enabled else f'OFF'
         try:
             await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled}.')

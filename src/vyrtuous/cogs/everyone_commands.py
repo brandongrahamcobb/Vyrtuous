@@ -234,7 +234,7 @@ class EveryoneCommands(commands.Cog):
             guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
             pages = await All.create_pages_to_show_guilds_by_member(guild_snowflakes=guild_snowflakes, member_snowflake=member_obj.id, member_type=Developer)
         else:
-            developers = await Developer.fetch_by_guild(guild_snowflake=interaction.guild.id)
+            developers = await Developer.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
             pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=interaction.guild.id, members=developers, member_type=Developer)
         if pages:
             try:
@@ -275,7 +275,7 @@ class EveryoneCommands(commands.Cog):
             guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
             pages = await All.create_pages_to_show_guilds_by_member(guild_snowflakes=guild_snowflakes, member_snowflake=member_obj.id, member_type=Developer)
         else:
-            developers = await Developer.fetch_by_guild(guild_snowflake=ctx.guild.id)
+            developers = await Developer.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
             pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=ctx.guild.id, members=developers, member_type=Developer)
         if pages:
             try:
@@ -648,15 +648,15 @@ class EveryoneCommands(commands.Cog):
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
             match True:
-                case _ if await member_is_owner(member):
+                case _ if await member_is_owner(guild_snowflake=interaction.guild.id, member_snowflake=member.id):
                     owners.append(member)
-                case _ if await member_is_developer(member):
+                case _ if await member_is_developer(guild_snowflake=interaction.guild.id, member_snowflake=member.id):
                     developers.append(member)
-                case _ if await member_is_administrator(member):
+                case _ if await member_is_administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id):
                     administrators.append(member)
-                case _ if await member_is_coordinator(channel_obj, member):
+                case _ if await member_is_coordinator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id):
                     coordinators.append(member)
-                case _ if await member_is_moderator(channel_obj, member):
+                case _ if await member_is_moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id):
                     moderators.append(member)
         def fmt(users):
             return ', '.join(u.mention for u in users) if users else '*None*'
@@ -671,7 +671,7 @@ class EveryoneCommands(commands.Cog):
         embed.add_field(name="Coordinators", value=fmt(coordinators), inline=False)
         embed.add_field(name="Moderators", value=fmt(moderators), inline=False)
         try:
-            return await state.end(embed=embed)
+            return await state.end(success=embed)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
@@ -692,15 +692,15 @@ class EveryoneCommands(commands.Cog):
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
             match True:
-                case _ if await member_is_owner(member):
+                case _ if await member_is_owner(guild_snowflake=ctx.guild.id, member_snowflake=member.id):
                     owners.append(member)
-                case _ if await member_is_developer(member):
+                case _ if await member_is_developer(guild_snowflake=ctx.guild.id, member_snowflake=member.id):
                     developers.append(member)
-                case _ if await member_is_administrator(member):
+                case _ if await member_is_administrator(guild_snowflake=ctx.guild.id, member_snowflake=member.id):
                     administrators.append(member)
-                case _ if await member_is_coordinator(channel_obj, member):
+                case _ if await member_is_coordinator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id):
                     coordinators.append(member)
-                case _ if await member_is_moderator(channel_obj, member):
+                case _ if await member_is_moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id):
                     moderators.append(member)
         def fmt(users):
             return ', '.join(u.mention for u in users) if users else '*None*'
@@ -715,7 +715,7 @@ class EveryoneCommands(commands.Cog):
         embed.add_field(name="Coordinators", value=fmt(coordinators), inline=False)
         embed.add_field(name="Moderators", value=fmt(moderators), inline=False)
         try:
-            return await state.end(embed=embed)
+            return await state.end(success=embed)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
         

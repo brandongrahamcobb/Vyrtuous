@@ -229,3 +229,26 @@ class Statistics:
         if statistic_type not in self.STATISTIC_TYPES:
             raise ValueError('Invalid statistic type.')
         self._statistic_type = statistic_type
+
+
+    @classmethod
+    async def fetch_all(cls):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type
+                FROM statistic_channels
+            ''')
+        statistics = []
+        if rows:
+            for row in rows:
+                statistics.append(
+                    Statistics(
+                        channel_snowflake=row['channel_snowflake'],
+                        enabled=row['enabled'],
+                        guild_snowflake=row['guild_snowflake'],
+                        snowflakes=row['snowflakes'],
+                        statistic_type=row['statistic_type']
+                    )
+                )
+        return statistics

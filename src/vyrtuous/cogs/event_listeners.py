@@ -29,6 +29,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
+from vyrtuous.utils.duration import Duration
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.state import State
@@ -36,7 +37,7 @@ from vyrtuous.utils.server_mute import ServerMute
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.time_to_complete import TimeToComplete
-from vyrtuous.utils.vegans import Vegans
+from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.voice_mute import VoiceMute
 
 import discord
@@ -140,7 +141,7 @@ class EventListeners(commands.Cog):
             if after.channel:                    
                 should_be_muted = False
                 if not before.mute and after.mute:
-                    if member.id in Vegans.get_vegans():
+                    if member.id in Invincibility.get_invincible_members():
                         embed = discord.Embed(
                             title=f'\u1F4AB {member.display_name} is a hero!',
                             description=f'{member.display_name} cannot be muted.',
@@ -230,10 +231,7 @@ class EventListeners(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        start_time = time.perf_counter()
-        if not message.guild:
-            return
-        if message.author.id == self.bot.user.id:
+        if not message.guild or message.author.id == self.bot.user.id:
             return
         prefix = self.config['discord_command_prefix']
         if not message.content.startswith(prefix):
@@ -247,17 +245,32 @@ class EventListeners(commands.Cog):
         alias = await Alias.fetch_by_guild_and_name(alias_name=alias_name, guild_snowflake=message.guild.id)
         if not alias:
             return
-        await self.dispatch_alias(message, alias, args)
-        end_time = time.perf_counter()
-        counter = TimeToComplete()
-        elapsed = counter.time_elapsed_measurement(start_time, end_time)
-        if not counter.is_around_one_second(elapsed):
-            logger.info(f'Alias {alias.alias_name} command execution time: {elapsed:.4f} seconds.')
-    
-    async def dispatch_alias(self, message: discord.Message, alias: Alias, args):
-        if not alias.handler:
-            return
-        await alias.handler(message, alias, args)
+        state = State(message)
+        try:
+            channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
+            member = args[0] if len(args) > 0 else None
+            member_obj = await self.member_service.resolve_member(message, member)
+            await has_equal_or_higher_role(message, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, sender_snowflake=message.author.id)
+            if member_obj.id == message.guild.me.id:
+                raise Exception(f"\U000026A0\U0000FE0F You cannot {alias.alias_type} {message.guild.me.mention}.")
+            if not alias.handler:
+                raise Exception(f"\U000026A0\U0000FE0F No alias handler exists for {alias.alias_name}.")
+        except Exception as e:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F {e}")
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}')
+        existing_moderation = await Alias.get_existing_moderation(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
+        target = args[1] if len(args) > 1 else '24h'
+        is_reason_modification = target in ['+', '-', '=']
+        is_duration_modification = target.startswith(('+', '-', '=')) and not is_reason_modification
+        executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        if executor_role == 'Everyone' or (is_reason_modification and executor_role in ('Moderator', 'Everyone')):
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s or {alias.alias_type} users.")
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}')
+        await alias.handler(alias, args, channel_obj, executor_role, existing_moderation, is_duration_modification, is_reason_modification, member_obj, message, state)
         
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):

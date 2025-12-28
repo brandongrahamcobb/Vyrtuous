@@ -24,7 +24,7 @@ import subprocess
 
 class Database:
 
-    def __init__(self, directory):
+    def __init__(self, *, directory = None):
         self.database: Optional[str] = os.getenv('POSTGRES_DB')
         self.directory = directory if directory else os.getenv('DB_DIRECTORY')
         self.host: Optional[str] = os.getenv('POSTGRES_HOST')

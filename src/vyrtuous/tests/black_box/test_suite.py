@@ -250,6 +250,7 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                 "vyrtuous.service.message_service.isinstance",  # patch inside the exact module of MessageService
                 side_effect=mock_isinstance
             ))
+            stack.enter_context(patch.object(bot, "get_guild", side_effect=lambda snowflake: guild))
             stack.enter_context(patch(
                 "vyrtuous.bot.discord_bot.DiscordBot.tree",
                 new_callable=PropertyMock,

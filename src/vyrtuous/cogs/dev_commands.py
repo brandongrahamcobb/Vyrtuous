@@ -133,7 +133,7 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
         try:
-            return await state.end(f'{self.emoji.get_random_emoji()}  Successfully loaded {module}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()}  Successfully loaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
             
@@ -146,7 +146,7 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
         try:
-            return await state.end(f'{self.emoji.get_random_emoji()} Successfully loaded {module}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully loaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     
@@ -161,7 +161,7 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
         try:
-            return await state.end(f'{self.emoji.get_random_emoji()} Successfully reloaded {module}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully reloaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
             
@@ -174,7 +174,7 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
         try:
-            return await state.end(f'{self.emoji.get_random_emoji()} Successfully reloaded {module}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully reloaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -312,7 +312,7 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
         try:
-            return await state.end(f'{self.emoji.get_random_emoji()} Successfully unloaded {module}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully unloaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
                 
@@ -342,7 +342,7 @@ class DevCommands(commands.Cog):
                 role_snowflake=administrator.role_snowflake
             )
         try:
-            return await state.end(f'{self.emoji.get_random_emoji()} Successfully revoked administrator from all members with {role_obj.mention}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully revoked administrator from all members with {role_obj.mention}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -373,7 +373,7 @@ class DevCommands(commands.Cog):
                 role_snowflake=administrator.role_snowflake
             )
         try:
-            return await state.end(f'{self.emoji.get_random_emoji()} Successfully revoked administrator from all members with {role_obj.mention}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully revoked administrator from all members with {role_obj.mention}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')    
 

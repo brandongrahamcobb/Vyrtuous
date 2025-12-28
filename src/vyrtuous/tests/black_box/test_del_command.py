@@ -33,6 +33,7 @@ async def test_del_command(bot, voice_channel_one, guild, not_privileged_author,
         message_id = response["id"]
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=f"del {message_id}", guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[-1]
+        print(response)
         assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
     finally:
         await moderator.revoke()

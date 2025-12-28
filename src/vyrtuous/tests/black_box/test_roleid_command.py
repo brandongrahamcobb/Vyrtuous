@@ -37,6 +37,7 @@ async def test_roleid_command(bot, voice_channel_one, guild, not_privileged_auth
         voice_channel_one.messages.clear() 
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]
+        print(response)
         assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
     finally:
         await moderator.revoke()

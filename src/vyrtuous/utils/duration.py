@@ -22,45 +22,48 @@ import discord
 
 class DurationObject:
             
-    day_suffix_types = ['d', 'day', 'days']
-    hour_suffix_types = ['h', 'hr', 'hrs', 'hour', 'hours']
-    minute_suffix_types = ['m', 'min', 'mins', 'minute', 'minutes']
-    prefix_types = ['-', '+', '=']
-    suffix_list = [day_suffix_types, hour_suffix_types, minute_suffix_types]
+    DAY_UNITS = {'d', 'day', 'days'}
+    HOUR_UNITS = {'h', 'hr', 'hrs', 'hour', 'hours'}
+    MINUTE_UNITS = {'m', 'min', 'mins', 'minute', 'minutes'}
+    PREFIXES = {'+', '-', '='}
 
-    def __init__(self, duration_str: str):
-        self.duration_str = duration_str
-        self.base: Optional[datetime] = None
-        self.number: Optional[int] = None
-        self.prefix: Optional[str] = None
-        self.suffix: Optional[str] = None
+    UNIT_MAP = {**dict.fromkeys(DAY_UNITS, 'd'),
+                **dict.fromkeys(HOUR_UNITS, 'h'),
+                **dict.fromkeys(MINUTE_UNITS, 'm')}
+
+    def __init__(self, duration: str):
+        self._duration: str = ""
+        self._prefix: Optional[str] = None
+        self._number: Optional[int] = None
+        self._unit: Optional[str] = None
+        self._base: Optional[datetime] = None
+        self.duration = duration  # triggers parsing
 
     def __str__(self):
-        return self._duration_str
+        if self.number == 0:
+            return "permanent"
+        direction = "from now" if self.sign > 0 else "ago"
+        return f"{self.number}{self.unit} {direction}"
 
     @property
-    def duration_str(self) -> str:
-        return self._duration_str
+    def duration(self) -> str:
+        return self._duration
 
-    @duration_str.setter
-    def duration_str(self, duration: str):
-        if not isinstance(duration, str) or not duration:
-            raise commands.BadArgument("Duration string is invalid.")
-        self._duration_str = duration.strip()
-        self._parse_duration()
+    @duration.setter
+    def duration(self, value: str):
+        if not value or not isinstance(value, str):
+            raise commands.BadArgument("Duration string must be non-empty string")
+        self._duration = value.strip()
+        self._parse()
 
     @property
     def prefix(self) -> str:
-        if self._prefix is None:
-            return '+'
-        if self._prefix not in self.prefix_types:
-            raise ValueError(f"Duration.prefix {self._prefix} is invalid")
-        return self._prefix
+        return self._prefix or '+'
 
     @prefix.setter
     def prefix(self, value: str):
-        if value not in self.prefix_types:
-            raise commands.BadArgument(f"Duration.prefix {value} is invalid")
+        if (value not in self.PREFIXES) or value is None:
+            raise commands.BadArgument(f"Invalid prefix: {value}")
         self._prefix = value
 
     @property
@@ -76,18 +79,14 @@ class DurationObject:
         self._number = value
 
     @property
-    def suffix(self) -> str:
-        if self._suffix is None:
-            return 'h'
-        if self._suffix not in sum(self.suffix_list, []):
-            raise ValueError(f"Duration.suffix {self._suffix} is invalid")
-        return self._suffix
+    def unit(self) -> str:
+        return self._unit or 'h'
 
-    @suffix.setter
-    def suffix(self, value: str):
-        if value.lower() not in sum(self.suffix_list, []):
-            raise commands.BadArgument(f"Duration.suffix {value} is invalid")
-        self._suffix = value.lower()
+    @unit.setter
+    def unit(self, value: str):
+        if value not in self.UNIT_MAP.values():
+            raise commands.BadArgument(f"Invalid unit: {value}")
+        self._unit = value
 
     @property
     def base(self) -> datetime:
@@ -98,60 +97,80 @@ class DurationObject:
     @base.setter
     def base(self, value: Optional[datetime]):
         self._base = value or datetime.now(timezone.utc)
-    
-    def interpret_sign(self) -> Optional[int]:
+
+    @property
+    def sign(self) -> int:
         return -1 if self.prefix == '-' else 1
+
+    @property
+    def expires_at(self) -> datetime:
+        return self.target_datetime()
     
-    def interpret_unit(self) -> Optional[str]:
-        if self.interpret_days_suffix():
-            return 'd'
-        if self.interpret_hours_suffix():
-            return 'h'
-        if self.interpret_minutes_suffix():
-           return 'm'
-        raise ValueError(f'Invalid suffix {self.suffix}')
-        
-    def load_base(self, base: Optional[datetime]):
-        self.base = base
-        pass
-    
-    def load_from_combined_duration_str(self, duration_str: Optional[str]):
-        prefix = self.get_prefix(duration_str)
-        self.prefix = prefix
-        number = self.get_number(duration_str)
-        self.number = number
-        if self.validate_permanent():
-            return
-        suffix = self.get_suffix(duration_str)
-        self.suffix = suffix
-            
-    def build_timedelta(self):
-        sign = self.interpret_sign()
-        unit = self.interpret_unit()
-        match unit:
-            case 'd':
-                return timedelta(days=self.number * sign)
-            case 'h':
-                return timedelta(hours=self.number * sign)
-            case 'm':
-                return timedelta(minutes=self.number * sign)
-            case _:
-                return None
-                
-    def compute_target_datetime(self) -> Optional[datetime]:
-        base = base or self.base
-        return base + self.build_timedelta()
-    
-    def output_display(self) -> str:
-        if self.number == 0:
-            return "permanent"
-        sign = self.interpret_sign()
-        unit = self.interpret_unit()
-        number = self.number
-        if sign > 0:
-            return f"{number}{unit} from now"
+    @classmethod
+    def from_timedelta(cls, td: timedelta, prefix: str = '+') -> "DurationObject":
+        total_seconds = int(td.total_seconds())
+        if total_seconds % 86400 == 0:
+            number, suffix = total_seconds // 86400, 'd'
+        elif total_seconds % 3600 == 0:
+            number, suffix = total_seconds // 3600, 'h'
+        elif total_seconds % 60 == 0:
+            number, suffix = total_seconds // 60, 'm'
         else:
-            return f"{number}{unit} ago"
+            number, suffix = total_seconds, 's'
+        obj = cls(f"{prefix}{number}{suffix}")
+        return obj
+    
+    def to_timedelta(self) -> timedelta:
+        match self.unit:
+            case 'd':
+                return timedelta(days=self.number * self.sign)
+            case 'h':
+                return timedelta(hours=self.number * self.sign)
+            case 'm':
+                return timedelta(minutes=self.number * self.sign)
+            case _:
+                raise ValueError(f"Unsupported unit: {self.unit}")
+
+    def target_datetime(self, base: Optional[datetime] = None) -> datetime:
+        base = base or self.base
+        return base + self.to_timedelta()
+
+    def discord_unix_timestamp(self, base: Optional[datetime] = None) -> int:
+        return int(self.target_datetime(base).timestamp())
+
+    def db_seconds(self) -> int:
+        return int(self.to_timedelta().total_seconds())
+
+    def _parse(self):
+        s = self._duration.lower()
+        if s[0] in self.PREFIXES:
+            self.prefix = s[0]
+            s = s[1:]
+        else:
+            self.prefix = '+'
+        num_str = ''
+        for char in s:
+            if char.isdigit():
+                num_str += char
+            else:
+                break
+        if not num_str:
+            raise commands.BadArgument(f"No numeric duration found in '{self._duration}'")
+        self.number = int(num_str)
+        s = s[len(num_str):].strip()
+        if not s:
+            self.unit = 'h'
+        else:
+            unit = self.UNIT_MAP.get(s)
+            if not unit:
+                # try matching known suffixes
+                for known in self.UNIT_MAP.keys():
+                    if s.startswith(known):
+                        unit = self.UNIT_MAP[known]
+                        break
+            if not unit:
+                raise commands.BadArgument(f"Invalid duration unit in '{self._duration}'")
+            self.unit = unit
 
 class Converter(commands.Converter):
     
@@ -159,7 +178,7 @@ class Converter(commands.Converter):
         self.duration = duration
     
     async def convert(self, ctx: commands.Context, arg):
-        return self.duration(arg).duration
+        return self.duration(arg)
 
 class Transformer(app_commands.Transformer):
 
@@ -167,7 +186,7 @@ class Transformer(app_commands.Transformer):
         self.duration_cls = duration_cls
 
     async def transform(self, interaction: discord.Interaction, arg):
-        return self.duration_cls(arg).duration
+        return self.duration_cls(arg)
         
 class Duration(Converter):
     def __init__(self):

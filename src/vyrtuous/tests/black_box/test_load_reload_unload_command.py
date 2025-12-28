@@ -17,6 +17,7 @@
 from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.developer import Developer
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one, voice_channel_two
 import pytest
 
@@ -38,6 +39,6 @@ async def test_clear_command(bot, voice_channel_one, guild, privileged_author, p
         voice_channel_one.messages.clear() 
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
-        assert '\N{OK HAND SIGN}' in response 
+        assert any(emoji in response for emoji in Emojis.EMOJIS)
     finally:
         await developer.revoke()

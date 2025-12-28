@@ -59,12 +59,12 @@ class CoordinatorCommands(commands.Cog):
             await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
-            await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
         if member_obj.id == interaction.guild.me.id:
             return await state.end(warning=f'\U000026A0\U0000FE0F You are not allowed to promote {interaction.guild.me.mention} to moderator.')
-        channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake=channel_obj.id, member_snowflake=interaction.user.id)
+        channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=interaction.user.id)
         if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
             return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to grant/revoke moderator status in {channel_obj.mention}.')
         moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -105,12 +105,12 @@ class CoordinatorCommands(commands.Cog):
             await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
-            await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
         if member_obj.id == ctx.guild.me.id:
             return await state.end(warning=f'\U000026A0\U0000FE0F You are not allowed to promote {ctx.guild.me.mention} to moderator.')
-        channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake=channel_obj.id, member_snowflake=ctx.author.id)
+        channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=ctx.author.id)
         if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
             return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to grant/revoke moderator status in {channel_obj.mention}.')
         moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -125,7 +125,7 @@ class CoordinatorCommands(commands.Cog):
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
                 VALUES ($1,$2,$3,$4,$5,$6)
-            ''', 'toggled_moderator', member_obj.id, ctx.user.id, ctx.guild.id, channel_obj.id, f'Moderator access {action}')
+            ''', 'toggled_moderator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Moderator access {action}')
         try:
             return await state.end(success=f"{self.emoji.get_random_emoji()} Moderator access for {member_obj.mention} has been {action} in {channel_obj.mention}.")
         except Exception as e:
@@ -160,12 +160,12 @@ class CoordinatorCommands(commands.Cog):
                     failed_members.append(member)
             voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
             await voice_mute.grant()
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                VALUES ($1, $2, $3, $4, $5, $6)
-            ''', 'mute', member.id, interaction.user.id, interaction.guild.id, channel_obj.id, 'Muted via room_mute')
             muted_members.append(member)
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute('''
+                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                ''', 'mute', member.id, interaction.user.id, interaction.guild.id, channel_obj.id, 'Muted via room_mute')
         embed = discord.Embed(
             title=f"{self.emoji.get_random_emoji()} Mute Summary",
             color=0xED4245
@@ -176,7 +176,7 @@ class CoordinatorCommands(commands.Cog):
         if failed_members:
             embed.add_field(name="Failed", value=f"{len(failed_members)} member(s)", inline=False)
         try:
-             return await state.end(embed=embed)
+             return await state.end(success=embed)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -196,7 +196,7 @@ class CoordinatorCommands(commands.Cog):
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
         for member in channel_obj.members:
-            if member.id == ctx.user.id:
+            if member.id == ctx.author.id:
                 continue
             voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
             if voice_mute:
@@ -210,11 +210,11 @@ class CoordinatorCommands(commands.Cog):
             voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
             await voice_mute.grant()
             muted_members.append(member)
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                VALUES ($1, $2, $3, $4, $5, $6)
-            ''', 'mute', member.id, ctx.user.id, ctx.guild.id, channel_obj.id, 'Muted via room_mute')
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute('''
+                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                ''', 'mute', member.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Muted via room_mute')
         embed = discord.Embed(
             title=f"{self.emoji.get_random_emoji()} Mute Summary",
             color=0xED4245
@@ -225,7 +225,7 @@ class CoordinatorCommands(commands.Cog):
         if failed_members:
             embed.add_field(name="Failed", value=f"{len(failed_members)} member(s)", inline=False)
         try:
-            return await state.end(embed=embed)
+            return await state.end(success=embed)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -258,11 +258,11 @@ class CoordinatorCommands(commands.Cog):
                     failed_members.append(member)
             await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="user")         
             unmuted_members.append(member)
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                ''', 'unmute', member.id, interaction.user.id, interaction.guild.id, channel_obj.id, 'Unmuted via room_unmute')
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute('''
+                        INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                    ''', 'unmute', member.id, interaction.user.id, interaction.guild.id, channel_obj.id, 'Unmuted via room_unmute')
         embed = discord.Embed(
             title=f"{self.emoji.get_random_emoji()} Unmute Summary",
             color=0xED4245
@@ -273,7 +273,7 @@ class CoordinatorCommands(commands.Cog):
         if failed_members:
             embed.add_field(name="Failed", value=f"{len(failed_members)} member(s)", inline=False)
         try:
-            return await state.end(embed=embed)
+            return await state.end(success=embed)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     
@@ -305,11 +305,11 @@ class CoordinatorCommands(commands.Cog):
                     failed_members.append(member)
             await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target="user")         
             unmuted_members.append(member)
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                ''', 'unmute', member.id, ctx.user.id, ctx.guild.id, channel_obj.id, 'Unmuted via room_unmute')
+            async with self.bot.db_pool.acquire() as conn:
+                await conn.execute('''
+                        INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
+                        VALUES ($1, $2, $3, $4, $5, $6)
+                    ''', 'unmute', member.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Unmuted via room_unmute')
         embed = discord.Embed(
             title=f"{self.emoji.get_random_emoji()} Unmute Summary",
             color=0xED4245
@@ -320,7 +320,7 @@ class CoordinatorCommands(commands.Cog):
         if failed_members:
             embed.add_field(name="Failed", value=f"{len(failed_members)} member(s)", inline=False)
         try:
-            return await state.end(embed=embed)
+            return await state.end(success=embed)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     

@@ -37,4 +37,5 @@ async def test_dev_command(bot, voice_channel_one, guild, privileged_author, pre
     )
     await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="OwnerCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.owner_commands.isinstance", prefix=prefix)
     response = voice_channel_one.messages[0]["content"]
+    print(response)
     assert any(emoji in response for emoji in Emojis.EMOJIS)
