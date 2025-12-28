@@ -66,7 +66,7 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_c
         if response["embed"]:
             assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
         else:
-            assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
+            assert '\U000026A0\U0000FE0F' in response["content"] 
         if member_ref and response["embed"]:
             assert any(val in response["embed"].title for val in member_values)
     finally:

@@ -111,11 +111,11 @@ class DurationObject:
            return 'm'
         raise ValueError(f'Invalid suffix {self.suffix}')
         
-    def load_base(self, base: Optional[datetime]) -> None:
+    def load_base(self, base: Optional[datetime]):
         self.base = base
         pass
     
-    def load_from_combined_duration_str(self, duration_str: Optional[str]) -> None:
+    def load_from_combined_duration_str(self, duration_str: Optional[str]):
         prefix = self.get_prefix(duration_str)
         self.prefix = prefix
         number = self.get_number(duration_str)

@@ -31,6 +31,7 @@ from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
+from vyrtuous.utils.state import State
 from vyrtuous.utils.server_mute import ServerMute
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.text_mute import TextMute
@@ -104,7 +105,7 @@ class EventListeners(commands.Cog):
 
     # Done
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         allowed = True
         if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
             allowed = False
@@ -164,7 +165,7 @@ class EventListeners(commands.Cog):
                     except discord.Forbidden:
                         logger.debug(f'No permission to edit mute for {member.display_name}')
                     except discord.HTTPException as e:
-                        logger.debug(f'Failed to edit mute for {member.display_name}: {e}')
+                        logger.debug(f'Failed to edit mute for {member.display_name}: {e}.')
                 await self.print_flags(member, after.channel)
                 
 #                    explicit_deny_roles = []
@@ -186,10 +187,10 @@ class EventListeners(commands.Cog):
 #                                f"**{after_channel.name}** — `{e}`"
 #                            )
 #                        except discord.HTTPException as e:
-#                            logger.debug(f'Failed to mute {member.display_name}: {e}')
+#                            logger.debug(f'Failed to mute {member.display_name}: {e}.')
             
     @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member) -> None:
+    async def on_member_join(self, member: discord.Member):
         user_id = member.id
         guild = member.guild
         async with self.db_pool.acquire() as conn:
@@ -205,7 +206,7 @@ class EventListeners(commands.Cog):
                     except discord.Forbidden:
                         logger.warning(f'Missing permissions to ban in channel {channel.id}')
                     except discord.HTTPException as e:
-                        logger.warning(f'Failed to apply ban for {member} in {channel.id}: {e}')
+                        logger.warning(f'Failed to apply ban for {member} in {channel.id}: {e}.')
             if text_mutes:
                 for text_mute in text_mutes:
                     channel = guild.get_channel(text_mute.channel_snowflake)
@@ -216,7 +217,7 @@ class EventListeners(commands.Cog):
                     except discord.Forbidden:
                         logger.warning(f'Missing permissions to text mute in channel {channel.id}')
                     except discord.HTTPException as e:
-                        logger.warning(f'Failed to apply text mute for {member} in {channel.id}: {e}')
+                        logger.warning(f'Failed to apply text mute for {member} in {channel.id}: {e}.')
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -261,15 +262,15 @@ class EventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, (commands.BadArgument, commands.CheckFailure)):
-            return await ctx.reply(f'\U0001F6AB {error}')
+            return await ctx.reply(f'\U000026A0\U0000FE0F {error}')
         if isinstance(error, commands.MissingRequiredArgument):
             missing = error.param.name
-            return await ctx.reply(f'\U0001F6AB Missing required argument: `{missing}`')
+            return await ctx.reply(f'\U000026A0\U0000FE0F Missing required argument: `{missing}`')
     
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
         if isinstance(error, (app_commands.BadArgument, app_commands.CheckFailure)):
-            return await self.handler.send_message(interaction, f'\U0001F6AB {error}')
+            return await self.handler.send_message(interaction, f'\U000026A0\U0000FE0F {error}')
             
 #    @commands.Cog.listener()
 #    async def on_command(self, ctx):

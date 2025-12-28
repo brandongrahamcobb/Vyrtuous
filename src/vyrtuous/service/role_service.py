@@ -19,12 +19,12 @@ from vyrtuous.utils.setup_logging import logger
 import discord
 
 class RoleService:
-
+    
     async def resolve_role(
         self,
         ctx_interaction_or_message,
         value: Optional[Union[int, str, discord.Role]]
-    ) -> Optional[discord.Role]:
+    ) -> discord.Role:
         try:
             if isinstance(value, discord.Role):
                 logger.debug(f"Direct role: {value.id}")
@@ -48,4 +48,5 @@ class RoleService:
                         return role
         except Exception as e:
             logger.warning(f"Role resolution error: {e}")
-        return None
+            raise
+        raise ValueError("Role could not be resolved")

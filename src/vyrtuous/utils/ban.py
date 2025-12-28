@@ -20,6 +20,9 @@ from vyrtuous.bot.discord_bot import DiscordBot
 
 class Ban:
 
+    PLURAL = "Bans"
+    SINGULAR = "Ban"
+
     def __init__(self, channel_snowflake: Optional[int], expires_at: Optional[datetime], guild_snowflake: Optional[int], member_snowflake: Optional[int], reason: Optional[str]):
         self.channel_snowflake = channel_snowflake
         self.expires_at = expires_at

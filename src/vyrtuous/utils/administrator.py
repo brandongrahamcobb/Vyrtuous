@@ -110,4 +110,16 @@ class Administrator:
             await conn.execute('''
                 UPDATE administrators SET guild_snowflake=$1, role_snowflake=$3 WHERE discord_snowflake=$2
             ''', guild_snowflake, member_snowflake, role_snowflake)
+
+    @classmethod
+    async def fetch_guilds_by_member(cls, member_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT guild_snowflake FROM administrators WHERE member_snowflake=$1
+            ''', member_snowflake)
+        guild_snowflakes = []
+        for row in rows:
+            guild_snowflakes.append(row['guild_snowflake'])
+        return guild_snowflakes
             

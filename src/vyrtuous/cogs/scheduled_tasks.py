@@ -84,12 +84,12 @@ class ScheduledTasks(commands.Cog):
                         except discord.Forbidden:
                             logger.warning(f'No permission to remove ban override for user {user_id} in channel {channel_id}')
                         except discord.HTTPException as e:
-                            logger.error(f'Failed to remove permission override for user {user_id} in channel {channel_id}: {e}')
+                            logger.error(f'Failed to remove permission override for user {user_id} in channel {channel_id}: {e}.')
                     except Exception as e:
-                        logger.error(f'Error processing expired ban for user {user_id} in guild {guild_id}: {e}', exc_info=True)
+                        logger.error(f'Error processing expired ban for user {user_id} in guild {guild_id}: {e}.', exc_info=True)
                         continue
         except Exception as e:
-            logger.error(f'Error in check_expired_bans task: {e}', exc_info=True)
+            logger.error(f'Error in check_expired_bans task: {e}.', exc_info=True)
     
     @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self):
@@ -130,14 +130,14 @@ class ScheduledTasks(commands.Cog):
                             except discord.Forbidden:
                                 logger.warning(f'No permission to unmute user {user_id} in channel {channel_id}')
                             except discord.HTTPException as e:
-                                logger.error(f'Failed to unmute user {user_id} in channel {channel_id}: {e}')
+                                logger.error(f'Failed to unmute user {user_id} in channel {channel_id}: {e}.')
                         else:
                             logger.info(f'User {user_id} not in voice channel {channel_id}, skipping unmute')
                     except Exception as e:
-                        logger.error(f'Error processing expired voice mute for user {user_id} in guild {guild_id}: {e}', exc_info=True)
+                        logger.error(f'Error processing expired voice mute for user {user_id} in guild {guild_id}: {e}.', exc_info=True)
                         continue
         except Exception as e:
-            logger.error(f'Error in check_expired_voice_mutes task: {e}', exc_info=True)
+            logger.error(f'Error in check_expired_voice_mutes task: {e}.', exc_info=True)
 
     
     @tasks.loop(minutes=1)
@@ -171,15 +171,15 @@ class ScheduledTasks(commands.Cog):
                                     except discord.Forbidden:
                                         logger.warning(f'No permission to unmute user {user_id} in expired stage {channel_id}')
                                     except discord.HTTPException as e:
-                                        logger.error(f'Failed to unmute user {user_id} in expired stage {channel_id}: {e}')
+                                        logger.error(f'Failed to unmute user {user_id} in expired stage {channel_id}: {e}.')
                         else:
                             logger.info(f'Guild {guild_id} not found when processing expired stage {channel_id}')
                         logger.info(f'Cleaned up expired stage for channel {channel_id} in guild {guild_id}')
                     except Exception as e:
-                        logger.error(f'Error processing expired stage for channel {channel_id} in guild {guild_id}: {e}', exc_info=True)
+                        logger.error(f'Error processing expired stage for channel {channel_id} in guild {guild_id}: {e}.', exc_info=True)
                         continue
         except Exception as e:
-            logger.error(f'Error in check_expired_stages task: {e}', exc_info=True)
+            logger.error(f'Error in check_expired_stages task: {e}.', exc_info=True)
 
     
     @tasks.loop(minutes=1)
@@ -221,21 +221,21 @@ class ScheduledTasks(commands.Cog):
                         except discord.Forbidden:
                             logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}')
                         except discord.HTTPException as e:
-                            logger.error(f'Failed to remove permission override for user {user_id} in channel {channel_id}: {e}')
+                            logger.error(f'Failed to remove permission override for user {user_id} in channel {channel_id}: {e}.')
                     except Exception as e:
-                        logger.error(f'Error processing expired text mute for user {user_id} in guild {guild_id}: {e}', exc_info=True)
+                        logger.error(f'Error processing expired text mute for user {user_id} in guild {guild_id}: {e}.', exc_info=True)
         except Exception as e:
-            logger.error(f'Error in check_expired_text_mutes task: {e}', exc_info=True)
+            logger.error(f'Error in check_expired_text_mutes task: {e}.', exc_info=True)
                 
     @tasks.loop(hours=24)
-    async def backup_database(self) -> None:
+    async def backup_database(self):
         try:
             db = Database()
             db.create_backup_directory()
             db.execute_backup()
             logger.info(f'Backup completed successfully.')
         except Exception as e:
-            logger.error(f'Error during database backup: {e}')
+            logger.error(f'Error during database backup: {e}.')
 
     @backup_database.before_loop
     async def before_backup(self):

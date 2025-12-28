@@ -33,7 +33,7 @@ class DiscordClient(discord.Client):
             self.db_pool = db_pool
             self.testing_guild_id = self.config['discord_testing_guild_snowflake']
         except Exception as e:
-            logger.error(f'Error during Discord bot initialization: {e}')
+            logger.error(f'Error during Discord bot initialization: {e}.')
 
     @classmethod
     def get_instance(cls):

@@ -34,16 +34,16 @@ class Reason:
             action = self.action_types[2]
         return action    
         
-    def load_action(self, action: Optional[str] = None) -> None:
+    def load_action(self, action: Optional[str] = None):
         self.action = action
         
-    def load_old_reason(self, old_reason: Optional[str] = 'No reason provided.') -> None:
+    def load_old_reason(self, old_reason: Optional[str] = 'No reason provided.'):
         self.old_reason = old_reason
     
-    def load_new_reason(self, new_reason: Optional[str] = 'No reason provided.') -> None:
+    def load_new_reason(self, new_reason: Optional[str] = 'No reason provided.'):
         self.new_reason = new_reason
         
-    def output_display(self) -> None:
+    def output_display(self):
         action = self.interpret_action(self.action)
         if action in self.action_types:
             match action:

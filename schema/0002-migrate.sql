@@ -76,7 +76,6 @@ SELECT duration_seconds, guild_id, channel_id, moderation_type
 FROM active_caps_old;
 DROP TABLE active_caps_old;
 
-ALTER TABLE active_text_mutes RENAME TO active_text_mutes_old;
 CREATE TABLE active_text_mutes (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -173,6 +172,8 @@ CREATE TABLE command_aliases (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (alias_name, alias_type, guild_snowflake)
 );
+DROP TABLE command_aliases_old;
+
 INSERT INTO command_aliases (
     alias_name,
     alias_type,
@@ -187,6 +188,7 @@ SELECT
     guild_id,
     role_id
 FROM command_aliases_old;
+DROP TABLE command_aliases_old;
 
 ALTER TABLE statistic_channels RENAME TO statistic_channels_old;
 
@@ -214,3 +216,45 @@ SELECT
     snowflakes,
     type
 FROM statistic_channels_old;
+
+BEGIN;
+
+-- 1. Rename the old table
+ALTER TABLE active_cows RENAME TO active_cows_old;
+
+-- 2. Create the new table
+CREATE TABLE vegans (
+    channel_snowflake BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+
+-- 3. Copy data from the old table
+INSERT INTO vegans (channel_snowflake, guild_snowflake, member_snowflake, created_at)
+SELECT channel_id, guild_id, discord_snowflake, created_at
+FROM active_cows_old;
+
+-- 4. Drop the old table
+DROP TABLE active_cows_old;
+
+COMMIT;
+
+
+ALTER TABLE active_flags RENAME TO active_flags_old;
+CREATE TABLE active_flags (
+    channel_snowflake BIGINT NOT NULL DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    reason TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+INSERT INTO active_flags (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_at)
+SELECT channel_id, guild_id, discord_snowflake, reason, expires_at
+FROM active_flags_old;
+DROP TABLE active_flags_old;

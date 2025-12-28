@@ -45,16 +45,14 @@ class OwnerCommands(commands.Cog):
     ):
         state = State(interaction)
         action = None
+        member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
+            await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, member_snowflake=member_obj.id)
         except Exception as e:
             await state.end(warning=str(e))
         if member_obj.id == interaction.guild.me.id:
             await state.end(warning="You cannot promote the bot to developer.")
-        try:
-           await has_equal_or_higher_role(interaction, member_obj, interaction.channel)
-        except Exception as e:
-            await state.end(warning=str(e))
         guilds = []
         developers = await Developer.fetch_by_member(member_snowflake=member_obj.id)
         if developers:
@@ -70,7 +68,7 @@ class OwnerCommands(commands.Cog):
         try:
             await state.end(success=f"{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}.")
         except Exception as e:
-            await state.end(error=f'\U0001F6AB {str(e)}')
+            await state.end(error=f'\U0001F3C6 {str(e)}')
         
     # DONE
     @commands.command(name='dev', help="Grants/revokes a user's permissions to a bot developer.")
@@ -79,19 +77,17 @@ class OwnerCommands(commands.Cog):
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-    ) -> None:
+    ):
         state = State(ctx)
         action = None
+        member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
+            await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, member_snowflake=member_obj.id)
         except Exception as e:
             await state.end(warning=str(e))
         if member_obj.id == ctx.guild.me.id:
             await state.end(warning="You cannot promote the bot to developer.")
-        try:
-           await has_equal_or_higher_role(ctx, member_obj, ctx.channel)
-        except Exception as e:
-            await state.end(warning=str(e))
         guilds = []
         developers = await Developer.fetch_by_member(member_snowflake=member_obj.id)
         if developers:
@@ -107,7 +103,7 @@ class OwnerCommands(commands.Cog):
         try:
             await state.end(success=f"{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}.")
         except Exception as e:
-            await state.end(error=f'\U0001F6AB {str(e)}')
+            await state.end(error=f'\U0001F3C6 {str(e)}')
         
         
     # DONE
@@ -121,6 +117,7 @@ class OwnerCommands(commands.Cog):
     ):
         state = State(interaction)
         enabled = None
+        member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
         except Exception as e:
@@ -137,7 +134,7 @@ class OwnerCommands(commands.Cog):
         try:
             await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled} for {member_obj.mention}.')
         except Exception as e:
-            await state.end(error=f'\U0001F6AB {str(e)}')
+            await state.end(error=f'\U0001F3C6 {str(e)}')
            
     # DONE
     @commands.command(name='hero', help='Grants/revokes invincibility for a member.')
@@ -149,6 +146,7 @@ class OwnerCommands(commands.Cog):
     ):
         state = State(ctx)
         enabled = None
+        member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
         except Exception as e:
@@ -165,6 +163,6 @@ class OwnerCommands(commands.Cog):
         try:
             await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled}.')
         except Exception as e:
-            await state.end(error=f'\U0001F6AB {str(e)}')
+            await state.end(error=f'\U0001F3C6 {str(e)}')
 async def setup(bot: DiscordBot):
     await bot.add_cog(OwnerCommands(bot))

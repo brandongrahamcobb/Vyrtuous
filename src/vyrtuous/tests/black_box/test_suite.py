@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+import builtins
 from contextlib import ExitStack
 from discord.ext.commands import Context, view as cmd_view
 from types import SimpleNamespace
@@ -24,6 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bot.discord_client import DiscordClient
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import *
+from vyrtuous.service.message_service import MessageService
 from vyrtuous.tests.black_box.make_mock_objects import *
 import asyncpg
 import discord
@@ -187,8 +189,6 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
     mock_bot_user = guild.me
     with patch.object(type(bot), "user", new_callable=PropertyMock) as mock_user:
         mock_user.return_value = mock_bot_user
-        view = cmd_view.StringView(mock_message.content)
-        view.skip_string(prefix)
         ctx = Context(
             bot=bot,
             message=mock_message,
@@ -216,14 +216,18 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                     new=AsyncMock(return_value=True)
                 ))
             capturing_send = await make_capturing_send(channel, author)
-            cog_instance.handler.send_message = capturing_send.__get__(cog_instance.handler)
+            stack.enter_context(patch.object(MessageService, "send_message", new=capturing_send))
             def mock_isinstance(obj, cls):
-                if cls == discord.VoiceChannel:
-                    return hasattr(obj, 'type') and obj.type == discord.ChannelType.voice
-                elif cls == discord.TextChannel:
-                    return hasattr(obj, 'type') and obj.type == discord.ChannelType.text
-                else:
-                    return isinstance(obj, cls)
+                if cls == discord.abc.GuildChannel:
+                    return hasattr(obj, "type") and obj.type in (discord.ChannelType.text, discord.ChannelType.voice)
+                return builtins.isinstance(obj, cls)
+            # def mock_isinstance(obj, cls):
+            #     if cls == discord.VoiceChannel:
+            #         return hasattr(obj, 'type') and obj.type == discord.ChannelType.voice
+            #     elif cls == discord.TextChannel:
+            #         return hasattr(obj, 'type') and obj.type == discord.ChannelType.text
+            #     else:
+            #         return isinstance(obj, cls)
             stack.enter_context(patch.object(bot, "load_extension", new_callable=AsyncMock))
             stack.enter_context(patch.object(bot, "reload_extension", new_callable=AsyncMock))
             stack.enter_context(patch.object(bot, "unload_extension", new_callable=AsyncMock))
@@ -242,6 +246,10 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
                 if hasattr(cog_instance, "member_service"):
                     stack.enter_context(patch.object(cog_instance.member_service, "resolve_member", side_effect=smart_resolve_member))
             stack.enter_context(patch(isinstance_patch, side_effect=mock_isinstance))
+            stack.enter_context(patch(
+                "vyrtuous.service.message_service.isinstance",  # patch inside the exact module of MessageService
+                side_effect=mock_isinstance
+            ))
             stack.enter_context(patch(
                 "vyrtuous.bot.discord_bot.DiscordBot.tree",
                 new_callable=PropertyMock,

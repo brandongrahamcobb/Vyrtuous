@@ -25,6 +25,9 @@ import time
 
 class Stage:
 
+    PLURAL = "Stages"
+    SINGULAR = "Stage"
+
     def __init__(self, channel_snowflake: Optional[int], expires_at: Optional[datetime], guild_snowflake: Optional[str], member_snowflake: Optional[int]):
         self.channel_snowflake = channel_snowflake
         self.expires_at = expires_at

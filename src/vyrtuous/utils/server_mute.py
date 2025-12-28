@@ -4,6 +4,9 @@ import asyncpg
 
 class ServerMute:
 
+    PLURAL = "Server Mutes"
+    SINGULAR = "Server Mute"
+
     def __init__(self, guild_snowflake: Optional[int], member_snowflake: Optional[int], reason: Optional[str]):
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake

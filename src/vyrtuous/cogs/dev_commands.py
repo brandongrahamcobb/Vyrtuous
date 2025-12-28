@@ -29,6 +29,7 @@ from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.snowflake import *
+from vyrtuous.utils.state import State
 from vyrtuous.utils.temporary_room import TemporaryRoom
 
 class DevCommands(commands.Cog):
@@ -48,17 +49,17 @@ class DevCommands(commands.Cog):
         self,
         interaction: discord.Interaction
     ):
+        state = State(interaction)
+        db = Database(directory='/app/backups')
         try:
-            db = Database(directory='/app/backups')
             db.create_backup_directory()
-            backup_file = db.execute_backup()
-            if backup_file:
-                await self.handler.send_message(interaction, file=discord.File(db.file_name))
-            else:
-                await self.handler.send_message(interaction, content=f'\U0001F6AB Failed to create backup.')
+            db.execute_backup()
         except Exception as e:
-            logger.warning(f'Database error occurred: {e}')
-          
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+        try:
+            return await state.end(success=discord.File(db.file_name))
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
     @commands.command(name='backup', help='Creates a backup of the database and uploads it.')
     @is_owner_developer_predicator()
@@ -66,16 +67,17 @@ class DevCommands(commands.Cog):
         self,
         ctx: commands.Context
     ):
+        state = State(ctx)
+        db = Database(directory='/app/backups')
         try:
-            db = Database()
             db.create_backup_directory()
-            backup_file = db.execute_backup()
-            if backup_file:
-                await self.handler.send_message(ctx, file=discord.File(db.file_name))
-            else:
-                await self.handler.send_message(ctx, content=f'\U0001F6AB Failed to create backup.')
+            db.execute_backup()
         except Exception as e:
-            logger.warning(f'Database error occurred: {e}')
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+        try:
+            return await state.end(success=discord.File(db.file_name))
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
  
     # DONE
     @app_commands.command(name='clear', description='Removes a specific channel ID from all users, including temp-room associations.')
@@ -86,13 +88,19 @@ class DevCommands(commands.Cog):
         interaction: discord.Interaction,
         channel: AppChannelSnowflake
     ):
-        channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        state = State(interaction)
+        try:
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        except Exception as e:
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
         await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-        await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Removed channel ID `{channel_obj.id}` from all users\' coordinator and moderator access and deleted all associated records.')
-
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Removed channel `{channel_obj.mention}` from all users\' coordinator and moderator access and deleted all associated records.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
     @commands.command(name='clear', help='Removes a specific channel ID from all users, including temp-room associations and all related records.')
     @is_owner_developer_predicator()
@@ -100,62 +108,80 @@ class DevCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
-    ) -> None:
-        channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+    ):
+        state = State(ctx)
+        try:
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        except Exception as e:
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
         await Moderator.delete_channel(channel_snowflake=channel_obj.id)
         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-        return await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Removed channel {channel_obj.mention} from all users and deleted all associated records.')
-    
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Removed channel `{channel_obj.mention}` from all users\' coordinator and moderator access and deleted all associated records.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
+        
     @app_commands.command(name='load', description='Loads a cog by name "vyrtuous.cog.<cog_name>.')
     @is_owner_developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
+        state = State(interaction)
         try:
-            if interaction:
-                await interaction.response.defer(ephemeral=True)
+            await interaction.response.defer(ephemeral=True)
             await interaction.client.load_extension(module)
         except commands.ExtensionError as e:
-            await self.handler.send_message(interaction, f'{e.__class__.__name__}: {e}')
-        else:
-            await self.handler.send_message(interaction, '\N{OK HAND SIGN}')
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+        try:
+            return await state.end(f'{self.emoji.get_random_emoji()}  Successfully loaded {module}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
             
     @commands.command(name='load', help='Loads a cog by name "vyrtuous.cog.<cog_name>."')
     @is_owner_developer_predicator()
     async def load_text_command(self, ctx: commands.Context, *, module: str):
+        state = State(ctx)
         try:
             await self.bot.load_extension(module)
         except commands.ExtensionError as e:
-            await self.handler.send_message(ctx, content=f'{e.__class__.__name__}: {e}')
-        else:
-            await self.handler.send_message(ctx, content='\N{OK HAND SIGN}')
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+        try:
+            return await state.end(f'{self.emoji.get_random_emoji()} Successfully loaded {module}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
     
     @app_commands.command(name='reload', description='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
     @app_commands.check(at_home)
     @is_owner_developer_predicator()
     async def reload_app_command(self, interaction: discord.Interaction, module: str):
+        state = State(interaction)
         try:
-            if interaction:
-                await interaction.response.defer(ephemeral=True)
+            await interaction.response.defer(ephemeral=True)
             await interaction.client.reload_extension(module)
         except commands.ExtensionError as e:
-            await self.handler.send_message(interaction, f'{e.__class__.__name__}: {e}')
-        else:
-            await self.handler.send_message(interaction, '\N{OK HAND SIGN}')
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+        try:
+            return await state.end(f'{self.emoji.get_random_emoji()} Successfully reloaded {module}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
             
     @commands.command(name='reload', help='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
     @is_owner_developer_predicator()
     async def reload(self, ctx: commands.Context, *, module: str):
+        state = State(ctx)
         try:
-            await ctx.bot.reload_extension(module)
+            await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
-            await self.handler.send_message(ctx, content=f'{e.__class__.__name__}: {e}')
-        else:
-            await self.handler.send_message(ctx, content='\N{OK HAND SIGN}')
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+        try:
+            return await state.end(f'{self.emoji.get_random_emoji()} Successfully reloaded {module}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
 
     @app_commands.command(name='sync', description="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
     @is_owner_developer_predicator()
-    async def sync_app_command(self, interaction: discord.Interaction, spec: Optional[Literal['~', '*', '^']] = None) -> None:
+    async def sync_app_command(self, interaction: discord.Interaction, spec: Optional[Literal['~', '*', '^']] = None):
+        state = State(interaction)
         guilds = interaction.client.guilds
         await interaction.response.defer(ephemeral=True)
         if not guilds:
@@ -170,8 +196,10 @@ class DevCommands(commands.Cog):
                 synced = []
             else:
                 synced = await interaction.client.tree.sync()
-            await interaction.followup.send(f"{self.emoji.get_random_emoji()} Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
-            return
+            try:
+                return await state.end(success=f"{self.emoji.get_random_emoji()} Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
+            except Exception as e:   
+                return await state.end(error=f'\U0001F3C6 {e}.')
         ret = 0
         for guild in guilds:
             try:
@@ -180,11 +208,15 @@ class DevCommands(commands.Cog):
                 pass
             else:
                 ret += 1
-        await interaction.followup.send(f'{self.emoji.get_random_emoji()} Synced the tree to {ret}/{len(guilds)}.')
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Synced the tree to {ret}/{len(guilds)}.')
+        except Exception as e:   
+            return await state.end(error=f'\U0001F3C6 {e}.')
         
     @commands.command(name='sync', help="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
     @is_owner_developer_predicator()
-    async def sync_text_command(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None) -> None:
+    async def sync_text_command(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None):
+        state = State(ctx)
         if not guilds:
             if spec == '~':
                 synced = await ctx.bot.tree.sync(guild=ctx.guild)
@@ -197,8 +229,10 @@ class DevCommands(commands.Cog):
                 synced = []
             else:
                 synced = await ctx.bot.tree.sync()
-            await self.handler.send_message(ctx, content=f"{self.emoji.get_random_emoji()} Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
-            return
+            try:
+                return await state.end(success=f"{self.emoji.get_random_emoji()} Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         ret = 0
         for guild in guilds:
             try:
@@ -207,7 +241,10 @@ class DevCommands(commands.Cog):
                 pass
             else:
                 ret += 1
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Synced the tree to {ret}/{len(guilds)}.')
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Synced the tree to {ret}/{len(guilds)}.')
+        except Exception as e:   
+            return await state.end(error=f'\U0001F3C6 {e}.')
 
     # DONE
     @app_commands.command(name='trole', description='Marks a role as administrator and syncs all members.')
@@ -217,13 +254,19 @@ class DevCommands(commands.Cog):
         interaction: discord.Interaction,
         role: AppRoleSnowflake
     ):
-        role_obj = await self.role_service.resolve_role(interaction, role)
-        if role_obj:
-            for member in role_obj.members:
-                administrator = Administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
-                await administrator.grant()
-        await self.handler.send_message(interaction, f'{self.emoji.get_random_emoji()} Team role granted for members.')
-    
+        state = State(interaction)
+        try:
+            role_obj = await self.role_service.resolve_role(interaction, role)
+        except Exception as e:
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+        for member in role_obj.members:
+            administrator = Administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
+            await administrator.grant()
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Team role granted for members with {role_obj.mention}.')
+        except Exception as e:   
+            return await state.end(error=f'\U0001F3C6 {e}.')
+        
     @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
     async def grant_team_to_role_text_command(
@@ -231,34 +274,47 @@ class DevCommands(commands.Cog):
         ctx: commands.Context,
         role: RoleSnowflake
     ):
-        role_obj = await self.role_service.resolve_role(ctx, role)
-        if role_obj:
-            for member in role_obj.members:
-                administrator = Administrator(guild_snowflakes=[ctx.guild.id], member_snowflake=member.id, role_snowflakes=[role_obj.id])
-                await administrator.grant()
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role granted for members.')
+        state = State(ctx)
+        try:
+            role_obj = await self.role_service.resolve_role(ctx, role)
+        except Exception as e:
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+        for member in role_obj.members:
+            administrator = Administrator(guild_snowflake=ctx.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
+            await administrator.grant()
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Team role granted for members with {role_obj.mention}.')
+        except Exception as e:   
+            return await state.end(error=f'\U0001F3C6 {e}.')
 
     # DONE
     @app_commands.command(name='unload', description='Unloads a cog by name "vyrtuous.cog.<cog_name>".')
     @is_owner_developer_predicator()
     async def unload_app_command(self, interaction: discord.Interaction, module: str):
+        state = State(interaction)
         try:
+            await interaction.response.defer(ephemeral=True)
             await interaction.client.unload_extension(module)
         except commands.ExtensionError as e:
-            await self.handler.send_message(interaction, f'{e.__class__.__name__}: {e}')
-        else:
-            await self.handler.send_message(interaction, '\N{OK HAND SIGN}')
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully unloaded {module}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
 
     # DONE
     @commands.command(name='unload', help='Unload a cog by name "vyrtuous.cog.<cog_name>".')
     @is_owner_developer_predicator()
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
+        state = State(ctx)
         try:
-            await ctx.bot.unload_extension(module)
+            await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
-            await self.handler.send_message(ctx, content=f'{e.__class__.__name__}: {e}')
-        else:
-            await self.handler.send_message(ctx, content='\N{OK HAND SIGN}')
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+        try:
+            return await state.end(f'{self.emoji.get_random_emoji()} Successfully unloaded {module}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
                 
     @is_owner_developer_predicator()
     async def revoke_administrator_to_role_app_command(
@@ -266,23 +322,29 @@ class DevCommands(commands.Cog):
         interaction: discord.Interaction,
         role: AppRoleSnowflake
     ):
-        role_obj = await self.role_service.resolve_role(interaction, role)
-        if role_obj:
-            for member in role_obj.members:
-                administrator = await Administrator.fetch_member(member.id)
-                if not administrator:
-                    continue
-                if administrator.role_snowflake == role_obj.id:
-                    administrator.role_snowflake = None
-                if administrator.role_snowflake not in {r.id for r in member.roles}:
-                    if administrator.guild_snowflake == interaction.guild.id:
-                        administrator.guild_snowflake = None
-                await Administrator.update_guild_and_role_for_member(
-                    guild_snowflake=administrator.guild_snowflake,
-                    member_snowflake=member.id,
-                    role_snowflake=administrator.role_snowflake
-                )
-        await self.handler.send_message(interaction, f"{self.emoji.get_random_emoji()} Team role revoked for members.")
+        state = State(interaction)
+        try:
+            role_obj = await self.role_service.resolve_role(interaction, role)
+        except Exception as e:
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+        for member in role_obj.members:
+            administrator = await Administrator.fetch_member(member.id)
+            if not administrator:
+                continue
+            if administrator.role_snowflake == role_obj.id:
+                administrator.role_snowflake = None
+            if administrator.role_snowflake not in {r.id for r in member.roles}:
+                if administrator.guild_snowflake == interaction.guild.id:
+                    administrator.guild_snowflake = None
+            await Administrator.update_guild_and_role_for_member(
+                guild_snowflake=administrator.guild_snowflake,
+                member_snowflake=member.id,
+                role_snowflake=administrator.role_snowflake
+            )
+        try:
+            return await state.end(f'{self.emoji.get_random_emoji()} Successfully revoked administrator from all members with {role_obj.mention}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
 
     @commands.command(name='xtrole', help='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()
@@ -291,23 +353,29 @@ class DevCommands(commands.Cog):
         ctx: commands.Context,
         role: RoleSnowflake
     ):
-        role_obj = await self.role_service.resolve_role(ctx, role)
-        if role_obj:
-            for member in role_obj.members:
-                administrator = await Administrator.fetch_member(member_snowflake=member.id)
-                if not administrator:
-                    continue
-                if administrator.role_snowflake == role_obj.id:
-                    administrator.role_snowflake = None
-                if administrator.role_snowflake not in {r.id for r in member.roles}:
-                    if administrator.guild_snowflake == ctx.guild.id:
-                        administrator.guild_snowflake = None
-                await Administrator.update_guild_and_role_for_member(
-                    guild_snowflake=administrator.guild_snowflake,
-                    member_snowflake=member.id,
-                    role_snowflake=administrator.role_snowflake
-                )
-        await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Team role revoked for members.')     
+        state = State(ctx)
+        try:
+            role_obj = await self.role_service.resolve_role(ctx, role)
+        except Exception as e:
+            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+        for member in role_obj.members:
+            administrator = await Administrator.fetch_member(member.id)
+            if not administrator:
+                continue
+            if administrator.role_snowflake == role_obj.id:
+                administrator.role_snowflake = None
+            if administrator.role_snowflake not in {r.id for r in member.roles}:
+                if administrator.guild_snowflake == ctx.guild.id:
+                    administrator.guild_snowflake = None
+            await Administrator.update_guild_and_role_for_member(
+                guild_snowflake=administrator.guild_snowflake,
+                member_snowflake=member.id,
+                role_snowflake=administrator.role_snowflake
+            )
+        try:
+            return await state.end(f'{self.emoji.get_random_emoji()} Successfully revoked administrator from all members with {role_obj.mention}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')    
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(DevCommands(bot))

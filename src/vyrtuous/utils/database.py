@@ -24,16 +24,16 @@ import subprocess
 
 class Database:
 
-    def __init__(self):
+    def __init__(self, directory):
         self.database: Optional[str] = os.getenv('POSTGRES_DB')
-        self.directory = os.getenv('DB_DIRECTORY')
+        self.directory = directory if directory else os.getenv('DB_DIRECTORY')
         self.host: Optional[str] = os.getenv('POSTGRES_HOST')
         self.password: Optional[str] = os.getenv('POSTGRES_PASSWORD')
         self.timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         self.file_name: Optional[str] = os.path.join(self.directory, f'backup_{self.timestamp}.sql')
         self.user: Optional[str] = os.getenv('POSTGRES_USER')
         
-    def create_backup_directory(self) -> None:
+    def create_backup_directory(self):
         os.makedirs(self.directory, exist_ok=True)
         return
 
@@ -45,7 +45,7 @@ class Database:
                 password=self.password,
                 command_timeout=30)
    
-    def execute_backup(self) -> None:
+    def execute_backup(self):
         dump_command = [
             'pg_dump',
             '-U', self.user,

@@ -19,6 +19,9 @@ from vyrtuous.bot.discord_bot import DiscordBot
 
 class Cap:
 
+    PLURAL = "Caps"
+    SINGULAR = "Cap"
+
     def __init__(self, channel_snowflake: Optional[int], duration: Optional[int], guild_snowflake: Optional[int], moderation_type: Optional[str]):
         self.channel_snowflake = channel_snowflake
         self.duration_seconds = duration

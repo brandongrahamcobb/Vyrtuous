@@ -72,7 +72,7 @@ class Help(commands.Cog):
                 if Permission.PERMISSION_TYPES.index(user_highest) <= Permission.PERMISSION_TYPES.index(perm_level):
                     available.append(command)
             except Exception as e:
-                logger.warning(f'\U0001F6AB Exception while evaluating command {command}: {e}')
+                logger.warning(f'\U000026A0\U0000FE0F Exception while evaluating command {command}: {e}.')
         return available
     
     async def get_command_permission_level(self, bot, command):
@@ -163,7 +163,7 @@ class Help(commands.Cog):
         if command_name:
             kind, obj = await self.resolve_command_or_alias(interaction, command_name)
             if not kind:
-                return await self.handler.send_message(interaction, f'\U0001F6AB Command or alias `{command_name}` not found.')
+                return await self.handler.send_message(interaction, f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -207,7 +207,7 @@ class Help(commands.Cog):
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
-                    return await self.handler.send_message(interaction, f'\U0001F6AB No help available for `{alias.alias_name}`.')
+                    return await self.handler.send_message(interaction, f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
                 embed = discord.Embed(
                     title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
                     description=f'Alias for **{alias.alias_type}**',
@@ -254,7 +254,7 @@ class Help(commands.Cog):
                 embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            return await self.handler.send_message(interaction, '\U0001F6AB No commands available to you.', ephemeral=True)
+            return await self.handler.send_message(interaction, '\U000026A0\U0000FE0F No commands available to you.', ephemeral=True)
         paginator = Paginator(bot, interaction, pages)
         await paginator.start()
         
@@ -264,7 +264,7 @@ class Help(commands.Cog):
         if command_name:
             kind, obj = await self.resolve_command_or_alias(ctx, command_name)
             if not kind:
-                return await self.handler.send_message(ctx, content=f'\U0001F6AB Command or alias `{command_name}` not found.')
+                return await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -308,7 +308,7 @@ class Help(commands.Cog):
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
-                    return await self.handler.send_message(ctx, content=f'\U0001F6AB No help available for `{alias.alias_name}`.')
+                    return await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
                 embed = discord.Embed(
                     title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
                     description=f'Alias for **{alias.alias_type}**',
@@ -355,7 +355,7 @@ class Help(commands.Cog):
                 embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            return await self.handler.send_message(ctx, content='\U0001F6AB No commands available to you.')
+            return await self.handler.send_message(ctx, content='\U000026A0\U0000FE0F No commands available to you.')
         paginator = Paginator(bot, ctx, pages)
         await paginator.start()
 

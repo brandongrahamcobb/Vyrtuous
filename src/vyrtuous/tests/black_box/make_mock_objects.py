@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from vyrtuous.inc.helpers import *
 import asyncio
@@ -86,11 +87,15 @@ def make_mock_message(allowed_mentions=None, author=None, content=None, channel=
     async def clear_reactions(self):
         self.reactions.clear()
     
-    async def edit(self, *, embed=None, content=None):
-        if embed:
-            self.edited_embeds.append(embed)
+    async def edit(self, *, content=None, embed=None, embeds=None, view=None, **kwargs):
         if content is not None:
             self.content = content
+        if embed is not None:
+            self.edited_embeds.append(embed)
+        if embeds is not None:
+            self.embeds = embeds
+        if view is not None:
+            self.view = view
         return self
     
     return type(
@@ -104,6 +109,7 @@ def make_mock_message(allowed_mentions=None, author=None, content=None, channel=
             'content': content,
             'channel': channel,
             'clear_reactions': clear_reactions,
+            'created_at': datetime.now(timezone.utc),
             'edit': edit,
             'edited_embeds': [],
             'embeds': embeds or [],
@@ -147,7 +153,8 @@ def make_mock_guild(bot, channel_defs=None, id=None, name=None, members=None, ow
 
 def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
 
-    async def async_send(self, allowed_mentions=None, author=None, content=None, embed=None, embeds=None, file=None, **kwargs):
+    async def async_send(self, author=None, content=None, embed=None, embeds=None, file=None, **kwargs):
+        allowed_mentions = kwargs.get('allowed_mentions')
         self.messages.append({
             'content': content,
             'embed': embed,
@@ -165,6 +172,10 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
         )
         return msg
 
+
+    def permissions_for(self, member):
+        return SimpleNamespace(send_messages=True)
+    
     return type(
         'MockChannel',
         (),
@@ -176,6 +187,7 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
             'mention': f'<#{id}>',
             'messages': [],
             'name': name,
+            'permissions_for': permissions_for,
             'send': async_send,
             'send_messages': True,
             'type': channel_type

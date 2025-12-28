@@ -20,6 +20,9 @@ from vyrtuous.bot.discord_bot import DiscordBot
 
 class VoiceMute:
 
+    PLURAL = "Voice Mutes"
+    SINGULAR = "Voice Mute"
+
     def __init__(self, channel_snowflake: Optional[int], expires_at: Optional[datetime], guild_snowflake: Optional[int], member_snowflake: Optional[int], target: Optional[str]):
         self.channel_snowflake = channel_snowflake
         self.expires_at = expires_at

@@ -60,16 +60,16 @@ class Developer:
         return developers
 
     @classmethod
-    async def fetch_by_member(cls, member_snowflake: Optional[int]):
+    async def fetch_guilds_by_member(cls, member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT guild_snowflake FROM developers WHERE member_snowflake=$1
             ''', member_snowflake)
-        developers = []
+        guild_snowflakes = []
         for row in rows:
-            developers.append(Developer(guild_snowflake=row['guild_snowflake'], member_snowflake=member_snowflake))
-        return developers
+            guild_snowflakes.append(row['guild_snowflake'])
+        return guild_snowflakes
 
     @classmethod
     async def fetch_by_guild(cls, guild_snowflake):

@@ -19,8 +19,12 @@ from typing import Optional, Union
 from vyrtuous.utils.setup_logging import logger
 
 class ChannelService:
-    
-    async def resolve_channel(self, ctx_interaction_or_message, value: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]]) -> Optional[Union[discord.TextChannel, discord.VoiceChannel]]:
+
+    async def resolve_channel(
+        self,
+        ctx_interaction_or_message,
+        value: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]]
+    ) -> Union[discord.TextChannel, discord.VoiceChannel]:
         try:
             if isinstance(value, (discord.TextChannel, discord.VoiceChannel)):
                 logger.debug(f"Direct channel: {value.id}")
@@ -37,12 +41,12 @@ class ChannelService:
                     if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                         logger.debug(f"Resolved channel by str ID: {c.id}")
                         return c
-                if value.startswith('<#') and value.endswith('>'):
+                elif value.startswith('<#') and value.endswith('>'):
                     cid = int(value[2:-1])
                     c = ctx_interaction_or_message.guild.get_channel(cid)
-                    if c:
+                    if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                         logger.debug(f"Channel mention resolved: {c.id}")
                         return c
         except Exception as e:
             logger.warning(f"Channel resolution error: {e}")
-        return ctx_interaction_or_message.channel
+        raise ValueError(f"Could not resolve channel from value: {value}")

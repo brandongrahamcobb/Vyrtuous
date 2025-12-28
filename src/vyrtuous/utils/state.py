@@ -136,9 +136,9 @@ class State:
         health = ""
         is_success = False
         if error:
-            health = "\U0001F6AB"
+            health = "\U000026A0\U0000FE0F"
         elif warning:
-            health = "\U0001F950"
+            health = "\U000026A0\U0000FE0F"
         elif success:
             health = "\U0001F3C6"
             is_success = True

@@ -65,7 +65,6 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
             formatted = f"{command} {alias_name}"
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]["content"]
-        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         assert any(emoji in response for emoji in Emojis.EMOJIS)
     finally:
         await administrator.revoke()

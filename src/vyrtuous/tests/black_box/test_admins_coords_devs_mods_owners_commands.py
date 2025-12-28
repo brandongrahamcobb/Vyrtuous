@@ -27,6 +27,8 @@ import pytest
     "command,channel_ref,member_ref",
     [
         ("admins", False, False),
+        ("admins {member_id}", False, True),
+        ("admins all", False, True),
         ("coords {voice_channel_one_id}", True, False),
         ("coords {member_id}", False, True),
         ("coords all", False, False),
@@ -54,10 +56,9 @@ async def test_admins_coords_devs_mods_owners_commands(bot, voice_channel_one, g
         bot.wait_for = mock_wait_for
         await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
         response = voice_channel_one.messages[0]
-        member_values = (not_privileged_author.mention, not_privileged_author.name)
         if response["embed"]:
             assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
         else:
-            assert any(emoji in response["content"] for emoji in Emojis.EMOJIS) 
+            assert '\U000026A0\U0000FE0F' in response["content"] 
     finally:
         await moderator.revoke()
