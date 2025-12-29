@@ -47,16 +47,25 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
     if "cstage" in command or "xstage" in command:
         administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
         await administrator.grant()
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         await administrator.revoke()
     else:
         moderator = Moderator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
         await moderator.grant()
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
         await moderator.revoke()
-    response = voice_channel_one.messages[0]
-    print(response)
-    if response['embed']:
-        assert any(emoji in response['embed'].title for emoji in Emojis.EMOJIS)
+    message = captured['message']
+    message_type = captured['type']
+    if isinstance(message, discord.Embed):
+        content = extract_embed_text(message)
+    elif isinstance(message, discord.File):
+        content = message.filename
     else:
-        assert any(emoji in response['content'] for emoji in Emojis.EMOJIS)
+        content = message
+    if message_type == "error":
+        print(f"{RED}Error:{RESET} {content}")
+    if message_type == "warning":
+        print(f"{YELLOW}Warning:{RESET} {content}")
+    if message_type == "success":
+        print(f"{GREEN}Success:{RESET} {content}")
+        assert any(emoji in content for emoji in Emojis.EMOJIS)

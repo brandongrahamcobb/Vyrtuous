@@ -38,8 +38,21 @@ async def test_sync_command(bot, voice_channel_one, guild, privileged_author, pr
     await developer.grant()
     try:
         voice_channel_one.messages.clear() 
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]["content"]
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
+        elif isinstance(message, discord.File):
+            content = message.filename
+        else:
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            print(f"{GREEN}Success:{RESET} {content}")
+            assert any(emoji in content for emoji in Emojis.EMOJIS)
     finally:
         await developer.revoke()

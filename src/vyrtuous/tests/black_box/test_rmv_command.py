@@ -34,16 +34,31 @@ async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, pri
     await administrator.grant()
     try:
         voice_channel_one.messages.clear() 
+        channel_value_one = voice_channel_one.mention if channel_ref_one else voice_channel_one.name
+        channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
         source_id = voice_channel_one.id
         target_id = voice_channel_two.id
         formatted = command.format(
             source_id=source_id,
             target_id=target_id
         )
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]["embed"]
-        assert any(emoji in response.title for emoji in Emojis.EMOJIS)
-        channel_value_one = voice_channel_one.mention if channel_ref_one else voice_channel_one.name
-        channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
+        elif isinstance(message, discord.File):
+            content = message.filename
+        else:
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            print(f"{GREEN}Success:{RESET} {content}")
+            assert any(emoji in content for emoji in Emojis.EMOJIS)
+            assert channel_value_one in content
+            assert channel_value_two in content
     finally:
         await administrator.revoke()

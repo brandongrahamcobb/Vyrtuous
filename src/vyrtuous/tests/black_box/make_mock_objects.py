@@ -152,48 +152,45 @@ def make_mock_guild(bot, channel_defs=None, id=None, name=None, members=None, ow
     return guild
 
 def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
-
-    async def async_send(self, author=None, content=None, embed=None, embeds=None, file=None, **kwargs):
-        allowed_mentions = kwargs.get('allowed_mentions')
-        self.messages.append({
-            'content': content,
-            'embed': embed,
-            'file': file,
-            'id': MESSAGE_ID
-        })
-        msg = make_mock_message(
-            allowed_mentions=allowed_mentions,
-            author=author,
-            channel=self,
-            content=content,
-            embeds=embeds or ([embed] if embed else []),
-            guild=guild,
-            id=id
-        )
-        return msg
     
+    _messages = []
+
     async def set_permissions(self, target, **overwrites):
         self.overwrites[target.id] = overwrites
         return True
 
+    async def fetch_message(self, message_id):
+        print(self.messages)
+        for msg in self.messages:
+            if getattr(msg, "id", None) == message_id:
+                return msg
+        # fallback for tests
+        if self.messages:
+            return self.messages[-1]
+        raise ValueError(f"Message with ID {message_id} not found")
+    
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
+    
+    async def append_message(self, msg):
+        _messages.append(msg)
     
     return type(
         'MockChannel',
         (),
         {
             '_state': make_mock_state(),
+            'append_message': append_message,
             'guild': guild,
             'id': id,
+            'fetch_message': fetch_message,
             'members': [],
             'mention': f'<#{id}>',
-            'messages': [],
+            'messages': _messages,
             'name': name,
             'overwrites': {},
             'permissions_for': permissions_for,
             'set_permissions': set_permissions,
-            'send': async_send,
             'send_messages': True,
             'type': channel_type
         }

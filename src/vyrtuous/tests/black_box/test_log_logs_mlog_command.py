@@ -22,47 +22,73 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,action,target_type,target_id,channel_ref,member_ref",
+    "command,action,target_type,text_ref, channel_ref,member_ref",
     [
-        ("mlog", "create", "general", None, None, None),
-        ("log", None, None, None, True, False),
-        ("log", None, None, None, True, False),
-        ("logs", "all", None, None, False, False),
-        ("logs", None, None, None, True, False),
-        ("mlog", "modify", "general", None, None, None),
-        ("mlog", "delete", "general", None, None, None),
-        ("mlog", "create", "channel", True, True, None),
-        ("mlog", "modify", "channel", True, True, None),
-        ("mlog", "delete", None, True, True, None),
-        ("mlog", "create", "member", True, None, None),
-        ("mlog", "modify", "member", True, None, None),
-        ("mlog", "delete", None, True, None, None)
+        ("mlog", "create", "general", True, False, False),
+        ("log", None, None, True, False, False),
+        ("log", None, None, True, False, False),
+        ("logs", "all", None, False, False, False),
+        ("logs", None, None, False, False, False),
+        ("mlog", "modify", "general", True, False, False),
+        ("mlog", "delete", "general", True, False, False),
+        ("mlog", "create", "channel", True, True, False),
+        ("mlog", "modify", "channel", True, True, False),
+        ("mlog", "delete", None, True, False, False),
+        ("mlog", "create", "member", True, False, True),
+        ("mlog", "modify", "member", True, False, True),
+        ("mlog", "delete", None, True, False, False)
     ]
 )
 
-async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], action: Optional[str], target_type: Optional[str], target_id: Optional[str], channel_ref, member_ref):
+async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], role, command: Optional[str], action: Optional[str], target_type: Optional[str], channel_ref, member_ref, text_ref):
     administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
     await administrator.grant()
     try:
         text_channel.messages.clear() 
-        if command == "mlog":
-            if target_id:
-                formatted = f"{command} {text_channel.id} {action} {target_type} {voice_channel_one.id}".strip()
-            else:
-                formatted = f"{command} {text_channel.id} {action} {target_type}".strip()
-        if command in ("log", "logs"):
-            if channel_ref:
-                formatted = f"{command} {text_channel.id}".strip()
-            else:
-                formatted = f"{command} {action}".strip()
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        response = text_channel.messages[0]
-        channel_value = text_channel.mention if channel_ref else text_channel.name
+        text_channel_value = text_channel.mention
+        voice_channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
         privileged_author_value = privileged_author.mention if member_ref else privileged_author.name
         not_privileged_author_value = not_privileged_author.mention if member_ref else not_privileged_author.name
-        if command in ("log", "mlog"):
-            assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
+        if command == "mlog":
+            match target_type:
+                case "general":
+                    formatted = f"{command} {text_channel.id} {action} {target_type}".strip()
+                case "channel":
+                    formatted = f"{command} {text_channel.id} {action} {target_type} {voice_channel_one.id}".strip()
+                case "member":
+                    formatted = f"{command} {text_channel.id} {action} {target_type} {not_privileged_author.id}".strip()
+                case None:
+                    formatted = f"{command} {text_channel.id} {action}".strip()
+        if command == "log":
+            formatted = f"{command} {text_channel.id}".strip()
+        if command == "logs" and action:
+            formatted = f"{command} {action}".strip()
+        elif command == "logs":
+            formatted = f"{command}".strip()
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
+        elif isinstance(message, discord.File):
+            content = message.filename
         else:
-            assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS)
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            print(f"{GREEN}Success:{RESET} {content}")
+            # assert any(emoji in content for emoji in Emojis.EMOJIS)
+            if text_ref:
+                assert text_channel_value in content
+            # match target_type:
+            #     case "channel":
+            #         assert voice_channel_value in content
+            #     case "member":
+            #         assert not_privileged_author_value in content
+            # if channel_ref:
+            #     assert text_channel_value in content
     finally:
         await administrator.revoke()

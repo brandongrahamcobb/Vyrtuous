@@ -589,29 +589,6 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope. Provide "all", a channel, or a member.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
-       # DONE
-    @app_commands.command(name='ping', description='Ping the bot!')
-    async def ping_app_command(
-        self,
-        interaction: discord.Interaction
-    ):
-        state = State(interaction)
-        try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Pong!')
-        except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
-
-    # DONE
-    @commands.command(name='ping', description='Ping the bot!')
-    async def ping_text_command(
-        self,
-        ctx: commands.Context
-    ):
-        state = State(ctx)
-        try:
-            return await state.end(success=f"{self.emoji.get_random_emoji()} Pong!")
-        except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')   
 
     # DONE
     @app_commands.command(name='roleid', description='Get the ID of a role by name in this server.')

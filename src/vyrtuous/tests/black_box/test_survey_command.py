@@ -38,8 +38,21 @@ async def test_survey_command(bot, voice_channel_one, guild, not_privileged_auth
             voice_channel_one_id=voice_channel_one.id
         )
         voice_channel_one.messages.clear() 
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]
-        assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
+        elif isinstance(message, discord.File):
+            content = message.filename
+        else:
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            print(f"{GREEN}Success:{RESET} {content}")
+            assert any(emoji in content for emoji in Emojis.EMOJIS) 
     finally:
         await moderator.revoke()

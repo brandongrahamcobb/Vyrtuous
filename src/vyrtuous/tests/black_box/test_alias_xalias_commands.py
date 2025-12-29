@@ -74,11 +74,11 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
         else:
             content = message
         if message_type == "error":
-            # print(f"{RED}Error:{RESET} {content}")
+            print(f"{RED}Error:{RESET} {content}")
         if message_type == "warning":
-            # print(f"{YELLOW}Warning:{RESET} {content}")
+            print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
+            print(f"{GREEN}Success:{RESET} {content}")
             if alias_type:
                 assert alias_type in content and alias_name in content and channel_value in content
             if role_ref:

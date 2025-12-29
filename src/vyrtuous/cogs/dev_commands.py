@@ -123,6 +123,7 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
         
+    # DONE
     @app_commands.command(name='load', description='Loads a cog by name "vyrtuous.cog.<cog_name>.')
     @is_owner_developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
@@ -133,10 +134,11 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()}  Successfully loaded {module}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully loaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
-            
+
+    # DONE    
     @commands.command(name='load', help='Loads a cog by name "vyrtuous.cog.<cog_name>."')
     @is_owner_developer_predicator()
     async def load_text_command(self, ctx: commands.Context, *, module: str):
@@ -150,6 +152,30 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     
+    # DONE
+    @app_commands.command(name='ping', description='Ping the bot!')
+    async def ping_app_command(
+        self,
+        interaction: discord.Interaction
+    ):
+        state = State(interaction)
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Pong!')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
+
+    # DONE
+    @commands.command(name='ping', description='Ping the bot!')
+    async def ping_text_command(
+        self,
+        ctx: commands.Context
+    ):
+        state = State(ctx)
+        try:
+            return await state.end(success=f"{self.emoji.get_random_emoji()} Pong!")
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')   
+    # DONE
     @app_commands.command(name='reload', description='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
     @app_commands.check(at_home)
     @is_owner_developer_predicator()
@@ -165,6 +191,7 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
             
+    # DONE
     @commands.command(name='reload', help='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
     @is_owner_developer_predicator()
     async def reload(self, ctx: commands.Context, *, module: str):
@@ -178,6 +205,7 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
+    # DONE
     @app_commands.command(name='sync', description="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
     @is_owner_developer_predicator()
     async def sync_app_command(self, interaction: discord.Interaction, spec: Optional[Literal['~', '*', '^']] = None):
@@ -213,6 +241,7 @@ class DevCommands(commands.Cog):
         except Exception as e:   
             return await state.end(error=f'\U0001F3C6 {e}.')
         
+    # DONE
     @commands.command(name='sync', help="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
     @is_owner_developer_predicator()
     async def sync_text_command(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None):
@@ -267,6 +296,7 @@ class DevCommands(commands.Cog):
         except Exception as e:   
             return await state.end(error=f'\U0001F3C6 {e}.')
         
+    # DONE
     @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
     async def grant_team_to_role_text_command(
@@ -316,6 +346,7 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
                 
+    # DONE
     @is_owner_developer_predicator()
     async def revoke_administrator_to_role_app_command(
         self,
@@ -346,6 +377,7 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
+    # DONE
     @commands.command(name='xtrole', help='Revokes a role from administrator and updates all members.')
     @is_owner_developer_predicator()
     async def revoke_administrator_to_role_text_command(

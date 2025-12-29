@@ -65,7 +65,7 @@ class OwnerCommands(commands.Cog):
         try:
             await state.end(success=f"{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}.")
         except Exception as e:
-            await state.end(error=f'\U0001F3C6 {str(e)}')
+            await state.end(error=f'\U0001F3C6 {e}')
         
     # DONE
     @commands.command(name='dev', help="Grants/revokes a user's permissions to a bot developer.")
@@ -97,7 +97,7 @@ class OwnerCommands(commands.Cog):
         try:
             await state.end(success=f"{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}.")
         except Exception as e:
-            await state.end(error=f'\U0001F3C6 {str(e)}')
+            await state.end(error=f'\U0001F3C6 {e}')
         
         
     # DONE
@@ -128,7 +128,7 @@ class OwnerCommands(commands.Cog):
         try:
             await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled} for {member_obj.mention}.')
         except Exception as e:
-            await state.end(error=f'\U0001F3C6 {str(e)}')
+            await state.end(error=f'\U0001F3C6 {e}')
            
     # DONE
     @commands.command(name='hero', help='Grants/revokes invincibility for a member.')
@@ -144,9 +144,15 @@ class OwnerCommands(commands.Cog):
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
         except Exception as e:
-            await state.end(warning=str(e))
+            try:
+                return await state.end(warning=f"Member could not be resolved from {member}")
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}')
         if member_obj.id == ctx.guild.me.id:
-            await state.end(warning="You cannot promote the bot to a hero.")
+            try:
+                await state.end(warning="You cannot promote the bot to a hero.")
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}')
         enabled = Invincibility.toggle_enabled()
         if enabled:
             Invincibility.add_invincible_member(member_obj.id)
@@ -155,8 +161,8 @@ class OwnerCommands(commands.Cog):
             Invincibility.remove_invincible_member(member_obj.id)
         enabled = f'ON' if enabled else f'OFF'
         try:
-            await self.handler.send_message(ctx, content=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled}.')
         except Exception as e:
-            await state.end(error=f'\U0001F3C6 {str(e)}')
+            return await state.end(error=f'\U0001F3C6 {e}')
 async def setup(bot: DiscordBot):
     await bot.add_cog(OwnerCommands(bot))

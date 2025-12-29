@@ -1221,7 +1221,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No users are currently text-muted in {interaction.guild.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=text_mutes, moderation_type=TextMute)
+            pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=text_mutes, moderation_type=TextMute)
         elif member_obj:
             text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             if not text_mutes:
@@ -1229,7 +1229,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not text-muted in any channels.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=text_mutes, moderation_type=TextMute)
+            pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=text_mutes, moderation_type=TextMute)
         elif channel_obj:
             text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not text_mutes:
