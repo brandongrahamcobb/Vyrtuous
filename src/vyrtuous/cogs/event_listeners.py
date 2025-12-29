@@ -18,7 +18,6 @@
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from discord.ext import commands
-from typing import Union
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
@@ -30,19 +29,21 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.duration import Duration
+from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.state import State
 from vyrtuous.utils.server_mute import ServerMute
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.time_to_complete import TimeToComplete
-from vyrtuous.utils.invincibility import Invincibility
+from vyrtuous.utils.video_room import VideoRoom
 from vyrtuous.utils.voice_mute import VoiceMute
-
+import asyncio
 import discord
 import time
+
+COOLDOWN = timedelta(minutes=30)
 
 class EventListeners(commands.Cog):
 
@@ -51,12 +52,65 @@ class EventListeners(commands.Cog):
         self.channel_service = ChannelService()
         self.config = bot.config
         self.db_pool = bot.db_pool
+        self.emojis = Emojis()
         self.handler = MessageService(self.bot, self.db_pool)
         self.join_log = defaultdict(list)
         self._ready_done = False
         self.deleted_rooms = {}
         self.member_service = MemberService()
+        self.video_rooms = []
+        self.video_tasks = {}
+        self.cooldowns = {}
 
+    async def enforce_video(self, member, channel, delay):
+        await asyncio.sleep(delay)
+        if not member.voice:
+            return
+        if member.voice.channel != channel:
+            return
+        if member.voice.self_video:
+            return
+        try:
+            await member.move_to(None)
+        except Exception as e:
+            logger.info("Unable to enforce video by kicking the user.")
+        try:
+            await member.send(f"{self.emojis.get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel.")
+        except Exception as e:
+            logger.info("Unable to send a message to enforce video.")
+
+    def cancel_task(self, key):
+        task = self.video_tasks.pop(key, None)
+        if task:
+            task.cancel()
+
+    async def cog_load(self):
+        self.video_rooms = await VideoRoom.fetch_all()
+        for room in self.video_rooms:
+            channel = self.bot.get_channel(room.channel_snowflake)
+            if channel:
+                try:
+                    await channel.edit(status="Video-Only Room", reason="Enforce default video-only status")
+                except discord.Forbidden:
+                    pass
+    
+    async def enforce_video_message(self, channel_snowflake, member_snowflake, message):
+        channel = await self.bot.fetch_channel(channel_snowflake)
+        member = self.bot.get_user(member_snowflake)
+        now = datetime.now(timezone.utc)
+        last_trigger = self.cooldowns.get(member_snowflake)
+        if last_trigger and now - last_trigger < COOLDOWN:
+            remaining = COOLDOWN - (now - last_trigger)
+            return
+        self.cooldowns[member_snowflake] = now
+        await channel.send(message)
+        async def reset_cooldown():
+            await asyncio.sleep(COOLDOWN.total_seconds())
+            if self.cooldowns.get(member_snowflake) == now:
+                del self.cooldowns[member_snowflake]
+        asyncio.create_task(reset_cooldown())
+
+    
     @commands.Cog.listener()
     async def on_guild_channel_grant(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
@@ -109,6 +163,31 @@ class EventListeners(commands.Cog):
     # Done
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        if member.id == self.bot.user.id:
+            return
+        if not after.channel:
+            self.cancel_task((member.guild.id, member.id))
+            return
+        for video_room in self.video_rooms:
+            if after.channel.id != video_room.channel_snowflake:
+                continue
+            if not after.self_video and after.channel != before.channel:
+                await self.enforce_video_message(channel_snowflake=after.channel.id, member_snowflake=member.id, message=f"{self.emojis.get_random_emoji()} Hi {member.mention}, {after.channel.mention} is a video only room. You have 5 minutes to turn on your camera!")
+            key = (member.guild.id, member.id)
+            if before.channel != after.channel:
+                self.cancel_task(key)
+                if not after.self_video:
+                    task = asyncio.create_task(self.enforce_video(member, after.channel, 300))
+                    self.video_tasks[key] = task
+                return
+            if before.self_video and not after.self_video:
+                self.cancel_task(key)
+                task = asyncio.create_task(self.enforce_video(member, after.channel, 60))
+                self.video_tasks[key] = task
+                return
+            if not before.self_video and after.self_video:
+                self.cancel_task(key)
+                return
         allowed = True
         if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
             allowed = False
@@ -116,6 +195,9 @@ class EventListeners(commands.Cog):
             allowed = False
         if not allowed:
             return
+        video_room = await VideoRoom.fetch_by_channel_and_guild(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id)
+        if video_room:
+            await after.channel.send(f"Hey {member.mention}! You joined a video only room and you have 5 minutes to turn your camera on.")
         # member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(after.channel, member)
 
         async with self.db_pool.acquire() as conn:
@@ -153,7 +235,7 @@ class EventListeners(commands.Cog):
                         await after.channel.send(embed=embed)
                     else:
                         expires_at = datetime.utcnow() + timedelta(hours=1)
-                        voice_mute = await VoiceMute(channel_snowflake=after.channel.id, expires_at=expires_at, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target=target)
+                        voice_mute = await VoiceMute(channel_snowflake=after.channel.id, expires_at=expires_at, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason="No reason provided.", target=target)
                         await voice_mute.create()       
                         should_be_muted = True 
                 if not should_be_muted:               
@@ -259,7 +341,7 @@ class EventListeners(commands.Cog):
                 raise Exception(f"\U000026A0\U0000FE0F No alias handler exists for {alias.alias_name}.")
         except Exception as e:
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F {e}")
+                return await state.end(warning=f"\U000026A0\U0000FE0F Could not resolve a valid channel, member or has insufficient permissions for this alias.")
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}')
         existing_guestroom_alias_event = await Alias.get_existing_guestroom_alias_event(alias=alias, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
@@ -331,61 +413,61 @@ class EventListeners(commands.Cog):
                 Administrator.update_guilds_and_roles_by_member(guild_snowflake=list(guild_snowflakes), member_snowflake=administrator.member_snowflake, role_snowflakes=list(role_snowflakes))
 
         
-    async def print_flags(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
-        async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
-                SELECT channel_id, discord_snowflake, reason
-                FROM active_flags
-                WHERE guild_id = $1 AND discord_snowflake = $2
-            ''', member.guild.id, member.id)
-            if rows:
-                grouped = {}
-                for row in rows:
-                    grouped.setdefault(row['channel_id'], []).append(row)
-                context_records = grouped.get(after_channel.id)
-                if after_channel.id == 1222056499959042108 and context_records:
-                    if context_records and after_channel.id:
-                        embeds = []
-                        embed = discord.Embed(
-                            title=f'\u26A0\uFE0F {member.display_name} is flagged',
-                            color=discord.Color.red()
-                        )
-                        embed.set_thumbnail(url=member.display_avatar.url)
-                        for record in context_records:
-                            reason = record['reason'] or 'No reason provided'
-                            embed.add_field(name=f'Channel: {after_channel.mention}', value=f'Reason: {reason}', inline=False)
-                        other_channels = [ch_id for ch_id in grouped.keys() if ch_id != after_channel.id]
-                        if other_channels:
-                            ch_mentions = []
-                            for ch_id in other_channels:
-                                ch = member.guild.get_channel(ch_id)
-                                if not ch:
-                                    ch = await member.guild.fetch_channel(ch_id)
-                                ch_mentions.append(ch.mention if ch else f'Channel ID `{ch_id}`')
-                            embed.add_field(name='Other flagged channels', value='\n'.join(ch_mentions), inline=False)
-                        embeds.append(embed)
-                        for ch_id in other_channels:
-                            records = grouped[ch_id]
-                            ch = member.guild.get_channel(ch_id)
-                            ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
-                            embed = discord.Embed(
-                                title=f'\u26A0\uFE0F {member.display_name} is flagged in {ch_name}',
-                                color=discord.Color.red()
-                            )
-                            embed.set_thumbnail(url=member.display_avatar.url)
-                            for record in records:
-                                reason = record['reason'] or 'No reason provided'
-                                embed.add_field(name='Channel', value=f'{ch_name}\nReason: {reason}', inline=False)
-                            embeds.append(embed)
-                        now = time.time()
-                        self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
-                        if len(self.join_log[member.id]) < 1:
-                            self.join_log[member.id].append(now)
-                            if len(embeds) == 1:
-                                await after_channel.send(embed=embeds[0])
-                            else:
-                                paginator = Paginator(self.bot, after_channel, embeds)
-                                await paginator.start()
+    # async def print_flags(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
+    #     async with self.db_pool.acquire() as conn:
+    #         rows = await conn.fetch('''
+    #             SELECT channel_snowflake, member_snowflake, reason
+    #             FROM active_flags
+    #             WHERE guild_id = $1 AND member_snowflake = $2
+    #         ''', member.guild.id, member.id)
+    #         if rows:
+    #             grouped = {}
+    #             for row in rows:
+    #                 grouped.setdefault(row['channel_id'], []).append(row)
+    #             context_records = grouped.get(after_channel.id)
+    #             if after_channel.id == 1222056499959042108 and context_records:
+    #                 if context_records and after_channel.id:
+    #                     embeds = []
+    #                     embed = discord.Embed(
+    #                         title=f'\u26A0\uFE0F {member.display_name} is flagged',
+    #                         color=discord.Color.red()
+    #                     )
+    #                     embed.set_thumbnail(url=member.display_avatar.url)
+    #                     for record in context_records:
+    #                         reason = record['reason'] or 'No reason provided'
+    #                         embed.add_field(name=f'Channel: {after_channel.mention}', value=f'Reason: {reason}', inline=False)
+    #                     other_channels = [ch_id for ch_id in grouped.keys() if ch_id != after_channel.id]
+    #                     if other_channels:
+    #                         ch_mentions = []
+    #                         for ch_id in other_channels:
+    #                             ch = member.guild.get_channel(ch_id)
+    #                             if not ch:
+    #                                 ch = await member.guild.fetch_channel(ch_id)
+    #                             ch_mentions.append(ch.mention if ch else f'Channel ID `{ch_id}`')
+    #                         embed.add_field(name='Other flagged channels', value='\n'.join(ch_mentions), inline=False)
+    #                     embeds.append(embed)
+    #                     for ch_id in other_channels:
+    #                         records = grouped[ch_id]
+    #                         ch = member.guild.get_channel(ch_id)
+    #                         ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
+    #                         embed = discord.Embed(
+    #                             title=f'\u26A0\uFE0F {member.display_name} is flagged in {ch_name}',
+    #                             color=discord.Color.red()
+    #                         )
+    #                         embed.set_thumbnail(url=member.display_avatar.url)
+    #                         for record in records:
+    #                             reason = record['reason'] or 'No reason provided'
+    #                             embed.add_field(name='Channel', value=f'{ch_name}\nReason: {reason}', inline=False)
+    #                         embeds.append(embed)
+    #                     now = time.time()
+    #                     self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
+    #                     if len(self.join_log[member.id]) < 1:
+    #                         self.join_log[member.id].append(now)
+    #                         if len(embeds) == 1:
+    #                             await after_channel.send(embed=embeds[0])
+    #                         else:
+    #                             paginator = Paginator(self.bot, after_channel, embeds)
+    #                             await paginator.start()
             
 async def setup(bot: DiscordBot):
     await bot.add_cog(EventListeners(bot))

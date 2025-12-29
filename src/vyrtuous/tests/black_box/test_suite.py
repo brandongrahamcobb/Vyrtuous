@@ -1,5 +1,6 @@
 
 ''' test_suite.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -26,8 +27,6 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bot.discord_client import DiscordClient
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import *
-from vyrtuous.utils.state import State
-from vyrtuous.service.message_service import MessageService
 from vyrtuous.tests.black_box.make_mock_objects import *
 import asyncpg
 import discord

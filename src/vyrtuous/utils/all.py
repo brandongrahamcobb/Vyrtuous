@@ -1,4 +1,5 @@
-''' temporary_rooms.py A utility module for managing temporary rooms in the Vyrtuous Discord bot.
+''' all.py A utility module for creating pages from moderation events.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify

@@ -1,4 +1,5 @@
-''' vegans.py A utility module for managing vegan members in the Vyrtuous Discord bot.
+''' invincibility.py A utility module for granting invincibility to moderation events and revoking all moderation events for a user.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -14,8 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from vyrtuous.bot.discord_bot import DiscordBot
-
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.voice_mute import VoiceMute

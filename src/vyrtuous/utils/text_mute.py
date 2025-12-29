@@ -1,4 +1,5 @@
-''' cap.py The purpose of this program is to provide the Cap utility class.
+''' text_mute.py The purpose of this program is to inherit from the moderation event class to provide the text mute moderation.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify

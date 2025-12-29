@@ -1,4 +1,5 @@
-''' cap.py The purpose of this program is to provide the Cap utility class.
+''' flag.py The purpose of this program is to inherit from the moderation event class to provide the flag moderation.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -14,7 +15,6 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from datetime import datetime
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 

@@ -1,5 +1,5 @@
+''' developer.py The purpose of this program is to inherit from the user class as a developer.
 
-''' test_admin_helpers.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify

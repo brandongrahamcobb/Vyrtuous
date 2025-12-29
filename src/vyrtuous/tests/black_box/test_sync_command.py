@@ -1,4 +1,5 @@
-''' test_backup_command.py The purpose of this program is to black box test the backup command.
+''' test_sync_command.py The purpose of this program is to black box test the app related sync command.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -52,7 +53,7 @@ async def test_sync_command(bot, voice_channel_one, guild, privileged_author, pr
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            print(f"{GREEN}Success:{RESET} {content}")
+            # print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in Emojis.EMOJIS)
     finally:
         await developer.revoke()

@@ -1,4 +1,5 @@
-''' cap.py The purpose of this program is to provide the Cap utility class.
+''' voice_mute.py The purpose of this program is to inherit from the moderation event class to provide the voice mute moderation.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -30,7 +31,17 @@ class VoiceMute:
         self.member_snowflake = member_snowflake
         self.reason = reason
         self.target = target
- 
+
+    @property
+    def target(self):
+        return self._target
+
+    @target.setter
+    def target(self, target):
+        if target not in ["room", "user"]:
+            raise ValueError("Invalid target.")
+        self._target = target
+
     @classmethod
     async def delete_by_channel_and_guild(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
@@ -156,13 +167,3 @@ class VoiceMute:
             for row in rows:
                 voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
         return voice_mutes
-
-    @property
-    def target(self):
-        return self._target
-
-    @target.setter
-    def target(self, target):
-        if target not in ["room", "user"]:
-            raise ValueError("Invalid target.")
-        self._target = target

@@ -1,4 +1,5 @@
-''' test_chown_temp_temps_xtemp_commands.py The purpose of this program is to black box test the temporary room commands.
+''' test_del_commands.py The purpose of this program is to black box test the message delete command. FIX NO MESSAGE FOUND ERROR
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify

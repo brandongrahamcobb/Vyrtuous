@@ -1,13 +1,31 @@
+
+''' state.py A utility module for managing the failure, warning and success messages along with statistics about the bot's responses.
+
+    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+'''
 from typing import Union
 from cachetools import TTLCache
 from datetime import datetime, timezone
-import asyncio
-import discord
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.utils.time_to_complete import TimeToComplete
 from vyrtuous.utils.developer import Developer
+import asyncio
+import discord
 
 cache = TTLCache(maxsize=500, ttl=8*60*60)
 

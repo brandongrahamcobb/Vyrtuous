@@ -1,4 +1,5 @@
-''' temporary_rooms.py A utility module for managing temporary rooms in the Vyrtuous Discord bot.
+''' coordinator.py The purpose of this program is to inherit from the user class as a coordinator.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -15,10 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
-
 from vyrtuous.bot.discord_bot import DiscordBot
-import discord
-import asyncpg
 
 class Coordinator:
 
@@ -31,7 +29,6 @@ class Coordinator:
         self.guild_snowflake = guild_snowflake
         self.member_snowflake: Optional[int] = member_snowflake
         self.member_mention: Optional[str] = f"<@{member_snowflake}>"
-
 
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):

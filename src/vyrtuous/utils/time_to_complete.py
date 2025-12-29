@@ -1,4 +1,5 @@
 ''' time_to_complete.py The purpose of this program is to provide the TimeToComplete utility module.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify

@@ -1,4 +1,4 @@
-''' test_rmute_command.py The purpose of this program is to black box test the room-mute command.
+''' test_load_reload_unload_commands.py The purpose of this program is to black box test the module management commands.
 
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
@@ -16,27 +16,29 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.utils.coordinator import Coordinator
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.developer import Developer
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.tests.black_box.test_suite import *
 import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,member_ref",
+    "command",
     [
-        ("rmute", "True"),
-        ("rmute", "True")
+        f"{action} {cog}"
+        for action in ("load", "reload", "unload")
+        for cog in DISCORD_COGS
+        if cog != "vyrtuous.cogs.dev_commands"
     ]
 )
 
-async def test_rmute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
-    coordinator = Coordinator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-    await coordinator.grant()
+async def test_clear_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str]):
+    developer = Developer(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    await developer.grant()
     try:
         voice_channel_one.messages.clear() 
-        formatted = f"{command} {voice_channel_one.id}"
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="CoordinatorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.coordinator_commands.isinstance", prefix=prefix)
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         message = captured['message']
         message_type = captured['type']
         if isinstance(message, discord.Embed):
@@ -53,4 +55,4 @@ async def test_rmute_command(bot, voice_channel_one, guild, privileged_author, n
             # print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in Emojis.EMOJIS)
     finally:
-        await coordinator.revoke()
+        await developer.revoke()

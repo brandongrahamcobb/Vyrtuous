@@ -28,6 +28,7 @@ from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.state import State
 from vyrtuous.utils.temporary_room import TemporaryRoom
@@ -81,45 +82,80 @@ class DevCommands(commands.Cog):
  
     # DONE
     @app_commands.command(name='clear', description='Removes a specific channel ID from all users, including temp-room associations.')
-    @app_commands.describe(channel='Tag a channel or include its snowflake ID')
+    @app_commands.describe(scope='Tag a channel or include its snowflake ID')
     @is_owner_developer_predicator()
     async def clear_channel_access_app_command(
         self,
         interaction: discord.Interaction,
-        channel: AppChannelSnowflake
+        scope: str
     ):
         state = State(interaction)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
-        await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-        await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
-        await Moderator.delete_channel(channel_snowflake=channel_obj.id)
-        await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            try:
+                member_obj = await self.member_service.resolve_member(interaction, scope)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Unable to identify a valid channel or member from {scope}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
+        if channel_obj and highest_role in ("Owner", "Developer"):
+            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
+            await Moderator.delete_channel(channel_snowflake=channel_obj.id)
+            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            msg = f'{self.emoji.get_random_emoji()} Removed channel `{channel_obj.mention}` from all users\' coordinator and moderator access and deleted all associated records.'
+        elif member_obj:
+            await Invincibility.unrestrict(guild_snowflake=interaction.guild.id, member=member_obj)
+            msg =f'{self.emoji.get_random_emoji()} Wiped all moderation actions for {member_obj.mention}.'
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to wipe all moderation actions for channels in {interaction.guild.name}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Removed channel `{channel_obj.mention}` from all users\' coordinator and moderator access and deleted all associated records.')
+            return await state.end(success=msg)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
+        
     # DONE
     @commands.command(name='clear', help='Removes a specific channel ID from all users, including temp-room associations and all related records.')
     @is_owner_developer_predicator()
     async def clear_channel_access_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        scope: str = commands.parameter(default=None, description='Tag a channel, a member or include its the snowflake ID')
     ):
         state = State(ctx)
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
-        await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-        await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
-        await Moderator.delete_channel(channel_snowflake=channel_obj.id)
-        await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            try:
+                member_obj = await self.member_service.resolve_member(ctx, scope)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Unable to identify a valid channel or member from {scope}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
+        if channel_obj and highest_role in ("Owner", "Developer"):
+            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
+            await Moderator.delete_channel(channel_snowflake=channel_obj.id)
+            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            msg = f'{self.emoji.get_random_emoji()} Removed channel `{channel_obj.mention}` from all users\' coordinator and moderator access and deleted all associated records.'
+        elif member_obj:
+            await Invincibility.unrestrict(guild_snowflake=ctx.guild.id, member=member_obj)
+            msg =f'{self.emoji.get_random_emoji()} Wiped all moderation actions for {member_obj.mention}.'
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to wipe all moderation actions for channels in {ctx.guild.name}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Removed channel `{channel_obj.mention}` from all users\' coordinator and moderator access and deleted all associated records.')
+            return await state.end(success=msg)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
         

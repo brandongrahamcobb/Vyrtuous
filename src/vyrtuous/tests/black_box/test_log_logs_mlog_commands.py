@@ -1,4 +1,5 @@
-''' test_mlog_command.py The purpose of this program is to black box test the mlog command.
+''' test_log_logs_mlog_commands.py The purpose of this program is to black box test the logging related commands.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -79,7 +80,7 @@ async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            print(f"{GREEN}Success:{RESET} {content}")
+            # print(f"{GREEN}Success:{RESET} {content}")
             # assert any(emoji in content for emoji in Emojis.EMOJIS)
             if text_ref:
                 assert text_channel_value in content

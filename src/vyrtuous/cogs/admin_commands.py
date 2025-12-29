@@ -37,6 +37,7 @@ from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.state import State
 from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.temporary_room import TemporaryRoom
+from vyrtuous.utils.video_room import VideoRoom
 from vyrtuous.utils.voice_mute import VoiceMute
 from vyrtuous.service.message_service import MessageService
 
@@ -1106,6 +1107,167 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}')
 
+    @app_commands.command(name='vr', description='Toggle a temporary room and assign an owner.')
+    @app_commands.describe(channel='Tag a channel or include the snowflake ID')
+    @is_owner_developer_administrator_predicator()
+    async def toggle_temp_room_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: AppChannelSnowflake
+    ):
+        state = State(interaction)
+        action = None
+        channel_obj = None
+        try:
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        except Exception as e:
+            channel_obj = interaction.channel
+            await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+        video_room = await VideoRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+        cog = self.bot.get_cog("EventListeners")
+        if video_room:
+            action = 'removed'
+            cog.video_rooms = [vr for vr in cog.video_rooms if vr.channel_snowflake != video_room[0].channel_snowflake]
+        else:
+            video_room = VideoRoom(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await video_room.create()
+            cog.video_rooms.append(video_room)
+            action = f'created'
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Video-only room {action} in {channel_obj.mention}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}')
+        
+    @commands.command(name='vr', help='Toggle a video room.')
+    @is_owner_developer_administrator_predicator()
+    async def toggle_temp_room_text_command(
+        self,
+        ctx: commands.Context,
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include the snowflake ID')
+    ):
+        state = State(ctx)
+        action = None
+        channel_obj = None
+        try:
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        except Exception as e:
+            channel_obj = ctx.channel
+            await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+        video_room = await VideoRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+        cog = self.bot.get_cog("EventListeners")
+        if video_room:
+            action = 'removed'
+            cog.video_rooms = [vr for vr in cog.video_rooms if vr.channel_snowflake != video_room[0].channel_snowflake]
+            await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+        else:
+            video_room = VideoRoom(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await video_room.create()
+            cog.video_rooms.append(video_room)
+            action = f'created'
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Video-only room {action} in {channel_obj.mention}.')
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}')
+        
+    # DONE
+    @commands.command(name='vrs', help='List temporary rooms with matching command aliases.')
+    @is_owner_developer_administrator_predicator()
+    async def check_temp_rooms_text_command(
+        self,
+        ctx: commands.Context,
+        scope: Optional[str] = commands.parameter(default=None, description='Include "all" or a channel snowflake')
+    ):
+        state = State(ctx)
+        lines = []
+        pages = []
+        channel_obj = None
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        if scope and scope.lower() == "all":
+            if highest_role not in ('Owner', 'Developer'):
+                try:
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all video rooms across all guilds.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
+            rooms = await VideoRoom.fetch_all()
+        else:
+            rooms = await VideoRoom.fetch_by_guild(guild_snowflake=ctx.guild.id)
+        if not rooms:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No video rooms found.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}')
+        for room in rooms:
+            try:
+                channel_obj = await self.channel_service.resolve_channel(ctx, room.channel_snowflake)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}')
+            lines.append(f"{channel_obj.mention}")
+            chunks = 18
+            for i in range(0, len(lines), chunks):
+                step = lines[i:i + chunks]
+                embed = discord.Embed(
+                    title=f"{self.emoji.get_random_emoji()} Video Rooms in {ctx.guild.name}",
+                    description='\n'.join(step),
+                    color=discord.Color.blue()
+                )
+                pages.append(embed)
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}')
+    
+    # DONE
+    @app_commands.command(name='vrs', description='List video rooms.')
+    @is_owner_developer_administrator_predicator()
+    async def check_temp_rooms_app_command(self, interaction: discord.Interaction, scope: str = None):
+        state = State(interaction)
+        lines = []
+        pages = []
+        channel_obj = None
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        if scope and scope.lower() == "all":
+            if highest_role not in ('Owner', 'Developer'):
+                try:
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all video rooms across all guilds.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
+            rooms = await VideoRoom.fetch_all()
+        else:
+            rooms = await VideoRoom.fetch_by_guild(guild_snowflake=interaction.guild.id)
+        if not rooms:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No video rooms found.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}')
+        rooms_by_guild = {}
+        for room in rooms:
+            rooms_by_guild.setdefault(room.guild_snowflake, []).append(room)
+        for guild_id, guild_rooms in rooms_by_guild.items():
+            try:
+                channel_obj = await self.channel_service.resolve_channel(interaction, room.channel_snowflake)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}')
+            lines.append(f"{channel_obj.mention}")
+            chunks = 18
+            for i in range(0, len(lines), chunks):
+                step = lines[i:i + chunks]
+                embed = discord.Embed(
+                    title=f"{self.emoji.get_random_emoji()} Video Rooms in {interaction.guild.name}",
+                    description='\n'.join(step),
+                    color=discord.Color.blue()
+                )
+                pages.append(embed)
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}')
+        
     # DONE
     @app_commands.command(name='xalias', description='Deletes an alias.')
     @is_owner_developer_administrator_predicator()

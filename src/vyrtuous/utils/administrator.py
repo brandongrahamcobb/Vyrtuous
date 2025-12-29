@@ -1,4 +1,5 @@
-''' temporary_rooms.py A utility module for managing temporary rooms in the Vyrtuous Discord bot.
+''' administrator.py The purpose of this program is to inherit from the user class as an administrator.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -15,10 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
-
 from vyrtuous.bot.discord_bot import DiscordBot
-import discord
-import asyncpg
 
 class Administrator:
 

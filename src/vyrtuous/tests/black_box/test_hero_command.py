@@ -1,4 +1,5 @@
-''' test_coord_command.py The purpose of this program is to black box test the coord command.
+''' test_hero_command.py The purpose of this program is to black box test the hero command which removes all moderation actions and grants invincibility.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -17,7 +18,6 @@
 from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
@@ -49,5 +49,5 @@ async def test_hero_command(bot, voice_channel_one, guild, privileged_author, pr
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        print(f"{GREEN}Success:{RESET} {content}")
+        # print(f"{GREEN}Success:{RESET} {content}")
         assert any(emoji in content for emoji in Emojis.EMOJIS)

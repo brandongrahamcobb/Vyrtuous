@@ -1,4 +1,5 @@
-''' test_smute_command.py The purpose of this program is to black box test the smute command.
+''' test_xrmute_command.py The purpose of this program is to black box test the unroom-mute command.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -15,8 +16,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
-from vyrtuous.utils.coordinator import Coordinator
 from vyrtuous.tests.black_box.test_suite import *
+from vyrtuous.utils.coordinator import Coordinator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
@@ -49,7 +50,7 @@ async def test_xrmute_command(bot, voice_channel_one, guild, privileged_author, 
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            print(f"{GREEN}Success:{RESET} {content}")
+            # print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in Emojis.EMOJIS)
     finally:
         await coordinator.revoke()

@@ -24,6 +24,7 @@ from vyrtuous.utils.database import Database
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.stage import Stage
+from vyrtuous.utils.video_room import VideoRoom
 from vyrtuous.utils.voice_mute import VoiceMute
 
 import discord
@@ -45,6 +46,8 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_text_mutes.start()
         if not self.check_expired_stages.is_running():
             self.check_expired_stages.start()
+        if not self.update_video_room_status.is_running():
+            self.update_video_room_status.start()
                                 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
@@ -180,6 +183,15 @@ class ScheduledTasks(commands.Cog):
         except Exception as e:
             logger.error(f'Error in check_expired_stages task: {e}.', exc_info=True)
 
+    @tasks.loop(minutes=5)
+    async def update_video_room_status(self):
+        video_rooms = await VideoRoom.fetch_all()
+        for video_room in video_rooms:
+            channel = await self.bot.fetch_channel(video_room.channel_snowflake)
+            try:
+                await channel.edit(status="Video-Only Room", reason="Reset video-only room status")
+            except discord.Forbidden:
+                logger.info("Failed to enforce video room status")
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
@@ -254,6 +266,11 @@ class ScheduledTasks(commands.Cog):
     
     @check_expired_stages.before_loop
     async def before_check_expired_stages(self):
+        await self.bot.wait_until_ready()
+    
+
+    @update_video_room_status.before_loop
+    async def before_update_video_room_status(self):
         await self.bot.wait_until_ready()
 
 async def setup(bot: DiscordBot):

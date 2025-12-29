@@ -1,5 +1,5 @@
 
-''' discord_message_service.py  The purpose of this program is to handle messages in Discord.
+''' paginator.py  The purpose of this program is to handle multiple page embeds in Discord.
 
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 

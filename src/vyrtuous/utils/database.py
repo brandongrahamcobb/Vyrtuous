@@ -1,5 +1,6 @@
 
 ''' database.py The purpose of this program is to provide the database utility module.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -17,7 +18,6 @@
 '''
 from datetime import datetime
 from typing import Optional
-
 import asyncpg
 import os
 import subprocess

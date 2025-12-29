@@ -1,5 +1,6 @@
 
 ''' statistics.py A utility module for managing and sending statistical messages in the Vyrtuous Discord bot.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -16,14 +17,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timezone
-from discord.ext import commands, tasks
-from discord.ui import Button, View
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.paginator import Paginator 
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.snowflake import *
-
 import discord
 
 class Statistics:
@@ -38,6 +36,26 @@ class Statistics:
         self.guild_snowflake = guild_snowflake
         self.snowflakes = snowflakes
         self.statistic_type = statistic_type
+
+    @property
+    def action(self):
+        self._action
+
+    @action.setter
+    def action(self, action: Optional[str]):
+        if action not in self.ACTION_TYPES:
+            raise ValueError('Invalid action.')
+        self._action = action
+
+    @property
+    def statistic_type(self):
+        return self._statistic_type
+
+    @statistic_type.setter
+    def statistic_type(self, statistic_type: Optional[str]):
+        if statistic_type not in self.STATISTIC_TYPES:
+            raise ValueError('Invalid statistic type.')
+        self._statistic_type = statistic_type
 
     @classmethod
     async def send_statistic(
@@ -227,27 +245,6 @@ class Statistics:
                 INSERT INTO statistic_channels (channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type)
                 VALUES ($1, TRUE, $2, $3, $4)
             ''', self.channel_snowflake, self.guild_snowflake, self.snowflakes, self.statistic_type)
-
-    @property
-    def action(self):
-        self._action
-
-    @action.setter
-    def action(self, action: Optional[str]):
-        if action not in self.ACTION_TYPES:
-            raise ValueError('Invalid action.')
-        self._action = action
-
-    @property
-    def statistic_type(self):
-        return self._statistic_type
-
-    @statistic_type.setter
-    def statistic_type(self, statistic_type: Optional[str]):
-        if statistic_type not in self.STATISTIC_TYPES:
-            raise ValueError('Invalid statistic type.')
-        self._statistic_type = statistic_type
-
 
     @classmethod
     async def fetch_all(cls):

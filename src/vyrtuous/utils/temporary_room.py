@@ -1,4 +1,5 @@
 ''' temporary_rooms.py A utility module for managing temporary rooms in the Vyrtuous Discord bot.
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -15,10 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
-
 from vyrtuous.bot.discord_bot import DiscordBot
-import discord
-import asyncpg
 
 class TemporaryRoom:
         
@@ -48,9 +46,9 @@ class TemporaryRoom:
             row = await conn.fetchrow('''
                 SELECT channel_snowflake, member_snowflake, room_name FROM temporary_rooms WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
-            if not row:
-                return None
-            return TemporaryRoom(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], room_name=row['room_name'])
+        if not row:
+            return None
+        return TemporaryRoom(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], room_name=row['room_name'])
             
     @classmethod
     async def fetch_all(cls):
@@ -59,12 +57,11 @@ class TemporaryRoom:
             rows = await conn.fetch('''
                 SELECT channel_snowflake, guild_snowflake, member_snowflake, room_name FROM temporary_rooms
             ''')
-            temporary_rooms = []
-            if not rows:
-                return None
+        temporary_rooms = []
+        if rows:
             for row in rows:
                 temporary_rooms.append(TemporaryRoom(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], room_name=row['room_name']))
-            return temporary_rooms
+        return temporary_rooms
             
     @classmethod
     async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
@@ -73,12 +70,11 @@ class TemporaryRoom:
             rows = await conn.fetch('''
                 SELECT channel_snowflake, member_snowflake, room_name FROM temporary_rooms WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
-            if not rows:
-                return None
-            temporary_rooms = []
+        temporary_rooms = []
+        if rows:
             for row in rows:
                 temporary_rooms.append(TemporaryRoom(hannel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, room_name=row['room_name']))
-            return temporary_rooms
+        return temporary_rooms
             
     @classmethod
     async def fetch_by_guild_and_room_name(cls, guild_snowflake: Optional[int], room_name: Optional[str]):
@@ -87,9 +83,9 @@ class TemporaryRoom:
             row = await conn.fetchrow('''
                 SELECT channel_snowflake, member_snowflake, room_name FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2
             ''', guild_snowflake, room_name)
-            if not row:
-                return None
-            return TemporaryRoom(channel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], room_name=row['room_name'])
+        if not row:
+            return None
+        return TemporaryRoom(channel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], room_name=row['room_name'])
     
     @classmethod
     async def update_owner(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
@@ -118,11 +114,11 @@ class TemporaryRoom:
     @classmethod
     async def fetch_by_guild(cls, guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
-        temporary_rooms = []
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT channel_snowflake, member_snowflake, room_name FROM temporary_rooms WHERE guild_snowflake=$1 ORDER BY room_name
             ''', guild_snowflake)
+        temporary_rooms = []
         if rows:
             for row in rows:
                 temporary_rooms.append(TemporaryRoom(channel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], room_name=row['room_name']))
@@ -131,11 +127,11 @@ class TemporaryRoom:
     @classmethod
     async def fetch_all_members(cls):
         bot = DiscordBot.get_instance()
-        temporary_rooms = []
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT channel_snowflake, guild_snowflake, member_snowflake, room_name FROM temporary_rooms
             ''')
+        temporary_rooms = []
         if rows:
             for row in rows:
                 temporary_rooms.append(TemporaryRoom(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], room_name=row['room_name']))

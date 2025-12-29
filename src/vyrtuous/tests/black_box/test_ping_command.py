@@ -1,4 +1,5 @@
-''' test_chown_temp_temps_xtemp_commands.py The purpose of this program is to black box test the temporary room commands.
+''' test_ping_commands.py The purpose of this program is to black box test the ping command. DO NOT REMOVE THIS FILE REGARDLESS OF REDUNDANCY
+
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
     This program is free software: you can redistribute it and/or modify
@@ -46,5 +47,5 @@ async def test_ping_command(bot, voice_channel_one, guild, not_privileged_author
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        print(f"{GREEN}Success:{RESET} {content}")
+        # print(f"{GREEN}Success:{RESET} {content}")
         assert any(emoji in content for emoji in Emojis.EMOJIS)
