@@ -105,7 +105,7 @@ async def bot():
     config = Config().get_config()
     bot = DiscordBot(config=config, db_pool=db_pool)
     type(bot).guilds = property(lambda self: [guild])
-    mock_channel = make_mock_channel(id=VOICE_CHANNEL_ONE_ID)
+    mock_channel = make_mock_channel(id=VOICE_CHANNEL_ONE_ID, name=VOICE_CHANNEL_ONE_NAME)
     mock_member = make_mock_member(id=NOT_PRIVILEGED_AUTHOR_ID, name=NOT_PRIVILEGED_AUTHOR_NAME)
     with patch("vyrtuous.utils.state.State._get_start_time", new=_get_start_time):
         with patch("vyrtuous.service.channel_service.ChannelService.resolve_channel", return_value=mock_channel):
@@ -113,14 +113,14 @@ async def bot():
                 with patch("vyrtuous.service.check_service.has_equal_or_higher_role", new=AsyncMock(return_value=False)):
                     with patch("vyrtuous.service.check_service.is_owner_developer_administrator_coordinator_moderator", new=AsyncMock(return_value="Owner")):
  # bot.get_g    uild = lambda snowflake: SimpleNamespace(id=snowflake, owner_id=PRIVILEGED_AUTHOR_ID)
-                        for cog in DISCORD_COGS:
-                            if cog != "vyrtuous.cogs.scheduled_tasks":
-                                await bot.load_extension(cog)
-                        bot._connection.user = mock_member
-                        bot._state = make_mock_state()
-                        yield bot
-                        await db_pool.close()
-
+                            for cog in DISCORD_COGS:
+                                if cog != "vyrtuous.cogs.scheduled_tasks":
+                                    await bot.load_extension(cog)
+                            bot._connection.user = mock_member
+                            bot._state = make_mock_state()
+                            yield bot
+                            await db_pool.close()
+    
 @pytest_asyncio.fixture(scope="function")
 async def client():
     database: Optional[str] = os.getenv('POSTGRES_DB')

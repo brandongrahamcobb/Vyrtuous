@@ -854,7 +854,10 @@ class AdminCommands(commands.Cog):
             try:
                 member_obj = await self.member_service.resolve_member(interaction, owner)
             except Exception as e:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Member could not be resolved from {owner}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {str(e)}')
             temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
             await temporary_room.create()
             moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -881,7 +884,8 @@ class AdminCommands(commands.Cog):
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')
+            channel_obj = ctx.channel
+            await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         if temporary_room:
             if temporary_room.member_snowflake:
@@ -893,7 +897,10 @@ class AdminCommands(commands.Cog):
             try:
                 member_obj = await self.member_service.resolve_member(ctx, owner)
             except Exception as e:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Member could not be resolved from {owner}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {str(e)}')
             temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
             await temporary_room.create()
             moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)

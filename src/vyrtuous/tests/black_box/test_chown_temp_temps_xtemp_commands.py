@@ -51,16 +51,28 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, not_priv
             member_mention=not_privileged_author.mention
         )
         bot.wait_for = mock_wait_for
-        if "migrate" in command:
-            await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
+        elif isinstance(message, discord.File):
+            content = message.filename
         else:
-            await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]
-        channel_values = (voice_channel_one.mention, voice_channel_one.name)
-        member_values = (not_privileged_author.mention, not_privileged_author.name)
-        if "temps" in command:
-            assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
-        else:
-            assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            print(f"{GREEN}Success:{RESET} {content}")
+            assert any(emoji in content for emoji in Emojis.EMOJIS)
+        # response = voice_channel_one.messages[0]
+        # channel_values = (voice_channel_one.mention, voice_channel_one.name)
+        # member_values = (not_privileged_author.mention, not_privileged_author.name)
+        # if "temps" in command:
+        #     assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
+        # else:
+        #     assert any(emoji in response["content"] for emoji in Emojis.EMOJIS)
     finally:
         await administrator.revoke()

@@ -51,7 +51,6 @@ async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, pr
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id
         )
-        print(formatted)
         captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         message = captured['message']
         message_type = captured['type']

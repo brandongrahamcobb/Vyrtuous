@@ -753,12 +753,12 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             is_owner = old_room.member_snowflake == interaction.user.id
             highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-            if highest_role not in ('Owner', 'Developer', 'Administrator') or not is_owner:
+            if highest_role not in ('Owner', 'Developer', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            await TemporaryRoom.update_by_source_and_target(guild_snowflake=interaction.guild.id, room_name=channel_obj.id, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await TemporaryRoom.update_by_source_and_target(guild_snowflake=interaction.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=channel_obj.name)
             await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
@@ -799,12 +799,12 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             is_owner = old_room.member_snowflake == ctx.author.id
             highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-            if highest_role not in ('Owner', 'Developer', 'Administrator') or not is_owner:
+            if highest_role not in ('Owner', 'Developer', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            await TemporaryRoom.update_by_source_and_target(guild_snowflake=ctx.guild.id, room_name=channel_obj.id, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await TemporaryRoom.update_by_source_and_target(guild_snowflake=ctx.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=ctx.guild.id, room_name=channel_obj.name)
             await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
@@ -822,6 +822,7 @@ class ModeratorCommands(commands.Cog):
             return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found called {old_name} in {ctx.guild.name}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
+        
     # DONE
     @app_commands.command(name='mutes', description='Lists mute statistics.')
     @is_owner_developer_administrator_coordinator_moderator_predicator()
