@@ -233,8 +233,8 @@ class EventListeners(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if not message.guild or message.author.id == self.bot.user.id:
-            return
+        # if not message.guild or message.author.id == self.bot.user.id:
+        #     return
         prefix = self.config['discord_command_prefix']
         if not message.content.startswith(prefix):
             return
@@ -262,7 +262,6 @@ class EventListeners(commands.Cog):
                 return await state.end(warning=f"\U000026A0\U0000FE0F {e}")
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}')
-        print("success")
         existing_guestroom_alias_event = await Alias.get_existing_guestroom_alias_event(alias=alias, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
         target = args[1] if len(args) > 1 else '24h'
         is_reason_modification = target in ['+', '-', '=']

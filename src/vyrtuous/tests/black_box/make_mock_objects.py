@@ -171,7 +171,10 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
             id=id
         )
         return msg
-
+    
+    async def set_permissions(self, target, **overwrites):
+        self.overwrites[target.id] = overwrites
+        return True
 
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
@@ -187,7 +190,9 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
             'mention': f'<#{id}>',
             'messages': [],
             'name': name,
+            'overwrites': {},
             'permissions_for': permissions_for,
+            'set_permissions': set_permissions,
             'send': async_send,
             'send_messages': True,
             'type': channel_type

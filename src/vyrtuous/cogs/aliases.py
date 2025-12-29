@@ -135,7 +135,6 @@ class Aliases(commands.Cog):
     ):
         is_channel_scope = False
         is_modification = False
-        
         if is_reason_modification and existing_guestroom_alias_event:
             is_modification = True
             duration = DurationObject.from_expires_at(existing_guestroom_alias_event.expires_at)
@@ -146,19 +145,18 @@ class Aliases(commands.Cog):
                 case '=' | '-':
                     updated_reason = modified_reason
             await Alias.update_reason(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=updated_reason)
-        elif is_duration_modification:
+        elif is_duration_modification and existing_guestroom_alias_event:
             is_modification = True
-            if existing_guestroom_alias_event:
-                duration = DurationObject(args[1] if len(args) > 1 else '24h')
-                match duration.prefix:
-                    case '+':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
-                    case '=':
-                        updated_expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
-                    case '-':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
-                duration = DurationObject.from_expires_at(updated_expires_at)
-                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
+            duration = DurationObject(args[1] if len(args) > 1 else '24h')
+            match duration.prefix:
+                case '+':
+                    updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
+                case '=':
+                    updated_expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+                case '-':
+                    updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
+            duration = DurationObject.from_expires_at(updated_expires_at)
+            await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
         else:
             duration = DurationObject(args[1] if len(args) > 1 else '24h')
             reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
@@ -176,13 +174,13 @@ class Aliases(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 Unsuccessfully banned {member_obj.mention}.')
                 except:
                     return await state.end(error=f'\U0001F3C6 {e}')
-
+                
         ban = Ban(channel_snowflake=channel_obj.id, expires_at=duration.expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
         await ban.create()
 
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Banned",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Banned",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -221,7 +219,7 @@ class Aliases(commands.Cog):
 
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Vegan",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Vegan",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -271,7 +269,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Flagged",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Flagged",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -323,7 +321,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Roled",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Roled",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -394,7 +392,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Muted",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Muted",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -465,7 +463,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Muted",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Muted",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -539,7 +537,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Unbanned",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Unbanned",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -576,7 +574,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Carnist",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Carnist",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -632,7 +630,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
                                         
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Unflagged",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Unflagged",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -700,7 +698,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Unmuted",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Unmuted",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -755,7 +753,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Unroled",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Unroled",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"
@@ -820,7 +818,7 @@ class Aliases(commands.Cog):
         await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
 
         embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Unmuted",
+            title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Unmuted",
             description=(
                 f"**By:** {message.author.mention}\n"
                 f"**User:** {member_obj.mention}\n"

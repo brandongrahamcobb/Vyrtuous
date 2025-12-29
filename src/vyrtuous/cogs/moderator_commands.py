@@ -143,7 +143,7 @@ class ModeratorCommands(commands.Cog):
             bans = await Ban.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not bans:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No active bans found in guild {ctx.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F No active bans found in {ctx.guild.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=bans, moderation_type=Ban)
@@ -524,7 +524,7 @@ class ModeratorCommands(commands.Cog):
             flags = await Flag.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not flags:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No active flags found in guild {interaction.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F No active flags found in {interaction.guild.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=flags, moderation_type=Flag)
@@ -583,7 +583,7 @@ class ModeratorCommands(commands.Cog):
             flags = await Flag.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not flags:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No active flags found in guild {ctx.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F No active flags found in {ctx.guild.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=flags, moderation_type=Flag)

@@ -29,15 +29,15 @@ import pytest
         ("alias ban testban {voice_channel_one_id}", True, False, False),
         ("alias unban testunban {voice_channel_one_id}", True, False, False),
         ("testban {member_id}", False, True, False),
-        # ("bans {voice_channel_one_id}", True, False, False),
-        # ("bans {member_id}", False, True, False),
-        # ("bans all", False, False, False),
-        # ("testunban {member_id}", False, True, False),
-        # ("bans {voice_channel_one_id}", True, False, True),
-        # ("bans {member_id}", False, True, True),
-        # ("bans all", False, False, False),
-        # ("xalias testban", True, False, False),
-        # ("xalias testunban", True, False, False),
+        ("bans {voice_channel_one_id}", True, False, False),
+        ("bans {member_id}", False, True, False),
+        ("bans all", False, False, False),
+        ("testunban {member_id}", False, True, False),
+        ("bans {voice_channel_one_id}", True, False, True),
+        ("bans {member_id}", False, True, True),
+        ("bans all", False, False, False),
+        ("xalias testban", True, False, False),
+        ("xalias testunban", True, False, False),
         # ("caps {voice_channel_one_id}", True, False, False),
         # ("caps all", False, False, True),
         # ("cmds {voice_channel_one_id} {member_id}", True, True, False),
@@ -64,14 +64,14 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_c
     await moderator.grant()
     try:
         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
-        member_value = not_privileged_author.mention if member_ref else not_privileged_author.name
+        member_value = not_privileged_author.name
         voice_channel_one.messages.clear() 
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id,
             member_id=not_privileged_author.id
         )
         bot.wait_for = mock_wait_for
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EventListeners", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         message = captured['message']
         message_type = captured['type']
         if isinstance(message, discord.Embed):
@@ -84,6 +84,8 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_c
             print(f"{RED}Error:{RESET} {content}")
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
+            if should_warn:
+                assert True
         if message_type == "success":
             print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in Emojis.EMOJIS) 
