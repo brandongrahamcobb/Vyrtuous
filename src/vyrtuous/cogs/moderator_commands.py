@@ -52,19 +52,19 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='bans', description='Lists ban statistics.')
-    @app_commands.describe(target='"all", channel name/ID/mention, or user mention/ID')
+    @app_commands.describe(scope='"all", channel name/ID/mention, or user mention/ID')
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_bans_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
             if member_obj.id == interaction.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {interaction.guild.me.mention} is banned.')
@@ -72,12 +72,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, target)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
-                await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all bans in {interaction.guild.name}.')
@@ -117,13 +116,13 @@ class ModeratorCommands(commands.Cog):
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
     ):
         state = State(ctx)
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
             if member_obj.id == ctx.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {ctx.guild.me.mention} is banned.')
@@ -131,12 +130,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, target)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
-                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all bans in {ctx.guild.name}.')
@@ -173,21 +171,21 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='caps', description='List active caps for a channel or all channels if "all" is provided.')
     @is_owner_developer_administrator_coordinator_moderator_predicator()
-    @app_commands.describe(target='"all", channel name/ID/mention')
+    @app_commands.describe(scope='"all", channel name/ID/mention')
     async def list_caps_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         channel_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, target)
+            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except:
             channel_obj = interaction.channel
             await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all caps in {interaction.guild.name}.')
@@ -241,17 +239,17 @@ class ModeratorCommands(commands.Cog):
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention')
     ):
         state = State(ctx)
         channel_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, target)
+            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except:
             channel_obj = ctx.channel
             await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all caps in {ctx.guild.name}.')
@@ -302,22 +300,22 @@ class ModeratorCommands(commands.Cog):
  
     # DONE
     @app_commands.command(name='cmds', description='List command aliases routed to a specific channel, temp room, or all channels if "all" is provided.')
-    @app_commands.describe(target='"all", channel name/ID/mention')
+    @app_commands.describe(scope='"all", channel name/ID/mention')
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_commands_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         channel_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, target)
+            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except:
             channel_obj = interaction.channel
         lines = []
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers or administrators can list all aliases in {interaction.guild.name}.')
             aliases = await Alias.fetch_by_guild(guild_snowflake=interaction.guild.id)
@@ -369,17 +367,17 @@ class ModeratorCommands(commands.Cog):
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or temp room name')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or temp room name')
     ):
         state = State(ctx)
         channel_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, target)
+            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except:
             channel_obj = ctx.channel
         lines = []
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers or administrators can list all aliases in {ctx.guild.name}.')
             aliases = await Alias.fetch_by_guild(guild_snowflake=ctx.guild.id)
@@ -498,14 +496,14 @@ class ModeratorCommands(commands.Cog):
     async def list_flags_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
             if member_obj.id == interaction.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {interaction.guild.me.mention} is flagged.')
@@ -513,12 +511,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, target)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
-                await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all flags in {interaction.guild.name}.')
@@ -558,14 +555,14 @@ class ModeratorCommands(commands.Cog):
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
     ):
         state = State(ctx)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
             if member_obj.id == ctx.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {ctx.guild.me.mention} is flagged.')
@@ -573,12 +570,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, target)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
-                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all flags in {ctx.guild.name}.')
@@ -614,18 +610,18 @@ class ModeratorCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='ls', description='List users cowed as going vegan in this guild.')
-    @app_commands.describe(target='A member or channel snowflake ID/mention')
+    @app_commands.describe(scope='A member or channel snowflake ID/mention')
     async def list_vegans_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
             if member_obj.id == interaction.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {interaction.guild.me.mention} is a new vegan.')
@@ -633,12 +629,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, target)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
-                await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all new vegans in {interaction.guild.name}.')
@@ -677,14 +672,14 @@ class ModeratorCommands(commands.Cog):
     async def list_members_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        scope: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
         state = State(ctx)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
             if member_obj.id == ctx.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {ctx.guild.me.mention} is a new vegan.')
@@ -692,12 +687,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, target)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
-                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all new vegans in {ctx.guild.name}.')
@@ -832,14 +826,14 @@ class ModeratorCommands(commands.Cog):
     async def list_mutes_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
             if member_obj.id == interaction.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {interaction.guild.me.mention} is muted.')
@@ -847,12 +841,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, target)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
-                await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all voice mutes in {interaction.guild.name}.')
@@ -892,14 +885,14 @@ class ModeratorCommands(commands.Cog):
     async def list_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
     ):
         state = State(ctx)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
             if member_obj.id == ctx.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot list flags on the bot.')
@@ -907,12 +900,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, target)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
-                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all voice mutes in {ctx.guild.name}.')
@@ -1034,23 +1026,23 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='stages', description='Lists stage mute statistics.')
-    @app_commands.describe(target='"all", channel name/ID/mention')
+    @app_commands.describe(scope='"all", channel name/ID/mention')
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_stages_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, target)
+            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except:
             channel_obj = interaction.channel
             await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
             await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             try:
@@ -1058,7 +1050,7 @@ class ModeratorCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners/devs can view all stages in {interaction.guild.name}.')
@@ -1125,18 +1117,18 @@ class ModeratorCommands(commands.Cog):
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention')
     ):
         state = State(ctx)
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, target)
+            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except:
             channel_obj = ctx.channel
             await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
             await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
@@ -1144,7 +1136,7 @@ class ModeratorCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners/devs can view all stages in {ctx.guild.name}.')
@@ -1208,19 +1200,19 @@ class ModeratorCommands(commands.Cog):
             
     # DONE
     @app_commands.command(name='tmutes', description='Lists text-mute statistics.')
-    @app_commands.describe(target='"all", channel name/ID/mention, or user mention/ID')
+    @app_commands.describe(scope='"all", channel name/ID/mention, or user mention/ID')
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_text_mutes_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
             if member_obj.id == interaction.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {interaction.guild.me.mention} is flagged.')
@@ -1228,12 +1220,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, target)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
-                await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower()=='all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can list all text-mutes in {interaction.guild.name}.')
@@ -1323,14 +1314,14 @@ class ModeratorCommands(commands.Cog):
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", channel name/ID/mention, or user mention/ID')
     ):
         state = State(ctx)
         pages = []
         channel_obj = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
             if member_obj.id == ctx.guild.me.id:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You cannot determine if {ctx.guild.me.mention} is text-muted.')
@@ -1338,12 +1329,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, target)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
-                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower()=='all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can list all text-mutes in {ctx.guild.name}.')

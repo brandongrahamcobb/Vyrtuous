@@ -33,6 +33,11 @@ import os
 import pytest
 import pytest_asyncio
 
+RED = "\033[91m"
+YELLOW = "\033[93m"
+GREEN = "\033[92m"
+RESET = "\033[0m"
+
 @pytest.fixture(scope="function")
 def guild(bot):
     guild_obj = make_mock_guild(
@@ -272,4 +277,41 @@ async def prepared_command_handling(author, bot, channel, cog, content, guild, i
             channel.fetch_message = fetch_message.__get__(channel)
             stack.enter_context(patch.object(channel, "fetch_message", new=fetch_message))
             stack.enter_context(patch("discord.utils.get", side_effect=lambda iterable, name=None: next((r for r in iterable if getattr(r, "name", None) == name), None )))
+            captured = {}
+            async def mock_state_end(self, *, error=None, warning=None, success=None):
+                if error is not None:
+                    captured["type"] = "error"
+                    content = error
+                elif warning is not None:
+                    captured["type"] = "warning"
+                    content = warning
+                elif success is not None:
+                    captured["type"] = "success"
+                    content = success
+                else:
+                    raise AssertionError("State.end() called without error, warning, or success")
+                if isinstance(content, list):
+                    first_item = content[0] if content else None
+                    if isinstance(first_item, discord.Embed):
+                        content = first_item
+                    else:
+                        content = first_item
+                elif isinstance(content, (str, discord.Embed, discord.File)):
+                    pass
+                else:
+                    pass
+                captured["message"] = content
+            stack.enter_context(patch("vyrtuous.utils.state.State.end", new=mock_state_end))
             await bot.invoke(ctx)
+            return captured
+        
+def extract_embed_text(embed: discord.Embed) -> str:
+    parts = []
+    if embed.title:
+        parts.append(embed.title)
+    if embed.description:
+        parts.append(embed.description)
+    for field in embed.fields:
+        parts.append(f"{field.name}: {field.value}")
+    return "\n".join(parts)
+

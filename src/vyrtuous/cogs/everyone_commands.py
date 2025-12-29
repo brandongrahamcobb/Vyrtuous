@@ -52,13 +52,13 @@ class EveryoneCommands(commands.Cog):
     async def list_administrators_app_command(
         self,
         interaction: discord.Interaction,
-        target: str
+        scope:str
     ):
         state = State(interaction)
         pages = []
         administrators = await Administrator.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all admins across all guilds.')
@@ -84,18 +84,18 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Optional[str] = commands.parameter(default=None, description='"all", or user mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", or user mention/ID')
     ):
         state = State(ctx)
         pages = []
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
         except:
             pass
         administrators = await Administrator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all admins across all guilds.')
@@ -119,26 +119,26 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
     @app_commands.command(name='coords', description='Lists coordinators for a specific voice channel, all, or a member.')
-    @app_commands.describe(target='"all", member or channel name/ID/mention')
+    @app_commands.describe(scope='"all", member or channel name/ID/mention')
     async def list_coordinators_app_command(
         self,
         interaction : discord.Interaction,
-        target : Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         channel_obj = None
         member_obj = None
         pages = []
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, target)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
                 await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all coordinators in {interaction.guild.name}.')
@@ -158,7 +158,7 @@ class EveryoneCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
         try:
-            return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for {target}.')
+            return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for {scope}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -167,22 +167,22 @@ class EveryoneCommands(commands.Cog):
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='Voice channel name, mention, ID, "all", or member ID')
+        scope: Optional[str] = commands.parameter(default=None, description='Voice channel name, mention, ID, "all", or member ID')
     ):
         state = State(ctx)
         channel_obj = None
         member_obj = None
         pages = []
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, target)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
                 await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all coordinators in {ctx.guild.name}.')
@@ -202,27 +202,27 @@ class EveryoneCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
         try:
-            return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for {target}.')
+            return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for {scope}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     
     # DONE
     @app_commands.command(name='devs', description='Lists developers.')
-    @app_commands.describe(target='"all" or a member snowflake ID/mention')
+    @app_commands.describe(scope='"all" or a member snowflake ID/mention')
     async def list_developers_app_command(
         self,
         interaction : discord.Interaction,
-        target : Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         member_obj = None
         pages = []
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
         except:
             pass
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all developers across all guilds.')
@@ -253,17 +253,17 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Optional[str] = commands.parameter(default=None, description='"all", or user mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", or user mention/ID')
     ):
         state = State(ctx)
         member_obj = None
         pages = []
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
         except:
             pass
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all developers across all guilds.')
@@ -290,26 +290,25 @@ class EveryoneCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='mods', description='Lists moderator statistics.')
-    @app_commands.describe(target='A member or channel snowflake ID/mention')
+    @app_commands.describe(scope='A member or channel snowflake ID/mention')
     async def list_moderators_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         channel_obj = None
         member_obj = None
         pages = []
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, target)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
-                await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all moderators in {interaction.guild.name}.')
@@ -348,22 +347,21 @@ class EveryoneCommands(commands.Cog):
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(default=None, description='Voice channel name/mention/ID, "all", or member mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description='Voice channel name/mention/ID, "all", or member mention/ID')
     ):
         state = State(ctx)
         channel_obj = None
         member_obj = None
         pages = []
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, target)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
-                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all moderators in {ctx.guild.name}.')
@@ -399,26 +397,26 @@ class EveryoneCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name='owners', description='Show temporary room stats for "all", a channel, or a member.')
-    @app_commands.describe(target='"all", a channel mention/ID, or a member mention/ID')
+    @app_commands.describe(scope='"all", a channel mention/ID, or a member mention/ID')
     async def temp_room_stats_app_command(
         self,
         interaction: discord.Interaction,
-        target: Optional[str] = None
+        scope: Optional[str] = None
     ):
         state = State(interaction)
         channel_obj = None
         member_obj = None
         pages = []
         try:
-            member_obj = await self.member_service.resolve_member(interaction, target)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, target)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
                 await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all temporary room owners in {interaction.guild.name}.')
@@ -491,7 +489,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the target. Provide "all", a channel, or a member.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope. Provide "all", a channel, or a member.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -500,22 +498,22 @@ class EveryoneCommands(commands.Cog):
     async def temp_room_stats_text_command(
         self,
         ctx,
-        target: Optional[str] = commands.parameter(default=None, description='"all", a channel mention/ID, or a member mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description='"all", a channel mention/ID, or a member mention/ID')
     ):
         state = State(ctx)
         channel_obj = None
         member_obj = None
         pages = []
         try:
-            member_obj = await self.member_service.resolve_member(ctx, target)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
         except:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, target)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
                 await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        if target and target.lower() == 'all':
+        if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all temporary room owners in {ctx.guild.name}.')
@@ -588,7 +586,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the target. Provide "all", a channel, or a member.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope. Provide "all", a channel, or a member.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
        # DONE

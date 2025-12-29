@@ -197,9 +197,9 @@ CREATE TABLE statistic_channels (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     enabled BOOLEAN DEFAULT FALSE,
     guild_snowflake BIGINT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
     snowflakes BIGINT[],
     statistic_type TEXT DEFAULT 'general',
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake)
 );
 INSERT INTO statistic_channels (
@@ -258,3 +258,44 @@ INSERT INTO active_flags (channel_snowflake, guild_snowflake, member_snowflake, 
 SELECT channel_id, guild_id, discord_snowflake, reason, expires_at
 FROM active_flags_old;
 DROP TABLE active_flags_old;
+
+BEGIN TRANSACTION;
+
+-- 1. Rename the existing table
+ALTER TABLE command_aliases RENAME TO command_aliases_old;
+
+-- 2. Create the new table with updated column names and CHECK constraint
+CREATE TABLE command_aliases (
+    alias_type        TEXT NOT NULL CHECK (alias_type IN (
+        'cow', 'uncow', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'
+    )),
+    alias_name        TEXT NOT NULL,
+    channel_snowflake BIGINT DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake   BIGINT NOT NULL,
+    role_snowflake    BIGINT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (alias_name, alias_type, guild_snowflake)
+);
+
+-- 3. Copy and rename alias_type in existing data, mapping old column names to new ones
+INSERT INTO command_aliases (guild_snowflake, alias_type, alias_name, channel_snowflake, role_snowflake)
+SELECT
+    guild_id,
+    CASE alias_type
+        WHEN 'mute' THEN 'voice_mute'
+        WHEN 'unmute' THEN 'unvoice_mute'
+        WHEN 'tmute' THEN 'text_mute'
+        WHEN 'untmute' THEN 'untext_mute'
+        ELSE alias_type
+    END AS alias_type,
+    alias_name,
+    channel_id,
+    role_id
+FROM command_aliases_old;
+
+-- 4. Drop the old table
+DROP TABLE command_aliases_old;
+
+COMMIT;
+

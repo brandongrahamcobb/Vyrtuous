@@ -88,6 +88,7 @@ class Moderator:
         if rows:
             for row in rows:
                 moderators.append(Moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row["member_snowflake"]))
+        return moderators
 
     @classmethod
     async def fetch_members_by_guild(cls, guild_snowflake: Optional[int]):

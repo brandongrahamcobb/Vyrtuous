@@ -18,7 +18,7 @@ from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.developer import Developer
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, voice_channel_one, voice_channel_two
+from vyrtuous.tests.black_box.test_suite import *
 import pytest
 
 @pytest.mark.asyncio

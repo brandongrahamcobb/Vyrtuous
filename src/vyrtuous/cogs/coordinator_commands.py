@@ -56,17 +56,25 @@ class CoordinatorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         except:
             channel_obj = interaction.channel
-            await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
             await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         if member_obj.id == interaction.guild.me.id:
-            return await state.end(warning=f'\U000026A0\U0000FE0F You are not allowed to promote {interaction.guild.me.mention} to moderator.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not allowed to promote {interaction.guild.me.mention} to moderator.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=interaction.user.id)
         if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-            return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to grant/revoke moderator status in {channel_obj.mention}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to grant/revoke moderator status in {channel_obj.mention}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
         if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
             await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
@@ -102,17 +110,25 @@ class CoordinatorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except:
             channel_obj = ctx.channel
-            await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
             await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         if member_obj.id == ctx.guild.me.id:
-            return await state.end(warning=f'\U000026A0\U0000FE0F You are not allowed to promote {ctx.guild.me.mention} to moderator.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not allowed to promote {ctx.guild.me.mention} to moderator.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=ctx.author.id)
         if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-            return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to grant/revoke moderator status in {channel_obj.mention}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to grant/revoke moderator status in {channel_obj.mention}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
         if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
             await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)

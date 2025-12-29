@@ -105,6 +105,6 @@ class Cap:
     
     @moderation_type.setter
     def moderation_type(self, moderation_type: Optional[str]):
-        if moderation_type not in ('ban', 'mute', 'tmute'):
+        if moderation_type not in ('ban', 'flag', 'voice_mute', 'text_mute'):
             raise ValueError("Invalid moderation_type.")
         self._moderation_type = moderation_type

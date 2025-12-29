@@ -25,6 +25,7 @@ from vyrtuous.utils.reason import Reason
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.flag import Flag
 from vyrtuous.utils.text_mute import TextMute
+from vyrtuous.utils.vegan import Vegan
 from vyrtuous.utils.voice_mute import VoiceMute
 
 import discord
@@ -32,10 +33,10 @@ import discord
 class Alias:
     
     MODERATION_TABLES = {
-        "Ban": "active_bans",
-        "Flag": "active_flags",
-        "TextMute": "active_text_mutes",
-        "VoiceMute": "active_voice_mutes",
+        Ban: "active_bans",
+        Flag: "active_flags",
+        TextMute: "active_text_mutes",
+        VoiceMute: "active_voice_mutes",
     }
 
     def __init__(self, alias_name: Optional[str], alias_type: Optional[str], channel_snowflake: Optional[int], guild_snowflake: Optional[int], role_snowflake: Optional[int]):
@@ -43,6 +44,7 @@ class Alias:
         self.alias_name = alias_name
         self.bot = DiscordBot.get_instance()
         self.channel_snowflake = channel_snowflake
+        self.channel_mention = f'<#{channel_snowflake}>'
         self.guild_snowflake = guild_snowflake
         self.alias_cog = self.bot.get_cog("Aliases")
         self.handlers = {
@@ -52,29 +54,31 @@ class Alias:
             'unban': self.alias_cog.handle_unban_alias,
             'flag': self.alias_cog.handle_flag_alias,
             'unflag': self.alias_cog.handle_unflag_alias,
-            'mute': self.alias_cog.handle_voice_mute_alias,
-            'unmute': self.alias_cog.handle_unmute_alias,
-            'tmute': self.alias_cog.handle_text_mute_alias,
-            'untmute': self.alias_cog.handle_untextmute_alias,
+            'voice_mute': self.alias_cog.handle_voice_mute_alias,
+            'unvoice_mute': self.alias_cog.handle_unmute_alias,
+            'text_mute': self.alias_cog.handle_text_mute_alias,
+            'untext_mute': self.alias_cog.handle_untextmute_alias,
             'role': self.alias_cog.handle_role_alias,
             'unrole': self.alias_cog.handle_unrole_alias
         }
         self.handler = self.handlers[alias_type]
         self.role_snowflake = role_snowflake
+        self.role_mention = f'<@&{role_snowflake}>'
         self.channel_service = ChannelService()
         self.member_service = MemberService()
         
     @classmethod
-    def format_aliases(self, aliases) -> list[str]:
+    def format_aliases(cls, aliases) -> list[str]:
         if not aliases:
             return []
         grouped = defaultdict(list)
         lines = []
         for alias in aliases:
-            grouped[(alias.channel_snowflake, alias.alias_type)].append(alias)
-        for (alias.channel_snowflake, alias.alias_type), channel_aliases in grouped.items():
-            lines.append(f'**{alias.alias_type.capitalize()}**')
-            for alias in channel_aliases:
+            formatted_type = cls.get_alias_formatted_string(alias)
+            grouped[(alias.channel_snowflake, formatted_type)].append(alias)
+        for (channel_snowflake, formatted_type), channel_aliases in grouped.items():
+            lines.append(f'**{formatted_type}**')
+            for alias in sorted(channel_aliases, key=lambda a: a.alias_name.lower()):
                 if alias.role_snowflake:
                     lines.append(f'`{alias.alias_name}` → <@&{alias.role_snowflake}>')
                 else:
@@ -212,7 +216,7 @@ class Alias:
     
     @alias_type.setter
     def alias_type(self, alias_type: Optional[str]):
-        if alias_type not in ('cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'):
+        if alias_type not in ('cow', 'uncow', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'):
             raise ValueError("Invalid alias_type.")
         self._alias_type = alias_type
         
@@ -230,18 +234,36 @@ class Alias:
     @classmethod
     def get_table_name_by_moderation_type(cls, moderation_type):
         try:
-            return cls.MODERATION_TABLES[type(moderation_type).__name__]
+            return cls.MODERATION_TABLES[moderation_type]
         except KeyError:
             raise ValueError(f"Unknown moderation type: {moderation_type}")
 
     @classmethod 
-    async def get_existing_moderation(cls, alias, channel_snowflake, guild_snowflake, member_snowflake):
+    async def get_existing_guestroom_alias_event(cls, alias, channel_snowflake, guild_snowflake, member_snowflake):
         match alias.alias_type:
             case "ban":
                 return await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+            case "cow":
+                return await Vegan.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
             case "flag":
                 return await Flag.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-            case "tmute":
+            case "text_mute":
                 return await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
             case "voice_mute":
                 return await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target="user")
+
+    @classmethod
+    def get_alias_formatted_string(cls, alias):
+        match alias.alias_type:
+            case 'ban' | 'unban':
+                return 'Ban'
+            case 'cow' | 'uncow':
+                return 'Flag'
+            case 'role' | 'unrole':
+                return 'New Vegan'
+            case 'flag' | 'unflag':
+                return 'Role'
+            case 'text_mute' | 'untext_mute':
+                return 'Text Mute'
+            case 'voice_mute' | 'unvoice_mute':
+                return 'Voice Mute'

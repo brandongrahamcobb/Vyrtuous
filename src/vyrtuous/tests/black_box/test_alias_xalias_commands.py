@@ -16,9 +16,10 @@
 '''
 from typing import Optional
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, role, voice_channel_one
+from vyrtuous.tests.black_box.test_suite import *
 from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
+import discord
 import pytest
 
 @pytest.mark.asyncio
@@ -26,29 +27,29 @@ import pytest
     "command,alias_type,alias_name,channel_ref,role_ref",
     [
         ("alias", "ban", "testban", True, False),
-        ("xalias", None, "testban", False, False),
+        ("xalias", None, "testban", True, False),
         ("alias", "unban", "testunban", True, False),
-        ("xalias", None, "testunban", False, False),
-        ("alias", "mute", "testmute", True, False),
-        ("xalias", None, "testmute", False, False),
-        ("alias", "unmute", "testunmute", True, False),
-        ("xalias", None, "testunmute", False, False),
+        ("xalias", None, "testunban", True, False),
+        ("alias", "voice_mute", "testmute", True, False),
+        ("xalias", None, "testmute", True, False),
+        ("alias", "unvoice_mute", "testunmute", True, False),
+        ("xalias", None, "testunmute", True, False),
         ("alias", "flag", "testflag", True, False),
-        ("xalias", None, "testflag",  False, False),
+        ("xalias", None, "testflag",  True, False),
         ("alias", "unflag", "testunflag", True, False),
-        ("xalias", None, "testunflag", False, False),
+        ("xalias", None, "testunflag", True, False),
         ("alias", "cow", "testcow", True, False),
-        ("xalias", None, "testcow", False, False),
+        ("xalias", None, "testcow", True, False),
         ("alias", "uncow", "testuncow", True, False),
-        ("xalias", None, "testuncow", False, False),
+        ("xalias", None, "testuncow", True, False),
         ("alias", "tmute", "testtmute", True, False),
-        ("xalias", None, "testtmute", False, False),
+        ("xalias", None, "testtmute", True, False),
         ("alias", "untmute", "testuntmute", True, False),
-        ("xalias", None, "testuntmute", False, False),
+        ("xalias", None, "testuntmute", True, False),
         ("alias", "role", "testrole", True, True),
-        ("xalias", None, "testrole", False, False),
+        ("xalias", "role", "testrole", True, True),
         ("alias", "unrole", "testunrole", True, True),
-        ("xalias", None, "testunrole", False, False)
+        ("xalias", "unrole", "testunrole", True, True)
     ]
 )
 
@@ -56,15 +57,31 @@ async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_au
     administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
     await administrator.grant()
     try:
+        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
+        role_value = role.mention if role_ref else role.name
         voice_channel_one.messages.clear()
-        if channel_ref and role_ref:
-            formatted = f"{command} {alias_name} {alias_type} {voice_channel_one.id} {ROLE_ID}"
-        elif channel_ref:
-            formatted = f"{command} {alias_name} {alias_type} {voice_channel_one.id}"
+        if channel_ref and role_ref and command == "alias":
+            formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id} {ROLE_ID}"
+        elif channel_ref and command == "alias":
+            formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id}"
         else:
             formatted = f"{command} {alias_name}"
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]["content"]
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
+        else:
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            print(f"{GREEN}Success:{RESET} {content}")
+            if alias_type:
+                assert alias_type in content and alias_name in content and channel_value in content
+            if role_ref:
+                assert role_value in content
     finally:
         await administrator.revoke()

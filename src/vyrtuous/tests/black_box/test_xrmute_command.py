@@ -16,7 +16,7 @@
 '''
 from typing import Optional
 from vyrtuous.utils.coordinator import Coordinator
-from vyrtuous.tests.black_box.test_suite import bot, config, guild, not_privileged_author, prepared_command_handling, prefix, privileged_author, voice_channel_one
+from vyrtuous.tests.black_box.test_suite import *
 from vyrtuous.utils.emojis import Emojis
 import pytest
 

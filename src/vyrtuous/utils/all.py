@@ -15,8 +15,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.duration import DurationObject
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.setup_logging import logger
 import discord
@@ -50,7 +52,7 @@ class All:
         for i in range(0, len(channel_mentions), chunk_size):
             chunk = channel_mentions[i:i+chunk_size]
             embed = discord.Embed(
-                title=f'{emoji.get_random_emoji()} {member_type.SINGULAR} Channels for {user.mention}',
+                title=f'{emoji.get_random_emoji()} {member_type.SINGULAR} Channels for {user.display_name}',
                 description = '\n'.join(f'• {channel}' for channel in chunk),
                 color = discord.Color.gold()
             )
@@ -67,7 +69,7 @@ class All:
             logger.warning("Member not found in create_pages_to_show_channels_by_guild_and_member")
             return
         embed = discord.Embed(
-            title = f'{emoji.get_random_emoji()} {user.mention} as {member_type.SINGULAR} in Guilds',
+            title = f'{emoji.get_random_emoji()} {user.display_name} as {member_type.SINGULAR} in All Servers',
             description = ', '.join(str(guild_snowflakes)),
             color = discord.Color.blurple()
         )
@@ -150,7 +152,7 @@ class All:
             for i in range(0, len(channel_mentions), chunk_size):
                 chunk = channel_mentions[i:i + chunk_size]
                 embed = discord.Embed(
-                    title=f'{emoji.get_random_emoji()} {member_type.SINGULAR} Channels for {user.mention} in {guild.name}',
+                    title=f'{emoji.get_random_emoji()} {member_type.SINGULAR} Channels for {user.display_name} in {guild.name}',
                     description='\n'.join(f'• {channel}' for channel in chunk),
                     color=discord.Color.gold()
                 )
@@ -171,7 +173,7 @@ class All:
             if not guild:
                 continue
             embed = discord.Embed(
-                title=f'{emoji.get_random_emoji()} {user.mention} — {member_type.SINGULAR} Guilds',
+                title=f'{emoji.get_random_emoji()} {user.display_name} is a {member_type.SINGULAR} in {guild.name}',
                 description=f'• {guild.name}',
                 color=discord.Color.blurple()
             )
@@ -191,17 +193,11 @@ class All:
             if not channel or not user:
                 continue
             if moderation.expires_at is None:
-                duration_str = 'Permanent'
+                duration = DurationObject(0)
             else:
-                now = discord.utils.utcnow()
-                delta = moderation.expires_at - now
-                if delta.total_seconds() <= 0: duration_str = 'Expired'
-                else:
-                    days, seconds = delta.days, delta.seconds
-                    hours = seconds // 3600
-                    minutes = (seconds % 3600) // 60
-                    duration_str = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
-            lines_by_channel.setdefault(channel.mention, []).append(f'{user.mention}\nReason: {moderation.reason}\nDuration: {duration_str}')
+                delta = moderation.expires_at - datetime.now(timezone.utc)
+                duration = DurationObject.from_timedelta(delta)
+            lines_by_channel.setdefault(channel.mention, []).append(f'{user.mention}\nReason: {moderation.reason}\nDuration: {str(duration)}')
         for channel_mention, entries in lines_by_channel.items():
             chunk_size = 18
             for i in range(0, len(entries), chunk_size):
@@ -226,25 +222,18 @@ class All:
             if not channel or not user:
                 continue
             if moderation.expires_at is None:
-                duration_str = 'Permanent'
-            else:
-                now = discord.utils.utcnow()
-                delta = moderation.expires_at - now
-                if delta.total_seconds() <= 0:
-                    duration_str = 'Expired'
-                else:
-                    days, seconds = delta.days, delta.seconds
-                    hours = seconds // 3600
-                    minutes = (seconds % 3600) // 60
-                    duration_str = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
+                duration = DurationObject(0)
+            else: 
+                delta = moderation.expires_at - datetime.now(timezone.utc)
+                duration = DurationObject.from_timedelta(delta)
             lines_by_user.setdefault(user, []).append(
-                f'{channel.mention}\nReason: {moderation.reason}\nDuration: {duration_str}'
+                f'{channel.mention}\nReason: {moderation.reason}\nDuration: {str(duration)}'
             )
         for user, entries in lines_by_user.items():
             chunk_size = 18
             for i in range(0, len(entries), chunk_size):
                 embed = discord.Embed(
-                    title=f'{emoji.get_random_emoji()} {moderation_type.PLURAL} for {user.mention} in {guild.name}',
+                    title=f'{emoji.get_random_emoji()} {moderation_type.PLURAL} for {user.display_name} in {guild.name}',
                     color=discord.Color.red()
                 )
                 embed.add_field(name='Channels', value='\n\n'.join(entries[i:i + chunk_size]), inline=False)
@@ -264,18 +253,11 @@ class All:
             if not user:
                 continue
             if moderation.expires_at is None:
-                time_left = 'Permanent'
-            else:
-                now = discord.utils.utcnow()
-                delta = moderation.expires_at - now
-                if delta.total_seconds() <= 0:
-                    time_left = 'Expired'
-                else:
-                    days, seconds = delta.days, delta.seconds
-                    hours = seconds // 3600
-                    minutes = (seconds % 3600) // 60
-                    time_left = f'{days}d {hours}h left' if days > 0 else f'{hours}h {minutes}m left' if hours > 0 else f'{minutes}m left'
-            lines_by_guild.append(f'• {user.mention} — {time_left}')
+                duration = DurationObject(0)
+            else: 
+                delta = moderation.expires_at - datetime.now(timezone.utc)
+                duration = DurationObject.from_timedelta(delta)
+            lines_by_guild.append(f'• {user.mention} — {str(duration)}')
         chunk_size = 18
         for i in range(0, len(lines_by_guild), chunk_size):
             chunk = lines_by_guild[i:i+chunk_size]

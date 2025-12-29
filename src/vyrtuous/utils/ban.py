@@ -52,10 +52,11 @@ class Ban:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO active_bans (channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake)
-                VALUES ($1, NOW(), $2, $3, $4)
+                INSERT INTO active_bans (channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason)
+                VALUES ($1, NOW(), $2, $3, $4, $5)
                 ON CONFLICT (channel_snowflake, guild_snowflake, member_snowflake)
-            ''', self.channel_snowflake, self.expires_at, self.guild_snowflake, self.member_snowflake)
+                DO NOTHING
+            ''', self.channel_snowflake, self.expires_at, self.guild_snowflake, self.member_snowflake, self.reason)
 
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
@@ -75,7 +76,7 @@ class Ban:
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
             ''', channel_snowflake, guild_snowflake, member_snowflake)
         if row:
-            return Ban(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
+            return Ban(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
 
     @classmethod
     async def fetch_by_channel_guild_and_member(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
@@ -87,19 +88,22 @@ class Ban:
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
             ''', channel_snowflake, guild_snowflake, member_snowflake)
         if row:
-            return Ban(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
+            return Ban(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
 
     @classmethod
     async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('''
+            rows = await conn.fetch('''
                 SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, updated_at
                 FROM active_bans
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
-        if row:
-            return Ban(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
+        bans = []
+        if rows:
+            for row in rows:
+                bans.append(Ban(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
+        return bans
 
     @classmethod
     async def fetch_by_guild(cls, guild_snowflake: Optional[int]):
@@ -126,7 +130,7 @@ class Ban:
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
         if row:
-            return Ban(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason'])
+            return Ban(channel_snowflake=channel_snowflake, expires_at=row['expires_at'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason'])
 
     @classmethod
     async def fetch_by_expired(cls, now: Optional[datetime]):
@@ -138,6 +142,7 @@ class Ban:
                 WHERE expires_at IS NOT NULL AND expires_at <= $1
             ''', now)
         expired_bans = []
-        for row in rows:
-            expired_bans.append(Ban(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
+        if rows:
+            for row in rows:
+                expired_bans.append(Ban(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
         return expired_bans

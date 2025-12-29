@@ -16,14 +16,14 @@
 '''
 from typing import Optional
 from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.test_suite import bot, config, guild, prepared_command_handling, prefix, privileged_author, role, voice_channel_one
+from vyrtuous.tests.black_box.test_suite import *
 from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
 def generate_cap_test_cases():
     durations = ['1m', '1h', '1d']
-    moderation_types = ['ban', 'mute', 'tmute']
+    moderation_types = ['ban', 'vmute', 'tmute']
     cases = []
     for mod_type in moderation_types:
         for duration in durations:

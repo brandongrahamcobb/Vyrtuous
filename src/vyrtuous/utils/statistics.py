@@ -42,95 +42,114 @@ class Statistics:
     @classmethod
     async def send_statistic(
         cls,
-        message,
-        moderation_type: Optional[str],
-        member: discord.Member,
+        alias,
         channel: Optional[discord.VoiceChannel],
-        duration_display: Optional[str],
-        reason: Optional[str],
-        expires_at: Optional[datetime],
-        command_used: Optional[str],
-        was_in_channel: bool = False,
-        is_modification: bool = False,
-        highest_role: Optional[str] = 'Everyone'
+        duration: Optional[str],
+        highest_role: Optional[str],
+        is_channel_scope: bool,
+        is_modification: bool,
+        member: discord.Member,
+        message,
+        reason: Optional[str]
     ):
         bot = DiscordBot.get_instance()
         statistics = await Statistics.fetch_all()
         for statistic in statistics:
             if message.guild.id == statistic.channel_snowflake:
                 channel = bot.get_channel(statistic.channel_snowflake)
-                statistic_type = statistic.statistic_type
-                snowflakes = statistic.snowflakes
                 pages = cls.build_statistic_embeds(
-                        message=message, moderation_type=moderation_type,member=member, channel=channel, duration_display=duration_display,
-                        reason=reason, executor=message.author, expires_at=expires_at,
-                        command_used=command_used, was_in_channel=was_in_channel,
-                        is_modification=is_modification, highest_role=highest_role
+                        alias=alias, channel=channel, duration=duration, highest_role=highest_role,
+                        is_channel_scope=is_channel_scope, is_modification=is_modification,
+                        member=member, message=message,
+                        reason=reason, 
                     )
                 paginator = Paginator(bot, channel, pages)
                 await paginator.start()
 
     @classmethod
-    def build_statistic_embeds(cls, message: discord.Message, moderation_type: Optional[str], member: discord.Member, channel: discord.VoiceChannel, duration_display: Optional[str], reason: Optional[str], executor: discord.Member, expires_at: Optional[datetime], command_used: Optional[str], was_in_channel: bool = False, is_modification: bool = False, highest_role: Optional[str] = ''):
-        guild = message.guild
-        if expires_at is not None:
-            time_left = expires_at - datetime.now(timezone.utc)
-            hours_left = round(time_left.total_seconds() / 3600, 1)
-            days_left = time_left.days
-            duration_info = f'**Type:** {moderation_type}\n**Duration:**\n{duration_display}\n**Expires:** <t:{int(expires_at.timestamp())}:F>\n**Time Left:** '
-            duration_info += f'{days_left}d {hours_left % 24:.1f}h' if days_left > 0 else f'{hours_left}h'
+    def build_statistic_embeds(
+        cls,
+        alias,
+        channel,
+        duration,
+        highest_role,
+        is_channel_scope,
+        is_modification,
+        member,
+        message,
+        reason
+    ):
+        if duration != "permanent":
+            if duration is None:
+                duration_info = f'**Type:** {alias.alias_type.capitalize()}\n\n**Expires:** Never'
+            else:
+                duration_info = f'**Type:** {alias.alias_type.capitalize()}\n\n**Expires:** {duration}'
             if is_modification:
                 color, duration_type = 0xFF6B35, '⏰ Modified'
             else:
                 color, duration_type = 0xFF8C00, '⏱️ Temporary'
         else:
             color, duration_type = 0xDC143C, '♾️ Permanent'
-            duration_info = f'**Type:** {moderation_type}\n**Duration:** {duration_display}\n**Status:** Permanent'
-            
-        if moderation_type and moderation_type.lower() == 'ban':
+            duration_info = f'**Type:** {alias.alias_type.capitalize()}\n**Expires:** {duration}'
+        if alias.alias_type == 'ban':
             if is_modification:
                 title = '🔄 Ban Modified'
             else:
                 title = '🔨 User Banned'
             action = 'banned'
-        elif moderation_type and moderation_type.lower() == 'voice_mute':
+        elif alias.alias_type == 'flag':
             if is_modification:
-                title = '🔄 Voice Mute Modified'
+                title = '🔄 Flag Modified'
             else:
-                title = '🎙️ User Voice Muted'
-            action = 'voice muted'
-        elif moderation_type and moderation_type.lower() == 'text_mute':
+                title = '🚩 User Flagged'
+            action = 'flagged'
+        elif alias.alias_type == 'text_mute':
             if is_modification:
                 title = '🔄 Text Mute Modified'
             else:
                 title = '📝 User Text Muted'
             action = 'text muted'
+        elif alias.alias_type == 'voice_mute':
+            if is_modification:
+                title = '🔄 Voice Mute Modified'
+            else:
+                title = '🎙️ User Voice Muted'
+            action = 'voice muted'
+        elif alias.alias_type == 'unban':
+            title = '⏮️ User Unbanned'
+            action = 'unbanned'
+        elif alias.alias_type == 'unflag':
+            title = '⏮️ User Unflagged'
+            action = 'unflagged'
+        elif alias.alias_type == 'untext_mute':
+            title = '⏮️ User Text-Mute Removed'
+            action = 'untext-muted'
+        elif alias.alias_type == 'unvoice_mute':
+            title = '⏮️ User Voice-Mute Removed'
+            action = 'unvoice-muted'
         else:
             title = None
             action = None
-            
         embed_user = discord.Embed(title=f"{title} - User Identity", color=color, timestamp=datetime.now(timezone.utc))
         if not action:
             embed_user.description = None
         else:
             embed_user.description = f"**Target:** {member.mention} {action} in {channel.mention}"
         embed_user.set_thumbnail(url=message.author.display_avatar.url)
-        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>"
-        if member.joined_at:
-            user_priority += f"\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
+        user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
         embed_user.add_field(name='👤 Target User', value=user_priority, inline=False)
-        exec_priority = f"**Moderator:** {message.author.display_name} (@{message.author.name})\n**Mod ID:** `{message.author.id}`\n**Top Role:** {highest_role or message.author.top_role.mention}"
+        exec_priority = f"**Executor:** {message.author.display_name} (@{message.author.name})\n**Executor ID:** `{message.author.id}`\n**Top Role:** {highest_role}"
         embed_user.add_field(name='👮‍♂️ Executed By', value=exec_priority, inline=True)
-        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Command Used:** `{command_used}`"
+        ctx_info = f"**Original Message ID:** `{message.id}`\n**Message Link:** [Jump to Message]({message.jump_url})\n**Command Channel:** {message.channel.mention}\n**Command Used:** `{alias.alias_name}`"
         embed_user.add_field(name='📱 Command Context', value=ctx_info, inline=True)
         embed_user.add_field(name=f'**Type:** {duration_type}', value=duration_info, inline=False)
-        embed_user.add_field(name='📝 Reason', value=f'```{reason if reason else "No reason provided"}```', inline=False)
-        embed_user.set_footer(text=f"Ref: {member.id}-{channel.id} | Msg: {message.id}", icon_url=guild.icon.url if guild and guild.icon else None)
+        embed_user.add_field(name='📝 Reason', value=f'```{reason}```', inline=False)
+        embed_user.set_footer(text=f"Ref: {member.id}-{channel.id} | Msg: {message.id}", icon_url=message.guild.icon.url)
         embed_duration = discord.Embed(title=f"{title} - Duration Info", color=color, timestamp=datetime.now(timezone.utc))
         embed_duration.add_field(name=f'{duration_type}', value=duration_info, inline=False)
-        action_details = f"**Was in Channel:** {'\u2705 Yes' if was_in_channel else '\U000026A0\U0000FE0F No'}\n**Action Type:** {'Modification' if is_modification else 'New'}\n**Server:** {guild.name} (`{guild.id}`)"
+        action_details = f"**Was in Channel:** {is_channel_scope}\n**Modification:** {is_modification}\n**Server:** {message.guild.name}"
         embed_duration.add_field(name='⚙️ Action Details', value=action_details, inline=True)
-        channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name if channel.category else 'None'}"
+        channel_basic = f"**Channel:** {channel.mention} (`{channel.id}`)\n**Category:** {channel.category.name}"
         embed_duration.add_field(name='📍 Channel Info', value=channel_basic, inline=True)
         embeds = [embed_user, embed_duration]
         if reason:
@@ -141,7 +160,6 @@ class Statistics:
                     reason_embed.add_field(name=f'📝 Reason (Part {i+1})', value=f'```{chunk}```', inline=False)
                     embeds.append(reason_embed)
         return embeds
-
 
     @classmethod
     async def delete_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):

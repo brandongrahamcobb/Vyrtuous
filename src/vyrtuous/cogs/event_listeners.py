@@ -23,6 +23,7 @@ from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
+from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.utils.paginator import Paginator
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -54,6 +55,8 @@ class EventListeners(commands.Cog):
         self.join_log = defaultdict(list)
         self._ready_done = False
         self.deleted_rooms = {}
+        self.channel_service = ChannelService()
+        self.member_service = MemberService()
 
     @commands.Cog.listener()
     async def on_guild_channel_grant(self, channel: discord.abc.GuildChannel):
@@ -260,7 +263,7 @@ class EventListeners(commands.Cog):
                 return await state.end(warning=f"\U000026A0\U0000FE0F {e}")
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}')
-        existing_moderation = await Alias.get_existing_moderation(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
+        existing_guestroom_alias_event = await Alias.get_existing_guestroom_alias_event(alias=alias, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
         target = args[1] if len(args) > 1 else '24h'
         is_reason_modification = target in ['+', '-', '=']
         is_duration_modification = target.startswith(('+', '-', '=')) and not is_reason_modification
@@ -270,7 +273,7 @@ class EventListeners(commands.Cog):
                 return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s or {alias.alias_type} users.")
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}')
-        await alias.handler(alias, args, channel_obj, executor_role, existing_moderation, is_duration_modification, is_reason_modification, member_obj, message, state)
+        await alias.handler(alias, args, channel_obj, executor_role, existing_guestroom_alias_event, is_duration_modification, is_reason_modification, member_obj, message, state)
         
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):

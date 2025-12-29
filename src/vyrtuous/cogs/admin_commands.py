@@ -54,7 +54,7 @@ class AdminCommands(commands.Cog):
     @is_owner_developer_administrator_predicator()
     @app_commands.describe(
         alias_name='Alias/Pseudonym',
-        alias_type='One of: cow, uncow, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, unrole',
+        alias_type='One of: cow, uncow, vmute, unvmute, ban, unban, flag, unflag, tmute, untmute, role, unrole',
         channel='Tag a channel or include its snowflake ID',
         role='Role ID (only for role/unrole)'
     )
@@ -67,6 +67,15 @@ class AdminCommands(commands.Cog):
         role: AppRoleSnowflake = None
     ):
         state = State(interaction)
+        match alias_type:
+            case "tmute":
+                alias_type = "text_mute"
+            case "vmute":
+                alias_type = "voice_mute"
+            case "untmute":
+                alias_type = "untext_mute"
+            case "unvmute":
+                alias_type = "unvoice_mute"
         channel_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
@@ -103,13 +112,22 @@ class AdminCommands(commands.Cog):
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
-        alias_type: Optional[str] = commands.parameter(default=None, description='One of: `cow`, `uncow`, `mute`, `unmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
+        alias_type: Optional[str] = commands.parameter(default=None, description='One of: `cow`, `uncow`, `vmute`, `unvmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
         alias_name: Optional[str] = commands.parameter(default=None, description='Alias/Pseudonym'),
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
         *,
         role: RoleSnowflake = commands.parameter(default=None, description='Role ID (only for role/unrole)')
     ):
         state = State(ctx)
+        match alias_type:
+            case "tmute":
+                alias_type = "text_mute"
+            case "vmute":
+                alias_type = "voice_mute"
+            case "untmute":
+                alias_type = "untext_mute"
+            case "unvmute":
+                alias_type = "unvoice_mute"
         channel_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
@@ -132,12 +150,12 @@ class AdminCommands(commands.Cog):
             ''', 'create_alias', None, ctx.author.id, ctx.guild.id, channel_obj.id, f'Created an alias: {alias_name}')
         if role_snowflake:
             try:
-                return await state.end(success=f'{self.emoji.get_random_emoji()} Alias `{alias_name}` created successfully for channel {channel_obj.mention} and role {role_obj.mention}.')
+                return await state.end(success=f'{self.emoji.get_random_emoji()} Alias `{alias_name}` of type `{alias_type}` created successfully for channel {channel_obj.mention} and role {role_obj.mention}.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {str(e)}')
         else:
             try:
-                return await state.end(success=f'{self.emoji.get_random_emoji()} Alias `{alias_name}` created successfully for channel {channel_obj.mention}.')
+                return await state.end(success=f'{self.emoji.get_random_emoji()} Alias `{alias_name}` of type `{alias_type}` created successfully for channel {channel_obj.mention}.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {str(e)}')
     
@@ -184,7 +202,7 @@ class AdminCommands(commands.Cog):
         duration: str = commands.parameter(default=DurationObject('24h'), description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default')
     ):
         state = State(ctx)
-        duration = Duration(duration)
+        duration = DurationObject(duration)
         channel_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
@@ -1018,6 +1036,11 @@ class AdminCommands(commands.Cog):
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,$2,$3,$4,$5,$6)
                 ''', 'delete_alias', None, interaction.user.id, interaction.guild.id, channel_obj.id, f'Deleted alias {alias_name}')
+        if alias.role_snowflake:
+            try:
+                return await state.end(success=f'{self.emoji.get_random_emoji()} Alias `{alias.alias_name}` of type `{alias.alias_type}` for channel {channel_obj.mention} and role {alias.role_mention} deleted successfully.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {str(e)}')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Alias `{alias.alias_name}` of type `{alias.alias_type}` for channel {channel_obj.mention} deleted successfully.')
         except Exception as e:
@@ -1045,6 +1068,11 @@ class AdminCommands(commands.Cog):
             await conn.execute('''
                 INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason) VALUES ($1,$2,$3,$4,$5,$6)
                 ''', 'delete_alias', None, ctx.author.id, ctx.guild.id, channel_obj.id, f'Deleted alias {alias_name}')
+        if alias.role_snowflake:
+            try:
+                return await state.end(success=f'{self.emoji.get_random_emoji()} Alias `{alias.alias_name}` of type `{alias.alias_type}` for channel {channel_obj.mention} and role {alias.role_mention} deleted successfully.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {str(e)}')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Alias `{alias.alias_name}` of type `{alias.alias_type}` for channel {channel_obj.mention} deleted successfully.')
         except Exception as e:

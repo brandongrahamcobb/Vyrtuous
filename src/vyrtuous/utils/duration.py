@@ -25,11 +25,13 @@ class DurationObject:
     DAY_UNITS = {'d', 'day', 'days'}
     HOUR_UNITS = {'h', 'hr', 'hrs', 'hour', 'hours'}
     MINUTE_UNITS = {'m', 'min', 'mins', 'minute', 'minutes'}
+    SECOND_UNITS = {'s', 'sec', 'secs', 'second', 'seconds'}
     PREFIXES = {'+', '-', '='}
 
     UNIT_MAP = {**dict.fromkeys(DAY_UNITS, 'd'),
                 **dict.fromkeys(HOUR_UNITS, 'h'),
-                **dict.fromkeys(MINUTE_UNITS, 'm')}
+                **dict.fromkeys(MINUTE_UNITS, 'm'),
+                **dict.fromkeys(SECOND_UNITS, 's')}
 
     def __init__(self, duration: str):
         self._duration: str = ""
@@ -119,6 +121,24 @@ class DurationObject:
         obj = cls(f"{prefix}{number}{suffix}")
         return obj
     
+    @classmethod
+    def from_expires_at(cls, expires_at: datetime) -> "DurationObject":
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        remaining = expires_at - now
+        total_seconds = int(remaining.total_seconds())
+        if total_seconds < 0:
+            total_seconds = 0
+        if total_seconds % 86400 == 0:
+            number, unit = total_seconds // 86400, 'd'
+        elif total_seconds % 3600 == 0:
+            number, unit = total_seconds // 3600, 'h'
+        elif total_seconds % 60 == 0:
+            number, unit = total_seconds // 60, 'm'
+        else:
+            number, unit = total_seconds, 's'
+        return cls(f"+{number}{unit}")
+    
     def to_timedelta(self) -> timedelta:
         match self.unit:
             case 'd':
@@ -127,6 +147,8 @@ class DurationObject:
                 return timedelta(hours=self.number * self.sign)
             case 'm':
                 return timedelta(minutes=self.number * self.sign)
+            case 's':
+                return timedelta(seconds=self.number * self.sign)
             case _:
                 raise ValueError(f"Unsupported unit: {self.unit}")
 

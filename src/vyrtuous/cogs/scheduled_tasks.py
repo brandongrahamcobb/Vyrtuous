@@ -146,10 +146,10 @@ class ScheduledTasks(commands.Cog):
             now = datetime.now(timezone.utc)
             async with self.bot.db_pool.acquire() as conn:
                 expired_stages = await Stage.fetch_by_expired(now)
-                for record in expired_stages:
+                for expired_stage in expired_stages:
                     try:
-                        guild_id = record['guild_id']
-                        channel_id = record['channel_id']
+                        guild_id = expired_stage.guild_snowflake
+                        channel_id = expired_stage.channel_snowflake
                         guild = self.bot.get_guild(guild_id)
                         voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, target="room")
                         await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, target="room")
