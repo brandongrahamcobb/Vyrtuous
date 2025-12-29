@@ -52,9 +52,12 @@ class DurationObject:
 
     @duration.setter
     def duration(self, value: str):
-        if not value or not isinstance(value, str):
+        if value is None:
             raise commands.BadArgument("Duration string must be non-empty string")
-        self._duration = value.strip()
+        if isinstance(value, int):
+            self._duration = str(value)
+        else:
+            self._duration = value.strip()
         self._parse()
 
     @property
@@ -164,6 +167,11 @@ class DurationObject:
 
     def _parse(self):
         s = self._duration.lower()
+        if s == "0":
+            self.number = 0
+            self.unit = 'h'
+            self.prefix = '+'
+            return
         if s[0] in self.PREFIXES:
             self.prefix = s[0]
             s = s[1:]
@@ -184,7 +192,6 @@ class DurationObject:
         else:
             unit = self.UNIT_MAP.get(s)
             if not unit:
-                # try matching known suffixes
                 for known in self.UNIT_MAP.keys():
                     if s.startswith(known):
                         unit = self.UNIT_MAP[known]
@@ -192,6 +199,7 @@ class DurationObject:
             if not unit:
                 raise commands.BadArgument(f"Invalid duration unit in '{self._duration}'")
             self.unit = unit
+
 
 class Converter(commands.Converter):
     

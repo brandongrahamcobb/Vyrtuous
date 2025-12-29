@@ -192,11 +192,14 @@ class All:
             user = bot.get_user(moderation.member_snowflake)
             if not channel or not user:
                 continue
-            if moderation.expires_at is None:
-                duration = DurationObject(0)
+            if hasattr(moderation, "expires_at"):
+                if moderation.expires_at is None:
+                    duration = DurationObject(0)
+                else:
+                    delta = moderation.expires_at - datetime.now(timezone.utc)
+                    duration = DurationObject.from_timedelta(delta)
             else:
-                delta = moderation.expires_at - datetime.now(timezone.utc)
-                duration = DurationObject.from_timedelta(delta)
+                duration = DurationObject(0)
             lines_by_channel.setdefault(channel.mention, []).append(f'{user.mention}\nReason: {moderation.reason}\nDuration: {str(duration)}')
         for channel_mention, entries in lines_by_channel.items():
             chunk_size = 18
@@ -210,36 +213,39 @@ class All:
         return pages
 
     @classmethod
-    async def create_pages_from_moderations_by_guild_and_member(cls, guild_snowflake, moderations, moderation_type):
+    async def create_pages_from_moderations_by_guild_and_member(cls, guild_snowflake, member_snowflake, moderations, moderation_type):
         bot = DiscordBot.get_instance()
         emoji = Emojis()
+        entries = []
         guild = bot.get_guild(guild_snowflake)
-        lines_by_user = {}
+        user = bot.get_user(member_snowflake)
         pages = []
         for moderation in moderations:
             channel = bot.get_channel(moderation.channel_snowflake)
-            user = bot.get_user(moderation.member_snowflake)
-            if not channel or not user:
+            if not channel or moderation.member_snowflake != member_snowflake:
                 continue
-            if moderation.expires_at is None:
+            if hasattr(moderation, "expires_at"):
+                if moderation.expires_at is None:
+                    duration = DurationObject(0)
+                else:
+                    delta = moderation.expires_at - datetime.now(timezone.utc)
+                    duration = DurationObject.from_timedelta(delta)
+            else:
                 duration = DurationObject(0)
-            else: 
-                delta = moderation.expires_at - datetime.now(timezone.utc)
-                duration = DurationObject.from_timedelta(delta)
-            lines_by_user.setdefault(user, []).append(
-                f'{channel.mention}\nReason: {moderation.reason}\nDuration: {str(duration)}'
+            if hasattr(moderation, "reason"):
+                reason = moderation.reason
+            else:
+                reason = 'No reason provided.'
+            entries.append(f'{channel.mention}\nReason: {reason}\nDuration: {str(duration)}')
+        chunk_size = 18
+        for i in range(0, len(entries), chunk_size):
+            embed = discord.Embed(
+                title=f'{emoji.get_random_emoji()} {moderation_type.PLURAL} for {user.display_name} in {guild.name}',
+                color=discord.Color.red()
             )
-        for user, entries in lines_by_user.items():
-            chunk_size = 18
-            for i in range(0, len(entries), chunk_size):
-                embed = discord.Embed(
-                    title=f'{emoji.get_random_emoji()} {moderation_type.PLURAL} for {user.display_name} in {guild.name}',
-                    color=discord.Color.red()
-                )
-                embed.add_field(name='Channels', value='\n\n'.join(entries[i:i + chunk_size]), inline=False)
-                pages.append(embed)
+            embed.add_field(name='Channels', value='\n\n'.join(entries[i:i + chunk_size]), inline=False)
+            pages.append(embed)
         return pages
-
 
     @classmethod
     async def create_pages_from_moderations_by_guild(cls, guild_snowflake, moderations, moderation_type):
@@ -252,11 +258,14 @@ class All:
             user = bot.get_user(moderation.member_snowflake)
             if not user:
                 continue
-            if moderation.expires_at is None:
+            if hasattr(moderation, "expires_at"):
+                if moderation.expires_at is None:
+                    duration = DurationObject(0)
+                else: 
+                    delta = moderation.expires_at - datetime.now(timezone.utc)
+                    duration = DurationObject.from_timedelta(delta)
+            else:
                 duration = DurationObject(0)
-            else: 
-                delta = moderation.expires_at - datetime.now(timezone.utc)
-                duration = DurationObject.from_timedelta(delta)
             lines_by_guild.append(f'• {user.mention} — {str(duration)}')
         chunk_size = 18
         for i in range(0, len(lines_by_guild), chunk_size):

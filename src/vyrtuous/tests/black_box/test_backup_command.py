@@ -47,7 +47,7 @@ async def test_backup_command(bot, voice_channel_one, guild, privileged_author, 
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            print(f"{GREEN}Success:{RESET} {content}")
+            # print(f"{GREEN}Success:{RESET} {content}")
             assert content.startswith("backup")
     finally:
         await developer.revoke()

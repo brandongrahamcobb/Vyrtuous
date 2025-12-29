@@ -38,7 +38,16 @@ class TextMute:
                 DELETE FROM active_text_mutes
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
-
+              
+    @classmethod
+    async def delete_by_channel_guild_and_member(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int] ):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+              await conn.execute('''
+                DELETE FROM active_text_mutes
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
+            ''', channel_snowflake, guild_snowflake, member_snowflake)
+              
     @classmethod
     async def delete_by_guild_and_member(self, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()

@@ -54,7 +54,7 @@ class AdminCommands(commands.Cog):
     @is_owner_developer_administrator_predicator()
     @app_commands.describe(
         alias_name='Alias/Pseudonym',
-        alias_type='One of: cow, uncow, vmute, unvmute, ban, unban, flag, unflag, tmute, untmute, role, unrole',
+        alias_type='One of: vegan, carnist, vmute, unvmute, ban, unban, flag, unflag, tmute, untmute, role, unrole',
         channel='Tag a channel or include its snowflake ID',
         role='Role ID (only for role/unrole)'
     )
@@ -107,12 +107,12 @@ class AdminCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {str(e)}')
     # DONE
-    @commands.command(name='alias', help='Set an alias for a cow, uncow, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, or unrole action.')
+    @commands.command(name='alias', help='Set an alias for a vegan, carnist, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, or unrole action.')
     @is_owner_developer_administrator_predicator()
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
-        alias_type: Optional[str] = commands.parameter(default=None, description='One of: `cow`, `uncow`, `vmute`, `unvmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
+        alias_type: Optional[str] = commands.parameter(default=None, description='One of: `vegan`, `carnist`, `vmute`, `unvmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
         alias_name: Optional[str] = commands.parameter(default=None, description='Alias/Pseudonym'),
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
         *,

@@ -267,7 +267,7 @@ ALTER TABLE command_aliases RENAME TO command_aliases_old;
 -- 2. Create the new table with updated column names and CHECK constraint
 CREATE TABLE command_aliases (
     alias_type        TEXT NOT NULL CHECK (alias_type IN (
-        'cow', 'uncow', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'
+        'vegan', 'carnist', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'
     )),
     alias_name        TEXT NOT NULL,
     channel_snowflake BIGINT DEFAULT -1,
@@ -287,6 +287,8 @@ SELECT
         WHEN 'unmute' THEN 'unvoice_mute'
         WHEN 'tmute' THEN 'text_mute'
         WHEN 'untmute' THEN 'untext_mute'
+        WHEN 'cow' THEN 'vegan'
+        WHEN 'uncow' THEN 'carnist'
         ELSE alias_type
     END AS alias_type,
     alias_name,

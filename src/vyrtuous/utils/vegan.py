@@ -55,13 +55,14 @@ class Vegan:
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
             ''', channel_snowflake, guild_snowflake, member_snowflake)
 
-    async def grant(self):
+    async def create(self):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 INSERT INTO vegans (channel_snowflake, created_at, guild_snowflake, member_snowflake)
-                VALUES ($1, NOW(), $2, $3, $4)
+                VALUES ($1, NOW(), $2, $3)
                 ON CONFLICT (channel_snowflake, guild_snowflake, member_snowflake)
+                DO NOTHING
             ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake)
 
     @classmethod
@@ -88,13 +89,16 @@ class Vegan:
     async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('''
+            rows = await conn.fetch('''
                 SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, updated_at
                 FROM vegans
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
-        if row:
-            return Vegan(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'])
+        vegans = []
+        if rows:
+            for row in rows:
+                vegans.append(Vegan(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
+        return vegans
 
     @classmethod
     async def fetch_by_guild(cls, guild_snowflake: Optional[int]):

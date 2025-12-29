@@ -45,10 +45,10 @@ class Aliases(commands.Cog):
                 "**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
                 "**reason** (Optional): Optional reason (required for 7 days or more)"
             ],
-            'cow': [
+            'vegan': [
                 "**member** (Optional): Tag a member or include their snowflake ID"
             ],
-            'uncow': [
+            'carnist': [
                 "**member** (Optional): Tag a member or include their snowflake ID"
             ],
             'unban': [
@@ -88,8 +88,8 @@ class Aliases(commands.Cog):
         }
         self.alias_type_to_description = {
             'ban': 'Bans a user from the server.',
-            'cow': 'Verifies a user as going vegan.',
-            'uncow': 'Unverifies a user as going vegan.',
+            'vegan': 'Verifies a user as going vegan.',
+            'carnist': 'Unverifies a user as going vegan.',
             'unban': 'Unbans a user from the server.',
             'flag': 'Flags a user for moderation review.',
             'unflag': 'Removes a flag from a user.',
@@ -102,8 +102,8 @@ class Aliases(commands.Cog):
         }
         self.alias_type_to_permission_level = {
             'ban': 'Moderator',
-            'cow': 'Moderator',
-            'uncow': 'Moderator',
+            'vegan': 'Moderator',
+            'carnist': 'Moderator',
             'unban': 'Moderator',
             'voice_mute': 'Moderator',
             'unvoice_mute': 'Moderator',
@@ -196,7 +196,7 @@ class Aliases(commands.Cog):
             return await state.end(error=f'\U0001F3C6 {e}')
     
     # DONE
-    async def handle_cow_alias(
+    async def handle_vegan_alias(
         self,
         alias,
         args,
@@ -551,7 +551,7 @@ class Aliases(commands.Cog):
             return await state.end(error=f'\U0001F3C6 {e}')
     
     # DONE
-    async def handle_uncow_alias(
+    async def handle_carnist_alias(
         self,
         alias,
         args,
@@ -614,11 +614,6 @@ class Aliases(commands.Cog):
         if not flag:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not currently flagged in {channel_obj.mention}.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}')
-        if flag.expires_at is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-            try:
-                return await state.end(warning='\U000026A0\U0000FE0F Only coordinators and above can undo permanent flags.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}')
         await Flag.delete_by_channel_guild_and_member(

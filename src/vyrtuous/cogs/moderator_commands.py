@@ -28,7 +28,7 @@ from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.all import All
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.duration import Duration
+from vyrtuous.utils.duration import Duration, DurationObject
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.flag import Flag
 from vyrtuous.utils.setup_logging import logger
@@ -96,7 +96,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active bans found for user {member_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, moderations=bans, moderation_type=Ban)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, moderations=bans, moderation_type=Ban)
         elif channel_obj:
             bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not bans:
@@ -154,7 +154,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not banned in any channels.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, moderations=bans, moderation_type=Ban)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=bans, moderation_type=Ban)
         elif channel_obj:
             bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             if not bans:
@@ -314,6 +314,7 @@ class ModeratorCommands(commands.Cog):
         except:
             channel_obj = interaction.channel
         lines = []
+        pages = []
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -346,7 +347,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             lines.extend(Alias.format_aliases(aliases))
             embed = discord.Embed(
-                title=f'Aliases in {channel_obj.mention}',
+                title=f'{self.emoji.get_random_emoji()} Aliases in {channel_obj.mention}',
                 description='\n'.join(lines),
                 color=0x57F287
             )
@@ -376,6 +377,7 @@ class ModeratorCommands(commands.Cog):
         except:
             channel_obj = ctx.channel
         lines = []
+        pages = []
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -408,7 +410,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             lines.extend(Alias.format_aliases(aliases))
             embed = discord.Embed(
-                title=f'Aliases in {channel_obj.mention}',
+                title=f'{self.emoji.get_random_emoji()} Aliases in {channel_obj.mention}',
                 description='\n'.join(lines),
                 color=0x57F287
             )
@@ -535,7 +537,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not flagged in any channels.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, moderations=flags, moderation_type=Flag)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, moderations=flags, moderation_type=Flag)
         elif channel_obj:
             flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not flags:
@@ -594,7 +596,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not flagged in any channels.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, moderations=flags, moderation_type=Flag)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=flags, moderation_type=Flag)
         elif channel_obj:
             flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             if not flags:
@@ -609,7 +611,7 @@ class ModeratorCommands(commands.Cog):
             return await state.end(error=f'\U0001F3C6 {e}.')
         
     # DONE
-    @app_commands.command(name='ls', description='List users cowed as going vegan in this guild.')
+    @app_commands.command(name='ls', description='List users veganed as going vegan in this guild.')
     @app_commands.describe(scope='A member or channel snowflake ID/mention')
     async def list_vegans_app_command(
         self,
@@ -653,7 +655,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans found for user {member_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, moderations=vegans, moderation_type=Vegan)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, moderations=vegans, moderation_type=Vegan)
         elif channel_obj:
             vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not vegans:
@@ -668,7 +670,7 @@ class ModeratorCommands(commands.Cog):
             return await state.end(error=f'\U0001F3C6 {e}.')
                             
     # DONE
-    @commands.command(name='ls', help='List users cowed as going vegan in this guild.')
+    @commands.command(name='ls', help='List users veganed as going vegan in this guild.')
     async def list_members_text_command(
         self,
         ctx: commands.Context,
@@ -711,7 +713,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans found for user {member_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, moderations=vegans, moderation_type=Vegan)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=vegans, moderation_type=Vegan)
         elif channel_obj:
             vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             if not vegans:
@@ -865,7 +867,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active voice mutes found for user {member_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, moderations=voice_mutes, moderation_type=VoiceMute)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, moderations=voice_mutes, moderation_type=VoiceMute)
         elif channel_obj:
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="user")
             if not voice_mutes:
@@ -924,7 +926,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active voice mutes found for user {member_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, moderations=voice_mutes, moderation_type=VoiceMute)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=voice_mutes, moderation_type=VoiceMute)
         elif channel_obj:
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target="user")
             if not voice_mutes:
@@ -1076,11 +1078,11 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="room")
             initiator = interaction.guild.get_member(stage.member_snowflake)
             initiator_name = initiator.mention
-            expires = Duration.output_display_from_datetime(stage.expires_at) if stage.expires_at else 'No expiration'
+            expires = DurationObject.from_expires_at(stage.expires_at) if stage.expires_at else 'No expiration'
             lines = []
             for m in voice_mutes:
                 user = interaction.guild.get_member(m.member_snowflake)
-                duration_str = Duration.output_display_from_datetime(m.expires_at) if m.expires_at else 'No expiration'
+                duration_str = DurationObject.from_expires_at(m.expires_at) if m.expires_at else 'No expiration'
                 reason = m.reason or 'No reason provided'
                 lines.append(f'• {user.mention} — {reason} — {duration_str}')
             description = f'Initiator: {initiator_name}\nStage Expires: {expires}\nActive stage mutes: {len(lines)}\n\n'+'\n'.join(lines)
@@ -1153,11 +1155,11 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target="room")
             initiator = ctx.guild.get_member(stage.member_snowflake)
             initiator_name = initiator.mention
-            expires = Duration.output_display_from_datetime(stage.expires_at) if stage.expires_at else 'No expiration'
+            expires = DurationObject.from_expires_at(stage.expires_at) if stage.expires_at else 'No expiration'
             lines = []
             for m in voice_mutes:
                 user = ctx.guild.get_member(m.member_snowflake)
-                duration_str = Duration.output_display_from_datetime(m.expires_at) if m.expires_at else 'No expiration'
+                duration_str = DurationObject.from_expires_at(m.expires_at) if m.expires_at else 'No expiration'
                 reason = m.reason or 'No reason provided'
                 lines.append(f'• {user.mention} — {reason} — {duration_str}')
             description = f'Initiator: {initiator_name}\nStage Expires: {expires}\nActive stage mutes: {len(lines)}\n\n'+'\n'.join(lines)
@@ -1218,25 +1220,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No users are currently text-muted in {interaction.guild.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            grouped = defaultdict(list)
-            for text_mute in text_mutes:
-                grouped[text_mute.channel_snowflake].append(text_mute)
-            pages, chunk_size = [], 18
-            for ch_id, entries in sorted(grouped.items()):
-                ch = interaction.guild.get_channel(ch_id)
-                ch_name = ch.mention
-                for i in range(0, len(entries), chunk_size):
-                    embed= discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} Text-mute records for {ch_name}',
-                        color=discord.Color.orange()
-                    )
-                    for e in entries[i:i+chunk_size]:
-                        user = interaction.guild.get_member(e.member_snowflake)
-                        mention = user.name if user else f'`{e.member_snowflake}`'
-                        reason = e.reason or 'No reason provided'
-                        duration_str = Duration.output_display_from_datetime(e.expires_at)
-                        embed.add_field(name=mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
-                    pages.append(embed)
+            pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=text_mutes, moderation_type=TextMute)
         elif member_obj:
             text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             if not text_mutes:
@@ -1244,19 +1228,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not text-muted in any channels.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            lines = []
-            for text_mute in text_mutes:
-                ch = interaction.guild.get_channel(text_mutes.channel_snowflake)
-                duration_str = Duration.output_display_from_datetime(text_mute.expires_at)
-                lines.append(f'• {ch.mention} — {text_mutes.reason} — {duration_str}')
-            pages, chunk_size = [], 18
-            for i in range(0, len(lines), chunk_size):
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} Text-mute records for {member_obj.display_name}',
-                    description='\n'.join(lines[i:i+chunk_size]),
-                    color=discord.Color.orange()
-                )
-                pages.append(embed)
+            pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=text_mutes, moderation_type=TextMute)
         elif channel_obj:
             text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             if not text_mutes:
@@ -1264,31 +1236,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No text-muted users currently in {channel_obj.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            lines = []
-            for text_mute in text_mutes:
-                user = interaction.guild.get_member(text_mute.member_snowflake)
-                if not user:
-                    continue
-                duration_str = Duration.output_display_from_datetime(text_mute.expires_at)
-                lines.append(f'• {user.mention} — {text_mutes.reason} — {duration_str}')
-            pages, chunk_size = [], 18
-            for i in range(0, len(lines), chunk_size):
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} Text-mute records for {channel_obj.name}',
-                    description='\n'.join(lines[i:i+chunk_size]),
-                    color=discord.Color.orange()
-                )
-                pages.append(embed)
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        else:
-            try:
-                return await state.end(success=embed)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+            pages = await All.create_pages_from_moderations_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, moderations=text_mutes, moderation_type=TextMute)
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
             
     # DONE
     @commands.command(name='tmutes', help='Lists text-mute statistics.')
@@ -1327,25 +1279,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No users are currently text-muted in {ctx.guild.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            grouped = defaultdict(list)
-            for text_mute in text_mutes:
-                grouped[text_mute.channel_snowflake].append(text_mute)
-            pages, chunk_size = [], 18
-            for ch_id, entries in sorted(grouped.items()):
-                ch = ctx.guild.get_channel(ch_id)
-                ch_name = ch.mention
-                for i in range(0, len(entries), chunk_size):
-                    embed= discord.Embed(
-                        title=f'{self.emoji.get_random_emoji()} Text-mute records for {ch_name}',
-                        color=discord.Color.orange()
-                    )
-                    for e in entries[i:i+chunk_size]:
-                        user = ctx.guild.get_member(e.member_snowflake)
-                        mention = user.name if user else f'`{e.member_snowflake}`'
-                        reason = e.reason or 'No reason provided'
-                        duration_str = Duration.output_display_from_datetime(e.expires_at)
-                        embed.add_field(name=mention, value=f'Reason: {reason}\nDuration: {duration_str}', inline=False)
-                    pages.append(embed)
+            pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=text_mutes, moderation_type=TextMute)
         elif member_obj:
             text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             if not text_mutes:
@@ -1353,19 +1287,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not text-muted in any channels.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            lines = []
-            for text_mute in text_mutes:
-                ch = ctx.guild.get_channel(text_mutes.channel_snowflake)
-                duration_str = Duration.output_display_from_datetime(text_mute.expires_at)
-                lines.append(f'• {ch.mention} — {text_mutes.reason} — {duration_str}')
-            pages, chunk_size = [], 18
-            for i in range(0, len(lines), chunk_size):
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} Text-mute records for {member_obj.display_name}',
-                    description='\n'.join(lines[i:i+chunk_size]),
-                    color=discord.Color.orange()
-                )
-                pages.append(embed)
+            pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=text_mutes, moderation_type=TextMute)
         elif channel_obj:
             text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             if not text_mutes:
@@ -1373,31 +1295,11 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F No text-muted users currently in {channel_obj.name}.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
-            lines = []
-            for text_mute in text_mutes:
-                user = ctx.guild.get_member(text_mute.member_snowflake)
-                if not user:
-                    continue
-                duration_str = Duration.output_display_from_datetime(text_mute.expires_at)
-                lines.append(f'• {user.mention} — {text_mutes.reason} — {duration_str}')
-            pages, chunk_size = [], 18
-            for i in range(0, len(lines), chunk_size):
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} Text-mute records for {channel_obj.name}',
-                    description='\n'.join(lines[i:i+chunk_size]),
-                    color=discord.Color.orange()
-                )
-                pages.append(embed)
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        else:
-            try:
-                return await state.end(success=embed)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+            pages = await All.create_pages_from_moderations_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, moderations=text_mutes, moderation_type=TextMute)
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
             
 async def setup(bot: DiscordBot):
     cog = ModeratorCommands(bot)

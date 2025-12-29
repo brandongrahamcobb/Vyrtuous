@@ -49,8 +49,8 @@ class Alias:
         self.alias_cog = self.bot.get_cog("Aliases")
         self.handlers = {
             'ban': self.alias_cog.handle_ban_alias,
-            'cow': self.alias_cog.handle_cow_alias,
-            'uncow': self.alias_cog.handle_uncow_alias,
+            'vegan': self.alias_cog.handle_vegan_alias,
+            'carnist': self.alias_cog.handle_carnist_alias,
             'unban': self.alias_cog.handle_unban_alias,
             'flag': self.alias_cog.handle_flag_alias,
             'unflag': self.alias_cog.handle_unflag_alias,
@@ -216,7 +216,7 @@ class Alias:
     
     @alias_type.setter
     def alias_type(self, alias_type: Optional[str]):
-        if alias_type not in ('cow', 'uncow', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'):
+        if alias_type not in ('vegan', 'carnist', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'):
             raise ValueError("Invalid alias_type.")
         self._alias_type = alias_type
         
@@ -243,7 +243,7 @@ class Alias:
         match alias.alias_type:
             case "ban":
                 return await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-            case "cow":
+            case "vegan":
                 return await Vegan.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
             case "flag":
                 return await Flag.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
@@ -257,7 +257,7 @@ class Alias:
         match alias.alias_type:
             case 'ban' | 'unban':
                 return 'Ban'
-            case 'cow' | 'uncow':
+            case 'vegan' | 'carnist':
                 return 'Flag'
             case 'role' | 'unrole':
                 return 'New Vegan'

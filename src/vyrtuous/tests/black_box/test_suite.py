@@ -352,10 +352,3 @@ def _get_start_time(self, ctx_or_interaction):
     if hasattr(ctx_or_interaction, "message") and hasattr(ctx_or_interaction.message, "created_at"):
         return ctx_or_interaction.message.created_at
     return datetime.now(timezone.utc)
-
-async def debug_resolve_channel(message, channel_id):
-    print("DEBUG resolve_channel called")
-    print("  message content:", getattr(message, "content", message))
-    print("  channel_id:", channel_id)
-    print("  returning mock channel id:", channel.id)  # your mock channel
-    return channel 

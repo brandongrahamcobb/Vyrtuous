@@ -23,9 +23,8 @@ class Flag:
     PLURAL = "Flags"
     SINGULAR = "Flag"
 
-    def __init__(self, channel_snowflake: Optional[int], expires_at: Optional[datetime], guild_snowflake: Optional[int], member_snowflake: Optional[int], reason: Optional[str]):
+    def __init__(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int], reason: Optional[str]):
         self.channel_snowflake = channel_snowflake
-        self.expires_at = expires_at
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake
         self.reason = reason
@@ -40,6 +39,15 @@ class Flag:
             ''', channel_snowflake, guild_snowflake)
 
     @classmethod
+    async def delete_by_channel_guild_and_member(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+              await conn.execute('''
+                DELETE FROM active_flags
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
+            ''', channel_snowflake, guild_snowflake, member_snowflake)
+              
+    @classmethod
     async def delete_by_guild_and_member(self, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
@@ -52,11 +60,11 @@ class Flag:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO active_flags (channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake)
-                VALUES ($1, NOW(), $2, $3, $4)
+                INSERT INTO active_flags (channel_snowflake, created_at, guild_snowflake, member_snowflake)
+                VALUES ($1, NOW(), $2, $3)
                 ON CONFLICT (channel_snowflake, guild_snowflake, member_snowflake)
                 DO NOTHING
-            ''', self.channel_snowflake, self.expires_at, self.guild_snowflake, self.member_snowflake)
+            ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake)
 
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
@@ -65,44 +73,32 @@ class Flag:
             await conn.execute('''
                 UPDATE active_flags SET channel_snowflake=$2 WHERE channel_snowflake = $1
             ''', source_channel_snowflake, target_channel_snowflake)
-    
-    @classmethod
-    async def expired_flag(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, updated_at
-                FROM active_flags
-                WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
-            ''', channel_snowflake, guild_snowflake, member_snowflake)
-        if row:
-            return Flag(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
 
     @classmethod
     async def fetch_by_channel_guild_and_member(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, updated_at
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, reason, updated_at
                 FROM active_flags
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
             ''', channel_snowflake, guild_snowflake, member_snowflake)
         if row:
-            return Flag(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
+            return Flag(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
 
     @classmethod
     async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, updated_at
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, reason, updated_at
                 FROM active_flags
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
         flags = []
         if rows:
             for row in rows:
-                flags.append(Flag(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
+                flags.append(Flag(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
         return flags
 
     @classmethod
@@ -110,14 +106,14 @@ class Flag:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, updated_at
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, reason, updated_at
                 FROM active_flags
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
         flags = []
         if rows:
             for row in rows:
-                flags.append(Flag(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
+                flags.append(Flag(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
         return flags
 
     @classmethod
@@ -125,24 +121,10 @@ class Flag:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, updated_at
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, reason, updated_at
                 FROM active_flags
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
         if row:
-            return Flag(channel_snowflake=channel_snowflake, expires_at=row['expires_at'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason'])
+            return Flag(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason'])
 
-    @classmethod
-    async def fetch_by_expired(cls, now: Optional[datetime]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason
-                FROM active_flags
-                WHERE expires_at IS NOT NULL AND expires_at <= $1
-            ''', now)
-        expired_flags = []
-        if rows:
-            for row in rows:
-                expired_flags.append(Flag(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
-        return expired_flags
