@@ -22,28 +22,53 @@ from vyrtuous.utils.emojis import Emojis
 import pytest
 
 def generate_cap_test_cases():
-    durations = ['1m', '1h', '1d']
+    durations = ['0', '1', '24', '48']
     moderation_types = ['ban', 'vmute', 'tmute']
     cases = []
     for mod_type in moderation_types:
         for duration in durations:
-            cases.append((f"cap {{voice_channel_one_id}} {mod_type} {duration}", "channel"))
-            cases.append((f"xcap {{voice_channel_one_id}} {mod_type}", "channel"))
+            cases.append((f"cap {{voice_channel_one_id}} {mod_type} {duration}", mod_type, True))
+            cases.append((f"xcap {{voice_channel_one_id}} {mod_type}", mod_type, True))
     return cases
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("command,channel_ref", generate_cap_test_cases())
-async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], channel_ref):
+@pytest.mark.parametrize("command,moderation_type,channel_ref", generate_cap_test_cases())
+async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], moderation_type, channel_ref):
     administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
     await administrator.grant()
     try:
+        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
+        match moderation_type:
+            case "tmute":
+                moderation_type = "text_mute"
+            case "vmute":
+                moderation_type = "voice_mute"
+            case "untmute":
+                moderation_type = "untext_mute"
+            case "unvmute":
+                moderation_type = "unvoice_mute"
         voice_channel_one.messages.clear() 
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id
         )
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]["content"]
-        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
-        assert any(emoji in response for emoji in Emojis.EMOJIS)
+        print(formatted)
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
+        elif isinstance(message, discord.File):
+            content = message.filename
+        else:
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            assert any(emoji in content for emoji in Emojis.EMOJIS)
+            assert moderation_type in content 
+            if channel_ref:
+                assert channel_value in content
     finally:
         await administrator.revoke()

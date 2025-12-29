@@ -147,7 +147,8 @@ class Aliases(commands.Cog):
             await Alias.update_reason(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=updated_reason)
         elif is_duration_modification and existing_guestroom_alias_event:
             is_modification = True
-            duration = DurationObject(args[1] if len(args) > 1 else '24h')
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            cap = Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type="ban")
             match duration.prefix:
                 case '+':
                     updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
@@ -156,9 +157,21 @@ class Aliases(commands.Cog):
                 case '-':
                     updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
             duration = DurationObject.from_expires_at(updated_expires_at)
+            if updated_expires_at.total_second() > cap and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                duration = DurationObject.from_seconds(cap)
+                try:
+                    return await state.end(warning=f'\U0001F3C6 Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                except:
+                    return await state.end(error=f'\U0001F3C6 {e}')  
             await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
         else:
-            duration = DurationObject(args[1] if len(args) > 1 else '24h')
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            if duration.to_seconds() > cap and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                duration = DurationObject.from_seconds(cap)
+                try:
+                    return await state.end(warning=f'\U0001F3C6 Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                except:
+                    return await state.end(error=f'\U0001F3C6 {e}')  
             reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
 
         try:
@@ -361,21 +374,33 @@ class Aliases(commands.Cog):
                 case '=' | '-':
                     updated_reason = modified_reason
             await Alias.update_reason(alias_type=alias.alias_type, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=updated_reason)
-        elif is_duration_modification:
+        elif is_duration_modification and existing_guestroom_alias_event:
             is_modification = True
-            if existing_guestroom_alias_event:
-                duration = DurationObject(args[1] if len(args) > 1 else '24h')
-                match duration.prefix:
-                    case '+':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
-                    case '=':
-                        updated_expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
-                    case '-':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
-                duration = DurationObject.from_expires_at(updated_expires_at)
-                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            match duration.prefix:
+                case '+':
+                    updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
+                case '=':
+                    updated_expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+                case '-':
+                    updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
+            duration = DurationObject.from_expires_at(updated_expires_at)
+            cap = Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type="text_mute")
+            if updated_expires_at.total_second() > cap and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                duration = DurationObject.from_seconds(cap)
+                try:
+                    return await state.end(warning=f'\U0001F3C6 Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                except:
+                    return await state.end(error=f'\U0001F3C6 {e}') 
+            await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
         else:
-            duration = DurationObject(args[1] if len(args) > 1 else '24h')
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            if duration.to_seconds() > cap and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                duration = DurationObject.from_seconds(cap)
+                try:
+                    return await state.end(warning=f'\U0001F3C6 Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                except:
+                    return await state.end(error=f'\U0001F3C6 {e}') 
             reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
 
         try:
@@ -433,21 +458,33 @@ class Aliases(commands.Cog):
                 case '=' | '-':
                     reason = modified_reason
             await Alias.update_reason(alias_type=alias.alias_type, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=reason)
-        elif is_duration_modification:
+        elif is_duration_modification and existing_guestroom_alias_event:
             is_modification = True
-            if existing_guestroom_alias_event:
-                duration = DurationObject(args[1] if len(args) > 1 else '24h')
-                match duration.prefix:
-                    case '+':
-                        expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
-                    case '=':
-                        expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
-                    case '-':
-                        expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
-                duration = DurationObject.from_expires_at(expires_at)
-                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            match duration.prefix:
+                case '+':
+                    updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
+                case '=':
+                    updated_expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+                case '-':
+                    updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
+            duration = DurationObject.from_expires_at(updated_expires_at)
+            if updated_expires_at.total_second() > cap and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                duration = DurationObject.from_seconds(cap)
+                try:
+                    return await state.end(warning=f'\U0001F3C6 Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                except:
+                    return await state.end(error=f'\U0001F3C6 {e}') 
+            cap = Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type="voice_mute")
+            await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
         else:
-            duration = DurationObject(args[1] if len(args) > 1 else '24h')
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            if duration.to_seconds() > cap and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                duration = DurationObject.from_seconds(cap)
+                try:
+                    return await state.end(warning=f'\U0001F3C6 Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                except:
+                    return await state.end(error=f'\U0001F3C6 {e}') 
             reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
 
         if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:

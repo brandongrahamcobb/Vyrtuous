@@ -98,13 +98,3 @@ class Cap:
             await conn.execute('''
                 UPDATE active_caps SET duration_seconds=$2 WHERE channel_snowflake=$1
             ''', channel_snowflake, duration)
-
-    @property
-    def moderation_type(self):
-        return self._moderation_type
-    
-    @moderation_type.setter
-    def moderation_type(self, moderation_type: Optional[str]):
-        if moderation_type not in ('ban', 'flag', 'voice_mute', 'text_mute'):
-            raise ValueError("Invalid moderation_type.")
-        self._moderation_type = moderation_type

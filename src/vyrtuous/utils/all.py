@@ -200,7 +200,7 @@ class All:
                     duration = DurationObject.from_timedelta(delta)
             else:
                 duration = DurationObject(0)
-            lines_by_channel.setdefault(channel.mention, []).append(f'{user.mention}\nReason: {moderation.reason}\nDuration: {str(duration)}')
+            lines_by_channel.setdefault(channel.mention, []).append(f'{user.mention}\nReason: {moderation.reason}\nDuration: {duration}')
         for channel_mention, entries in lines_by_channel.items():
             chunk_size = 18
             for i in range(0, len(entries), chunk_size):
@@ -236,7 +236,7 @@ class All:
                 reason = moderation.reason
             else:
                 reason = 'No reason provided.'
-            entries.append(f'{channel.mention}\nReason: {reason}\nDuration: {str(duration)}')
+            entries.append(f'{channel.mention}\nReason: {reason}\nDuration: {duration}')
         chunk_size = 18
         for i in range(0, len(entries), chunk_size):
             embed = discord.Embed(
@@ -266,7 +266,7 @@ class All:
                     duration = DurationObject.from_timedelta(delta)
             else:
                 duration = DurationObject(0)
-            lines_by_guild.append(f'• {user.mention} — {str(duration)}')
+            lines_by_guild.append(f'• {user.mention} — {duration}')
         chunk_size = 18
         for i in range(0, len(lines_by_guild), chunk_size):
             chunk = lines_by_guild[i:i+chunk_size]

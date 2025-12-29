@@ -142,6 +142,11 @@ class DurationObject:
             number, unit = total_seconds, 's'
         return cls(f"+{number}{unit}")
     
+    @classmethod
+    def from_seconds(cls, seconds: int):
+        duration = DurationObject("{seconds}s")
+        return duration
+    
     def to_timedelta(self) -> timedelta:
         match self.unit:
             case 'd':
@@ -162,7 +167,7 @@ class DurationObject:
     def discord_unix_timestamp(self, base: Optional[datetime] = None) -> int:
         return int(self.target_datetime(base).timestamp())
 
-    def db_seconds(self) -> int:
+    def to_seconds(self) -> int:
         return int(self.to_timedelta().total_seconds())
 
     def _parse(self):
@@ -203,11 +208,11 @@ class DurationObject:
 
 class Converter(commands.Converter):
     
-    def __init__(self, duration=DurationObject):
-        self.duration = duration
+    def __init__(self, duration_cls=DurationObject):
+        self.duration_cls = duration_cls
     
     async def convert(self, ctx: commands.Context, arg):
-        return self.duration(arg)
+        return self.duration_cls(arg).duration
 
 class Transformer(app_commands.Transformer):
 
@@ -215,7 +220,7 @@ class Transformer(app_commands.Transformer):
         self.duration_cls = duration_cls
 
     async def transform(self, interaction: discord.Interaction, arg):
-        return self.duration_cls(arg)
+        return self.duration_cls(arg).duration
         
 class Duration(Converter):
     def __init__(self):

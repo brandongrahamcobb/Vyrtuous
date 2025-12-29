@@ -29,6 +29,7 @@ from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.coordinator import Coordinator
 from vyrtuous.utils.duration import AppDuration, Duration, DurationObject
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.moderation_type import AppModerationType, ModerationType
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.server_mute import ServerMute
 from vyrtuous.utils.snowflake import *
@@ -164,27 +165,27 @@ class AdminCommands(commands.Cog):
     @app_commands.describe(
         channel='Tag a channel or include its snowflake ID',
         moderation_type='One of: `mute`, `ban`, `tmute`',
-        duration='(+|-)duration(m|h|d), 0=permanent, default=24h'
+        hours='(+|-)duration(m|h|d), 0=permanent, default=24h'
     )
     async def cap_app_command(
         self,
         interaction: discord.Interaction,
-        channel: str = None,
-        moderation_type: str = None,
-        duration: AppDuration = DurationObject('24h')
+        channel: AppChannelSnowflake,
+        moderation_type: AppModerationType,
+        hours: int
     ):
         state = State(interaction)
         channel_obj = None
+        seconds = hours * 3600
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')
-        duration_seconds = duration.build_timedelta().total_seconds()
         cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, moderation_type=moderation_type)
         if cap:
-            await Cap.update_by_channel_and_duration(channel_snowflake=channel_obj.id, duration=duration_seconds)
+            await Cap.update_by_channel_and_duration(channel_snowflake=channel_obj.id, duration=seconds)
         else:
-            cap = Cap(channel_snowflake=channel_obj.id, duration=duration_seconds, guild_snowflake=interaction.guild.id, moderation_type=moderation_type)
+            cap = Cap(channel_snowflake=channel_obj.id, duration=seconds, guild_snowflake=interaction.guild.id, moderation_type=moderation_type)
             await cap.create()
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Cap `{moderation_type}` created for {channel_obj.mention} successfully.')
@@ -197,23 +198,22 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
-        moderation_type: Optional[str] = commands.parameter(default=None, description='One of: `mute`, `ban`, `tmute`'),
+        moderation_type: ModerationType = commands.parameter(default=None, description='One of: `mute`, `ban`, `tmute`'),
         *,
-        duration: str = commands.parameter(default=DurationObject('24h'), description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default')
+        hours: int = commands.parameter(default='24', description='# of hours')
     ):
         state = State(ctx)
-        duration = DurationObject(duration)
         channel_obj = None
+        seconds = hours * 3600
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')
-        duration_seconds = duration.to_timedelta().total_seconds()
         cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, moderation_type=moderation_type)
         if cap:
-            await Cap.update_by_channel_and_duration(channel_snowflake=channel_obj.id, duration=duration_seconds)
+            await Cap.update_by_channel_and_duration(channel_snowflake=channel_obj.id, duration=seconds)
         else:
-            cap = Cap(channel_snowflake=channel_obj.id, duration=duration_seconds, guild_snowflake=ctx.guild.id, moderation_type=moderation_type)
+            cap = Cap(channel_snowflake=channel_obj.id, duration=seconds, guild_snowflake=ctx.guild.id, moderation_type=moderation_type)
             await cap.create()
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Cap `{moderation_type}` created for {channel_obj.mention} successfully.')
@@ -378,7 +378,7 @@ class AdminCommands(commands.Cog):
                 logger.warning(f'Failed to mute.')
                 failed.append(member)
         description_lines = [
-            f"**Duration:** {str(duration)}",
+            f"**Duration:** {duration}",
             f"**Channel:** {channel_obj.mention}",
             f"**Muted:** {len(muted)} user(s)",
             f"**Skipped:** {len(skipped)}"
@@ -428,7 +428,7 @@ class AdminCommands(commands.Cog):
                 logger.warning(f'Failed to mute.')
                 failed.append(member)
         description_lines = [
-            f"**Duration:** {str(duration)}",
+            f"**Duration:** {duration}",
             f"**Channel:** {channel_obj.mention}",
             f"**Muted:** {len(muted)} user(s)",
             f"**Skipped:** {len(skipped)}"
@@ -1085,7 +1085,7 @@ class AdminCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
-        moderation_type: Optional[str] = None
+        moderation_type: AppModerationType
     ):
         state = State(interaction)
         channel_obj = None
@@ -1105,7 +1105,7 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
-        moderation_type: Optional[str] = commands.parameter(default=None, description='One of: `mute`, `ban`, `tmute`')
+        moderation_type: ModerationType = commands.parameter(default=None, description='One of: `mute`, `ban`, `tmute`')
     ):
         state = State(ctx)
         channel_obj = None

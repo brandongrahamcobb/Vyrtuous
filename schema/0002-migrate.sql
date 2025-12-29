@@ -301,3 +301,30 @@ DROP TABLE command_aliases_old;
 
 COMMIT;
 
+ALTER TABLE active_caps RENAME TO active_caps_old;
+
+CREATE TABLE active_caps (
+    channel_snowflake BIGINT DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    duration_seconds INTEGER NOT NULL,
+    guild_snowflake BIGINT NOT NULL,
+    moderation_type TEXT NOT NULL CHECK (moderation_type IN ('ban', 'voice_mute', 'text_mute')),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, moderation_type)
+);
+INSERT INTO active_caps (
+    guild_snowflake,
+    channel_snowflake,
+    moderation_type,
+    duration_seconds
+)
+SELECT
+    guild_id,
+    channel_id,
+    CASE moderation_type
+        WHEN 'ban' THEN 'ban'
+        WHEN 'mute' THEN 'voice_mute'
+        WHEN 'tmute' THEN 'text_mute'
+    END,
+    duration_seconds
+FROM active_caps_old;
