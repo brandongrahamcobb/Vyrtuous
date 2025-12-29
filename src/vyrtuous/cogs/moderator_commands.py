@@ -179,6 +179,7 @@ class ModeratorCommands(commands.Cog):
     ):
         state = State(interaction)
         channel_obj = None
+        pages = []
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except:
@@ -201,22 +202,25 @@ class ModeratorCommands(commands.Cog):
             for cap in caps:
                 ch = interaction.guild.get_channel(cap.channel_snowflake)
                 ch_name = ch.mention if ch else f'Channel ID `{cap.channel_snowflake}`'
-                lines.append(f'**{cap.moderation_type} in {ch_name}** → `{Duration.convert_timedelta_seconds(cap.duration)}`')
+                lines.append(f'**{cap.moderation_type} in {ch_name}** → `{DurationObject(f"{cap.duration}s")}`')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
                 embed = discord.Embed(
-                    title="{self.emoji.get_random_emoji()} All Active Caps in Server",
+                    title=f"{self.emoji.get_random_emoji()} All Active Caps in Server",
                     description="\n".join(lines[i:i+chunk_size]),
                     color=discord.Color.red()
                 )
                 pages.append(embed)
         caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         if not caps:
+            try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No caps found for {channel_obj.mention}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         lines = []
         for cap in caps:
-            lines.append(f'**{cap.moderation_type} in {channel_obj.mention}** → `{Duration.convert_timedelta_seconds(cap.duration)}`')
+            lines.append(f'**{cap.moderation_type} in {channel_obj.mention}** → `{DurationObject(f"{cap.duration}s")}`')
         embed = discord.Embed(
             title=f"{self.emoji.get_random_emoji()} Active Caps for {channel_obj.mention}",
             description="\n".join(lines),
@@ -243,6 +247,7 @@ class ModeratorCommands(commands.Cog):
     ):
         state = State(ctx)
         channel_obj = None
+        pages = []
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except:
@@ -257,17 +262,20 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             caps = await Cap.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not caps:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No caps found in {ctx.guild.name}.')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F No caps found in {ctx.guild.name}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
             lines = []
             for cap in caps:
                 ch = ctx.guild.get_channel(cap.channel_snowflake)
                 ch_name = ch.mention if ch else f'Channel ID `{cap.channel_snowflake}`'
-                lines.append(f'**{cap.moderation_type} in {ch_name}** → `{Duration.convert_timedelta_seconds(cap.duration)}`')
+                lines.append(f'**{cap.moderation_type} in {ch_name}** → `{DurationObject(f"{cap.duration}s")}`')
             chunk_size = 18
             pages = []
             for i in range(0, len(lines), chunk_size):
                 embed = discord.Embed(
-                    title="{self.emoji.get_random_emoji()} All Active Caps in Server",
+                    title=f"{self.emoji.get_random_emoji()} All Active Caps in Server",
                     description="\n".join(lines[i:i+chunk_size]),
                     color=discord.Color.red()
                 )
@@ -280,7 +288,7 @@ class ModeratorCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
         lines = []
         for cap in caps:
-            lines.append(f'**{cap.moderation_type} in {channel_obj.mention}** → `{Duration.convert_timedelta_seconds(cap.duration)}`')
+            lines.append(f'**{cap.moderation_type} in {channel_obj.mention}** → `{DurationObject(f"{cap.duration}s")}`')
         embed = discord.Embed(
             title=f'{self.emoji.get_random_emoji()} Active Caps for {channel_obj.mention}',
             description='\n'.join(lines),

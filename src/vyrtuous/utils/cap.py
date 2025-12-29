@@ -24,7 +24,7 @@ class Cap:
 
     def __init__(self, channel_snowflake: Optional[int], duration: Optional[int], guild_snowflake: Optional[int], moderation_type: Optional[str]):
         self.channel_snowflake = channel_snowflake
-        self.duration_seconds = duration
+        self.duration = duration
         self.guild_snowflake = guild_snowflake
         self.moderation_type = moderation_type
  
@@ -36,7 +36,11 @@ class Cap:
                 'SELECT duration_seconds, moderation_type FROM active_caps WHERE guild_snowflake=$1 AND channel_snowflake=$2',
                 guild_snowflake, channel_snowflake
             )
-            return [(r['duration_seconds'], r['moderation_type']) for r in rows]
+        caps = []
+        if rows:
+            for row in rows:
+                caps.append(Cap(channel_snowflake=channel_snowflake, duration=row['duration_seconds'], guild_snowflake=guild_snowflake, moderation_type=row['moderation_type']))
+        return caps
 
     @classmethod
     async def delete_by_channel_guild_and_moderation_type(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], moderation_type: Optional[str]):
@@ -57,7 +61,7 @@ class Cap:
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND moderation_type=$3
             ''', channel_snowflake, guild_snowflake, moderation_type)
         if row:
-            return (row['duration_seconds'], row['moderation_type'])
+            return Cap(channel_snowflake=channel_snowflake, duration=row['duration_seconds'], guild_snowflake=guild_snowflake, moderation_type=moderation_type)
 
     async def create(self):
         bot = DiscordBot.get_instance()
@@ -67,7 +71,7 @@ class Cap:
                 VALUES ($1, $2, $3, $4)
                 ON CONFLICT (channel_snowflake, guild_snowflake, moderation_type)
                 DO UPDATE SET duration_seconds = EXCLUDED.duration_seconds
-            ''', self.channel_snowflake, self.duration_seconds, self.guild_snowflake, self.moderation_type)
+            ''', self.channel_snowflake, self.duration, self.guild_snowflake, self.moderation_type)
 
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
@@ -82,13 +86,13 @@ class Cap:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, duration_seconds, guild_snowflake, updated_at
+                SELECT channel_snowflake, created_at, duration_seconds, guild_snowflake, moderation_type, updated_at
                 FROM active_caps
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
         caps = []
         for row in rows:
-            caps.append(Cap(channel_snowflake=row['channel_snowflake'], duration=row['duration_seconds'], guild_snowflake=row['guild_snowflake']))
+            caps.append(Cap(channel_snowflake=row['channel_snowflake'], duration=row['duration_seconds'], guild_snowflake=row['guild_snowflake'], moderation_type=row['moderation_type']))
         return caps
     
     @classmethod
