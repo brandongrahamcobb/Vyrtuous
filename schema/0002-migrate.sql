@@ -300,3 +300,11 @@ FROM active_caps_old;
 UPDATE active_voice_mutes
 SET target = 'user'
 WHERE target IS NULL;
+CREATE TABLE video_rooms (
+    channel_snowflake BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake)
+);
+

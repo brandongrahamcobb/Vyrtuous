@@ -1,56 +1,7 @@
-ALTER ROLE vyrtuous WITH SUPERUSER LOGIN PASSWORD 'password';
-ALTER DATABASE vyrtuous OWNER TO vyrtuous;
-
 CREATE TABLE users (
     discord_snowflake BIGINT PRIMARY KEY,
-    moderator_channel_ids BIGINT[],
-    coordinator_channel_ids BIGINT[],
-    developer_guild_ids BIGINT[],
-    administrator_guild_ids BIGINT[],
-    administrator_role_ids BIGINT[],
-    server_mute_guild_ids BIGINT[],
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE active_text_mutes (
-    guild_id BIGINT NOT NULL,
-    discord_snowflake BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL DEFAULT -1,
-    reason TEXT,
-    expires_at TIMESTAMPTZ,
-    room_name TEXT DEFAULT '',
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id, room_name)
-);
-
-CREATE TABLE active_caps (
-    guild_id BIGINT NOT NULL,
-    channel_id BIGINT DEFAULT -1,
-    room_name TEXT DEFAULT '',
-    moderation_type TEXT NOT NULL CHECK (moderation_type IN ('ban', 'mute', 'tmute')),
-    duration_seconds INTEGER NOT NULL,
-    PRIMARY KEY (guild_id, channel_id, room_name, moderation_type)
-);
-
-CREATE TABLE command_aliases (
-    guild_id   BIGINT NOT NULL,
-    alias_type TEXT NOT NULL CHECK (alias_type IN (
-        'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'
-    )),
-    alias_name TEXT NOT NULL,
-    channel_id BIGINT DEFAULT -1,
-    role_id    BIGINT,
-    PRIMARY KEY (guild_id, alias_type, alias_name)
-);
-
-CREATE TABLE active_bans (
-    guild_id BIGINT NOT NULL,
-    discord_snowflake BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL DEFAULT -1,
-    expires_at TIMESTAMPTZ,
-    reason TEXT,
-    room_name TEXT DEFAULT '',
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id, room_name)
 );
 
 CREATE TABLE active_server_voice_mutes (
@@ -59,51 +10,6 @@ CREATE TABLE active_server_voice_mutes (
     expires_at TIMESTAMPTZ,
     reason TEXT,
     PRIMARY KEY (guild_id, discord_snowflake)
-);
-
-CREATE TABLE active_cows (
-    guild_id BIGINT NOT NULL,
-    discord_snowflake BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id)
-);
-
-CREATE TABLE active_flags (
-    guild_id BIGINT NOT NULL,
-    discord_snowflake BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    expires_at TIMESTAMPTZ,
-    reason TEXT,
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id)
-);
-
-CREATE TABLE active_stages (
-    guild_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL DEFAULT -1,
-    initiator_id BIGINT NOT NULL,
-    expires_at TIMESTAMPTZ,
-    room_name TEXT DEFAULT '',
-    PRIMARY KEY (guild_id, channel_id, room_name)
-);
-
-CREATE TABLE stage_coordinators (
-    guild_id BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL DEFAULT -1,
-    discord_snowflake BIGINT NOT NULL,
-    room_name TEXT DEFAULT '',
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id, room_name)
-);
-
-CREATE TABLE active_voice_mutes (
-    guild_id BIGINT NOT NULL,
-    discord_snowflake BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL DEFAULT -1,
-    expires_at TIMESTAMPTZ,
-    reason TEXT,
-    target TEXT CHECK (target IN ('room', 'user')) DEFAULT 'user',
-    room_name TEXT DEFAULT '',
-    PRIMARY KEY (guild_id, discord_snowflake, channel_id, room_name, target)
 );
 
 CREATE TABLE moderation_logs (
@@ -128,9 +34,173 @@ CREATE TABLE statistic_channels (
 );
 
 CREATE TABLE temporary_rooms (
+    channel_snowflake BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     guild_snowflake BIGINT NOT NULL,
-    room_name TEXT NOT NULL,
     owner_snowflake BIGINT NOT NULL,
-    room_snowflake BIGINT,
+    room_name TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (guild_snowflake, room_name)
 );
+
+CREATE TABLE moderators (
+    channel_snowflake BIGINT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE coordinators (
+    channel_snowflake BIGINT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE developers (
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE administrators (
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (guild_snowflake, member_snowflake, role_snowflake)
+);
+
+CREATE TABLE active_server_voice_mutes (
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    expires_at TIMESTAMPTZ,
+    member_snowflake BIGINT NOT NULL,
+    reason TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE active_text_mutes (
+    channel_snowflake BIGINT NOT NULL DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    reason TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE active_bans (
+    channel_snowflake BIGINT NOT NULL DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    reason TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE active_voice_mutes (
+    channel_snowflake BIGINT NOT NULL DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    reason TEXT,
+    target TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE temporary_rooms (
+    channel_snowflake BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    room_name TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, room_name)
+);
+
+CREATE TABLE active_stages (
+    channel_snowflake BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake)
+);
+
+CREATE TABLE statistic_channels (
+    channel_snowflake BIGINT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    enabled BOOLEAN DEFAULT FALSE,
+    guild_snowflake BIGINT NOT NULL,
+    snowflakes BIGINT[],
+    statistic_type TEXT DEFAULT 'general',
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake)
+);
+
+CREATE TABLE vegans (
+    channel_snowflake BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE active_flags (
+    channel_snowflake BIGINT NOT NULL DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    reason TEXT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+);
+
+CREATE TABLE command_aliases (
+    alias_type        TEXT NOT NULL CHECK (alias_type IN (
+        'vegan', 'carnist', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'
+    )),
+    alias_name        TEXT NOT NULL,
+    channel_snowflake BIGINT DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake   BIGINT NOT NULL,
+    role_snowflake    BIGINT,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (alias_name, alias_type, guild_snowflake)
+);
+
+CREATE TABLE active_caps (
+    channel_snowflake BIGINT DEFAULT -1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    duration_seconds INTEGER NOT NULL,
+    guild_snowflake BIGINT NOT NULL,
+    moderation_type TEXT NOT NULL CHECK (moderation_type IN ('ban', 'voice_mute', 'text_mute')),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, moderation_type)
+);
+
+CREATE TABLE video_rooms (
+    channel_snowflake BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake)
+);
+
