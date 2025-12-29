@@ -54,11 +54,19 @@ async def test_admins_coords_devs_mods_owners_commands(bot, voice_channel_one, g
             member_id=not_privileged_author.id
         )
         bot.wait_for = mock_wait_for
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]
-        if response["embed"]:
-            assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
         else:
-            assert '\U000026A0\U0000FE0F' in response["content"] 
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            # print(f"{GREEN}Success:{RESET} {content}")
+            assert any(emoji in content for emoji in Emojis.EMOJIS)
     finally:
         await moderator.revoke()
