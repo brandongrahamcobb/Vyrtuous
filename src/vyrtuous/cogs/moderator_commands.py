@@ -1040,15 +1040,6 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except:
             channel_obj = interaction.channel
-            await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
-        try:
-            member_obj = await self.member_service.resolve_member(interaction, scope)
-            await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -1070,7 +1061,7 @@ class ModeratorCommands(commands.Cog):
                 )
                 for s in stages[i:i+chunk_size]:
                     ch = interaction.guild.get_channel(s.channel_snowflake)
-                    ch_name = ch.mention if ch else f'Unknown Channel ({s.channel_snowflake})'
+                    ch_name = ch.mention
                     voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=interaction.guild.id, target="room")
                     for voice_mute in voice_mutes:
                         embed.add_field(name=ch_name, value=f'Active stage mutes: {voice_mute.member_snowflake}', inline=False)
@@ -1084,7 +1075,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="room")
             initiator = interaction.guild.get_member(stage.member_snowflake)
-            initiator_name = initiator.mention if initiator else f'`{stage.member_snowflake}`'
+            initiator_name = initiator.mention
             expires = Duration.output_display_from_datetime(stage.expires_at) if stage.expires_at else 'No expiration'
             lines = []
             for m in voice_mutes:
@@ -1126,15 +1117,6 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except:
             channel_obj = ctx.channel
-            await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
-        try:
-            member_obj = await self.member_service.resolve_member(ctx, scope)
-            await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -1156,7 +1138,7 @@ class ModeratorCommands(commands.Cog):
                 )
                 for s in stages[i:i+chunk_size]:
                     ch = ctx.guild.get_channel(s.channel_snowflake)
-                    ch_name = ch.mention if ch else f'Unknown Channel ({s.channel_snowflake})'
+                    ch_name = ch.mention
                     voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=ctx.guild.id, target="room")
                     for voice_mute in voice_mutes:
                         embed.add_field(name=ch_name, value=f'Active stage mutes: {voice_mute.member_snowflake}', inline=False)
@@ -1170,7 +1152,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\U0001F3C6 {e}.')
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target="room")
             initiator = ctx.guild.get_member(stage.member_snowflake)
-            initiator_name = initiator.mention if initiator else f'`{stage.member_snowflake}`'
+            initiator_name = initiator.mention
             expires = Duration.output_display_from_datetime(stage.expires_at) if stage.expires_at else 'No expiration'
             lines = []
             for m in voice_mutes:

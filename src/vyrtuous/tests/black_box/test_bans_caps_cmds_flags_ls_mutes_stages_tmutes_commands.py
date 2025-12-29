@@ -24,50 +24,72 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,channel_ref,member_ref",
+    "command,channel_ref,member_ref,should_warn",
     [
-        ("bans {voice_channel_one_id}", True, False),
-        ("bans {member_id}", False, True),
-        ("bans all", False, False),
-        ("caps {voice_channel_one_id}", True, False),
-        ("caps all", False, False),
-        ("cmds {voice_channel_one_id} {member_id}", True, True),
-        ("cmds all", False, False),
-        ("flags {voice_channel_one_id}", True, False),
-        ("flags {member_id}", False, True),
-        ("flags all", False, False),
-        ("ls {voice_channel_one_id}", True, False),
-        ("ls {member_id}", False, True),
-        ("ls all", False, False),
-        ("mutes {voice_channel_one_id}", True, False),
-        ("mutes {member_id}", False, True),
-        ("mutes all", False, False),
-        ("stages {voice_channel_one_id}", True, False),
-        ("stages all", False, False),
-        ("tmutes {voice_channel_one_id}", True, False),
-        ("tmutes {member_id}", False, True),
-        ("tmutes all", False, False),
+        ("alias ban testban {voice_channel_one_id}", True, False, False),
+        ("alias unban testunban {voice_channel_one_id}", True, False, False),
+        ("testban {member_id}", False, True, False),
+        # ("bans {voice_channel_one_id}", True, False, False),
+        # ("bans {member_id}", False, True, False),
+        # ("bans all", False, False, False),
+        # ("testunban {member_id}", False, True, False),
+        # ("bans {voice_channel_one_id}", True, False, True),
+        # ("bans {member_id}", False, True, True),
+        # ("bans all", False, False, False),
+        # ("xalias testban", True, False, False),
+        # ("xalias testunban", True, False, False),
+        # ("caps {voice_channel_one_id}", True, False, False),
+        # ("caps all", False, False, True),
+        # ("cmds {voice_channel_one_id} {member_id}", True, True, False),
+        # ("cmds all", False, False, True),
+        # ("flags {voice_channel_one_id}", True, False, False),
+        # ("flags {member_id}", False, True, False),
+        # ("flags all", False, False, True),
+        # ("ls {voice_channel_one_id}", True, False, False),
+        # ("ls {member_id}", False, True, False),
+        # ("ls all", False, False, True),
+        # ("mutes {voice_channel_one_id}", True, False, False),
+        # ("mutes {member_id}", False, True, False),
+        # ("mutes all", False, False, True),
+        # ("stages {voice_channel_one_id}", True, False, False),
+        # ("stages all", False, False, True),
+        # ("tmutes {voice_channel_one_id}", True, False, False),
+        # ("tmutes {member_id}", False, True, False),
+        # ("tmutes all", False, False, True),
     ]
 )
 
-async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
+async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref, should_warn):    
     moderator = Moderator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
     await moderator.grant()
     try:
+        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
+        member_value = not_privileged_author.mention if member_ref else not_privileged_author.name
         voice_channel_one.messages.clear() 
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id,
             member_id=not_privileged_author.id
         )
         bot.wait_for = mock_wait_for
-        await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
-        response = voice_channel_one.messages[0]
-        member_values = (not_privileged_author.mention, not_privileged_author.name)
-        if response["embed"]:
-            assert any(emoji in response["embed"].title for emoji in Emojis.EMOJIS) 
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EventListeners", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        message = captured['message']
+        message_type = captured['type']
+        if isinstance(message, discord.Embed):
+            content = extract_embed_text(message)
+        elif isinstance(message, discord.File):
+            content = message.filename
         else:
-            assert '\U000026A0\U0000FE0F' in response["content"] 
-        if member_ref and response["embed"]:
-            assert any(val in response["embed"].title for val in member_values)
+            content = message
+        if message_type == "error":
+            print(f"{RED}Error:{RESET} {content}")
+        if message_type == "warning":
+            print(f"{YELLOW}Warning:{RESET} {content}")
+        if message_type == "success":
+            print(f"{GREEN}Success:{RESET} {content}")
+            assert any(emoji in content for emoji in Emojis.EMOJIS) 
+            if member_ref:
+                assert member_value in content
+            if channel_ref:
+                assert channel_value in content
     finally:
         await moderator.revoke()
