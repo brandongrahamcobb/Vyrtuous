@@ -1,3 +1,17 @@
+DO
+$$
+DECLARE
+    tbl RECORD;
+BEGIN
+    FOR tbl IN
+        SELECT tablename
+        FROM pg_tables
+        WHERE schemaname = 'public' AND tablename LIKE '%_old'
+    LOOP
+        EXECUTE format('DROP TABLE IF EXISTS %I CASCADE', tbl.tablename);
+    END LOOP;
+END
+$$;
 
 CREATE TABLE moderators (
     channel_snowflake BIGINT NOT NULL,
@@ -61,21 +75,7 @@ CREATE TABLE active_server_voice_mutes (
     PRIMARY KEY (guild_snowflake, member_snowflake)
 );
 
-ALTER TABLE active_caps RENAME TO active_caps_old;
-CREATE TABLE active_caps (
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    duration_seconds INTEGER NOT NULL,
-    guild_snowflake BIGINT NOT NULL,
-    channel_snowflake BIGINT DEFAULT -1,
-    moderation_type TEXT NOT NULL CHECK (moderation_type IN ('ban', 'mute', 'tmute')),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (guild_snowflake, channel_snowflake, moderation_type)
-);
-INSERT INTO active_caps (duration_seconds, guild_snowflake, channel_snowflake, moderation_type)
-SELECT duration_seconds, guild_id, channel_id, moderation_type
-FROM active_caps_old;
-DROP TABLE active_caps_old;
-
+ALTER TABLE active_text_mutes RENAME TO active_text_mutes_old;
 CREATE TABLE active_text_mutes (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -158,37 +158,6 @@ CREATE TABLE active_stages (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (guild_snowflake, channel_snowflake)
 );
-
-ALTER TABLE command_aliases RENAME TO command_aliases_old;
-CREATE TABLE command_aliases (
-    alias_name TEXT NOT NULL,
-    alias_type TEXT NOT NULL CHECK (alias_type IN (
-        'cow', 'uncow', 'mute', 'unmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'
-    )),
-    channel_snowflake BIGINT DEFAULT -1,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    guild_snowflake BIGINT NOT NULL,
-    role_snowflake BIGINT,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (alias_name, alias_type, guild_snowflake)
-);
-DROP TABLE command_aliases_old;
-
-INSERT INTO command_aliases (
-    alias_name,
-    alias_type,
-    channel_snowflake,
-    guild_snowflake,
-    role_snowflake
-)
-SELECT
-    alias_name,
-    alias_type,
-    channel_id,
-    guild_id,
-    role_id
-FROM command_aliases_old;
-DROP TABLE command_aliases_old;
 
 ALTER TABLE statistic_channels RENAME TO statistic_channels_old;
 
