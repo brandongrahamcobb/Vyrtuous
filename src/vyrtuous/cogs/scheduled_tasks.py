@@ -54,10 +54,9 @@ class ScheduledTasks(commands.Cog):
                 expired_bans = await Ban.fetch_by_expired(now=now)
                 for expired_ban in expired_bans:
                     try:
-                        user_id = expired_ban.discord_snowflake
-                        guild_id = expired_ban.guild_id
-                        channel_id = expired_ban.channel_id
-                        room_name = expired_ban.room_name
+                        user_id = expired_ban.member_snowflake
+                        guild_id = expired_ban.guild_snowflake
+                        channel_id = expired_ban.channel_snowflake
                         guild = self.bot.get_guild(guild_id)
                         channel = self.bot.get_channel(channel_id)
                         if not channel and guild:
@@ -112,7 +111,7 @@ class ScheduledTasks(commands.Cog):
                                 channel = None
                         if channel is None:
                             logger.info(f'Guild {guild_id} or channel {channel_id} not found, cleaning up expired voice mute')
-                            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_id, guild_snowflake=guild.id, target=target)
+                            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, target=target)
                             continue
                         member = guild.get_member(user_id)
                         if member is None:
@@ -120,9 +119,9 @@ class ScheduledTasks(commands.Cog):
                                 member = await guild.fetch_member(user_id)
                             except discord.NotFound:
                                 logger.info(f'Member {user_id} not found in guild {guild_id}, cleaning up expired voice mute')
-                                await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild.id, member_snowflake=member.id, target="user")
+                                await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=member.id, target="user")
                                 continue
-                        await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild.id, member_snowflake=member.id, target="user")
+                        await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=member.id, target="user")
                         if member.voice and member.voice.channel and member.voice.channel.id == channel_id:
                             try:
                                 await member.edit(mute=False)
@@ -190,7 +189,7 @@ class ScheduledTasks(commands.Cog):
                 expired_text_mutes = await TextMute.fetch_by_expired(now)
                 if not expired_text_mutes:
                     return
-                for expired_text_mute in expired_text_mute:
+                for expired_text_mute in expired_text_mutes:
                     try:
                         user_id = expired_text_mute.member_snowflake
                         guild_id = expired_text_mute.guild_snowflake

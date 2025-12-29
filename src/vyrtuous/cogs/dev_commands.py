@@ -154,6 +154,7 @@ class DevCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='ping', description='Ping the bot!')
+    @is_owner_developer_predicator()
     async def ping_app_command(
         self,
         interaction: discord.Interaction
@@ -166,6 +167,7 @@ class DevCommands(commands.Cog):
 
     # DONE
     @commands.command(name='ping', description='Ping the bot!')
+    @is_owner_developer_predicator()
     async def ping_text_command(
         self,
         ctx: commands.Context

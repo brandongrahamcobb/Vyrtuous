@@ -297,3 +297,6 @@ SELECT
     END,
     duration_seconds
 FROM active_caps_old;
+UPDATE active_voice_mutes
+SET target = 'user'
+WHERE target IS NULL;
