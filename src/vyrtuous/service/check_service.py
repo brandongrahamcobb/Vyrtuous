@@ -22,6 +22,7 @@ from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.coordinator import Coordinator
 from vyrtuous.utils.developer import Developer
 from vyrtuous.utils.moderator import Moderator
+from vyrtuous.utils.permission import PERMISSION_TYPES
 from vyrtuous.utils.setup_logging import logger
 
 import discord
@@ -285,28 +286,28 @@ async def member_is_moderator(channel_snowflake: int, guild_snowflake: int, memb
 
 async def has_equal_or_higher_role(message_ctx_or_interaction, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, sender_snowflake: int) -> bool:
     bot = DiscordBot.get_instance()
-    msg = f"You may not execute this command on this member because they have equal or higher role than you in this channel."
     async def get_highest_role(member_sf):
         if await member_is_owner(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-            return 5
+            return PERMISSION_TYPES.index("Owner")
         elif await member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-            return 4
+            return PERMISSION_TYPES.index("Developer")
         elif await member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-            return 3
+            return PERMISSION_TYPES.index("Administrator")
         if channel_snowflake:
             if await member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-                return 2
+                return PERMISSION_TYPES.index("Coordinator")
             elif await member_is_moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-                return 1
-        return 0
+                return PERMISSION_TYPES.index("Moderator")
+        return PERMISSION_TYPES.index("Everyone")
     sender_rank = await get_highest_role(sender_snowflake)
     target_rank = await get_highest_role(member_snowflake)
+    msg = f"You may not execute this command on this `{PERMISSION_TYPES[target_rank]}` because they have equal or higher role than you in this channel/server."
     if sender_rank <= target_rank:
         if isinstance(message_ctx_or_interaction, discord.Interaction):
             raise app_commands.CheckFailure(msg)
         else:
             raise commands.CheckFailure(msg)
-    return True
+    return PERMISSION_TYPES[sender_rank]
 
 async def is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
     checks = (("Administrator", lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Coordinator", lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Developer", lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Owner", lambda: member_is_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)))
@@ -327,3 +328,13 @@ async def is_owner_developer_administrator_coordinator_moderator_via_channel_mem
         except commands.CheckFailure:
             continue
     return "Everyone"
+
+def check_not_self(ctx_interaction_or_message, member_snowflake: int):
+    try:
+        if member_snowflake == ctx_interaction_or_message.guild.me.id:
+            raise commands.CheckFailure("You cannot execute actions on {ctx_interaction_or_message.guild.me.mention}.")
+        else:
+            return True
+    except commands.CheckFailure:
+        raise        
+    

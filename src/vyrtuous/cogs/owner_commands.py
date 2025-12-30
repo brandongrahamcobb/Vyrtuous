@@ -31,7 +31,7 @@ class OwnerCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.emoji = Emojis()
-        self.handler = MessageService(self.bot, self.bot.db_pool)
+        self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.member_service = MemberService()
 
     # DONE
@@ -48,12 +48,13 @@ class OwnerCommands(commands.Cog):
         member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
+            check_not_self(interaction, member_snowflake=member_obj.id)
             await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
-            await state.end(warning=str(e))
-        if member_obj.id == interaction.guild.me.id:
-            await state.end(warning="You cannot promote the bot to developer.")
-        guilds = []
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+            except Exception as e:
+                await state.end(error=f'\U0001F3C6 {e}')
         guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
         if interaction.guild.id in guild_snowflakes:
             await Developer.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -80,12 +81,13 @@ class OwnerCommands(commands.Cog):
         member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
+            check_not_self(ctx, member_snowflake=member_obj.id)
             await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
-            await state.end(warning=str(e))
-        if member_obj.id == ctx.guild.me.id:
-            await state.end(warning="You cannot promote the bot to developer.")
-        guilds = []
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+            except Exception as e:
+                await state.end(error=f'\U0001F3C6 {e}')
         guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
         if ctx.guild.id in guild_snowflakes:
             await Developer.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -95,7 +97,7 @@ class OwnerCommands(commands.Cog):
             await developer.grant()
             action = 'granted'
         try:
-            await state.end(success=f"{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}.")
+            await state.end(success=f'{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}.')
         except Exception as e:
             await state.end(error=f'\U0001F3C6 {e}')
         
@@ -114,21 +116,22 @@ class OwnerCommands(commands.Cog):
         member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
+            check_not_self(interaction, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.author.id)
         except Exception as e:
-            await state.end(warning=str(e))
-        if member_obj.id == interaction.guild.me.id:
-            await state.end(warning="You cannot promote the bot to a hero.")
+            await state.end(warning=f'\U000026A0\U0000FE0F {e}')
         enabled = Invincibility.toggle_enabled()
         if enabled:
             Invincibility.add_invincible_member(member_obj.id)
             await Invincibility.unrestrict(interaction.guild, member_obj)
+            msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
         else:
             Invincibility.remove_invincible_member(member_obj.id)
-        enabled = 'ON' if enabled else 'OFF'
+            msg = f'Invincibiility has been disabled for {member_obj.mention}'
         try:
-            await self.handler.send_message(interaction, content=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled} for {member_obj.mention}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
-            await state.end(error=f'\U0001F3C6 {e}')
+            return await state.end(error=f'\U0001F3C6 {e}')
            
     # DONE
     @commands.command(name='hero', help='Grants/revokes invincibility for a member.')
@@ -143,26 +146,25 @@ class OwnerCommands(commands.Cog):
         member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(ctx, member)
+            check_not_self(ctx, member_snowflake=member_obj.id)
+            await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
-                return await state.end(warning=f"Member could not be resolved from {member}")
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}')
-        if member_obj.id == ctx.guild.me.id:
-            try:
-                await state.end(warning="You cannot promote the bot to a hero.")
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}')
         enabled = Invincibility.toggle_enabled()
         if enabled:
             Invincibility.add_invincible_member(member_obj.id)
             await Invincibility.unrestrict(ctx.guild, member_obj)
+            msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
         else:
             Invincibility.remove_invincible_member(member_obj.id)
-        enabled = f'ON' if enabled else f'OFF'
+            msg = f'Invincibiility has been disabled for {member_obj.mention}'
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Superhero mode turned {enabled}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}')
+        
 async def setup(bot: DiscordBot):
     await bot.add_cog(OwnerCommands(bot))

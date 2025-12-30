@@ -16,13 +16,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from discord import app_commands
-from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
-from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.channel_service import ChannelService
-from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.check_service import *
+from vyrtuous.service.member_service import MemberService
+from vyrtuous.service.message_service import MessageService
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.state import State
@@ -33,10 +32,10 @@ class CoordinatorCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-        self.handler = MessageService(self.bot, self.bot.db_pool)
         self.channel_service = ChannelService()
         self.emoji = Emojis()
         self.member_service = MemberService()
+        self.message_service = MessageService(self.bot, self.bot.db_pool)
         
     # DONE
     @app_commands.command(name='mod', description="Grants/revokes a user's permission to `Moderator` for a specific channel.")
@@ -54,25 +53,12 @@ class CoordinatorCommands(commands.Cog):
         member_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-        except:
-            channel_obj = interaction.channel
-        try:
             member_obj = await self.member_service.resolve_member(interaction, member)
-            await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
+            check_not_self(interaction, member_snowflake=member_obj.id)
+            highest_role = await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        if member_obj.id == interaction.guild.me.id:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F You are not allowed to promote {interaction.guild.me.mention} to moderator.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=interaction.user.id)
-        if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to grant/revoke moderator status in {channel_obj.mention}.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
         moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -83,13 +69,8 @@ class CoordinatorCommands(commands.Cog):
             moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             await moderator.grant()
             action = 'granted'
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                VALUES ($1,$2,$3,$4,$5,$6)
-            ''', 'toggled_moderator', member_obj.id, interaction.user.id, interaction.guild.id, channel_obj.id, f'Moderator access {action}')
         try:
-            return await state.end(success=f"{self.emoji.get_random_emoji()} Moderator access for {member_obj.mention} has been {action} in {channel_obj.mention}.")
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Moderator access for {member_obj.mention} has been {action} in {channel_obj.mention}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
               
@@ -108,25 +89,12 @@ class CoordinatorCommands(commands.Cog):
         member_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        except:
-            channel_obj = ctx.channel
-        try:
             member_obj = await self.member_service.resolve_member(ctx, member)
-            await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
+            check_not_self(ctx, member_snowflake=member_obj.id)
+            highest_role = await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        if member_obj.id == ctx.guild.me.id:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F You are not allowed to promote {ctx.guild.me.mention} to moderator.')
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        channel_related_role = await is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=ctx.author.id)
-        if channel_related_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to grant/revoke moderator status in {channel_obj.mention}.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
         moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -137,15 +105,11 @@ class CoordinatorCommands(commands.Cog):
             moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             await moderator.grant()
             action = 'granted'
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                VALUES ($1,$2,$3,$4,$5,$6)
-            ''', 'toggled_moderator', member_obj.id, ctx.author.id, ctx.guild.id, channel_obj.id, f'Moderator access {action}')
         try:
-            return await state.end(success=f"{self.emoji.get_random_emoji()} Moderator access for {member_obj.mention} has been {action} in {channel_obj.mention}.")
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Moderator access for {member_obj.mention} has been {action} in {channel_obj.mention}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
+        
     # DONE
     @app_commands.command(name='rmute', description='Mutes all members in a VC (except yourself).')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID')
@@ -157,15 +121,19 @@ class CoordinatorCommands(commands.Cog):
     ):
         state = State(interaction)
         channel_obj = None
+        chunk_size = 18
+        muted_members, pages, skipped_members, failed_members = [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
-        muted_members, skipped_members, failed_members = [], [], []
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         for member in channel_obj.members:
             if member.id == interaction.user.id:
                 continue
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
             if voice_mute:
                 skipped_members.append(member)
                 continue
@@ -173,26 +141,45 @@ class CoordinatorCommands(commands.Cog):
                 try:
                     await member.edit(mute=True)
                 except Exception as e:
+                    logger.warning(f'Failed to mute {member.id}: {e}.')
                     failed_members.append(member)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
             await voice_mute.create()
             muted_members.append(member)
-            async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('''
-                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                ''', 'mute', member.id, interaction.user.id, interaction.guild.id, channel_obj.id, 'Muted via room_mute')
-        embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Mute Summary",
-            color=0xED4245
-        )
-        embed.add_field(name="Muted", value=f"{len(muted_members)} member(s) in {channel_obj.mention}", inline=False)
-        if skipped_members:
-            embed.add_field(name="Skipped", value=f"{len(skipped_members)} member(s)", inline=False)
-        if failed_members:
-            embed.add_field(name="Failed", value=f"{len(failed_members)} member(s)", inline=False)
+        muted_chunks = [muted_members[i:i + chunk_size] for i in range(0, len(muted_members), chunk_size)]
+        skipped_chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
+        failed_chunks = [failed_members[i:i + chunk_size] for i in range(0, len(failed_members), chunk_size)]
+        member_sets = max(len(muted_chunks), len(skipped_chunks), len(failed_chunks), 1)
+        for page in range(member_sets):
+            embed = discord.Embed(
+                title=f'{self.emoji.get_random_emoji()} Mute Summary',
+                color=0xED4245
+            )
+            if page < len(muted_chunks):
+                chunk = muted_chunks[page]
+                embed.add_field(
+                    name=f'Muted ({len(chunk)}/{len(muted_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            if page < len(skipped_chunks):
+                chunk = skipped_chunks[page]
+                embed.add_field(
+                    name=f'Skipped ({len(chunk)}/{len(skipped_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            if page < len(failed_chunks):
+                chunk = failed_chunks[page]
+                embed.add_field(
+                    name=f'Failed ({len(chunk)}/{len(failed_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            embed.set_footer(text=f'Page {page + 1}/{pages}')
+            pages.append(embed)
         try:
-             return await state.end(success=embed)
+             return await state.end(success=pages)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -205,16 +192,20 @@ class CoordinatorCommands(commands.Cog):
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
     ):
         state = State(ctx)
-        muted_members, skipped_members, failed_members = [], [], []
         channel_obj = None
+        chunk_size = 18
+        muted_members, pages, skipped_members, failed_members = [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         for member in channel_obj.members:
             if member.id == ctx.author.id:
                 continue
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
             if voice_mute:
                 skipped_members.append(member)
                 continue
@@ -222,26 +213,45 @@ class CoordinatorCommands(commands.Cog):
                 try:
                     await member.edit(mute=True)
                 except Exception as e:
+                    logger.warning(f'Failed to mute {member.id}: {e}.')
                     failed_members.append(member)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
             await voice_mute.create()
             muted_members.append(member)
-            async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('''
-                    INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                ''', 'mute', member.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Muted via room_mute')
-        embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Mute Summary",
-            color=0xED4245
-        )
-        embed.add_field(name="Muted", value=f"{len(muted_members)} member(s) in {channel_obj.mention}", inline=False)
-        if skipped_members:
-            embed.add_field(name="Skipped", value=f"{len(skipped_members)} member(s)", inline=False)
-        if failed_members:
-            embed.add_field(name="Failed", value=f"{len(failed_members)} member(s)", inline=False)
+        muted_chunks = [muted_members[i:i + chunk_size] for i in range(0, len(muted_members), chunk_size)]
+        skipped_chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
+        failed_chunks = [failed_members[i:i + chunk_size] for i in range(0, len(failed_members), chunk_size)]
+        member_sets = max(len(muted_chunks), len(skipped_chunks), len(failed_chunks), 1)
+        for page in range(member_sets):
+            embed = discord.Embed(
+                title=f'{self.emoji.get_random_emoji()} Mute Summary',
+                color=0xED4245
+            )
+            if page < len(muted_chunks):
+                chunk = muted_chunks[page]
+                embed.add_field(
+                    name=f'Muted ({len(chunk)}/{len(muted_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            if page < len(skipped_chunks):
+                chunk = skipped_chunks[page]
+                embed.add_field(
+                    name=f'Skipped ({len(chunk)}/{len(skipped_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            if page < len(failed_chunks):
+                chunk = failed_chunks[page]
+                embed.add_field(
+                    name=f'Failed ({len(chunk)}/{len(failed_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            embed.set_footer(text=f'Page {page + 1}/{pages}')
+            pages.append(embed)
         try:
-            return await state.end(success=embed)
+            return await state.end(success=pages)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -255,14 +265,18 @@ class CoordinatorCommands(commands.Cog):
         channel: AppChannelSnowflake
     ):
         state = State(interaction)
-        unmuted_members, skipped_members, failed_members = [], [], []
         channel_obj = None
+        chunk_size = 18
+        failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         for member in channel_obj.members:
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target="user")
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
             if not voice_mute:
                 skipped_members.append(member)
                 continue
@@ -272,24 +286,42 @@ class CoordinatorCommands(commands.Cog):
                 except Exception as e:
                     logger.warning(f'Unmute failed for {member.mention}: {e}.')
                     failed_members.append(member)
-            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target="user")         
+            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target='user')         
             unmuted_members.append(member)
-            async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('''
-                        INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                        VALUES ($1, $2, $3, $4, $5, $6)
-                    ''', 'unmute', member.id, interaction.user.id, interaction.guild.id, channel_obj.id, 'Unmuted via room_unmute')
-        embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Unmute Summary",
-            color=0xED4245
-        )
-        embed.add_field(name="Unmuted", value=f"{len(unmuted_members)} member(s) in {channel_obj.mention}", inline=False)
-        if skipped_members:
-            embed.add_field(name="Skipped", value=f"{len(skipped_members)} member(s)", inline=False)
-        if failed_members:
-            embed.add_field(name="Failed", value=f"{len(failed_members)} member(s)", inline=False)
+        unmuted_chunks = [unmuted_members[i:i + chunk_size] for i in range(0, len(unmuted_members), chunk_size)]
+        skipped_chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
+        failed_chunks = [failed_members[i:i + chunk_size] for i in range(0, len(failed_members), chunk_size)]
+        member_sets = max(len(unmuted_chunks), len(skipped_chunks), len(failed_chunks), 1)
+        for page in range(member_sets):
+            embed = discord.Embed(
+                title=f'{self.emoji.get_random_emoji()} Unmute Summary',
+                color=0xED4245
+            )
+            if page < len(unmuted_chunks):
+                chunk = unmuted_chunks[page]
+                embed.add_field(
+                    name=f'Unmuted ({len(chunk)}/{len(unmuted_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            if page < len(skipped_chunks):
+                chunk = skipped_chunks[page]
+                embed.add_field(
+                    name=f'Skipped ({len(chunk)}/{len(skipped_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            if page < len(failed_chunks):
+                chunk = failed_chunks[page]
+                embed.add_field(
+                    name=f'Failed ({len(chunk)}/{len(failed_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            embed.set_footer(text=f'Page {page + 1}/{member_sets}')
+            pages.append(embed)
         try:
-            return await state.end(success=embed)
+            return await state.end(success=pages)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     
@@ -303,13 +335,14 @@ class CoordinatorCommands(commands.Cog):
     ):
         state = State(ctx)
         channel_obj = None
-        unmuted_members, skipped_members, failed_members = [], [], []
+        chunk_size = 18
+        failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
         for member in channel_obj.members:
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target="user")
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
             if not voice_mute:
                 skipped_members.append(member)
                 continue
@@ -317,26 +350,44 @@ class CoordinatorCommands(commands.Cog):
                 try:
                     await member.edit(mute=False)
                 except Exception as e:
-                    logger.warning(f'Unmute failed for {member.mention}: {e}.')
+                    logger.warning(f'Unmute failed for {member.id}: {e}.')
                     failed_members.append(member)
-            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target="user")         
+            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target='user')         
             unmuted_members.append(member)
-            async with self.bot.db_pool.acquire() as conn:
-                await conn.execute('''
-                        INSERT INTO moderation_logs (action_type, target_discord_snowflake, executor_discord_snowflake, guild_id, channel_id, reason)
-                        VALUES ($1, $2, $3, $4, $5, $6)
-                    ''', 'unmute', member.id, ctx.author.id, ctx.guild.id, channel_obj.id, 'Unmuted via room_unmute')
-        embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Unmute Summary",
-            color=0xED4245
-        )
-        embed.add_field(name="Unmuted", value=f"{len(unmuted_members)} member(s) in {channel_obj.mention}", inline=False)
-        if skipped_members:
-            embed.add_field(name="Skipped", value=f"{len(skipped_members)} member(s)", inline=False)
-        if failed_members:
-            embed.add_field(name="Failed", value=f"{len(failed_members)} member(s)", inline=False)
+        unmuted_chunks = [unmuted_members[i:i + chunk_size] for i in range(0, len(unmuted_members), chunk_size)]
+        skipped_chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
+        failed_chunks = [failed_members[i:i + chunk_size] for i in range(0, len(failed_members), chunk_size)]
+        member_sets = max(len(unmuted_chunks), len(skipped_chunks), len(failed_chunks), 1)
+        for page in range(member_sets):
+            embed = discord.Embed(
+                title=f'{self.emoji.get_random_emoji()} Unmute Summary',
+                color=0xED4245
+            )
+            if page < len(unmuted_chunks):
+                chunk = unmuted_chunks[page]
+                embed.add_field(
+                    name=f'Unmuted ({len(chunk)}/{len(unmuted_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            if page < len(skipped_chunks):
+                chunk = skipped_chunks[page]
+                embed.add_field(
+                    name=f'Skipped ({len(chunk)}/{len(skipped_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            if page < len(failed_chunks):
+                chunk = failed_chunks[page]
+                embed.add_field(
+                    name=f'Failed ({len(chunk)}/{len(failed_members)})',
+                    value='\n'.join(member.mention for member in chunk),
+                    inline=False
+                )
+            embed.set_footer(text=f'Page {page + 1}/{member_sets}')
+            pages.append(embed)
         try:
-            return await state.end(success=embed)
+            return await state.end(success=pages)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     

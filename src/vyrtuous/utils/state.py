@@ -46,7 +46,7 @@ class State:
 
     def __init__(self, ctx_or_interaction: Union[commands.Context, discord.Interaction, discord.Message]):
         self.bot = DiscordBot.get_instance()
-        self.handler = MessageService(self.bot, self.bot.db_pool)
+        self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.counter = TimeToComplete()
         self.ctx_or_interaction = ctx_or_interaction
         self._reported_users = set()

@@ -57,7 +57,7 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, not_priv
             print(f"{YELLOW}Warning:{RESET} {content}")
             assert should_warn
         if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
+            print(f"{GREEN}Success:{RESET} {content}")
             if channel_ref:
                 assert channel_value in content
             assert any(emoji in content for emoji in Emojis.EMOJIS)

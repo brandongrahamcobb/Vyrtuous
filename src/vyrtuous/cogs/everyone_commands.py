@@ -43,7 +43,7 @@ class EveryoneCommands(commands.Cog):
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
         self.emoji = Emojis()
-        self.handler = MessageService(self.bot, self.bot.db_pool)
+        self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.channel_service = ChannelService()
         self.member_service = MemberService()
         
@@ -84,13 +84,20 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        scope: Optional[str] = commands.parameter(default=None, description='"all", or user mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description="'all', or user mention/ID")
     ):
         state = State(ctx)
         pages = []
         member_obj = None
         try:
             member_obj = await self.member_service.resolve_member(ctx, scope)
+            try:
+                check_not_self(ctx, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             pass
         administrators = await Administrator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
@@ -119,7 +126,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
     @app_commands.command(name='coords', description='Lists coordinators for a specific voice channel, all, or a member.')
-    @app_commands.describe(scope='"all", member or channel name/ID/mention')
+    @app_commands.describe(scope="'all', member or channel name/ID/mention")
     async def list_coordinators_app_command(
         self,
         interaction : discord.Interaction,
@@ -131,12 +138,18 @@ class EveryoneCommands(commands.Cog):
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(interaction, scope)
+            try:
+                check_not_self(interaction, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
-                await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -167,7 +180,7 @@ class EveryoneCommands(commands.Cog):
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description='Voice channel name, mention, ID, "all", or member ID')
+        scope: Optional[str] = commands.parameter(default=None, description="Voice channel name, mention, ID, 'all', or member ID")
     ):
         state = State(ctx)
         channel_obj = None
@@ -175,12 +188,18 @@ class EveryoneCommands(commands.Cog):
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(ctx, scope)
+            try:
+                check_not_self(ctx, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
-                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -208,7 +227,7 @@ class EveryoneCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='devs', description='Lists developers.')
-    @app_commands.describe(scope='"all" or a member snowflake ID/mention')
+    @app_commands.describe(scope="'all' or a member snowflake ID/mention")
     async def list_developers_app_command(
         self,
         interaction : discord.Interaction,
@@ -219,6 +238,13 @@ class EveryoneCommands(commands.Cog):
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(interaction, scope)
+            try:
+                check_not_self(interaction, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             pass
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
@@ -253,13 +279,20 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        scope: Optional[str] = commands.parameter(default=None, description='"all", or user mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description="'all', or user mention/ID")
     ):
         state = State(ctx)
         member_obj = None
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(ctx, scope)
+            try:
+                check_not_self(ctx, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             pass
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
@@ -302,6 +335,13 @@ class EveryoneCommands(commands.Cog):
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(interaction, scope)
+            try:
+                check_not_self(interaction, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
@@ -347,7 +387,7 @@ class EveryoneCommands(commands.Cog):
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description='Voice channel name/mention/ID, "all", or member mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description="Voice channel name/mention/ID, 'all', or member mention/ID")
     ):
         state = State(ctx)
         channel_obj = None
@@ -355,6 +395,13 @@ class EveryoneCommands(commands.Cog):
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(ctx, scope)
+            try:
+                check_not_self(ctx, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
@@ -396,8 +443,8 @@ class EveryoneCommands(commands.Cog):
             return await state.end(error=f'\U0001F3C6 {e}.')
 
     # DONE
-    @app_commands.command(name='owners', description='Show temporary room stats for "all", a channel, or a member.')
-    @app_commands.describe(scope='"all", a channel mention/ID, or a member mention/ID')
+    @app_commands.command(name='owners', description="Show temporary room stats for 'all', a channel, or a member.")
+    @app_commands.describe(scope="'all', a channel mention/ID, or a member mention/ID")
     async def temp_room_stats_app_command(
         self,
         interaction: discord.Interaction,
@@ -409,12 +456,19 @@ class EveryoneCommands(commands.Cog):
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(interaction, scope)
+            try:
+                check_not_self(interaction, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except:
                 channel_obj = interaction.channel
-                await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+                await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -425,7 +479,7 @@ class EveryoneCommands(commands.Cog):
             rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not rooms:
                 try:
-                    return await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F No temporary rooms exist.')
+                    return await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F No temporary rooms exist.')
                 except Exception as e:
                     return await state.end(error=f'\U0001F3C6 {e}.')
             chunk = 12
@@ -489,16 +543,16 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope. Provide "all", a channel, or a member.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope {scope}.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
 
     # DONE
-    @commands.command(name='owners', help='Show temporary room stats for "all", a channel, or a member.')
+    @commands.command(name='owners', help="Show temporary room stats for 'all', a channel, or a member.")
     async def temp_room_stats_text_command(
         self,
         ctx,
-        scope: Optional[str] = commands.parameter(default=None, description='"all", a channel mention/ID, or a member mention/ID')
+        scope: Optional[str] = commands.parameter(default=None, description="'all', a channel mention/ID, or a member mention/ID")
     ):
         state = State(ctx)
         channel_obj = None
@@ -506,12 +560,19 @@ class EveryoneCommands(commands.Cog):
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(ctx, scope)
+            try:
+                check_not_self(ctx, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except:
                 channel_obj = ctx.channel
-                await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+                await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer', 'Administrator'):
@@ -586,7 +647,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope. Provide "all", a channel, or a member.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope {scope}.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
 
@@ -607,7 +668,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No role named "{role_name}" found in this server.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No role named `{role_name}` found in this server.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
@@ -622,7 +683,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\U0001F3C6 {e}.')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No role named "{role_name}" found in this server.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No role named `{role_name}` found in this server.')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
@@ -635,12 +696,13 @@ class EveryoneCommands(commands.Cog):
     ):
         state = State(interaction)
         channel_obj = None
+        chunk_size = 18
+        pages = []
+        owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         except:
             channel_obj = interaction.channel
-            await self.handler.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
-        owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
             match True:
                 case _ if await member_is_owner(guild_snowflake=interaction.guild.id, member_snowflake=member.id):
@@ -653,20 +715,64 @@ class EveryoneCommands(commands.Cog):
                     coordinators.append(member)
                 case _ if await member_is_moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id):
                     moderators.append(member)
-        def fmt(users):
-            return ', '.join(u.mention for u in users) if users else '*None*'
-        embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Survey results for {channel_obj.name}",
-            description=f"Total surveyed: {len(channel_obj.members)}",
-            color=discord.Color.blurple()
+        owners_chunks = [owners[i:i + chunk_size] for i in range(0, len(owners), chunk_size)]
+        developers_chunks = [developers[i:i + chunk_size] for i in range(0, len(developers), chunk_size)]
+        administrators_chunks = [administrators[i:i + chunk_size] for i in range(0, len(administrators), chunk_size)]
+        coordinators_chunks = [coordinators[i:i + chunk_size] for i in range(0, len(coordinators), chunk_size)]
+        moderators_chunks = [moderators[i:i + chunk_size] for i in range(0, len(moderators), chunk_size)]
+        max_pages = max(
+            len(owners_chunks),
+            len(developers_chunks),
+            len(administrators_chunks),
+            len(coordinators_chunks),
+            len(moderators_chunks),
+            1
         )
-        embed.add_field(name="Owners", value=fmt(owners), inline=False)
-        embed.add_field(name="Developers", value=fmt(developers), inline=False)
-        embed.add_field(name="Administrators", value=fmt(administrators), inline=False)
-        embed.add_field(name="Coordinators", value=fmt(coordinators), inline=False)
-        embed.add_field(name="Moderators", value=fmt(moderators), inline=False)
+        for page_index in range(max_pages):
+            embed = discord.Embed(
+                title=f'{self.emoji.get_random_emoji()} Survey results for {channel_obj.name}',
+                description=f'Total surveyed: {len(channel_obj.members)}',
+                color=discord.Color.blurple()
+            )
+            if page_index < len(owners_chunks):
+                chunk = owners_chunks[page_index]
+                embed.add_field(
+                    name=f'Owners ({len(chunk)}/{len(owners)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            if page_index < len(developers_chunks):
+                chunk = developers_chunks[page_index]
+                embed.add_field(
+                    name=f'Developers ({len(chunk)}/{len(developers)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            if page_index < len(administrators_chunks):
+                chunk = administrators_chunks[page_index]
+                embed.add_field(
+                    name=f'Administrators ({len(chunk)}/{len(administrators)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            if page_index < len(coordinators_chunks):
+                chunk = coordinators_chunks[page_index]
+                embed.add_field(
+                    name=f'Coordinators ({len(chunk)}/{len(coordinators)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            if page_index < len(moderators_chunks):
+                chunk = moderators_chunks[page_index]
+                embed.add_field(
+                    name=f'Moderators ({len(chunk)}/{len(moderators)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            embed.set_footer(text=f'Page {page_index + 1}/{max_pages}')
+            pages.append(embed)
         try:
-            return await state.end(success=embed)
+            return await state.end(success=pages)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
     # DONE
@@ -679,12 +785,13 @@ class EveryoneCommands(commands.Cog):
     ):
         state = State(ctx)
         channel_obj = None
+        chunk_size = 18
+        pages = []
+        owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except:
             channel_obj = ctx.channel
-            await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
-        owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         for member in channel_obj.members:
             match True:
                 case _ if await member_is_owner(guild_snowflake=ctx.guild.id, member_snowflake=member.id):
@@ -697,20 +804,64 @@ class EveryoneCommands(commands.Cog):
                     coordinators.append(member)
                 case _ if await member_is_moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id):
                     moderators.append(member)
-        def fmt(users):
-            return ', '.join(u.mention for u in users) if users else '*None*'
-        embed = discord.Embed(
-            title=f"{self.emoji.get_random_emoji()} Survey results for {channel_obj.name}",
-            description=f"Total surveyed: {len(channel_obj.members)}",
-            color=discord.Color.blurple()
+        owners_chunks = [owners[i:i + chunk_size] for i in range(0, len(owners), chunk_size)]
+        developers_chunks = [developers[i:i + chunk_size] for i in range(0, len(developers), chunk_size)]
+        administrators_chunks = [administrators[i:i + chunk_size] for i in range(0, len(administrators), chunk_size)]
+        coordinators_chunks = [coordinators[i:i + chunk_size] for i in range(0, len(coordinators), chunk_size)]
+        moderators_chunks = [moderators[i:i + chunk_size] for i in range(0, len(moderators), chunk_size)]
+        max_pages = max(
+            len(owners_chunks),
+            len(developers_chunks),
+            len(administrators_chunks),
+            len(coordinators_chunks),
+            len(moderators_chunks),
+            1
         )
-        embed.add_field(name="Owners", value=fmt(owners), inline=False)
-        embed.add_field(name="Developers", value=fmt(developers), inline=False)
-        embed.add_field(name="Administrators", value=fmt(administrators), inline=False)
-        embed.add_field(name="Coordinators", value=fmt(coordinators), inline=False)
-        embed.add_field(name="Moderators", value=fmt(moderators), inline=False)
+        for page_index in range(max_pages):
+            embed = discord.Embed(
+                title=f'{self.emoji.get_random_emoji()} Survey results for {channel_obj.name}',
+                description=f'Total surveyed: {len(channel_obj.members)}',
+                color=discord.Color.blurple()
+            )
+            if page_index < len(owners_chunks):
+                chunk = owners_chunks[page_index]
+                embed.add_field(
+                    name=f'Owners ({len(chunk)}/{len(owners)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            if page_index < len(developers_chunks):
+                chunk = developers_chunks[page_index]
+                embed.add_field(
+                    name=f'Developers ({len(chunk)}/{len(developers)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            if page_index < len(administrators_chunks):
+                chunk = administrators_chunks[page_index]
+                embed.add_field(
+                    name=f'Administrators ({len(chunk)}/{len(administrators)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            if page_index < len(coordinators_chunks):
+                chunk = coordinators_chunks[page_index]
+                embed.add_field(
+                    name=f'Coordinators ({len(chunk)}/{len(coordinators)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            if page_index < len(moderators_chunks):
+                chunk = moderators_chunks[page_index]
+                embed.add_field(
+                    name=f'Moderators ({len(chunk)}/{len(moderators)})',
+                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
+                    inline=False
+                )
+            embed.set_footer(text=f'Page {page_index + 1}/{max_pages}')
+            pages.append(embed)
         try:
-            return await state.end(success=embed)
+            return await state.end(success=pages)
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
         

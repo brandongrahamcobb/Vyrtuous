@@ -52,7 +52,7 @@ async def test_trole_xtrole_command(bot, voice_channel_one, guild, privileged_au
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
+            print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in Emojis.EMOJIS)
     finally:
         await developer.revoke()

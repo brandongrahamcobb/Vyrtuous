@@ -44,7 +44,7 @@ class Alias:
         self.channel_mention = f'<#{channel_snowflake}>'
         self.guild_snowflake = guild_snowflake
         self.alias_cog = self.bot.get_cog("Aliases")
-        self.handlers = {
+        self.message_services = {
             'ban': self.alias_cog.handle_ban_alias,
             'vegan': self.alias_cog.handle_vegan_alias,
             'carnist': self.alias_cog.handle_carnist_alias,
@@ -58,7 +58,7 @@ class Alias:
             'role': self.alias_cog.handle_role_alias,
             'unrole': self.alias_cog.handle_unrole_alias
         }
-        self.handler = self.handlers[alias_type]
+        self.message_service = self.message_services[alias_type]
         self.role_snowflake = role_snowflake
         self.role_mention = f'<@&{role_snowflake}>'
         self.channel_service = ChannelService()
@@ -66,10 +66,10 @@ class Alias:
         
     @classmethod
     def format_aliases(cls, aliases) -> list[str]:
+        lines = []
         if not aliases:
             return []
         grouped = defaultdict(list)
-        lines = []
         for alias in aliases:
             formatted_type = cls.get_alias_formatted_string(alias)
             grouped[(alias.channel_snowflake, formatted_type)].append(alias)

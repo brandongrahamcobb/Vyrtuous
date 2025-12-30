@@ -47,12 +47,12 @@ class Coordinator:
             ''', channel_snowflake, member_snowflake)
 
     @classmethod
-    async def delete_channel(cls, channel_snowflake: Optional[int]):
+    async def delete_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                DELETE FROM coordinators WHERE channel_snowflake=$1
-            ''', channel_snowflake)
+                DELETE FROM coordinators WHERE channel_snowflake=$1 AND guild_snowflake=$2
+            ''', channel_snowflake, guild_snowflake)
 
     async def grant(self):
         async with self.bot.db_pool.acquire() as conn:

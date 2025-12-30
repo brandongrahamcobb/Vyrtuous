@@ -26,12 +26,17 @@ from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.alias import Alias
+from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.flag import Flag
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.state import State
 from vyrtuous.utils.temporary_room import TemporaryRoom
+from vyrtuous.utils.text_mute import TextMute
+from vyrtuous.utils.vegan import Vegan
+from vyrtuous.utils.voice_mute import VoiceMute
 
 class DevCommands(commands.Cog):
 
@@ -39,7 +44,7 @@ class DevCommands(commands.Cog):
         self.bot = bot
         self.channel_service = ChannelService()
         self.emoji = Emojis()
-        self.handler = MessageService(self.bot, self.bot.db_pool)
+        self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.member_service = MemberService()
         self.role_service = RoleService()
     
@@ -90,33 +95,34 @@ class DevCommands(commands.Cog):
         scope: str
     ):
         state = State(interaction)
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        channel_obj = None
+        highest_role = None
+        member_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, scope)
+            member_obj = await self.member_service.resolve_member(interaction, scope)
+            highest_role = has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             try:
-                member_obj = await self.member_service.resolve_member(interaction, scope)
-            except Exception as e:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Unable to identify a valid channel or member from {scope}.')
-                except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-        if channel_obj and highest_role in ("Owner", "Developer"):
-            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
-            await Moderator.delete_channel(channel_snowflake=channel_obj.id)
-            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            msg = f'{self.emoji.get_random_emoji()} Removed channel `{channel_obj.mention}` from all users\' coordinator and moderator access and deleted all associated records.'
-        elif member_obj:
-            await Invincibility.unrestrict(guild_snowflake=interaction.guild.id, member=member_obj)
-            msg =f'{self.emoji.get_random_emoji()} Wiped all moderation actions for {member_obj.mention}.'
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to wipe all moderation actions for channels in {interaction.guild.name}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
+        if channel_obj and highest_role in ('Owner', 'Developer'):
+            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            msg = f'Deleted all associated moderation actions and roles for {channel_obj.mention}.'
+        elif member_obj:
+            await Invincibility.unrestrict(guild_snowflake=interaction.guild.id, member=member_obj)
+            msg = f'Deleted all associated moderation actions on {member_obj.mention}.'
         try:
-            return await state.end(success=msg)
+            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
         
@@ -129,38 +135,83 @@ class DevCommands(commands.Cog):
         scope: str = commands.parameter(default=None, description='Tag a channel, a member or include its the snowflake ID')
     ):
         state = State(ctx)
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        channel_obj = None
+        highest_role = None
+        member_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, scope)
+            member_obj = await self.member_service.resolve_member(ctx, scope)
+            highest_role = has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.user.id)
         except Exception as e:
             try:
-                member_obj = await self.member_service.resolve_member(ctx, scope)
-            except Exception as e:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Unable to identify a valid channel or member from {scope}.')
-                except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-        if channel_obj and highest_role in ("Owner", "Developer"):
-            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await Coordinator.delete_channel(channel_snowflake=channel_obj.id)
-            await Moderator.delete_channel(channel_snowflake=channel_obj.id)
-            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            msg = f'{self.emoji.get_random_emoji()} Removed channel `{channel_obj.mention}` from all users\' coordinator and moderator access and deleted all associated records.'
-        elif member_obj:
-            await Invincibility.unrestrict(guild_snowflake=ctx.guild.id, member=member_obj)
-            msg =f'{self.emoji.get_random_emoji()} Wiped all moderation actions for {member_obj.mention}.'
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to wipe all moderation actions for channels in {ctx.guild.name}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
             except Exception as e:
                 return await state.end(error=f'\U0001F3C6 {e}.')
+        if channel_obj and highest_role in ('Owner', 'Developer'):
+            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            msg = f'Deleted all associated moderation actions and roles for {channel_obj.mention}.'
+        elif member_obj:
+            await Invincibility.unrestrict(guild_snowflake=ctx.guild.id, member=member_obj)
+            msg = f'Deleted all associated moderation actions on {member_obj.mention}.'
         try:
-            return await state.end(success=msg)
+            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
         
+    @app_commands.command(name='cogs', description='List cogs.')
+    @is_owner_developer_predicator()
+    async def list_cogs_app_command(self, interaction: discord.Interaction):
+        state = State(interaction)
+        loaded, not_loaded = [], []
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Cogs', color=discord.Color.blurple())
+        for cog in sorted(DISCORD_COGS):
+            if cog in self.bot.cogs:
+                loaded.append(cog)
+            else:
+                not_loaded.append(cog)
+        if loaded:
+            embed.add_field(name='Loaded', value='\n'.join(loaded), inline=False)
+        if not_loaded:
+            embed.add_field(name='Not Loaded', value='\n'.join(not_loaded), inline=False)
+        if not loaded and not not_loaded:
+            embed.add_field(name='No cogs available.', inline=False)
+        try:
+            return await state.end(success=embed)
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
+
+    @commands.command(name='cogs', help='List cogs.')
+    @is_owner_developer_predicator()
+    async def list_cogs_text_command(self, ctx: commands.Context, *, module: str):
+        state = State(ctx)
+        loaded, not_loaded = [], []
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Cogs', color=discord.Color.blurple())
+        for cog in sorted(DISCORD_COGS):
+            if cog in self.bot.cogs:
+                loaded.append(cog)
+            else:
+                not_loaded.append(cog)
+        if loaded:
+            embed.add_field(name='Loaded', value='\n'.join(loaded), inline=False)
+        if not_loaded:
+            embed.add_field(name='Not Loaded', value='\n'.join(not_loaded), inline=False)
+        if not loaded and not not_loaded:
+            embed.add_field(name='No cogs available.', inline=False)
+        try:
+            return await state.end(success=embed)
+        except Exception as e:
+            return await state.end(error=f'\U0001F3C6 {e}.')
+                
     # DONE
-    @app_commands.command(name='load', description='Loads a cog by name "vyrtuous.cog.<cog_name>.')
+    @app_commands.command(name='load', description="Loads a cog by name 'vyrtuous.cog.<cog_name>.'")
     @is_owner_developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
         state = State(interaction)
@@ -168,21 +219,27 @@ class DevCommands(commands.Cog):
             await interaction.response.defer(ephemeral=True)
             await interaction.client.load_extension(module)
         except commands.ExtensionError as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully loaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
     # DONE    
-    @commands.command(name='load', help='Loads a cog by name "vyrtuous.cog.<cog_name>."')
+    @commands.command(name='load', help="Loads a cog by name 'vyrtuous.cog.<cog_name>.'")
     @is_owner_developer_predicator()
     async def load_text_command(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:
             await self.bot.load_extension(module)
         except commands.ExtensionError as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully loaded {module}.')
         except Exception as e:
@@ -210,11 +267,11 @@ class DevCommands(commands.Cog):
     ):
         state = State(ctx)
         try:
-            return await state.end(success=f"{self.emoji.get_random_emoji()} Pong!")
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Pong!')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')   
     # DONE
-    @app_commands.command(name='reload', description='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
+    @app_commands.command(name='reload', description="Reloads a cog by name 'vyrtuous.cog.<cog_name>'.")
     @app_commands.check(at_home)
     @is_owner_developer_predicator()
     async def reload_app_command(self, interaction: discord.Interaction, module: str):
@@ -223,21 +280,27 @@ class DevCommands(commands.Cog):
             await interaction.response.defer(ephemeral=True)
             await interaction.client.reload_extension(module)
         except commands.ExtensionError as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully reloaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
             
     # DONE
-    @commands.command(name='reload', help='Reloads a cog by name "vyrtuous.cog.<cog_name>".')
+    @commands.command(name='reload', help="Reloads a cog by name 'vyrtuous.cog.<cog_name>'.")
     @is_owner_developer_predicator()
     async def reload(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully reloaded {module}.')
         except Exception as e:
@@ -249,6 +312,7 @@ class DevCommands(commands.Cog):
     async def sync_app_command(self, interaction: discord.Interaction, spec: Optional[Literal['~', '*', '^']] = None):
         state = State(interaction)
         guilds = interaction.client.guilds
+        synced = []
         await interaction.response.defer(ephemeral=True)
         if not guilds:
             if spec == '~':
@@ -259,13 +323,19 @@ class DevCommands(commands.Cog):
             elif spec == '^':
                 interaction.client.tree.clear_commands(guild=interaction.guild)
                 await interaction.client.tree.sync(guild=interaction.guild)
-                synced = []
             else:
                 synced = await interaction.client.tree.sync()
             try:
-                return await state.end(success=f"{self.emoji.get_random_emoji()} Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
+                if spec is None:
+                    msg = f'Synced {len(synced)} commands globally.'
+                else:
+                    msg = f'Synced {len(synced)} commands to the current guild.'
+                return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
             except Exception as e:   
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         ret = 0
         for guild in guilds:
             try:
@@ -284,6 +354,7 @@ class DevCommands(commands.Cog):
     @is_owner_developer_predicator()
     async def sync_text_command(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None):
         state = State(ctx)
+        synced = []
         if not guilds:
             if spec == '~':
                 synced = await ctx.bot.tree.sync(guild=ctx.guild)
@@ -293,13 +364,19 @@ class DevCommands(commands.Cog):
             elif spec == '^':
                 ctx.bot.tree.clear_commands(guild=ctx.guild)
                 await ctx.bot.tree.sync(guild=ctx.guild)
-                synced = []
             else:
                 synced = await ctx.bot.tree.sync()
             try:
-                return await state.end(success=f"{self.emoji.get_random_emoji()} Synced {len(synced)} commands {'globally' if spec is None else 'to the current guild.'}")
+                if spec is None:
+                    msg = f'Synced {len(synced)} commands globally.'
+                else:
+                    msg = f'Synced {len(synced)} commands to the current guild.'
+                return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+                except Exception as e:
+                    return await state.end(error=f'\U0001F3C6 {e}.')
         ret = 0
         for guild in guilds:
             try:
@@ -322,16 +399,27 @@ class DevCommands(commands.Cog):
         role: AppRoleSnowflake
     ):
         state = State(interaction)
+        members = []
+        role_obj = None
         try:
             role_obj = await self.role_service.resolve_role(interaction, role)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            except Exception as e: 
+                return await state.end(error=f'\U0001F3C6 {e}.')
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Team Role Granted', description=f'Members granted `Administrator`.', color=discord.Color.red())
         for member in role_obj.members:
             administrator = Administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
             await administrator.grant()
+            members.append(member.mention)
+        if members:
+            embed.add_field(name='Members', value='\n'.join(members), inline=False)
+        else:
+            embed.add_field(name='No members found', value='', inline=False)
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Team role granted for members with {role_obj.mention}.')
-        except Exception as e:   
+            return await state.end(success=embed)
+        except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
         
     # DONE
@@ -343,20 +431,31 @@ class DevCommands(commands.Cog):
         role: RoleSnowflake
     ):
         state = State(ctx)
+        members = []
+        role_obj = None
         try:
             role_obj = await self.role_service.resolve_role(ctx, role)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            except Exception as e: 
+                return await state.end(error=f'\U0001F3C6 {e}.')
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Team Role Granted', description=f'Members granted `Administrator`.', color=discord.Color.red())
         for member in role_obj.members:
             administrator = Administrator(guild_snowflake=ctx.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
             await administrator.grant()
+            members.append(member.mention)
+        if members:
+            embed.add_field(name='Members', value='\n'.join(members), inline=False)
+        else:
+            embed.add_field(name='No members found', value='', inline=False)
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Team role granted for members with {role_obj.mention}.')
-        except Exception as e:   
+            return await state.end(success=embed)
+        except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
     # DONE
-    @app_commands.command(name='unload', description='Unloads a cog by name "vyrtuous.cog.<cog_name>".')
+    @app_commands.command(name='unload', description="Unloads a cog by name 'vyrtuous.cog.<cog_name>'.")
     @is_owner_developer_predicator()
     async def unload_app_command(self, interaction: discord.Interaction, module: str):
         state = State(interaction)
@@ -364,21 +463,27 @@ class DevCommands(commands.Cog):
             await interaction.response.defer(ephemeral=True)
             await interaction.client.unload_extension(module)
         except commands.ExtensionError as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully unloaded {module}.')
         except Exception as e:
             return await state.end(error=f'\U0001F3C6 {e}.')
 
     # DONE
-    @commands.command(name='unload', help='Unload a cog by name "vyrtuous.cog.<cog_name>".')
+    @commands.command(name='unload', help="Unload a cog by name 'vyrtuous.cog.<cog_name>'.")
     @is_owner_developer_predicator()
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e.__class__.__name__}: {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully unloaded {module}.')
         except Exception as e:
@@ -392,10 +497,16 @@ class DevCommands(commands.Cog):
         role: AppRoleSnowflake
     ):
         state = State(interaction)
+        chunk_size = 18
+        members_revoked, pages = [], []
+        role_obj = None
         try:
             role_obj = await self.role_service.resolve_role(interaction, role)
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
         for member in role_obj.members:
             administrator = await Administrator.fetch_member(member.id)
             if not administrator:
@@ -405,15 +516,31 @@ class DevCommands(commands.Cog):
             if administrator.role_snowflake not in {r.id for r in member.roles}:
                 if administrator.guild_snowflake == interaction.guild.id:
                     administrator.guild_snowflake = None
-            await Administrator.update_guild_and_role_for_member(
-                guild_snowflake=administrator.guild_snowflake,
-                member_snowflake=member.id,
-                role_snowflake=administrator.role_snowflake
+            await Administrator.update_guild_and_role_for_member(guild_snowflake=administrator.guild_snowflake, member_snowflake=member.id, role_snowflake=administrator.role_snowflake)
+            members_revoked.append(member.mention)
+        member_sets = [members_revoked[i:i + chunk_size] for i in range(0, len(members_revoked), chunk_size)]
+        for index, page in enumerate(member_sets, start=1):
+            embed = discord.Embed(
+                title=f'{self.emoji.get_random_emoji()} Team Members revoked for {role_obj.mention}',
+                description=f'Page {index}/{len(member_sets)}',
+                color=discord.Color.red()
             )
-        try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully revoked administrator from all members with {role_obj.mention}.')
-        except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            embed.add_field(
+                name=f'Members ({len(page)})',
+                value='\n'.join(page),
+                inline=False
+            )
+            pages.append(embed)
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No admins found in {ctx.guild.name}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')    
 
     # DONE
     @commands.command(name='xtrole', help='Revokes a role from administrator and updates all members.')
@@ -424,6 +551,9 @@ class DevCommands(commands.Cog):
         role: RoleSnowflake
     ):
         state = State(ctx)
+        chunk_size = 18
+        members_revoked, pages = [], []
+        role_obj = None
         try:
             role_obj = await self.role_service.resolve_role(ctx, role)
         except Exception as e:
@@ -437,15 +567,31 @@ class DevCommands(commands.Cog):
             if administrator.role_snowflake not in {r.id for r in member.roles}:
                 if administrator.guild_snowflake == ctx.guild.id:
                     administrator.guild_snowflake = None
-            await Administrator.update_guild_and_role_for_member(
-                guild_snowflake=administrator.guild_snowflake,
-                member_snowflake=member.id,
-                role_snowflake=administrator.role_snowflake
+            await Administrator.update_guild_and_role_for_member(guild_snowflake=administrator.guild_snowflake, member_snowflake=member.id, role_snowflake=administrator.role_snowflake)
+            members_revoked.append(member.mention)
+        member_sets = [members_revoked[i:i + chunk_size] for i in range(0, len(members_revoked), chunk_size)]
+        for index, page in enumerate(member_sets, start=1):
+            embed = discord.Embed(
+                title=f'{self.emoji.get_random_emoji()} Team Members revoked from {role_obj.mention}',
+                description=f'Page {index}/{len(member_sets)}',
+                color=discord.Color.red()
             )
-        try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully revoked administrator from all members with {role_obj.mention}.')
-        except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')    
+            embed.add_field(
+                name=f'Members ({len(page)})',
+                value='\n'.join(page),
+                inline=False
+            )
+            pages.append(embed)
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No admins found in {ctx.guild.name}.')
+            except Exception as e:
+                return await state.end(error=f'\U0001F3C6 {e}.')    
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(DevCommands(bot))

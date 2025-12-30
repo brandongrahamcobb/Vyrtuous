@@ -25,7 +25,7 @@ from vyrtuous.utils.paginator import Paginator
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.permission import Permission
+from vyrtuous.utils.permission import PERMISSION_TYPES
 
 import inspect
     
@@ -36,7 +36,7 @@ class Help(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
-        self.handler = MessageService(self.bot, self.bot.db_pool)
+        self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.permission_page_title_pairs = [
             ('Owner', '`Owner` inherits `Developer`.'),
             ('Developer', '`Developer` inherits `Administrator`.'),
@@ -47,12 +47,12 @@ class Help(commands.Cog):
         ]
 
     async def get_channel_alias_help(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]) -> list[str]:
+        lines = []
         aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
         if aliases:
             grouped = defaultdict(list)
             for alias in aliases:
                 grouped[alias.alias_type].append(alias.alias_name)
-            lines = []
             for alias_type, alias_names in grouped.items():
                 help_lines = self.aliases_cog.alias_help.get(alias_type)
                 if not help_lines:
@@ -69,7 +69,7 @@ class Help(commands.Cog):
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
-                if Permission.PERMISSION_TYPES.index(user_highest) <= Permission.PERMISSION_TYPES.index(perm_level):
+                if PERMISSION_TYPES.index(user_highest) >= PERMISSION_TYPES.index(perm_level):
                     available.append(command)
             except Exception as e:
                 logger.warning(f'\U000026A0\U0000FE0F Exception while evaluating command {command}: {e}.')
@@ -99,7 +99,7 @@ class Help(commands.Cog):
         return colors.get(perm_level, discord.Color.greyple())
     
     async def group_commands_by_permission(self, bot, ctx_or_interaction, commands_list):
-        permission_groups = {level:[] for level in Permission.PERMISSION_TYPES}
+        permission_groups = {level:[] for level in PERMISSION_TYPES}
         for command in commands_list:
             perm_level = await self.get_command_permission_level(bot, command)
             if perm_level in permission_groups:
@@ -118,8 +118,7 @@ class Help(commands.Cog):
         return (None, None)
 
     def split_command_list(self, commands_list, max_length=1024):
-        chunks = []
-        current_chunk = []
+        current_chunk, chunks = [], []
         current_length = 0
         for cmd in commands_list:
             cmd_line = f'**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}'
@@ -160,10 +159,11 @@ class Help(commands.Cog):
     @app_commands.describe(command_name='The command to view details for.')
     async def help_app_command(self, interaction: discord.Interaction, command_name: Optional[str] = None):
         bot = interaction.client
+        pages, param_details, parameters = [], [], []
         if command_name:
             kind, obj = await self.resolve_command_or_alias(interaction, command_name)
             if not kind:
-                return await self.handler.send_message(interaction, f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
+                return await self.message_service.send_message(interaction, f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -173,7 +173,6 @@ class Help(commands.Cog):
                 )
                 callback = self.unwrap_callback(cmd.callback)
                 sig = inspect.signature(callback)
-                parameters = []
                 for name, param in sig.parameters.items():
                     if param.annotation == discord.Interaction:
                         continue
@@ -184,8 +183,6 @@ class Help(commands.Cog):
                     parameters.pop(0)
                 if parameters:
                     usage_parts = [f'{self.config["discord_command_prefix"]}{cmd.name}']
-                    param_details = []
-                    param_descriptions = {}
                     for name, param in parameters:
                         param_desc = None
                         if isinstance(param.default, commands.Parameter):
@@ -202,19 +199,19 @@ class Help(commands.Cog):
                     embed.add_field(name='Usage', value=f'`{" ".join(usage_parts)}`', inline=False)
                     if param_details:
                         embed.add_field(name='Parameters', value='\n'.join(param_details), inline=False)
-                        return await self.handler.send_message(interaction, embed=embed)
+                        return await self.message_service.send_message(interaction, embed=embed)
             if kind == "alias":
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
-                    return await self.handler.send_message(interaction, f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
+                    return await self.message_service.send_message(interaction, f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
                 embed = discord.Embed(
                     title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
                     description=f'Alias for **{alias.alias_type}**',
                     color=discord.Color.green()
                 )
                 embed.add_field(name='Usage', value='\n'.join(f'• {line}' for line in help_lines), inline=False)
-                return await self.handler.send_message(interaction, embed=embed)
+                return await self.message_service.send_message(interaction, embed=embed)
         all_commands = await self.get_available_commands(bot, interaction)
         permission_groups = await self.group_commands_by_permission(bot, interaction, all_commands)
         aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
@@ -224,11 +221,10 @@ class Help(commands.Cog):
                 short_desc = self.aliases_cog.alias_type_to_description.get(alias.alias_type, "No description")
                 perm_level_for_alias = self.aliases_cog.alias_type_to_permission_level.get(alias.alias_type, 'Everyone')
                 perm_alias_map[perm_level_for_alias].append(f'**{alias.alias_name}** – {short_desc}')
-        pages = []
         user_highest = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        user_index = Permission.PERMISSION_TYPES.index(user_highest)
+        user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
-            if Permission.PERMISSION_TYPES.index(perm_level) < user_index:
+            if PERMISSION_TYPES.index(perm_level) > user_index:
                 continue
             commands_in_level = sorted(permission_groups.get(perm_level, []), key=lambda c: c.name)
             embed = discord.Embed(
@@ -254,17 +250,18 @@ class Help(commands.Cog):
                 embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            return await self.handler.send_message(interaction, '\U000026A0\U0000FE0F No commands available to you.', ephemeral=True)
+            return await self.message_service.send_message(interaction, '\U000026A0\U0000FE0F No commands available to you.', ephemeral=True)
         paginator = Paginator(bot, interaction, pages)
         await paginator.start()
         
     @commands.command(name='help')
     async def help_text_command(self, ctx, *, command_name: str = None):
         bot = ctx.bot
+        pages, param_details, parameters = [], [], []
         if command_name:
             kind, obj = await self.resolve_command_or_alias(ctx, command_name)
             if not kind:
-                return await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
+                return await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -274,7 +271,6 @@ class Help(commands.Cog):
                 )
                 callback = self.unwrap_callback(cmd.callback)
                 sig = inspect.signature(callback)
-                parameters = []
                 for name, param in sig.parameters.items():
                     if param.annotation == commands.Context:
                         continue
@@ -285,8 +281,6 @@ class Help(commands.Cog):
                     parameters.pop(0)
                 if parameters:
                     usage_parts = [f'{self.config["discord_command_prefix"]}{cmd.name}']
-                    param_details = []
-                    param_descriptions = {}
                     for name, param in parameters:
                         param_desc = None
                         if isinstance(param.default, commands.Parameter):
@@ -303,19 +297,19 @@ class Help(commands.Cog):
                     embed.add_field(name='Usage', value=f'`{" ".join(usage_parts)}`', inline=False)
                     if param_details:
                         embed.add_field(name='Parameters', value='\n'.join(param_details), inline=False)
-                        return await self.handler.send_message(ctx, embed=embed)
+                        return await self.message_service.send_message(ctx, embed=embed)
             if kind == "alias":
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
-                    return await self.handler.send_message(ctx, content=f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
+                    return await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
                 embed = discord.Embed(
                     title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
                     description=f'Alias for **{alias.alias_type}**',
                     color=discord.Color.green()
                 )
                 embed.add_field(name='Usage', value='\n'.join(f'• {line}' for line in help_lines), inline=False)
-                return await self.handler.send_message(ctx, embed=embed)
+                return await self.message_service.send_message(ctx, embed=embed)
         all_commands = await self.get_available_commands(bot, ctx)
         permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
         aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
@@ -325,11 +319,10 @@ class Help(commands.Cog):
                 short_desc = self.aliases_cog.alias_type_to_description.get(alias.alias_type, "No description")
                 perm_level_for_alias = self.aliases_cog.alias_type_to_permission_level.get(alias.alias_type, 'Everyone')
                 perm_alias_map[perm_level_for_alias].append(f'**{alias.alias_name}** – {short_desc}')
-        pages = []
         user_highest = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        user_index = Permission.PERMISSION_TYPES.index(user_highest)
+        user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
-            if Permission.PERMISSION_TYPES.index(perm_level) < user_index:
+            if PERMISSION_TYPES.index(perm_level) > user_index:
                 continue
             commands_in_level = sorted(permission_groups.get(perm_level, []), key=lambda c: c.name)
             embed = discord.Embed(
@@ -355,7 +348,7 @@ class Help(commands.Cog):
                 embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            return await self.handler.send_message(ctx, content='\U000026A0\U0000FE0F No commands available to you.')
+            return await self.message_service.send_message(ctx, content='\U000026A0\U0000FE0F No commands available to you.')
         paginator = Paginator(bot, ctx, pages)
         await paginator.start()
 

@@ -23,30 +23,30 @@ class RoleService:
     async def resolve_role(
         self,
         ctx_interaction_or_message,
-        value: Optional[Union[int, str, discord.Role]]
+        scope: Optional[Union[int, str, discord.Role]]
     ) -> discord.Role:
         try:
-            if isinstance(value, discord.Role):
-                logger.debug(f"Direct role: {value.id}")
-                return value
-            if isinstance(value, int):
-                role = ctx_interaction_or_message.guild.get_role(value)
+            if isinstance(scope, discord.Role):
+                logger.debug(f'Direct role: {scope.id}')
+                return scope
+            if isinstance(scope, int):
+                role = ctx_interaction_or_message.guild.get_role(scope)
                 if role:
-                    logger.debug(f"Resolved role by int ID: {role.id}")
+                    logger.debug(f'Resolved role by int ID: {role.id}')
                     return role
-            if isinstance(value, str):
-                if value.isdigit():
-                    role = ctx_interaction_or_message.guild.get_role(int(value))
+            if isinstance(scope, str):
+                if scope.isdigit():
+                    role = ctx_interaction_or_message.guild.get_role(int(scope))
                     if role:
-                        logger.debug(f"Resolved role by str ID: {role.id}")
+                        logger.debug(f'Resolved role by str ID: {role.id}')
                         return role
-                if value.startswith('<@&') and value.endswith('>'):
-                    role_id = int(value[3:-1])
+                if scope.startswith('<@&') and scope.endswith('>'):
+                    role_id = int(scope[3:-1])
                     role = ctx_interaction_or_message.guild.get_role(role_id)
                     if role:
-                        logger.debug(f"Role mention resolved: {role.id}")
+                        logger.debug(f'Role mention resolved: {role.id}')
                         return role
         except Exception as e:
-            logger.warning(f"Role resolution error: {e}")
+            logger.warning(f'Role resolution error: {e}')
             raise
-        raise ValueError("Role could not be resolved")
+        raise ValueError('Role could not be resolved from scope `{scope}`.')

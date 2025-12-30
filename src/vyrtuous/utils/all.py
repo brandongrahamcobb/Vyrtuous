@@ -34,8 +34,9 @@ class All:
         if channel_snowflakes is None:
             return None
         bot = DiscordBot.get_instance()
+        chunk_size = 18
         emoji = Emojis()
-        channel_mentions = []
+        channel_mentions, pages = [], []
         for channel_snowflake in channel_snowflakes:
             if not channel_snowflake:
                 continue
@@ -48,8 +49,6 @@ class All:
         if not user:
             logger.warning("Member not found in create_pages_to_show_channels_by_guild_and_member")
             return
-        pages = []
-        chunk_size = 18
         for i in range(0, len(channel_mentions), chunk_size):
             chunk = channel_mentions[i:i+chunk_size]
             embed = discord.Embed(
@@ -82,8 +81,9 @@ class All:
         if members is None:
             return None
         bot = DiscordBot.get_instance()
+        chunk_size = 18
         emoji = Emojis()
-        lines = []
+        lines, pages = [], []
         for member in members:
             user = bot.get_user(member.member_snowflake)
             if not user:
@@ -91,8 +91,6 @@ class All:
                 continue
             lines.append(f'• {member.member_mention}')
         channel = bot.get_channel(channel_snowflake)
-        pages = []
-        chunk_size = 18
         for i in range(0, len(lines), chunk_size):
             chunk = lines[i:i+chunk_size]
             embed = discord.Embed(
@@ -109,8 +107,9 @@ class All:
         if members is None:
             return None
         bot = DiscordBot.get_instance()
+        chunk_size = 18
         emoji = Emojis()
-        lines = []
+        lines, pages = [], []
         for member in members:
             user = bot.get_user(member.member_snowflake)
             if not user:
@@ -118,8 +117,6 @@ class All:
                 continue
             lines.append(f'• {member.member_mention}')
         guild = bot.get_guild(guild_snowflake)
-        pages = []
-        chunk_size = 18
         for i in range(0, len(lines), chunk_size):
             chunk = lines[i:i+chunk_size]
             embed = discord.Embed(
@@ -134,16 +131,15 @@ class All:
     @classmethod
     async def create_pages_to_show_channels_by_guild_and_members(cls, channel_snowflakes: list[int | None], guild_snowflake: int, members, member_type):
         bot = DiscordBot.get_instance()
-        emoji = Emojis()
-        pages = []
+        channel_mentions, pages = []
         chunk_size = 18
+        emoji = Emojis()
         guild = bot.get_channel(guild_snowflake)
         for member in members:
             user = bot.get_user(member.member_snowflake)
             if not user:
                 logger.warning("Member not found in create_pages_to_show_channels_by_guild_and_members")
                 continue
-            channel_mentions = []
             for channel_snowflake in channel_snowflakes:
                 if not channel_snowflake:
                     logger.warning("Channel not found in create_pages_to_show_channels_by_guild_and_members")
@@ -184,6 +180,7 @@ class All:
     @classmethod
     async def create_pages_from_moderations_by_channel_and_guild(cls, guild_snowflake, moderations, moderation_type):
         bot = DiscordBot.get_instance()
+        chunk_size = 18
         emoji = Emojis()
         guild = bot.get_guild(guild_snowflake)
         lines_by_channel = {}
@@ -203,7 +200,6 @@ class All:
                 duration = DurationObject(0)
             lines_by_channel.setdefault(channel.mention, []).append(f'{user.mention}\nReason: {moderation.reason}\nDuration: {duration}')
         for channel_mention, entries in lines_by_channel.items():
-            chunk_size = 18
             for i in range(0, len(entries), chunk_size):
                 embed = discord.Embed(
                     title=f'{emoji.get_random_emoji()} {moderation_type.PLURAL} for {channel_mention} in {guild.name}',
@@ -216,11 +212,11 @@ class All:
     @classmethod
     async def create_pages_from_moderations_by_guild_and_member(cls, guild_snowflake, member_snowflake, moderations, moderation_type):
         bot = DiscordBot.get_instance()
+        chunk_size = 18
         emoji = Emojis()
-        entries = []
+        entries, pages = [], []
         guild = bot.get_guild(guild_snowflake)
         user = bot.get_user(member_snowflake)
-        pages = []
         for moderation in moderations:
             channel = bot.get_channel(moderation.channel_snowflake)
             if not channel or moderation.member_snowflake != member_snowflake:
@@ -238,7 +234,6 @@ class All:
             else:
                 reason = 'No reason provided.'
             entries.append(f'{channel.mention}\nReason: {reason}\nDuration: {duration}')
-        chunk_size = 18
         for i in range(0, len(entries), chunk_size):
             embed = discord.Embed(
                 title=f'{emoji.get_random_emoji()} {moderation_type.PLURAL} for {user.display_name} in {guild.name}',
@@ -253,8 +248,7 @@ class All:
         bot = DiscordBot.get_instance()
         emoji = Emojis()
         guild = bot.get_guild(guild_snowflake)
-        lines_by_guild = []
-        pages = []
+        lines_by_guild, pages = [], []
         for moderation in moderations:
             user = bot.get_user(moderation.member_snowflake)
             if not user:

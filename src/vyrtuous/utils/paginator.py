@@ -72,7 +72,7 @@ class Paginator:
             view = self.ButtonView(self)
             if not self.ctx_or_interaction.response.is_done():
                 await self.ctx_or_interaction.response.send_message(embed=embed, view=view)
-            self.message = await self.ctx_or_interaction.original_message()
+            self.message = await self.ctx_or_interaction.original_response()
         else:
             self.message = await self.ctx_or_interaction.send(embed=embed)
             for emoji in self.NAV_EMOJIS:

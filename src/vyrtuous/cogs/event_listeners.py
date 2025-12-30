@@ -53,40 +53,17 @@ class EventListeners(commands.Cog):
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.emojis = Emojis()
-        self.handler = MessageService(self.bot, self.db_pool)
+        self.message_service = MessageService(self.bot, self.db_pool)
         self.join_log = defaultdict(list)
         self._ready_done = False
         self.deleted_rooms = {}
         self.member_service = MemberService()
-        self.video_rooms = []
-        self.video_tasks = {}
-        self.cooldowns = {}
-
-    async def enforce_video(self, member, channel, delay):
-        await asyncio.sleep(delay)
-        if not member.voice:
-            return
-        if member.voice.channel != channel:
-            return
-        if member.voice.self_video:
-            return
-        try:
-            await member.move_to(None)
-        except Exception as e:
-            logger.info("Unable to enforce video by kicking the user.")
-        try:
-            await member.send(f"{self.emojis.get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel.")
-        except Exception as e:
-            logger.info("Unable to send a message to enforce video.")
-
-    def cancel_task(self, key):
-        task = self.video_tasks.pop(key, None)
-        if task:
-            task.cancel()
 
     async def cog_load(self):
-        self.video_rooms = await VideoRoom.fetch_all()
-        for room in self.video_rooms:
+        method_names = [cmd.callback.__name__ for cmd in self.bot.commands]
+        logger.info(method_names)
+        VideoRoom.video_rooms = await VideoRoom.fetch_all()
+        for room in VideoRoom.video_rooms:
             channel = self.bot.get_channel(room.channel_snowflake)
             if channel:
                 try:
@@ -100,7 +77,6 @@ class EventListeners(commands.Cog):
         now = datetime.now(timezone.utc)
         last_trigger = self.cooldowns.get(member_snowflake)
         if last_trigger and now - last_trigger < COOLDOWN:
-            remaining = COOLDOWN - (now - last_trigger)
             return
         self.cooldowns[member_snowflake] = now
         await channel.send(message)
@@ -166,27 +142,27 @@ class EventListeners(commands.Cog):
         if member.id == self.bot.user.id:
             return
         if not after.channel:
-            self.cancel_task((member.guild.id, member.id))
+            VideoRoom.cancel_task((member.guild.id, member.id))
             return
-        for video_room in self.video_rooms:
+        for video_room in VideoRoom.video_rooms:
             if after.channel.id != video_room.channel_snowflake:
                 continue
             if not after.self_video and after.channel != before.channel:
-                await self.enforce_video_message(channel_snowflake=after.channel.id, member_snowflake=member.id, message=f"{self.emojis.get_random_emoji()} Hi {member.mention}, {after.channel.mention} is a video only room. You have 5 minutes to turn on your camera!")
+                await VideoRoom.enforce_video_message(channel_snowflake=after.channel.id, member_snowflake=member.id, message=f"{self.emojis.get_random_emoji()} Hi {member.mention}, {after.channel.mention} is a video only room. You have 5 minutes to turn on your camera!")
             key = (member.guild.id, member.id)
             if before.channel != after.channel:
-                self.cancel_task(key)
+                VideoRoom.cancel_task(key)
                 if not after.self_video:
-                    task = asyncio.create_task(self.enforce_video(member, after.channel, 300))
-                    self.video_tasks[key] = task
+                    task = asyncio.create_task(VideoRoom.enforce_video(member, after.channel, 300))
+                    VideoRoom.video_tasks[key] = task
                 return
             if before.self_video and not after.self_video:
-                self.cancel_task(key)
-                task = asyncio.create_task(self.enforce_video(member, after.channel, 60))
-                self.video_tasks[key] = task
+                VideoRoom.cancel_task(key)
+                task = asyncio.create_task(VideoRoom.enforce_video(member, after.channel, 60))
+                VideoRoom.video_tasks[key] = task
                 return
             if not before.self_video and after.self_video:
-                self.cancel_task(key)
+                VideoRoom.cancel_task(key)
                 return
         allowed = True
         if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
@@ -367,7 +343,7 @@ class EventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
         if isinstance(error, (app_commands.BadArgument, app_commands.CheckFailure)):
-            return await self.handler.send_message(interaction, f'\U000026A0\U0000FE0F {error}')
+            return await self.message_service.send_message(interaction, f'\U000026A0\U0000FE0F {error}')
             
 #    @commands.Cog.listener()
 #    async def on_command(self, ctx):
