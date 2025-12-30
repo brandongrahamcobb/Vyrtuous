@@ -21,7 +21,6 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.setup_logging import logger
 import asyncio
 
-
 class VideoRoom:
 
     video_rooms = []
