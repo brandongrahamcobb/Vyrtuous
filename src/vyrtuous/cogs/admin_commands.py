@@ -133,6 +133,198 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
     
+
+    @app_commands.command(name='ars', description='Fetch all current administrator roles.')
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
+    @is_owner_developer_administrator_predicator()
+    async def administrator_roles_command(
+        self,
+        interaction: discord.Interaction,
+        scope: Optional[str] = None
+    ):
+        state = State(interaction)
+        guild_obj = None
+        chunk_size = 18
+        field_count = 0
+        pages = []
+        skipped_guild_snowflakes = set()
+        skipped_role_snowflakes = set()
+
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        if scope and scope.lower() == 'all':
+            title = f'{self.emoji.get_random_emoji()} Administrator Roles in All Servers'
+            if highest_role not in ('Owner', 'Developer'):
+                try:
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all administrator roles across all servers.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            administrator_roles = await Administrator.fetch_all_guilds_and_roles()
+        elif scope:
+            if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all administrator roles in a specific server.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            guild_obj = self.bot.get_guild(scope)
+            if not guild_obj:
+                try:
+                    return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            title = f'{self.emoji.get_random_emoji()} Administrator Roles in {guild_obj.name}'
+            administrator_roles = await Administrator.fetch_roles_by_guild(guild_snowflake=guild_obj.id)
+            administrator_guild_snowflake = guild_obj.id
+        else:
+            title = f'{self.emoji.get_random_emoji()} Administrator Roles in {interaction.guild.name}'
+            administrator_roles = await Administrator.fetch_roles_by_guild(guild_snowflake=interaction.guild.id)
+            administrator_guild_snowflake = interaction.guild.id
+        
+        if not administrator_roles:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator role(s) setup for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for administrator_role in administrator_roles:
+            guild_dictionary.setdefault(administrator_guild_snowflake, {})
+            guild_dictionary[administrator_guild_snowflake].setdefault('role_snowflake', []).append(administrator_role.role_snowflake)
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake, role_snowflakes in guild_dictionary.items():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            for role_snowflake in role_snowflakes:
+                role = self.bot.get_role(role_snowflake)
+                if not role:
+                    skipped_role_snowflakes.add(role_snowflake)
+                    continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+        if skipped_guild_snowflakes:
+            embed = discord.Embed(title=f'Skipped Servers', description='\u200b', color=discord.Color.red())
+            for guild_snowflake in skipped_guild_snowflakes:
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=f'Skipped Servers continued...', description='\u200b', color=discord.Color.red())
+                    field_count = 0
+                embed.add_field(name=guild_snowflake, value='\u200b', inline=False)
+            pages.append(embed)
+        if skipped_role_snowflakes:
+            embed = discord.Embed(title=f'Skipped Roles', description='\u200b', color=discord.Color.red())
+            for role_snowflake in skipped_role_snowflakes:
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=f'Skipped Roles continued...', description='\u200b', color=discord.Color.red())
+                    field_count = 0
+                embed.add_field(name=role_snowflake, value='\u200b', inline=False)
+            pages.append(embed)
+            
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+    @commands.command(name='ars', help='Fetch all current administrator roles.')
+    @is_owner_developer_administrator_predicator()
+    async def administrator_roles_command(
+        self,
+        ctx: commands.Context,
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
+    ):
+        state = State(ctx)
+        guild_obj = None
+        chunk_size = 18
+        field_count = 0
+        pages = []
+        skipped_guild_snowflakes = set()
+        skipped_role_snowflakes = set()
+
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        if scope and scope.lower() == 'all':
+            title = f'{self.emoji.get_random_emoji()} Administrator Roles in All Servers'
+            if highest_role not in ('Owner', 'Developer'):
+                try:
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all administrator roles across all servers.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            administrator_roles = await Administrator.fetch_all_guilds_and_roles()
+        elif scope:
+            if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all administrator roles in a specific server.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            guild_obj = self.bot.get_guild(scope)
+            if not guild_obj:
+                try:
+                    return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            title = f'{self.emoji.get_random_emoji()} Administrator Roles in {guild_obj.name}'
+            administrator_roles = await Administrator.fetch_roles_by_guild(guild_snowflake=guild_obj.id)
+            administrator_guild_snowflake = guild_obj.id
+        else:
+            title = f'{self.emoji.get_random_emoji()} Administrator Roles in {ctx.guild.name}'
+            administrator_roles = await Administrator.fetch_roles_by_guild(guild_snowflake=ctx.guild.id)
+            administrator_guild_snowflake = ctx.guild.id
+        
+        if not administrator_roles:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator role(s) setup for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for administrator_role in administrator_roles:
+            guild_dictionary.setdefault(administrator_guild_snowflake, {})
+            guild_dictionary[administrator_guild_snowflake].setdefault('role_snowflake', []).append(administrator_role.role_snowflake)
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake, role_snowflakes in guild_dictionary.items():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            for role_snowflake in role_snowflakes:
+                role = self.bot.get_role(role_snowflake)
+                if not role:
+                    skipped_role_snowflakes.add(role_snowflake)
+                    continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+        if skipped_guild_snowflakes:
+            embed = discord.Embed(title=f'Skipped Servers', description='\u200b', color=discord.Color.red())
+            for guild_snowflake in skipped_guild_snowflakes:
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=f'Skipped Servers continued...', description='\u200b', color=discord.Color.red())
+                    field_count = 0
+                embed.add_field(name=guild_snowflake, value='\u200b', inline=False)
+            pages.append(embed)
+        if skipped_role_snowflakes:
+            embed = discord.Embed(title=f'Skipped Roles', description='\u200b', color=discord.Color.red())
+            for role_snowflake in skipped_role_snowflakes:
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=f'Skipped Roles continued...', description='\u200b', color=discord.Color.red())
+                    field_count = 0
+                embed.add_field(name=role_snowflake, value='\u200b', inline=False)
+            pages.append(embed)
+            
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
+    
     @app_commands.command(name='cap', description='Set a duration limit for bans, mutes and text mutes.')
     @is_owner_developer_administrator_predicator()
     @app_commands.describe(
@@ -405,7 +597,7 @@ class AdminCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='logs', description='Lists log channels for this server or all servers.')
-    @app_commands.describe(scope="Specify 'all' to show logs across all servers.")
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     @is_owner_developer_administrator_predicator()
     async def list_logs_app_command(self, interaction: discord.Interaction, scope: Optional[str] = None):
         state = State(interaction)
@@ -553,7 +745,7 @@ class AdminCommands(commands.Cog):
     async def list_logs_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="Scope of search: 'all', or server ID.")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -1414,7 +1606,7 @@ class AdminCommands(commands.Cog):
     async def list_temp_rooms_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="Include 'all' or a channel snowflake")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -1604,6 +1796,7 @@ class AdminCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='vrs', description='List video rooms.')
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     @is_owner_developer_administrator_predicator()
     async def list_video_rooms_app_command(self, interaction: discord.Interaction, scope: str = None):
         state = State(interaction)

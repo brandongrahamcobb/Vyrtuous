@@ -191,7 +191,7 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', or user mention/ID")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         guild_obj = None
@@ -264,7 +264,7 @@ class EveryoneCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
     # DONE
     @app_commands.command(name='coords', description='Lists coordinators for a specific voice channel, all, or a member.')
-    @app_commands.describe(scope="'all', member or channel name/ID/mention")
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_coordinators_app_command(
         self,
         interaction : discord.Interaction,
@@ -318,7 +318,7 @@ class EveryoneCommands(commands.Cog):
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="Voice channel name, mention, ID, 'all', or member ID")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -365,7 +365,7 @@ class EveryoneCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='devs', description='Lists developers.')
-    @app_commands.describe(scope="'all' or a member snowflake ID/mention")
+    @app_commands.describe(scope="Specify one of: 'all', guild ID or empty.")
     async def list_developers_app_command(
         self,
         interaction : discord.Interaction,
@@ -417,7 +417,7 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', or user mention/ID")
+        scope: Optional[str] = commands.parameter(default=None, description="'all', a specific server or user mention/ID")
     ):
         state = State(ctx)
         member_obj = None
@@ -461,7 +461,7 @@ class EveryoneCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='mods', description='Lists moderator statistics.')
-    @app_commands.describe(scope='A member or channel snowflake ID/mention')
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_moderators_app_command(
         self,
         interaction: discord.Interaction,
@@ -525,7 +525,7 @@ class EveryoneCommands(commands.Cog):
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="Voice channel name/mention/ID, 'all', or member mention/ID")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -582,7 +582,7 @@ class EveryoneCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name='owners', description="Show temporary room stats for 'all', a channel, or a member.")
-    @app_commands.describe(scope="'all', a channel mention/ID, or a member mention/ID")
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def temp_room_stats_app_command(
         self,
         interaction: discord.Interaction,
@@ -690,7 +690,7 @@ class EveryoneCommands(commands.Cog):
     async def temp_room_stats_text_command(
         self,
         ctx,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', a channel mention/ID, or a member mention/ID")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None

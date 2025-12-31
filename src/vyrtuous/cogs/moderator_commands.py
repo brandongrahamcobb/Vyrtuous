@@ -52,7 +52,7 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='bans', description='Lists ban statistics.')
-    @app_commands.describe(scope="'all', channel name/ID/mention, or user mention/ID")
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_bans_app_command(
         self,
@@ -186,7 +186,7 @@ class ModeratorCommands(commands.Cog):
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', channel name/ID/mention, or user mention/ID")
+       scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -312,7 +312,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='caps', description="List active caps for a channel or all channels if 'all' is provided.")
     @is_owner_developer_administrator_coordinator_moderator_predicator()
-    @app_commands.describe(scope="'all', channel name/ID/mention")
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_caps_app_command(
         self,
         interaction: discord.Interaction,
@@ -439,7 +439,7 @@ class ModeratorCommands(commands.Cog):
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', channel name/ID/mention")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -558,7 +558,7 @@ class ModeratorCommands(commands.Cog):
  
     # DONE
     @app_commands.command(name='cmds', description="List command aliases routed to a specific channel, temp room, or all channels if 'all' is provided.")
-    @app_commands.describe(scope="'all', channel name/ID/mention")
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_commands_app_command(
         self,
@@ -689,7 +689,7 @@ class ModeratorCommands(commands.Cog):
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', channel name/ID/mention, or temp room name")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -1027,7 +1027,7 @@ class ModeratorCommands(commands.Cog):
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', channel name/ID/mention, or user mention/ID")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -1149,7 +1149,7 @@ class ModeratorCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='ls', description='List users veganed as going vegan in this server.')
-    @app_commands.describe(scope='A member or channel snowflake ID/mention')
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_vegans_app_command(
         self,
         interaction: discord.Interaction,
@@ -1273,7 +1273,7 @@ class ModeratorCommands(commands.Cog):
     async def list_vegans_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -1625,7 +1625,7 @@ class ModeratorCommands(commands.Cog):
     async def list_mutes_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', channel name/ID/mention, or user mention/ID")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -1848,7 +1848,7 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='stages', description='Lists stage mute statistics.')
-    @app_commands.describe(scope="'all', channel name/ID/mention")
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_stages_app_command(
         self,
@@ -1970,7 +1970,7 @@ class ModeratorCommands(commands.Cog):
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', channel name/ID/mention")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None
@@ -2083,7 +2083,7 @@ class ModeratorCommands(commands.Cog):
             
     # DONE
     @app_commands.command(name='tmutes', description='Lists text-mute statistics.')
-    @app_commands.describe(scope="'all', channel name/ID/mention, or user mention/ID")
+    @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     @is_owner_developer_administrator_coordinator_moderator_predicator()
     async def list_text_mutes_app_command(
         self,
@@ -2217,7 +2217,7 @@ class ModeratorCommands(commands.Cog):
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="'all', channel name/ID/mention, or user mention/ID")
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         channel_obj = None

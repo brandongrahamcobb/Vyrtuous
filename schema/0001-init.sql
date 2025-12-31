@@ -73,9 +73,9 @@ CREATE TABLE administrators (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
-    role_snowflake BIGINT NOT NULL,
+    role_snowflakes BIGINT[] NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (guild_snowflake, member_snowflake, role_snowflake)
+    PRIMARY KEY (guild_snowflake, member_snowflake)
 );
 
 CREATE TABLE active_server_voice_mutes (
@@ -202,5 +202,13 @@ CREATE TABLE video_rooms (
     guild_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake)
+);
+
+CREATE TABLE administrator_roles (
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (guild_snowflake, role_snowflake)
 );
 

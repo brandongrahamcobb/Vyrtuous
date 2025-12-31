@@ -366,22 +366,33 @@ class EventListeners(commands.Cog):
     async def on_member_update(self, before: discord.Member, after: discord.Member):
         if before.roles == after.roles:
             return
-        after_role_ids = {r.id for r in after.roles}
-        before_role_ids = {r.id for r in before.roles}
-        added_roles = after_role_ids - before_role_ids
-        removed_roles = before_role_ids - after_role_ids
-        administrator = await Administrator.fetch_member(member_snowflake=after.id)
-        if not administrator:
+        before_role_snowflakes = {r.id for r in before.roles}
+        after_role_snowflakes = {r.id for r in after.roles}
+        added_roles = after_role_snowflakes - before_role_snowflakes
+        removed_roles = before_role_snowflakes - after_role_snowflakes
+        administrator_role_snowflakes = []
+        administrator_roles = await Administrator.fetch_roles_by_guild(guild_snowflake=after.guild.id)
+        for administrator_role in administrator_roles:
+            administrator_role_snowflakes.append(administrator_role.role_snowflake)
+        relevant_added_roles = added_roles & set(administrator_role_snowflakes)
+        relevant_removed_roles = removed_roles & set(administrator_role_snowflakes)
+        if not relevant_added_roles and not relevant_removed_roles:
             return
-        guild_snowflakes = set(administrator.guild_snowflakes)
-        role_snowflakes = set(administrator.role_snowflakes)
-        if added_roles and (added_roles & role_snowflakes):
-            guild_snowflakes.add(after.guild.id)
-        if removed_roles and (removed_roles & role_snowflakes):
-            remaining_admin_roles = role_snowflakes & after_role_ids
+        administrator = await Administrator.fetch_by_guild_and_member(member_snowflake=after.id)
+        if not administrator and relevant_added_roles:
+            administrator = Administrator(guild_snowflake=after.guild.id, member_snowflake=after.id, role_snowflakes=list(after_role_snowflakes))
+            await administrator.grant()
+            return
+        if administrator:
+            for role_snowflake in relevant_added_roles:
+                if role_snowflake not in administrator.role_snowflakes:
+                    administrator.update_by_new_role(role_snowflake) 
+            for role_snowflake in relevant_removed_roles:
+                if role_snowflake in administrator.role_snowflakes:
+                    administrator.update_by_removed_role(role_snowflake)
+            remaining_admin_roles = set(administrator.role_snowflakes) & after_role_snowflakes
             if not remaining_admin_roles:
-                guild_snowflakes.discard(after.guild.id)
-        await Administrator.update_guilds_and_roles_for_member(guild_snowflake=list(guild_snowflakes), member_snowflake=after.id, role_snowflake=list(role_snowflakes))
+                await administrator.revoke()
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
