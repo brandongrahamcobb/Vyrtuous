@@ -46,7 +46,7 @@ class DurationObject:
     def __str__(self):
         if self.number == 0:
             return "permanent"
-        return f"<t:{int(self.expires_at.timestamp())}:R>"
+        return f"<t:{int(self.expires_in.timestamp())}:R>"
 
     @property
     def duration(self) -> str:
@@ -109,7 +109,7 @@ class DurationObject:
         return -1 if self.prefix == '-' else 1
 
     @property
-    def expires_at(self) -> datetime:
+    def expires_in(self) -> datetime:
         return self.target_datetime()
     
     @classmethod
@@ -127,10 +127,11 @@ class DurationObject:
         return obj
     
     @classmethod
-    def from_expires_at(cls, expires_at: datetime) -> "DurationObject":
-        from datetime import datetime, timezone, timedelta
+    def from_expires_in(cls, expires_in: datetime) -> "DurationObject":
+        if expires_in is None:
+            return cls("0")
         now = datetime.now(timezone.utc)
-        remaining = expires_at - now
+        remaining = expires_in - now
         total_seconds = int(remaining.total_seconds())
         if total_seconds < 0:
             total_seconds = 0

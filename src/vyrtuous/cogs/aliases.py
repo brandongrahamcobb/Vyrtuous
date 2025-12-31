@@ -143,8 +143,10 @@ class Aliases(commands.Cog):
                 cap_duration = DurationObject('8h').to_seconds()
             else:
                 cap_duration = cap.duration    
-            delta = DurationObject(args[1] if len(args) > 1 else '8h').expires_at - datetime.now(timezone.utc)
-            if delta.total_seconds() < 0:
+
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            delta = duration.expires_in - datetime.now(timezone.utc)
+            if delta.total_seconds() < 0 and duration.number != 0:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
                 except Exception as e:
@@ -152,7 +154,7 @@ class Aliases(commands.Cog):
                             
             if is_reason_modification and existing_guestroom_alias_event:
                 is_modification = True
-                duration = DurationObject.from_expires_at(existing_guestroom_alias_event.expires_at)
+                duration = DurationObject.from_expires_in(existing_guestroom_alias_event.expires_in)
                 modified_reason = ' '.join(args[2:]) if len(args) > 2 else ''
                 match is_reason_modification:
                     case '+':
@@ -165,20 +167,20 @@ class Aliases(commands.Cog):
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 match duration.prefix:
                     case '+':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
+                        updated_expires_in = existing_guestroom_alias_event.expires_in + duration.to_timedelta()
                     case '=':
-                        updated_expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+                        updated_expires_in = datetime.now(timezone.utc) + duration.to_timedelta()
                     case '-':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
-                duration = DurationObject.from_expires_at(updated_expires_at)
-                delta = updated_expires_at - datetime.now(timezone.utc)
+                        updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
+                duration = DurationObject.from_expires_in(updated_expires_in)
+                delta = updated_expires_in - datetime.now(timezone.utc)
                 if delta.total_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')  
-                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
+                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.to_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
@@ -203,7 +205,7 @@ class Aliases(commands.Cog):
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
                     
-            ban = Ban(channel_snowflake=channel_obj.id, expires_at=duration.expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
+            ban = Ban(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
             await ban.create()
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
@@ -407,8 +409,10 @@ class Aliases(commands.Cog):
                 cap_duration = DurationObject('8h').to_seconds()
             else:
                 cap_duration = cap.duration
-            delta = DurationObject(args[1] if len(args) > 1 else '8h').expires_at - datetime.now(timezone.utc)
-            if delta.total_seconds() < 0:
+
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            delta = duration.expires_in - datetime.now(timezone.utc)
+            if delta.total_seconds() < 0 and duration.number != 0:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
                 except Exception as e:
@@ -428,20 +432,20 @@ class Aliases(commands.Cog):
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 match duration.prefix:
                     case '+':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
+                        updated_expires_in = existing_guestroom_alias_event.expires_in + duration.to_timedelta()
                     case '=':
-                        updated_expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+                        updated_expires_in = datetime.now(timezone.utc) + duration.to_timedelta()
                     case '-':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
-                duration = DurationObject.from_expires_at(updated_expires_at)
-                delta = updated_expires_at - datetime.now(timezone.utc)
+                        updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
+                duration = DurationObject.from_expires_in(updated_expires_in)
+                delta = updated_expires_in - datetime.now(timezone.utc)
                 if delta.total_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}') 
-                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
+                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.to_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
@@ -460,7 +464,7 @@ class Aliases(commands.Cog):
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
-            text_mute = TextMute(channel_snowflake=channel_obj.id, expires_at=duration.expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
+            text_mute = TextMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
             await text_mute.create()
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
@@ -509,15 +513,16 @@ class Aliases(commands.Cog):
             else:
                 cap_duration = cap.duration
     
-            delta = DurationObject(args[1] if len(args) > 1 else '8h').expires_at - datetime.now(timezone.utc)
-            if delta.total_seconds() < 0:
+            duration = DurationObject(args[1] if len(args) > 1 else '8h')
+            delta = duration.expires_in - datetime.now(timezone.utc)
+            if delta.total_seconds() < 0 and duration.number != 0:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}') 
             if is_reason_modification and existing_guestroom_alias_event:
                 is_modification = True
-                duration = DurationObject.from_expires_at(existing_guestroom_alias_event.expires_at)
+                duration = DurationObject.from_expires_in(existing_guestroom_alias_event.expires_in)
                 modified_reason = ' '.join(args[2:]) if len(args) > 2 else ''
                 match is_reason_modification:
                     case '+':
@@ -530,20 +535,20 @@ class Aliases(commands.Cog):
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 match duration.prefix:
                     case '+':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at + duration.to_timedelta()
+                        updated_expires_in = existing_guestroom_alias_event.expires_in + duration.to_timedelta()
                     case '=':
-                        updated_expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+                        updated_expires_in = datetime.now(timezone.utc) + duration.to_timedelta()
                     case '-':
-                        updated_expires_at = existing_guestroom_alias_event.expires_at - duration.to_timedelta()
-                duration = DurationObject.from_expires_at(updated_expires_at)
-                delta = updated_expires_at - datetime.now(timezone.utc)
+                        updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
+                duration = DurationObject.from_expires_in(updated_expires_in)
+                delta = updated_expires_in - datetime.now(timezone.utc)
                 if delta.total_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
-                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_at=updated_expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
+                await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.to_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
@@ -561,7 +566,7 @@ class Aliases(commands.Cog):
                 except discord.Forbidden:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
     
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=duration.expires_at, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target="user")
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target="user")
             await voice_mute.create()
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
@@ -612,7 +617,7 @@ class Aliases(commands.Cog):
             )
             if not ban:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not currently banned in {channel_obj.mention}.')
-            if ban.expires_at is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+            if ban.expires_in is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 try:
                     return await state.end(warning='\U000026A0\U0000FE0F Only coordinators and above can undo permanent bans.')
                 except Exception as e:
@@ -797,7 +802,7 @@ class Aliases(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not currently voice-muted in {channel_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            if voice_mute.expires_at is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+            if voice_mute.expires_in is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 try:
                     return await state.end(warning='\U000026A0\U0000FE0F Only coordinators and above can undo permanent voice-mutes.')
                 except Exception as e:
@@ -928,7 +933,7 @@ class Aliases(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not currently text-muted in {channel_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            if text_mute.expires_at is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+            if text_mute.expires_in is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                 try:
                     return await state.end(warning='\U000026A0\U0000FE0F Only coordinators and above can undo permanent text-mutes.')
                 except Exception as e:

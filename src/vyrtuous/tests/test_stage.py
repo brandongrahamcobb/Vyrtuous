@@ -60,13 +60,13 @@
 #             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
 #         async with bot.db_pool.acquire() as conn:
 #             await conn.execute('''
-#                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
+#                 INSERT INTO active_stages (channel_id, expires_in, guild_id, initiator_id, room_name)
 #                 VALUES ($1, $2, $3, $4, $5)
-#             ''', channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+#             ''', channel_one.id, expires_in, guild.id, member_one.id, stage_name)
 #         stage = await Stage.fetch_stage_by_guild_id_channel_id_and_channel_name(guild_id=guild.id, channel_id=channel_one.id, channel_name=channel_one.name)
 #         assert stage.channel_id == channel_one.id
 #         assert stage.channel_name == stage_name
-#         assert stage.expires_at == expires_at
+#         assert stage.expires_in == expires_in
 #         assert stage.guild_id == guild.id
 #         assert stage.initiator_id == member_one.id
 #         async with bot.db_pool.acquire() as conn:
@@ -84,13 +84,13 @@
 #             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
 #         async with bot.db_pool.acquire() as conn:
 #             await conn.execute('''
-#                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
+#                 INSERT INTO active_stages (channel_id, expires_in, guild_id, initiator_id, room_name)
 #                 VALUES ($1, $2, $3, $4, $5)
-#             ''', channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+#             ''', channel_one.id, expires_in, guild.id, member_one.id, stage_name)
 #         stage = await Stage.fetch_stage_by_guild_id_and_channel_name(guild=guild.id, channel_name=stage_name)
 #         assert stage.channel_id == channel_one.id
 #         assert stage.channel_name == stage_name
-#         assert stage.expires_at == expires_at
+#         assert stage.expires_in == expires_in
 #         assert stage.guild_id == guild.id
 #         assert stage.initiator_id == member_one.id
 #         async with bot.db_pool.acquire() as conn:
@@ -133,9 +133,9 @@
 #             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
 #         async with bot.db_pool.acquire() as conn:
 #             await conn.execute('''
-#                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
+#                 INSERT INTO active_stages (channel_id, expires_in, guild_id, initiator_id, room_name)
 #                 VALUES ($1, $2, $3, $4, $5)
-#             ''', channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+#             ''', channel_one.id, expires_in, guild.id, member_one.id, stage_name)
 #         async with bot.db_pool.acquire() as conn:
 #             await conn.execute('''
 #                 INSERT INTO stage_coordinators (channel_id, discord_snowflake, guild_id, room_name)
@@ -143,10 +143,10 @@
 #             ''', channel_one.id, member_three.id, guild.id, stage_name, channel_one.id, member_four.id, guild.id, stage_name)
 #         async with bot.db_pool.acquire() as conn:
 #             row = await conn.fetchrow('''
-#                 SELECT expires_at, initiator_id FROM active_stages
+#                 SELECT expires_in, initiator_id FROM active_stages
 #                 WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
 #             ''', channel_one.id, guild.id, stage_name)
-#         stage = Stage(row['expires_at'], channel_one.id, stage_name, guild.id, row['initiator_id'])
+#         stage = Stage(row['expires_in'], channel_one.id, stage_name, guild.id, row['initiator_id'])
 #         await stage.update_stage_by_channel_id_name(channel_id=channel_one.id, channel_name=channel_one.name)
 #         async with bot.db_pool.acquire() as conn:
 #             second_row = await conn.fetch('''
@@ -172,19 +172,19 @@
 #             await conn.execute('DELETE FROM active_stages WHERE guild_id = 123456789')
 #         async with bot.db_pool.acquire() as conn:
 #             await conn.execute('''
-#                 INSERT INTO active_stages (channel_id, expires_at, guild_id, initiator_id, room_name)
+#                 INSERT INTO active_stages (channel_id, expires_in, guild_id, initiator_id, room_name)
 #                 VALUES ($1, $2, $3, $4, $5)
-#             ''', channel_one.id, expires_at, guild.id, member_one.id, stage_name)
+#             ''', channel_one.id, expires_in, guild.id, member_one.id, stage_name)
 #             await conn.execute('''
 #                 INSERT INTO stage_coordinators (channel_id, discord_snowflake, guild_id, room_name)
 #                 VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)
 #             ''', channel_one.id, member_three.id, guild.id, stage_name, channel_one.id, member_four.id, guild.id, stage_name)
 #         async with bot.db_pool.acquire() as conn:
 #             row = await conn.fetchrow('''
-#                 SELECT expires_at, initiator_id FROM active_stages
+#                 SELECT expires_in, initiator_id FROM active_stages
 #                 WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
 #             ''', channel_one.id, guild.id, stage_name)
-#         stage = Stage(row['expires_at'], channel_one.id, stage_name, guild.id, row['initiator_id'])
+#         stage = Stage(row['expires_in'], channel_one.id, stage_name, guild.id, row['initiator_id'])
 #         await stage.update_stage_by_channel_id_name_initiator_id_and_temporary_coordinator_ids(channel_id=channel_one.id, channel_name=channel_one.name, stage_initiator_id=member_one.id, temporary_stage_coordinator_ids=temporary_coordinator_ids)
 #         async with bot.db_pool.acquire() as conn:
 #             second_row = await conn.fetch('''

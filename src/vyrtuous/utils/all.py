@@ -190,11 +190,11 @@ class All:
             user = bot.get_user(moderation.member_snowflake)
             if not channel or not user:
                 continue
-            if hasattr(moderation, "expires_at"):
-                if moderation.expires_at is None:
+            if hasattr(moderation, "expires_in"):
+                if moderation.expires_in is None:
                     duration = DurationObject(0)
                 else:
-                    delta = moderation.expires_at - datetime.now(timezone.utc)
+                    delta = moderation.expires_in - datetime.now(timezone.utc)
                     duration = DurationObject.from_timedelta(delta)
             else:
                 duration = DurationObject(0)
@@ -221,11 +221,11 @@ class All:
             channel = bot.get_channel(moderation.channel_snowflake)
             if not channel or moderation.member_snowflake != member_snowflake:
                 continue
-            if hasattr(moderation, "expires_at"):
-                if moderation.expires_at is None:
+            if hasattr(moderation, "expires_in"):
+                if moderation.expires_in is None:
                     duration = DurationObject(0)
                 else:
-                    delta = moderation.expires_at - datetime.now(timezone.utc)
+                    delta = moderation.expires_in - datetime.now(timezone.utc)
                     duration = DurationObject.from_timedelta(delta)
             else:
                 duration = DurationObject(0)
@@ -253,11 +253,11 @@ class All:
             user = bot.get_user(moderation.member_snowflake)
             if not user:
                 continue
-            if hasattr(moderation, "expires_at"):
-                if moderation.expires_at is None:
+            if hasattr(moderation, "expires_in"):
+                if moderation.expires_in is None:
                     duration = DurationObject(0)
                 else: 
-                    delta = moderation.expires_at - datetime.now(timezone.utc)
+                    delta = moderation.expires_in - datetime.now(timezone.utc)
                     duration = DurationObject.from_timedelta(delta)
             else:
                 duration = DurationObject(0)

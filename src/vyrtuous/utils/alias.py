@@ -170,8 +170,8 @@ class Alias:
             for guild in bot.guilds:
                 rows = await conn.fetch('''
                     SELECT alias_name, alias_type, channel_snowflake, created_at, guild_snowflake, role_snowflake, updated_at
-                    FROM command_aliases WHERE guild_snowflake=$1
-                ''', guild.id)
+                    FROM command_aliases
+                ''')
         if rows:
             aliases = []
             for row in rows:
@@ -189,14 +189,14 @@ class Alias:
             ''', channel_snowflake, guild_snowflake, member_snowflake, updated_reason)
 
     @classmethod
-    async def update_duration(cls, channel_snowflake: int, expires_at, guild_snowflake: int, member_snowflake: int, moderation_type):
+    async def update_duration(cls, channel_snowflake: int, expires_in, guild_snowflake: int, member_snowflake: int, moderation_type):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f'''
                 UPDATE {cls.get_table_name_by_moderation_type(moderation_type)}
-                SET expires_at=$2, updated_at=NOW()
+                SET expires_in=$2, updated_at=NOW()
                 WHERE channel_snowflake=$1 AND guild_snowflake=$3 AND member_snowflake=$4
-            ''', channel_snowflake, expires_at, guild_snowflake, member_snowflake)
+            ''', channel_snowflake, expires_in, guild_snowflake, member_snowflake)
             
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):

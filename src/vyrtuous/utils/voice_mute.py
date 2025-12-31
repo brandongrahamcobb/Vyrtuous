@@ -24,9 +24,9 @@ class VoiceMute:
     PLURAL = "Voice Mutes"
     SINGULAR = "Voice Mute"
 
-    def __init__(self, channel_snowflake: Optional[int], expires_at: Optional[datetime], guild_snowflake: Optional[int], member_snowflake: Optional[int], reason: Optional[str], target: Optional[str]):
+    def __init__(self, channel_snowflake: Optional[int], expires_in: Optional[datetime], guild_snowflake: Optional[int], member_snowflake: Optional[int], reason: Optional[str], target: Optional[str]):
         self.channel_snowflake = channel_snowflake
-        self.expires_at = expires_at
+        self.expires_in = expires_in
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake
         self.reason = reason
@@ -82,11 +82,11 @@ class VoiceMute:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO active_voice_mutes (channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, target)
+                INSERT INTO active_voice_mutes (channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, target)
                 VALUES ($1, NOW(), $2, $3, $4, $5, $6)
                 ON CONFLICT (channel_snowflake, guild_snowflake, member_snowflake)
                 DO NOTHING
-            ''', self.channel_snowflake, self.expires_at, self.guild_snowflake, self.member_snowflake, self.reason, self.target)
+            ''', self.channel_snowflake, self.expires_in, self.guild_snowflake, self.member_snowflake, self.reason, self.target)
 
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
@@ -101,26 +101,41 @@ class VoiceMute:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, target, updated_at
+                SELECT channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, target, updated_at
                 FROM active_voice_mutes
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3 AND target=$4
             ''', channel_snowflake, guild_snowflake, member_snowflake, target)
         if row:
-            return VoiceMute(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target'])
+            return VoiceMute(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target'])
+
+    @classmethod
+    async def fetch_all_by_target(cls, target: Optional[str]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, target, updated_at
+                FROM active_voice_mutes
+                WHERE target=$1
+            ''', target)
+        voice_mutes = []
+        if row:
+            for row in rows:
+                voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
+        return voice_mutes
 
     @classmethod
     async def fetch_by_channel_guild_and_target(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], target: Optional[str]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, target, updated_at
+                SELECT channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, target, updated_at
                 FROM active_voice_mutes
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND target=$3
             ''', channel_snowflake, guild_snowflake, target)
         voice_mutes = []
         if rows:
             for row in rows:
-                voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
+                voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
         return voice_mutes
 
     @classmethod
@@ -128,14 +143,14 @@ class VoiceMute:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, target, updated_at
+                SELECT channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, target, updated_at
                 FROM active_voice_mutes
                 WHERE guild_snowflake=$1 AND target=$2
             ''', guild_snowflake, target)
         voice_mutes = []
         if rows:
             for row in rows:
-                voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
+                voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
         return voice_mutes
 
     @classmethod
@@ -143,14 +158,14 @@ class VoiceMute:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, expires_at, guild_snowflake, member_snowflake, reason, target
+                SELECT channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, target
                 FROM active_voice_mutes
-                WHERE expires_at IS NOT NULL AND expires_at <= $1
+                WHERE expires_in IS NOT NULL AND expires_in <= $1
             ''', now)
         expired_voice_mutes = []
         if rows:
             for row in rows:
-                expired_voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
+                expired_voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
         return expired_voice_mutes
 
     @classmethod
@@ -158,12 +173,12 @@ class VoiceMute:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, expires_at, guild_snowflake, member_snowflake, reason, target
+                SELECT channel_snowflake, expires_in, guild_snowflake, member_snowflake, reason, target
                 FROM active_voice_mutes
                 WHERE guild_snowflake=$1 AND member_snowflake=$2 AND target=$3
             ''', guild_snowflake, member_snowflake, target)
         voice_mutes = []
         if rows:
             for row in rows:
-                voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_at=row['expires_at'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
+                voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
         return voice_mutes

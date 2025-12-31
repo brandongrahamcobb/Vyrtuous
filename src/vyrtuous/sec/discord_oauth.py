@@ -30,7 +30,7 @@ class DiscordOAuth:
         self.config = config
         self.access_token = None
         self.refresh_token = None
-        self.expires_at = None
+        self.expires_in = None
         self.token_event = asyncio.Event()
         self.client_id = self.config['api_keys']['Discord']['client_id']
         self.client_secret = os.getenv('DISCORD_CLIENT_SECRET')
@@ -67,7 +67,7 @@ class DiscordOAuth:
             return False
         self.access_token = token_data['access_token']
         self.refresh_token = token_data.get('refresh_token')
-        self.expires_at = datetime.utcnow() + datetime.timedelta(seconds=token_data['expires_in'])
+        self.expires_in = datetime.utcnow() + datetime.timedelta(seconds=token_data['expires_in'])
         self.token_event.set()
         return True
 

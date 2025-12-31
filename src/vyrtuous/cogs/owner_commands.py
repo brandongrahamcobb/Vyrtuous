@@ -122,11 +122,11 @@ class OwnerCommands(commands.Cog):
             await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
         enabled = Invincibility.toggle_enabled()
         if enabled:
-            Invincibility.add_invincible_member(member_obj.id)
+            Invincibility.add_invincible_member(member_snowflake=member_obj.id)
             await Invincibility.unrestrict(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
         else:
-            Invincibility.remove_invincible_member(member_obj.id)
+            Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
             msg = f'Invincibiility has been disabled for {member_obj.mention}'
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
@@ -155,11 +155,11 @@ class OwnerCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         enabled = Invincibility.toggle_enabled()
         if enabled:
-            Invincibility.add_invincible_member(member_obj.id)
-            await Invincibility.unrestrict(ctx.guild, member_obj)
+            Invincibility.add_invincible_member(member_snowflake=member_obj.id)
+            await Invincibility.unrestrict(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
         else:
-            Invincibility.remove_invincible_member(member_obj.id)
+            Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
             msg = f'Invincibiility has been disabled for {member_obj.mention}'
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')

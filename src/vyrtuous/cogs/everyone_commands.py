@@ -22,7 +22,7 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.paginator import Paginator
+from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.all import All
 from vyrtuous.utils.developer import Developer
@@ -31,11 +31,8 @@ from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.state import State
 from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.utils.setup_logging import logger
-from vyrtuous.utils.time_to_complete import TimeToComplete
    
 import discord
-import time
 
 class EveryoneCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
@@ -46,6 +43,7 @@ class EveryoneCommands(commands.Cog):
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.channel_service = ChannelService()
         self.member_service = MemberService()
+        self.role_service = RoleService()
         
     # DONE
     @app_commands.command(name='admins', description='Lists all members with server mute privileges in this server.')
@@ -55,28 +53,137 @@ class EveryoneCommands(commands.Cog):
         scope:str
     ):
         state = State(interaction)
+        guild_obj = None
+        member_obj = None
+        chunk_size = 18
+        field_count = 0
         pages = []
-        administrators = await Administrator.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
+        skipped_guild_snowflakes = set()
+        skipped_member_snowflakes_by_guild_snowflake = {}
+        skipped_role_snowflakes_by_guild_snowflake = {}
+
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
+            title = f'{self.emoji.get_random_emoji()} Administrators in All Servers'
             if highest_role not in ('Owner', 'Developer'):
                 try:
-                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all admins across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to administrators across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            pages = await All.create_pages_to_show_guilds_by_members(members=administrators, member_type=Administrator)
-        else:
-            pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=interaction.guild.id, members=administrators, member_type=Administrator)
-        if pages:
+            administrators = await Administrator.fetch_all()
+        elif scope:
             try:
-                return await state.end(success=pages)
+                member_obj = await self.member_service.resolve_member(interaction, scope) 
+                title = f'{self.emoji.get_random_emoji()} Administrators for {member_obj.name}'
+                administrators = await Administrator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            except Exception as e:
+                try:
+                    role_obj = await self.role_service.resolve_role(interaction, scope) 
+                    title = f'{self.emoji.get_random_emoji()} Administrators with {role_obj.name}'
+                    administrators = await Administrator.fetch_by_guild_and_role(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                except Exception as e:
+                    if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators for specific servers.')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
+                    guild_obj = self.bot.get_guild(scope)
+                    if not guild_obj:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
+                    title = f'{self.emoji.get_random_emoji()} Administrators in {guild_obj.name}'
+                    administrators = await Administrator.fetch_by_guild(guild_snowflake=scope)
+        else:
+            title = f'{self.emoji.get_random_emoji()} Administrators in {interaction.guild.name}'
+            administrators = await Administrator.fetch_by_guild(guild_snowflake=interaction.guild.id)
+        
+        if not administrators:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator(s) exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No admins found in {interaction.guild.name}.')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for administrator in administrators:
+            guild_dictionary.setdefault(administrator.guild_snowflake, {})
+            guild_dictionary[administrator.guild_snowflake].setdefault(administrator.member_snowflake, [])
+            guild_dictionary[administrator.guild_snowflake][administrator.member_snowflake].append(administrator.role_snowflake)
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake in guild_dictionary.keys():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for member_snowflake, role_snowflakes in guild_dictionary[guild_snowflake].items():
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                member_obj = guild.get_member(member_snowflake)
+                if not member_obj:
+                    skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_snowflake)
+                    continue
+                role_mentions = []
+                for role_snowflake in role_snowflakes:
+                    role_obj = guild.get_role(role_snowflake)
+                    if role_obj:
+                        role_mentions.append(role_obj.mention)
+                    else:
+                        skipped_role_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(role_snowflake)
+                if role_mentions:
+                    lines = f"**Roles:** {'\n'.join(role_mentions)}"
+                else:
+                    lines = '\u200b'
+                embed.add_field(name=f'{member_obj.name} ({member_snowflake})', value=lines, inline=False)
+                field_count += 1
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            embed = discord.Embed(title=f'Skipped Servers', description='\u200b', color=discord.Color.red())
+            for guild_snowflake in skipped_guild_snowflakes:
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=f'Skipped Servers continued...', description='\u200b', color=discord.Color.red())
+                    field_count = 0
+                embed.add_field(name=guild_snowflake, value='\u200b', inline=False)
+            pages.append(embed)
+        if skipped_member_snowflakes_by_guild_snowflake:
+            for guild_snowflake, members_list in skipped_member_snowflakes_by_guild_snowflake.items():
+                field_count = 0
+                embed = discord.Embed(title=f'Server ({guild_snowflake})', description='Skipped Administrators', color=discord.Color.red())
+                for member_snowflake in members_list:
+                    if field_count == chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=f'Server ({guild_snowflake}) continued...', description='Skipped Administrators', color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=member_snowflake, value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+        if skipped_role_snowflakes_by_guild_snowflake:
+            for guild_snowflake, role_list in skipped_role_snowflakes_by_guild_snowflake.items():
+                field_count = 0
+                embed = discord.Embed(title=f'Server ({guild_snowflake})', description='Skipped Administrator Roles', color=discord.Color.red())
+                for role_snowflake in role_list:
+                    if field_count == chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=f'Server ({guild_snowflake}) continued...', description='Skipped Administrator Roles', color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=role_snowflake, value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+                
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
     @commands.command(name='admins', help='Lists all members with server mute privileges in this server.')
@@ -87,43 +194,74 @@ class EveryoneCommands(commands.Cog):
         scope: Optional[str] = commands.parameter(default=None, description="'all', or user mention/ID")
     ):
         state = State(ctx)
+        guild_obj = None
+        chunk_size = 18
+        field_count = 0
         pages = []
-        member_obj = None
-        try:
-            member_obj = await self.member_service.resolve_member(ctx, scope)
-            try:
-                check_not_self(ctx, member_snowflake=member_obj.id)
-            except Exception as e:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
-        except:
-            pass
-        administrators = await Administrator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
+        skipped_guild_snowflakes = set()
+
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
+            title = f'{self.emoji.get_random_emoji()} Administrators in All Servers'
             if highest_role not in ('Owner', 'Developer'):
                 try:
-                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all admins across all servers.')
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all administrators across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            pages = await All.create_pages_to_show_guilds_by_members(members=administrators, member_type=Administrator)
-        elif member_obj:
-            guild_snowflakes = await Administrator.fetch_guilds_by_member(member_snowflake=member_obj.id)
-            pages = await All.create_pages_to_show_guilds_by_member(guild_snowflakes=guild_snowflakes, member_snowflake=member_obj.id, member_type=Developer)
+            administrators = await Administrator.fetch_all()
+        elif scope:
+            if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all administrators in a specific server.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            guild_obj = self.bot.get_guild(scope)
+            if not guild_obj:
+                try:
+                    return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            title = f'{self.emoji.get_random_emoji()} Administrators in {guild_obj.name}'
+            administrators = await Administrator.fetch_by_guild(guild_snowflake=scope)
         else:
-            pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=ctx.guild.id, members=administrators, member_type=Administrator)
-        if pages:
+            title = f'{self.emoji.get_random_emoji()} Administrators in {ctx.guild.name}'
+            administrators = await Administrator.fetch_by_guild(guild_snowflake=ctx.guild.id)
+        
+        if not administrators:
             try:
-                return await state.end(success=pages)
+                if guild_obj:
+                    scope = guild_obj.name
+                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator(s) setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No admins found in {ctx.guild.name}.')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for administrator in administrators:
+            guild_dictionary.setdefault(administrator.guild_snowflake, {})
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake, channels in guild_dictionary.items():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+        if skipped_guild_snowflakes:
+            embed = discord.Embed(title=f'Skipped Servers', description='\u200b', color=discord.Color.red())
+            for guild_snowflake in skipped_guild_snowflakes:
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=f'Skipped Servers continued...', description='\u200b', color=discord.Color.red())
+                    field_count = 0
+                embed.add_field(name=guild_snowflake, value='\u200b', inline=False)
+            pages.append(embed)
+
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     # DONE
     @app_commands.command(name='coords', description='Lists coordinators for a specific voice channel, all, or a member.')
     @app_commands.describe(scope="'all', member or channel name/ID/mention")
@@ -171,7 +309,7 @@ class EveryoneCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
-            return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for {scope}.')
+            return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for scope: {scope}.')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
@@ -221,7 +359,7 @@ class EveryoneCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
-            return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for {scope}.')
+            return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for scope: {scope}.')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
     

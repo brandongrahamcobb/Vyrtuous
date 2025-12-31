@@ -170,13 +170,13 @@ class EventListeners(commands.Cog):
                 # else:
                 #     target = 'user'
                 # if stage and (member.id not in temporary_stage_coordinator_ids) and (member_permission_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
-                #      expires_at = stage.expires_at
+                #      expires_in = stage.expires_in
                 #      await conn.execute('''
-                #          INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_at, target, room_name)
+                #          INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_in, target, room_name)
                 #          VALUES ($1, $2, $3, $4, 'room', $5)
                 #          ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
-                #          DO UPDATE SET expires_at = EXCLUDED.expires_at
-                #      ''', member.guild.id, member.id, after.channel.id, expires_at, after.channel.name)
+                #          DO UPDATE SET expires_in = EXCLUDED.expires_in
+                #      ''', member.guild.id, member.id, after.channel.id, expires_in, after.channel.name)
             server_mute = await ServerMute.fetch_by_member(member.id)
             if server_mute:
                 if member.guild.id == server_mute.guild_snowflake:
@@ -193,8 +193,8 @@ class EventListeners(commands.Cog):
                         embed.set_thumbnail(url=member.display_avatar.url)
                         await after.channel.send(embed=embed)
                     else:
-                        expires_at = datetime.utcnow() + timedelta(hours=1)
-                        voice_mute = await VoiceMute(channel_snowflake=after.channel.id, expires_at=expires_at, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason="No reason provided.", target=target)
+                        expires_in = datetime.utcnow() + timedelta(hours=1)
+                        voice_mute = await VoiceMute(channel_snowflake=after.channel.id, expires_in=expires_in, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason="No reason provided.", target=target)
                         await voice_mute.create()       
                         should_be_muted = True 
                 if not should_be_muted:               

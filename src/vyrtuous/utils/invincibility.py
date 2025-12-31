@@ -56,16 +56,16 @@ class Invincibility:
         await VoiceMute.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
 
     @classmethod
-    def add_invincible_member(cls, member_id: int):
-        cls.invincible_members.add(member_id)
+    def add_invincible_member(cls, member_snowflake: int):
+        cls.invincible_members.add(member_snowflake)
         
     @classmethod
     def get_invincible_members(cls):
         return cls.invincible_members
 
     @classmethod
-    def remove_invincible_member(cls, member_id: int):
-        cls.invincible_members.discard(member_id)
+    def remove_invincible_member(cls, member_snowflake: int):
+        cls.invincible_members.discard(member_snowflake)
         
     @classmethod
     def toggle_enabled(cls):

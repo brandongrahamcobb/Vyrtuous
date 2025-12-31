@@ -142,7 +142,7 @@ class CoordinatorCommands(commands.Cog):
                 except Exception as e:
                     logger.warning(f'Failed to mute {member.id}: {str(e).capitalize()}')
                     failed_members.append(member)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
@@ -193,7 +193,7 @@ class CoordinatorCommands(commands.Cog):
                 except Exception as e:
                     logger.warning(f'Failed to mute {member.id}: {str(e).capitalize()}')
                     failed_members.append(member)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_at=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
