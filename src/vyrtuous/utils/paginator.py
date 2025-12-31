@@ -35,52 +35,28 @@ class Paginator:
         self.current_page = 0
         self.timeout = timeout
         self.message = None
-
-    class ButtonView(View):
-        def __init__(self, parent):
-            super().__init__(timeout=parent.timeout)
-            self.parent = parent
-            self.update_buttons()
-
-        def update_buttons(self):
-            self.clear_items()
-            self.add_item(Button(
-                label="Previous", style=discord.ButtonStyle.primary,
-                custom_id="prev", disabled=self.parent.current_page == 0
-            ))
-            self.add_item(Button(
-                label="Next", style=discord.ButtonStyle.primary,
-                custom_id="next", disabled=self.parent.current_page == len(self.parent.pages)-1
-            ))
-
-        @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, custom_id="prev")
-        async def prev_button(self, interaction: discord.Interaction, button: Button):
-            self.parent.current_page = max(0, self.parent.current_page - 1)
-            self.update_buttons()
-            await interaction.response.edit_message(embed=self.parent.pages[self.parent.current_page], view=self)
-
-        @discord.ui.button(label="Next", style=discord.ButtonStyle.primary, custom_id="next")
-        async def next_button(self, interaction: discord.Interaction, button: Button):
-            self.parent.current_page = min(len(self.parent.pages)-1, self.parent.current_page + 1)
-            self.update_buttons()
-            await interaction.response.edit_message(embed=self.parent.pages[self.parent.current_page], view=self)
+        self._reaction_lock = asyncio.Lock()
 
     async def start(self):
-        embed = self.pages[self.current_page]
-
+        embed = self.get_current_embed()
         if isinstance(self.ctx_or_interaction, discord.Interaction):
-            view = self.ButtonView(self)
             if not self.ctx_or_interaction.response.is_done():
-                await self.ctx_or_interaction.response.send_message(embed=embed, view=view)
+                await self.ctx_or_interaction.response.send_message(embed=embed)
             self.message = await self.ctx_or_interaction.original_response()
         else:
             self.message = await self.ctx_or_interaction.send(embed=embed)
             for emoji in self.NAV_EMOJIS:
                 await self.message.add_reaction(emoji)
             self.bot.loop.create_task(self.wait_for_reactions())
-
         return self.message
 
+    def get_current_embed(self):
+        embed = self.pages[self.current_page].copy()
+        total_pages = len(self.pages)
+        label = 'page'
+        embed.set_footer(text=f'{label} {self.current_page + 1}/{total_pages} • {self.ctx_or_interaction.guild.name}')
+        return embed
+    
     async def wait_for_reactions(self):
         def check(reaction, user):
             return (
@@ -88,7 +64,6 @@ class Paginator:
                 and str(reaction.emoji) in self.NAV_EMOJIS
                 and not user.bot
             )
-
         while True:
             try:
                 reaction, user = await self.bot.wait_for(
@@ -100,7 +75,6 @@ class Paginator:
                 except:
                     pass
                 break
-
             await self.handle_reaction(reaction)
             try:
                 await self.message.remove_reaction(reaction.emoji, user)
@@ -108,6 +82,8 @@ class Paginator:
                 pass
 
     async def handle_reaction(self, reaction):
-        action = self.NAV_EMOJIS[str(reaction.emoji)]
-        self.current_page = max(0, min(self.current_page + action, len(self.pages) - 1))
-        await self.message.edit(embed=self.pages[self.current_page])
+        async with self._reaction_lock:
+            action = self.NAV_EMOJIS[str(reaction.emoji)]
+            if isinstance(action, int):
+                self.current_page = max(0, min(self.current_page + action, len(self.pages) - 1))
+                await self.message.edit(embed=self.get_current_embed())

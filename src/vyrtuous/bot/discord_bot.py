@@ -37,7 +37,7 @@ class DiscordBot(commands.Bot):
             self.db_pool = db_pool
             self.testing_guild_id = self.config['discord_testing_guild_snowflake']
         except Exception as e:
-            logger.error(f'Error during Discord bot initialization: {e}.')
+            logger.error(f'Error during Discord bot initialization: {str(e).capitalize()}')
 
     async def setup_hook(self):
         for cog in DISCORD_COGS:

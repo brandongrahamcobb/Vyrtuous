@@ -48,7 +48,7 @@ class EveryoneCommands(commands.Cog):
         self.member_service = MemberService()
         
     # DONE
-    @app_commands.command(name='admins', description='Lists all members with server mute privileges in this guild.')
+    @app_commands.command(name='admins', description='Lists all members with server mute privileges in this server.')
     async def list_administrators_app_command(
         self,
         interaction: discord.Interaction,
@@ -61,9 +61,9 @@ class EveryoneCommands(commands.Cog):
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
-                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all admins across all guilds.')
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all admins across all servers.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_to_show_guilds_by_members(members=administrators, member_type=Administrator)
         else:
             pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=interaction.guild.id, members=administrators, member_type=Administrator)
@@ -71,15 +71,15 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No admins found in {interaction.guild.name}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
-    @commands.command(name='admins', help='Lists all members with server mute privileges in this guild.')
+    @commands.command(name='admins', help='Lists all members with server mute privileges in this server.')
     async def list_administrators_text_command(
         self,
         ctx: commands.Context,
@@ -95,9 +95,9 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             pass
         administrators = await Administrator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
@@ -105,9 +105,9 @@ class EveryoneCommands(commands.Cog):
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
-                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all admins across all guilds.')
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all admins across all servers.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_to_show_guilds_by_members(members=administrators, member_type=Administrator)
         elif member_obj:
             guild_snowflakes = await Administrator.fetch_guilds_by_member(member_snowflake=member_obj.id)
@@ -118,12 +118,12 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No admins found in {ctx.guild.name}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
     # DONE
     @app_commands.command(name='coords', description='Lists coordinators for a specific voice channel, all, or a member.')
     @app_commands.describe(scope="'all', member or channel name/ID/mention")
@@ -142,9 +142,9 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(interaction, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
@@ -156,7 +156,7 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all coordinators in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             coordinators = await Coordinator.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
             pages = await All.create_pages_to_show_channels_by_guild_and_members(guild_snowflake=interaction.guild.id, members=coordinators, member_type=Coordinator)
         elif member_obj:
@@ -169,11 +169,11 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for {scope}.')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @commands.command(name='coords', help='Lists coordinators for a specific voice channel, all, or a member.')
@@ -192,9 +192,9 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
@@ -206,7 +206,7 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all coordinators in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             coordinators = await Coordinator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
             pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=ctx.guild.id, members=coordinators, member_type=Coordinator)
         elif member_obj:
@@ -219,11 +219,11 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found for {scope}.')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
     @app_commands.command(name='devs', description='Lists developers.')
@@ -242,18 +242,18 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(interaction, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             pass
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
-                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all developers across all guilds.')
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all developers across all servers.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             developers = await Developer.fetch_all()
             pages = await All.create_pages_to_show_guilds_by_members(members=developers, member_type=Developer)
         elif member_obj:
@@ -266,12 +266,12 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No developers found in {interaction.guild.name}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @commands.command(name='devs', help='Lists developers.')
@@ -290,18 +290,18 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             pass
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('Owner', 'Developer'):
                 try:
-                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all developers across all guilds.')
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all developers across all servers.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             developers = await Developer.fetch_all()
             pages = await All.create_pages_to_show_guilds_by_members(members=developers, member_type=Developer)
         elif member_obj:
@@ -314,12 +314,12 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No developers found in {ctx.guild.name}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @app_commands.command(name='mods', description='Lists moderator statistics.')
@@ -339,9 +339,9 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(interaction, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
@@ -353,14 +353,14 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all moderators in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             moderators = await Moderator.fetch_members_by_guild(guild_snowflake=interaction.guild.id)
             pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=interaction.guild.id, members=moderators, member_type=Moderator)
             if not pages:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No moderators found in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif member_obj:
             channel_snowflakes = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             pages = await All.create_pages_to_show_channels_by_guild_and_member(channel_snowflakes=channel_snowflakes, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, member_type=Moderator)
@@ -368,7 +368,7 @@ class EveryoneCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not a moderator in any channels.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif channel_obj:
             moderators = await Moderator.fetch_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             pages = await All.create_pages_to_show_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, members=moderators, member_type=Moderator)
@@ -376,11 +376,11 @@ class EveryoneCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not a moderator in any channels.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @commands.command(name='mods',help='Lists moderator statistics.')
@@ -399,9 +399,9 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
@@ -413,14 +413,14 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all moderators in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             moderators = await Moderator.fetch_members_by_guild(guild_snowflake=ctx.guild.id)
             pages = await All.create_pages_to_show_members_by_guild(guild_snowflake=ctx.guild.id, members=moderators, member_type=Moderator)
             if not pages:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No moderators found in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif member_obj:
             channel_snowflakes = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             pages = await All.create_pages_to_show_channels_by_guild_and_member(channel_snowflakes=channel_snowflakes, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, member_type=Moderator)
@@ -428,7 +428,7 @@ class EveryoneCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not a moderator in any channels.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif channel_obj:
             moderators = await Moderator.fetch_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             pages = await All.create_pages_to_show_members_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, members=moderators, member_type=Moderator)
@@ -436,11 +436,11 @@ class EveryoneCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {channel_obj.mention} has no moderatiors.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @app_commands.command(name='owners', description="Show temporary room stats for 'all', a channel, or a member.")
@@ -460,9 +460,9 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(interaction, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
@@ -475,13 +475,13 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all temporary room owners in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not rooms:
                 try:
                     return await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F No temporary rooms exist.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             chunk = 12
             for i in range(0, len(rooms), chunk):
                 subset = rooms[i:i+chunk]
@@ -502,7 +502,7 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.display_name} does not own any temporary rooms in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             chunk = 12
             for i in range(0, len(rooms), chunk):
                 subset = rooms[i:i+chunk]
@@ -523,7 +523,7 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F {channel_obj.mention} is not a temporary room.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} Temporary Room Info for {channel_obj.name}',
                 color=discord.Color.blurple()
@@ -535,17 +535,17 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=embed)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         if pages:
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope {scope}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @commands.command(name='owners', help="Show temporary room stats for 'all', a channel, or a member.")
@@ -557,6 +557,7 @@ class EveryoneCommands(commands.Cog):
         state = State(ctx)
         channel_obj = None
         member_obj = None
+        chunk_size = 18
         pages = []
         try:
             member_obj = await self.member_service.resolve_member(ctx, scope)
@@ -564,9 +565,9 @@ class EveryoneCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
@@ -579,16 +580,15 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all temporary room owners in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not rooms:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms exist.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            chunk = 12
-            for i in range(0, len(rooms), chunk):
-                subset = rooms[i:i+chunk]
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            for i in range(0, len(rooms), chunk_size):
+                subset = rooms[i:i+chunk_size]
                 embed = discord.Embed(
                     title=f'{self.emoji.get_random_emoji()} Temporary Rooms',
                     color=discord.Color.blurple()
@@ -606,10 +606,10 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.display_name} does not own any temporary rooms in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             chunk = 12
-            for i in range(0, len(rooms), chunk):
-                subset = rooms[i:i+chunk]
+            for i in range(0, len(rooms), chunk_size):
+                subset = rooms[i:i+chunk_size]
                 embed = discord.Embed(
                     title=f'{self.emoji.get_random_emoji()} Temporary Rooms Owned by {member_obj.display_name}',
                     color=discord.Color.blurple()
@@ -627,7 +627,7 @@ class EveryoneCommands(commands.Cog):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F {channel_obj.mention} is not a temporary room.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} Temporary Room Info for {channel_obj.name}',
                 color=discord.Color.blurple()
@@ -639,17 +639,17 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=embed)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         if pages:
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F Could not interpret the scope {scope}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @app_commands.command(name='roleid', description='Get the ID of a role by name in this server.')
@@ -665,12 +665,12 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=f'{self.emoji.get_random_emoji()} Role `{role.name}` has ID `{role.id}`.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No role named `{role_name}` found in this server.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
     # DONE
     @commands.command(name='roleid', help='Get the ID of a role by name in this server.')
     async def get_role_id(self, ctx: commands.Context, *, role_name: str):
@@ -680,12 +680,12 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=f'{self.emoji.get_random_emoji()} Role `{role.name}` has ID `{role.id}`.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No role named `{role_name}` found in this server.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
     # DONE
     @app_commands.command(name='survey', description='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
     @app_commands.describe(channel='Tag a voice/stage channel')
@@ -720,61 +720,32 @@ class EveryoneCommands(commands.Cog):
         administrators_chunks = [administrators[i:i + chunk_size] for i in range(0, len(administrators), chunk_size)]
         coordinators_chunks = [coordinators[i:i + chunk_size] for i in range(0, len(coordinators), chunk_size)]
         moderators_chunks = [moderators[i:i + chunk_size] for i in range(0, len(moderators), chunk_size)]
-        max_pages = max(
-            len(owners_chunks),
-            len(developers_chunks),
-            len(administrators_chunks),
-            len(coordinators_chunks),
-            len(moderators_chunks),
-            1
-        )
-        for page_index in range(max_pages):
+        roles_chunks = [
+            ('Owners', owners, owners_chunks),
+            ('Developers', developers, developers_chunks),
+            ('Administrators', administrators, administrators_chunks),
+            ('Coordinators', coordinators, coordinators_chunks),
+            ('Moderators', moderators, moderators_chunks),
+        ]
+        max_pages = max(len(c[2]) for c in roles_chunks)
+        for page in range(max_pages):
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} Survey results for {channel_obj.name}',
                 description=f'Total surveyed: {len(channel_obj.members)}',
                 color=discord.Color.blurple()
             )
-            if page_index < len(owners_chunks):
-                chunk = owners_chunks[page_index]
+            for role_name, role_list, chunks in roles_chunks:
+                chunk = chunks[page] if page < len(chunks) else []
                 embed.add_field(
-                    name=f'Owners ({len(chunk)}/{len(owners)})',
+                    name=f'{role_name} ({len(chunk)}/{len(role_list)})',
                     value=', '.join(u.mention for u in chunk) if chunk else '*None*',
                     inline=False
                 )
-            if page_index < len(developers_chunks):
-                chunk = developers_chunks[page_index]
-                embed.add_field(
-                    name=f'Developers ({len(chunk)}/{len(developers)})',
-                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
-                    inline=False
-                )
-            if page_index < len(administrators_chunks):
-                chunk = administrators_chunks[page_index]
-                embed.add_field(
-                    name=f'Administrators ({len(chunk)}/{len(administrators)})',
-                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
-                    inline=False
-                )
-            if page_index < len(coordinators_chunks):
-                chunk = coordinators_chunks[page_index]
-                embed.add_field(
-                    name=f'Coordinators ({len(chunk)}/{len(coordinators)})',
-                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
-                    inline=False
-                )
-            if page_index < len(moderators_chunks):
-                chunk = moderators_chunks[page_index]
-                embed.add_field(
-                    name=f'Moderators ({len(chunk)}/{len(moderators)})',
-                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
-                    inline=False
-                )
-            embed.set_footer(text=f'Page {page_index + 1}/{max_pages}')
             pages.append(embed)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     # DONE
     @commands.command(name='survey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
     async def stage_survey_text_command(
@@ -809,61 +780,32 @@ class EveryoneCommands(commands.Cog):
         administrators_chunks = [administrators[i:i + chunk_size] for i in range(0, len(administrators), chunk_size)]
         coordinators_chunks = [coordinators[i:i + chunk_size] for i in range(0, len(coordinators), chunk_size)]
         moderators_chunks = [moderators[i:i + chunk_size] for i in range(0, len(moderators), chunk_size)]
-        max_pages = max(
-            len(owners_chunks),
-            len(developers_chunks),
-            len(administrators_chunks),
-            len(coordinators_chunks),
-            len(moderators_chunks),
-            1
-        )
-        for page_index in range(max_pages):
+        roles_chunks = [
+            ('Owners', owners, owners_chunks),
+            ('Developers', developers, developers_chunks),
+            ('Administrators', administrators, administrators_chunks),
+            ('Coordinators', coordinators, coordinators_chunks),
+            ('Moderators', moderators, moderators_chunks),
+        ]
+        max_pages = max(len(c[2]) for c in roles_chunks)
+        for page in range(max_pages):
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} Survey results for {channel_obj.name}',
                 description=f'Total surveyed: {len(channel_obj.members)}',
                 color=discord.Color.blurple()
             )
-            if page_index < len(owners_chunks):
-                chunk = owners_chunks[page_index]
+            for role_name, role_list, chunks in roles_chunks:
+                chunk = chunks[page] if page < len(chunks) else []
                 embed.add_field(
-                    name=f'Owners ({len(chunk)}/{len(owners)})',
+                    name=f'{role_name} ({len(chunk)}/{len(role_list)})',
                     value=', '.join(u.mention for u in chunk) if chunk else '*None*',
                     inline=False
                 )
-            if page_index < len(developers_chunks):
-                chunk = developers_chunks[page_index]
-                embed.add_field(
-                    name=f'Developers ({len(chunk)}/{len(developers)})',
-                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
-                    inline=False
-                )
-            if page_index < len(administrators_chunks):
-                chunk = administrators_chunks[page_index]
-                embed.add_field(
-                    name=f'Administrators ({len(chunk)}/{len(administrators)})',
-                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
-                    inline=False
-                )
-            if page_index < len(coordinators_chunks):
-                chunk = coordinators_chunks[page_index]
-                embed.add_field(
-                    name=f'Coordinators ({len(chunk)}/{len(coordinators)})',
-                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
-                    inline=False
-                )
-            if page_index < len(moderators_chunks):
-                chunk = moderators_chunks[page_index]
-                embed.add_field(
-                    name=f'Moderators ({len(chunk)}/{len(moderators)})',
-                    value=', '.join(u.mention for u in chunk) if chunk else '*None*',
-                    inline=False
-                )
-            embed.set_footer(text=f'Page {page_index + 1}/{max_pages}')
             pages.append(embed)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
 async def setup(bot: DiscordBot):
     cog = EveryoneCommands(bot)

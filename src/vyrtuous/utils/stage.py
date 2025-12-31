@@ -60,6 +60,16 @@ class Stage:
             await bot.get_channel(self.channel_snowflake).send(embed=embed)
 
     @classmethod
+    async def update_duration(cls, channel_snowflake: int, expires_at, guild_snowflake: int):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute(f'''
+                UPDATE active_stages
+                SET expires_at=$2, updated_at=NOW()
+                WHERE channel_snowflake=$1 AND guild_snowflake=$3
+            ''', channel_snowflake, expires_at, guild_snowflake)
+
+    @classmethod
     async def update_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
@@ -104,16 +114,6 @@ class Stage:
                 UPDATE active_stages
                 SET channel_snowflake=$2 WHERE channel_snowflake = $1
             ''', source_channel_snowflake, target_channel_snowflake)
-    
-    @classmethod
-    async def update_by_channel_enabled_and_guild(cls, channel_snowflake: Optional[int], enabled: Optional[bool], guild_snowflake: Optional[int]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                UPDATE statistic_channels
-                SET enabled=$2
-                WHERE channel_id=$1 AND guild_id=$3 
-            ''', channel_snowflake, enabled, guild_snowflake)
 
     @classmethod
     async def fetch_by_guild_and_channel(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):

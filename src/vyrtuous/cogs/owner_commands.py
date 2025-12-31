@@ -52,9 +52,9 @@ class OwnerCommands(commands.Cog):
             await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                await state.end(error=f'\U0001F3C6 {e}')
+                await state.end(error=f'\u274C {str(e).capitalize()}')
         guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
         if interaction.guild.id in guild_snowflakes:
             await Developer.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -66,7 +66,7 @@ class OwnerCommands(commands.Cog):
         try:
             await state.end(success=f"{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}.")
         except Exception as e:
-            await state.end(error=f'\U0001F3C6 {e}')
+            await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @commands.command(name='dev', help="Grants/revokes a user's permissions to a bot developer.")
@@ -85,9 +85,9 @@ class OwnerCommands(commands.Cog):
             await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                await state.end(error=f'\U0001F3C6 {e}')
+                await state.end(error=f'\u274C {str(e).capitalize()}')
         guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
         if ctx.guild.id in guild_snowflakes:
             await Developer.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -99,7 +99,7 @@ class OwnerCommands(commands.Cog):
         try:
             await state.end(success=f'{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}.')
         except Exception as e:
-            await state.end(error=f'\U0001F3C6 {e}')
+            await state.end(error=f'\u274C {str(e).capitalize()}')
         
         
     # DONE
@@ -117,13 +117,13 @@ class OwnerCommands(commands.Cog):
         try:
             member_obj = await self.member_service.resolve_member(interaction, member)
             check_not_self(interaction, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.author.id)
+            await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
-            await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+            await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
         enabled = Invincibility.toggle_enabled()
         if enabled:
             Invincibility.add_invincible_member(member_obj.id)
-            await Invincibility.unrestrict(interaction.guild, member_obj)
+            await Invincibility.unrestrict(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
         else:
             Invincibility.remove_invincible_member(member_obj.id)
@@ -131,7 +131,7 @@ class OwnerCommands(commands.Cog):
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
            
     # DONE
     @commands.command(name='hero', help='Grants/revokes invincibility for a member.')
@@ -150,9 +150,9 @@ class OwnerCommands(commands.Cog):
             await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         enabled = Invincibility.toggle_enabled()
         if enabled:
             Invincibility.add_invincible_member(member_obj.id)
@@ -164,7 +164,7 @@ class OwnerCommands(commands.Cog):
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
 async def setup(bot: DiscordBot):
     await bot.add_cog(OwnerCommands(bot))

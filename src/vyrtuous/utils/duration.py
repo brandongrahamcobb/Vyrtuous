@@ -40,6 +40,7 @@ class DurationObject:
         self._number: Optional[int] = None
         self._unit: Optional[str] = None
         self._base: Optional[datetime] = None
+        self.is_modification: bool = None
         self.duration = duration
 
     def __str__(self):
@@ -145,7 +146,7 @@ class DurationObject:
     
     @classmethod
     def from_seconds(cls, seconds: int):
-        duration = DurationObject("{seconds}s")
+        duration = DurationObject(f"{seconds}s")
         return duration
     
     def to_timedelta(self) -> timedelta:
@@ -180,9 +181,11 @@ class DurationObject:
             return
         if s[0] in self.PREFIXES:
             self.prefix = s[0]
+            self.is_modification = True
             s = s[1:]
         else:
             self.prefix = '+'
+            self.is_modification = False
         num_str = ''
         for char in s:
             if char.isdigit():

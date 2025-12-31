@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.emojis import Emojis
@@ -23,6 +24,7 @@ import asyncio
 
 class VideoRoom:
 
+    COOLDOWN = timedelta(minutes=30)
     video_rooms = []
         
     def __init__(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
@@ -58,6 +60,22 @@ class VideoRoom:
         task = cls.video_tasks.pop(key, None)
         if task:
             task.cancel()
+    
+    @classmethod
+    async def enforce_video_message(cls, channel_snowflake, member_snowflake, message):
+        bot = DiscordBot.get_instance()
+        channel = await bot.get_channel(channel_snowflake)
+        now = datetime.now(timezone.utc)
+        last_trigger = cls.cooldowns.get(member_snowflake)
+        if last_trigger and now - last_trigger < cls.COOLDOWN:
+            return
+        cls.cooldowns[member_snowflake] = now
+        await channel.send(message)
+        async def reset_cooldown():
+            await asyncio.sleep(cls.COOLDOWN.total_seconds())
+            if cls.cooldowns.get(member_snowflake) == now:
+                del cls.cooldowns[member_snowflake]
+        asyncio.create_task(reset_cooldown())
 
     async def create(self):
         async with self.bot.db_pool.acquire() as conn:

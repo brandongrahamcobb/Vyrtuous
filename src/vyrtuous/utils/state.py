@@ -22,8 +22,9 @@ from datetime import datetime, timezone
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.time_to_complete import TimeToComplete
 from vyrtuous.utils.developer import Developer
+from vyrtuous.utils.paginator import Paginator
+from vyrtuous.utils.time_to_complete import TimeToComplete
 import asyncio
 import discord
 
@@ -37,7 +38,7 @@ class State:
         "\u274C": 0xED4245
     }
 
-    NAV_EMOJIS = {
+    STATE_EMOJIS = {
         "\u2b05\ufe0f": -1,
         "\u27a1\ufe0f": 1,
         "\u2139\ufe0f": "info",
@@ -52,9 +53,8 @@ class State:
         self._reported_users = set()
         self.is_ephemeral = False
         self.start_time = self._get_start_time(ctx_or_interaction)
-        self.current_page = 0
-        self.pages = []
         self.message = None
+        self.paginator = None
         if isinstance(ctx_or_interaction, commands.Context):
             self.submitter_id = ctx_or_interaction.author.id
         elif isinstance(ctx_or_interaction, discord.Interaction):
@@ -96,17 +96,16 @@ class State:
         self.success = is_success
         self.elapsed = elapsed
         if isinstance(message_obj, list) and message_obj:
-            self.pages = message_obj
-            message = await self._send_message(embed=self.pages[self.current_page], paginated=True)
-            cache[message.id] = {
+            self.paginator = Paginator(bot=self.bot, ctx_or_interaction=self.ctx_or_interaction, pages=message_obj)
+            self.message = await self.paginator.start()
+            cache[self.message.id] = {
                 "date": self.start_time,
                 "health_type": health_type,
                 "speed": elapsed,
                 "success": is_success
             }
-            self.message = message
             await self._add_reactions(paginated=True)
-            return message
+            return self.message
         content = embed = file = None
         if isinstance(message_obj, str):
             content = message_obj
@@ -116,16 +115,15 @@ class State:
             file = message_obj
         else:
             raise TypeError("Message must be str, embed, file, or list for pagination")
-        message = await self._send_message(content=content, embed=embed, file=file, paginated=False, allowed_mentions=allowed_mentions)
-        cache[message.id] = {
+        self.message = await self._send_message(content=content, embed=embed, file=file, paginated=False, allowed_mentions=allowed_mentions)
+        cache[self.message.id] = {
             "date": self.start_time,
             "health_type": health_type,
             "speed": elapsed,
             "success": is_success
         }
-        self.message = message
         await self._add_reactions(paginated=False)
-        return message
+        return self.message
 
     async def _send_message(self, content=None, embed=None, file=None, paginated=False, allowed_mentions=discord.AllowedMentions.none()):
         kwargs = {
@@ -161,7 +159,7 @@ class State:
         def check(reaction, user):
             return (
                 reaction.message.id == self.message.id
-                and str(reaction.emoji) in self.NAV_EMOJIS
+                and str(reaction.emoji) in self.STATE_EMOJIS
                 and not user.bot
                 and user.id == self.submitter_id
             )
@@ -181,11 +179,8 @@ class State:
                 pass
 
     async def _handle_reaction(self, reaction, user=None):
-        action = self.NAV_EMOJIS[str(reaction.emoji)]
-        if isinstance(action, int) and self.pages:
-            self.current_page = max(0, min(self.current_page + action, len(self.pages) - 1))
-            await self.message.edit(embed=self.pages[self.current_page])
-        elif action == "info":
+        action = self.STATE_EMOJIS[str(reaction.emoji)]
+        if action == "info":
             await self.show_info(user)
         elif action == "report":
             await self.report_issue(user)

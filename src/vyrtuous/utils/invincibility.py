@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.voice_mute import VoiceMute
@@ -26,10 +27,13 @@ class Invincibility:
     invincible_members = set()
 
     @classmethod
-    async def unrestrict(cls, guild: discord.Guild, member: discord.Member):
-        bans = await Ban.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
-        text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
-        voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=guild.id, member_snowflake=member.id, target="user")
+    async def unrestrict(cls, guild_snowflake, member_snowflake):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        member = guild.get_member(member_snowflake)
+        bans = await Ban.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target="user")
         if bans:
             for ban in bans:
                 try:
@@ -47,9 +51,9 @@ class Invincibility:
                 ch = guild.get_channel(voice_mute.channel_snowflake)
                 if ch and member.voice and member.voice.mute:
                     await member.edit(mute=False)
-        await Ban.delete_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
-        await TextMute.delete_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
-        await VoiceMute.delete_by_guild_and_member(guild_snowflake=guild.id, member_snowflake=member.id)
+        await Ban.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        await TextMute.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        await VoiceMute.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
 
     @classmethod
     def add_invincible_member(cls, member_id: int):

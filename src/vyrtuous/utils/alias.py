@@ -44,7 +44,7 @@ class Alias:
         self.channel_mention = f'<#{channel_snowflake}>'
         self.guild_snowflake = guild_snowflake
         self.alias_cog = self.bot.get_cog("Aliases")
-        self.message_services = {
+        self.handlers = {
             'ban': self.alias_cog.handle_ban_alias,
             'vegan': self.alias_cog.handle_vegan_alias,
             'carnist': self.alias_cog.handle_carnist_alias,
@@ -58,7 +58,7 @@ class Alias:
             'role': self.alias_cog.handle_role_alias,
             'unrole': self.alias_cog.handle_unrole_alias
         }
-        self.message_service = self.message_services[alias_type]
+        self.handler = self.handlers[alias_type]
         self.role_snowflake = role_snowflake
         self.role_mention = f'<@&{role_snowflake}>'
         self.channel_service = ChannelService()
@@ -255,11 +255,11 @@ class Alias:
             case 'ban' | 'unban':
                 return 'Ban'
             case 'vegan' | 'carnist':
-                return 'Flag'
+                return 'Veganism'
             case 'role' | 'unrole':
-                return 'New Vegan'
-            case 'flag' | 'unflag':
                 return 'Role'
+            case 'flag' | 'unflag':
+                return 'Flag'
             case 'text_mute' | 'untext_mute':
                 return 'Text Mute'
             case 'voice_mute' | 'unvoice_mute':

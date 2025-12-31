@@ -26,10 +26,11 @@ from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.permission import PERMISSION_TYPES
+from vyrtuous.utils.state import State
 
 import inspect
     
-class Help(commands.Cog):
+class HelpCommand(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.aliases_cog = bot.get_cog("Aliases")
@@ -72,7 +73,7 @@ class Help(commands.Cog):
                 if PERMISSION_TYPES.index(user_highest) >= PERMISSION_TYPES.index(perm_level):
                     available.append(command)
             except Exception as e:
-                logger.warning(f'\U000026A0\U0000FE0F Exception while evaluating command {command}: {e}.')
+                logger.warning(f'\U000026A0\U0000FE0F Exception while evaluating command {command}: {str(e).capitalize()}')
         return available
     
     async def get_command_permission_level(self, bot, command):
@@ -158,12 +159,19 @@ class Help(commands.Cog):
     @app_commands.command(name='help', description='Show command information or your available commands.')
     @app_commands.describe(command_name='The command to view details for.')
     async def help_app_command(self, interaction: discord.Interaction, command_name: Optional[str] = None):
+        state = State(interaction)
         bot = interaction.client
         pages, param_details, parameters = [], [], []
         if command_name:
             kind, obj = await self.resolve_command_or_alias(interaction, command_name)
             if not kind:
-                return await self.message_service.send_message(interaction, f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
+                except Exception as e:
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -199,19 +207,37 @@ class Help(commands.Cog):
                     embed.add_field(name='Usage', value=f'`{" ".join(usage_parts)}`', inline=False)
                     if param_details:
                         embed.add_field(name='Parameters', value='\n'.join(param_details), inline=False)
-                        return await self.message_service.send_message(interaction, embed=embed)
+                        try:
+                            return await state.end(success=embed)
+                        except Exception as e:
+                            try:
+                                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                            except Exception as e:
+                                return await state.end(error=f'\u274C {str(e).capitalize()}')
             if kind == "alias":
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
-                    return await self.message_service.send_message(interaction, f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
+                    except Exception as e:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
                 embed = discord.Embed(
                     title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
                     description=f'Alias for **{alias.alias_type}**',
                     color=discord.Color.green()
                 )
                 embed.add_field(name='Usage', value='\n'.join(f'• {line}' for line in help_lines), inline=False)
-                return await self.message_service.send_message(interaction, embed=embed)
+                try:
+                    return await state.end(success=embed)
+                except Exception as e:
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
         all_commands = await self.get_available_commands(bot, interaction)
         permission_groups = await self.group_commands_by_permission(bot, interaction, all_commands)
         aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
@@ -250,18 +276,36 @@ class Help(commands.Cog):
                 embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            return await self.message_service.send_message(interaction, '\U000026A0\U0000FE0F No commands available to you.', ephemeral=True)
-        paginator = Paginator(bot, interaction, pages)
-        await paginator.start()
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No commands available to you.')
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     @commands.command(name='help')
     async def help_text_command(self, ctx, *, command_name: str = None):
+        state = State(ctx)
         bot = ctx.bot
         pages, param_details, parameters = [], [], []
         if command_name:
             kind, obj = await self.resolve_command_or_alias(ctx, command_name)
             if not kind:
-                return await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Command or alias `{command_name}` not found.')
+                except Exception as e:
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -297,19 +341,37 @@ class Help(commands.Cog):
                     embed.add_field(name='Usage', value=f'`{" ".join(usage_parts)}`', inline=False)
                     if param_details:
                         embed.add_field(name='Parameters', value='\n'.join(param_details), inline=False)
-                        return await self.message_service.send_message(ctx, embed=embed)
+                        try:
+                            return await state.end(success=embed)
+                        except Exception as e:
+                            try:
+                                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                            except Exception as e:
+                                return await state.end(error=f'\u274C {str(e).capitalize()}')
             if kind == "alias":
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
-                    return await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F No help available for `{alias.alias_name}`.')
+                    except Exception as e:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
                 embed = discord.Embed(
                     title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
                     description=f'Alias for **{alias.alias_type}**',
                     color=discord.Color.green()
                 )
                 embed.add_field(name='Usage', value='\n'.join(f'• {line}' for line in help_lines), inline=False)
-                return await self.message_service.send_message(ctx, embed=embed)
+                try:
+                    return await state.end(success=embed)
+                except Exception as e:
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
         all_commands = await self.get_available_commands(bot, ctx)
         permission_groups = await self.group_commands_by_permission(bot, ctx, all_commands)
         aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
@@ -348,10 +410,21 @@ class Help(commands.Cog):
                 embed.add_field(name='Aliases', value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            return await self.message_service.send_message(ctx, content='\U000026A0\U0000FE0F No commands available to you.')
-        paginator = Paginator(bot, ctx, pages)
-        await paginator.start()
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No commands available to you.')
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
 
 async def setup(bot: DiscordBot):
-    cog = Help(bot)
+    cog = HelpCommand(bot)
     await bot.add_cog(cog)

@@ -17,6 +17,7 @@
 '''
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.duration import DurationObject
 
 class Cap:
 
@@ -29,6 +30,19 @@ class Cap:
         self.guild_snowflake = guild_snowflake
         self.moderation_type = moderation_type
  
+    @classmethod
+    async def fetch_all(cls):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, duration_seconds, guild_snowflake, moderation_type FROM active_caps
+            ''')
+        caps = []
+        if rows:
+            for row in rows:
+                caps.append(Cap(channel_snowflake=row['channel_snowflake'], duration=row['duration_seconds'], guild_snowflake=row['guild_snowflake'], moderation_type=row['moderation_type']))
+        return caps
+    
     @classmethod
     async def fetch_by_channel_and_guild(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]) -> list[tuple[str, str]]:
         bot = DiscordBot.get_instance()

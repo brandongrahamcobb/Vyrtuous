@@ -77,13 +77,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all bans in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             bans = await Ban.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not bans:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active bans found in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=bans, moderation_type=Ban)
         elif member_obj:
             bans = await Ban.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -91,7 +91,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active bans found for user {member_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, moderations=bans, moderation_type=Ban)
         elif channel_obj:
             bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -99,12 +99,12 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active bans found in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(guild_snowflake=interaction.guild.id, moderations=bans, moderation_type=Ban)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @commands.command(name='bans', description='Lists ban statistics.')
@@ -131,13 +131,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all bans in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             bans = await Ban.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not bans:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active bans found in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=bans, moderation_type=Ban)
         elif member_obj:
             bans = await Ban.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -145,7 +145,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not banned in any channels.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=bans, moderation_type=Ban)
         elif channel_obj:
             bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
@@ -153,12 +153,12 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active bans found in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(guild_snowflake=ctx.guild.id, moderations=bans, moderation_type=Ban)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
     @app_commands.command(name='caps', description="List active caps for a channel or all channels if 'all' is provided.")
@@ -171,60 +171,120 @@ class ModeratorCommands(commands.Cog):
     ):
         state = State(interaction)
         channel_obj = None
+        guild_obj = None
         chunk_size = 18
         lines, pages = [], []
-        try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
-        except:
-            channel_obj = interaction.channel
-            await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+        skipped_channel_snowflakes_by_guild_snowflake = {}
+        skipped_guild_snowflakes = set()
+
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
+            title = f'{self.emoji.get_random_emoji()} Caps in All Servers'
             if highest_role not in ('Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all caps in {interaction.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list caps across all servers.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            caps = await Cap.fetch_by_guild(guild_snowflake=interaction.guild.id)
-            if not caps:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            caps = await Cap.fetch_all()
+            title = f'{self.emoji.get_random_emoji()} Caps for All Servers'
+        elif scope:
+            try:
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                title = f'{self.emoji.get_random_emoji()} Caps in {channel_obj.name}'
+                caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            except Exception as e:
+                if highest_role not in ('Owner', 'Developer'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list caps for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No caps found in {interaction.guild.name}.')
-                except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            for cap in caps:
-                ch = interaction.guild.get_channel(cap.channel_snowflake)
-                ch_name = ch.mention if ch else f'Channel ID `{cap.channel_snowflake}`'
-                lines.append(f'**{cap.moderation_type} in {ch_name}** → `{DurationObject(f'{cap.duration}s')}`')
-            for i in range(0, len(lines), chunk_size):
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} All Active Caps in Server',
-                    description='\n'.join(lines[i:i+chunk_size]),
-                    color=discord.Color.red()
-                )
-                pages.append(embed)
-        caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                    guild_obj = self.bot.get_guild(scope)
+                    if not guild_obj:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
+                    title = f'{self.emoji.get_random_emoji()} Caps for {guild_obj.name}'
+                    caps = await Cap.fetch_by_guild(guild_snowflake=scope)
+                except:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            title = f'{self.emoji.get_random_emoji()} Caps for {interaction.channel.mention}'
+            caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
+            channel_obj = interaction.channel
+
         if not caps:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No caps found for {channel_obj.mention}.')
+                if guild_obj:
+                    scope = guild_obj.name
+                elif channel_obj:
+                    scope = channel_obj.mention
+                return await state.end(warning=f'\U000026A0\U0000FE0F No caps setup for {scope}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
         for cap in caps:
-            lines.append(f'**{cap.moderation_type} in {channel_obj.mention}** → `{DurationObject(f'{cap.duration}s')}`')
-        embed = discord.Embed(
-            title=f'{self.emoji.get_random_emoji()} Active Caps for {channel_obj.mention}',
-            description='\n'.join(lines),
-            color=discord.Color.red()
-        )
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        else:
-            try:
-                return await state.end(success=embed)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+            guild_dictionary.setdefault(cap.guild_snowflake, {})
+            guild_dictionary[cap.guild_snowflake].setdefault(cap.channel_snowflake, {})
+            guild_dictionary[cap.guild_snowflake][cap.channel_snowflake][cap.moderation_type] = cap.duration
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+        
+        for guild_snowflake, channels in guild_dictionary.items():
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            field_count = 0
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_data in channels.items():
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
+                    continue
+                field_count += 1
+                for moderation_type, duration in channel_data.items():
+                    duration_obj = DurationObject.from_seconds(duration)
+                    lines.append(f'  ↳ {moderation_type} ({duration_obj})')
+                embed.add_field(name=channel.mention, value=f"{'\n'.join(lines)}", inline=False)
+                field_count += 1
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            for guild_snowflake in skipped_guild_snowflakes:
+                embed = discord.Embed(title=title, description=f'Skipped Guild {guild_snowflake}', color=discord.Color.red())
+                pages.append(embed)
+        if skipped_channel_snowflakes_by_guild_snowflake:
+            for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
+                guild_label = f'Skipped Guild {guild_snowflake}'
+                field_count = 0
+                embed = discord.Embed(title=title, description=guild_label, color=discord.Color.red())
+                for channel_snowflake in channel_list:
+                    if field_count == chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=title, description=guild_label + ' continued...', color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=f'Skipped Channel {channel_snowflake}', value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @commands.command(name='caps', help="List active caps for a channel or all channels if 'all' is provided.")
@@ -236,60 +296,120 @@ class ModeratorCommands(commands.Cog):
     ):
         state = State(ctx)
         channel_obj = None
+        guild_obj = None
         chunk_size = 18
         lines, pages = [], []
-        try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
-        except:
-            channel_obj = ctx.channel
+        skipped_channel_snowflakes_by_guild_snowflake = {}
+        skipped_guild_snowflakes = set()
+
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
+            title = f'{self.emoji.get_random_emoji()} Caps in All Servers'
             if highest_role not in ('Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all caps in {ctx.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list caps across all servers.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            caps = await Cap.fetch_by_guild(guild_snowflake=ctx.guild.id)
-            if not caps:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            caps = await Cap.fetch_all()
+            title = f'{self.emoji.get_random_emoji()} Caps for All Servers'
+        elif scope:
+            try:
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                title = f'{self.emoji.get_random_emoji()} Caps in {channel_obj.name}'
+                caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            except Exception as e:
+                if highest_role not in ('Owner', 'Developer'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list caps for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No caps found in {ctx.guild.name}.')
-                except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            for cap in caps:
-                ch = ctx.guild.get_channel(cap.channel_snowflake)
-                ch_name = ch.mention if ch else f'Channel ID `{cap.channel_snowflake}`'
-                lines.append(f'**{cap.moderation_type} in {ch_name}** → `{DurationObject(f'{cap.duration}s')}`')
-            for i in range(0, len(lines), chunk_size):
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} All Active Caps in Server',
-                    description='\n'.join(lines[i:i+chunk_size]),
-                    color=discord.Color.red()
-                )
-                pages.append(embed)
-        caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                    guild_obj = self.bot.get_guild(scope)
+                    if not guild_obj:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
+                    title = f'{self.emoji.get_random_emoji()} Caps for {guild_obj.name}'
+                    caps = await Cap.fetch_by_guild(guild_snowflake=scope)
+                except:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            title = f'{self.emoji.get_random_emoji()} Caps for {ctx.channel.mention}'
+            caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
+            channel_obj = ctx.channel
+        
         if not caps:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No caps found in {channel_obj.mention}.')
+                if guild_obj:
+                    scope = guild_obj.name
+                elif channel_obj:
+                    scope = channel_obj.mention
+                return await state.end(warning=f'\U000026A0\U0000FE0F No caps setup for {scope}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
         for cap in caps:
-            lines.append(f'**{cap.moderation_type} in {channel_obj.mention}** → `{DurationObject(f'{cap.duration}s')}`')
-        embed = discord.Embed(
-            title=f'{self.emoji.get_random_emoji()} Active Caps for {channel_obj.mention}',
-            description='\n'.join(lines),
-            color=discord.Color.red()
-        )
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        else:
-            try:
-                return await state.end(success=embed)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-    
+            guild_dictionary.setdefault(cap.guild_snowflake, {})
+            guild_dictionary[cap.guild_snowflake].setdefault(cap.channel_snowflake, {})
+            guild_dictionary[cap.guild_snowflake][cap.channel_snowflake][cap.moderation_type] = cap.duration
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+        
+        for guild_snowflake, channels in guild_dictionary.items():
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            field_count = 0
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_data in channels.items():
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
+                    continue
+                field_count += 1
+                for moderation_type, duration in channel_data.items():
+                    duration_obj = DurationObject.from_seconds(duration)
+                    lines.append(f'  ↳ {moderation_type} ({duration_obj})')
+                embed.add_field(name=channel.mention, value=f"{'\n'.join(lines)}", inline=False)
+                field_count += 1
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            for guild_snowflake in skipped_guild_snowflakes:
+                embed = discord.Embed(title=title, description=f'Skipped Guild {guild_snowflake}', color=discord.Color.red())
+                pages.append(embed)
+        if skipped_channel_snowflakes_by_guild_snowflake:
+            for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
+                guild_label = f'Skipped Guild {guild_snowflake}'
+                field_count = 0
+                embed = discord.Embed(title=title, description=guild_label, color=discord.Color.red())
+                for channel_snowflake in channel_list:
+                    if field_count == chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=title, description=guild_label + ' continued...', color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=f'Skipped Channel {channel_snowflake}', value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+                
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
  
     # DONE
     @app_commands.command(name='cmds', description="List command aliases routed to a specific channel, temp room, or all channels if 'all' is provided.")
@@ -302,59 +422,117 @@ class ModeratorCommands(commands.Cog):
     ):
         state = State(interaction)
         channel_obj = None
+        guild_obj = None
+        chunk_size = 18
         lines, pages = [], []
+        skipped_channel_snowflakes_by_guild_snowflake = {}
+        skipped_guild_snowflakes = set()
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except:
             channel_obj = interaction.channel
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer', 'Administrator'):
+            title = f'{self.emoji.get_random_emoji()} Aliases in All Servers'
+            if highest_role not in ('Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers or administrators can list all aliases in {interaction.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Only owners and developers can list all aliases in all guilds.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            aliases = await Alias.fetch_by_guild(guild_snowflake=interaction.guild.id)
-            if not aliases:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {interaction.guild.name}.')
-                except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            grouped = defaultdict(list)
-            for alias in aliases:
-                grouped[alias.channel_snowflake].append(alias)
-            for channel_id, channel_aliases in grouped.items():
-                lines = Alias.format_aliases(channel_aliases)
-                channel_obj = interaction.guild.get_channel(channel_id)
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} Aliases for {channel_obj.mention}',
-                    description='\n'.join(lines),
-                    color=discord.Color.blue()
-                )
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            aliases = await Alias.fetch_all()
+        elif scope:
+            try:
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                title = f'{self.emoji.get_random_emoji()} Aliases in {channel_obj.name}'
+                aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            except Exception as e:
+                if highest_role not in ('Owner', 'Developer'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list aliases for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                guild_obj = self.bot.get_guild(scope)
+                if not guild_obj:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                title = f'{self.emoji.get_random_emoji()} Aliases in {guild_obj.name}'
+                aliases = await Alias.fetch_by_guild(guild_snowflake=scope)
+        else:
+            title = f'{self.emoji.get_random_emoji()} Aliases in {interaction.channel.mention}'
+            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
+            channel_obj = interaction.channel
+
+        if not aliases:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                elif channel_obj:
+                    scope = channel_obj.mention
+                return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found for {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+        guild_dictionary = {}
+        for alias in aliases:
+            guild_dictionary.setdefault(alias.guild_snowflake, {})
+            guild_dictionary[alias.guild_snowflake].setdefault(alias.channel_snowflake, {})
+            guild_dictionary[alias.guild_snowflake][alias.channel_snowflake].setdefault(alias.alias_type, [])
+            guild_dictionary[alias.guild_snowflake][alias.channel_snowflake][alias.alias_type].append(alias.alias_name)
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake, channels in guild_dictionary.items():
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            field_count = 0
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_data in channels.items():
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
+                    continue
+                field_count += 1
+                for alias_type, alias_names in channel_data.items():
+                    lines.append(f"{alias_type}\n" + '\n'.join(f"  ↳ {name}" for name in alias_names))
+                    embed.add_field(name=channel.mention, value='\n'.join(lines), inline=False)
+                    field_count += 1
+                    if field_count == chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                        field_count = 0
+                    lines = []
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            for guild_snowflake in skipped_guild_snowflakes:
+                embed = discord.Embed(title=title, description=f'Skipped Guild {guild_snowflake}', color=discord.Color.red())
                 pages.append(embed)
-        else:
-            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            if not aliases:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {channel_obj.mention}.')
-                except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            lines.extend(Alias.format_aliases(aliases))
-            embed = discord.Embed(
-                title=f'{self.emoji.get_random_emoji()} Aliases in {channel_obj.mention}',
-                description='\n'.join(lines),
-                color=0x57F287
-            )
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        else:
-            try:
-                return await state.end(success=embed)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+        if skipped_channel_snowflakes_by_guild_snowflake:
+            for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
+                guild_label = f'Skipped Guild {guild_snowflake}'
+                field_count = 0
+                embed = discord.Embed(title=title, description=guild_label, color=discord.Color.red())
+                for channel_snowflake in channel_list:
+                    if field_count == chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=title, description=guild_label + ' continued...', color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=f'Skipped Channel {channel_snowflake}', value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @commands.command(name='cmds', help="List command aliases routed to a specific channel, temp room, or all channels if 'all' is provided.")
@@ -366,59 +544,117 @@ class ModeratorCommands(commands.Cog):
     ):
         state = State(ctx)
         channel_obj = None
+        guild_obj = None
+        chunk_size = 18
         lines, pages = [], []
+        skipped_channel_snowflakes_by_guild_snowflake = {}
+        skipped_guild_snowflakes = set()
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except:
             channel_obj = ctx.channel
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer', 'Administrator'):
+            title = f'{self.emoji.get_random_emoji()} Aliases in All Servers'
+            if highest_role not in ('Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers or administrators can list all aliases in {ctx.guild.name}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Only owners and developers can list all aliases in all guilds.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            aliases = await Alias.fetch_by_guild(guild_snowflake=ctx.guild.id)
-            if not aliases:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {ctx.guild.name}.')
-                except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            grouped = defaultdict(list)
-            for alias in aliases:
-                grouped[alias.channel_snowflake].append(alias)
-            for channel_id, channel_aliases in grouped.items():
-                lines = Alias.format_aliases(channel_aliases)
-                channel_obj = ctx.guild.get_channel(channel_id)
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} Aliases for {channel_obj.mention}',
-                    description='\n'.join(lines),
-                    color=discord.Color.blue()
-                )
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            aliases = await Alias.fetch_all()
+        elif scope:
+            try:
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                title = f'{self.emoji.get_random_emoji()} Aliases in {channel_obj.name}'
+                aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            except Exception as e:
+                if highest_role not in ('Owner', 'Developer'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list aliases for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                guild_obj = self.bot.get_guild(scope)
+                if not guild_obj:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, guild ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                title = f'{self.emoji.get_random_emoji()} Aliases in {guild_obj.name}'
+                aliases = await Alias.fetch_by_guild(guild_snowflake=scope)
+        else:
+            title = f'{self.emoji.get_random_emoji()} Aliases in {ctx.channel.mention}'
+            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
+            channel_obj = ctx.channel
+
+        if not aliases:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                elif channel_obj:
+                    scope = channel_obj.mention
+                return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found for {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+        guild_dictionary = {}
+        for alias in aliases:
+            guild_dictionary.setdefault(alias.guild_snowflake, {})
+            guild_dictionary[alias.guild_snowflake].setdefault(alias.channel_snowflake, {})
+            guild_dictionary[alias.guild_snowflake][alias.channel_snowflake].setdefault(alias.alias_type, [])
+            guild_dictionary[alias.guild_snowflake][alias.channel_snowflake][alias.alias_type].append(alias.alias_name)
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake, channels in guild_dictionary.items():
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            field_count = 0
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_data in channels.items():
+                if field_count == chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
+                    continue
+                field_count += 1
+                for alias_type, alias_names in channel_data.items():
+                    lines.append(f"{alias_type}\n" + '\n'.join(f"  ↳ {name}" for name in alias_names))
+                    embed.add_field(name=channel.mention, value='\n'.join(lines), inline=False)
+                    field_count += 1
+                    if field_count == chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                        field_count = 0
+                    lines = []
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            for guild_snowflake in skipped_guild_snowflakes:
+                embed = discord.Embed(title=title, description=f'Skipped Guild {guild_snowflake}', color=discord.Color.red())
                 pages.append(embed)
-        else:
-            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            if not aliases:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found in {channel_obj.mention}.')
-                except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
-            lines.extend(Alias.format_aliases(aliases))
-            embed = discord.Embed(
-                title=f'{self.emoji.get_random_emoji()} Aliases in {channel_obj.mention}',
-                description='\n'.join(lines),
-                color=0x57F287
-            )
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
-        else:
-            try:
-                return await state.end(success=embed)
-            except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+        if skipped_channel_snowflakes_by_guild_snowflake:
+            for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
+                guild_label = f'Skipped Guild {guild_snowflake}'
+                field_count = 0
+                embed = discord.Embed(title=title, description=guild_label, color=discord.Color.red())
+                for channel_snowflake in channel_list:
+                    if field_count == chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=title, description=guild_label + ' continued...', color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=f'Skipped Channel {channel_snowflake}', value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
  
     # DONE
     @app_commands.command(name='del', description='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
@@ -444,25 +680,25 @@ class ModeratorCommands(commands.Cog):
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F Message `{message}` does not exist.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=message.author.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             await msg.delete()
         except discord.Forbidden:
             try:
                 return await state.end(warning='\U000026A0\U0000FE0F Missing permissions to delete the message.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Message `{message}` deleted successfully.')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @commands.command(name='del', help='Delete a message by ID (only if you are coordinator/moderator of that temp room).')
@@ -485,25 +721,25 @@ class ModeratorCommands(commands.Cog):
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F Message `{message}` does not exist.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=message.author.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             await msg.delete()
         except discord.Forbidden:
             try:
                 return await state.end(warning='\U000026A0\U0000FE0F Missing permissions to delete the message.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Message `{message}` deleted successfully.')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @app_commands.command(name='flags', description='List flag statistics.')
@@ -517,16 +753,15 @@ class ModeratorCommands(commands.Cog):
         pages = []
         channel_obj = None
         member_obj = None
-
         try:
             member_obj = await self.member_service.resolve_member(interaction, scope)
             try:
                 check_not_self(interaction, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
@@ -538,13 +773,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all flags in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             flags = await Flag.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not flags:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active flags found in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=flags, moderation_type=Flag)
         elif member_obj:
             flags = await Flag.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -552,7 +787,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not flagged in any channels.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, moderations=flags, moderation_type=Flag)
         elif channel_obj:
             flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -560,12 +795,12 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active flags found in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(guild_snowflake=interaction.guild.id, moderations=flags, moderation_type=Flag)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
     @commands.command(name='flags', help='List flag statistics.')
@@ -585,9 +820,9 @@ class ModeratorCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
@@ -599,13 +834,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all flags in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             flags = await Flag.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not flags:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active flags found in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=flags, moderation_type=Flag)
         elif member_obj:
             flags = await Flag.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -613,7 +848,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not flagged in any channels.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=flags, moderation_type=Flag)
         elif channel_obj:
             flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
@@ -621,15 +856,15 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active flags found in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(guild_snowflake=ctx.guild.id, moderations=flags, moderation_type=Flag)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @app_commands.command(name='ls', description='List users veganed as going vegan in this guild.')
+    @app_commands.command(name='ls', description='List users veganed as going vegan in this server.')
     @app_commands.describe(scope='A member or channel snowflake ID/mention')
     async def list_vegans_app_command(
         self,
@@ -646,9 +881,9 @@ class ModeratorCommands(commands.Cog):
                 check_not_self(interaction, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
@@ -660,13 +895,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all new vegans in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             vegans = await Vegan.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not vegans:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans found in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=vegans, moderation_type=Vegan)
         elif member_obj:
             vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -674,7 +909,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans found for user {member_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, moderations=vegans, moderation_type=Vegan)
         elif channel_obj:
             vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -682,15 +917,15 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active vegans found in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(guild_snowflake=interaction.guild.id, moderations=vegans, moderation_type=Vegan)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
                             
     # DONE
-    @commands.command(name='ls', help='List users veganed as going vegan in this guild.')
+    @commands.command(name='ls', help='List users veganed as going vegan in this server.')
     async def list_members_text_command(
         self,
         ctx: commands.Context,
@@ -706,9 +941,9 @@ class ModeratorCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
@@ -720,13 +955,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all new vegans in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             vegans = await Vegan.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not vegans:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans found in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=vegans, moderation_type=Vegan)
         elif member_obj:
             vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -734,7 +969,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans found for user {member_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=vegans, moderation_type=Vegan)
         elif channel_obj:
             vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
@@ -742,12 +977,12 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active vegans found in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(guild_snowflake=ctx.guild.id, moderations=vegans, moderation_type=Vegan)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
 
  # DONE
     @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.')
@@ -770,16 +1005,16 @@ class ModeratorCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(interaction, channel)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             is_owner = old_room.member_snowflake == interaction.user.id
             highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
             if highest_role not in ('Owner', 'Developer', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             await TemporaryRoom.update_by_source_and_target(guild_snowflake=interaction.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=channel_obj.name)
             await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
@@ -795,11 +1030,11 @@ class ModeratorCommands(commands.Cog):
             try:
                 return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel_obj.mention}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found called {old_name} in {interaction.guild.name}.')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.')
@@ -818,16 +1053,16 @@ class ModeratorCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(ctx, channel)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             is_owner = old_room.member_snowflake == ctx.author.id
             highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
             if highest_role not in ('Owner', 'Developer', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             await TemporaryRoom.update_by_source_and_target(guild_snowflake=ctx.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
             new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=ctx.guild.id, room_name=channel_obj.name)
             await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
@@ -843,11 +1078,11 @@ class ModeratorCommands(commands.Cog):
             try:
                 return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {old_name} migrated to {channel_obj.mention}.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found called {old_name} in {ctx.guild.name}.')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @app_commands.command(name='mutes', description='Lists mute statistics.')
@@ -867,9 +1102,9 @@ class ModeratorCommands(commands.Cog):
                 check_not_self(interaction, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
@@ -881,13 +1116,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all voice mutes in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=interaction.guild.id, target='user')
             if not voice_mutes:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active voice mutes found in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=voice_mutes, moderation_type=VoiceMute)
         elif member_obj:
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target='user')
@@ -895,7 +1130,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active voice mutes found for user {member_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, moderations=voice_mutes, moderation_type=VoiceMute)
         elif channel_obj:
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target='user')
@@ -903,12 +1138,12 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active voice mutes found in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(guild_snowflake=interaction.guild.id, moderations=voice_mutes, moderation_type=VoiceMute)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
     @commands.command(name='mutes', help='Lists mute statistics.')
@@ -928,9 +1163,9 @@ class ModeratorCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
@@ -942,13 +1177,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners or developers can list all voice mutes in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=ctx.guild.id, target='user')
             if not voice_mutes:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active voice mutes found in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=voice_mutes, moderation_type=VoiceMute)
         elif member_obj:
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target='user')
@@ -956,7 +1191,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active voice mutes found for user {member_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=voice_mutes, moderation_type=VoiceMute)
         elif channel_obj:
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target='user')
@@ -964,12 +1199,12 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active voice mutes found in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(guild_snowflake=ctx.guild.id, moderations=voice_mutes, moderation_type=VoiceMute)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
     @app_commands.command(name='mstage', description='Mute/unmute a member in the active stage.')
@@ -994,26 +1229,26 @@ class ModeratorCommands(commands.Cog):
             await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         if not stage:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No active stage found.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             await member_obj.edit(mute=not member_obj.voice.mute)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {'muted' if member_obj.voice.mute else 'unmuted'}.')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
     # DONE
     @commands.command(name='mstage', help='Mute/unmute a member in the active stage.')
@@ -1038,26 +1273,26 @@ class ModeratorCommands(commands.Cog):
             await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         if not stage:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No active stage found.')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             await member_obj.edit(mute=not member_obj.voice.mute)
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {member_obj.mention} has been {'muted' if member_obj.voice.mute else 'unmuted'}.')
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
     @app_commands.command(name='stages', description='Lists stage mute statistics.')
@@ -1082,13 +1317,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners/devs can view all stages in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             stages = await Stage.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not stages:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active stages in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             for i in range(0, len(stages), chunk_size):
                 embed = discord.Embed(
                     title=f'{self.emoji.get_random_emoji()} Active Stages in {interaction.guild.name}',
@@ -1107,7 +1342,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active stages in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target='room')
             initiator = interaction.guild.get_member(stage.member_snowflake)
             initiator_name = initiator.mention
@@ -1129,12 +1364,12 @@ class ModeratorCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(success=embed)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')          
+                return await state.end(error=f'\u274C {str(e).capitalize()}')          
     # DONE
     @commands.command(name='stages', help='Lists stage mute statistics.')
     @is_owner_developer_administrator_coordinator_moderator_predicator()
@@ -1157,13 +1392,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners/devs can view all stages in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             stages = await Stage.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not stages:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active stages in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             for i in range(0, len(stages), chunk_size):
                 embed = discord.Embed(
                     title=f'{self.emoji.get_random_emoji()} Active Stages in {ctx.guild.name}',
@@ -1182,7 +1417,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No active stages in {channel_obj.mention}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target='room')
             initiator = ctx.guild.get_member(stage.member_snowflake)
             initiator_name = initiator.mention
@@ -1204,12 +1439,12 @@ class ModeratorCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(success=embed)
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}.')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
     @app_commands.command(name='tmutes', description='Lists text-mute statistics.')
@@ -1230,9 +1465,9 @@ class ModeratorCommands(commands.Cog):
                 check_not_self(interaction, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
@@ -1244,13 +1479,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can list all text-mutes in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             text_mutes = await TextMute.fetch_by_guild(guild_snowflake=interaction.guild.id)
             if not text_mutes:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No users are currently text-muted in {interaction.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=text_mutes, moderation_type=TextMute)
         elif member_obj:
             text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -1258,7 +1493,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not text-muted in any channels.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=interaction.guild.id, moderations=text_mutes, moderation_type=TextMute)
         elif channel_obj:
             text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -1266,12 +1501,12 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No text-muted users currently in {channel_obj.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, moderations=text_mutes, moderation_type=TextMute)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
     @commands.command(name='tmutes', help='Lists text-mute statistics.')
@@ -1291,9 +1526,9 @@ class ModeratorCommands(commands.Cog):
                 check_not_self(ctx, member_snowflake=member_obj.id)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {e}.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         except:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
@@ -1305,13 +1540,13 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can list all text-mutes in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             text_mutes = await TextMute.fetch_by_guild(guild_snowflake=ctx.guild.id)
             if not text_mutes:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No users are currently text-muted in {ctx.guild.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild(guild_snowflake=ctx.guild.id, moderations=text_mutes, moderation_type=TextMute)
         elif member_obj:
             text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -1319,7 +1554,7 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not text-muted in any channels.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, moderations=text_mutes, moderation_type=TextMute)
         elif channel_obj:
             text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
@@ -1327,12 +1562,12 @@ class ModeratorCommands(commands.Cog):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F No text-muted users currently in {channel_obj.name}.')
                 except Exception as e:
-                    return await state.end(error=f'\U0001F3C6 {e}.')
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
             pages = await All.create_pages_from_moderations_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, moderations=text_mutes, moderation_type=TextMute)
         try:
             return await state.end(success=pages)
         except Exception as e:
-            return await state.end(error=f'\U0001F3C6 {e}.')
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
             
 async def setup(bot: DiscordBot):
     cog = ModeratorCommands(bot)

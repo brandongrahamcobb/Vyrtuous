@@ -38,6 +38,19 @@ DISCORD_COGS = [
     'vyrtuous.cogs.owner_commands',
     'vyrtuous.cogs.scheduled_tasks'
 ]
+DISCORD_COGS_CLASSES = [
+    'AdminCommands',
+    'Aliases',
+    'CoordinatorCommands',
+    'DevCommands',
+    'EventListeners',
+    'EveryoneCommands',
+    'HelpCommand',
+    'Heartbeat',
+    'ModeratorCommands',
+    'OwnerCommands',
+    'ScheduledTasks'
+]
 DISCORD_COMMAND_PREFIX = '!'
 #### PATHS
 PATH_TOML = join(DIR_HOME, 'git', 'python', 'Vyrtuous', 'pyproject.toml')

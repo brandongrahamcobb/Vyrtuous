@@ -198,7 +198,7 @@ class All:
                     duration = DurationObject.from_timedelta(delta)
             else:
                 duration = DurationObject(0)
-            lines_by_channel.setdefault(channel.mention, []).append(f'{user.mention}\nReason: {moderation.reason}\nDuration: {duration}')
+            lines_by_channel.setdefault(channel.mention, []).append(f'{user.mention}\nReason: {moderation.reason}\nExpires: {duration}')
         for channel_mention, entries in lines_by_channel.items():
             for i in range(0, len(entries), chunk_size):
                 embed = discord.Embed(
@@ -233,7 +233,7 @@ class All:
                 reason = moderation.reason
             else:
                 reason = 'No reason provided.'
-            entries.append(f'{channel.mention}\nReason: {reason}\nDuration: {duration}')
+            entries.append(f'{channel.mention}\nReason: {reason}\nExpires: {duration}')
         for i in range(0, len(entries), chunk_size):
             embed = discord.Embed(
                 title=f'{emoji.get_random_emoji()} {moderation_type.PLURAL} for {user.display_name} in {guild.name}',

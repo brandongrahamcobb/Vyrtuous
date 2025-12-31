@@ -47,6 +47,6 @@ class RoleService:
                         logger.debug(f'Role mention resolved: {role.id}')
                         return role
         except Exception as e:
-            logger.warning(f'Role resolution error: {e}')
+            logger.warning(f'Role resolution error: {str(e).capitalize()}')
             raise
         raise ValueError('Role could not be resolved from scope `{scope}`.')

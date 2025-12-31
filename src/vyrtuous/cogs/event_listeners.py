@@ -16,7 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
@@ -24,12 +24,12 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.paginator import Paginator
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.flag import Flag
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
@@ -43,8 +43,6 @@ import asyncio
 import discord
 import time
 
-COOLDOWN = timedelta(minutes=30)
-
 class EventListeners(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
@@ -53,6 +51,7 @@ class EventListeners(commands.Cog):
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.emojis = Emojis()
+        self.flags = []
         self.message_service = MessageService(self.bot, self.db_pool)
         self.join_log = defaultdict(list)
         self._ready_done = False
@@ -60,8 +59,6 @@ class EventListeners(commands.Cog):
         self.member_service = MemberService()
 
     async def cog_load(self):
-        method_names = [cmd.callback.__name__ for cmd in self.bot.commands]
-        logger.info(method_names)
         VideoRoom.video_rooms = await VideoRoom.fetch_all()
         for room in VideoRoom.video_rooms:
             channel = self.bot.get_channel(room.channel_snowflake)
@@ -70,21 +67,7 @@ class EventListeners(commands.Cog):
                     await channel.edit(status="Video-Only Room", reason="Enforce default video-only status")
                 except discord.Forbidden:
                     pass
-    
-    async def enforce_video_message(self, channel_snowflake, member_snowflake, message):
-        channel = await self.bot.fetch_channel(channel_snowflake)
-        member = self.bot.get_user(member_snowflake)
-        now = datetime.now(timezone.utc)
-        last_trigger = self.cooldowns.get(member_snowflake)
-        if last_trigger and now - last_trigger < COOLDOWN:
-            return
-        self.cooldowns[member_snowflake] = now
-        await channel.send(message)
-        async def reset_cooldown():
-            await asyncio.sleep(COOLDOWN.total_seconds())
-            if self.cooldowns.get(member_snowflake) == now:
-                del self.cooldowns[member_snowflake]
-        asyncio.create_task(reset_cooldown())
+        self.flags = await Flag.fetch_all()
 
     
     @commands.Cog.listener()
@@ -226,7 +209,7 @@ class EventListeners(commands.Cog):
                     except discord.Forbidden:
                         logger.debug(f'No permission to edit mute for {member.display_name}')
                     except discord.HTTPException as e:
-                        logger.debug(f'Failed to edit mute for {member.display_name}: {e}.')
+                        logger.debug(f'Failed to edit mute for {member.display_name}: {str(e).capitalize()}')
                 await self.print_flags(member, after.channel)
                 
 #                    explicit_deny_roles = []
@@ -245,10 +228,10 @@ class EventListeners(commands.Cog):
 #                        except Exception as e:
 #                            logger.debug(
 #                                f"⚠ Failed to auto-mute {member.mention} in "
-#                                f"**{after_channel.name}** — `{e}`"
+#                                f"**{after_channel.name}** — `{str(e).capitalize()}`"
 #                            )
 #                        except discord.HTTPException as e:
-#                            logger.debug(f'Failed to mute {member.display_name}: {e}.')
+#                            logger.debug(f'Failed to mute {member.display_name}: {str(e).capitalize()}')
             
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -267,7 +250,7 @@ class EventListeners(commands.Cog):
                     except discord.Forbidden:
                         logger.warning(f'Missing permissions to ban in channel {channel.id}')
                     except discord.HTTPException as e:
-                        logger.warning(f'Failed to apply ban for {member} in {channel.id}: {e}.')
+                        logger.warning(f'Failed to apply ban for {member} in {channel.id}: {str(e).capitalize()}')
             if text_mutes:
                 for text_mute in text_mutes:
                     channel = guild.get_channel(text_mute.channel_snowflake)
@@ -278,7 +261,7 @@ class EventListeners(commands.Cog):
                     except discord.Forbidden:
                         logger.warning(f'Missing permissions to text mute in channel {channel.id}')
                     except discord.HTTPException as e:
-                        logger.warning(f'Failed to apply text mute for {member} in {channel.id}: {e}.')
+                        logger.warning(f'Failed to apply text mute for {member} in {channel.id}: {str(e).capitalize()}')
 
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
@@ -311,15 +294,14 @@ class EventListeners(commands.Cog):
             member = args[0] if len(args) > 0 else None
             member_obj = await self.member_service.resolve_member(message, member)
             await has_equal_or_higher_role(message, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, sender_snowflake=message.author.id)
-            if member_obj.id == message.guild.me.id:
-                raise Exception(f"\U000026A0\U0000FE0F You cannot {alias.alias_type} {message.guild.me.mention}.")
+            check_not_self(message, member_snowflake=member_obj.id)
             if not alias.handler:
                 raise Exception(f"\U000026A0\U0000FE0F No alias handler exists for {alias.alias_name}.")
         except Exception as e:
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F Could not resolve a valid channel, member or has insufficient permissions for this alias.")
+                return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}")
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         existing_guestroom_alias_event = await Alias.get_existing_guestroom_alias_event(alias=alias, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
         target = args[1] if len(args) > 1 else '24h'
         is_reason_modification = target in ['+', '-', '=']
@@ -329,22 +311,45 @@ class EventListeners(commands.Cog):
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s or {alias.alias_type} users.")
             except Exception as e:
-                return await state.end(error=f'\U0001F3C6 {e}')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         await alias.handler(alias, args, channel_obj, executor_role, existing_guestroom_alias_event, is_duration_modification, is_reason_modification, member_obj, message, state)
         
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        if isinstance(error, (commands.BadArgument, commands.CheckFailure)):
-            return await ctx.reply(f'\U000026A0\U0000FE0F {error}')
-        if isinstance(error, commands.MissingRequiredArgument):
-            missing = error.param.name
-            return await ctx.reply(f'\U000026A0\U0000FE0F Missing required argument: `{missing}`')
+        state = State(ctx)
+        try:
+            match type(error):
+                case commands.BadArgument:
+                    return await state.end(error=f'\u274C {error}')    
+                case commands.CheckFailure:
+                    return await state.end(error=f'\u274C {error}')
+                case commands.MissingRequiredArgument:
+                    missing = error.param.name
+                    return await state.end(error=f'\u274C Missing required argument: `{missing}`')
+                case ValueError:
+                    return await state.end(error=f'\u274C {error}')
+        except Exception as e:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
-        if isinstance(error, (app_commands.BadArgument, app_commands.CheckFailure)):
-            return await self.message_service.send_message(interaction, f'\U000026A0\U0000FE0F {error}')
-            
+        state = State(interaction)
+        try:
+            match type(error):
+                case app_commands.BadArgument:
+                    return await state.end(error=f'\u274C {error}') 
+                case app_commands.CheckFailure:
+                    return await state.end(error=f'\u274C {error}')
+                case ValueError:
+                    return await state.end(error=f'\u274C {error}') 
+        except Exception as e:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}') 
 #    @commands.Cog.listener()
 #    async def on_command(self, ctx):
 #        await ctx.send("Bot is currently down. Changes will not be saved permanently.")
@@ -354,6 +359,8 @@ class EventListeners(commands.Cog):
         if getattr(self, "_ready_done", False):
             return
         self._ready_done = True
+        method_names = [cmd.callback.__name__ for cmd in self.bot.commands]
+        logger.info(method_names)
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -389,61 +396,21 @@ class EventListeners(commands.Cog):
                 Administrator.update_guilds_and_roles_by_member(guild_snowflake=list(guild_snowflakes), member_snowflake=administrator.member_snowflake, role_snowflakes=list(role_snowflakes))
 
         
-    # async def print_flags(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
-    #     async with self.db_pool.acquire() as conn:
-    #         rows = await conn.fetch('''
-    #             SELECT channel_snowflake, member_snowflake, reason
-    #             FROM active_flags
-    #             WHERE guild_id = $1 AND member_snowflake = $2
-    #         ''', member.guild.id, member.id)
-    #         if rows:
-    #             grouped = {}
-    #             for row in rows:
-    #                 grouped.setdefault(row['channel_id'], []).append(row)
-    #             context_records = grouped.get(after_channel.id)
-    #             if after_channel.id == 1222056499959042108 and context_records:
-    #                 if context_records and after_channel.id:
-    #                     embeds = []
-    #                     embed = discord.Embed(
-    #                         title=f'\u26A0\uFE0F {member.display_name} is flagged',
-    #                         color=discord.Color.red()
-    #                     )
-    #                     embed.set_thumbnail(url=member.display_avatar.url)
-    #                     for record in context_records:
-    #                         reason = record['reason'] or 'No reason provided'
-    #                         embed.add_field(name=f'Channel: {after_channel.mention}', value=f'Reason: {reason}', inline=False)
-    #                     other_channels = [ch_id for ch_id in grouped.keys() if ch_id != after_channel.id]
-    #                     if other_channels:
-    #                         ch_mentions = []
-    #                         for ch_id in other_channels:
-    #                             ch = member.guild.get_channel(ch_id)
-    #                             if not ch:
-    #                                 ch = await member.guild.fetch_channel(ch_id)
-    #                             ch_mentions.append(ch.mention if ch else f'Channel ID `{ch_id}`')
-    #                         embed.add_field(name='Other flagged channels', value='\n'.join(ch_mentions), inline=False)
-    #                     embeds.append(embed)
-    #                     for ch_id in other_channels:
-    #                         records = grouped[ch_id]
-    #                         ch = member.guild.get_channel(ch_id)
-    #                         ch_name = ch.mention if ch else f'Channel ID `{ch_id}`'
-    #                         embed = discord.Embed(
-    #                             title=f'\u26A0\uFE0F {member.display_name} is flagged in {ch_name}',
-    #                             color=discord.Color.red()
-    #                         )
-    #                         embed.set_thumbnail(url=member.display_avatar.url)
-    #                         for record in records:
-    #                             reason = record['reason'] or 'No reason provided'
-    #                             embed.add_field(name='Channel', value=f'{ch_name}\nReason: {reason}', inline=False)
-    #                         embeds.append(embed)
-    #                     now = time.time()
-    #                     self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
-    #                     if len(self.join_log[member.id]) < 1:
-    #                         self.join_log[member.id].append(now)
-    #                         if len(embeds) == 1:
-    #                             await after_channel.send(embed=embeds[0])
-    #                         else:
-    #                             paginator = Paginator(self.bot, after_channel, embeds)
-    #                             await paginator.start()
+    async def print_flags(self, member: discord.Member, after_channel: discord.abc.GuildChannel):
+        if after_channel.id == 1222056499959042108:
+            for flag in self.flags:
+                if flag.channel_snowflake == after_channel.id and flag.member_snowflake == member.id:
+                    embed = discord.Embed(
+                        title=f'\u26A0\uFE0F {member.display_name} is flagged',
+                        color=discord.Color.red()
+                    )
+                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.add_field(name=f'Channel: {after_channel.mention}', value=f'Reason: {flag.reason}', inline=False)
+                    now = time.time()
+                    self.join_log[member.id] = [t for t in self.join_log[member.id] if now - t < 300]
+                    if len(self.join_log[member.id]) < 1:
+                        self.join_log[member.id].append(now)
+                        await after_channel.send(embed=embed)
             
 async def setup(bot: DiscordBot):
     await bot.add_cog(EventListeners(bot))

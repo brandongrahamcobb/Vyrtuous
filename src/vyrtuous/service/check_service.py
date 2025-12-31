@@ -40,7 +40,7 @@ class NotModerator(commands.CheckFailure):
         super().__init__(message)
 
 class NotGuildOwner(commands.CheckFailure):
-    def __init__(self, message='You are not the guild owner and cannot do this.'):
+    def __init__(self, message='You are not the server owner and cannot do this.'):
         super().__init__(message)
 
 class NotSystemOwner(commands.CheckFailure):
@@ -48,7 +48,7 @@ class NotSystemOwner(commands.CheckFailure):
         super().__init__(message)
 
 class NotDeveloper(commands.CheckFailure):
-    def __init__(self, message='You are not a developer in this guild.'):
+    def __init__(self, message='You are not a developer in this server.'):
         super().__init__(message)
                                     
 class NotAtHome(commands.CheckFailure):
@@ -60,20 +60,6 @@ async def at_home(ctx_or_interaction_or_message) -> bool:
     if ctx_or_interaction_or_message.guild.id == int(bot.config['discord_testing_guild_id']):
         return True
     raise NotAtHome()
-    
-async def send_check_failure_embed(ctx_or_interaction_or_message, error: commands.CheckFailure, *, title: str = 'Permission Check Failed'):
-    embed = discord.Embed(
-        title=title,
-        description=error.args[0] if error.args else 'An unknown error occurred.',
-        color=discord.Color.red()
-    )
-    embed.set_footer(text='Contact a bot admin if you think this is a mistake.')
-    if isinstance(ctx_or_interaction_or_message, discord.Interaction):
-        return await ctx_or_interaction_or_message.response.send_message(embed=embed)
-    elif isinstance(ctx_or_interaction_or_message, commands.Context) or isinstance(ctx_or_interaction_or_message, discord.Message):
-        return await ctx_or_interaction_or_message.reply(embed=embed)
-    else:
-        return None
 
 async def is_moderator(ctx_or_interaction_or_message):
     bot = DiscordBot.get_instance()
@@ -180,7 +166,7 @@ def is_owner_predicator():
     async def predicate(ctx_or_interaction_or_message):
         if await is_owner(ctx_or_interaction_or_message):
             return True
-        raise commands.CheckFailure('You are not an owner in this guild')
+        raise commands.CheckFailure('You are not an owner in this server')
     predicate._permission_level = 'Owner'
     return commands.check(predicate)
 
@@ -192,7 +178,7 @@ def is_owner_developer_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure('You are not an owner or developer in this guild.')
+        raise commands.CheckFailure('You are not an owner or developer in this server.')
     predicate._permission_level = 'Developer'
     return commands.check(predicate)
 
@@ -204,7 +190,7 @@ def is_owner_developer_administrator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure('You are not an owner, developer or administrator in this guild.')
+        raise commands.CheckFailure('You are not an owner, developer or administrator in this server.')
     predicate._permission_level = 'Administrator'
     return commands.check(predicate)
     
@@ -216,7 +202,7 @@ def is_owner_developer_administrator_coordinator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure('You are not an owner, developer, administrator in this guild or a coordinator in this channel.')
+        raise commands.CheckFailure('You are not an owner, developer, administrator in this server or a coordinator in this channel.')
     predicate._permission_level = 'Coordinator'
     return commands.check(predicate)
     
@@ -228,7 +214,7 @@ def is_owner_developer_administrator_coordinator_moderator_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure('You are not an owner, developer, administrator in this guild or a coordinator/moderator in this channel.')
+        raise commands.CheckFailure('You are not an owner, developer, administrator in this server or a coordinator/moderator in this channel.')
     predicate._permission_level = 'Moderator'
     return commands.check(predicate)
 
@@ -259,12 +245,11 @@ async def member_is_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     return False
 
 async def member_is_developer(guild_snowflake: int, member_snowflake: int) -> bool:
-    bot = DiscordBot.get_instance()
-    async with bot.db_pool.acquire() as conn:
-        row = await conn.fetchrow('SELECT developer_guild_ids FROM users WHERE discord_snowflake=$1', member_snowflake)
-    if not row:
-        return False
-    return guild_snowflake in (row['developer_guild_ids'] or [])
+    developers = await Developer.fetch_members_by_guild(guild_snowflake=guild_snowflake)
+    for developer in developers:
+        if developer.member_snowflake == member_snowflake:
+            return True
+    return False
 
 async def member_is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
     administrator = await Administrator.fetch_member(member_snowflake)

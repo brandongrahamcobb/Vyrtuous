@@ -31,7 +31,7 @@ class Snowflake:
     @snowflake.setter
     def snowflake(self, snowflake: int):
         if not re.search(r"\d{12,19}", str(snowflake)):
-            raise commands.BadArgument(f"{type(self).__name__}Snowflake is invalid.")
+            raise commands.BadArgument(f"The field `{type(self).__name__.lower()}` is invalid.")
         self._snowflake = snowflake
 
 class Converter(commands.Converter):

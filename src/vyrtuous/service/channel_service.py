@@ -48,5 +48,5 @@ class ChannelService:
                         logger.debug(f'Channel mention resolved: {c.id}')
                         return c
         except Exception as e:
-            logger.warning(f'Channel resolution error: {e}')
+            logger.warning(f'Channel resolution error: {str(e).capitalize()}')
         raise ValueError(f'Channel `{scope}` not found in {ctx_interaction_or_message.guild.name}.')

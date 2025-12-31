@@ -87,6 +87,21 @@ class Flag:
             return Flag(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'])
 
     @classmethod
+    async def fetch_all(cls):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, reason, updated_at
+                FROM active_flags
+            ''')
+        flags = []
+        if rows:
+            for row in rows:
+                flags.append(Flag(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
+        return flags
+
+
+    @classmethod
     async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
