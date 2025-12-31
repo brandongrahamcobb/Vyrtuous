@@ -68,7 +68,7 @@ DROP TABLE active_server_voice_mutes;
 CREATE TABLE active_server_voice_mutes (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     guild_snowflake BIGINT NOT NULL,
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -79,14 +79,14 @@ ALTER TABLE active_text_mutes RENAME TO active_text_mutes_old;
 CREATE TABLE active_text_mutes (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
 );
-INSERT INTO active_text_mutes (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_at)
+INSERT INTO active_text_mutes (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_in)
 SELECT channel_id, guild_id, discord_snowflake, reason, expires_at
 FROM active_text_mutes_old;
 DROP TABLE active_text_mutes_old;
@@ -95,14 +95,14 @@ ALTER TABLE active_bans RENAME TO active_bans_old;
 CREATE TABLE active_bans (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
 );
-INSERT INTO active_bans (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_at)
+INSERT INTO active_bans (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_in)
 SELECT channel_id, guild_id, discord_snowflake, reason, expires_at
 FROM active_bans_old;
 DROP TABLE active_bans_old;
@@ -111,7 +111,7 @@ ALTER TABLE active_voice_mutes RENAME TO active_voice_mutes_old;
 CREATE TABLE active_voice_mutes (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
@@ -119,7 +119,7 @@ CREATE TABLE active_voice_mutes (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
 );
-INSERT INTO active_voice_mutes (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_at)
+INSERT INTO active_voice_mutes (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_in)
 SELECT channel_id, guild_id, discord_snowflake, reason, expires_at
 FROM active_voice_mutes_old;
 DROP TABLE active_voice_mutes_old;
@@ -152,7 +152,7 @@ DROP TABLE active_stages;
 CREATE TABLE active_stages (
     channel_snowflake BIGINT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -216,14 +216,14 @@ ALTER TABLE active_flags RENAME TO active_flags_old;
 CREATE TABLE active_flags (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
 );
-INSERT INTO active_flags (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_at)
+INSERT INTO active_flags (channel_snowflake, guild_snowflake, member_snowflake, reason, expires_in)
 SELECT channel_id, guild_id, discord_snowflake, reason, expires_at
 FROM active_flags_old;
 DROP TABLE active_flags_old;

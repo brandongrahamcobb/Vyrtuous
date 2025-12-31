@@ -7,7 +7,7 @@ CREATE TABLE users (
 CREATE TABLE active_server_voice_mutes (
     guild_id BIGINT NOT NULL,
     discord_snowflake BIGINT NOT NULL,
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     reason TEXT,
     PRIMARY KEY (guild_id, discord_snowflake)
 );
@@ -81,7 +81,7 @@ CREATE TABLE administrators (
 CREATE TABLE active_server_voice_mutes (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     guild_snowflake BIGINT NOT NULL,
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -91,7 +91,7 @@ CREATE TABLE active_server_voice_mutes (
 CREATE TABLE active_text_mutes (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
@@ -102,7 +102,7 @@ CREATE TABLE active_text_mutes (
 CREATE TABLE active_bans (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
@@ -113,7 +113,7 @@ CREATE TABLE active_bans (
 CREATE TABLE active_voice_mutes (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
@@ -135,7 +135,7 @@ CREATE TABLE temporary_rooms (
 CREATE TABLE active_stages (
     channel_snowflake BIGINT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -165,7 +165,7 @@ CREATE TABLE vegans (
 CREATE TABLE active_flags (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ,
+    expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
