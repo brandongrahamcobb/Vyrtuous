@@ -40,7 +40,7 @@ class Administrator:
                 ARRAY(
                     SELECT DISTINCT unnest(administrators.role_snowflakes || EXCLUDED.role_snowflakes)
                 )
-            ''', self.guild_snowflake, self.member_snowflake, self.role_snowflake)
+            ''', self.guild_snowflake, self.member_snowflake, self.role_snowflakes)
 
     async def revoke(self):
         async with self.bot.db_pool.acquire() as conn:
@@ -53,7 +53,7 @@ class Administrator:
                         SELECT unnest($3::BIGINT[])
                     )
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
-            ''', self.guild_snowflake, self.member_snowflake, self.role_snowflake)
+            ''', self.guild_snowflake, self.member_snowflake, self.role_snowflakes)
 
     @classmethod
     async def fetch_all(cls):
@@ -64,38 +64,12 @@ class Administrator:
                 FROM administrators
             ''')
         administrators = []
-        for row in rows:
-            administrators.append(
-                Administrator(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"], role_snowflakes=row["role_snowflakes"])
-            )
+        if rows:
+            for row in rows:
+                administrators.append(
+                    Administrator(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"], role_snowflakes=row["role_snowflakes"])
+                )
         return administrators
-    
-    @classmethod
-    async def fetch_all_roles(cls):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
-                SELECT guild_snowflake, role_snowflake
-                FROM administrator_roles
-            ''')
-        administrator_roles = []
-        for row in rows:
-            administrator_roles.append(guild_snowflake=row['guild_snowflake'], role_snowflake=row['role_snowflake'])
-        return administrator_roles
-
-    @classmethod
-    async def fetch_roles_by_guild(cls, guild_snowflake: Optional[int]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetchrow('''
-                SELECT guild_snowflake, role_snowflake
-                FROM administrator_roles
-                WHERE guild_snowflake=$1
-            ''', guild_snowflake)
-        administrator_roles = []
-        for row in rows:
-            administrator_roles.append(guild_snowflake=guild_snowflake, role_snowflake=row['role_snowflake'])
-        return administrator_roles
     
     @classmethod
     async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
@@ -146,7 +120,7 @@ class Administrator:
         administrators = []
         if rows:
             for row in rows:
-                administrators.append(Administrator(guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], role_snowflakes=row['row_snowflakes']))
+                administrators.append(Administrator(guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], role_snowflakes=row['role_snowflakes']))
         return administrators
     
     @classmethod
@@ -159,7 +133,7 @@ class Administrator:
         administrators = []
         if rows:
             for row in rows:
-                administrators.append(Administrator(guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], role_snowflakes=row['row_snowflakes']))
+                administrators.append(Administrator(guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], role_snowflakes=row['role_snowflakes']))
         return administrators
     
     @classmethod
@@ -172,11 +146,57 @@ class Administrator:
         administrators = []
         if rows:
             for row in rows:
-                administrators.append(Administrator(guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], role_snowflakes=row['row_snowflakes']))
+                administrators.append(Administrator(guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], role_snowflakes=row['role_snowflakes']))
         return administrators
             
 class AdministratorRole:
 
     def __init__(self, guild_snowflake: list[int|None], role_snowflake: list[int|None]):
+        self.bot = DiscordBot.get_instance()
         self.guild_snowflake = guild_snowflake
         self.role_snowflake = role_snowflake
+
+    async def grant(self):
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                INSERT INTO administrator_roles (created_at, guild_snowflake, role_snowflake)
+                VALUES (NOW(), $1, $2)    
+                ON CONFLICT (guild_snowflake, role_snowflake)
+                DO NOTHING
+            ''', self.guild_snowflake, self.role_snowflake)
+
+    async def revoke(self):
+        async with self.bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                DELETE FROM administrator_roles
+                WHERE guild_snowflake = $1 AND role_snowflake = $2
+            ''', self.guild_snowflake, self.role_snowflake)
+    
+    @classmethod
+    async def fetch_all_roles(cls):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT guild_snowflake, role_snowflake
+                FROM administrator_roles
+            ''')
+        administrator_roles = []
+        if rows:
+            for row in rows:
+                administrator_roles.append(AdministratorRole(guild_snowflake=row['guild_snowflake'], role_snowflake=row['role_snowflake']))
+        return administrator_roles
+
+    @classmethod
+    async def fetch_roles_by_guild(cls, guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT guild_snowflake, role_snowflake
+                FROM administrator_roles
+                WHERE guild_snowflake=$1
+            ''', guild_snowflake)
+        administrator_roles = []
+        if rows:
+            for row in rows:
+                administrator_roles.append(AdministratorRole(guild_snowflake=guild_snowflake, role_snowflake=row['role_snowflake']))
+        return administrator_roles

@@ -25,6 +25,7 @@ from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import Administrator
+from vyrtuous.utils.administrator import AdministratorRole
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.database import Database
@@ -403,9 +404,12 @@ class DevCommands(commands.Cog):
         role: AppRoleSnowflake
     ):
         state = State(interaction)
+        action = None
+        chunk_size = 18
         pages = []
         skipped_members, target_members = [], []
         role_obj = None
+        role_snowflakes = []
         try:
             role_obj = await self.role_service.resolve_role(interaction, role)
         except Exception as e:
@@ -413,45 +417,57 @@ class DevCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e: 
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        administrators = Administrator.fetch_by_guild(guild_snowflake=interaction.guild.id)
+           
+        administrators = await Administrator.fetch_by_guild_and_role(guild_snowflake=interaction.guild.id, role_snowflake=role_obj.id)
+        administrator_roles = await AdministratorRole.fetch_roles_by_guild(guild_snowflake=interaction.guild.id)
+        for administrator_role in administrator_roles:
+            await administrator_role.revoke()
         for member in role_obj.members:
-            for administrator in administrators:
-                if role_obj.id in administrator.snowflakes:
-                    skipped_members(member)
-                    continue
-                else:
-                    administrator = Administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
-                    await administrator.grant()
-                    target_members.append(member.mention)
-        chunks = [target_members[i:i + 18] for i in range(0, len(target_members), 18)]
+            if administrators:
+                for administrator in administrators:
+                    if role_obj.id not in administrator.role_snowflakes:
+                        skipped_members.append(member)
+                        continue
+                    elif role_obj.id in administrator.role_snowflakes:
+                        await administrator.revoke()
+                        action = 'revoked'
+                        target_members.append(member.mention)
+        if action != 'revoked':
+            administrator_role = AdministratorRole(guild_snowflake=interaction.guild.id, role_snowflake=role_obj.id)
+            await administrator_role.grant()
+            administrator_roles = await AdministratorRole.fetch_roles_by_guild(guild_snowflake=interaction.guild.id)
+            for administrator_role in administrator_roles:
+                role_snowflakes.append(administrator_role.role_snowflake)
+            for member in role_obj.members:
+                administrator = Administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id, role_snowflakes=role_snowflakes)
+                await administrator.grant()
+                action = 'granted'
+                target_members.append(member.mention)
+
+        chunks = [target_members[i:i + chunk_size] for i in range(0, len(target_members), chunk_size)]
         for index, chunk in enumerate(chunks, start=1):
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {role_obj.name} Permission Update',
-                description=f'Members granted `Administrator`.',
+                description=f'Members {action} `Administrator`.',
                 color=discord.Color.green()
             )
-            embed.add_field(name=f'Member(s) ({len(target_members)})', value='\n'.join(chunk), inline=False)
+            embed.add_field(name=f'Member(s) ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
             pages.append(embed)
         if skipped_members:
-            chunks = [skipped_members[i:i + 18] for i in range(0, len(skipped_members), 18)]
+            chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
             for index, chunk in enumerate(chunks, start=1):
                 embed = discord.Embed(
                     title=f'{self.emoji.get_random_emoji()} {role_obj.name} Skipped Members',
                     description=f'Members with {role_obj.mention}',
                     color=discord.Color.red()
                 )
-                embed.add_field(name=f'Member(s) ({len(skipped_members)})', value='\n'.join(chunk), inline=False)
+                embed.add_field(name=f'Member(s) ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
                 pages.append(embed)
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No members found with the role {role_obj.mention}.')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
@@ -462,9 +478,12 @@ class DevCommands(commands.Cog):
         role: RoleSnowflake
     ):
         state = State(ctx)
+        action = None
+        chunk_size = 18
         pages = []
         skipped_members, target_members = [], []
         role_obj = None
+        role_snowflakes = []
         try:
             role_obj = await self.role_service.resolve_role(ctx, role)
         except Exception as e:
@@ -472,35 +491,58 @@ class DevCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e: 
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        administrators = Administrator.fetch_by_guild(guild_snowflake=ctx.guild.id)
+           
+        administrators = await Administrator.fetch_by_guild_and_role(guild_snowflake=ctx.guild.id, role_snowflake=role_obj.id)
+        administrator_roles = await AdministratorRole.fetch_roles_by_guild(guild_snowflake=ctx.guild.id)
+        for administrator_role in administrator_roles:
+            await administrator_role.revoke()
         for member in role_obj.members:
-            for administrator in administrators:
-                if role_obj.id in administrator.snowflakes:
-                    skipped_members(member)
-                    continue
-                else:
-                    administrator = Administrator(guild_snowflake=ctx.guild.id, member_snowflake=member.id, role_snowflake=role_obj.id)
-                    await administrator.grant()
-                    target_members.append(member.mention)
-        chunks = [target_members[i:i + 18] for i in range(0, len(target_members), 18)]
+            if administrators:
+                for administrator in administrators:
+                    if role_obj.id not in administrator.role_snowflakes:
+                        skipped_members.append(member)
+                        continue
+                    elif role_obj.id in administrator.role_snowflakes:
+                        await administrator.revoke()
+                        action = 'revoked'
+                        target_members.append(member.mention)
+        if action != 'revoked':
+            administrator_role = AdministratorRole(guild_snowflake=ctx.guild.id, role_snowflake=role_obj.id)
+            await administrator_role.grant()
+            administrator_roles = await AdministratorRole.fetch_roles_by_guild(guild_snowflake=ctx.guild.id)
+            administrator_roles.append(administrator_role)
+            for administrator_role in administrator_roles:
+                role_snowflakes.append(administrator_role.role_snowflake)
+            for member in role_obj.members:
+                administrator = Administrator(guild_snowflake=ctx.guild.id, member_snowflake=member.id, role_snowflakes=role_snowflakes)
+                await administrator.grant()
+                action = 'granted'
+                target_members.append(member.mention)
+
+        chunks = [target_members[i:i + chunk_size] for i in range(0, len(target_members), chunk_size)]
         for index, chunk in enumerate(chunks, start=1):
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {role_obj.name} Permission Update',
-                description=f'Members granted `Administrator`.',
+                description=f'Members {action} `Administrator`.',
                 color=discord.Color.green()
             )
-            embed.add_field(name=f'Member(s) ({len(target_members)})', value='\n'.join(chunk), inline=False)
+            embed.add_field(name=f'Member(s) ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
             pages.append(embed)
         if skipped_members:
-            chunks = [skipped_members[i:i + 18] for i in range(0, len(skipped_members), 18)]
+            chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
             for index, chunk in enumerate(chunks, start=1):
                 embed = discord.Embed(
                     title=f'{self.emoji.get_random_emoji()} {role_obj.name} Skipped Members',
                     description=f'Members with {role_obj.mention}',
                     color=discord.Color.red()
                 )
-                embed.add_field(name=f'Member(s) ({len(skipped_members)})', value='\n'.join(chunk), inline=False)
+                embed.add_field(name=f'Member(s) ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
                 pages.append(embed)
+        
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @app_commands.command(name='unload', description="Unloads a cog by name 'vyrtuous.cog.<cog_name>'.")
@@ -535,107 +577,7 @@ class DevCommands(commands.Cog):
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully unloaded {module}.')
         except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
-                
-    # DONE
-    @app_commands.command(name='xtrole', description='Revokes a role from administrator and updates all members.')
-    @is_owner_developer_predicator()
-    async def revoke_administrator_by_role_app_command(
-        self,
-        interaction: discord.Interaction,
-        role: AppRoleSnowflake
-    ):
-        state = State(interaction)
-        chunk_size = 18
-        members_revoked, pages = [], []
-        role_obj = None
-        try:
-            role_obj = await self.role_service.resolve_role(interaction, role)
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        for member in role_obj.members:
-            administrator = await Administrator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member.id)
-            if not administrator:
-                continue
-            if role_obj.id in administrator.role_snowflakes:
-                await administrator.update_by_removed_role(role_snowflake=role_obj.id)
-                members_revoked.append(member.mention)
-        member_sets = [members_revoked[i:i + chunk_size] for i in range(0, len(members_revoked), chunk_size)]
-        for index, page in enumerate(member_sets, start=1):
-            embed = discord.Embed(
-                title=f'{self.emoji.get_random_emoji()} {role_obj.name} Permissions Update',
-                description=f'Members revoked `Administrator`',
-                color=discord.Color.red()
-            )
-            embed.add_field(
-                name=f'Member(s) ({len(page)})',
-                value='\n'.join(page),
-                inline=False
-            )
-            pages.append(embed)
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No admins found in {interaction.guild.name}.')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')    
-
-    # DONE
-    @commands.command(name='xtrole', help='Revokes a role from administrator and updates all members.')
-    @is_owner_developer_predicator()
-    async def revoke_administrator_by_role_text_command(
-        self,
-        ctx: commands.Context,
-        role: RoleSnowflake
-    ):
-        state = State(ctx)
-        chunk_size = 18
-        members_revoked, pages = [], []
-        role_obj = None
-        try:
-            role_obj = await self.role_service.resolve_role(ctx, role)
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        for member in role_obj.members:
-            administrator = await Administrator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member.id)
-            if not administrator:
-                continue
-            if role_obj.id in administrator.role_snowflakes:
-                await administrator.update_by_removed_role(role_snowflake=role_obj.id)
-                members_revoked.append(member.mention)
-        member_sets = [members_revoked[i:i + chunk_size] for i in range(0, len(members_revoked), chunk_size)]
-        for index, page in enumerate(member_sets, start=1):
-            embed = discord.Embed(
-                title=f'{self.emoji.get_random_emoji()} {role_obj.name} Permissions Update',
-                description=f'Members revoked `Administrator`',
-                color=discord.Color.red()
-            )
-            embed.add_field(
-                name=f'Member(s) ({len(page)})',
-                value='\n'.join(page),
-                inline=False
-            )
-            pages.append(embed)
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No admins found in {ctx.guild.name}.')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')    
+            return await state.end(error=f'\u274C {str(e).capitalize()}') 
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(DevCommands(bot))
