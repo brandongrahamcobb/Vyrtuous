@@ -74,7 +74,7 @@ class TextMute:
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE active_text_mutes
-                SET channel_snowflake=$
+                SET channel_snowflake=$2
                 WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
         

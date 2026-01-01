@@ -218,3 +218,14 @@ CREATE TABLE administrator_roles (
     PRIMARY KEY (guild_snowflake, role_snowflake)
 );
 
+CREATE TABLE developer_logs (
+    channel_snowflake BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    developer_snowflakes BIGINT[],
+    guild_snowflake BIGINT NOT NULL,
+    id UUID PRIMARY KEY,
+    message_snowflake BIGINT NOT NULL,
+    notes TEXT,
+    resolved BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);

@@ -271,6 +271,8 @@ class EventListeners(commands.Cog):
             ctx = await self.bot.get_context(after)
             if ctx.command:
                 await self.bot.invoke(ctx)
+            else:
+                await self.on_message(after)
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):

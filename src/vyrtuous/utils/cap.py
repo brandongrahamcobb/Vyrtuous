@@ -50,7 +50,8 @@ class Cap:
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT channel_snowflake, created_at, duration_seconds, guild_snowflake, moderation_type, updated_at
-                FROM active_caps WHERE guild_snowflake=$1 AND channel_snowflake=$2
+                FROM active_caps
+                WHERE guild_snowflake=$1 AND channel_snowflake=$2
             ''', guild_snowflake, channel_snowflake)
         caps = []
         if rows:

@@ -26,8 +26,8 @@ class Administrator:
     def __init__(self, guild_snowflake: list[int|None], member_snowflake: Optional[int], role_snowflakes: list[int|None]):
         self.bot = DiscordBot.get_instance()
         self.guild_snowflake = guild_snowflake
-        self.member_snowflake: Optional[int] = member_snowflake
-        self.member_mention: Optional[str] = f"<@{member_snowflake}>"
+        self.member_snowflake = member_snowflake
+        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.role_snowflakes = role_snowflakes
     
     async def grant(self):
@@ -80,9 +80,10 @@ class Administrator:
                 FROM administrators
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
-        if not row:
-            return None
-        return Administrator(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"], role_snowflakes=row["role_snowflakes"])
+        administrator = None
+        if row:
+            administrator = Administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, role_snowflakes=row["role_snowflakes"])
+        return administrator
 
     async def update_by_removed_role(self, role_snowflake: Optional[int]):
         async with self.bot.db_pool.acquire() as conn:
@@ -108,20 +109,6 @@ class Administrator:
                 )
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', self.guild_snowflake, self.member_snowflake, role_snowflake)
-
-    @classmethod
-    async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
-                SELECT created_at, guild_snowflake, member_snowflake, role_snowflakes, updated_at
-                FROM administrators WHERE guild_snowflake=$1 AND member_snowflake=$2
-            ''', guild_snowflake, member_snowflake)
-        administrators = []
-        if rows:
-            for row in rows:
-                administrators.append(Administrator(guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], role_snowflakes=row['role_snowflakes']))
-        return administrators
     
     @classmethod
     async def fetch_by_guild_and_role(cls, guild_snowflake: Optional[int], role_snowflake: Optional[int]):

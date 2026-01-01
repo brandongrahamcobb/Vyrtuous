@@ -65,9 +65,9 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=interaction.guild.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
         if moderator:
-            await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+            await moderator.revoke()
             action = 'revoked'
         else:
             moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -105,9 +105,9 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=ctx.guild.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+        moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
         if moderator:
-            await Moderator.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            await moderator.revoke()
             action = 'revoked'
         else:
             moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)

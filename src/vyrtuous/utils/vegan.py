@@ -128,3 +128,17 @@ class Vegan:
             ''', channel_snowflake, guild_snowflake)
         if row:
             return Vegan(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
+        
+    @classmethod
+    async def fetch_all(cls):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, updated_at
+                FROM vegans
+            ''')
+        vegans = []
+        if rows:
+            for row in rows:
+                vegans.append(Vegan(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
+        return vegans

@@ -120,7 +120,7 @@ class VoiceMute:
                 WHERE target=$1
             ''', target)
         voice_mutes = []
-        if row:
+        if rows:
             for row in rows:
                 voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
         return voice_mutes

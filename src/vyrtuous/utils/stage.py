@@ -28,7 +28,7 @@ class Stage:
     PLURAL = "Stages"
     SINGULAR = "Stage"
 
-    def __init__(self, channel_snowflake: Optional[int], expires_in: Optional[datetime], guild_snowflake: Optional[str], member_snowflake: Optional[int]):
+    def __init__(self, channel_snowflake: Optional[int], expires_in: Optional[datetime], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         self.channel_snowflake = channel_snowflake
         self.expires_in = expires_in
         self.guild_snowflake = guild_snowflake

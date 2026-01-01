@@ -25,17 +25,17 @@ import asyncio
 class VideoRoom:
 
     COOLDOWN = timedelta(minutes=30)
+    cooldowns = {}
     video_rooms = []
+    video_tasks = {}
         
     def __init__(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         self.bot = DiscordBot.get_instance()
         self.channel_mention = f"<#{channel_snowflake}>"
         self.channel_snowflake = channel_snowflake
-        self.cooldowns = {}
         self.emojis = Emojis()
         self.guild_snowflake = guild_snowflake
         self.is_video_room: Optional[bool] = True
-        self.video_tasks = {}
 
     @classmethod
     async def enforce_video(cls, member, channel, delay):
@@ -64,7 +64,7 @@ class VideoRoom:
     @classmethod
     async def enforce_video_message(cls, channel_snowflake, member_snowflake, message):
         bot = DiscordBot.get_instance()
-        channel = await bot.get_channel(channel_snowflake)
+        channel = bot.get_channel(channel_snowflake)
         now = datetime.now(timezone.utc)
         last_trigger = cls.cooldowns.get(member_snowflake)
         if last_trigger and now - last_trigger < cls.COOLDOWN:

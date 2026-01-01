@@ -15,12 +15,15 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from discord.ext import commands, tasks
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.database import Database
+from vyrtuous.utils.developer import Developer
+from vyrtuous.utils.duration import DurationObject
+from vyrtuous.utils.developer_log import DeveloperLog
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.stage import Stage
@@ -46,6 +49,8 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_text_mutes.start()
         if not self.check_expired_stages.is_running():
             self.check_expired_stages.start()
+        if not self.check_expired_developer_logs.is_running():
+            self.check_expired_developer_logs.start()
 #        if not self.update_video_room_status.is_running():
 #            self.update_video_room_status.start()
 
@@ -192,7 +197,40 @@ class ScheduledTasks(commands.Cog):
 #                    logger.info("Failed to enforce video room status")
 #            else:
 #                logger.info("Failed to enforce video room status")
+    @tasks.loop(hours=8)
+    async def check_expired_developer_logs(self):
+        try:
+            now = datetime.now(timezone.utc)
+            developer_logs = await DeveloperLog.fetch_all_resolved()
+            for developer_log in developer_logs:
+                if developer_log.created_at < now - timedelta(weeks=1):
+                    guild = self.bot.get_guild(developer_log.guild_snowflake)
+                    embed = discord.Embed(
+                        title=f'\U000026A0\U0000FE0F An issue is unresolved in {guild.name}',
+                        color=discord.Color.red()
+                    )
+                    channel = guild.get_channel(developer_log.channel_snowflake)
+                    member = channel.get_member(developer_log.member_snowflake)
+                    embed.set_thumbnail(url=member.display_avatar.url)
+                    try:
+                        msg = await channel.fetch_message(developer_log.message)
+                    except Exception as e:
+                        logger.warning("Developer log message not found.")
+                    time_since_updated = await DurationObject.from_expires_at(developer_log.updated_at)
+                    assigned_developer_mentions = []
+                    for developer_snowflake in developer_log.developer_snowflakes:
+                        assigned_developer = self.bot.get_user(developer_snowflake)
+                        assigned_developer_mentions.append(assigned_developer.mention)
+                    embed.add_field(name=f'Updated: {time_since_updated}', value=f'**Link:** {msg.jump_url}\n**Developer(s):** {', '.join(assigned_developer_mentions)}\n**Notes:** {developer_log.notes}', inline=False)
+                    developers = Developer.fetch_all()
+                    for developer in developers:
+                        user = self.bot.get_user(developer.member_snowflake)
+                        await user.send(embed=embed)
+        except Exception as e:
+            logger.warning("Developer log unable to be sent to developers.")
+
             
+
     
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):

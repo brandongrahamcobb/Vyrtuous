@@ -24,11 +24,11 @@ class Developer:
     PLURAL = "Developers"
     SINGULAR = "Developer"
 
-    def __init__(self, guild_snowflake: Optional[int], member_snowflake: Optional[str]):
+    def __init__(self, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         self.bot = DiscordBot.get_instance()
         self.guild_snowflake = guild_snowflake
-        self.member_snowflake: Optional[int] = member_snowflake
-        self.member_mention: Optional[str] = f"<@{member_snowflake}>"
+        self.member_snowflake = member_snowflake
+        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
 
     async def grant(self):
         async with self.bot.db_pool.acquire() as conn:   
@@ -55,8 +55,9 @@ class Developer:
                 ORDER BY member_snowflake
             ''')
         developers = []
-        for row in rows:
-            developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
+        if rows:
+            for row in rows:
+                developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
         return developers
 
     @classmethod
@@ -69,8 +70,9 @@ class Developer:
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
         developers = []
-        for row in rows:
-            developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
+        if rows:
+            for row in rows:
+                developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
         return developers
     
 
@@ -78,15 +80,15 @@ class Developer:
     async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
+            row = await conn.fetchrow('''
                 SELECT created_at, guild_snowflake, member_snowflake, updated_at
                 FROM developers
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
-            ''', guild_snowflake)
-        developers = []
-        for row in rows:
-            developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
-        return developers
+            ''', guild_snowflake, member_snowflake)
+        developer = None
+        if row:
+            developer = Developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        return developer
     
     @classmethod
     async def delete_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):

@@ -29,6 +29,7 @@ from vyrtuous.utils.administrator import AdministratorRole
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.database import Database
+from vyrtuous.utils.developer_log import DeveloperLog
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.flag import Flag
 from vyrtuous.utils.invincibility import Invincibility
@@ -214,7 +215,376 @@ class DevCommands(commands.Cog):
             return await state.end(success=embed)
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
-                
+        
+    @app_commands.command(name='dlog', description="Resolve or update the notes on an issue by reference.")
+    @app_commands.describe(
+        reference="Specify the issue reference ID.",
+        action="'resolve' or 'append' or 'overwrite'.",
+        notes="Optionally specify notes to append or overwrite."
+    )
+    async def update_developer_logs_app_command(
+        self,
+        ctx: commands.Context,
+        reference: Optional[str],
+        action: Optional[str],
+        notes: Optional[str]
+    ):       
+        state = State(ctx)
+        developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=reference)
+        if not developer_log:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F Issue not found. Received: {reference}.")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if action and action.lower() == 'resolve':
+            await developer_log.resolve()
+            detail = "resolved the issue. The record will remain in the database for the next 30 days."
+        elif action and action.lower() == 'append':
+            await developer_log.append(notes)
+            detail = "appended to the previous notes."
+        elif action and action.lower() == 'overwrite':
+            await developer_log.overwrite(notes)
+            detail = "overwrote the previous notes."
+        try:
+            return await state.end(success=f"\U000026A0\U0000FE0F You successfully {detail}.")
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+    @commands.command(name='dlog', help="Resolve or update the notes on an issue by reference")
+    async def update_developer_logs_text_command(
+        self,
+        ctx: commands.Context,
+        reference: Optional[str] = commands.parameter(default=None, description="Specify the developer log reference ID."),
+        action: Optional[str] = commands.parameter(default="append", description="Specify one of: 'resolve' or 'append' or 'overwrite'."),
+        *,
+        notes: Optional[str] = commands.parameter(default=None, description="Optionally specify notes.")
+    ):       
+        state = State(ctx)
+        developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=reference)
+        if not developer_log:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F Issue not found. Received: {reference}.")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if action and action.lower() == 'resolve':
+            await developer_log.resolve()
+            detail = "resolved the issue"
+        elif action and action.lower() == 'append':
+            await developer_log.append(notes)
+            detail = "appended to the previous notes"
+        elif action and action.lower() == 'overwrite':
+            await developer_log.overwrite(notes)
+            detail = "overwrote the previous notes"
+        try:
+            return await state.end(success=f"\U000026A0\U0000FE0F You successfully {detail}.")
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+    
+    @app_commands.command(name='dlogs', description="Lists developer logs by 'all', 'resolved', 'unresolved' by channel ID/mention,reference ID or server ID.")
+    @app_commands.describe(
+        scope="Specify one of: 'all', 'resolved' or 'unresolved'",
+        value="Specify one of: channel ID/mention, reference ID and server ID."
+    )
+    async def list_developer_logs_text_command(
+        self,
+        ctx: commands.Context,
+        scope: Optional[str],
+        value: Optional[str]
+    ):
+        state = State(ctx)
+        channel_obj = None
+        developer_logs = []
+        guild_obj = None
+        chunk_size = 18
+        field_count = 0
+        lines, pages = [], []
+        skipped_channel_snowflakes_by_guild_snowflake = {}
+        skipped_guild_snowflakes = set()
+        skipped_message_snowflakes_by_guild_snowflake = {}
+        title = f'{self.emoji.get_random_emoji()} Developer Log(s)'
+        if scope and scope.lower() == 'all':
+            developer_logs = await DeveloperLog.fetch_all()
+        elif scope and scope.lower() == 'resolved':
+            try:
+                channel_obj = await self.channel_service.resolve_channel(ctx, value) 
+                developer_logs = await DeveloperLog.fetch_resolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            except Exception as e:
+                guild_obj = self.bot.get_guild(value)
+                if guild_obj:
+                    developer_logs = await DeveloperLog.fetch_resolved_by_guild(guild_snowflake=value)
+                else:
+                    developer_log = await DeveloperLog.fetch_resolved_by_reference(id=value)
+                    if not developer_log:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
+        elif scope and scope.lower() == 'unresolved':
+            try:
+                channel_obj = await self.channel_service.resolve_channel(ctx, value) 
+                developer_logs = await DeveloperLog.fetch_unresolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            except Exception as e:
+                guild_obj = self.bot.get_guild(value)
+                if guild_obj:
+                    developer_logs = await DeveloperLog.fetch_unresolved_by_guild(guild_snowflake=value)
+                else:
+                    developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=value)
+                    developer_logs = [developer_log]
+                    if not developer_logs:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')                        
+        else:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', 'resolved' or 'unresolved'. Value must be one of channel ID/mention, member ID/mention, reference ID, server ID or empty. Received: {value}.")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        if not developer_logs:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                elif channel_obj:
+                    scope = channel_obj.mention
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developer log(s) exist for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for developer_log in developer_logs:
+           guild_dictionary.setdefault(developer_log.guild_snowflake, {})
+           guild_dictionary[developer_log.guild_snowflake].setdefault(developer_log.channel_snowflake, [])
+           guild_dictionary[developer_log.guild_snowflake][developer_log.channel_snowflake].append(developer_log)
+        
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake, channels in guild_dictionary.items():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_logs in channels.items():
+                channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
+                    continue
+                lines = []
+                for log in channel_logs:
+                    try:
+                        msg = await channel.fetch_message(log.message_snowflake)
+                        lines.append(f'**Message:** {msg.jump_url}')
+                    except Exception as e:
+                        skipped_message_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(log.message_snowflake)
+                    if log.resolved == False:
+                        resolved = '\u274C'
+                    elif log.resolved == True:
+                        resolved = '\u2705'
+                    lines.append(f'{resolved}**Reference:** {log.id}')
+                    if value:
+                        lines.append(f'**Notes:** {log.notes}')
+                    if log.developer_snowflakes:
+                        lines.append(f"**Assigned to:** {', '.join(log.developer_snowflakes)}")
+                    field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            embed = discord.Embed(title=f'Skipped Servers', description='\u200b', color=discord.Color.red())
+            for guild_snowflake in skipped_guild_snowflakes:
+                if field_count >= chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=f'Skipped Servers continued...', description='\u200b', color=discord.Color.red())
+                    field_count = 0
+                embed.add_field(name=guild_snowflake, value='\u200b', inline=False)
+            pages.append(embed)
+        if skipped_channel_snowflakes_by_guild_snowflake:
+            for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
+                embed = discord.Embed(title=f'Server ({guild_snowflake})', description="Skipped Channels", color=discord.Color.red())
+                for channel_snowflake in channel_list:
+                    if field_count >= chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description="Skipped Channels", color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=channel_snowflake, value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+        if skipped_message_snowflakes_by_guild_snowflake:
+            for guild_snowflake, message_list in skipped_message_snowflakes_by_guild_snowflake.items():
+                embed = discord.Embed(title=f'Server ({guild_snowflake})', description="Skipped Messages", color=discord.Color.red())
+                for message_snowflake in message_list:
+                    if field_count >= chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description="Skipped Messages", color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=message_snowflake, value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+        
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+    @commands.command(name='dlogs', help="Lists developer logs by 'all', 'resolved', 'unresolved' by channel ID/mention, reference ID or server ID.")
+    async def list_developer_logs_text_command(
+        self,
+        ctx: commands.Context,
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', 'resolved', channel ID/mention, reference ID or server ID."),
+        value: Optional[str] = commands.parameter(default=None, description="Specify one of: channel ID/mention, reference ID or server ID")
+    ):
+        state = State(ctx)
+        channel_obj = None
+        developer_logs = []
+        guild_obj = None
+        chunk_size = 18
+        field_count = 0
+        lines, pages = [], []
+        skipped_channel_snowflakes_by_guild_snowflake = {}
+        skipped_guild_snowflakes = set()
+        skipped_message_snowflakes_by_guild_snowflake = {}
+        title = f'{self.emoji.get_random_emoji()} Developer Log(s)'
+        if scope and scope.lower() == 'all':
+            developer_logs = await DeveloperLog.fetch_all()
+        elif scope and scope.lower() == 'resolved':
+            try:
+                channel_obj = await self.channel_service.resolve_channel(ctx, value) 
+                developer_logs = await DeveloperLog.fetch_resolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            except Exception as e:
+                guild_obj = self.bot.get_guild(value)
+                if guild_obj:
+                    developer_logs = await DeveloperLog.fetch_resolved_by_guild(guild_snowflake=value)
+                else:
+                    developer_log = await DeveloperLog.fetch_resolved_by_reference(id=value)
+                    if not developer_log:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
+        elif scope and scope.lower() == 'unresolved':
+            try:
+                channel_obj = await self.channel_service.resolve_channel(ctx, value) 
+                developer_logs = await DeveloperLog.fetch_unresolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            except Exception as e:
+                guild_obj = self.bot.get_guild(value)
+                if guild_obj:
+                    developer_logs = await DeveloperLog.fetch_unresolved_by_guild(guild_snowflake=value)
+                else:
+                    developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=value)
+                    developer_logs = [developer_log]
+                    if not developer_logs:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')                        
+        else:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', 'resolved' or 'unresolved'. Value must be one of channel ID/mention, member ID/mention, reference ID, server ID or empty. Received: {value}.")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        if not developer_logs:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                elif channel_obj:
+                    scope = channel_obj.mention
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developer log(s) exist for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for developer_log in developer_logs:
+           guild_dictionary.setdefault(developer_log.guild_snowflake, {})
+           guild_dictionary[developer_log.guild_snowflake].setdefault(developer_log.channel_snowflake, [])
+           guild_dictionary[developer_log.guild_snowflake][developer_log.channel_snowflake].append(developer_log)
+        
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake, channels in guild_dictionary.items():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_logs in channels.items():
+                channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
+                    continue
+                lines = []
+                for log in channel_logs:
+                    try:
+                        msg = await channel.fetch_message(log.message_snowflake)
+                        lines.append(f'**Message:** {msg.jump_url}')
+                    except Exception as e:
+                        skipped_message_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(log.message_snowflake)
+                    if log.resolved == False:
+                        resolved = '\u274C'
+                    elif log.resolved == True:
+                        resolved = '\u2705'
+                    lines.append(f'{resolved}**Reference:** {log.id}')
+                    if value:
+                        lines.append(f'**Notes:** {log.notes}')
+                    if log.developer_snowflakes:
+                        lines.append(f"**Assigned to:** {', '.join(log.developer_snowflakes)}")
+                    field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            embed = discord.Embed(title=f'Skipped Servers', description='\u200b', color=discord.Color.red())
+            for guild_snowflake in skipped_guild_snowflakes:
+                if field_count >= chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=f'Skipped Servers continued...', description='\u200b', color=discord.Color.red())
+                    field_count = 0
+                embed.add_field(name=guild_snowflake, value='\u200b', inline=False)
+            pages.append(embed)
+        if skipped_channel_snowflakes_by_guild_snowflake:
+            for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
+                embed = discord.Embed(title=f'Server ({guild_snowflake})', description="Skipped Channels", color=discord.Color.red())
+                for channel_snowflake in channel_list:
+                    if field_count >= chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description="Skipped Channels", color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=channel_snowflake, value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+        if skipped_message_snowflakes_by_guild_snowflake:
+            for guild_snowflake, message_list in skipped_message_snowflakes_by_guild_snowflake.items():
+                embed = discord.Embed(title=f'Server ({guild_snowflake})', description="Skipped Messages", color=discord.Color.red())
+                for message_snowflake in message_list:
+                    if field_count >= chunk_size:
+                        pages.append(embed)
+                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description="Skipped Messages", color=discord.Color.red())
+                        field_count = 0
+                    embed.add_field(name=message_snowflake, value='\u200b', inline=False)
+                    field_count += 1
+                pages.append(embed)
+        
+        try:
+            return await state.end(success=pages)
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
     # DONE
     @app_commands.command(name='load', description="Loads a cog by name 'vyrtuous.cog.<cog_name>.'")
     @is_owner_developer_predicator()

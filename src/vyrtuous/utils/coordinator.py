@@ -23,12 +23,12 @@ class Coordinator:
     PLURAL = "Coordinators"
     SINGULAR = "Coordinator"
 
-    def __init__(self, channel_snowflake: Optional[str], guild_snowflake: Optional[int], member_snowflake: Optional[str]):
+    def __init__(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         self.bot = DiscordBot.get_instance()
-        self.channel_snowflake: Optional[int] = channel_snowflake
+        self.channel_snowflake = channel_snowflake
         self.guild_snowflake = guild_snowflake
-        self.member_snowflake: Optional[int] = member_snowflake
-        self.member_mention: Optional[str] = f"<@{member_snowflake}>"
+        self.member_snowflake = member_snowflake
+        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
 
     @classmethod
     async def update_by_source_and_target(cls, source_channel_snowflake: Optional[int], target_channel_snowflake: Optional[int]):
@@ -80,7 +80,7 @@ class Coordinator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT created_at, guild_snowflake, member_snowflake, updated_at
+                SELECT created_at, channel_snowflake, guild_snowflake, member_snowflake, updated_at
                 FROM coordinators
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
@@ -95,7 +95,7 @@ class Coordinator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT created_at, guild_snowflake, member_snowflake, updated_at
+                SELECT created_at, channel_snowflake, guild_snowflake, member_snowflake, updated_at
                 FROM coordinators
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
@@ -111,7 +111,7 @@ class Coordinator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT created_at, guild_snowflake, member_snowflake, updated_at
+                SELECT created_at, channel_snowflake, guild_snowflake, member_snowflake, updated_at
                 FROM coordinators
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
             ''', channel_snowflake, guild_snowflake, member_snowflake)
@@ -120,9 +120,38 @@ class Coordinator:
             coordinator = Coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
         return coordinator
     
+    @classmethod
+    async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT created_at, channel_snowflake, guild_snowflake, member_snowflake, updated_at
+                FROM coordinators
+                WHERE guild_snowflake=$1 AND member_snowflake=$2
+            ''', guild_snowflake, member_snowflake)
+        coordinators = None
+        if rows:
+            for row in rows:
+                coordinators.append(Coordinator(channel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))
+        return coordinators
+    
     async def revoke(self):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 DELETE FROM coordinators
-                WHERE channel_snowflake=$1 AND member_snowflake=$2
-            ''', self.channel_snowflake, self.member_snowflake)
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
+            ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake)
+
+    @classmethod
+    async def fetch_all(cls):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch('''
+                SELECT created_at, channel_snowflake, guild_snowflake, member_snowflake, updated_at
+                FROM coordinators
+            ''')
+        coordinators = []
+        if rows:
+            for row in rows:
+                coordinators.append(Coordinator(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
+        return coordinators

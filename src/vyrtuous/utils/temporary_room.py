@@ -26,7 +26,7 @@ class TemporaryRoom:
         self.channel_snowflake = channel_snowflake
         self.guild_snowflake = guild_snowflake
         self.is_temp_room: Optional[bool] = True
-        self.member_mention = f"<@{member_snowflake}>"
+        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.member_snowflake = member_snowflake
         self.room_name = room_name
 
@@ -114,7 +114,9 @@ class TemporaryRoom:
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
                 SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, room_name, updated_at
-                FROM temporary_rooms WHERE guild_snowflake=$1 ORDER BY room_name
+                FROM temporary_rooms
+                WHERE guild_snowflake=$1
+                ORDER BY room_name
             ''', guild_snowflake)
         temporary_rooms = []
         if rows:

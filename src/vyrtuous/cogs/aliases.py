@@ -827,7 +827,7 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unmuted",
+                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Untext-muted",
                 description=(
                     f"**By:** {message.author.mention}\n"
                     f"**User:** {member_obj.mention}\n"

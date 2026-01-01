@@ -23,6 +23,7 @@ from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.utils.developer import Developer
+from vyrtuous.utils.developer_log import DeveloperLog
 from vyrtuous.utils.paginator import Paginator
 from vyrtuous.utils.time_to_complete import TimeToComplete
 import asyncio
@@ -47,6 +48,7 @@ class State:
 
     def __init__(self, ctx_or_interaction: Union[commands.Context, discord.Interaction, discord.Message]):
         self.bot = DiscordBot.get_instance()
+        self.config = self.bot.config
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.counter = TimeToComplete()
         self.ctx_or_interaction = ctx_or_interaction
@@ -201,6 +203,7 @@ class State:
                 pass
 
     async def report_issue(self, user):
+        reference = None
         if user.id in self._reported_users:
             try:
                 await user.send("You already reported this message.")
@@ -209,6 +212,9 @@ class State:
             return
         self._reported_users.add(user.id)
         try:
+            developer_log = DeveloperLog(channel_snowflake=self.message.channel.id, developer_snowflakes=[], guild_snowflake=self.message.guild.id, message_snowflake=self.message.id)
+            reference = await developer_log.create()
+            id = reference.id
             await user.send("Your report has been submitted.")
         except discord.Forbidden:
             pass
@@ -218,6 +224,11 @@ class State:
                 member = self.ctx_or_interaction.guild.get_member(dev.member_snowflake)
                 if member and member.status != discord.Status.offline:
                     try:
-                        await member.send(f"Issue reported by {user.name}!\nMessage: {self.message.jump_url}")
+                        await member.send(f"Issue reported by {user.name}!\nMessage: {self.message.jump_url}\n**Reference:** {id}")
                     except discord.Forbidden:
                         pass
+                member = self.bot.get_user(self.config['discord_owner_id'])
+                try:
+                    await member.send(f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}")
+                except discord.Forbidden:
+                    pass
