@@ -73,7 +73,9 @@ class TextMute:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_text_mutes SET channel_snowflake=$2 WHERE channel_snowflake = $1
+                UPDATE active_text_mutes
+                SET channel_snowflake=$
+                WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
         
     @classmethod

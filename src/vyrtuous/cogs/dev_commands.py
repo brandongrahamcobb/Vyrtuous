@@ -419,7 +419,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
            
         administrators = await Administrator.fetch_by_guild_and_role(guild_snowflake=interaction.guild.id, role_snowflake=role_obj.id)
-        administrator_roles = await AdministratorRole.fetch_roles_by_guild(guild_snowflake=interaction.guild.id)
+        administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=interaction.guild.id)
         for administrator_role in administrator_roles:
             await administrator_role.revoke()
         for member in role_obj.members:
@@ -435,7 +435,7 @@ class DevCommands(commands.Cog):
         if action != 'revoked':
             administrator_role = AdministratorRole(guild_snowflake=interaction.guild.id, role_snowflake=role_obj.id)
             await administrator_role.grant()
-            administrator_roles = await AdministratorRole.fetch_roles_by_guild(guild_snowflake=interaction.guild.id)
+            administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=interaction.guild.id)
             for administrator_role in administrator_roles:
                 role_snowflakes.append(administrator_role.role_snowflake)
             for member in role_obj.members:
@@ -493,7 +493,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
            
         administrators = await Administrator.fetch_by_guild_and_role(guild_snowflake=ctx.guild.id, role_snowflake=role_obj.id)
-        administrator_roles = await AdministratorRole.fetch_roles_by_guild(guild_snowflake=ctx.guild.id)
+        administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=ctx.guild.id)
         for administrator_role in administrator_roles:
             await administrator_role.revoke()
         for member in role_obj.members:
@@ -509,7 +509,7 @@ class DevCommands(commands.Cog):
         if action != 'revoked':
             administrator_role = AdministratorRole(guild_snowflake=ctx.guild.id, role_snowflake=role_obj.id)
             await administrator_role.grant()
-            administrator_roles = await AdministratorRole.fetch_roles_by_guild(guild_snowflake=ctx.guild.id)
+            administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=ctx.guild.id)
             administrator_roles.append(administrator_role)
             for administrator_role in administrator_roles:
                 role_snowflakes.append(administrator_role.role_snowflake)

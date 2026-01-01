@@ -62,8 +62,7 @@ class Flag:
             await conn.execute('''
                 INSERT INTO active_flags (channel_snowflake, created_at, guild_snowflake, member_snowflake)
                 VALUES ($1, NOW(), $2, $3)
-                ON CONFLICT (channel_snowflake, guild_snowflake, member_snowflake)
-                DO NOTHING
+                ON CONFLICT DO NOTHING
             ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake)
 
     @classmethod
@@ -71,7 +70,7 @@ class Flag:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_flags SET channel_snowflake=$2 WHERE channel_snowflake = $1
+                UPDATE active_flags SET channel_snowflake=$2 WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
 
     @classmethod

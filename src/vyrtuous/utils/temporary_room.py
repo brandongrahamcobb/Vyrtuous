@@ -35,8 +35,7 @@ class TemporaryRoom:
             await conn.execute('''
                 INSERT INTO temporary_rooms (channel_snowflake, guild_snowflake, member_snowflake, room_name)
                 VALUES ($1, $2, $3, $4)
-                ON CONFLICT (guild_snowflake, room_name)
-                DO UPDATE SET member_snowflake=$3, channel_snowflake=$1
+                ON CONFLICT DO NOTHING
             ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake, self.room_name)
 
     @classmethod
@@ -44,31 +43,22 @@ class TemporaryRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT channel_snowflake, member_snowflake, room_name FROM temporary_rooms WHERE channel_snowflake=$1 AND guild_snowflake=$2
+                SELECT channel_snowflake, member_snowflake, room_name
+                FROM temporary_rooms
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
         if not row:
             return None
         return TemporaryRoom(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], room_name=row['room_name'])
             
     @classmethod
-    async def fetch_all(cls):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
-                SELECT channel_snowflake, guild_snowflake, member_snowflake, room_name FROM temporary_rooms
-            ''')
-        temporary_rooms = []
-        if rows:
-            for row in rows:
-                temporary_rooms.append(TemporaryRoom(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], room_name=row['room_name']))
-        return temporary_rooms
-            
-    @classmethod
     async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, member_snowflake, room_name FROM temporary_rooms WHERE guild_snowflake=$1 AND member_snowflake=$2
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, room_name, updated_at
+                FROM temporary_rooms
+                WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
         temporary_rooms = []
         if rows:
@@ -81,7 +71,9 @@ class TemporaryRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT channel_snowflake, member_snowflake, room_name FROM temporary_rooms WHERE guild_snowflake=$1 AND room_name=$2
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, room_name, updated_at
+                FROM temporary_rooms
+                WHERE guild_snowflake=$1 AND room_name=$2
             ''', guild_snowflake, room_name)
         if not row:
             return None
@@ -92,7 +84,9 @@ class TemporaryRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE temporary_rooms SET member_snowflake=$3 WHERE channel_snowflake=$1 AND guild_snowflake=$2 
+                UPDATE temporary_rooms
+                SET member_snowflake=$3
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2 
             ''', channel_snowflake, guild_snowflake, member_snowflake)
             
     @classmethod
@@ -100,7 +94,9 @@ class TemporaryRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE temporary_rooms SET room_name=$3, channel_snowflake=$4 WHERE guild_snowflake=$1 AND channel_snowflake=$2
+                UPDATE temporary_rooms
+                SET room_name=$3, channel_snowflake=$4
+                WHERE guild_snowflake=$1 AND channel_snowflake=$2
             ''', guild_snowflake, target_channel_snowflake, room_name, source_channel_snowflake)
             
     @classmethod
@@ -108,7 +104,8 @@ class TemporaryRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                DELETE FROM temporary_rooms WHERE channel_snowflake = $1 AND guild_snowflake = $2
+                DELETE FROM temporary_rooms
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
     
     @classmethod
@@ -116,7 +113,8 @@ class TemporaryRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, member_snowflake, room_name FROM temporary_rooms WHERE guild_snowflake=$1 ORDER BY room_name
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, room_name, updated_at
+                FROM temporary_rooms WHERE guild_snowflake=$1 ORDER BY room_name
             ''', guild_snowflake)
         temporary_rooms = []
         if rows:
@@ -125,11 +123,12 @@ class TemporaryRoom:
         return temporary_rooms
             
     @classmethod
-    async def fetch_all_members(cls):
+    async def fetch_all(cls):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, guild_snowflake, member_snowflake, room_name FROM temporary_rooms
+                SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, room_name, updated_at
+                FROM temporary_rooms
             ''')
         temporary_rooms = []
         if rows:

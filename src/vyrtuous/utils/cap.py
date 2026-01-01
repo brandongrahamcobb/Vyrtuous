@@ -35,7 +35,8 @@ class Cap:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, duration_seconds, guild_snowflake, moderation_type FROM active_caps
+                SELECT channel_snowflake, created_at, duration_seconds, guild_snowflake, moderation_type, updated_at
+                FROM active_caps
             ''')
         caps = []
         if rows:
@@ -47,10 +48,10 @@ class Cap:
     async def fetch_by_channel_and_guild(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]) -> list[tuple[str, str]]:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                'SELECT duration_seconds, moderation_type FROM active_caps WHERE guild_snowflake=$1 AND channel_snowflake=$2',
-                guild_snowflake, channel_snowflake
-            )
+            rows = await conn.fetch('''
+                SELECT channel_snowflake, created_at, duration_seconds, guild_snowflake, moderation_type, updated_at
+                FROM active_caps WHERE guild_snowflake=$1 AND channel_snowflake=$2
+            ''', guild_snowflake, channel_snowflake)
         caps = []
         if rows:
             for row in rows:
@@ -71,7 +72,7 @@ class Cap:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT duration_seconds, moderation_type
+                SELECT channel_snowflake, created_at, duration_seconds, guild_snowflake, moderation_type, updated_at
                 FROM active_caps
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND moderation_type=$3
             ''', channel_snowflake, guild_snowflake, moderation_type)
@@ -84,8 +85,7 @@ class Cap:
             await conn.execute('''
                 INSERT INTO active_caps (channel_snowflake, duration_seconds, guild_snowflake, moderation_type)
                 VALUES ($1, $2, $3, $4)
-                ON CONFLICT (channel_snowflake, guild_snowflake, moderation_type)
-                DO UPDATE SET duration_seconds = EXCLUDED.duration_seconds
+                ON CONFLICT DO NOTHING
             ''', self.channel_snowflake, self.duration, self.guild_snowflake, self.moderation_type)
 
     @classmethod
@@ -93,7 +93,9 @@ class Cap:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_caps SET channel_snowflake=$2 WHERE channel_snowflake = $1
+                UPDATE active_caps
+                SET channel_snowflake=$2
+                WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
 
     @classmethod
@@ -115,5 +117,7 @@ class Cap:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_caps SET duration_seconds=$2 WHERE channel_snowflake=$1
+                UPDATE active_caps
+                SET duration_seconds=$2
+                WHERE channel_snowflake=$1
             ''', channel_snowflake, duration)

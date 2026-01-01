@@ -53,6 +53,10 @@ class CoordinatorCommands(commands.Cog):
         member_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        except Exception as e:
+            channel_obj = interaction.channel
+            await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+        try:
             member_obj = await self.member_service.resolve_member(interaction, member)
             check_not_self(interaction, member_snowflake=member_obj.id)
             highest_role = await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
@@ -61,8 +65,8 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-        if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
+        moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=interaction.guild.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        if moderator:
             await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
             action = 'revoked'
         else:
@@ -89,6 +93,10 @@ class CoordinatorCommands(commands.Cog):
         member_obj = None
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+        except Exception as e:
+            channel_obj = ctx.channel
+            await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+        try:
             member_obj = await self.member_service.resolve_member(ctx, member)
             check_not_self(ctx, member_snowflake=member_obj.id)
             highest_role = await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
@@ -97,9 +105,9 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        moderator_channel_ids = await Moderator.fetch_channels_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-        if moderator_channel_ids and channel_obj.id in moderator_channel_ids:
-            await Moderator.delete_by_channel_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id)
+        moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=ctx.guild.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+        if moderator:
+            await Moderator.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             action = 'revoked'
         else:
             moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)

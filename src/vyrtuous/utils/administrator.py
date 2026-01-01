@@ -60,7 +60,7 @@ class Administrator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake, member_snowflake, role_snowflakes
+                SELECT created_at, guild_snowflake, member_snowflake, role_snowflakes, updated_at
                 FROM administrators
             ''')
         administrators = []
@@ -76,7 +76,7 @@ class Administrator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT guild_snowflake, member_snowflake, role_snowflakes
+                SELECT created_at, guild_snowflake, member_snowflake, role_snowflakes, updated_at
                 FROM administrators
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
@@ -95,8 +95,7 @@ class Administrator:
             ''', self.guild_snowflake, self.member_snowflake, role_snowflake)
             await conn.execute('''
                 DELETE FROM administrators
-                WHERE guild_snowflake=$1 AND member_snowflake=$2
-                  AND role_snowflakes = '{}'::BIGINT[]
+                WHERE guild_snowflake=$1 AND member_snowflake=$2 AND role_snowflakes = '{}'::BIGINT[]
             ''', self.guild_snowflake, self.member_snowflake)
 
     async def update_by_new_role(self, role_snowflake: Optional[int]):
@@ -115,7 +114,8 @@ class Administrator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake, member_snowflake, role_snowflakes FROM administrators WHERE guild_snowflake=$1 AND member_snowflake=$2
+                SELECT created_at, guild_snowflake, member_snowflake, role_snowflakes, updated_at
+                FROM administrators WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
         administrators = []
         if rows:
@@ -128,7 +128,8 @@ class Administrator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake, member_snowflake, role_snowflakes FROM administrators WHERE guild_snowflake=$1 AND $2 = ANY(role_snowflakes)
+                SELECT created_at, guild_snowflake, member_snowflake, role_snowflakes, updated_at
+                FROM administrators WHERE guild_snowflake=$1 AND $2 = ANY(role_snowflakes)
             ''', guild_snowflake, role_snowflake)
         administrators = []
         if rows:
@@ -141,7 +142,8 @@ class Administrator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake, member_snowflake, role_snowflakes FROM administrators WHERE guild_snowflake=$1
+                SELECT created_at, guild_snowflake, member_snowflake, role_snowflakes, updated_at
+                FROM administrators WHERE guild_snowflake=$1
             ''', guild_snowflake)
         administrators = []
         if rows:
@@ -169,15 +171,15 @@ class AdministratorRole:
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 DELETE FROM administrator_roles
-                WHERE guild_snowflake = $1 AND role_snowflake = $2
+                WHERE guild_snowflake=$1 AND role_snowflake=$2
             ''', self.guild_snowflake, self.role_snowflake)
     
     @classmethod
-    async def fetch_all_roles(cls):
+    async def fetch_all(cls):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake, role_snowflake
+                SELECT created_at, guild_snowflake, role_snowflake, updated_at
                 FROM administrator_roles
             ''')
         administrator_roles = []
@@ -187,11 +189,11 @@ class AdministratorRole:
         return administrator_roles
 
     @classmethod
-    async def fetch_roles_by_guild(cls, guild_snowflake: Optional[int]):
+    async def fetch_by_guild(cls, guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake, role_snowflake
+                SELECT created_at, guild_snowflake, role_snowflake, updated_at
                 FROM administrator_roles
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)

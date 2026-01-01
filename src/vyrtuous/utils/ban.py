@@ -64,8 +64,7 @@ class Ban:
             await conn.execute('''
                 INSERT INTO active_bans (channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason)
                 VALUES ($1, NOW(), $2, $3, $4, $5)
-                ON CONFLICT (channel_snowflake, guild_snowflake, member_snowflake)
-                DO NOTHING
+                ON CONFLICT DO NOTHING
             ''', self.channel_snowflake, self.expires_in, self.guild_snowflake, self.member_snowflake, self.reason)
 
     @classmethod
@@ -73,7 +72,9 @@ class Ban:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_bans SET channel_snowflake=$2 WHERE channel_snowflake = $1
+                UPDATE active_bans
+                SET channel_snowflake=$2
+                WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
     
     @classmethod

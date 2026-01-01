@@ -70,7 +70,9 @@ class Vegan:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE vegans SET channel_snowflake=$2 WHERE channel_snowflake = $1
+                UPDATE vegans
+                SET channel_snowflake=$2
+                WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
 
     @classmethod

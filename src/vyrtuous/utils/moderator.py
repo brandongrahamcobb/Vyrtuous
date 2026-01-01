@@ -35,7 +35,8 @@ class Moderator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE moderators SET channel_snowflake=$2 WHERE channel_snowflake=$1
+                UPDATE moderators
+                SET channel_snowflake=$2 WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
 
     @classmethod
@@ -43,7 +44,8 @@ class Moderator:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                DELETE FROM moderators WHERE channel_snowflake=$1 AND member_snowflake=$2
+                DELETE FROM moderators
+                WHERE channel_snowflake=$1 AND member_snowflake=$2
             ''', channel_snowflake, member_snowflake)
 
     async def grant(self):
@@ -54,31 +56,29 @@ class Moderator:
                 ON CONFLICT DO NOTHING
             ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake)
 
-    @classmethod
-    async def fetch_channels_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
+    async def delete_by_channel_guild_and_member(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch('''
-                SELECT channel_snowflake
-                FROM moderators
-                WHERE guild_snowflake=$1 AND member_snowflake=$2
-            ''', guild_snowflake, member_snowflake)
-            return [row['channel_snowflake'] for row in rows]
+            await conn.execute('''
+                DELETE FROM moderators
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
+            ''', channel_snowflake, guild_snowflake, member_snowflake)
 
     @classmethod
     async def delete_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                DELETE FROM moderators WHERE channel_snowflake=$1 AND guild_snowflake=$2
+                DELETE FROM moderators
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
 
     @classmethod
-    async def fetch_members_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
+    async def fetch_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT member_snowflake
+                SELECT created_at, guild_snowflake, member_snowflake, updated_at
                 FROM moderators
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
@@ -89,11 +89,11 @@ class Moderator:
         return moderators
 
     @classmethod
-    async def fetch_members_by_guild(cls, guild_snowflake: Optional[int]):
+    async def fetch_by_guild(cls, guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, member_snowflake
+                SELECT created_at, guild_snowflake, member_snowflake, updated_at
                 FROM moderators
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
@@ -104,8 +104,23 @@ class Moderator:
                 )
             return moderators
 
+    @classmethod
+    async def fetch_by_channel_guild_and_member(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            row = await conn.fetchrow('''
+                SELECT created_at, guild_snowflake, member_snowflake, updated_at
+                FROM moderators
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
+            ''', channel_snowflake, guild_snowflake, member_snowflake)
+        moderator = None
+        if row:
+            moderator = Moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        return moderator
+
     async def revoke(self):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
-                DELETE FROM moderators WHERE channel_snowflake=$1 AND member_snowflake=$2
+                DELETE FROM moderators
+                WHERE channel_snowflake=$1 AND member_snowflake=$2
             ''', self.channel_snowflake, self.member_snowflake)

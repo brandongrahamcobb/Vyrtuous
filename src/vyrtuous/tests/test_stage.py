@@ -144,14 +144,14 @@
 #         async with bot.db_pool.acquire() as conn:
 #             row = await conn.fetchrow('''
 #                 SELECT expires_in, initiator_id FROM active_stages
-#                 WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
+#                 WHERE channel_id=$1 AND guild_id=$2 AND room_name=$3
 #             ''', channel_one.id, guild.id, stage_name)
 #         stage = Stage(row['expires_in'], channel_one.id, stage_name, guild.id, row['initiator_id'])
 #         await stage.update_stage_by_channel_id_name(channel_id=channel_one.id, channel_name=channel_one.name)
 #         async with bot.db_pool.acquire() as conn:
 #             second_row = await conn.fetch('''
 #                 SELECT discord_snowflake FROM stage_coordinators
-#                 WHERE channel_id = $1 AND guild_id = $2
+#                 WHERE channel_id=$1 AND guild_id=$2
 #             ''', channel_one.id, guild.id)
 #         if second_row:
 #             temporary_stage_coordinator_ids = {c['discord_snowflake'] for c in second_row}
@@ -182,14 +182,14 @@
 #         async with bot.db_pool.acquire() as conn:
 #             row = await conn.fetchrow('''
 #                 SELECT expires_in, initiator_id FROM active_stages
-#                 WHERE channel_id = $1 AND guild_id = $2 AND room_name = $3
+#                 WHERE channel_id=$1 AND guild_id=$2 AND room_name=$3
 #             ''', channel_one.id, guild.id, stage_name)
 #         stage = Stage(row['expires_in'], channel_one.id, stage_name, guild.id, row['initiator_id'])
 #         await stage.update_stage_by_channel_id_name_initiator_id_and_temporary_coordinator_ids(channel_id=channel_one.id, channel_name=channel_one.name, stage_initiator_id=member_one.id, temporary_stage_coordinator_ids=temporary_coordinator_ids)
 #         async with bot.db_pool.acquire() as conn:
 #             second_row = await conn.fetch('''
 #                 SELECT discord_snowflake FROM stage_coordinators
-#                 WHERE channel_id = $1 AND guild_id = $2
+#                 WHERE channel_id=$1 AND guild_id=$2
 #             ''', channel_one.id, guild.id)
 #         if second_row:
 #             temporary_stage_coordinator_ids = {c['discord_snowflake'] for c in second_row}

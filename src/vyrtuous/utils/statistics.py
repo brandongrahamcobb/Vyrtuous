@@ -193,7 +193,7 @@ class Statistics:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type
+                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, statistic_type, updated_at
                 FROM statistic_channels
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
@@ -208,7 +208,7 @@ class Statistics:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type
+                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, statistic_type, updated_at
                 FROM statistic_channels
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
@@ -251,7 +251,7 @@ class Statistics:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type
+                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, statistic_type, updated_at
                 FROM statistic_channels
             ''')
         statistics = []

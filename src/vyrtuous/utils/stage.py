@@ -39,8 +39,9 @@ class Stage:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT expires_in, member_snowflake FROM active_stages
-                WHERE channel_snowflake = $1 AND guild_snowflake = $2
+                SELECT channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, updated_at
+                FROM active_stages
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
             if row:
                 return Stage(channel_snowflake=channel_snowflake, expires_in=row['expires_in'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
@@ -74,7 +75,8 @@ class Stage:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE active_stages SET channel_snowflake=$1
+                UPDATE active_stages
+                SET channel_snowflake=$1
                 WHERE guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
 
@@ -94,7 +96,7 @@ class Stage:
                    AND s.channel_snowflake = v.channel_snowflake
                    AND v.target = 'room'
                    AND (v.expires_in IS NULL OR v.expires_in > NOW())
-                WHERE s.guild_snowflake = $1
+                WHERE s.guild_snowflake=$1
                 GROUP BY
                     s.channel_snowflake,
                     s.member_snowflake,
@@ -112,7 +114,8 @@ class Stage:
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE active_stages
-                SET channel_snowflake=$2 WHERE channel_snowflake = $1
+                SET channel_snowflake=$2
+                WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
 
     @classmethod
@@ -131,8 +134,8 @@ class Stage:
                    AND s.channel_snowflake = v.channel_snowflake
                    AND v.target = 'room'
                    AND (v.expires_in IS NULL OR v.expires_in > NOW())
-                WHERE s.channel_snowflake = $1
-                  AND s.guild_snowflake = $2
+                WHERE s.channel_snowflake=$1
+                  AND s.guild_snowflake=$2
                 GROUP BY
                     s.channel_snowflake,
                     s.member_snowflake,

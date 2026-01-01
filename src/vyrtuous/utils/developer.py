@@ -42,7 +42,7 @@ class Developer:
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 DELETE FROM developers
-                WHERE guild_snowflake = $1 AND member_snowflake = $2
+                WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', self.guild_snowflake, self.member_snowflake)
     
     @classmethod
@@ -50,7 +50,7 @@ class Developer:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake, member_snowflake
+                SELECT created_at, guild_snowflake, member_snowflake, updated_at
                 FROM developers
                 ORDER BY member_snowflake
             ''')
@@ -60,25 +60,28 @@ class Developer:
         return developers
 
     @classmethod
-    async def fetch_guilds_by_member(cls, member_snowflake: Optional[int]):
+    async def fetch_by_guild(cls, guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake FROM developers WHERE member_snowflake=$1
-            ''', member_snowflake)
-        guild_snowflakes = []
+                SELECT created_at, guild_snowflake, member_snowflake, updated_at
+                FROM developers
+                WHERE guild_snowflake=$1
+            ''', guild_snowflake)
+        developers = []
         for row in rows:
-            guild_snowflakes.append(row['guild_snowflake'])
-        return guild_snowflakes
+            developers.append(Developer(guild_snowflake=row["guild_snowflake"], member_snowflake=row["member_snowflake"]))
+        return developers
+    
 
     @classmethod
-    async def fetch_members_by_guild(cls, guild_snowflake):
+    async def fetch_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT guild_snowflake, member_snowflake
+                SELECT created_at, guild_snowflake, member_snowflake, updated_at
                 FROM developers
-                WHERE guild_snowflake = $1
+                WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake)
         developers = []
         for row in rows:
@@ -86,10 +89,10 @@ class Developer:
         return developers
     
     @classmethod
-    async def delete_by_guild_and_member(cls, guild_snowflake: int, member_snowflake: int):
+    async def delete_by_guild_and_member(cls, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
                 DELETE FROM developers
-                WHERE guild_snowflake = $1 AND member_snowflake = $2
+                WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)

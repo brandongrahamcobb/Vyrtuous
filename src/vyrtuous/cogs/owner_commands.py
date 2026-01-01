@@ -55,9 +55,9 @@ class OwnerCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 await state.end(error=f'\u274C {str(e).capitalize()}')
-        guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
-        if interaction.guild.id in guild_snowflakes:
-            await Developer.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        developer = await Developer.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        if developer:
+            await developer.revoke()
             action = 'revoked'
         else:
             developer = Developer(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -88,9 +88,9 @@ class OwnerCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 await state.end(error=f'\u274C {str(e).capitalize()}')
-        guild_snowflakes = await Developer.fetch_guilds_by_member(member_snowflake=member_obj.id)
-        if ctx.guild.id in guild_snowflakes:
-            await Developer.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+        developer = await Developer.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+        if developer:
+            await Developer.revoke()
             action = 'revoked'
         else:
             developer = Developer(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)

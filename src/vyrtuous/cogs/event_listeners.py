@@ -397,7 +397,7 @@ class EventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
         async with self.bot.db_pool.acquire() as conn:
-            administrators = await Administrator.fetch_members_by_role(role_snowflake=role.id)
+            administrators = await Administrator.fetch_by_role(role_snowflake=role.id)
             for administrator in administrators:
                 role_snowflakes = set(administrator.role_snowflake)
                 guild_snowflakes = set(administrator.guild_snowflake)

@@ -91,7 +91,8 @@ class VideoRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, guild_snowflake FROM video_rooms
+                SELECT channel_snowflake, guild_snowflake
+                FROM video_rooms
             ''')
         video_rooms = []
         if rows:
@@ -104,7 +105,9 @@ class VideoRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT channel_snowflake FROM video_rooms WHERE channel_snowflake=$1 AND guild_snowflake=$2
+                SELECT channel_snowflake
+                FROM video_rooms
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
         video_room = []
         if row:
@@ -116,7 +119,8 @@ class VideoRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                DELETE FROM video_rooms WHERE channel_snowflake = $1 AND guild_snowflake = $2
+                DELETE FROM video_rooms
+                WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
     
     @classmethod
@@ -124,7 +128,9 @@ class VideoRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake FROM video_rooms WHERE guild_snowflake=$1
+                SELECT created_at, guild_snowflake, member_snowflake, updated_at
+                FROM video_rooms
+                WHERE guild_snowflake=$1
             ''', guild_snowflake)
         video_rooms = []
         if rows:

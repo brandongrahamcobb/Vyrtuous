@@ -213,7 +213,7 @@ class State:
         except discord.Forbidden:
             pass
         if self.ctx_or_interaction.guild:
-            developers = await Developer.fetch_members_by_guild(self.ctx_or_interaction.guild.id)
+            developers = await Developer.fetch_by_guild(self.ctx_or_interaction.guild.id)
             for dev in developers:
                 member = self.ctx_or_interaction.guild.get_member(dev.member_snowflake)
                 if member and member.status != discord.Status.offline:
