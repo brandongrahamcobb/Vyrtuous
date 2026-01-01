@@ -1,3 +1,9 @@
+CREATE USER vyrtuous WITH PASSWORD 'password';
+CREATE ROLE
+CREATE DATABASE vyrtuous;
+CREATE DATABASE
+ALTER DATABASE vyrtuous OWNER to vyrtuous;
+
 CREATE TABLE users (
     discord_snowflake BIGINT PRIMARY KEY,
     updated_at TIMESTAMPTZ DEFAULT NOW(),

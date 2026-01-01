@@ -308,22 +308,19 @@ CREATE TABLE video_rooms (
     PRIMARY KEY (channel_snowflake, guild_snowflake)
 );
 
-SELECT conname
-FROM pg_constraint
-WHERE conrelid = 'administrators'::regclass
-  AND contype = 'u';
+ALTER TABLE administrators
+DROP CONSTRAINT administrators_pkey;
 
 ALTER TABLE administrators
-DROP CONSTRAINT administrators_guild_member_role_key;
-ALTER TABLE administrators
-ADD CONSTRAINT administrators_guild_member_unique
-UNIQUE (guild_snowflake, member_snowflake);
+ADD CONSTRAINT administrators_pkey
+PRIMARY KEY (guild_snowflake, member_snowflake);
 
-ALTER TABLE administrators
-ALTER COLUMN role_snowflake TYPE BIGINT[]
-USING ARRAY[role_snowflake];
+
 ALTER TABLE administrators
 RENAME COLUMN role_snowflake TO role_snowflakes;
+ALTER TABLE administrators
+ALTER COLUMN role_snowflakes TYPE BIGINT[]
+USING ARRAY[role_snowflakes]::BIGINT[];
 
 
 CREATE TABLE administrator_roles (
