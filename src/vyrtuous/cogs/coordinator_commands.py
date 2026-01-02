@@ -157,8 +157,8 @@ class CoordinatorCommands(commands.Cog):
             muted_members.append(member)
         description_lines = [
             f'**Channel:** {channel_obj.mention}',
-            f'**Muted:** {len(muted_members)} user(s)',
-            f'**Failed:** {len(failed_members)} user(s)',
+            f'**Muted:** {len(muted_members)} users',
+            f'**Failed:** {len(failed_members)} users',
             f'**Skipped:** {len(channel_obj.members) - len(muted_members) - len(failed_members)}'
         ]
         embed = discord.Embed(
@@ -216,8 +216,8 @@ class CoordinatorCommands(commands.Cog):
             muted_members.append(member)
         description_lines = [
             f'**Channel:** {channel_obj.mention}',
-            f'**Muted:** {len(muted_members)} user(s)',
-            f'**Failed:** {len(failed_members)} user(s)',
+            f'**Muted:** {len(muted_members)} users',
+            f'**Failed:** {len(failed_members)} users',
             f'**Skipped:** {len(channel_obj.members) - len(muted_members) - len(failed_members)}'
         ]
         embed = discord.Embed(
@@ -273,8 +273,8 @@ class CoordinatorCommands(commands.Cog):
             unmuted_members.append(member)
         description_lines = [
             f'**Channel:** {channel_obj.mention}',
-            f'**Unmuted:** {len(unmuted_members)} user(s)',
-            f'**Failed:** {len(failed_members)} user(s)',
+            f'**Unmuted:** {len(unmuted_members)} users',
+            f'**Failed:** {len(failed_members)} users',
             f'**Skipped:** {len(channel_obj.members) - len(unmuted_members) - len(failed_members)}'
         ]
         embed = discord.Embed(
@@ -325,8 +325,8 @@ class CoordinatorCommands(commands.Cog):
             unmuted_members.append(member)
         description_lines = [
             f'**Channel:** {channel_obj.mention}',
-            f'**Unmuted:** {len(unmuted_members)} user(s)',
-            f'**Failed:** {len(failed_members)} user(s)',
+            f'**Unmuted:** {len(unmuted_members)} users',
+            f'**Failed:** {len(failed_members)} users',
             f'**Skipped:** {len(channel_obj.members) - len(unmuted_members) - len(failed_members)}'
         ]
         embed = discord.Embed(

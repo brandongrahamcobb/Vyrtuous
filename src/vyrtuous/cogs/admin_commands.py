@@ -748,7 +748,7 @@ class AdminCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         skipped_snowflakes = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
-        title = f'{self.emoji.get_random_emoji()} Logging Route(s)'
+        title = f'{self.emoji.get_random_emoji()} Logging Routes'
 
         if scope and scope.lower() == 'all':
             highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
@@ -932,7 +932,7 @@ class AdminCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         skipped_snowflakes = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
-        title = f'{self.emoji.get_random_emoji()} Logging Route(s)'
+        title = f'{self.emoji.get_random_emoji()} Logging Routes'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -1453,7 +1453,7 @@ class AdminCommands(commands.Cog):
                         failed_members.append(member)
             description_lines = [
                 f'**Channel:** {channel_obj.mention}',
-                f'**Unmuted:** {len(succeeded_members)} user(s)',
+                f'**Unmuted:** {len(succeeded_members)} users',
                 f'**Skipped:** {len(channel_obj.members) - len(succeeded_members) - len(failed_members)}'
             ]
             if failed_members:
@@ -1483,7 +1483,7 @@ class AdminCommands(commands.Cog):
             description_lines = [
                 f'**Channel:** {channel_obj.mention}',
                 f'**Expires:** {duration}',
-                f'**Muted:** {len(muted)} user(s)',
+                f'**Muted:** {len(muted)} users',
                 f'**Skipped:** {len(skipped)}'
             ]
             if failed:
@@ -1563,7 +1563,7 @@ class AdminCommands(commands.Cog):
                         failed_members.append(member)
             description_lines = [
                 f'**Channel:** {channel_obj.mention}',
-                f'**Unmuted:** {len(succeeded_members)} user(s)',
+                f'**Unmuted:** {len(succeeded_members)} users',
                 f'**Skipped:** {len(channel_obj.members) - len(succeeded_members) - len(failed_members)}'
             ]
             if failed_members:
@@ -1593,7 +1593,7 @@ class AdminCommands(commands.Cog):
             description_lines = [
                 f'**Channel:** {channel_obj.mention}',
                 f'**Expires:** {duration}',
-                f'**Muted:** {len(muted)} user(s)',
+                f'**Muted:** {len(muted)} users',
                 f'**Skipped:** {len(skipped)}'
             ]
             if failed:

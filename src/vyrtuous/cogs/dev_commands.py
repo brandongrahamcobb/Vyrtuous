@@ -145,7 +145,7 @@ class DevCommands(commands.Cog):
         pages = []
         skipped_guild_snowflakes = set()
         skipped_member_snowflakes_by_guild_snowflake = {}
-        title = f'{self.emoji.get_random_emoji()} Developer(s)'
+        title = f'{self.emoji.get_random_emoji()} Developers'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -180,7 +180,7 @@ class DevCommands(commands.Cog):
             try:
                 if guild_obj:
                     scope = guild_obj.name
-                return await state.end(warning=f'\U000026A0\U0000FE0F No developer(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developers exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -276,7 +276,7 @@ class DevCommands(commands.Cog):
         pages = []
         skipped_guild_snowflakes = set()
         skipped_member_snowflakes_by_guild_snowflake = {}
-        title = f'{self.emoji.get_random_emoji()} Developer(s)'
+        title = f'{self.emoji.get_random_emoji()} Developers'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -311,7 +311,7 @@ class DevCommands(commands.Cog):
             try:
                 if guild_obj:
                     scope = guild_obj.name
-                return await state.end(warning=f'\U000026A0\U0000FE0F No developer(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developers exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -479,7 +479,7 @@ class DevCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
         skipped_message_snowflakes_by_guild_snowflake = {}
-        title = f'{self.emoji.get_random_emoji()} Developer Log(s)'
+        title = f'{self.emoji.get_random_emoji()} Developer Logs'
         if scope and scope.lower() == 'all':
             developer_logs = await DeveloperLog.fetch_all()
         elif scope and scope.lower() == 'resolved':
@@ -525,7 +525,7 @@ class DevCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No developer log(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developer logs exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -657,7 +657,7 @@ class DevCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
         skipped_message_snowflakes_by_guild_snowflake = {}
-        title = f'{self.emoji.get_random_emoji()} Developer Log(s)'
+        title = f'{self.emoji.get_random_emoji()} Developer Logs'
         if scope and scope.lower() == 'all':
             developer_logs = await DeveloperLog.fetch_all()
         elif scope and scope.lower() == 'resolved':
@@ -703,7 +703,7 @@ class DevCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No developer log(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developer logs exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1052,7 +1052,7 @@ class DevCommands(commands.Cog):
                 description=f'Members {action} `Administrator`.',
                 color=discord.Color.green()
             )
-            embed.add_field(name=f'Member(s) ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
+            embed.add_field(name=f'Mermbers ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
             pages.append(embed)
         if skipped_members:
             chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
@@ -1062,7 +1062,7 @@ class DevCommands(commands.Cog):
                     description=f'Members with {role_obj.mention}',
                     color=discord.Color.red()
                 )
-                embed.add_field(name=f'Member(s) ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
+                embed.add_field(name=f'Mermbers ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
                 pages.append(embed)
 
         if pages:
@@ -1133,7 +1133,7 @@ class DevCommands(commands.Cog):
                 description=f'Members {action} `Administrator`.',
                 color=discord.Color.green()
             )
-            embed.add_field(name=f'Member(s) ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
+            embed.add_field(name=f'Mermbers ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
             pages.append(embed)
         if skipped_members:
             chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
@@ -1143,7 +1143,7 @@ class DevCommands(commands.Cog):
                     description=f'Members with {role_obj.mention}',
                     color=discord.Color.red()
                 )
-                embed.add_field(name=f'Member(s) ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
+                embed.add_field(name=f'Mermbers ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
                 pages.append(embed)
 
         if pages:

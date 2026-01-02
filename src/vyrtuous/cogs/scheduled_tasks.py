@@ -221,7 +221,7 @@ class ScheduledTasks(commands.Cog):
                     for developer_snowflake in developer_log.developer_snowflakes:
                         assigned_developer = self.bot.get_user(developer_snowflake)
                         assigned_developer_mentions.append(assigned_developer.mention)
-                    embed.add_field(name=f'Updated: {time_since_updated}', value=f'**Link:** {msg.jump_url}\n**Developer(s):** {', '.join(assigned_developer_mentions)}\n**Notes:** {developer_log.notes}', inline=False)
+                    embed.add_field(name=f'Updated: {time_since_updated}', value=f'**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {developer_log.notes}', inline=False)
                     developers = Developer.fetch_all()
                     for developer in developers:
                         user = self.bot.get_user(developer.member_snowflake)

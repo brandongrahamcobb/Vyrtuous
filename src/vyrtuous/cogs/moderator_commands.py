@@ -154,8 +154,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -322,8 +322,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=ctx)
@@ -406,7 +406,7 @@ class ModeratorCommands(commands.Cog):
         caps, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Cap(s)'
+        title = f'{self.emoji.get_random_emoji()} Caps'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -548,7 +548,7 @@ class ModeratorCommands(commands.Cog):
         caps, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Cap(s)'
+        title = f'{self.emoji.get_random_emoji()} Caps'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -1167,8 +1167,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -1319,8 +1319,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=ctx)
@@ -1402,7 +1402,7 @@ class ModeratorCommands(commands.Cog):
         pages = []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Vegan(s)'
+        title = f'{self.emoji.get_random_emoji()} Vegans'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -1443,7 +1443,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No vegan(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No vegans exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1483,8 +1483,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -1566,7 +1566,7 @@ class ModeratorCommands(commands.Cog):
         pages = []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Vegan(s)'
+        title = f'{self.emoji.get_random_emoji()} Vegans'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -1607,7 +1607,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No vegan(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No vegans exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1647,8 +1647,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=ctx)
@@ -1873,7 +1873,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No voice mute(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No voice mutes exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1917,8 +1917,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -2043,7 +2043,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No voice mute(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No voice mutes exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2087,8 +2087,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=ctx)
@@ -2281,7 +2281,7 @@ class ModeratorCommands(commands.Cog):
         pages = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Stage(s)'
+        title = f'{self.emoji.get_random_emoji()} Stages'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -2320,7 +2320,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No stage(s) setup for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No stages setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2353,8 +2353,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -2420,7 +2420,7 @@ class ModeratorCommands(commands.Cog):
         pages = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Stage(s)'
+        title = f'{self.emoji.get_random_emoji()} Stages'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -2457,7 +2457,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No stage(s) setup for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No stages setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2490,8 +2490,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=ctx)
@@ -2552,7 +2552,6 @@ class ModeratorCommands(commands.Cog):
         state = State(interaction)
         at_home = False
         channel_obj = None
-        first_page = True
         guild_obj = None
         member_obj = None
         chunk_size = 18
@@ -2600,7 +2599,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No text mute(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No text mutes exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2644,8 +2643,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -2721,7 +2720,6 @@ class ModeratorCommands(commands.Cog):
         state = State(ctx)
         at_home = False
         channel_obj = None
-        first_page = False
         guild_obj = None
         member_obj = None
         chunk_size = 18
@@ -2769,7 +2767,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No text mute(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No text mutes exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2813,8 +2811,8 @@ class ModeratorCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=ctx)

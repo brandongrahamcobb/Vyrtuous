@@ -63,7 +63,7 @@ class EveryoneCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_role_snowflakes_by_guild_snowflake = {}
-        title = f'{self.emoji.get_random_emoji()} Administrator(s)'
+        title = f'{self.emoji.get_random_emoji()} Administrators'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -99,7 +99,7 @@ class EveryoneCommands(commands.Cog):
             try:
                 if guild_obj:
                     scope = guild_obj.name
-                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No administrators exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -219,7 +219,7 @@ class EveryoneCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_role_snowflakes_by_guild_snowflake = {}
-        title = f'{self.emoji.get_random_emoji()} Administrator(s)'
+        title = f'{self.emoji.get_random_emoji()} Administrators'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -255,7 +255,7 @@ class EveryoneCommands(commands.Cog):
             try:
                 if guild_obj:
                     scope = guild_obj.name
-                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No administrators exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -376,7 +376,7 @@ class EveryoneCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Coordinator(s)'
+        title = f'{self.emoji.get_random_emoji()} Coordinators'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -417,7 +417,7 @@ class EveryoneCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No coordinator(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -453,8 +453,8 @@ class EveryoneCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -537,7 +537,7 @@ class EveryoneCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Coordinator(s)'
+        title = f'{self.emoji.get_random_emoji()} Coordinators'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -578,7 +578,7 @@ class EveryoneCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No coordinator(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -617,8 +617,8 @@ class EveryoneCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=ctx)
@@ -702,7 +702,7 @@ class EveryoneCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Moderator(s)'
+        title = f'{self.emoji.get_random_emoji()} Moderators'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -743,7 +743,7 @@ class EveryoneCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No moderator(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No moderators exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -782,8 +782,8 @@ class EveryoneCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -866,7 +866,7 @@ class EveryoneCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Moderator(s)'
+        title = f'{self.emoji.get_random_emoji()} Moderators'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -907,7 +907,7 @@ class EveryoneCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No moderator(s) exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No moderators exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -946,8 +946,8 @@ class EveryoneCommands(commands.Cog):
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     channel_lines = []
                     field_count = 0
-            if channel_lines:
-                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if channel_lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             at_home = at_home(ctx_or_interaction_or_message=ctx)
