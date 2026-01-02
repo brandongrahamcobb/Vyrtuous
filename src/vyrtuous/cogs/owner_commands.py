@@ -59,25 +59,33 @@ class OwnerCommands(commands.Cog):
             except Exception as e:
                 await state.end(error=f'\u274C {str(e).capitalize()}')
         developers = await Developer.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-        if developers:
+        if developer:
             developer_log = await DeveloperLog.fetch_unresolved_by_reference(reference)
-            for developer_snowflake in developer_log.developer_snowflakes:
-                if member_obj.id == developer_snowflake:
-                    await developer_log.unassign(member_snowflake=member_obj.id)
-                    try:
-                        return await state.end(success=f'{self.emoji.get_random_emoji()} Developer unassigned for issue: {msg.link_url}\n**Notes:** {developer_log.notes}.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
             if developer_log:
-                developer_log.assign(member_snowflake=member_obj.id)
                 channel = self.bot.get_channel(developer_log.channel_snowflake)
                 try:
                     msg = await channel.fetch_message(developer_log.message_snowflake)
-                    await member_obj.send('{self.emoji.get_random_emoji()} Developer assigned to issue: {msg.link_url}\n**Notes:** {developer_log.notes}')
-                    return await state.end(success=f'{self.emoji.get_random_emoji()} Developer assigned to issue: {msg.link_url}\n**Notes:** {developer_log.notes}.')
-                except Exception as e:
+                    link = msg.jump_url
+                except discord.NotFound:
                     try:
-                        return await state.end(success=f'{self.emoji.get_random_emoji()} Developer assigned to issue: {msg.link_url}\n**Notes:** {developer_log.notes}.')
+                        return await state.end(warning=f'\U000026A0\U0000FE0F Message reference not found: {reference}.')
+                    except Exception as e:
+                        link = "Unknown message"
+                        pass                   
+                if developer.member_snowflake in developer_log.developer_snowflakes:
+                    await developer_log.unassign(member_snowflake=member_obj.id)
+                    try:
+                        return await state.end(success=f'{self.emoji.get_random_emoji()} Developer {member_obj.mention} unassigned for issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                else:
+                    await developer_log.assign(member_snowflake=member_obj.id)
+                    try:
+                        await member_obj.send(f'{self.emoji.get_random_emoji()} Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}')
+                    except Exception as e:
+                        pass
+                    try:
+                        return await state.end(success=f'{self.emoji.get_random_emoji()} Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}.')
                     except Exception as e:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
             else:
@@ -108,26 +116,34 @@ class OwnerCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 await state.end(error=f'\u274C {str(e).capitalize()}')
-        developers = await Developer.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-        if developers:
+        developer = await Developer.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+        if developer:
             developer_log = await DeveloperLog.fetch_unresolved_by_reference(reference)
-            for developer_snowflake in developer_log.developer_snowflakes:
-                if member_obj.id == developer_snowflake:
-                    await developer_log.unassign(member_snowflake=member_obj.id)
-                    try:
-                        return await state.end(success=f'{self.emoji.get_random_emoji()} Developer unassigned for issue: {msg.link_url}\n**Notes:** {developer_log.notes}.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
             if developer_log:
-                developer_log.assign(member_snowflake=member_obj.id)
                 channel = self.bot.get_channel(developer_log.channel_snowflake)
                 try:
                     msg = await channel.fetch_message(developer_log.message_snowflake)
-                    await member_obj.send('{self.emoji.get_random_emoji()} Developer assigned to issue: {msg.link_url}\n**Notes:** {developer_log.notes}')
-                    return await state.end(success=f'{self.emoji.get_random_emoji()} Developer assigned to issue: {msg.link_url}\n**Notes:** {developer_log.notes}.')
-                except Exception as e:
+                    link = msg.jump_url
+                except discord.NotFound:
                     try:
-                        return await state.end(success=f'{self.emoji.get_random_emoji()} Developer assigned to issue: {msg.link_url}\n**Notes:** {developer_log.notes}.')
+                        return await state.end(warning=f'\U000026A0\U0000FE0F Message reference not found: {reference}.')
+                    except Exception as e:
+                        link = "Unknown message"
+                        pass                   
+                if developer.member_snowflake in developer_log.developer_snowflakes:
+                    await developer_log.unassign(member_snowflake=member_obj.id)
+                    try:
+                        return await state.end(success=f'{self.emoji.get_random_emoji()} Developer {member_obj.mention} unassigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                else:
+                    await developer_log.assign(member_snowflake=member_obj.id)
+                    try:
+                        await member_obj.send(f'{self.emoji.get_random_emoji()} Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}')
+                    except Exception as e:
+                        pass
+                    try:
+                        return await state.end(success=f'{self.emoji.get_random_emoji()} Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}.')
                     except Exception as e:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
             else:

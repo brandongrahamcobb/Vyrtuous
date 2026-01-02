@@ -24,20 +24,25 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,role_id,role_ref",
+    "command,role_ref",
     [
-        ("trole", ROLE_ID, False),
-        ("xtrole", ROLE_ID, None)
+        (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_ID}", False),
+        (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_ID}", False),
+        ("dlogs unresolved 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58", False),
+        ("dlogs resolved 5cb608e7-7b95-4c22-9bd4-aac414562b10", False),
+        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 overwrite Test", False),
+        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 append test2", False),
+        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 resolve", False),
     ]
 )
 
-async def test_trole_xtrole_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], role_id, role_ref):
+async def test_dish_dlog_dlogs_commands(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], role_ref):
     developer = Developer(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
     await developer.grant()
     try:
         voice_channel_one.messages.clear() 
         channel_token = voice_channel_one.mention
-        formatted = f"{command} {role_id}"
+        formatted = f"{command}"
         captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         message = captured['message']
         message_type = captured['type']

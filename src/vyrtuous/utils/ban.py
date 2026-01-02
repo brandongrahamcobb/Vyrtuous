@@ -149,13 +149,16 @@ class Ban:
     async def fetch_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('''
+            rows = await conn.fetch('''
                 SELECT channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, updated_at
                 FROM active_bans
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
-        if row:
-            return Ban(channel_snowflake=channel_snowflake, expires_in=row['expires_in'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason'])
+        bans = []
+        if rows:
+            for row in rows:
+                bans.append(Ban(channel_snowflake=channel_snowflake, expires_in=row['expires_in'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason']))
+        return bans
 
     @classmethod
     async def fetch_by_expired(cls, now: Optional[datetime]):

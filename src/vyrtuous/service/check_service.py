@@ -57,7 +57,7 @@ class NotAtHome(commands.CheckFailure):
 
 async def at_home(ctx_or_interaction_or_message) -> bool:
     bot = DiscordBot.get_instance()
-    if ctx_or_interaction_or_message.guild.id == int(bot.config['discord_testing_guild_id']):
+    if ctx_or_interaction_or_message.guild.id == int(bot.config['discord_testing_guild_snowflake']):
         return True
     raise NotAtHome()
 

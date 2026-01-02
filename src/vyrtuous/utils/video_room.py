@@ -109,9 +109,9 @@ class VideoRoom:
                 FROM video_rooms
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
-        video_room = []
+        video_room = None
         if row:
-            video_room.append(VideoRoom(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake))
+            video_room = VideoRoom(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
         return video_room
             
     @classmethod

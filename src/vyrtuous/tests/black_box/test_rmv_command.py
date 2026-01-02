@@ -30,7 +30,7 @@ import pytest
 )
 
 async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], channel_ref_one, channel_ref_two):
-    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
     await administrator.grant()
     try:
         voice_channel_one.messages.clear() 

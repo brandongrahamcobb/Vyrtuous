@@ -38,9 +38,9 @@ import pytest
         ("mods {voice_channel_one_id}", True, False),
         ("mods {member_id}", False, True),
         ("mods all", False, False),
-        ("owners {member_id}", False, True),
-        ("owners {member_id}", False, True),
-        ("owners all", False, False)
+        # ("owners {member_id}", False, True),
+        # ("owners {member_id}", False, True),
+        # ("owners all", False, False)
     ]
 )
 

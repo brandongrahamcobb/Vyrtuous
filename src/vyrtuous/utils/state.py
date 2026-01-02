@@ -147,8 +147,11 @@ class State:
         else:
             return await self.ctx_or_interaction.channel.send(**kwargs)
 
+
     async def _add_reactions(self, paginated: bool):
         if not self.message or self.is_ephemeral:
+            return
+        if self.message and self.message.webhook_id is not None:
             return
         if paginated:
             await self.message.add_reaction("\u2b05\ufe0f")

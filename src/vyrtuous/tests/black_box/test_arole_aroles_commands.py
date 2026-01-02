@@ -1,4 +1,4 @@
-''' test_smute_command.py The purpose of this program is to black box test the server-mute command.
+''' test_trole_xtrole_commands.py The purpose of this program is to black box test the team role commands.
 
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
@@ -16,27 +16,32 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from typing import Optional
+from vyrtuous.inc.helpers import *
+from vyrtuous.utils.developer import Developer
 from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,member_ref",
+    "command,role_ref",
     [
-        ("smute", "True"),
-        ("smute", "True")
+        (f"arole {ROLE_ID}", False),
+        (f"aroles {GUILD_ID}", False),
+        ("aroles all", False),
+        (f"aroles {GUILD_ID}", False),
+        (f"arole {ROLE_ID}", False)
     ]
 )
 
-async def test_smute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], role, command: Optional[str], member_ref):
-    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
-    await administrator.grant()
+async def test_arole_aroles_commands(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], role_ref):
+    developer = Developer(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
+    await developer.grant()
     try:
         voice_channel_one.messages.clear() 
-        formatted = f"{command} {not_privileged_author.id}"
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
+        channel_token = voice_channel_one.mention
+        formatted = f"{command}"
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
         message = captured['message']
         message_type = captured['type']
         if isinstance(message, discord.Embed):
@@ -50,7 +55,7 @@ async def test_smute_command(bot, voice_channel_one, guild, privileged_author, n
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
+            print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in Emojis.EMOJIS)
     finally:
-        await administrator.revoke()
+        await developer.revoke()

@@ -65,6 +65,7 @@ def make_mock_member(bot=True, guild=None, id=None, name=None, voice_channel=Fal
         (),
         {
             'bot': bot,
+            'display_avatar': SimpleNamespace(url="https://example.com"),
             'display_name': name,
             'edit': edit,
             'guild': guild,
@@ -198,3 +199,36 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
 
 async def mock_wait_for(event, timeout=None, check=None):
     raise asyncio.TimeoutError()
+
+def make_mock_interaction(bot, guild, channel, user, command_name, options=None):
+    command = bot.tree.get_command(command_name)
+    assert command is not None
+    assert command.id is not None
+
+    class MockResponse:
+        async def send_message(self, *args, **kwargs): pass
+        async def defer(self, *args, **kwargs): pass
+        def is_done(self): return False
+
+    class MockFollowup:
+        async def send(self, *args, **kwargs): pass
+
+    return SimpleNamespace(
+        type=discord.InteractionType.application_command,
+        data={
+            'id': command.id,
+            'name': command_name,
+            'type': 1,
+            'options': [
+                {'name': k, 'type': 3, 'value': v}
+                for k, v in (options or {}).items()
+            ]
+        },
+        guild=guild,
+        channel=channel,
+        user=user,
+        client=bot,
+        response=MockResponse(),
+        followup=MockFollowup(),
+        created_at=datetime.now(timezone.utc)
+    )

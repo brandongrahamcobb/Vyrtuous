@@ -27,13 +27,13 @@ import pytest
 @pytest.mark.parametrize(
     "command,duration,channel_ref,member_ref",
     [
-        ("cstage {voice_channel_one_id}", '1m', True, False),
+        ("stage {voice_channel_one_id}", '1m', True, False),
         ("mstage {not_privileged_author_id}", None, False, True),
-        ("xstage {voice_channel_one_id}", None, True, False),
-        ("cstage {voice_channel_one_id}", '1h', True, False),
-        ("xstage {voice_channel_one_id}", None, True, False),
-        ("cstage {voice_channel_one_id}", '1d', True, False),
-        ("xstage {voice_channel_one_id}", None, True, False)
+        ("stage {voice_channel_one_id}", None, True, False),
+        ("stage {voice_channel_one_id}", '1h', True, False),
+        ("stage {voice_channel_one_id}", None, True, False),
+        ("stage {voice_channel_one_id}", '1d', True, False),
+        ("stage {voice_channel_one_id}", None, True, False)
     ]
 )
 
@@ -45,7 +45,7 @@ async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild
             duration=duration
         )
     if "cstage" in command or "xstage" in command:
-        administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+        administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
         await administrator.grant()
         captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         await administrator.revoke()

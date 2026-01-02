@@ -31,7 +31,7 @@ class DiscordClient(discord.Client):
             super().__init__(intents=intents, **kwargs)
             self.config = config
             self.db_pool = db_pool
-            self.testing_guild_id = self.config['discord_testing_guild_snowflake']
+            self.testing_guild_snowflake = self.config['discord_testing_guild_snowflake']
         except Exception as e:
             logger.error(f'Error during Discord bot initialization: {str(e).capitalize()}')
 

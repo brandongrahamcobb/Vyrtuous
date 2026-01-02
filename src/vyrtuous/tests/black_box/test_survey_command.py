@@ -52,7 +52,7 @@ async def test_survey_command(bot, voice_channel_one, guild, not_privileged_auth
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
+            print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in Emojis.EMOJIS) 
     finally:
         await moderator.revoke()

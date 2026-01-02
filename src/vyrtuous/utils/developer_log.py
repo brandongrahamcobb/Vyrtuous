@@ -90,7 +90,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 ORDER BY created_at
             ''')
@@ -105,7 +105,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 WHERE guild_snowflake=$1 AND resolved=FALSE
             ''', guild_snowflake)
@@ -120,7 +120,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND resolved=FALSE
             ''', channel_snowflake, guild_snowflake)
@@ -135,7 +135,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 WHERE resolved=FALSE
             ''')
@@ -159,7 +159,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 WHERE id=$1 AND resolved=FALSE
             ''', id)
@@ -173,7 +173,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 WHERE guild_snowflake=$1 AND resolved=TRUE
             ''', guild_snowflake)
@@ -188,7 +188,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND resolved=TRUE
             ''', channel_snowflake, guild_snowflake)
@@ -203,7 +203,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 WHERE resolved=TRUE
             ''')
@@ -218,7 +218,7 @@ class DeveloperLog:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             row = await conn.fetchrow('''
-                SELECT channel_snowflake,created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
+                SELECT channel_snowflake, created_at, developer_snowflakes,  guild_snowflake, id, message_snowflake, notes, resolved, updated_at
                 FROM developer_logs
                 WHERE id=$1 AND resolved=TRUE
             ''', id)
@@ -227,22 +227,22 @@ class DeveloperLog:
             issue = DeveloperLog(channel_snowflake=row['channel_snowflake'], created_at=row['created_at'], developer_snowflakes=row['developer_snowflakes'], guild_snowflake=row["guild_snowflake"], id=id, message_snowflake=row["message_snowflake"], notes=row['notes'], resolved=row['resolved'], updated_at=row['updated_at'])
         return issue
     
-    async def assign(self, developer_snowflake: Optional[int]):
+    async def assign(self, member_snowflake: Optional[int]):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE developer_logs
                 SET developer_snowflakes = array_append(COALESCE(developer_snowflakes, '{}'), $1),
                     updated_at = NOW()
                 WHERE id = $2 AND NOT $1 = ANY(COALESCE(developer_snowflakes, '{}'))
-            ''', developer_snowflake, self.id)
+            ''', member_snowflake, self.id)
             self.updated_at = datetime.now(timezone.utc)
 
-    async def unassign(self, developer_snowflake: Optional[int]):
+    async def unassign(self, member_snowflake: Optional[int]):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
                 UPDATE developer_logs
                 SET developer_snowflakes = array_remove(COALESCE(developer_snowflakes, '{}'), $1),
                     updated_at = NOW()
                 WHERE id = $2
-            ''', developer_snowflake, self.id)
+            ''', member_snowflake, self.id)
             self.updated_at = datetime.now(timezone.utc)

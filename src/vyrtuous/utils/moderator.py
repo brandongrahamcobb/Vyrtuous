@@ -39,15 +39,6 @@ class Moderator:
                 SET channel_snowflake=$2 WHERE channel_snowflake=$1
             ''', source_channel_snowflake, target_channel_snowflake)
 
-    @classmethod
-    async def delete_by_channel_and_member(cls, channel_snowflake: Optional[int], member_snowflake: Optional[int]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute('''
-                DELETE FROM moderators
-                WHERE channel_snowflake=$1 AND member_snowflake=$2
-            ''', channel_snowflake, member_snowflake)
-
     async def grant(self):
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute('''
@@ -56,6 +47,7 @@ class Moderator:
                 ON CONFLICT DO NOTHING
             ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake)
 
+    @classmethod
     async def delete_by_channel_guild_and_member(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
@@ -139,7 +131,7 @@ class Moderator:
             ''', self.channel_snowflake, self.guild_snowflake, self.member_snowflake)
 
     @classmethod
-    async def fetch_all(cls, guild_snowflake: Optional[int]):
+    async def fetch_all(cls):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''

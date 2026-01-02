@@ -165,10 +165,17 @@ class CoordinatorCommands(commands.Cog):
             color=discord.Color.blurple()
         )
         pages.append(embed)
-        try:
-             return await state.end(success=pages)
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @commands.command(name='rmute', help='Mutes all members in a VC (except yourself).')
@@ -216,10 +223,17 @@ class CoordinatorCommands(commands.Cog):
             color=discord.Color.blurple()
         )
         pages.append(embed)
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @app_commands.command(name='xrmute', description='Unmutes all members in a VC (except yourself).')
@@ -266,10 +280,17 @@ class CoordinatorCommands(commands.Cog):
             color=discord.Color.blurple()
         )
         pages.append(embed)
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
     @commands.command(name='xrmute', help='Unmutes all members in a VC (except yourself).')
@@ -311,10 +332,17 @@ class CoordinatorCommands(commands.Cog):
             color=discord.Color.blurple()
         )
         pages.append(embed)
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
     
 async def setup(bot: DiscordBot):
     await bot.add_cog(CoordinatorCommands(bot))

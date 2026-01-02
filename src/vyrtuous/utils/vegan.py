@@ -121,13 +121,16 @@ class Vegan:
     async def fetch_by_channel_and_guild(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
-            row = await conn.fetchrow('''
+            rows = await conn.fetch('''
                 SELECT channel_snowflake, created_at, guild_snowflake, member_snowflake, updated_at
                 FROM vegans
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
-        if row:
-            return Vegan(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
+        vegans = []
+        if rows:
+            for row in rows:
+                vegans.append(Vegan(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake']))
+        return vegans
         
     @classmethod
     async def fetch_all(cls):

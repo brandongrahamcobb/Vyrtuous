@@ -354,7 +354,7 @@ class Aliases(commands.Cog):
                 role = await self.role_service.resolve_role(alias.role_snowflake)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\u274C Role `{alias.rle_snowflake}` was not found.')
+                    return await state.end(warning=f'\u274C Role `{alias.role_snowflake}` was not found.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             try:

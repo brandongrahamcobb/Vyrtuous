@@ -141,8 +141,10 @@ class Stage:
                     s.member_snowflake,
                     s.expires_in
             ''', channel_snowflake, guild_snowflake)
+        state = None
         if row:
-            return Stage(channel_snowflake=channel_snowflake, expires_in=row['expires_in'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
+            stage = Stage(channel_snowflake=channel_snowflake, expires_in=row['expires_in'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
+        return stage
 
     async def create(self):
         bot = DiscordBot.get_instance()

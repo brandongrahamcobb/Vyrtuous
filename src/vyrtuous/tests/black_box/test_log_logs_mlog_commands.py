@@ -42,7 +42,7 @@ import pytest
 )
 
 async def test_log_logs_mlog_command(bot, text_channel, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], role, command: Optional[str], action: Optional[str], target_type: Optional[str], channel_ref, member_ref, text_ref):
-    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflake=role.id)
+    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
     await administrator.grant()
     try:
         text_channel.messages.clear() 

@@ -16,7 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from discord.ext import commands
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
@@ -138,15 +138,15 @@ class EventListeners(commands.Cog):
                 if not after.self_video:
                     task = asyncio.create_task(VideoRoom.enforce_video(member, after.channel, 300))
                     VideoRoom.video_tasks[key] = task
-                return
+                break
             if before.self_video and not after.self_video:
                 VideoRoom.cancel_task(key)
                 task = asyncio.create_task(VideoRoom.enforce_video(member, after.channel, 60))
                 VideoRoom.video_tasks[key] = task
-                return
+                break
             if not before.self_video and after.self_video:
                 VideoRoom.cancel_task(key)
-                return
+                break
         allowed = True
         if before.channel == after.channel and before.mute == after.mute and before.self_mute == after.self_mute:
             allowed = False
@@ -154,63 +154,59 @@ class EventListeners(commands.Cog):
             allowed = False
         if not allowed:
             return
-        video_room = await VideoRoom.fetch_by_channel_and_guild(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id)
-        if video_room:
-            await after.channel.send(f"Hey {member.mention}! You joined a video only room and you have 5 minutes to turn your camera on.")
         # member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(after.channel, member)
 
-        async with self.db_pool.acquire() as conn:
-            target = 'user'
-            # if after.channel:
-                # stage = await Stage.fetch_stage_by_channel(after.channel)
-                # temporary_stage_coordinator_ids = await stage.fetch_coordinator_temporary_stage_coordinator_ids(member, after.channel)
-                # if stage:
-                #     target = 'room'
-                #     stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
-                # else:
-                #     target = 'user'
-                # if stage and (member.id not in temporary_stage_coordinator_ids) and (member_permission_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
-                #      expires_in = stage.expires_in
-                #      await conn.execute('''
-                #          INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_in, target, room_name)
-                #          VALUES ($1, $2, $3, $4, 'room', $5)
-                #          ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
-                #          DO UPDATE SET expires_in = EXCLUDED.expires_in
-                #      ''', member.guild.id, member.id, after.channel.id, expires_in, after.channel.name)
-            server_mute = await ServerMute.fetch_by_member(member.id)
-            if server_mute:
-                if member.guild.id == server_mute.guild_snowflake:
-                    return
-            if after.channel:                    
-                should_be_muted = False
-                if not before.mute and after.mute:
-                    if member.id in Invincibility.get_invincible_members():
-                        embed = discord.Embed(
-                            title=f'\u1F4AB {member.display_name} is a hero!',
-                            description=f'{member.display_name} cannot be muted.',
-                            color=discord.Color.gold()
-                        )
-                        embed.set_thumbnail(url=member.display_avatar.url)
-                        await after.channel.send(embed=embed)
-                    else:
-                        expires_in = datetime.utcnow() + timedelta(hours=1)
-                        voice_mute = await VoiceMute(channel_snowflake=after.channel.id, expires_in=expires_in, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason="No reason provided.", target=target)
-                        await voice_mute.create()       
-                        should_be_muted = True 
-                if not should_be_muted:               
-                    if before.mute and not after.mute and before.channel:
-                        await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=before.channel.id, guild_snowflake=before.channel.guild.id, member_snowflake=member.id, target=target)
-                    voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target="user")
-                if voice_mute:
-                    should_be_muted = True
-                if after.mute != should_be_muted:
-                    try:
-                        await member.edit(mute=should_be_muted, reason=f'Setting mute to {should_be_muted} in {after.channel.name}')
-                    except discord.Forbidden:
-                        logger.debug(f'No permission to edit mute for {member.display_name}')
-                    except discord.HTTPException as e:
-                        logger.debug(f'Failed to edit mute for {member.display_name}: {str(e).capitalize()}')
-                await self.print_flags(member, after.channel)
+        target = 'user'
+        # if after.channel:
+            # stage = await Stage.fetch_stage_by_channel(after.channel)
+            # temporary_stage_coordinator_ids = await stage.fetch_coordinator_temporary_stage_coordinator_ids(member, after.channel)
+            # if stage:
+            #     target = 'room'
+            #     stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
+            # else:
+            #     target = 'user'
+            # if stage and (member.id not in temporary_stage_coordinator_ids) and (member_permission_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
+            #      expires_in = stage.expires_in
+            #      await conn.execute('''
+            #          INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_in, target, room_name)
+            #          VALUES ($1, $2, $3, $4, 'room', $5)
+            #          ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
+            #          DO UPDATE SET expires_in = EXCLUDED.expires_in
+            #      ''', member.guild.id, member.id, after.channel.id, expires_in, after.channel.name)
+        server_mute = await ServerMute.fetch_by_member(member.id)
+        if server_mute:
+            if member.guild.id == server_mute.guild_snowflake:
+                return
+        if after.channel:                    
+            should_be_muted = False
+            if not before.mute and after.mute:
+                if member.id in Invincibility.get_invincible_members():
+                    embed = discord.Embed(
+                        title=f'\u1F4AB {member.display_name} is a hero!',
+                        description=f'{member.display_name} cannot be muted.',
+                        color=discord.Color.gold()
+                    )
+                    embed.set_thumbnail(url=member.display_avatar.url)
+                    await after.channel.send(embed=embed)
+                else:
+                    expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
+                    voice_mute = VoiceMute(channel_snowflake=after.channel.id, expires_in=expires_in, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason="No reason provided.", target=target)
+                    await voice_mute.create()       
+                    should_be_muted = True 
+            if not should_be_muted:               
+                if before.mute and not after.mute and before.channel:
+                    await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=before.channel.id, guild_snowflake=before.channel.guild.id, member_snowflake=member.id, target=target)
+            #     voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target="user")
+            # if voice_mute:
+            #     should_be_muted = True
+            if after.mute != should_be_muted:
+                try:
+                    await member.edit(mute=should_be_muted, reason=f'Setting mute to {should_be_muted} in {after.channel.name}')
+                except discord.Forbidden:
+                    logger.debug(f'No permission to edit mute for {member.display_name}')
+                except discord.HTTPException as e:
+                    logger.debug(f'Failed to edit mute for {member.display_name}: {str(e).capitalize()}')
+            await self.print_flags(member, after.channel)
                 
 #                    explicit_deny_roles = []
 #                    for role in member.roles:
@@ -276,7 +272,7 @@ class EventListeners(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if not message.guild or message.author.id == self.bot.user.id:
+        if not message.guild or message.author.id != self.bot.user.id or self.config['release_mode'] == False:
             return
         prefix = self.config['discord_command_prefix']
         if not message.content.startswith(prefix):

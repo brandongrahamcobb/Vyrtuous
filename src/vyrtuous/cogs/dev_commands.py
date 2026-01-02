@@ -57,6 +57,7 @@ class DevCommands(commands.Cog):
         self,
         interaction: discord.Interaction
     ):
+        await interaction.response.defer(ephemeral=True)
         state = State(interaction)
         db = Database(directory='/app/backups')
         try:
@@ -68,6 +69,7 @@ class DevCommands(commands.Cog):
             return await state.end(success=discord.File(db.file_name))
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
     # DONE
     @commands.command(name='backup', help='Creates a backup of the database and uploads it.')
     @is_owner_developer_predicator()
@@ -399,24 +401,34 @@ class DevCommands(commands.Cog):
             embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         if skipped_guild_snowflakes:
-            embed = discord.Embed(title=f'Skipped Servers', description='\u200b', color=discord.Color.red())
+            embed = discord.Embed(title=title, description='\u200b', color=discord.Color.blue())
+            lines = []
             for guild_snowflake in skipped_guild_snowflakes:
                 if field_count >= chunk_size:
+                    embed.description = '\n'.join(lines)
                     pages.append(embed)
-                    embed = discord.Embed(title=f'Skipped Servers continued...', description='\u200b', color=discord.Color.red())
+                    embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
+                    lines = []
                     field_count = 0
-                embed.add_field(name=guild_snowflake, value='\u200b', inline=False)
+                lines.append(str(guild_snowflake))
+                field_count += 1
+            embed.description = '\n'.join(lines)
             pages.append(embed)
         if skipped_channel_snowflakes_by_guild_snowflake:
             for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
-                embed = discord.Embed(title=f'Server ({guild_snowflake})', description="Skipped Channels", color=discord.Color.red())
+                embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in ({guild_snowflake})')
+                field_count = 0
+                lines = []
                 for channel_snowflake in channel_list:
                     if field_count >= chunk_size:
+                        embed.description = '\n'.join(lines)
                         pages.append(embed)
-                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description="Skipped Channels", color=discord.Color.red())
+                        embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in ({guild_snowflake}) continued...')
                         field_count = 0
-                    embed.add_field(name=channel_snowflake, value='\u200b', inline=False)
+                        lines = []
+                    lines.append(str(channel_snowflake))
                     field_count += 1
+                embed.description = '\n'.join(lines)
                 pages.append(embed)
         if skipped_message_snowflakes_by_guild_snowflake:
             for guild_snowflake, message_list in skipped_message_snowflakes_by_guild_snowflake.items():
@@ -429,17 +441,23 @@ class DevCommands(commands.Cog):
                     embed.add_field(name=message_snowflake, value='\u200b', inline=False)
                     field_count += 1
                 pages.append(embed)
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No issues found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
-        
-    @commands.command(name='dlogs', help="Lists developer logs by 'all', 'resolved', 'unresolved' by channel ID/mention, reference ID or server ID.")
+    @commands.command(name='dlogs', help="Lists developer logs by 'all', 'resolved', 'unresolved' and channel ID/mention, reference ID or server ID.")
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
-        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', 'resolved', channel ID/mention, reference ID or server ID."),
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', 'resolved' or 'unresolved."),
         value: Optional[str] = commands.parameter(default=None, description="Specify one of: channel ID/mention, reference ID or server ID")
     ):
         state = State(ctx)
@@ -549,24 +567,34 @@ class DevCommands(commands.Cog):
             embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         if skipped_guild_snowflakes:
-            embed = discord.Embed(title=f'Skipped Servers', description='\u200b', color=discord.Color.red())
+            embed = discord.Embed(title=title, description='\u200b', color=discord.Color.blue())
+            lines = []
             for guild_snowflake in skipped_guild_snowflakes:
                 if field_count >= chunk_size:
+                    embed.description = '\n'.join(lines)
                     pages.append(embed)
-                    embed = discord.Embed(title=f'Skipped Servers continued...', description='\u200b', color=discord.Color.red())
+                    embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
+                    lines = []
                     field_count = 0
-                embed.add_field(name=guild_snowflake, value='\u200b', inline=False)
+                lines.append(str(guild_snowflake))
+                field_count += 1
+            embed.description = '\n'.join(lines)
             pages.append(embed)
         if skipped_channel_snowflakes_by_guild_snowflake:
             for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
-                embed = discord.Embed(title=f'Server ({guild_snowflake})', description="Skipped Channels", color=discord.Color.red())
+                embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in ({guild_snowflake})')
+                field_count = 0
+                lines = []
                 for channel_snowflake in channel_list:
                     if field_count >= chunk_size:
+                        embed.description = '\n'.join(lines)
                         pages.append(embed)
-                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description="Skipped Channels", color=discord.Color.red())
+                        embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in ({guild_snowflake}) continued...')
                         field_count = 0
-                    embed.add_field(name=channel_snowflake, value='\u200b', inline=False)
+                        lines = []
+                    lines.append(str(channel_snowflake))
                     field_count += 1
+                embed.description = '\n'.join(lines)
                 pages.append(embed)
         if skipped_message_snowflakes_by_guild_snowflake:
             for guild_snowflake, message_list in skipped_message_snowflakes_by_guild_snowflake.items():
@@ -579,19 +607,25 @@ class DevCommands(commands.Cog):
                     embed.add_field(name=message_snowflake, value='\u200b', inline=False)
                     field_count += 1
                 pages.append(embed)
-        
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No issues found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @app_commands.command(name='load', description="Loads a cog by name 'vyrtuous.cog.<cog_name>.'")
     @is_owner_developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
+        await interaction.response.defer(ephemeral=True)
         state = State(interaction)
         try:
-            await interaction.response.defer(ephemeral=True)
             await interaction.client.load_extension(module)
         except commands.ExtensionError as e:
             try:
@@ -650,9 +684,9 @@ class DevCommands(commands.Cog):
     @app_commands.check(at_home)
     @is_owner_developer_predicator()
     async def reload_app_command(self, interaction: discord.Interaction, module: str):
+        await interaction.response.defer(ephemeral=True)
         state = State(interaction)
         try:
-            await interaction.response.defer(ephemeral=True)
             await interaction.client.reload_extension(module)
         except commands.ExtensionError as e:
             try:
@@ -685,10 +719,10 @@ class DevCommands(commands.Cog):
     @app_commands.command(name='sync', description="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
     @is_owner_developer_predicator()
     async def sync_app_command(self, interaction: discord.Interaction, spec: Optional[Literal['~', '*', '^']] = None):
+        await interaction.response.defer(ephemeral=True)
         state = State(interaction)
         guilds = interaction.client.guilds
         synced = []
-        await interaction.response.defer(ephemeral=True)
         if not guilds:
             if spec == '~':
                 synced = await interaction.client.tree.sync(guild=interaction.guild)
@@ -766,7 +800,7 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @app_commands.command(name='trole', description='Marks a role as administrator and syncs all members.')
+    @app_commands.command(name='arole', description='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
     async def grant_administrator_by_role_app_command(
         self,
@@ -833,14 +867,20 @@ class DevCommands(commands.Cog):
                 )
                 embed.add_field(name=f'Member(s) ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
                 pages.append(embed)
-                
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @commands.command(name='trole', help='Marks a role as administrator and syncs all members.')
+    @commands.command(name='arole', help='Marks a role as administrator and syncs all members.')
     @is_owner_developer_predicator()
     async def grant_administrator_by_role_text_command(
         self,
@@ -908,19 +948,25 @@ class DevCommands(commands.Cog):
                 )
                 embed.add_field(name=f'Member(s) ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
                 pages.append(embed)
-        
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @app_commands.command(name='unload', description="Unloads a cog by name 'vyrtuous.cog.<cog_name>'.")
     @is_owner_developer_predicator()
     async def unload_app_command(self, interaction: discord.Interaction, module: str):
+        await interaction.response.defer(ephemeral=True)
         state = State(interaction)
         try:
-            await interaction.response.defer(ephemeral=True)
             await interaction.client.unload_extension(module)
         except commands.ExtensionError as e:
             try:
