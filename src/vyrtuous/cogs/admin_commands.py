@@ -42,7 +42,7 @@ from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.state import State
-from vyrtuous.utils.statistics import Statistics
+from vyrtuous.utils.history import History
 from vyrtuous.utils.temporary_room import TemporaryRoom
 from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.vegan import Vegan
@@ -694,14 +694,14 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             channel_obj = interaction.channel
             await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
-        statistics = await Statistics.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-        if not statistics:
+        history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+        if not history:
             action = 'start'
             enabled = True
         else:
             action = 'stop'
             enabled = False
-        await Statistics.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=interaction.guild.id)
+        await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=interaction.guild.id)
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Logging messages will now {action} being sent to {channel_obj.mention}.')
         except Exception as e:
@@ -721,14 +721,14 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             channel_obj = ctx.channel
             await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
-        statistics = await Statistics.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-        if not statistics:
+        history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+        if not history:
             action = 'start'
             enabled = True
         else:
             action = 'stop'
             enabled = False
-        await Statistics.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=ctx.guild.id)
+        await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=ctx.guild.id)
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Logging messages will now {action} being sent to {channel_obj.mention}.')
         except Exception as e:
@@ -744,7 +744,7 @@ class AdminCommands(commands.Cog):
         channel_obj = None
         chunk_size = 7
         field_count = 0
-        statistics, pages = [], []
+        history, pages = [], []
         skipped_guild_snowflakes = set()
         skipped_snowflakes = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -757,11 +757,11 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list logging routes across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            statistics = await Statistics.fetch_all()
+            history = await History.fetch_all()
         elif scope:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
-                statistics = await Statistics.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     try:
@@ -775,17 +775,17 @@ class AdminCommands(commands.Cog):
                             return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, server ID or empty. Received: {scope}.")
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
-                    statistics = await Statistics.fetch_by_guild(guild_snowflake=int(scope))
+                    history = await History.fetch_by_guild(guild_snowflake=int(scope))
                 except:
                     try:
                         return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, server ID or empty. Received: {scope}.")
                     except Exception as e:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
-            statistics = await Statistics.fetch_by_guild(interaction.guild.id)
+            history = await History.fetch_by_guild(interaction.guild.id)
             channel_obj = interaction.channel
 
-        if not statistics:
+        if not history:
             try:
                 if guild_obj:
                     scope = guild_obj.name
@@ -796,14 +796,14 @@ class AdminCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
         guild_dictionary = {}
-        for statistic in statistics:
-            guild_dictionary.setdefault(statistic.guild_snowflake, {})
-            guild_dictionary[statistic.guild_snowflake].setdefault(statistic.channel_snowflake, {})
-            guild_dictionary[statistic.guild_snowflake][statistic.channel_snowflake].setdefault('enabled', []).append(statistic.enabled)
-            guild_dictionary[statistic.guild_snowflake][statistic.channel_snowflake].setdefault('statistic_type', []).append(statistic.statistic_type)
-            if statistic.snowflakes:
-                for snowflake in statistic.snowflakes:
-                    guild = self.bot.get_guild(statistic.guild_snowflake)
+        for entry in history:
+            guild_dictionary.setdefault(entry.guild_snowflake, {})
+            guild_dictionary[entry.guild_snowflake].setdefault(entry.channel_snowflake, {})
+            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('enabled', []).append(entry.enabled)
+            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('entry_type', []).append(entry.entry_type)
+            if entry.snowflakes:
+                for snowflake in entry.snowflakes:
+                    guild = self.bot.get_guild(entry.guild_snowflake)
                     if not guild:
                         continue
                     else:
@@ -813,9 +813,9 @@ class AdminCommands(commands.Cog):
                             if not member:
                                 skipped_snowflakes.append(snowflake)
                             else:
-                                guild_dictionary[statistic.guild_snowflake][statistic.channel_snowflake].setdefault('members', []).append(member.mention)
+                                guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('members', []).append(member.mention)
                         else:
-                            guild_dictionary[statistic.guild_snowflake][statistic.channel_snowflake].setdefault('channels', []).append(channel.mention)
+                            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('channels', []).append(channel.mention)
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
@@ -836,10 +836,10 @@ class AdminCommands(commands.Cog):
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
                 enabled_list = channel_data.get('enabled', [False]) if isinstance(channel_data.get('enabled'), list) else [channel_data.get('enabled', False)]
-                statistic_type_list = channel_data.get('statistic_type', ['general']) if isinstance(channel_data.get('statistic_type'), list) else [channel_data.get('statistic_type', 'general')]
-                for enabled, statistic_type in zip(enabled_list, statistic_type_list):
+                history_list = channel_data.get('entry_type', ['general']) if isinstance(channel_data.get('entry_type'), list) else [channel_data.get('entry_type', 'general')]
+                for enabled, entry_type in zip(enabled_list, history_list):
                     status = '\u2705' if enabled else '\u26D4'
-                    match statistic_type:
+                    match entry_type:
                         case 'general':
                             detail = f'General to: {channel.mention}'
                         case 'channel':
@@ -928,7 +928,7 @@ class AdminCommands(commands.Cog):
         channel_obj = None
         chunk_size = 7
         field_count = 0
-        statistics, pages = [], []
+        history, pages = [], []
         skipped_guild_snowflakes = set()
         skipped_snowflakes = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -941,11 +941,11 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list logging routes across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            statistics = await Statistics.fetch_all()
+            history = await History.fetch_all()
         elif scope:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
-                statistics = await Statistics.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 if highest_role not in ('Owner', 'Developer', 'Administrator'):
                     try:
@@ -959,13 +959,13 @@ class AdminCommands(commands.Cog):
                         return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, server ID or empty. Received: {scope}.")
                     except Exception as e:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
-                statistics = await Statistics.fetch_by_guild(guild_snowflake=int(scope))
+                history = await History.fetch_by_guild(guild_snowflake=int(scope))
   
         else:
-            statistics = await Statistics.fetch_by_guild(ctx.guild.id)
+            history = await History.fetch_by_guild(ctx.guild.id)
             channel_obj = ctx.channel
         
-        if not statistics:
+        if not history:
             try:
                 if guild_obj:
                     scope = guild_obj.name
@@ -976,14 +976,14 @@ class AdminCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             
         guild_dictionary = {}
-        for statistic in statistics:
-            guild_dictionary.setdefault(statistic.guild_snowflake, {})
-            guild_dictionary[statistic.guild_snowflake].setdefault(statistic.channel_snowflake, {})
-            guild_dictionary[statistic.guild_snowflake][statistic.channel_snowflake].setdefault('enabled', []).append(statistic.enabled)
-            guild_dictionary[statistic.guild_snowflake][statistic.channel_snowflake].setdefault('statistic_type', []).append(statistic.statistic_type)
-            if statistic.snowflakes:
-                for snowflake in statistic.snowflakes:
-                    guild = self.bot.get_guild(statistic.guild_snowflake)
+        for entry in history:
+            guild_dictionary.setdefault(entry.guild_snowflake, {})
+            guild_dictionary[entry.guild_snowflake].setdefault(entry.channel_snowflake, {})
+            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('enabled', []).append(entry.enabled)
+            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('entry_type', []).append(entry.entry_type)
+            if entry.snowflakes:
+                for snowflake in entry.snowflakes:
+                    guild = self.bot.get_guild(entry.guild_snowflake)
                     if not guild:
                         continue
                     else:
@@ -993,9 +993,9 @@ class AdminCommands(commands.Cog):
                             if not member:
                                 skipped_snowflakes.append(snowflake)
                             else:
-                                guild_dictionary[statistic.guild_snowflake][statistic.channel_snowflake].setdefault('members', []).append(member.mention)
+                                guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('members', []).append(member.mention)
                         else:
-                            guild_dictionary[statistic.guild_snowflake][statistic.channel_snowflake].setdefault('channels', []).append(channel.mention)
+                            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('channels', []).append(channel.mention)
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
@@ -1016,10 +1016,10 @@ class AdminCommands(commands.Cog):
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
                 enabled_list = channel_data.get('enabled', [False]) if isinstance(channel_data.get('enabled'), list) else [channel_data.get('enabled', False)]
-                statistic_type_list = channel_data.get('statistic_type', ['general']) if isinstance(channel_data.get('statistic_type'), list) else [channel_data.get('statistic_type', 'general')]
-                for enabled, statistic_type in zip(enabled_list, statistic_type_list):
+                history_list = channel_data.get('entry_type', ['general']) if isinstance(channel_data.get('entry_type'), list) else [channel_data.get('entry_type', 'general')]
+                for enabled, entry_type in zip(enabled_list, history_list):
                     status = '\u2705' if enabled else '\u26D4'
-                    match statistic_type:
+                    match entry_type:
                         case 'general':
                             detail = f'General to: {channel.mention}'
                         case 'channel':
@@ -1101,7 +1101,7 @@ class AdminCommands(commands.Cog):
     @app_commands.describe(
         channel='Tag a channel or include its snowflake ID',
         scope='create | modify | delete',
-        statistic_type='Type of logs: member, channel, general',
+        entry_type='Type of logs: member, channel, general',
         snowflakes='Optional list of member IDs to include in logs'
     )
     @is_owner_developer_administrator_predicator()
@@ -1110,7 +1110,7 @@ class AdminCommands(commands.Cog):
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
         scope: Optional[str] = None,
-        statistic_type: Optional[str] = None,
+        entry_type: Optional[str] = None,
         snowflakes: Optional[str] = None
     ):
         state = State(interaction)
@@ -1123,8 +1123,8 @@ class AdminCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        if statistic_type != 'general':
-            match statistic_type:
+        if entry_type != 'general':
+            match entry_type:
                 case 'channel':
                     for snowflake in snowflakes:
                         try:
@@ -1142,14 +1142,14 @@ class AdminCommands(commands.Cog):
         if scope:
             match scope.lower():
                 case 'create':
-                    statistics = Statistics(channel_snowflake=channel_obj.id, enabled=True, guild_snowflake=interaction.guild.id, statistic_type=statistic_type, snowflakes=snowflakes)
-                    await statistics.create()
+                    history = History(channel_snowflake=channel_obj.id, enabled=True, guild_snowflake=interaction.guild.id, entry_type=entry_type, snowflakes=snowflakes)
+                    await history.create()
                     scope = 'created'
                 case 'delete':
-                    await Statistics.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                    await History.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                     scope = 'deleted'
                 case 'modify':
-                    await Statistics.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, statistic_type=statistic_type, snowflakes=snowflakes)
+                    await History.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, entry_type=entry_type, snowflakes=snowflakes)
                     scope = 'modified'
         else:
             try:
@@ -1161,7 +1161,7 @@ class AdminCommands(commands.Cog):
             embed.add_field(name='Processed Snowflakes', value=', '.join(str(s) for s in snowflakes), inline=False)
         if failed_snowflakes:
             embed.add_field(name='Failed Snowflakes', value=', '.join(str(s) for s in failed_snowflakes), inline=False)
-        if not snowflakes and statistic_type == 'general':
+        if not snowflakes and entry_type == 'general':
             embed.description = f'{self.emoji.get_random_emoji()} Log {scope} successfully for general statistics.'
         try:
             return await state.end(success=embed)
@@ -1176,7 +1176,7 @@ class AdminCommands(commands.Cog):
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID.'),
         scope: Optional[str] = commands.parameter(default=None, description='create | modify | delete.'),
-        statistic_type: Optional[str] = commands.parameter(default=None, description='Type of logs: member, channel, general.'),
+        entry_type: Optional[str] = commands.parameter(default=None, description='Type of logs: member, channel, general.'),
         *snowflakes: Optional[int]
     ):
         state = State(ctx)
@@ -1189,8 +1189,8 @@ class AdminCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        if statistic_type != 'general':
-            match statistic_type:
+        if entry_type != 'general':
+            match entry_type:
                 case 'channel':
                     for snowflake in snowflakes:
                         try:
@@ -1208,14 +1208,14 @@ class AdminCommands(commands.Cog):
         if scope:
             match scope.lower():
                 case 'create':
-                    statistics = Statistics(channel_snowflake=channel_obj.id, enabled=True, guild_snowflake=ctx.guild.id, statistic_type=statistic_type, snowflakes=snowflakes)
-                    await statistics.create()
+                    history = History(channel_snowflake=channel_obj.id, enabled=True, guild_snowflake=ctx.guild.id, entry_type=entry_type, snowflakes=snowflakes)
+                    await history.create()
                     scope = 'created'
                 case 'delete':
-                    await Statistics.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                    await History.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                     scope = 'deleted'
                 case 'modify':
-                    await Statistics.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, statistic_type=statistic_type, snowflakes=snowflakes)
+                    await History.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, entry_type=entry_type, snowflakes=snowflakes)
                     scope = 'modified'
         else:
             try:
@@ -1227,7 +1227,7 @@ class AdminCommands(commands.Cog):
             embed.add_field(name='Processed Snowflakes', value=', '.join(str(s) for s in snowflakes), inline=False)
         if failed_snowflakes:
             embed.add_field(name='Failed Snowflakes', value=', '.join(str(s) for s in failed_snowflakes), inline=False)
-        if not snowflakes and statistic_type == 'general':
+        if not snowflakes and entry_type == 'general':
             embed.description = f'{self.emoji.get_random_emoji()} Log {scope} successfully.'
         try:
             return await state.end(success=embed)

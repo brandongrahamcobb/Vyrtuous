@@ -2540,6 +2540,238 @@ class ModeratorCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             
+    @app_commands.command(name='summary', description='Lists a moderation summary.')
+    @app_commands.describe(
+        member='Specify a member ID/mention.',
+        channel='Specify a channel ID/mention.'
+    )
+    @is_owner_developer_administrator_coordinator_moderator_predicator()
+    async def list_moderation_summary_app_command(
+        self,
+        interaction: discord.Interaction,
+        member: AppMemberSnowflake,
+        channel: AppChannelSnowflake = None
+    ):
+        state = State(interaction)
+        chunk_size = 7
+        field_count = 0
+        member_obj = None
+        bans, lines, flags, pages, text_mutes, vegans, voice_mutes = [], [], [], [], []
+        lines, pages = [], []
+        try:
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        except Exception as e:
+            channel_obj = interaction.channel
+        try:
+            member_obj = await self.member_service.resolve_member(interaction, member) 
+        except Exception as e:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}.")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        bans = await Ban.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        flags = await Flag.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        text_mutes = await TextMute.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        vegans = await Vegan.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        voice_mutes = await VoiceMute.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        field_count = 0
+        guild = self.bot.get_guild(interaction.guild.id)
+        embed = discord.Embed(title='Bans', description=guild.name, color=discord.Color.blue())
+        channel = guild.get_channel(channel_obj.id)
+        embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+        for ban in bans:
+            lines.append(f"**User**: {member_obj.mention}\n**Expires in**: {ban['expires_in']}\n**Reason**: {ban['reason']}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Bans', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+            lines = []
+        embed = discord.Embed(title='Flags', description=guild.name, color=discord.Color.blue())
+        for flag in flags:
+            lines.append(f"**User**: {member_obj.mention}\n**Reason**: {flag['reason']}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Flags', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+            lines = []
+        embed = discord.Embed(title='Text Mutes', description=guild.name, color=discord.Color.blue())
+        for text_mute in text_mutes:
+            lines.append(f"**User**: {member_obj.mention}\n**Expires in**: {text_mute['expires_in']}\n**Reason**: {text_mute['reason']}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Text Mutes', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+            lines = []
+        embed = discord.Embed(title='Vegan', description=guild.name, color=discord.Color.blue())
+        for vegan in vegans:
+            lines.append(f"**User**: {member_obj.mention}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Vegan', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+            lines = []
+        embed = discord.Embed(title='Voice Mutes', description=guild.name, color=discord.Color.blue())
+        for voice_mute in voice_mutes:
+            lines.append(f"**User**: {member_obj.mention}\n**Expires in**: {ban['expires_in']}\n**Reason**: {voice_mute['reason']}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Voice Mutes', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No moderation actions found for {member_obj.mention}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+    @commands.command(name='summary', description='Lists a moderation summary.')
+    @is_owner_developer_administrator_coordinator_moderator_predicator()
+    async def list_moderation_summary_text_command(
+        self,
+        interaction: discord.Interaction,
+        member: AppMemberSnowflake = commands.parameter(default=None, description='Specify a member ID/mention.'),  
+        channel: AppChannelSnowflake = commands.parameter(default=None, description='Specify a channel ID/mention.')
+    ):
+        state = State(interaction)
+        chunk_size = 7
+        field_count = 0
+        member_obj = None
+        bans, lines, flags, pages, text_mutes, vegans, voice_mutes = [], [], [], [], []
+        lines, pages = [], []
+        try:
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        except Exception as e:
+            channel_obj = interaction.channel
+        try:
+            member_obj = await self.member_service.resolve_member(interaction, member) 
+        except Exception as e:
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}.")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        bans = await Ban.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        flags = await Flag.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        text_mutes = await TextMute.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        vegans = await Vegan.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        voice_mutes = await VoiceMute.fetch_by_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        field_count = 0
+        guild = self.bot.get_guild(interaction.guild.id)
+        embed = discord.Embed(title='Bans', description=guild.name, color=discord.Color.blue())
+        channel = guild.get_channel(channel_obj.id)
+        embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+        for ban in bans:
+            lines.append(f"**User**: {member_obj.mention}\n**Expires in**: {ban['expires_in']}\n**Reason**: {ban['reason']}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Bans', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+            lines = []
+        embed = discord.Embed(title='Flags', description=guild.name, color=discord.Color.blue())
+        for flag in flags:
+            lines.append(f"**User**: {member_obj.mention}\n**Reason**: {flag['reason']}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Flags', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+            lines = []
+        embed = discord.Embed(title='Text Mutes', description=guild.name, color=discord.Color.blue())
+        for text_mute in text_mutes:
+            lines.append(f"**User**: {member_obj.mention}\n**Expires in**: {text_mute['expires_in']}\n**Reason**: {text_mute['reason']}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Text Mutes', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+            lines = []
+        embed = discord.Embed(title='Vegan', description=guild.name, color=discord.Color.blue())
+        for vegan in vegans:
+            lines.append(f"**User**: {member_obj.mention}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Vegan', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+            lines = []
+        embed = discord.Embed(title='Voice Mutes', description=guild.name, color=discord.Color.blue())
+        for voice_mute in voice_mutes:
+            lines.append(f"**User**: {member_obj.mention}\n**Expires in**: {ban['expires_in']}\n**Reason**: {voice_mute['reason']}")
+            field_count += 1
+            if field_count == chunk_size:
+                embed.add_field(name=f'Channel: {channel_obj.mention}', value='\n'.join(lines), inline=False)
+                pages.append(embed)
+                embed = discord.Embed(title='Voice Mutes', description=f'{guild.name} continued...', color=discord.Color.blue())
+                lines = []
+                field_count = 0
+        if lines:
+            embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No moderation actions found for {member_obj.mention}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                         
     # DONE
     @app_commands.command(name='tmutes', description='Lists text-mute statistics.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.")

@@ -1,5 +1,5 @@
 
-''' statistics.py A utility module for managing and sending statistical messages in the Vyrtuous Discord bot.
+''' history.py A utility module for managing and history of messages in the Vyrtuous Discord bot.
 
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
@@ -24,18 +24,18 @@ from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.snowflake import *
 import discord
 
-class Statistics:
+class History:
         
     ACTION_TYPES = ['create', 'delete', 'modify']
-    STATISTIC_TYPES = ['channel', 'general', 'member']
+    ENTRY_TYPES = ['channel', 'general', 'member']
 
-    def __init__(self, channel_snowflake: Optional[int], enabled: Optional[bool], guild_snowflake: Optional[int], snowflakes: list[int|None], statistic_type: Optional[str]):
+    def __init__(self, channel_snowflake: Optional[int], enabled: Optional[bool], guild_snowflake: Optional[int], snowflakes: list[int|None], entry_type: Optional[str]):
         self.action: Optional[str]
         self.channel_snowflake = channel_snowflake
         self.enabled = enabled
         self.guild_snowflake = guild_snowflake
         self.snowflakes = snowflakes
-        self.statistic_type = statistic_type
+        self.entry_type = entry_type
 
     @property
     def action(self):
@@ -48,17 +48,17 @@ class Statistics:
         self._action = action
 
     @property
-    def statistic_type(self):
-        return self._statistic_type
+    def entry_type(self):
+        return self._entry_type
 
-    @statistic_type.setter
-    def statistic_type(self, statistic_type: Optional[str]):
-        if statistic_type not in self.STATISTIC_TYPES:
-            raise ValueError('Invalid statistic type.')
-        self._statistic_type = statistic_type
+    @entry_type.setter
+    def entry_type(self, entry_type: Optional[str]):
+        if entry_type not in self.ENTRY_TYPES:
+            raise ValueError('Invalid entry type.')
+        self._entry_type = entry_type
 
     @classmethod
-    async def send_statistic(
+    async def send_entry(
         cls,
         alias,
         channel: Optional[discord.VoiceChannel],
@@ -71,11 +71,11 @@ class Statistics:
         reason: Optional[str]
     ):
         bot = DiscordBot.get_instance()
-        statistics = await Statistics.fetch_all()
-        for statistic in statistics:
-            if message.guild.id == statistic.channel_snowflake:
-                channel = bot.get_channel(statistic.channel_snowflake)
-                pages = cls.build_statistic_embeds(
+        history = await History.fetch_all()
+        for entry in history:
+            if message.guild.id == entry.channel_snowflake:
+                channel = bot.get_channel(entry.channel_snowflake)
+                pages = cls.build_history_embeds(
                         alias=alias, channel=channel, duration=duration, highest_role=highest_role,
                         is_channel_scope=is_channel_scope, is_modification=is_modification,
                         member=member, message=message,
@@ -85,7 +85,7 @@ class Statistics:
                 await paginator.start()
 
     @classmethod
-    def build_statistic_embeds(
+    def build_history_embeds(
         cls,
         alias,
         channel,
@@ -184,7 +184,7 @@ class Statistics:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                DELETE FROM statistic_channels
+                DELETE FROM history
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
 
@@ -193,47 +193,47 @@ class Statistics:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, statistic_type, updated_at
-                FROM statistic_channels
+                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, entry_type, updated_at
+                FROM history
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
-        statistics = []
+        history = []
         if rows:
             for row in rows:
-                statistics.append(Statistics(channel_snowflake=channel_snowflake, enabled=row['enabled'], guild_snowflake=guild_snowflake, snowflakes=row['snowflakes'], statistic_type=row['statistic_type']))
-            return statistics
+                history.append(History(channel_snowflake=channel_snowflake, enabled=row['enabled'], guild_snowflake=guild_snowflake, snowflakes=row['snowflakes'], entry_type=row['entry_type']))
+            return history
 
     @classmethod
     async def fetch_by_guild(cls, guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, statistic_type, updated_at
-                FROM statistic_channels
+                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, entry_type, updated_at
+                FROM history
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
-        statistics = []
+        history = []
         if rows:
             for row in rows:
-                statistics.append(Statistics(channel_snowflake=row['channel_snowflake'], enabled=row['enabled'], guild_snowflake=guild_snowflake, snowflakes=row['snowflakes'], statistic_type=row['statistic_type']))
-            return statistics
+                history.append(History(channel_snowflake=row['channel_snowflake'], enabled=row['enabled'], guild_snowflake=guild_snowflake, snowflakes=row['snowflakes'], entry_type=row['entry_type']))
+            return history
 
     @classmethod
-    async def update_by_channel_guild_and_type(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], snowflakes: list[int|None], statistic_type: Optional[str]):
+    async def update_by_channel_guild_and_type(cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int], snowflakes: list[int|None], entry_type: Optional[str]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE statistic_channels
-                SET snowflakes=$3, statistic_type=$4, enabled=TRUE
+                UPDATE history
+                SET snowflakes=$3, entry_type=$4, enabled=TRUE
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
-            ''', channel_snowflake, guild_snowflake, snowflakes, statistic_type)
+            ''', channel_snowflake, guild_snowflake, snowflakes, entry_type)
 
     @classmethod
     async def update_by_channel_enabled_and_guild(cls, channel_snowflake: Optional[int], enabled: Optional[bool], guild_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                UPDATE statistic_channels
+                UPDATE history
                 SET enabled=$2
                 WHERE channel_snowflake=$1 AND guild_snowflake=$3
             ''', channel_snowflake, enabled, guild_snowflake)
@@ -242,28 +242,28 @@ class Statistics:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                INSERT INTO statistic_channels (channel_snowflake, enabled, guild_snowflake, snowflakes, statistic_type)
+                INSERT INTO history (channel_snowflake, enabled, guild_snowflake, snowflakes, entry_type)
                 VALUES ($1, TRUE, $2, $3, $4)
-            ''', self.channel_snowflake, self.guild_snowflake, self.snowflakes, self.statistic_type)
+            ''', self.channel_snowflake, self.guild_snowflake, self.snowflakes, self.entry_type)
 
     @classmethod
     async def fetch_all(cls):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, statistic_type, updated_at
-                FROM statistic_channels
+                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, entry_type, updated_at
+                FROM history
             ''')
-        statistics = []
+        history = []
         if rows:
             for row in rows:
-                statistics.append(
-                    Statistics(
+                history.append(
+                    History(
                         channel_snowflake=row['channel_snowflake'],
                         enabled=row['enabled'],
                         guild_snowflake=row['guild_snowflake'],
                         snowflakes=row['snowflakes'],
-                        statistic_type=row['statistic_type']
+                        entry_type=row['entry_type']
                     )
                 )
-        return statistics
+        return history

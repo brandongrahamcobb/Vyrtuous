@@ -28,7 +28,7 @@ from vyrtuous.utils.duration import DurationObject
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.flag import Flag
 from vyrtuous.utils.invincibility import Invincibility
-from vyrtuous.utils.statistics import Statistics
+from vyrtuous.utils.history import History
 from vyrtuous.utils.text_mute import TextMute
 from vyrtuous.utils.vegan import Vegan
 from vyrtuous.utils.voice_mute import VoiceMute
@@ -203,7 +203,7 @@ class Aliases(commands.Cog):
             ban = Ban(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
             await ban.create()
     
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Banned',
                 description=(
@@ -246,7 +246,7 @@ class Aliases(commands.Cog):
             vegan = Vegan(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             await vegan.create()
     
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
             embed = discord.Embed(
                 title=f'\U0001F525\U0001F525 {member_obj.display_name} is going Vegan!!!\U0001F525\U0001F525',
                 description=(
@@ -300,7 +300,7 @@ class Aliases(commands.Cog):
             flag = Flag(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
             await flag.create()
     
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} Flagged',
@@ -357,7 +357,7 @@ class Aliases(commands.Cog):
             except discord.Forbidden as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} Roled',
@@ -456,7 +456,7 @@ class Aliases(commands.Cog):
             text_mute = TextMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
             await text_mute.create()
     
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} Text Muted',
@@ -558,7 +558,7 @@ class Aliases(commands.Cog):
             voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target='user')
             await voice_mute.create()
     
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Voice Muted',
@@ -630,7 +630,7 @@ class Aliases(commands.Cog):
                 except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
     
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unbanned',
@@ -671,7 +671,7 @@ class Aliases(commands.Cog):
     
             await Vegan.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id, guild_snowflake=message.guild.id)
             
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'\U0001F44E\U0001F44E {member_obj.display_name} is a Carnist \U0001F44E\U0001F44E',
@@ -734,7 +734,7 @@ class Aliases(commands.Cog):
                 member_snowflake=member_obj.id
             )   
     
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
                                             
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unflagged',
@@ -805,7 +805,7 @@ class Aliases(commands.Cog):
                 except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
     
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unmuted',
@@ -861,7 +861,7 @@ class Aliases(commands.Cog):
             except discord.Forbidden as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unroled',
@@ -928,7 +928,7 @@ class Aliases(commands.Cog):
             except discord.Forbidden as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
-            await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
+            await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unmuted',
