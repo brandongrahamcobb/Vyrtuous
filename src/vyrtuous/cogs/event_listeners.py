@@ -25,6 +25,7 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.administrator import Administrator, AdministratorRole
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
@@ -369,7 +370,7 @@ class EventListeners(commands.Cog):
         added_roles = after_role_snowflakes - before_role_snowflakes
         removed_roles = before_role_snowflakes - after_role_snowflakes
         administrator_role_snowflakes = []
-        administrator_roles = await Administrator.fetch_roles_by_guild(guild_snowflake=after.guild.id)
+        administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=after.guild.id)
         for administrator_role in administrator_roles:
             administrator_role_snowflakes.append(administrator_role.role_snowflake)
         relevant_added_roles = added_roles & set(administrator_role_snowflakes)
