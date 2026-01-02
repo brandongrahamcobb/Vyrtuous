@@ -562,7 +562,7 @@ class Aliases(commands.Cog):
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                 is_channel_scope = True
                 try:
-                    await member_obj.move_to(None, reason=reason)
+                    await member_obj.edit(mute=True, reason=reason)
                 except discord.Forbidden:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
     
