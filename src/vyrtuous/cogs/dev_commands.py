@@ -218,11 +218,11 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
-    @app_commands.command(name='dlog', description="Resolve or update the notes on an issue by reference.")
+    @app_commands.command(name='dlog', description='Resolve or update the notes on an issue by reference.')
     @app_commands.describe(
-        reference="Specify the issue reference ID.",
+        reference='Specify the issue reference ID.',
         action="'resolve' or 'append' or 'overwrite'.",
-        notes="Optionally specify notes to append or overwrite."
+        notes='Optionally specify notes to append or overwrite.'
     )
     @is_owner_developer_predicator()
     async def update_developer_logs_app_command(
@@ -236,51 +236,51 @@ class DevCommands(commands.Cog):
         developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=reference)
         if not developer_log:
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F Issue not found. Received: {reference}.")
+                return await state.end(warning=f'\U000026A0\U0000FE0F Issue not found. Received: {reference}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         if action and action.lower() == 'resolve':
             await developer_log.resolve()
-            detail = "resolved the issue. The record will remain in the database for the next 30 days."
+            detail = 'resolved the issue. The record will remain in the database for the next 30 days.'
         elif action and action.lower() == 'append':
             await developer_log.append(notes)
-            detail = "appended to the previous notes."
+            detail = 'appended to the previous notes.'
         elif action and action.lower() == 'overwrite':
             await developer_log.overwrite(notes)
-            detail = "overwrote the previous notes."
+            detail = 'overwrote the previous notes.'
         try:
-            return await state.end(success=f"\U000026A0\U0000FE0F You successfully {detail}.")
+            return await state.end(success=f'\U000026A0\U0000FE0F You successfully {detail}.')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
-    @commands.command(name='dlog', help="Resolve or update the notes on an issue by reference")
+    @commands.command(name='dlog', help='Resolve or update the notes on an issue by reference')
     @is_owner_developer_predicator()
     async def update_developer_logs_text_command(
         self,
         ctx: commands.Context,
-        reference: Optional[str] = commands.parameter(default=None, description="Specify the developer log reference ID."),
-        action: Optional[str] = commands.parameter(default="append", description="Specify one of: 'resolve' or 'append' or 'overwrite'."),
+        reference: Optional[str] = commands.parameter(default=None, description='Specify the developer log reference ID.'),
+        action: Optional[str] = commands.parameter(default='append', description="Specify one of: 'resolve' or 'append' or 'overwrite'."),
         *,
-        notes: Optional[str] = commands.parameter(default=None, description="Optionally specify notes.")
+        notes: Optional[str] = commands.parameter(default=None, description='Optionally specify notes.')
     ):       
         state = State(ctx)
         developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=reference)
         if not developer_log:
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F Issue not found. Received: {reference}.")
+                return await state.end(warning=f'\U000026A0\U0000FE0F Issue not found. Received: {reference}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         if action and action.lower() == 'resolve':
             await developer_log.resolve()
-            detail = "resolved the issue"
+            detail = 'resolved the issue'
         elif action and action.lower() == 'append':
             await developer_log.append(notes)
-            detail = "appended to the previous notes"
+            detail = 'appended to the previous notes'
         elif action and action.lower() == 'overwrite':
             await developer_log.overwrite(notes)
-            detail = "overwrote the previous notes"
+            detail = 'overwrote the previous notes'
         try:
-            return await state.end(success=f"\U000026A0\U0000FE0F You successfully {detail}.")
+            return await state.end(success=f'\U000026A0\U0000FE0F You successfully {detail}.')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
@@ -288,7 +288,7 @@ class DevCommands(commands.Cog):
     @app_commands.command(name='dlogs', description="Lists developer logs by 'all', 'resolved', 'unresolved' by channel ID/mention,reference ID or server ID.")
     @app_commands.describe(
         scope="Specify one of: 'all', 'resolved' or 'unresolved'",
-        value="Specify one of: channel ID/mention, reference ID and server ID."
+        value='Specify one of: channel ID/mention, reference ID and server ID.'
     )
     @is_owner_developer_predicator()
     async def list_developer_logs_text_command(
@@ -322,7 +322,7 @@ class DevCommands(commands.Cog):
                     developer_log = await DeveloperLog.fetch_resolved_by_reference(id=value)
                     if not developer_log:
                         try:
-                            return await state.end(warning=f"\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.")
+                            return await state.end(warning=f'\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif scope and scope.lower() == 'unresolved':
@@ -338,7 +338,7 @@ class DevCommands(commands.Cog):
                     developer_logs = [developer_log]
                     if not developer_logs:
                         try:
-                            return await state.end(warning=f"\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.")
+                            return await state.end(warning=f'\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')                        
         else:
@@ -435,11 +435,11 @@ class DevCommands(commands.Cog):
                 pages.append(embed)
         if skipped_message_snowflakes_by_guild_snowflake:
             for guild_snowflake, message_list in skipped_message_snowflakes_by_guild_snowflake.items():
-                embed = discord.Embed(title=f'Server ({guild_snowflake})', description="Skipped Messages", color=discord.Color.red())
+                embed = discord.Embed(title=f'Server ({guild_snowflake})', description='Skipped Messages', color=discord.Color.red())
                 for message_snowflake in message_list:
                     if field_count >= chunk_size:
                         pages.append(embed)
-                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description="Skipped Messages", color=discord.Color.red())
+                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description='Skipped Messages', color=discord.Color.red())
                         field_count = 0
                     embed.add_field(name=message_snowflake, value='\u200b', inline=False)
                     field_count += 1
@@ -462,7 +462,7 @@ class DevCommands(commands.Cog):
         self,
         ctx: commands.Context,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', 'resolved' or 'unresolved."),
-        value: Optional[str] = commands.parameter(default=None, description="Specify one of: channel ID/mention, reference ID or server ID")
+        value: Optional[str] = commands.parameter(default=None, description='Specify one of: channel ID/mention, reference ID or server ID.')
     ):
         state = State(ctx)
         channel_obj = None
@@ -489,7 +489,7 @@ class DevCommands(commands.Cog):
                     developer_log = await DeveloperLog.fetch_resolved_by_reference(id=value)
                     if not developer_log:
                         try:
-                            return await state.end(warning=f"\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.")
+                            return await state.end(warning=f'\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif scope and scope.lower() == 'unresolved':
@@ -505,7 +505,7 @@ class DevCommands(commands.Cog):
                     developer_logs = [developer_log]
                     if not developer_logs:
                         try:
-                            return await state.end(warning=f"\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.")
+                            return await state.end(warning=f'\U000026A0\U0000FE0F Value must be one of: channel ID/mention, reference ID, server ID or empty. Received: {value}.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')                        
         else:
@@ -602,11 +602,11 @@ class DevCommands(commands.Cog):
                 pages.append(embed)
         if skipped_message_snowflakes_by_guild_snowflake:
             for guild_snowflake, message_list in skipped_message_snowflakes_by_guild_snowflake.items():
-                embed = discord.Embed(title=f'Server ({guild_snowflake})', description="Skipped Messages", color=discord.Color.red())
+                embed = discord.Embed(title=f'Server ({guild_snowflake})', description='Skipped Messages', color=discord.Color.red())
                 for message_snowflake in message_list:
                     if field_count >= chunk_size:
                         pages.append(embed)
-                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description="Skipped Messages", color=discord.Color.red())
+                        embed = discord.Embed(title=f'Server ({guild_snowflake})' + ' continued...', description='Skipped Messages', color=discord.Color.red())
                         field_count = 0
                     embed.add_field(name=message_snowflake, value='\u200b', inline=False)
                     field_count += 1

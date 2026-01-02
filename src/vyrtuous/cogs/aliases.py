@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
@@ -24,67 +24,63 @@ from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.duration import Duration, DurationObject
+from vyrtuous.utils.duration import DurationObject
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.flag import Flag
-from vyrtuous.utils.reason import Reason
+from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.state import State
-from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.vegan import Vegan
 from vyrtuous.utils.voice_mute import VoiceMute
-from vyrtuous.utils.emojis import Emojis
-
-import time
 
 class Aliases(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.alias_help = {
             'ban': [
-                "**member** (Optional): Tag a member or include their snowflake ID",
-                "**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
-                "**reason** (Optional): Optional reason (required for 7 days or more)"
+                '**member** (Required): Tag a member or include their snowflake ID',
+                '**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason',
+                '**reason** (Optional): Reason (required for 7 days or more)'
             ],
             'vegan': [
-                "**member** (Optional): Tag a member or include their snowflake ID"
+                '**member** (Required): Tag a member or include their snowflake ID'
             ],
             'carnist': [
-                "**member** (Optional): Tag a member or include their snowflake ID"
+                '**member** (Required): Tag a member or include their snowflake ID'
             ],
             'unban': [
-                "**member** (Optional): Tag a member or include their snowflake ID"
+                '**member** (Required): Tag a member or include their snowflake ID'
             ],
             'flag': [
-                "**member** (Optional): Tag a member or include their snowflake ID",
-                "**reason** (Optional): Optional reason for flagging the user"
+                '**member** (Required): Tag a member or include their snowflake ID',
+                '**reason** (Optional): Reason for flagging the user'
             ],
             'unflag': [
-                "**member** (Optional): Tag a member or include their snowflake ID"
+                '**member** (Required): Tag a member or include their snowflake ID'
             ],
             'voice_mute': [
-                "**member** (Optional): Tag a member or include their snowflake ID",
-                "**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
-                "**reason** (Optional): Optional reason (required for 7 days or more)"
+                '**member** (Required): Tag a member or include their snowflake ID',
+                '**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason',
+                '**reason** (Optional): Reason (required for 7 days or more)'
             ],
             'unvoice_mute': [
-                "**member** (Optional): Tag a member or include their snowflake ID"
+                '**member** (Required): Tag a member or include their snowflake ID'
             ],
             'text_mute': [
-                "**member** (Optional): Tag a member or include their snowflake ID",
-                "**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason",
-                "**reason** (Optional): Optional reason (required for 7 days or more)"
+                '**member** (Required): Tag a member or include their snowflake ID',
+                '**duration** (Required): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason',
+                '**reason** (Required): Reason (required for 7 days or more)'
             ],
             'untext_mute': [
-                "**member** (Optional): Tag a member or include their snowflake ID"
+                '**member** (Required): Tag a member or include their snowflake ID'
             ],
             'role': [
-                "**member** (Optional): Tag a member or include their snowflake ID",
-                "**role** (Optional): Role to assign"
+                '**member** (Required): Tag a member or include their snowflake ID',
+                '**role** (Required): Role to assign'
             ],
             'unrole': [
-                "**member** (Optional): Tag a member or include their snowflake ID",
-                "**role** (Optional): Role to remove"
+                '**member** (Required): Tag a member or include their snowflake ID',
+                '**role** (Required): Role to remove'
             ]
         }
         self.alias_type_to_description = {
@@ -138,9 +134,9 @@ class Aliases(commands.Cog):
         try:
             is_channel_scope = False
             is_modification = False
-            reason = "No reason provided."
+            reason = 'No reason provided.'
     
-            cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type="ban")
+            cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='ban')
             if not hasattr(cap, 'duration'):
                 cap_duration = DurationObject('8h').to_seconds()
             else:
@@ -176,7 +172,7 @@ class Aliases(commands.Cog):
                         updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
                 duration = DurationObject.from_expires_in(updated_expires_in)
                 delta = updated_expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                if delta.total_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -185,7 +181,7 @@ class Aliases(commands.Cog):
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                if duration.to_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                if duration.to_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -209,13 +205,13 @@ class Aliases(commands.Cog):
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Banned",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Banned',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}\n"
-                    f"**Expires:** {duration}\n"
-                    f"**Reason:** {reason}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}\n'
+                    f'**Expires:** {duration}\n'
+                    f'**Reason:** {reason}'
                 ),
                 color=discord.Color.blue()
             )
@@ -252,12 +248,12 @@ class Aliases(commands.Cog):
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
             embed = discord.Embed(
-                title=f"\U0001F525\U0001F525 {member_obj.display_name} is going Vegan!!!\U0001F525\U0001F525",
+                title=f'\U0001F525\U0001F525 {member_obj.display_name} is going Vegan!!!\U0001F525\U0001F525',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}\n"
-                    f"**Celebrate!** Stick around and do some activism with us!"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}\n'
+                    f'**Celebrate!** Stick around and do some activism with us!'
                 ),
                 color=discord.Color.green()
             )
@@ -287,7 +283,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = False
-            reason = "No reason provided."
+            reason = 'No reason provided.'
     
             if is_reason_modification and existing_guestroom_alias_event:
                 is_modification = True
@@ -307,19 +303,19 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Flagged",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} Flagged',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}\n"
-                    f"**Reason:** {reason}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}\n'
+                    f'**Reason:** {reason}'
                 ),
                 color=discord.Color.red()
             )
             embed.set_thumbnail(url=member_obj.display_avatar.url)
 
             bot = DiscordBot.get_instance()
-            cog = bot.get_cog("EventListeners")
+            cog = bot.get_cog('EventListeners')
             cog.flags.append(flag)
 
             try:
@@ -364,12 +360,12 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Roled",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} Roled',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}\n"
-                    f"**Role:** {role.mention}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}\n'
+                    f'**Role:** {role.mention}'
                 ),
                 color=discord.Color.blurple()
             )
@@ -398,9 +394,9 @@ class Aliases(commands.Cog):
         try:
             is_channel_scope = False
             is_modification = False
-            reason = "No reason provided."
+            reason = 'No reason provided.'
     
-            cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type="text_mute")
+            cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='text_mute')
             if not hasattr(cap, 'duration'):
                 cap_duration = DurationObject('8h').to_seconds()
             else:
@@ -435,7 +431,7 @@ class Aliases(commands.Cog):
                         updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
                 duration = DurationObject.from_expires_in(updated_expires_in)
                 delta = updated_expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                if delta.total_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -444,7 +440,7 @@ class Aliases(commands.Cog):
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                if duration.to_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                if duration.to_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -463,13 +459,13 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} Text Muted",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} Text Muted',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}\n"
-                    f"**Expires:** {duration}\n"
-                    f"**Reason:** {reason}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}\n'
+                    f'**Expires:** {duration}\n'
+                    f'**Reason:** {reason}'
                 ),
                 color=discord.Color.green()
             )
@@ -498,9 +494,9 @@ class Aliases(commands.Cog):
         try:
             is_channel_scope = False
             is_modification = False
-            reason = "No reason provided."
+            reason = 'No reason provided.'
     
-            cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type="voice_mute")
+            cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='voice_mute')
             if not hasattr(cap, 'duration'):
                 cap_duration = DurationObject('8h').to_seconds()
             else:
@@ -535,7 +531,7 @@ class Aliases(commands.Cog):
                         updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
                 duration = DurationObject.from_expires_in(updated_expires_in)
                 delta = updated_expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                if delta.total_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -544,7 +540,7 @@ class Aliases(commands.Cog):
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                if duration.to_seconds() > cap_duration and executor_role not in ("Owner", "Developer", "Administrator", "Coordinator"):
+                if duration.to_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -559,19 +555,19 @@ class Aliases(commands.Cog):
                 except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
     
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target="user")
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target='user')
             await voice_mute.create()
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Voice Muted",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Voice Muted',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}\n"
-                    f"**Expires:** {duration}\n"
-                    f"**Reason:** {reason}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}\n'
+                    f'**Expires:** {duration}\n'
+                    f'**Reason:** {reason}'
                 ),
                 color=discord.Color.green()
             )
@@ -630,18 +626,18 @@ class Aliases(commands.Cog):
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                 is_channel_scope = True
                 try:
-                    await member_obj.move_to(None, reason="Unbanned")
+                    await member_obj.move_to(None, reason='Unbanned')
                 except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unbanned",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unbanned',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}'
                 ),
                 color=discord.Color.yellow()
             )
@@ -678,11 +674,11 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"\U0001F44E\U0001F44E {member_obj.display_name} is a Carnist \U0001F44E\U0001F44E",
+                title=f'\U0001F44E\U0001F44E {member_obj.display_name} is a Carnist \U0001F44E\U0001F44E',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}'
                 ),
                 color=discord.Color.red()
             )
@@ -726,7 +722,7 @@ class Aliases(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
 
             bot = DiscordBot.get_instance()
-            cog = bot.get_cog("EventListeners")
+            cog = bot.get_cog('EventListeners')
             for flag in cog.flags:
                 if flag.channel_snowflake == channel_obj.id:
                     cog.flags.remove(flag)
@@ -741,11 +737,11 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
                                             
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unflagged",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unflagged',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}'
                 ),
                 color=discord.Color.yellow()
             )
@@ -782,7 +778,7 @@ class Aliases(commands.Cog):
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=message.guild.id,
                 member_snowflake=member_obj.id,
-                target="user"
+                target='user'
             )
             if not voice_mute:
                 try:
@@ -799,7 +795,7 @@ class Aliases(commands.Cog):
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=message.guild.id,
                 member_snowflake=member_obj.id,
-                target="user"
+                target='user'
             )
                     
             if member_obj.voice and member_obj.voice.channel:
@@ -812,11 +808,11 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unmuted",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unmuted',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}'
                 ),
                 color=discord.Color.yellow()
             )
@@ -868,12 +864,12 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unroled",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unroled',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}\n"
-                    f"**Role:** {role.mention}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}\n'
+                    f'**Role:** {role.mention}'
                 ),
                 color=discord.Color.yellow()
             )
@@ -935,11 +931,11 @@ class Aliases(commands.Cog):
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unmuted",
+                title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unmuted',
                 description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}"
+                    f'**By:** {message.author.mention}\n'
+                    f'**User:** {member_obj.mention}\n'
+                    f'**Channel:** {channel_obj.mention}'
                 ),
                 color=discord.Color.yellow()
             )

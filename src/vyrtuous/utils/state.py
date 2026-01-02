@@ -34,16 +34,16 @@ cache = TTLCache(maxsize=500, ttl=8*60*60)
 class State:
 
     COLOR_MAP = {
-        "\u2705": 0x57F287,
-        "\u26A0\ufe0f": 0xFEE65C,
-        "\u274C": 0xED4245
+        '\u2705': 0x57F287,
+        '\u26A0\ufe0f': 0xFEE65C,
+        '\u274C': 0xED4245
     }
 
     STATE_EMOJIS = {
-        "\u2b05\ufe0f": -1,
-        "\u27a1\ufe0f": 1,
-        "\u2139\ufe0f": "info",
-        "\U0001F4DD": "report"
+        '\u2b05\ufe0f': -1,
+        '\u27a1\ufe0f': 1,
+        '\u2139\ufe0f': 'info',
+        '\U0001F4DD': 'report'
     }
 
     def __init__(self, ctx_or_interaction: Union[commands.Context, discord.Interaction, discord.Message]):
@@ -72,7 +72,7 @@ class State:
         elif isinstance(ctx_or_interaction, discord.Message):
             return ctx_or_interaction.created_at
         else:
-            raise TypeError("Expected Context, Interaction, or Message")
+            raise TypeError('Expected Context, Interaction, or Message')
 
     async def end(self, *, success=None, warning=None, error=None, message_obj=None, allowed_mentions=discord.AllowedMentions.none()):
         if success is not None:
@@ -89,11 +89,11 @@ class State:
             is_success = True
         elapsed = self.counter.time_elapsed_measurement(self.start_time, discord.utils.utcnow())
         if elapsed <= 2.0:
-            health_type = "\u2705"
+            health_type = '\u2705'
         elif elapsed <= 5.0:
-            health_type = "\u26A0\ufe0f"
+            health_type = '\u26A0\ufe0f'
         else:
-            health_type = "\u274C"
+            health_type = '\u274C'
         self.health_type = health_type
         self.success = is_success
         self.elapsed = elapsed
@@ -104,10 +104,10 @@ class State:
             self.paginator = Paginator(bot=self.bot, ctx_or_interaction=self.ctx_or_interaction, pages=message_obj)
             self.message = await self.paginator.start()
             cache[self.message.id] = {
-                "date": self.start_time,
-                "health_type": health_type,
-                "speed": elapsed,
-                "success": is_success
+                'date': self.start_time,
+                'health_type': health_type,
+                'speed': elapsed,
+                'success': is_success
             }
             await self._add_reactions(show_error_emoji=show_error_emoji, paginated=True)
             return self.message
@@ -119,25 +119,25 @@ class State:
         elif isinstance(message_obj, discord.File):
             file = message_obj
         else:
-            raise TypeError("Message must be str, embed, file, or list for pagination")
+            raise TypeError('Message must be str, embed, file, or list for pagination')
         self.message = await self._send_message(content=content, embed=embed, file=file, paginated=False, allowed_mentions=allowed_mentions)
         cache[self.message.id] = {
-            "date": self.start_time,
-            "health_type": health_type,
-            "speed": elapsed,
-            "success": is_success
+            'date': self.start_time,
+            'health_type': health_type,
+            'speed': elapsed,
+            'success': is_success
         }
         await self._add_reactions(show_error_emoji=show_error_emoji, paginated=False)
         return self.message
 
     async def _send_message(self, content=None, embed=None, file=None, paginated=False, allowed_mentions=discord.AllowedMentions.none()):
         kwargs = {
-            "content": content,
-            "embed": embed,
-            "allowed_mentions": allowed_mentions,
+            'content': content,
+            'embed': embed,
+            'allowed_mentions': allowed_mentions,
         }
         if file is not None:
-            kwargs["file"] = file
+            kwargs['file'] = file
         if isinstance(self.ctx_or_interaction, discord.Interaction) and not paginated:
             if not self.ctx_or_interaction.response.is_done():
                 await self.ctx_or_interaction.response.defer(ephemeral=True)
@@ -157,11 +157,11 @@ class State:
         if self.message and self.message.webhook_id is not None:
             return
         if paginated:
-            await self.message.add_reaction("\u2b05\ufe0f")
-            await self.message.add_reaction("\u27a1\ufe0f")
-        await self.message.add_reaction("\u2139\ufe0f")
+            await self.message.add_reaction('\u2b05\ufe0f')
+            await self.message.add_reaction('\u27a1\ufe0f')
+        await self.message.add_reaction('\u2139\ufe0f')
         if show_error_emoji:
-            await self.message.add_reaction("\U0001F4DD")
+            await self.message.add_reaction('\U0001F4DD')
         self.bot.loop.create_task(self._wait_for_reactions())
 
     async def _wait_for_reactions(self):
@@ -174,7 +174,7 @@ class State:
             )
         while True:
             try:
-                reaction, user = await self.bot.wait_for("reaction_add", timeout=30.0, check=check)
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
             except asyncio.TimeoutError:
                 try:
                     await self.message.clear_reactions()
@@ -189,20 +189,20 @@ class State:
 
     async def _handle_reaction(self, reaction, user=None):
         action = self.STATE_EMOJIS[str(reaction.emoji)]
-        if action == "info":
+        if action == 'info':
             await self.show_info(user)
-        elif action == "report":
+        elif action == 'report':
             await self.report_issue(user)
 
     async def show_info(self, user):
         color = self.COLOR_MAP.get(self.health_type)
-        embed = discord.Embed(title="Information Statistics", color=color, timestamp=datetime.now(timezone.utc))
-        embed.add_field(name="Date", value=self.start_time.strftime("%Y-%m-%d %H:%M:%S UTC"), inline=True)
-        embed.add_field(name="Health", value=self.health_type, inline=True)
-        embed.add_field(name="Speed", value=f"{self.elapsed:.2f} sec.", inline=True)
-        embed.add_field(name="Success", value=str(self.success), inline=True)
+        embed = discord.Embed(title='Information Statistics', color=color, timestamp=datetime.now(timezone.utc))
+        embed.add_field(name='Date', value=self.start_time.strftime('%Y-%m-%d %H:%M:%S UTC'), inline=True)
+        embed.add_field(name='Health', value=self.health_type, inline=True)
+        embed.add_field(name='Speed', value=f'{self.elapsed:.2f} sec.', inline=True)
+        embed.add_field(name='Success', value=str(self.success), inline=True)
         if isinstance(self.ctx_or_interaction, discord.Interaction):
-            await self.ctx_or_interaction.followup.send(f"{user.mention}, here is the info", embed=embed, ephemeral=True)
+            await self.ctx_or_interaction.followup.send(f'{user.mention}, here is the info', embed=embed, ephemeral=True)
         else:
             try:
                 await user.send(embed=embed)
@@ -213,7 +213,7 @@ class State:
         reference = None
         if user.id in self._reported_users:
             try:
-                await user.send("You already reported this message.")
+                await user.send('You already reported this message.')
             except discord.Forbidden as e:
                 pass
             return
@@ -229,7 +229,7 @@ class State:
         online_developer_mentions.append(member.mention)
         if self.ctx_or_interaction.guild:
             developers = await Developer.fetch_by_guild(self.ctx_or_interaction.guild.id)
-            message = f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}"
+            message = f'Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}'
             for dev in developers:
                 member = self.ctx_or_interaction.guild.get_member(dev.member_snowflake)
                 if member.state != discord.Status.offline:
@@ -243,7 +243,7 @@ class State:
                     await member.send(message)
                 except discord.Forbidden as e:
                     pass
-        message = "Your report has been submitted"
+        message = 'Your report has been submitted'
         if online_developer_mentions:
             message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
         await user.send(message)

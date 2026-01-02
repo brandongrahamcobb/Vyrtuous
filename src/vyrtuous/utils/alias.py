@@ -30,10 +30,10 @@ from vyrtuous.utils.voice_mute import VoiceMute
 class Alias:
     
     MODERATION_TABLES = {
-        Ban: "active_bans",
-        Flag: "active_flags",
-        TextMute: "active_text_mutes",
-        VoiceMute: "active_voice_mutes",
+        Ban: 'active_bans',
+        Flag: 'active_flags',
+        TextMute: 'active_text_mutes',
+        VoiceMute: 'active_voice_mutes',
     }
 
     def __init__(self, alias_name: Optional[str], alias_type: Optional[str], channel_snowflake: Optional[int], guild_snowflake: Optional[int], role_snowflake: Optional[int]):
@@ -43,7 +43,7 @@ class Alias:
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f'<#{channel_snowflake}>'
         self.guild_snowflake = guild_snowflake
-        self.alias_cog = self.bot.get_cog("Aliases")
+        self.alias_cog = self.bot.get_cog('Aliases')
         self.handlers = {
             'ban': self.alias_cog.handle_ban_alias,
             'vegan': self.alias_cog.handle_vegan_alias,
@@ -214,7 +214,7 @@ class Alias:
     @alias_type.setter
     def alias_type(self, alias_type: Optional[str]):
         if alias_type not in ('vegan', 'carnist', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'):
-            raise ValueError("Invalid alias_type.")
+            raise ValueError('Invalid alias_type.')
         self._alias_type = alias_type
         
     @classmethod
@@ -224,7 +224,7 @@ class Alias:
             member_obj = await cls.member_service.resolve_member(message, member_string)
             await has_equal_or_higher_role(message, channel_snowflake=channel_obj.id, guild_snowflake=alias.guild_snowflake, ember_snowflake=member_obj.id, sender_snowflake=message.author.id)
             if member_obj.id == message.guild.me.id:
-                raise Exception("\U000026A0\U0000FE0F You cannot {alias.alias_type} {message.guild.me.mention}.")
+                raise Exception('\U000026A0\U0000FE0F You cannot {alias.alias_type} {message.guild.me.mention}.')
         except:
             raise
 
@@ -233,21 +233,21 @@ class Alias:
         try:
             return cls.MODERATION_TABLES[moderation_type]
         except KeyError:
-            raise ValueError(f"Unknown moderation type: {moderation_type}")
+            raise ValueError(f'Unknown moderation type: {moderation_type}')
 
     @classmethod 
     async def get_existing_guestroom_alias_event(cls, alias, channel_snowflake, guild_snowflake, member_snowflake):
         match alias.alias_type:
-            case "ban":
+            case 'ban':
                 return await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-            case "vegan":
+            case 'vegan':
                 return await Vegan.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-            case "flag":
+            case 'flag':
                 return await Flag.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-            case "text_mute":
+            case 'text_mute':
                 return await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-            case "voice_mute":
-                return await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target="user")
+            case 'voice_mute':
+                return await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target='user')
 
     @classmethod
     def get_alias_formatted_string(cls, alias):

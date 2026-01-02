@@ -37,7 +37,7 @@ class OwnerCommands(commands.Cog):
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.member_service = MemberService()
 
-    @app_commands.command(name='dish', description="Assigns or unassigns a developer to a pending issue.")
+    @app_commands.command(name='dish', description='Assigns or unassigns a developer to a pending issue.')
     @app_commands.describe(
         reference='Include an issue reference ID',
         member='Tag a member or include their snowflake ID',
@@ -70,7 +70,7 @@ class OwnerCommands(commands.Cog):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F Message reference not found: {reference}.')
                     except Exception as e:
-                        link = "Unknown message"
+                        link = 'Unknown message'
                         pass                   
                 if developer.member_snowflake in developer_log.developer_snowflakes:
                     await developer_log.unassign(member_snowflake=member_obj.id)
@@ -99,7 +99,7 @@ class OwnerCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
-    @commands.command(name='dish', help="Assigns or unassigns a developer to a pending issue.")
+    @commands.command(name='dish', help='Assigns or unassigns a developer to a pending issue.')
     @is_owner_predicator()
     async def toggle_issue_to_developer_text_command(
         self,
@@ -128,7 +128,7 @@ class OwnerCommands(commands.Cog):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F Message reference not found: {reference}.')
                     except Exception as e:
-                        link = "Unknown message"
+                        link = 'Unknown message'
                         pass                   
                 if developer.member_snowflake in developer_log.developer_snowflakes:
                     await developer_log.unassign(member_snowflake=member_obj.id)
@@ -187,7 +187,7 @@ class OwnerCommands(commands.Cog):
             await developer.grant()
             action = 'granted'
         try:
-            return await state.end(success=f"{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}.")
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}.')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         

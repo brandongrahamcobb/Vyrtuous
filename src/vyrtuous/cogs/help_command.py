@@ -33,7 +33,7 @@ import inspect
 class HelpCommand(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
-        self.aliases_cog = bot.get_cog("Aliases")
+        self.aliases_cog = bot.get_cog('Aliases')
         self.bot = bot
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
@@ -112,10 +112,10 @@ class HelpCommand(commands.Cog):
     async def resolve_command_or_alias(self, ctx_or_interaction, name: str):
         cmd = self.bot.get_command(name.lower())
         if cmd:
-            return ("command", cmd)
+            return ('command', cmd)
         alias = await Alias.fetch_by_guild_and_name(alias_name=name.lower(), guild_snowflake=ctx_or_interaction.guild.id)
         if alias and alias.guild_snowflake == ctx_or_interaction.guild.id:
-            return ("alias", alias)
+            return ('alias', alias)
         return (None, None)
 
     def split_command_list(self, commands_list, max_length=1024):
@@ -136,7 +136,7 @@ class HelpCommand(commands.Cog):
         return chunks
         
     def unwrap_callback(self, func):
-        while hasattr(func, "__wrapped__"):
+        while hasattr(func, '__wrapped__'):
             func = func.__wrapped__
         return func
 
@@ -172,10 +172,10 @@ class HelpCommand(commands.Cog):
                         return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                     except Exception as e:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
-            if kind == "command":
+            if kind == 'command':
                 cmd = obj
                 embed = discord.Embed(
-                    title=f'{self.config["discord_command_prefix"]}{cmd.name}',
+                    title=f"{self.config['discord_command_prefix']}{cmd.name}",
                     description=cmd.help or 'No description provided.',
                     color=discord.Color.blue()
                 )
@@ -190,7 +190,7 @@ class HelpCommand(commands.Cog):
                 if parameters and parameters[0][0] == 'ctx':
                     parameters.pop(0)
                 if parameters:
-                    usage_parts = [f'{self.config["discord_command_prefix"]}{cmd.name}']
+                    usage_parts = [f"{self.config['discord_command_prefix']}{cmd.name}"]
                     for name, param in parameters:
                         param_desc = None
                         if isinstance(param.default, commands.Parameter):
@@ -204,7 +204,7 @@ class HelpCommand(commands.Cog):
                             param_details.append(f'**{name}** ({annotation}): {param_desc}')
                         else:
                             param_details.append(f'**{name}** ({annotation})')
-                    embed.add_field(name='Usage', value=f'`{" ".join(usage_parts)}`', inline=False)
+                    embed.add_field(name='Usage', value=f"`{' '.join(usage_parts)}`", inline=False)
                     if param_details:
                         embed.add_field(name='Parameters', value='\n'.join(param_details), inline=False)
                         try:
@@ -214,7 +214,7 @@ class HelpCommand(commands.Cog):
                                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                             except Exception as e:
                                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-            if kind == "alias":
+            if kind == 'alias':
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
@@ -226,7 +226,7 @@ class HelpCommand(commands.Cog):
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                 embed = discord.Embed(
-                    title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
+                    title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
                     description=f'Alias for **{alias.alias_type}**',
                     color=discord.Color.green()
                 )
@@ -244,7 +244,7 @@ class HelpCommand(commands.Cog):
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = self.aliases_cog.alias_type_to_description.get(alias.alias_type, "No description")
+                short_desc = self.aliases_cog.alias_type_to_description.get(alias.alias_type, 'No description')
                 perm_level_for_alias = self.aliases_cog.alias_type_to_permission_level.get(alias.alias_type, 'Everyone')
                 perm_alias_map[perm_level_for_alias].append(f'**{alias.alias_name}** – {short_desc}')
         user_highest = await is_owner_developer_administrator_coordinator_moderator(interaction)
@@ -254,13 +254,13 @@ class HelpCommand(commands.Cog):
                 continue
             commands_in_level = sorted(permission_groups.get(perm_level, []), key=lambda c: c.name)
             embed = discord.Embed(
-                title=f"{perm_level} Commands",
+                title=f'{perm_level} Commands',
                 description=description,
                 color=self.get_permission_color(perm_level)
             )
             if commands_in_level:
                 command_lines = [
-                    f'**{self.config["discord_command_prefix"]}{cmd.name}** – {cmd.help or "No description"}'
+                    f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
                     for cmd in commands_in_level
                 ]
                 command_text = '\n'.join(command_lines)
@@ -306,10 +306,10 @@ class HelpCommand(commands.Cog):
                         return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                     except Exception as e:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
-            if kind == "command":
+            if kind == 'command':
                 cmd = obj
                 embed = discord.Embed(
-                    title=f'{self.config["discord_command_prefix"]}{cmd.name}',
+                    title=f"{self.config['discord_command_prefix']}{cmd.name}",
                     description=cmd.help or 'No description provided.',
                     color=discord.Color.blue()
                 )
@@ -324,7 +324,7 @@ class HelpCommand(commands.Cog):
                 if parameters and parameters[0][0] == 'ctx':
                     parameters.pop(0)
                 if parameters:
-                    usage_parts = [f'{self.config["discord_command_prefix"]}{cmd.name}']
+                    usage_parts = [f"{self.config['discord_command_prefix']}{cmd.name}"]
                     for name, param in parameters:
                         param_desc = None
                         if isinstance(param.default, commands.Parameter):
@@ -338,7 +338,7 @@ class HelpCommand(commands.Cog):
                             param_details.append(f'**{name}** ({annotation}): {param_desc}')
                         else:
                             param_details.append(f'**{name}** ({annotation})')
-                    embed.add_field(name='Usage', value=f'`{" ".join(usage_parts)}`', inline=False)
+                    embed.add_field(name='Usage', value=f"`{' '.join(usage_parts)}`", inline=False)
                     if param_details:
                         embed.add_field(name='Parameters', value='\n'.join(param_details), inline=False)
                         try:
@@ -348,7 +348,7 @@ class HelpCommand(commands.Cog):
                                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                             except Exception as e:
                                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-            if kind == "alias":
+            if kind == 'alias':
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
                 if not help_lines:
@@ -360,7 +360,7 @@ class HelpCommand(commands.Cog):
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                 embed = discord.Embed(
-                    title=f'{self.config["discord_command_prefix"]}{alias.alias_name}',
+                    title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
                     description=f'Alias for **{alias.alias_type}**',
                     color=discord.Color.green()
                 )
@@ -378,7 +378,7 @@ class HelpCommand(commands.Cog):
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = self.aliases_cog.alias_type_to_description.get(alias.alias_type, "No description")
+                short_desc = self.aliases_cog.alias_type_to_description.get(alias.alias_type, 'No description')
                 perm_level_for_alias = self.aliases_cog.alias_type_to_permission_level.get(alias.alias_type, 'Everyone')
                 perm_alias_map[perm_level_for_alias].append(f'**{alias.alias_name}** – {short_desc}')
         user_highest = await is_owner_developer_administrator_coordinator_moderator(ctx)
@@ -388,13 +388,13 @@ class HelpCommand(commands.Cog):
                 continue
             commands_in_level = sorted(permission_groups.get(perm_level, []), key=lambda c: c.name)
             embed = discord.Embed(
-                title=f"{perm_level} Commands",
+                title=f'{perm_level} Commands',
                 description=description,
                 color=self.get_permission_color(perm_level)
             )
             if commands_in_level:
                 command_lines = [
-                    f'**{self.config["discord_command_prefix"]}{cmd.name}** – {cmd.help or "No description"}'
+                    f"**{self.config['discord_command_prefix']}{cmd.name}** – {cmd.help or 'No description'}"
                     for cmd in commands_in_level
                 ]
                 command_text = '\n'.join(command_lines)

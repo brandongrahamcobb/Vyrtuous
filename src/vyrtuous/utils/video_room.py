@@ -33,7 +33,7 @@ class VideoRoom:
         self.bot = DiscordBot.get_instance()
         self.channel_mention = f"<#{channel_snowflake}>"
         self.channel_snowflake = channel_snowflake
-        self.emojis = Emojis()
+        self.emoji = Emojis()
         self.guild_snowflake = guild_snowflake
         self.is_video_room: Optional[bool] = True
 
@@ -51,7 +51,7 @@ class VideoRoom:
         except Exception as e:
             logger.info("Unable to enforce video by kicking the user.")
         try:
-            await member.send(f"{cls.emojis.get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel.")
+            await member.send(f"{cls.emoji.get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel.")
         except Exception as e:
             logger.info("Unable to send a message to enforce video.")
 

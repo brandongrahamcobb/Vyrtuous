@@ -21,8 +21,8 @@ from vyrtuous.bot.discord_bot import DiscordBot
 
 class VoiceMute:
 
-    PLURAL = "Voice Mutes"
-    SINGULAR = "Voice Mute"
+    PLURAL = 'Voice Mutes'
+    SINGULAR = 'Voice Mute'
 
     def __init__(self, channel_snowflake: Optional[int], expires_in: Optional[datetime], guild_snowflake: Optional[int], member_snowflake: Optional[int], reason: Optional[str], target: Optional[str]):
         self.channel_snowflake = channel_snowflake
@@ -38,8 +38,8 @@ class VoiceMute:
 
     @target.setter
     def target(self, target):
-        if target not in ["room", "user"]:
-            raise ValueError("Invalid target.")
+        if target not in ['room', 'user']:
+            raise ValueError('Invalid target.')
         self._target = target
 
     @classmethod

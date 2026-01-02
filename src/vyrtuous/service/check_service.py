@@ -67,7 +67,7 @@ async def is_moderator(ctx_or_interaction_or_message):
         member_snowflake = ctx_or_interaction_or_message.author.id
     else:
         member_snowflake = None
-    moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=ctx_or_interaction_or_message.channel.id, guild_snowflake=ctx_or_interaction_or_message.guild.id, member_snowflake=member_snowflake)
+    moderator = await Moderator.fetch_by_guild_and_member(guild_snowflake=ctx_or_interaction_or_message.guild.id, member_snowflake=member_snowflake)
     if not moderator:
         raise NotModerator()
     return True
@@ -82,7 +82,7 @@ async def is_coordinator(ctx_or_interaction_or_message):
         member_snowflake = ctx_or_interaction_or_message.author.id
     else:
         member_snowflake = None
-    coordinator = await Coordinator.fetch_by_channel_guild_and_member(channel_snowflake=ctx_or_interaction_or_message.channel.id, guild_snowflake=ctx_or_interaction_or_message.guild.id, member_snowflake=member_snowflake)
+    coordinator = await Coordinator.fetch_by_guild_and_member(guild_snowflake=ctx_or_interaction_or_message.guild.id, member_snowflake=member_snowflake)
     if not coordinator:
         raise NotCoordinator()
     return True
@@ -214,12 +214,12 @@ def is_owner_developer_administrator_coordinator_moderator_predicator():
 
 async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interaction_or_message) -> str:
     checks = (
-        ("Owner", is_system_owner),
-        ("Owner", is_guild_owner),
-        ("Developer", is_developer),
-        ("Administrator", is_administrator),
-        ("Coordinator", is_coordinator),
-        ("Moderator", is_moderator),
+        ('Owner', is_system_owner),
+        ('Owner', is_guild_owner),
+        ('Developer', is_developer),
+        ('Administrator', is_administrator),
+        ('Coordinator', is_coordinator),
+        ('Moderator', is_moderator),
     )
     for role_name, check in checks:
         try:
@@ -227,7 +227,7 @@ async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interact
                 return role_name
         except commands.CheckFailure:
             continue
-    return "Everyone"
+    return 'Everyone'
 
 async def member_is_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     bot = DiscordBot.get_instance()
@@ -268,34 +268,34 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, channel_snowflake
     async def get_highest_role(member_sf):
         try:
             if await member_is_owner(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-                return PERMISSION_TYPES.index("Owner")
+                return PERMISSION_TYPES.index('Owner')
         except (NotOwner, NotOwner):
             pass
         try:
             if await member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-                return PERMISSION_TYPES.index("Developer")
+                return PERMISSION_TYPES.index('Developer')
         except NotDeveloper:
             pass
         try:
             if await member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-                return PERMISSION_TYPES.index("Administrator")
+                return PERMISSION_TYPES.index('Administrator')
         except NotAdministrator:
             pass
         if channel_snowflake:
             try:
                 if await member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-                    return PERMISSION_TYPES.index("Coordinator")
+                    return PERMISSION_TYPES.index('Coordinator')
             except NotCoordinator:
                 pass
             try:
                 if await member_is_moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-                    return PERMISSION_TYPES.index("Moderator")
+                    return PERMISSION_TYPES.index('Moderator')
             except NotModerator:
                 pass
-        return PERMISSION_TYPES.index("Everyone")
+        return PERMISSION_TYPES.index('Everyone')
     sender_rank = await get_highest_role(sender_snowflake)
     target_rank = await get_highest_role(member_snowflake)
-    msg = f"You may not execute this command on this `{PERMISSION_TYPES[target_rank]}` because they have equal or higher role than you in this channel/server."
+    msg = f'You may not execute this command on this `{PERMISSION_TYPES[target_rank]}` because they have equal or higher role than you in this channel/server.'
     if sender_rank <= target_rank:
         if isinstance(message_ctx_or_interaction, discord.Interaction):
             raise app_commands.CheckFailure(msg)
@@ -304,29 +304,29 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, channel_snowflake
     return PERMISSION_TYPES[sender_rank]
 
 async def is_owner_developer_administrator_coordinator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
-    checks = (("Administrator", lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Coordinator", lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Developer", lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Owner", lambda: member_is_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)))
+    checks = (('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Owner', lambda: member_is_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)))
     for role_name, check in checks:
         try:
             if await check():
                 return role_name
         except (NotOwner, NotOwner, NotDeveloper, NotAdministrator, NotCoordinator):
             continue
-    return "Everyone"
+    return 'Everyone'
 
 async def is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
-    checks = (("Owner", lambda: member_is_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Developer", lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Administrator", lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Coordinator", lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ("Moderator", lambda: member_is_moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)))
+    checks = (('Owner', lambda: member_is_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Moderator', lambda: member_is_moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)))
     for role_name, check in checks:
         try:
             if await check():
                 return role_name
         except (NotOwner, NotOwner, NotDeveloper, NotAdministrator, NotCoordinator, NotModerator):
             continue
-    return "Everyone"
+    return 'Everyone'
 
 def check_not_self(ctx_interaction_or_message, member_snowflake: int):
     try:
         if member_snowflake == ctx_interaction_or_message.guild.me.id:
-            raise commands.CheckFailure("You cannot execute actions on {ctx_interaction_or_message.guild.me.mention}.")
+            raise commands.CheckFailure('You cannot execute actions on {ctx_interaction_or_message.guild.me.mention}.')
         else:
             return True
     except commands.CheckFailure:

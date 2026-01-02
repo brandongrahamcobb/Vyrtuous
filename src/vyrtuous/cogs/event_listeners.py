@@ -51,7 +51,7 @@ class EventListeners(commands.Cog):
         self.channel_service = ChannelService()
         self.config = bot.config
         self.db_pool = bot.db_pool
-        self.emojis = Emojis()
+        self.emoji = Emojis()
         self.flags = []
         self.message_service = MessageService(self.bot, self.db_pool)
         self.join_log = defaultdict(list)
@@ -65,7 +65,7 @@ class EventListeners(commands.Cog):
             channel = self.bot.get_channel(room.channel_snowflake)
             if channel:
                 try:
-                    await channel.edit(status="Video-Only Room", reason="Enforce default video-only status")
+                    await channel.edit(status='Video-Only Room', reason='Enforce default video-only status')
                 except discord.Forbidden as e:
                     pass
         self.flags = await Flag.fetch_all()
@@ -132,7 +132,7 @@ class EventListeners(commands.Cog):
             if after.channel.id != video_room.channel_snowflake:
                 continue
             if not after.self_video and after.channel != before.channel:
-                await VideoRoom.enforce_video_message(channel_snowflake=after.channel.id, member_snowflake=member.id, message=f"{self.emojis.get_random_emoji()} Hi {member.mention}, {after.channel.mention} is a video only room. You have 5 minutes to turn on your camera!")
+                await VideoRoom.enforce_video_message(channel_snowflake=after.channel.id, member_snowflake=member.id, message=f'{self.emoji.get_random_emoji()} Hi {member.mention}, {after.channel.mention} is a video only room. You have 5 minutes to turn on your camera!')
             key = (member.guild.id, member.id)
             if before.channel != after.channel:
                 VideoRoom.cancel_task(key)
@@ -180,7 +180,7 @@ class EventListeners(commands.Cog):
                 return
         if after.channel:                    
             should_be_muted = False
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target="user")
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target='user')
             if voice_mute:
                 should_be_muted = True
             if not before.mute and after.mute:
@@ -194,7 +194,7 @@ class EventListeners(commands.Cog):
                     await after.channel.send(embed=embed)
                 elif should_be_muted == False:
                     expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
-                    voice_mute = VoiceMute(channel_snowflake=after.channel.id, expires_in=expires_in, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason="No reason provided.", target=target)
+                    voice_mute = VoiceMute(channel_snowflake=after.channel.id, expires_in=expires_in, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason='No reason provided.', target=target)
                     await voice_mute.create()       
                     should_be_muted = True              
             if before.mute and not after.mute and before.channel:
@@ -295,10 +295,10 @@ class EventListeners(commands.Cog):
             await has_equal_or_higher_role(message, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, sender_snowflake=message.author.id)
             check_not_self(message, member_snowflake=member_obj.id)
             if not alias.handler:
-                raise Exception(f"\U000026A0\U0000FE0F No alias handler exists for {alias.alias_name}.")
+                raise Exception(f'\U000026A0\U0000FE0F No alias handler exists for {alias.alias_name}.')
         except Exception as e:
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}")
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         existing_guestroom_alias_event = await Alias.get_existing_guestroom_alias_event(alias=alias, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
@@ -308,12 +308,12 @@ class EventListeners(commands.Cog):
         executor_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_snowflake=alias.channel_snowflake, guild_snowflake=message.guild.id, member_snowflake=message.author.id)
         if executor_role == 'Everyone':
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to {alias.alias_type} users.")
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to {alias.alias_type} users.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         if is_reason_modification and executor_role in ('Moderator', 'Everyone'):
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s.")
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         await alias.handler(alias, args, channel_obj, executor_role, existing_guestroom_alias_event, is_duration_modification, is_reason_modification, member_obj, message, state)
@@ -334,7 +334,7 @@ class EventListeners(commands.Cog):
                     return await state.end(error=f'\u274C {error}')
         except Exception as e:
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}")
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
     
@@ -351,7 +351,7 @@ class EventListeners(commands.Cog):
                     return await state.end(error=f'\u274C {error}') 
         except Exception as e:
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}")
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}') 
 #    @commands.Cog.listener()
@@ -360,7 +360,7 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if getattr(self, "_ready_done", False):
+        if getattr(self, '_ready_done', False):
             return
         self._ready_done = True
         method_names = [cmd.callback.__name__ for cmd in self.bot.commands]

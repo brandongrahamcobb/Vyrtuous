@@ -18,6 +18,7 @@
 
 from datetime import datetime
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.emojis import Emojis
 from typing import Optional
 
 import discord
@@ -53,7 +54,7 @@ class Stage:
         if len(join_log[member.id]) < 1:
             join_log[member.id].append(now)
             embed = discord.Embed(
-                title=f"\U0001F399 {self.channel_snowflake} — Stage Mode",
+                title=f'{self.emoji.get_random_emoji()} {self.channel_snowflake} — Stage Mode',
                 description=f"Ends <t:{int(self.expires_in.timestamp())}:R>",
                 color=discord.Color.green()
             )

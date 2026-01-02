@@ -28,11 +28,11 @@ class Heartbeat(commands.Cog):
 
     @tasks.loop(seconds=5.0)
     async def heartbeat(self):
-        with open("/tmp/vyrtuous_heartbeat", "w", encoding="utf-8") as f:
+        with open('/tmp/vyrtuous_heartbeat', 'w', encoding='utf-8') as f:
             if (self.bot.is_ready and self.bot.latency):
-                f.write("0")
+                f.write('0')
             else:
-                f.write("1")
+                f.write('1')
 
 async def setup(bot: DiscordBot):
     cog = Heartbeat(bot)

@@ -33,7 +33,7 @@ class Invincibility:
         member = guild.get_member(member_snowflake)
         bans = await Ban.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
         text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-        voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target="user")
+        voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target='user')
         if bans:
             for ban in bans:
                 try:
