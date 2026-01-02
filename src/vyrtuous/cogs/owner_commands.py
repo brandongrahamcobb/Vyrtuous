@@ -42,7 +42,7 @@ class OwnerCommands(commands.Cog):
         reference='Include an issue reference ID',
         member='Tag a member or include their snowflake ID',
     )
-    @is_owner_predicator()
+    @is_system_owner_predicator()
     async def toggle_issue_to_developer_app_command(
         self,
         interaction: discord.Interaction,
@@ -100,7 +100,7 @@ class OwnerCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     @commands.command(name='dish', help='Assigns or unassigns a developer to a pending issue.')
-    @is_owner_predicator()
+    @is_system_owner_predicator()
     async def toggle_issue_to_developer_text_command(
         self,
         ctx: commands.Context,
@@ -160,7 +160,7 @@ class OwnerCommands(commands.Cog):
     # DONE
     @app_commands.command(name='dev', description="Grants/revokes a user's permissions to a bot developer.")
     @app_commands.describe(member='Tag a member or include their snowflake ID')
-    @is_owner_predicator()
+    @is_system_owner_predicator()
     async def create_developer_app_command(
         self,
         interaction: discord.Interaction,
@@ -193,7 +193,7 @@ class OwnerCommands(commands.Cog):
         
     # DONE
     @commands.command(name='dev', help="Grants/revokes a user's permissions to a bot developer.")
-    @is_owner_predicator()
+    @is_system_owner_predicator()
     async def create_developer_text_command(
         self,
         ctx: commands.Context,

@@ -26,19 +26,13 @@ from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import Administrator
 from vyrtuous.utils.administrator import AdministratorRole
-from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.database import Database
 from vyrtuous.utils.developer_log import DeveloperLog
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.flag import Flag
-from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.state import State
 from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.vegan import Vegan
-from vyrtuous.utils.voice_mute import VoiceMute
+
 
 class DevCommands(commands.Cog):
 
@@ -88,92 +82,7 @@ class DevCommands(commands.Cog):
             return await state.end(success=discord.File(db.file_name))
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
- 
-    # DONE
-    @app_commands.command(name='clear', description='Removes a specific channel ID from all users, including temp-room associations.')
-    @app_commands.describe(scope='Tag a channel/member or include the snowflake ID')
-    @is_owner_developer_predicator()
-    async def clear_channel_access_app_command(
-        self,
-        interaction: discord.Interaction,
-        scope: str
-    ):
-        state = State(interaction)
-        channel_obj = None
-        highest_role = None
-        member_obj = None
-        try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
-            highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
-        except Exception as e:
-            try:
-                member_obj = await self.member_service.resolve_member(interaction, scope)
-            except Exception as e:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
-        if channel_obj and highest_role in ('Owner', 'Developer'):
-            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            msg = f'Deleted all associated moderation actions and roles for {channel_obj.mention}.'
-        elif member_obj:
-            await Invincibility.unrestrict(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-            msg = f'Deleted all associated moderation actions on {member_obj.mention}.'
-        try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
-        
-    # DONE
-    @commands.command(name='clear', help='Removes a specific channel ID from all users, including temp-room associations and all related records.')
-    @is_owner_developer_predicator()
-    async def clear_channel_access_text_command(
-        self,
-        ctx: commands.Context,
-        scope: str = commands.parameter(default=None, description='Tag a channel, a member or include its snowflake ID')
-    ):
-        state = State(ctx)
-        channel_obj = None
-        highest_role = None
-        member_obj = None
-        try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
-            highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
-        except Exception as e:
-            try:
-                member_obj = await self.member_service.resolve_member(ctx, scope)
-            except Exception as e:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
-        if channel_obj and highest_role in ('Owner', 'Developer'):
-            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            msg = f'Deleted all associated moderation actions and roles for {channel_obj.mention}.'
-        elif member_obj:
-            await Invincibility.unrestrict(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-            msg = f'Deleted all associated moderation actions on {member_obj.mention}.'
-        try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
-        except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')
-        
+
     @app_commands.command(name='cogs', description='List cogs.')
     @is_owner_developer_predicator()
     async def list_cogs_app_command(self, interaction: discord.Interaction):
@@ -218,6 +127,256 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
+    # DONE
+    @app_commands.command(name='devs', description='Lists developers.')
+    @app_commands.describe(scope="Specify one of: 'all', server ID or empty.")
+    @is_owner_developer_predicator()
+    async def list_developers_app_command(
+        self,
+        interaction : discord.Interaction,
+        scope: Optional[str] = None
+    ):
+        state = State(interaction)
+        guild_obj = None
+        member_obj = None
+        chunk_size = 18
+        field_count = 0
+        pages = []
+        skipped_guild_snowflakes = set()
+        skipped_member_snowflakes_by_guild_snowflake = {}
+        title = f'{self.emoji.get_random_emoji()} Developer(s)'
+
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        if scope and scope.lower() == 'all':
+            if highest_role not in ('Owner', 'Developer'):
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers across all servers.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            developers = await Developer.fetch_all()
+        elif scope:
+            try:
+                member_obj = await self.member_service.resolve_member(interaction, scope) 
+                developers = await Developer.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            except Exception as e:
+                if highest_role not in ('Owner', 'Developer', 'Developer'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                guild_obj = self.bot.get_guild(int(scope))
+                if not guild_obj:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, member ID/mention, server ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                developers = await Developer.fetch_by_guild(guild_snowflake=int(scope))
+        else:
+            developers = await Developer.fetch_by_guild(guild_snowflake=interaction.guild.id)
+            guild_obj = interaction.guild
+        
+        if not developers:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developer(s) exist for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for developer in developers:
+            guild_dictionary.setdefault(developer.guild_snowflake, {})
+            guild_dictionary[developer.guild_snowflake].setdefault(developer.member_snowflake, [])
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake in guild_dictionary.keys():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for member_snowflake in guild_dictionary[guild_snowflake]:
+                if field_count >= chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                member_obj = guild.get_member(member_snowflake)
+                if not member_obj:
+                    skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_snowflake)
+                    continue
+                embed.add_field(name=f'{member_obj.name} ({member_snowflake})', value=member_obj.mention, inline=False)
+                field_count += 1
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            embed = discord.Embed(title=title, description='\u200b', color=discord.Color.blue())
+            lines = []
+            for guild_snowflake in skipped_guild_snowflakes:
+                if field_count >= chunk_size:
+                    embed.description = '\n'.join(lines)
+                    pages.append(embed)
+                    embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
+                    lines = []
+                    field_count = 0
+                lines.append(str(guild_snowflake))
+                field_count += 1
+            embed.description = '\n'.join(lines)
+            pages.append(embed)
+        if skipped_member_snowflakes_by_guild_snowflake:
+            for guild_snowflake, member_list in skipped_member_snowflakes_by_guild_snowflake.items():
+                embed = discord.Embed(color=discord.Color.red(), title=f'Server ({guild_snowflake})')
+                field_count = 0
+                lines = []
+                for member_snowflake in member_list:
+                    if field_count >= chunk_size:
+                        embed.description = '\n'.join(lines)
+                        pages.append(embed)
+                        embed = discord.Embed(color=discord.Color.red(), title=f'Server ({guild_snowflake}) continued...')
+                        field_count = 0
+                        lines = []
+                    lines.append(str(member_snowflake))
+                    field_count += 1
+                embed.description = '\n'.join(lines)
+                pages.append(embed)
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developers found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+    # DONE
+    @commands.command(name='devs', help='Lists developers.')
+    @is_owner_developer_predicator()
+    async def list_developers_text_command(
+        self,
+        ctx: commands.Context,
+        *,
+        scope: Optional[str] = commands.parameter(default=None, description="'all', a specific server or user mention/ID")
+    ):
+        state = State(ctx)
+        guild_obj = None
+        member_obj = None
+        chunk_size = 18
+        field_count = 0
+        pages = []
+        skipped_guild_snowflakes = set()
+        skipped_member_snowflakes_by_guild_snowflake = {}
+        title = f'{self.emoji.get_random_emoji()} Developer(s)'
+
+        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        if scope and scope.lower() == 'all':
+            if highest_role not in ('Owner', 'Developer'):
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers across all servers.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            developers = await Developer.fetch_all()
+        elif scope:
+            try:
+                member_obj = await self.member_service.resolve_member(ctx, scope) 
+                developers = await Developer.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            except Exception as e:
+                if highest_role not in ('Owner', 'Developer', 'Developer'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                guild_obj = self.bot.get_guild(int(scope))
+                if not guild_obj:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, member ID/mention, role ID/mention, server ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                developers = await Developer.fetch_by_guild(guild_snowflake=int(scope))
+        else:
+            developers = await Developer.fetch_by_guild(guild_snowflake=ctx.guild.id)
+            guild_obj = ctx.guild
+        
+        if not developers:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developer(s) exist for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for developer in developers:
+            guild_dictionary.setdefault(developer.guild_snowflake, {})
+            guild_dictionary[developer.guild_snowflake].setdefault(developer.member_snowflake, [])
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake in guild_dictionary.keys():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for member_snowflake in guild_dictionary[guild_snowflake]:
+                if field_count >= chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                member_obj = guild.get_member(member_snowflake)
+                if not member_obj:
+                    skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_snowflake)
+                    continue
+                embed.add_field(name=f'{member_obj.name} ({member_snowflake})', value=member_obj.mention, inline=False)
+                field_count += 1
+            pages.append(embed)
+        if skipped_guild_snowflakes:
+            embed = discord.Embed(title=title, description='\u200b', color=discord.Color.blue())
+            lines = []
+            for guild_snowflake in skipped_guild_snowflakes:
+                if field_count >= chunk_size:
+                    embed.description = '\n'.join(lines)
+                    pages.append(embed)
+                    embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
+                    lines = []
+                    field_count = 0
+                lines.append(str(guild_snowflake))
+                field_count += 1
+            embed.description = '\n'.join(lines)
+            pages.append(embed)
+        if skipped_member_snowflakes_by_guild_snowflake:
+            for guild_snowflake, member_list in skipped_member_snowflakes_by_guild_snowflake.items():
+                embed = discord.Embed(color=discord.Color.red(), title=f'Server ({guild_snowflake})')
+                field_count = 0
+                lines = []
+                for member_snowflake in member_list:
+                    if field_count >= chunk_size:
+                        embed.description = '\n'.join(lines)
+                        pages.append(embed)
+                        embed = discord.Embed(color=discord.Color.red(), title=f'Server ({guild_snowflake}) continued...')
+                        field_count = 0
+                        lines = []
+                    lines.append(str(member_snowflake))
+                    field_count += 1
+                embed.description = '\n'.join(lines)
+                pages.append(embed)
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developers found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+            
     @app_commands.command(name='dlog', description='Resolve or update the notes on an issue by reference.')
     @app_commands.describe(
         reference='Specify the issue reference ID.',

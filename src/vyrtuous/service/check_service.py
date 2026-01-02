@@ -160,7 +160,15 @@ def is_owner_predicator():
     async def predicate(ctx_or_interaction_or_message):
         if await is_owner(ctx_or_interaction_or_message):
             return True
-        raise commands.CheckFailure('You are not an owner in this server')
+        raise commands.CheckFailure('You are not an owner in this server.')
+    predicate._permission_level = 'Owner'
+    return commands.check(predicate)
+
+def is_system_owner_predicator():
+    async def predicate(ctx_or_interaction_or_message):
+        if await is_system_owner(ctx_or_interaction_or_message):
+            return True
+        raise commands.CheckFailure('You are not a system owner.')
     predicate._permission_level = 'Owner'
     return commands.check(predicate)
 

@@ -27,12 +27,16 @@ from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import AdministratorRole
 from vyrtuous.utils.alias import Alias
+from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.coordinator import Coordinator
 from vyrtuous.utils.duration import AppDuration, Duration, DurationObject
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderation_type import AppModerationType, ModerationType
 from vyrtuous.utils.moderator import Moderator
+from vyrtuous.utils.emojis import Emojis
+from vyrtuous.utils.flag import Flag
+from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.server_mute import ServerMute
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.snowflake import *
@@ -40,9 +44,10 @@ from vyrtuous.utils.stage import Stage
 from vyrtuous.utils.state import State
 from vyrtuous.utils.statistics import Statistics
 from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.utils.video_room import VideoRoom
+from vyrtuous.utils.text_mute import TextMute
+from vyrtuous.utils.vegan import Vegan
 from vyrtuous.utils.voice_mute import VoiceMute
-from vyrtuous.service.message_service import MessageService
+from vyrtuous.utils.video_room import VideoRoom
 
 class AdminCommands(commands.Cog):
 
@@ -152,7 +157,7 @@ class AdminCommands(commands.Cog):
         pages = []
         skipped_guild_snowflakes = set()
         skipped_role_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Administrator Role(s)'
+        title = f'{self.emoji.get_random_emoji()} Administrator Roles'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -183,7 +188,7 @@ class AdminCommands(commands.Cog):
             try:
                 if guild_obj:
                     scope = guild_obj.name
-                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator role(s) setup for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator roles setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -266,7 +271,7 @@ class AdminCommands(commands.Cog):
         pages = []
         skipped_guild_snowflakes = set()
         skipped_role_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Administrator Role(s)'
+        title = f'{self.emoji.get_random_emoji()} Administrator Roles'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -297,7 +302,7 @@ class AdminCommands(commands.Cog):
             try:
                 if guild_obj:
                     scope = guild_obj.name
-                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator role(s) setup for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No administrator roles setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -496,11 +501,97 @@ class AdminCommands(commands.Cog):
             return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} ownership transfered to {member_obj.mention}.')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
+    
+
+    # DONE
+    @app_commands.command(name='clear', description='Removes a specific channel ID from all users, including temp-room associations.')
+    @app_commands.describe(scope='Tag a channel/member or include the snowflake ID')
+    @is_owner_developer_administrator_predicator()
+    async def clear_channel_access_app_command(
+        self,
+        interaction: discord.Interaction,
+        scope: str
+    ):
+        state = State(interaction)
+        channel_obj = None
+        highest_role = None
+        member_obj = None
+        try:
+            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
+            highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        except Exception as e:
+            try:
+                member_obj = await self.member_service.resolve_member(interaction, scope)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if channel_obj and highest_role in ('Owner', 'Developer'):
+            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            msg = f'Deleted all associated moderation actions and roles for {channel_obj.mention}.'
+        elif member_obj:
+            await Invincibility.unrestrict(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            msg = f'Deleted all associated moderation actions on {member_obj.mention}.'
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+    # DONE
+    @commands.command(name='clear', help='Removes a specific channel ID from all users, including temp-room associations and all related records.')
+    @is_owner_developer_administrator_predicator()
+    async def clear_channel_access_text_command(
+        self,
+        ctx: commands.Context,
+        scope: str = commands.parameter(default=None, description='Tag a channel, a member or include its snowflake ID')
+    ):
+        state = State(ctx)
+        channel_obj = None
+        highest_role = None
+        member_obj = None
+        try:
+            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
+            highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        except Exception as e:
+            try:
+                member_obj = await self.member_service.resolve_member(ctx, scope)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if channel_obj and highest_role in ('Owner', 'Developer'):
+            await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            msg = f'Deleted all associated moderation actions and roles for {channel_obj.mention}.'
+        elif member_obj:
+            await Invincibility.unrestrict(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            msg = f'Deleted all associated moderation actions on {member_obj.mention}.'
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @app_commands.command(name='coord', description='Grants/revokes coordinator access for a specific voice channel.')
-    @is_owner_developer_administrator_predicator()
     @app_commands.describe(member='Tag a member or include their snowflake ID', channel='Tag a channel or include its snowflake ID')
+    @is_owner_developer_administrator_predicator()
     async def create_coordinator_app_command(
         self,
         interaction: discord.Interaction,
@@ -1617,7 +1708,7 @@ class AdminCommands(commands.Cog):
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Temporary Room(s)'
+        title = f'{self.emoji.get_random_emoji()} Temporary Rooms'
         
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -1660,7 +1751,7 @@ class AdminCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No temporary room(s) setup for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1784,7 +1875,7 @@ class AdminCommands(commands.Cog):
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Temporary Room(s)'
+        title = f'{self.emoji.get_random_emoji()} Temporary Rooms'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -1827,7 +1918,7 @@ class AdminCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No temporary room(s) setup for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2015,7 +2106,7 @@ class AdminCommands(commands.Cog):
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Video Room(s)'
+        title = f'{self.emoji.get_random_emoji()} Video Rooms'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -2057,7 +2148,7 @@ class AdminCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No video room(s) setup for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No video rooms setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2181,7 +2272,7 @@ class AdminCommands(commands.Cog):
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
-        title = f'{self.emoji.get_random_emoji()} Video Room(s)'
+        title = f'{self.emoji.get_random_emoji()} Video Rooms'
 
         highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
@@ -2223,7 +2314,7 @@ class AdminCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No video room(s) setup for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No video rooms setup for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
