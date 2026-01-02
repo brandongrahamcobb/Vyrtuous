@@ -236,8 +236,11 @@ async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interact
 async def member_is_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     bot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
-    if guild.owner_id != member_snowflake:
-        raise NotGuildOwner
+    try:
+        if guild.owner_id != member_snowflake:
+            raise NotGuildOwner
+    except commands.CheckFailure:
+        pass
     if int(bot.config['discord_owner_id']) != member_snowflake:
         raise NotSystemOwner
     return True
