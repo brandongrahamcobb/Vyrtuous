@@ -305,15 +305,13 @@ class EventListeners(commands.Cog):
         target = args[1] if len(args) > 1 else '24h'
         is_reason_modification = target in ['+', '-', '=']
         is_duration_modification = target.startswith(('+', '-', '=')) and not is_reason_modification
-        executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
+        executor_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_snowflake=alias.channel_snowflake, guild_snowflake=message.guild.id, member_snowflake=message.autor.id)
         if executor_role == 'Everyone':
-            logger.info(executor_role)
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to {alias.alias_type} users.")
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         if is_reason_modification and executor_role in ('Moderator', 'Everyone'):
-            logger.info(is_reason_modification)
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s.")
             except Exception as e:
