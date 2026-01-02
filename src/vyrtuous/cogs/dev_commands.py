@@ -140,7 +140,7 @@ class DevCommands(commands.Cog):
         at_home = True
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         pages = []
         skipped_guild_snowflakes = set()
@@ -271,7 +271,7 @@ class DevCommands(commands.Cog):
         at_home = False
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         pages = []
         skipped_guild_snowflakes = set()
@@ -473,7 +473,7 @@ class DevCommands(commands.Cog):
         channel_obj = None
         developer_logs = []
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         lines, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -651,7 +651,7 @@ class DevCommands(commands.Cog):
         channel_obj = None
         developer_logs = []
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         lines, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -1006,7 +1006,7 @@ class DevCommands(commands.Cog):
     ):
         state = State(interaction)
         action = None
-        chunk_size = 18
+        chunk_size = 7
         pages = []
         skipped_members, target_members = [], []
         role_obj = None
@@ -1086,7 +1086,7 @@ class DevCommands(commands.Cog):
     ):
         state = State(ctx)
         action = None
-        chunk_size = 18
+        chunk_size = 7
         pages = []
         skipped_members, target_members = [], []
         role_obj = None

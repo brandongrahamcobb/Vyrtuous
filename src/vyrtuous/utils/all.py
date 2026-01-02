@@ -34,7 +34,7 @@ class All:
         if channel_snowflakes is None:
             return None
         bot = DiscordBot.get_instance()
-        chunk_size = 18
+        chunk_size = 7
         emoji = Emojis()
         channel_mentions, pages = [], []
         for channel_snowflake in channel_snowflakes:
@@ -81,7 +81,7 @@ class All:
         if members is None:
             return None
         bot = DiscordBot.get_instance()
-        chunk_size = 18
+        chunk_size = 7
         emoji = Emojis()
         lines, pages = [], []
         for member in members:
@@ -107,7 +107,7 @@ class All:
         if members is None:
             return None
         bot = DiscordBot.get_instance()
-        chunk_size = 18
+        chunk_size = 7
         emoji = Emojis()
         lines, pages = [], []
         for member in members:
@@ -132,7 +132,7 @@ class All:
     async def create_pages_to_show_channels_by_guild_and_members(cls, channel_snowflakes: list[int | None], guild_snowflake: int, members, member_type):
         bot = DiscordBot.get_instance()
         channel_mentions, pages = []
-        chunk_size = 18
+        chunk_size = 7
         emoji = Emojis()
         guild = bot.get_channel(guild_snowflake)
         for member in members:
@@ -180,7 +180,7 @@ class All:
     @classmethod
     async def create_pages_from_moderations_by_channel_and_guild(cls, guild_snowflake, moderations, moderation_type):
         bot = DiscordBot.get_instance()
-        chunk_size = 18
+        chunk_size = 7
         emoji = Emojis()
         guild = bot.get_guild(guild_snowflake)
         lines_by_channel = {}
@@ -212,7 +212,7 @@ class All:
     @classmethod
     async def create_pages_from_moderations_by_guild_and_member(cls, guild_snowflake, member_snowflake, moderations, moderation_type):
         bot = DiscordBot.get_instance()
-        chunk_size = 18
+        chunk_size = 7
         emoji = Emojis()
         entries, pages = [], []
         guild = bot.get_guild(guild_snowflake)
@@ -262,7 +262,7 @@ class All:
             else:
                 duration = DurationObject(0)
             lines_by_guild.append(f'• {user.mention} — {duration}')
-        chunk_size = 18
+        chunk_size = 7
         for i in range(0, len(lines_by_guild), chunk_size):
             chunk = lines_by_guild[i:i+chunk_size]
             embed = discord.Embed(

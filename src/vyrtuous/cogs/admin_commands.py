@@ -151,7 +151,7 @@ class AdminCommands(commands.Cog):
     ):
         state = State(interaction)
         at_home = False
-        chunk_size = 18
+        chunk_size = 7
         guild_obj = None
         field_count = 0
         pages = []
@@ -270,7 +270,7 @@ class AdminCommands(commands.Cog):
         state = State(ctx)
         at_home = False
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         pages = []
         skipped_guild_snowflakes = set()
@@ -742,7 +742,7 @@ class AdminCommands(commands.Cog):
         state = State(interaction)
         at_home = False
         channel_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         statistics, pages = [], []
         skipped_guild_snowflakes = set()
@@ -926,7 +926,7 @@ class AdminCommands(commands.Cog):
         state = State(ctx)
         at_home = False
         channel_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         statistics, pages = [], []
         skipped_guild_snowflakes = set()
@@ -1716,7 +1716,7 @@ class AdminCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
@@ -1883,7 +1883,7 @@ class AdminCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
@@ -2114,7 +2114,7 @@ class AdminCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
@@ -2280,7 +2280,7 @@ class AdminCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()

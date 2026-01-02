@@ -57,7 +57,7 @@ class EveryoneCommands(commands.Cog):
         at_home = False
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         pages = []
         skipped_guild_snowflakes = set()
@@ -213,7 +213,7 @@ class EveryoneCommands(commands.Cog):
         at_home = False
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         pages = []
         skipped_guild_snowflakes = set()
@@ -370,7 +370,7 @@ class EveryoneCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         lines, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -531,7 +531,7 @@ class EveryoneCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         lines, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -696,7 +696,7 @@ class EveryoneCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         lines, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -860,7 +860,7 @@ class EveryoneCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         lines, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -1057,7 +1057,7 @@ class EveryoneCommands(commands.Cog):
     ):
         state = State(interaction)
         channel_obj = None
-        chunk_size = 18
+        chunk_size = 7
         pages = []
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         try:
@@ -1139,7 +1139,7 @@ class EveryoneCommands(commands.Cog):
     ):
         state = State(ctx)
         channel_obj = None
-        chunk_size = 18
+        chunk_size = 7
         pages = []
         owners, developers, administrators, moderators, coordinators = [], [], [], [], []
         try:

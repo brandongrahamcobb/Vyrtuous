@@ -65,7 +65,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
         skipped_guild_snowflakes = set()
@@ -234,7 +234,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
         skipped_guild_snowflakes = set()
@@ -401,7 +401,7 @@ class ModeratorCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         caps, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -543,7 +543,7 @@ class ModeratorCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         caps, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -685,7 +685,7 @@ class ModeratorCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         aliases, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -840,7 +840,7 @@ class ModeratorCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         aliases, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -1075,7 +1075,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         flags, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
@@ -1230,7 +1230,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         flags, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
@@ -1397,7 +1397,7 @@ class ModeratorCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         pages = []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
@@ -1560,7 +1560,7 @@ class ModeratorCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         new_page = False
         pages = []
@@ -1826,7 +1826,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         voice_mutes, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
@@ -1996,7 +1996,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         voice_mutes, pages = [], []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
@@ -2276,7 +2276,7 @@ class ModeratorCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         pages = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -2415,7 +2415,7 @@ class ModeratorCommands(commands.Cog):
         at_home = False
         channel_obj = None
         guild_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         pages = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -2554,7 +2554,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         lines, pages, text_mutes = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}
@@ -2722,7 +2722,7 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         guild_obj = None
         member_obj = None
-        chunk_size = 18
+        chunk_size = 7
         field_count = 0
         lines, pages, text_mutes = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake, skipped_member_snowflakes_by_guild_snowflake = {}, {}

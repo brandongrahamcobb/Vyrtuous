@@ -249,7 +249,7 @@ class CoordinatorCommands(commands.Cog):
     ):
         state = State(interaction)
         channel_obj = None
-        chunk_size = 18
+        chunk_size = 7
         failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
