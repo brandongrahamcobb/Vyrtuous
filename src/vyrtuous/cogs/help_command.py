@@ -49,7 +49,7 @@ class HelpCommand(commands.Cog):
 
     async def get_channel_alias_help(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]) -> list[str]:
         lines = []
-        aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
+        aliases = await Alias.fetch_by_guild(guild_snowflake=guild_snowflake)
         if aliases:
             grouped = defaultdict(list)
             for alias in aliases:
@@ -114,7 +114,7 @@ class HelpCommand(commands.Cog):
         if cmd:
             return ("command", cmd)
         alias = await Alias.fetch_by_guild_and_name(alias_name=name.lower(), guild_snowflake=ctx_or_interaction.guild.id)
-        if alias and alias.channel_snowflake == ctx_or_interaction.channel.id:
+        if alias and alias.guild_snowflake == ctx_or_interaction.guild.id:
             return ("alias", alias)
         return (None, None)
 

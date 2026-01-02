@@ -138,7 +138,7 @@ class DevCommands(commands.Cog):
     async def clear_channel_access_text_command(
         self,
         ctx: commands.Context,
-        scope: str = commands.parameter(default=None, description='Tag a channel, a member or include its the snowflake ID')
+        scope: str = commands.parameter(default=None, description='Tag a channel, a member or include its snowflake ID')
     ):
         state = State(ctx)
         channel_obj = None

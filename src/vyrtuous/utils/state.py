@@ -97,6 +97,9 @@ class State:
         self.health_type = health_type
         self.success = is_success
         self.elapsed = elapsed
+        show_error_emoji = False
+        if error:
+            show_error_emoji = True
         if isinstance(message_obj, list) and message_obj:
             self.paginator = Paginator(bot=self.bot, ctx_or_interaction=self.ctx_or_interaction, pages=message_obj)
             self.message = await self.paginator.start()
@@ -106,7 +109,7 @@ class State:
                 "speed": elapsed,
                 "success": is_success
             }
-            await self._add_reactions(paginated=True)
+            await self._add_reactions(show_error_emoji=show_error_emoji, paginated=True)
             return self.message
         content = embed = file = None
         if isinstance(message_obj, str):
@@ -124,7 +127,7 @@ class State:
             "speed": elapsed,
             "success": is_success
         }
-        await self._add_reactions(paginated=False)
+        await self._add_reactions(show_error_emoji=show_error_emoji, paginated=False)
         return self.message
 
     async def _send_message(self, content=None, embed=None, file=None, paginated=False, allowed_mentions=discord.AllowedMentions.none()):
@@ -148,7 +151,7 @@ class State:
             return await self.ctx_or_interaction.channel.send(**kwargs)
 
 
-    async def _add_reactions(self, paginated: bool):
+    async def _add_reactions(self, show_error_emoji: bool, paginated: bool):
         if not self.message or self.is_ephemeral:
             return
         if self.message and self.message.webhook_id is not None:
@@ -157,7 +160,8 @@ class State:
             await self.message.add_reaction("\u2b05\ufe0f")
             await self.message.add_reaction("\u27a1\ufe0f")
         await self.message.add_reaction("\u2139\ufe0f")
-        await self.message.add_reaction("\U0001F4DD")
+        if show_error_emoji:
+            await self.message.add_reaction("\U0001F4DD")
         self.bot.loop.create_task(self._wait_for_reactions())
 
     async def _wait_for_reactions(self):
