@@ -351,7 +351,7 @@ class Aliases(commands.Cog):
             reason = None
     
             try:
-                role = await self.role_service.resolve_role(alias.role_snowflake)
+                role = await self.role_service.resolve_role(message, alias.role_snowflake)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\u274C Role `{alias.role_snowflake}` was not found.')
@@ -864,7 +864,7 @@ class Aliases(commands.Cog):
             reason = None
     
             try:
-                role = await self.role_service.resolve_role(alias.role_snowflake)
+                role = await self.role_service.resolve_role(message, alias.role_snowflake)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\u274C Role `{alias.role_snowflake}` was not found.')
