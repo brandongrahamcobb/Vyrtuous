@@ -810,6 +810,13 @@ class Aliases(commands.Cog):
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             
+            await VoiceMute.delete_by_channel_guild_member_and_target(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=message.guild.id,
+                member_snowflake=member_obj.id,
+                target="user"
+            )
+                    
             if member_obj.voice and member_obj.voice.channel:
                 try:
                     is_channel_scope = True
@@ -819,17 +826,11 @@ class Aliases(commands.Cog):
                         return await state.end(error=f'\u274C {member_obj.mention}\'s voice-mute was not successfuly undone.')
                     except Exception as e:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
-            await VoiceMute.delete_by_channel_guild_member_and_target(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=message.guild.id,
-                member_snowflake=member_obj.id,
-                target="user"
-            )
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
             embed = discord.Embed(
-                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Untext-muted",
+                title=f"{self.emoji.get_random_emoji()} {member_obj.display_name} has been Unmuted",
                 description=(
                     f"**By:** {message.author.mention}\n"
                     f"**User:** {member_obj.mention}\n"
@@ -940,6 +941,7 @@ class Aliases(commands.Cog):
                     return await state.end(warning='\U000026A0\U0000FE0F Only coordinators and above can undo permanent text-mutes.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
+                
             await TextMute.delete_by_channel_guild_and_member(
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=message.guild.id,
