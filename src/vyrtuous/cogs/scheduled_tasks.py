@@ -125,7 +125,7 @@ class ScheduledTasks(commands.Cog):
                             member = await guild.fetch_member(user_id)
                         except discord.NotFound:
                             logger.info(f'Member {user_id} not found in guild {guild_id}, cleaning up expired voice mute')
-                            await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=member.id, target="user")
+                            await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=user_id, target="user")
                             continue
                     await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=channel_id, guild_snowflake=guild_id, member_snowflake=member.id, target="user")
                     if member.voice and member.voice.channel and member.voice.channel.id == channel_id:
