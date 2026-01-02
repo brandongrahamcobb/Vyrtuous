@@ -179,6 +179,9 @@ class EventListeners(commands.Cog):
                 return
         if after.channel:                    
             should_be_muted = False
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target="user")
+            if voice_mute:
+                should_be_muted = True
             if not before.mute and after.mute:
                 if member.id in Invincibility.get_invincible_members():
                     embed = discord.Embed(
@@ -188,7 +191,7 @@ class EventListeners(commands.Cog):
                     )
                     embed.set_thumbnail(url=member.display_avatar.url)
                     await after.channel.send(embed=embed)
-                else:
+                elif should_be_muted == False:
                     expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
                     voice_mute = VoiceMute(channel_snowflake=after.channel.id, expires_in=expires_in, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason="No reason provided.", target=target)
                     await voice_mute.create()       
@@ -196,9 +199,6 @@ class EventListeners(commands.Cog):
             if not should_be_muted:               
                 if before.mute and not after.mute and before.channel:
                     await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=before.channel.id, guild_snowflake=before.channel.guild.id, member_snowflake=member.id, target=target)
-            #     voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target="user")
-            # if voice_mute:
-            #     should_be_muted = True
             if after.mute != should_be_muted:
                 try:
                     await member.edit(mute=should_be_muted, reason=f'Setting mute to {should_be_muted} in {after.channel.name}')
