@@ -224,6 +224,7 @@ class DevCommands(commands.Cog):
         action="'resolve' or 'append' or 'overwrite'.",
         notes="Optionally specify notes to append or overwrite."
     )
+    @is_owner_developer_predicator()
     async def update_developer_logs_app_command(
         self,
         ctx: commands.Context,
@@ -253,6 +254,7 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     @commands.command(name='dlog', help="Resolve or update the notes on an issue by reference")
+    @is_owner_developer_predicator()
     async def update_developer_logs_text_command(
         self,
         ctx: commands.Context,
@@ -288,6 +290,7 @@ class DevCommands(commands.Cog):
         scope="Specify one of: 'all', 'resolved' or 'unresolved'",
         value="Specify one of: channel ID/mention, reference ID and server ID."
     )
+    @is_owner_developer_predicator()
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
@@ -454,6 +457,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     @commands.command(name='dlogs', help="Lists developer logs by 'all', 'resolved', 'unresolved' and channel ID/mention, reference ID or server ID.")
+    @is_owner_developer_predicator()
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
