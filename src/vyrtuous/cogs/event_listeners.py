@@ -306,9 +306,16 @@ class EventListeners(commands.Cog):
         is_reason_modification = target in ['+', '-', '=']
         is_duration_modification = target.startswith(('+', '-', '=')) and not is_reason_modification
         executor_role = await is_owner_developer_administrator_coordinator_moderator(message)
-        if executor_role == 'Everyone' or (is_reason_modification and executor_role in ('Moderator', 'Everyone')):
+        if executor_role == 'Everyone':
+            logger.info(executor_role)
             try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s or {alias.alias_type} users.")
+                return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to {alias.alias_type} users.")
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if is_reason_modification and executor_role in ('Moderator', 'Everyone'):
+            logger.info(is_reason_modification)
+            try:
+                return await state.end(warning=f"\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s.")
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         await alias.handler(alias, args, channel_obj, executor_role, existing_guestroom_alias_event, is_duration_modification, is_reason_modification, member_obj, message, state)
