@@ -1298,32 +1298,27 @@ class EveryoneCommands(commands.Cog):
         for member in channel_obj.members:
             try:
                 if await member_is_owner(interaction.guild.id, member.id):
-                    owners.append(member)
-                    break  # stop after first match if desired
+                    owners.append(member)  # stop after first match if desired
             except commands.CheckFailure:
                 pass
             try:
                 if await member_is_developer(interaction.guild.id, member.id):
                     developers.append(member)
-                    break
             except commands.CheckFailure:
                 pass
             try:
                 if await member_is_administrator(interaction.guild.id, member.id):
                     administrators.append(member)
-                    break
             except commands.CheckFailure:
                 pass
             try:
                 if await member_is_coordinator(channel_obj.id, interaction.guild.id, member.id):
                     coordinators.append(member)
-                    break
             except commands.CheckFailure:
                 pass
             try:
                 if await member_is_moderator(channel_obj.id, interaction.guild.id, member.id):
                     moderators.append(member)
-                    break
             except commands.CheckFailure:
                 pass
         owners_chunks = [owners[i:i + chunk_size] for i in range(0, len(owners), chunk_size)]
@@ -1383,34 +1378,30 @@ class EveryoneCommands(commands.Cog):
         except:
             channel_obj = ctx.channel
         for member in channel_obj.members:
+            logger.info(member.name)
             try:
                 if await member_is_owner(ctx.guild.id, member.id):
                     owners.append(member)
-                    break
             except commands.CheckFailure:
                 pass
             try:
                 if await member_is_developer(ctx.guild.id, member.id):
                     developers.append(member)
-                    break
             except commands.CheckFailure:
                 pass
             try:
                 if await member_is_administrator(ctx.guild.id, member.id):
                     administrators.append(member)
-                    break
             except commands.CheckFailure:
                 pass
             try:
                 if await member_is_coordinator(channel_obj.id, ctx.guild.id, member.id):
                     coordinators.append(member)
-                    break
             except commands.CheckFailure:
                 pass
             try:
                 if await member_is_moderator(channel_obj.id, ctx.guild.id, member.id):
                     moderators.append(member)
-                    break
             except commands.CheckFailure:
                 pass
         owners_chunks = [owners[i:i + chunk_size] for i in range(0, len(owners), chunk_size)]
