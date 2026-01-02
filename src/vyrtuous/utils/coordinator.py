@@ -90,7 +90,8 @@ class Coordinator:
                 FROM coordinators
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
-            coordinators = []
+        coordinators = []
+        if rows:
             for row in rows:
                 coordinators.append(
                     Coordinator(channel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'])
@@ -120,7 +121,7 @@ class Coordinator:
                 FROM coordinators
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
-        coordinators = None
+        coordinators = []
         if rows:
             for row in rows:
                 coordinators.append(Coordinator(channel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))

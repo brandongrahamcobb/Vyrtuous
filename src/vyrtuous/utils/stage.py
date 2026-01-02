@@ -165,8 +165,9 @@ class Stage:
                 WHERE expires_in IS NOT NULL AND expires_in <= $1
             ''', now)
         expired_stages = []
-        for row in rows:
-            expired_stages.append(Stage(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
+        if rows:
+            for row in rows:
+                expired_stages.append(Stage(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
         return expired_stages
     
     @classmethod

@@ -89,7 +89,8 @@ class Moderator:
                 FROM moderators
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
-            moderators = []
+        moderators = []
+        if rows:
             for row in rows:
                 moderators.append(Moderator(channel_snowflake=row['channel_snowflake'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake']))
             return moderators
@@ -138,7 +139,8 @@ class Moderator:
                 SELECT created_at, channel_snowflake, guild_snowflake, member_snowflake, updated_at
                 FROM moderators
             ''')
-            moderators = []
+        moderators = []
+        if rows:
             for row in rows:
                 moderators.append(Moderator(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
             return moderators

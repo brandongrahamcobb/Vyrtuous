@@ -109,8 +109,9 @@ class Cap:
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)
         caps = []
-        for row in rows:
-            caps.append(Cap(channel_snowflake=row['channel_snowflake'], duration=row['duration_seconds'], guild_snowflake=row['guild_snowflake'], moderation_type=row['moderation_type']))
+        if rows:
+            for row in rows:
+                caps.append(Cap(channel_snowflake=row['channel_snowflake'], duration=row['duration_seconds'], guild_snowflake=row['guild_snowflake'], moderation_type=row['moderation_type']))
         return caps
     
     @classmethod
