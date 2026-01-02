@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
+from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
@@ -118,6 +119,7 @@ class Aliases(commands.Cog):
         self.emoji = Emojis()
         self.channel_service = ChannelService()
         self.member_service = MemberService()
+        self.role_service = RoleService()
         self.invincible_members = Invincibility.get_invincible_members()
     
     async def handle_ban_alias(

@@ -275,14 +275,14 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, channel_snowflake
         except (NotGuildOwner, NotSystemOwner):
             pass
         try:
-            if await member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
-                return PERMISSION_TYPES.index("Administrator")
-        except NotAdministrator:
-            pass
-        try:
             if await member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
                 return PERMISSION_TYPES.index("Developer")
         except NotDeveloper:
+            pass
+        try:
+            if await member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
+                return PERMISSION_TYPES.index("Administrator")
+        except NotAdministrator:
             pass
         if channel_snowflake:
             try:
