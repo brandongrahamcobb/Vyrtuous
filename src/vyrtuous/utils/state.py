@@ -206,7 +206,7 @@ class State:
         else:
             try:
                 await user.send(embed=embed)
-            except discord.Forbidden:
+            except discord.Forbidden as e:
                 pass
 
     async def report_issue(self, user):
@@ -214,7 +214,7 @@ class State:
         if user.id in self._reported_users:
             try:
                 await user.send("You already reported this message.")
-            except discord.Forbidden:
+            except discord.Forbidden as e:
                 pass
             return
         self._reported_users.add(user.id)
@@ -222,20 +222,28 @@ class State:
             developer_log = DeveloperLog(channel_snowflake=self.message.channel.id, developer_snowflakes=[], guild_snowflake=self.message.guild.id, message_snowflake=self.message.id)
             reference = await developer_log.create()
             id = reference.id
-            await user.send("Your report has been submitted.")
-        except discord.Forbidden:
+        except discord.Forbidden as e:
             pass
+        online_developer_mentions = []
+        member = self.bot.get_user(self.config['discord_owner_id'])
+        online_developer_mentions.append(member.mention)
         if self.ctx_or_interaction.guild:
             developers = await Developer.fetch_by_guild(self.ctx_or_interaction.guild.id)
+            message = f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}"
             for dev in developers:
                 member = self.ctx_or_interaction.guild.get_member(dev.member_snowflake)
+                if member.state != discord.Status.offline:
+                    online_developer_mentions.append(member.mention)
                 if member and member.status != discord.Status.offline:
                     try:
-                        await member.send(f"Issue reported by {user.name}!\nMessage: {self.message.jump_url}\n**Reference:** {id}")
-                    except discord.Forbidden:
+                        await member.send(message)
+                    except discord.Forbidden as e:
                         pass
-                member = self.bot.get_user(self.config['discord_owner_id'])
                 try:
-                    await member.send(f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}")
-                except discord.Forbidden:
+                    await member.send(message)
+                except discord.Forbidden as e:
                     pass
+        message = "Your report has been submitted"
+        if online_developer_mentions:
+            message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
+        await user.send(message)

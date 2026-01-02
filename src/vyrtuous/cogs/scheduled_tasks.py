@@ -87,7 +87,7 @@ class ScheduledTasks(commands.Cog):
                     try:
                         await channel.set_permissions(member, overwrite=None)
                         logger.info(f'Removed ban override for user {user_id} in channel {channel_id}')
-                    except discord.Forbidden:
+                    except discord.Forbidden as e:
                         logger.warning(f'No permission to remove ban override for user {user_id} in channel {channel_id}')
                     except discord.HTTPException as e:
                         logger.error(f'Failed to remove permission override for user {user_id} in channel {channel_id}: {str(e).capitalize()}')
@@ -132,7 +132,7 @@ class ScheduledTasks(commands.Cog):
                         try:
                             await member.edit(mute=False)
                             logger.info(f'Unmuted user {user_id} in channel {channel_id}')
-                        except discord.Forbidden:
+                        except discord.Forbidden as e:
                             logger.warning(f'No permission to unmute user {user_id} in channel {channel_id}')
                         except discord.HTTPException as e:
                             logger.error(f'Failed to unmute user {user_id} in channel {channel_id}: {str(e).capitalize()}')
@@ -172,7 +172,7 @@ class ScheduledTasks(commands.Cog):
                                 try:
                                     await member.edit(mute=False, reason='Stage room closed or unmuted automatically')
                                     logger.info(f'Unmuted user {user_id} after stage {channel_id} expired')
-                                except discord.Forbidden:
+                                except discord.Forbidden as e:
                                     logger.warning(f'No permission to unmute user {user_id} in expired stage {channel_id}')
                                 except discord.HTTPException as e:
                                     logger.error(f'Failed to unmute user {user_id} in expired stage {channel_id}: {str(e).capitalize()}')
@@ -193,7 +193,7 @@ class ScheduledTasks(commands.Cog):
 #            if channel:
 #                try:
 #                    await channel.edit(status="Video-Only Room", reason="Reset video-only room status")
-#                except discord.Forbidden:
+#                except discord.Forbidden as e:
 #                    logger.info("Failed to enforce video room status")
 #            else:
 #                logger.info("Failed to enforce video room status")
@@ -267,7 +267,7 @@ class ScheduledTasks(commands.Cog):
                     try:
                         await channel.set_permissions(member, send_messages=None)
                         logger.info(f'Removed text mute override for user {user_id} in channel {channel_id}')
-                    except discord.Forbidden:
+                    except discord.Forbidden as e:
                         logger.warning(f'No permission to remove mute override for user {user_id} in channel {channel_id}')
                     except discord.HTTPException as e:
                         logger.error(f'Failed to remove permission override for user {user_id} in channel {channel_id}: {str(e).capitalize()}')

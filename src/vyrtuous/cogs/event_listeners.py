@@ -66,7 +66,7 @@ class EventListeners(commands.Cog):
             if channel:
                 try:
                     await channel.edit(status="Video-Only Room", reason="Enforce default video-only status")
-                except discord.Forbidden:
+                except discord.Forbidden as e:
                     pass
         self.flags = await Flag.fetch_all()
 
@@ -203,7 +203,7 @@ class EventListeners(commands.Cog):
             if after.mute != should_be_muted:
                 try:
                     await member.edit(mute=should_be_muted, reason=f'Setting mute to {should_be_muted} in {after.channel.name}')
-                except discord.Forbidden:
+                except discord.Forbidden as e:
                     logger.debug(f'No permission to edit mute for {member.display_name}')
                 except discord.HTTPException as e:
                     logger.debug(f'Failed to edit mute for {member.display_name}: {str(e).capitalize()}')
@@ -244,7 +244,7 @@ class EventListeners(commands.Cog):
                         overwrite = channel.overwrites_for(member)
                         overwrite.view_channel = False
                         await channel.set_permissions(member, overwrite=overwrite, reason='Reinstating active channel ban')
-                    except discord.Forbidden:
+                    except discord.Forbidden as e:
                         logger.warning(f'Missing permissions to ban in channel {channel.id}')
                     except discord.HTTPException as e:
                         logger.warning(f'Failed to apply ban for {member} in {channel.id}: {str(e).capitalize()}')
@@ -255,7 +255,7 @@ class EventListeners(commands.Cog):
                         overwrite = channel.overwrites_for(member)
                         overwrite.send_messages = False
                         await channel.set_permissions(member, overwrite=overwrite, reason='Reinstating text mute')
-                    except discord.Forbidden:
+                    except discord.Forbidden as e:
                         logger.warning(f'Missing permissions to text mute in channel {channel.id}')
                     except discord.HTTPException as e:
                         logger.warning(f'Failed to apply text mute for {member} in {channel.id}: {str(e).capitalize()}')

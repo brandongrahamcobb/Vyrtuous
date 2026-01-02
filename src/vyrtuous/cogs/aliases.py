@@ -195,17 +195,14 @@ class Aliases(commands.Cog):
     
             try:
                 await channel_obj.set_permissions(member_obj, view_channel=False, reason=reason)
-            except discord.Forbidden:
+            except discord.Forbidden as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                 is_channel_scope = True
                 try:
                     await member_obj.move_to(None, reason=reason)
-                except discord.Forbidden:
-                    try:
-                        return await state.end(error=f'\u274C Unsuccessfully banned {member_obj.mention}.')
-                    except:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                except discord.Forbidden as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
                     
             ban = Ban(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
             await ban.create()
@@ -361,11 +358,8 @@ class Aliases(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             try:
                 await member_obj.add_roles(role, reason='Added role')
-            except discord.Forbidden:
-                try:
-                    return await state.end(error=f'\u274C {member_obj.mention} was not successfully roled.')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            except discord.Forbidden as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
@@ -460,11 +454,8 @@ class Aliases(commands.Cog):
     
             try:
                 await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False, reason=reason)
-            except discord.Forbidden:
-                try:
-                    return await state.end(error=f'\u274C {member_obj.mention} was not successfully text-muted.')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            except discord.Forbidden as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
             text_mute = TextMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
             await text_mute.create()
@@ -565,7 +556,7 @@ class Aliases(commands.Cog):
                 is_channel_scope = True
                 try:
                     await member_obj.edit(mute=True, reason=reason)
-                except discord.Forbidden:
+                except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
     
             voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target="user")
@@ -632,22 +623,16 @@ class Aliases(commands.Cog):
     
             try:
                 await channel_obj.set_permissions(member_obj, overwrite=None)
-            except discord.Forbidden:
-                try:
-                    return await state.end(error=f'\u274C {member_obj.mention} was not successfully unbanned.')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            except discord.Forbidden as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
     
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                 is_channel_scope = True
                 try:
                     await member_obj.move_to(None, reason="Unbanned")
-                except discord.Forbidden:
-                    try:
-                        return await state.end(error=f'\u274C Could not move {member_obj.mention} from the voice channel.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                except discord.Forbidden as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
@@ -821,11 +806,8 @@ class Aliases(commands.Cog):
                 try:
                     is_channel_scope = True
                     await member_obj.edit(mute=False)
-                except discord.Forbidden:
-                    try:
-                        return await state.end(error=f'\u274C {member_obj.mention}\'s voice-mute was not successfuly undone.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                except discord.Forbidden as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
     
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
@@ -880,11 +862,8 @@ class Aliases(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             try:
                 await member_obj.remove_roles(role)
-            except discord.Forbidden:
-                try:
-                    return await state.end(error=f'\U000026A0\U0000FE0F {member_obj.mention} was not successfully unroled.')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            except discord.Forbidden as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
@@ -950,11 +929,8 @@ class Aliases(commands.Cog):
                         
             try:
                 await channel_obj.set_permissions(member_obj, send_messages=None)
-            except discord.Forbidden :
-                try:
-                    return await state.end(error=f'\u274C {member_obj.mention}\'s text-mute was not successfuly undone.')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            except discord.Forbidden as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
             await Statistics.send_statistic(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     

@@ -1138,7 +1138,7 @@ class AdminCommands(commands.Cog):
             try:
                 await member.move_to(target_channel_obj)
                 moved.append(member)
-            except discord.Forbidden:
+            except discord.Forbidden as e:
                 failed.append(member)
                 logger.warning(f'\U000026A0\U0000FE0F Missing permissions to move {member}.')
         embed = discord.Embed(
@@ -1177,7 +1177,7 @@ class AdminCommands(commands.Cog):
             try:
                 await member.move_to(target_channel_obj)
                 moved.append(member)
-            except discord.Forbidden:
+            except discord.Forbidden as e:
                 failed.append(member)
                 logger.warning(f'\U000026A0\U0000FE0F Missing permissions to move {member}.')
         embed = discord.Embed(
@@ -1230,10 +1230,7 @@ class AdminCommands(commands.Cog):
             try:
                 await member_obj.edit(mute=should_be_muted)
             except discord.Forbidden as e:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully server {action} {member_obj.mention}.')
         except Exception as e:
@@ -1273,10 +1270,7 @@ class AdminCommands(commands.Cog):
             try:
                 await member_obj.edit(mute=should_be_muted)
             except discord.Forbidden as e:
-                try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-                except Exception as e:
-                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Successfully server {action} {member_obj.mention}.')
         except Exception as e:
@@ -1334,7 +1328,7 @@ class AdminCommands(commands.Cog):
                     try:
                         await member.edit(mute=False, reason='Stage ended — no user-specific mute found')
                         succeeded_members.append(member)
-                    except discord.Forbidden:
+                    except discord.Forbidden as e:
                         logger.warning(f'Failed to unmute member: {member}')
                         failed_members.append(member)
             description_lines = [
@@ -1444,7 +1438,7 @@ class AdminCommands(commands.Cog):
                     try:
                         await member.edit(mute=False, reason='Stage ended — no user-specific mute found')
                         succeeded_members.append(member)
-                    except discord.Forbidden:
+                    except discord.Forbidden as e:
                         logger.warning(f'Failed to unmute member: {member}')
                         failed_members.append(member)
             description_lines = [
