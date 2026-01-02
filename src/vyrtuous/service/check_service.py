@@ -39,12 +39,8 @@ class NotModerator(commands.CheckFailure):
     def __init__(self, message='You are not a moderator in the requested channel.'):
         super().__init__(message)
 
-class NotGuildOwner(commands.CheckFailure):
-    def __init__(self, message='You are not the server owner and cannot do this.'):
-        super().__init__(message)
-
-class NotSystemOwner(commands.CheckFailure):
-    def __init__(self, message='You are not the bot owner.'):
+class NotOwner(commands.CheckFailure):
+    def __init__(self, message='You are not the owner and cannot do this.'):
         super().__init__(message)
 
 class NotDeveloper(commands.CheckFailure):
@@ -131,7 +127,7 @@ async def is_guild_owner(ctx_or_interaction_or_message):
     else:
         member_snowflake = None
     if ctx_or_interaction_or_message.guild.owner_id != member_snowflake:
-        raise NotGuildOwner()
+        raise NotOwner()
     return True
 
 async def is_system_owner(ctx_or_interaction_or_message):
@@ -144,7 +140,7 @@ async def is_system_owner(ctx_or_interaction_or_message):
         user = ctx_or_interaction_or_message.author
     system_owner_id = int(bot.config['discord_owner_id'])
     if system_owner_id != user.id:
-        raise NotSystemOwner()
+        raise NotOwner()
     return True
     
 async def is_owner(ctx_or_interaction_or_message):
@@ -236,17 +232,11 @@ async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interact
 async def member_is_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     bot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
-    guild_owner_ok = False
-    system_owner_ok = False
     if guild and guild.owner_id == member_snowflake:
-        guild_owner_ok = True
-    if int(bot.config['discord_owner_id']) == member_snowflake:
-        system_owner_ok = True
-    if guild_owner_ok or system_owner_ok:
         return True
-    if guild:
-        raise NotGuildOwner
-    raise NotSystemOwner
+    if int(bot.config['discord_owner_id']) == member_snowflake:
+        return True
+    raise NotOwner
 
 
 async def member_is_developer(guild_snowflake: int, member_snowflake: int) -> bool:
@@ -279,7 +269,7 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, channel_snowflake
         try:
             if await member_is_owner(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
                 return PERMISSION_TYPES.index("Owner")
-        except (NotGuildOwner, NotSystemOwner):
+        except (NotOwner, NotOwner):
             pass
         try:
             if await member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_sf):
@@ -319,7 +309,7 @@ async def is_owner_developer_administrator_coordinator_via_channel_member(channe
         try:
             if await check():
                 return role_name
-        except (NotGuildOwner, NotSystemOwner, NotDeveloper, NotAdministrator, NotCoordinator):
+        except (NotOwner, NotOwner, NotDeveloper, NotAdministrator, NotCoordinator):
             continue
     return "Everyone"
 
@@ -329,7 +319,7 @@ async def is_owner_developer_administrator_coordinator_moderator_via_channel_mem
         try:
             if await check():
                 return role_name
-        except (NotGuildOwner, NotSystemOwner, NotDeveloper, NotAdministrator, NotCoordinator, NotModerator):
+        except (NotOwner, NotOwner, NotDeveloper, NotAdministrator, NotCoordinator, NotModerator):
             continue
     return "Everyone"
 
