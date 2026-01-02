@@ -236,21 +236,18 @@ async def is_owner_developer_administrator_coordinator_moderator(ctx_or_interact
 async def member_is_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     bot = DiscordBot.get_instance()
     guild = bot.get_guild(guild_snowflake)
-    guild_owner = False
-    try:
-        if guild.owner_id != member_snowflake:
-            raise NotGuildOwner
-        else:
-            guild_owner = True
-    except commands.CheckFailure:
-        pass
-    if not guild_owner:
-        try:
-            if int(bot.config['discord_owner_id']) != member_snowflake:
-                raise NotSystemOwner
-        except commands.CheckFailure:
-            pass
-    return True
+    guild_owner_ok = False
+    system_owner_ok = False
+    if guild and guild.owner_id == member_snowflake:
+        guild_owner_ok = True
+    if int(bot.config['discord_owner_id']) == member_snowflake:
+        system_owner_ok = True
+    if guild_owner_ok or system_owner_ok:
+        return True
+    if guild:
+        raise NotGuildOwner
+    raise NotSystemOwner
+
 
 async def member_is_developer(guild_snowflake: int, member_snowflake: int) -> bool:
     developer = await Developer.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
