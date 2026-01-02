@@ -239,10 +239,16 @@ async def member_is_owner(guild_snowflake: int, member_snowflake: int) -> bool:
     try:
         if guild.owner_id != member_snowflake:
             raise NotGuildOwner
+        else:
+            guild_owner = True
     except commands.CheckFailure:
         pass
-    if int(bot.config['discord_owner_id']) != member_snowflake:
-        raise NotSystemOwner
+    if not guild_owner:
+        try:
+            if int(bot.config['discord_owner_id']) != member_snowflake:
+                raise NotSystemOwner
+        except commands.CheckFailure:
+            pass
     return True
 
 async def member_is_developer(guild_snowflake: int, member_snowflake: int) -> bool:
