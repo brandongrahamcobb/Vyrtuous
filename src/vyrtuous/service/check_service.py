@@ -252,13 +252,13 @@ async def member_is_administrator(guild_snowflake: int, member_snowflake: int) -
     return True
 
 async def member_is_coordinator(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> bool:
-    coordinator = await Coordinator.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+    coordinator = await Coordinator.fetch_by_channel_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
     if not coordinator:
         raise NotCoordinator
     return True
 
 async def member_is_moderator(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> bool:
-    moderator = await Moderator.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+    moderator = await Moderator.fetch_by_guild_and_member(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
     if not moderator:
         raise NotModerator
     return True
