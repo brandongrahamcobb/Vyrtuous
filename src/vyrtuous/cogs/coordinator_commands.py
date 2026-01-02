@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from datetime import datetime, timedelta, timezone
 from discord import app_commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
@@ -149,8 +150,9 @@ class CoordinatorCommands(commands.Cog):
                     await member.edit(mute=True)
                 except Exception as e:
                     logger.warning(f'Failed to mute {member.id}: {str(e).capitalize()}')
-                    failed_members.append(member)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=None, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
+                    failed_members.append(member)    
+            expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
@@ -208,7 +210,8 @@ class CoordinatorCommands(commands.Cog):
                 except Exception as e:
                     logger.warning(f'Failed to mute {member.id}: {str(e).capitalize()}')
                     failed_members.append(member)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=None, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
+            expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [

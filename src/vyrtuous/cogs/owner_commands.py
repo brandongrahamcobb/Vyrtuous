@@ -58,7 +58,7 @@ class OwnerCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 await state.end(error=f'\u274C {str(e).capitalize()}')
-        developers = await Developer.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        developer = await Developer.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
         if developer:
             developer_log = await DeveloperLog.fetch_unresolved_by_reference(reference)
             if developer_log:
