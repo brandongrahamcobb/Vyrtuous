@@ -15,4 +15,4 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-PERMISSION_TYPES = ['Everyone', 'Moderator', 'Coordinator', 'Administrator', 'Developer', 'Owner']
+PERMISSION_TYPES = ['Everyone', 'Moderator', 'Coordinator', 'Administrator', 'Guild Owner', 'Developer', 'System Owner']

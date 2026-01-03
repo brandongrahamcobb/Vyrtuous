@@ -1,4 +1,4 @@
-''' owner_commands.py A discord.py cog containing owner-only commands for the Vyrtuous bot.
+''' system_owner_commands.py A discord.py cog containing system owner commands for the Vyrtuous bot.
 
     Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
@@ -22,6 +22,7 @@ from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.member_service import MemberService
+from vyrtuous.utils.administrator import AdministratorRole
 from vyrtuous.utils.developer import Developer
 from vyrtuous.utils.developer_log import DeveloperLog
 from vyrtuous.utils.emojis import Emojis
@@ -29,7 +30,7 @@ from vyrtuous.utils.snowflake import *
 from vyrtuous.utils.state import State
 from vyrtuous.utils.invincibility import Invincibility
 
-class OwnerCommands(commands.Cog):
+class SystemOwnerCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
@@ -37,7 +38,8 @@ class OwnerCommands(commands.Cog):
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.member_service = MemberService()
 
-    @app_commands.command(name='dish', description='Assigns or unassigns a developer to a pending issue.')
+    # DONE
+    @app_commands.command(name='adev', description='Assign developer.')
     @app_commands.describe(
         reference='Include an issue reference ID',
         member='Tag a member or include their snowflake ID',
@@ -99,7 +101,8 @@ class OwnerCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
-    @commands.command(name='dish', help='Assigns or unassigns a developer to a pending issue.')
+    # DONE
+    @commands.command(name='adev', help='Assign developer.')
     @is_system_owner_predicator()
     async def toggle_issue_to_developer_text_command(
         self,
@@ -156,9 +159,9 @@ class OwnerCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F Developer not found for {ctx.guild.name}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-
+            
     # DONE
-    @app_commands.command(name='dev', description="Grants/revokes a user's permissions to a bot developer.")
+    @app_commands.command(name='dev', description="Grant/revoke devs.")
     @app_commands.describe(member='Tag a member or include their snowflake ID')
     @is_system_owner_predicator()
     async def create_developer_app_command(
@@ -192,7 +195,7 @@ class OwnerCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @commands.command(name='dev', help="Grants/revokes a user's permissions to a bot developer.")
+    @commands.command(name='dev', help="Grant/revoke devs.")
     @is_system_owner_predicator()
     async def create_developer_text_command(
         self,
@@ -224,76 +227,5 @@ class OwnerCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
-        
-    # DONE
-    @app_commands.command(name='hero', description='Grants/revokes invincibility for a member.')
-    @app_commands.describe(member='Tag a member or include their snowflake ID')
-    @is_owner_predicator()
-    async def invincibility_app_command(
-        self,
-        interaction: discord.Interaction,
-        member: AppMemberSnowflake
-    ):
-        state = State(interaction)
-        enabled = None
-        member_obj = None
-        try:
-            member_obj = await self.member_service.resolve_member(interaction, member)
-            check_not_self(interaction, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
-        except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-        enabled = Invincibility.toggle_enabled()
-        if enabled:
-            Invincibility.add_invincible_member(member_snowflake=member_obj.id)
-            await Invincibility.unrestrict(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-            msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
-        else:
-            Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
-            msg = f'Invincibiility has been disabled for {member_obj.mention}'
-        try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-           
-    # DONE
-    @commands.command(name='hero', help='Grants/revokes invincibility for a member.')
-    @is_owner_predicator()
-    async def invincibility_text_command(
-        self,
-        ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(description='Tag a member or include their snowflake ID')
-    ):
-        state = State(ctx)
-        enabled = None
-        member_obj = None
-        try:
-            member_obj = await self.member_service.resolve_member(ctx, member)
-            check_not_self(ctx, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        enabled = Invincibility.toggle_enabled()
-        if enabled:
-            Invincibility.add_invincible_member(member_snowflake=member_obj.id)
-            await Invincibility.unrestrict(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-            msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
-        else:
-            Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
-            msg = f'Invincibiility has been disabled for {member_obj.mention}'
-        try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        
 async def setup(bot: DiscordBot):
-    await bot.add_cog(OwnerCommands(bot))
+    await bot.add_cog(SystemOwnerCommands(bot))

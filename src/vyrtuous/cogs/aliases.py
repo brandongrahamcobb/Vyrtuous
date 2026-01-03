@@ -172,7 +172,7 @@ class Aliases(commands.Cog):
                         updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
                 duration = DurationObject.from_expires_in(updated_expires_in)
                 delta = updated_expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                if delta.total_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -181,7 +181,7 @@ class Aliases(commands.Cog):
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                if duration.to_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -431,7 +431,7 @@ class Aliases(commands.Cog):
                         updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
                 duration = DurationObject.from_expires_in(updated_expires_in)
                 delta = updated_expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                if delta.total_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -440,7 +440,7 @@ class Aliases(commands.Cog):
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                if duration.to_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -531,7 +531,7 @@ class Aliases(commands.Cog):
                         updated_expires_in = existing_guestroom_alias_event.expires_in - duration.to_timedelta()
                 duration = DurationObject.from_expires_in(updated_expires_in)
                 delta = updated_expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                if delta.total_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -540,7 +540,7 @@ class Aliases(commands.Cog):
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                if duration.to_seconds() > cap_duration and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+                if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
                     try:
                         return await state.end(warning=f'\u274C Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -606,7 +606,7 @@ class Aliases(commands.Cog):
             )
             if not ban:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not currently banned in {channel_obj.mention}.')
-            if ban.expires_in is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+            if ban.expires_in is None and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                 try:
                     return await state.end(warning='\U000026A0\U0000FE0F Only coordinators and above can undo permanent bans.')
                 except Exception as e:
@@ -785,7 +785,7 @@ class Aliases(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not currently voice-muted in {channel_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            if voice_mute.expires_in is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+            if voice_mute.expires_in is None and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                 try:
                     return await state.end(warning='\U000026A0\U0000FE0F Only coordinators and above can undo permanent voice-mutes.')
                 except Exception as e:
@@ -911,7 +911,7 @@ class Aliases(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {member_obj.mention} is not currently text-muted in {channel_obj.mention}.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            if text_mute.expires_in is None and executor_role not in ('Owner', 'Developer', 'Administrator', 'Coordinator'):
+            if text_mute.expires_in is None and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                 try:
                     return await state.end(warning='\U000026A0\U0000FE0F Only coordinators and above can undo permanent text-mutes.')
                 except Exception as e:

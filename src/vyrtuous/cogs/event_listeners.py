@@ -155,7 +155,7 @@ class EventListeners(commands.Cog):
             allowed = False
         if not allowed:
             return
-        # member_permission_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(after.channel, member)
+        # member_permission_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator_via_channel_member(after.channel, member)
 
         target = 'user'
         # if after.channel:
@@ -305,7 +305,7 @@ class EventListeners(commands.Cog):
         target = args[1] if len(args) > 1 else '24h'
         is_reason_modification = target in ['+', '-', '=']
         is_duration_modification = target.startswith(('+', '-', '=')) and not is_reason_modification
-        executor_role = await is_owner_developer_administrator_coordinator_moderator_via_channel_member(channel_snowflake=alias.channel_snowflake, guild_snowflake=message.guild.id, member_snowflake=message.author.id)
+        executor_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator_via_channel_member(channel_snowflake=alias.channel_snowflake, guild_snowflake=message.guild.id, member_snowflake=message.author.id)
         if executor_role == 'Everyone':
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to {alias.alias_type} users.')

@@ -110,7 +110,7 @@ async def bot():
         # with patch("vyrtuous.service.channel_service.ChannelService.resolve_channel", return_value=mock_channel):
         #     with patch("vyrtuous.service.member_service.MemberService.resolve_member", return_value=mock_member):
             with patch("vyrtuous.service.check_service.has_equal_or_higher_role", new=AsyncMock(return_value=False)):
-                with patch("vyrtuous.service.check_service.is_owner_developer_administrator_coordinator_moderator", new=AsyncMock(return_value="Owner")):
+                with patch("vyrtuous.service.check_service.is_system_owner_developer_guild_owner_administrator_coordinator_moderator", new=AsyncMock(return_value="Owner")):
  # bot.guild = lambda snowflake: SimpleNamespace(id=snowflake, owner_id=PRIVILEGED_AUTHOR_ID)
                     for cog in DISCORD_COGS:
                         if cog != "vyrtuous.cogs.scheduled_tasks":

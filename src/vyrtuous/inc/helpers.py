@@ -32,11 +32,12 @@ DISCORD_COGS = [
     'vyrtuous.cogs.dev_commands',
     'vyrtuous.cogs.event_listeners',
     'vyrtuous.cogs.everyone_commands',
+    'vyrtuous.cogs.guild_owner_commands',
     'vyrtuous.cogs.help_command',
     'vyrtuous.cogs.heartbeat',
     'vyrtuous.cogs.moderator_commands',
-    'vyrtuous.cogs.owner_commands',
-    'vyrtuous.cogs.scheduled_tasks'
+    'vyrtuous.cogs.scheduled_tasks',
+    'vyrtuous.cogs.system_owner_commands'
 ]
 DISCORD_COGS_CLASSES = [
     'AdminCommands',
@@ -45,11 +46,12 @@ DISCORD_COGS_CLASSES = [
     'DevCommands',
     'EventListeners',
     'EveryoneCommands',
+    'GuildOwnerCommands',
     'HelpCommand',
     'Heartbeat',
     'ModeratorCommands',
-    'OwnerCommands',
     'ScheduledTasks'
+    'SystemOwnerCommands',
 ]
 DISCORD_COMMAND_PREFIX = '!'
 #### PATHS

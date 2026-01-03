@@ -39,9 +39,9 @@ class CoordinatorCommands(commands.Cog):
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         
     # DONE
-    @app_commands.command(name='mod', description="Grants/revokes a user's permission to `Moderator` for a specific channel.")
+    @app_commands.command(name='mod', description="Grant/revoke mods.")
     @app_commands.describe(member='Tag a member or include their snowflake ID', channel='Tag a channel or include its snowflake ID')
-    @is_owner_developer_administrator_coordinator_predicator()
+    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def create_moderator_app_command(
         self,
         interaction: discord.Interaction,
@@ -80,8 +80,8 @@ class CoordinatorCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
               
     # DONE
-    @commands.command(name='mod', help='Grants/revokes a user to `Moderator` for a specific channel.')
-    @is_owner_developer_administrator_coordinator_predicator()
+    @commands.command(name='mod', help='Grant/revoke mods.')
+    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def create_moderator_text_command(
         self,
         ctx: commands.Context,
@@ -120,9 +120,9 @@ class CoordinatorCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @app_commands.command(name='rmute', description='Mutes all members in a VC (except yourself).')
+    @app_commands.command(name='rmute', description='Room mute (except yourself).')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID')
-    @is_owner_developer_administrator_coordinator_predicator()
+    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def room_mute_app_command(
         self,
         interaction: discord.Interaction,
@@ -172,7 +172,10 @@ class CoordinatorCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
@@ -180,8 +183,8 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @commands.command(name='rmute', help='Mutes all members in a VC (except yourself).')
-    @is_owner_developer_administrator_coordinator_predicator()
+    @commands.command(name='rmute', help='Room mute (except yourself).')
+    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def room_mute_text_command(
         self,
         ctx: commands.Context,
@@ -231,7 +234,10 @@ class CoordinatorCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
@@ -239,9 +245,9 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @app_commands.command(name='xrmute', description='Unmutes all members in a VC (except yourself).')
+    @app_commands.command(name='xrmute', description='Unmute all.')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID')
-    @is_owner_developer_administrator_coordinator_predicator()
+    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def room_unmute_app_command(
         self,
         interaction: discord.Interaction,
@@ -288,7 +294,10 @@ class CoordinatorCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
@@ -296,8 +305,8 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
-    @commands.command(name='xrmute', help='Unmutes all members in a VC (except yourself).')
-    @is_owner_developer_administrator_coordinator_predicator()
+    @commands.command(name='xrmute', help='Unmute all.')
+    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def room_unmute_text_command(
         self,
         ctx: commands.Context,
@@ -340,7 +349,10 @@ class CoordinatorCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')

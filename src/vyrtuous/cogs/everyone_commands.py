@@ -46,7 +46,7 @@ class EveryoneCommands(commands.Cog):
         self.role_service = RoleService()
         
     # DONE
-    @app_commands.command(name='admins', description='Lists all members with server mute privileges in this server.')
+    @app_commands.command(name='admins', description='Lists admins.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_administrators_app_command(
         self,
@@ -54,7 +54,7 @@ class EveryoneCommands(commands.Cog):
         scope:str
     ):
         state = State(interaction)
-        at_home = False
+        is_at_home = False
         guild_obj = None
         member_obj = None
         chunk_size = 7
@@ -65,9 +65,9 @@ class EveryoneCommands(commands.Cog):
         skipped_role_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Administrators'
 
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer'):
+            if highest_role not in ('System Owner', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators across all servers.')
                 except Exception as e:
@@ -79,7 +79,7 @@ class EveryoneCommands(commands.Cog):
                 administrator = await Administrator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 administrators = [administrator] if administrator else None
             except Exception as e:
-                if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators for specific servers.')
                     except Exception as e:
@@ -143,10 +143,10 @@ class EveryoneCommands(commands.Cog):
                 field_count += 1
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -194,7 +194,10 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No administrators found.')
@@ -202,7 +205,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
-    @commands.command(name='admins', help='Lists all members with server mute privileges in this server.')
+    @commands.command(name='admins', help='Lists admins.')
     async def list_administrators_text_command(
         self,
         ctx: commands.Context,
@@ -210,7 +213,7 @@ class EveryoneCommands(commands.Cog):
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
-        at_home = False
+        is_at_home = False
         guild_obj = None
         member_obj = None
         chunk_size = 7
@@ -221,9 +224,9 @@ class EveryoneCommands(commands.Cog):
         skipped_role_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Administrators'
 
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer'):
+            if highest_role not in ('System Owner', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators across all servers.')
                 except Exception as e:
@@ -235,7 +238,7 @@ class EveryoneCommands(commands.Cog):
                 administrator = await Administrator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 administrators = [administrator] if administrator else None
             except Exception as e:
-                if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators for specific servers.')
                     except Exception as e:
@@ -299,10 +302,10 @@ class EveryoneCommands(commands.Cog):
                 field_count += 1
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -350,7 +353,10 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No administrators found.')
@@ -358,7 +364,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
-    @app_commands.command(name='coords', description='Lists coordinators for a specific voice channel, all, or a member.')
+    @app_commands.command(name='coords', description='Lists coords.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_coordinators_app_command(
         self,
@@ -366,7 +372,7 @@ class EveryoneCommands(commands.Cog):
         scope: Optional[str] = None
     ):
         state = State(interaction)
-        at_home = False
+        is_at_home = False
         channel_obj = None
         guild_obj = None
         member_obj = None
@@ -378,9 +384,9 @@ class EveryoneCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Coordinators'
 
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer'):
+            if highest_role not in ('System Owner', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
                 except Exception as e:
@@ -395,7 +401,7 @@ class EveryoneCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(interaction, scope)
                     coordinators = await Coordinator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -457,10 +463,10 @@ class EveryoneCommands(commands.Cog):
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -512,7 +518,10 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found.')
@@ -520,14 +529,14 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @commands.command(name='coords', help='Lists coordinators for a specific voice channel, all, or a member.')
+    @commands.command(name='coords', help='Lists coords.')
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
-        at_home = False
+        is_at_home = False
         channel_obj = None
         guild_obj = None
         member_obj = None
@@ -539,9 +548,9 @@ class EveryoneCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Coordinators'
 
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer'):
+            if highest_role not in ('System Owner', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
                 except Exception as e:
@@ -556,7 +565,7 @@ class EveryoneCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(ctx, scope)
                     coordinators = await Coordinator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -621,10 +630,10 @@ class EveryoneCommands(commands.Cog):
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -676,7 +685,10 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found.')
@@ -684,7 +696,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @app_commands.command(name='mods', description='Lists moderator statistics.')
+    @app_commands.command(name='mods', description='Lists mods.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_moderators_app_command(
         self,
@@ -692,7 +704,7 @@ class EveryoneCommands(commands.Cog):
         scope: Optional[str] = None
     ):
         state = State(interaction)
-        at_home = False
+        is_at_home = False
         channel_obj = None
         guild_obj = None
         member_obj = None
@@ -704,9 +716,9 @@ class EveryoneCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Moderators'
 
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer'):
+            if highest_role not in ('System Owner', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
                 except Exception as e:
@@ -721,7 +733,7 @@ class EveryoneCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(interaction, scope)
                     moderators = await Moderator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -786,10 +798,10 @@ class EveryoneCommands(commands.Cog):
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -841,7 +853,10 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No moderators found.')
@@ -849,14 +864,14 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @commands.command(name='mods',help='Lists moderator statistics.')
+    @commands.command(name='mods',help='Lists mods.')
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
-        at_home = False
+        is_at_home = False
         channel_obj = None
         guild_obj = None
         member_obj = None
@@ -868,9 +883,9 @@ class EveryoneCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Moderators'
 
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer'):
+            if highest_role not in ('System Owner', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
                 except Exception as e:
@@ -885,7 +900,7 @@ class EveryoneCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(ctx, scope)
                     moderators = await Moderator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('Owner', 'Developer', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -950,10 +965,10 @@ class EveryoneCommands(commands.Cog):
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -1005,7 +1020,10 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No moderators found.')
@@ -1013,7 +1031,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @app_commands.command(name='roleid', description='Get the ID of a role by name in this server.')
+    @app_commands.command(name='roleid', description='Get role by name.')
     @app_commands.describe(role_name='The name of the role to look up')
     async def get_role_id_app_command(
         self,
@@ -1033,7 +1051,7 @@ class EveryoneCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
     # DONE
-    @commands.command(name='roleid', help='Get the ID of a role by name in this server.')
+    @commands.command(name='roleid', help='Get role by name.')
     async def get_role_id(self, ctx: commands.Context, *, role_name: str):
         state = State(ctx)
         role = discord.utils.get(ctx.guild.roles, name=role_name)
@@ -1048,7 +1066,7 @@ class EveryoneCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
     # DONE
-    @app_commands.command(name='survey', description='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
+    @app_commands.command(name='survey', description='Get all.')
     @app_commands.describe(channel='Tag a voice/stage channel')
     async def stage_survey_app_command(
         self,
@@ -1059,20 +1077,25 @@ class EveryoneCommands(commands.Cog):
         channel_obj = None
         chunk_size = 7
         pages = []
-        owners, developers, administrators, moderators, coordinators = [], [], [], [], []
+        system_owners, developers, guild_owners, administrators, moderators, coordinators = [], [], [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         except:
             channel_obj = interaction.channel
         for member in channel_obj.members:
             try:
-                if await member_is_owner(interaction.guild.id, member.id):
-                    owners.append(member)  # stop after first match if desired
+                if await member_is_system_owner(member.id):
+                    system_owners.append(member)
             except commands.CheckFailure:
                 pass
             try:
-                if await member_is_developer(interaction.guild.id, member.id):
+                if await member_is_developer(member.id):
                     developers.append(member)
+            except commands.CheckFailure:
+                pass
+            try:
+                if await member_is_guild_owner(interaction.guild.id, member.id):
+                    guild_owners.append(member)
             except commands.CheckFailure:
                 pass
             try:
@@ -1090,14 +1113,16 @@ class EveryoneCommands(commands.Cog):
                     moderators.append(member)
             except commands.CheckFailure:
                 pass
-        owners_chunks = [owners[i:i + chunk_size] for i in range(0, len(owners), chunk_size)]
+        system_owners_chunks = [system_owners[i:i + chunk_size] for i in range(0, len(system_owners), chunk_size)]
+        guild_owners_chunks = [guild_owners[i:i + chunk_size] for i in range(0, len(guild_owners), chunk_size)]
         developers_chunks = [developers[i:i + chunk_size] for i in range(0, len(developers), chunk_size)]
         administrators_chunks = [administrators[i:i + chunk_size] for i in range(0, len(administrators), chunk_size)]
         coordinators_chunks = [coordinators[i:i + chunk_size] for i in range(0, len(coordinators), chunk_size)]
         moderators_chunks = [moderators[i:i + chunk_size] for i in range(0, len(moderators), chunk_size)]
         roles_chunks = [
-            ('Owners', owners, owners_chunks),
+            ('System Owners', system_owners, system_owners_chunks),
             ('Developers', developers, developers_chunks),
+            ('Guild Owners', guild_owners, guild_owners_chunks),
             ('Administrators', administrators, administrators_chunks),
             ('Coordinators', coordinators, coordinators_chunks),
             ('Moderators', moderators, moderators_chunks),
@@ -1122,7 +1147,10 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No authorized roles found.')
@@ -1130,7 +1158,7 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
-    @commands.command(name='survey', help='Survey moderators, developers, owners, and coordinators in the current or specified channel.')
+    @commands.command(name='survey', help='Get all.')
     async def stage_survey_text_command(
         self,
         ctx: commands.Context,
@@ -1141,21 +1169,25 @@ class EveryoneCommands(commands.Cog):
         channel_obj = None
         chunk_size = 7
         pages = []
-        owners, developers, administrators, moderators, coordinators = [], [], [], [], []
+        system_owners, developers, guild_owners, administrators, moderators, coordinators = [], [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except:
             channel_obj = ctx.channel
         for member in channel_obj.members:
-            logger.info(member.name)
             try:
-                if await member_is_owner(ctx.guild.id, member.id):
-                    owners.append(member)
+                if await member_is_system_owner(member.id):
+                    system_owners.append(member)
             except commands.CheckFailure:
                 pass
             try:
-                if await member_is_developer(ctx.guild.id, member.id):
+                if await member_is_developer(member.id):
                     developers.append(member)
+            except commands.CheckFailure:
+                pass
+            try:
+                if await member_is_guild_owner(ctx.guild.id, member.id):
+                    guild_owners.append(member)
             except commands.CheckFailure:
                 pass
             try:
@@ -1173,14 +1205,16 @@ class EveryoneCommands(commands.Cog):
                     moderators.append(member)
             except commands.CheckFailure:
                 pass
-        owners_chunks = [owners[i:i + chunk_size] for i in range(0, len(owners), chunk_size)]
+        system_owners_chunks = [system_owners[i:i + chunk_size] for i in range(0, len(system_owners), chunk_size)]
+        guild_owners_chunks = [guild_owners[i:i + chunk_size] for i in range(0, len(guild_owners), chunk_size)]
         developers_chunks = [developers[i:i + chunk_size] for i in range(0, len(developers), chunk_size)]
         administrators_chunks = [administrators[i:i + chunk_size] for i in range(0, len(administrators), chunk_size)]
         coordinators_chunks = [coordinators[i:i + chunk_size] for i in range(0, len(coordinators), chunk_size)]
         moderators_chunks = [moderators[i:i + chunk_size] for i in range(0, len(moderators), chunk_size)]
         roles_chunks = [
-            ('Owners', owners, owners_chunks),
+            ('System Owners', system_owners, system_owners_chunks),
             ('Developers', developers, developers_chunks),
+            ('Guild Owners', guild_owners, guild_owners_chunks),
             ('Administrators', administrators, administrators_chunks),
             ('Coordinators', coordinators, coordinators_chunks),
             ('Moderators', moderators, moderators_chunks),
@@ -1204,7 +1238,10 @@ class EveryoneCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No authorized roles found.')

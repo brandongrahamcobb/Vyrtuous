@@ -45,8 +45,8 @@ class DevCommands(commands.Cog):
         self.role_service = RoleService()
     
     # DONE
-    @app_commands.command(name='backup', description='Creates a backup of the database and uploads it.')
-    @is_owner_developer_predicator()
+    @app_commands.command(name='backup', description='DB backup.')
+    @is_system_owner_developer_predicator()
     async def app_backup(
         self,
         interaction: discord.Interaction
@@ -65,8 +65,8 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @commands.command(name='backup', help='Creates a backup of the database and uploads it.')
-    @is_owner_developer_predicator()
+    @commands.command(name='backup', help='DB backup.')
+    @is_system_owner_developer_predicator()
     async def text_backup(
         self,
         ctx: commands.Context
@@ -83,8 +83,8 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
-    @app_commands.command(name='cogs', description='List cogs.')
-    @is_owner_developer_predicator()
+    @app_commands.command(name='cogs', description='Lists cogs.')
+    @is_system_owner_developer_predicator()
     async def list_cogs_app_command(self, interaction: discord.Interaction):
         state = State(interaction)
         loaded, not_loaded = [], []
@@ -105,8 +105,8 @@ class DevCommands(commands.Cog):
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
-    @commands.command(name='cogs', help='List cogs.')
-    @is_owner_developer_predicator()
+    @commands.command(name='cogs', help='Lists cogs.')
+    @is_system_owner_developer_predicator()
     async def list_cogs_text_command(self, ctx: commands.Context):
         state = State(ctx)
         loaded, not_loaded = [], []
@@ -128,9 +128,9 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @app_commands.command(name='devs', description='Lists developers.')
+    @app_commands.command(name='devs', description='List devs.')
     @app_commands.describe(scope="Specify one of: 'all', server ID or empty.")
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def list_developers_app_command(
         self,
         interaction : discord.Interaction,
@@ -147,9 +147,9 @@ class DevCommands(commands.Cog):
         skipped_member_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Developers'
 
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(interaction)
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer'):
+            if highest_role not in ('System Owner', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers across all servers.')
                 except Exception as e:
@@ -160,7 +160,7 @@ class DevCommands(commands.Cog):
                 member_obj = await self.member_service.resolve_member(interaction, scope) 
                 developers = await Developer.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             except Exception as e:
-                if highest_role not in ('Owner', 'Developer', 'Developer'):
+                if highest_role not in ('System Owner', 'Guild Owner', 'Developer'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers for specific servers.')
                     except Exception as e:
@@ -212,10 +212,10 @@ class DevCommands(commands.Cog):
                 field_count += 1
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -251,7 +251,10 @@ class DevCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No developers found.')
@@ -259,8 +262,8 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @commands.command(name='devs', help='Lists developers.')
-    @is_owner_developer_predicator()
+    @commands.command(name='devs', help='List devs.')
+    @is_system_owner_developer_predicator()
     async def list_developers_text_command(
         self,
         ctx: commands.Context,
@@ -268,7 +271,7 @@ class DevCommands(commands.Cog):
         scope: Optional[str] = commands.parameter(default=None, description="'all', a specific server or user mention/ID")
     ):
         state = State(ctx)
-        at_home = False
+        is_at_home = False
         guild_obj = None
         member_obj = None
         chunk_size = 7
@@ -278,9 +281,9 @@ class DevCommands(commands.Cog):
         skipped_member_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Developers'
 
-        highest_role = await is_owner_developer_administrator_coordinator_moderator(ctx)
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('Owner', 'Developer'):
+            if highest_role not in ('System Owner', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers across all servers.')
                 except Exception as e:
@@ -291,7 +294,7 @@ class DevCommands(commands.Cog):
                 member_obj = await self.member_service.resolve_member(ctx, scope) 
                 developers = await Developer.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             except Exception as e:
-                if highest_role not in ('Owner', 'Developer', 'Developer'):
+                if highest_role not in ('System Owner', 'Guild Owner', 'Developer'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers for specific servers.')
                     except Exception as e:
@@ -343,10 +346,10 @@ class DevCommands(commands.Cog):
                 field_count += 1
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -382,7 +385,10 @@ class DevCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No developers found.')
@@ -395,7 +401,7 @@ class DevCommands(commands.Cog):
         action="'resolve' or 'append' or 'overwrite'.",
         notes='Optionally specify notes to append or overwrite.'
     )
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def update_developer_logs_app_command(
         self,
         ctx: commands.Context,
@@ -425,7 +431,7 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     @commands.command(name='dlog', help='Resolve or update the notes on an issue by reference')
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def update_developer_logs_text_command(
         self,
         ctx: commands.Context,
@@ -456,12 +462,12 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     
-    @app_commands.command(name='dlogs', description="Lists developer logs by 'all', 'resolved', 'unresolved' by channel ID/mention,reference ID or server ID.")
+    @app_commands.command(name='dlogs', description="List issues.")
     @app_commands.describe(
         scope="Specify one of: 'all', 'resolved' or 'unresolved'",
         value='Specify one of: channel ID/mention, reference ID and server ID.'
     )
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
@@ -469,7 +475,7 @@ class DevCommands(commands.Cog):
         value: Optional[str]
     ):
         state = State(ctx)
-        at_home = False
+        is_at_home = False
         channel_obj = None
         developer_logs = []
         guild_obj = None
@@ -576,10 +582,10 @@ class DevCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -631,15 +637,18 @@ class DevCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No issues found.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
-    @commands.command(name='dlogs', help="Lists developer logs by 'all', 'resolved', 'unresolved' and channel ID/mention, reference ID or server ID.")
-    @is_owner_developer_predicator()
+    @commands.command(name='dlogs', help="List issues.")
+    @is_system_owner_developer_predicator()
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
@@ -647,7 +656,7 @@ class DevCommands(commands.Cog):
         value: Optional[str] = commands.parameter(default=None, description='Specify one of: channel ID/mention, reference ID or server ID.')
     ):
         state = State(ctx)
-        at_home = False
+        is_at_home = False
         channel_obj = None
         developer_logs = []
         guild_obj = None
@@ -754,10 +763,10 @@ class DevCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
         except Exception as e:
             pass
-        if at_home:
+        if is_at_home:
             if skipped_guild_snowflakes:
                 embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
                 lines = []
@@ -809,7 +818,10 @@ class DevCommands(commands.Cog):
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No issues found.')
@@ -818,7 +830,7 @@ class DevCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='load', description="Loads a cog by name 'vyrtuous.cog.<cog_name>.'")
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
         state = State(interaction)
@@ -836,7 +848,7 @@ class DevCommands(commands.Cog):
 
     # DONE    
     @commands.command(name='load', help="Loads a cog by name 'vyrtuous.cog.<cog_name>.'")
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def load_text_command(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:
@@ -852,8 +864,8 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
-    @app_commands.command(name='ping', description='Ping the bot!')
-    @is_owner_developer_predicator()
+    @app_commands.command(name='ping', description='Ping me!')
+    @is_system_owner_developer_predicator()
     async def ping_app_command(
         self,
         interaction: discord.Interaction
@@ -865,8 +877,8 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @commands.command(name='ping', description='Ping the bot!')
-    @is_owner_developer_predicator()
+    @commands.command(name='ping', help='Ping me!')
+    @is_system_owner_developer_predicator()
     async def ping_text_command(
         self,
         ctx: commands.Context
@@ -875,11 +887,12 @@ class DevCommands(commands.Cog):
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Pong!')
         except Exception as e:
-            return await state.end(error=f'\u274C {str(e).capitalize()}')   
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
+               
     # DONE
     @app_commands.command(name='reload', description="Reloads a cog by name 'vyrtuous.cog.<cog_name>'.")
     @app_commands.check(at_home)
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def reload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
         state = State(interaction)
@@ -897,7 +910,7 @@ class DevCommands(commands.Cog):
             
     # DONE
     @commands.command(name='reload', help="Reloads a cog by name 'vyrtuous.cog.<cog_name>'.")
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def reload_text_command(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:
@@ -913,8 +926,8 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @app_commands.command(name='sync', description="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
-    @is_owner_developer_predicator()
+    @app_commands.command(name='sync', description="Sync app commands.")
+    @is_system_owner_developer_predicator()
     async def sync_app_command(self, interaction: discord.Interaction, spec: Optional[Literal['~', '*', '^']] = None):
         await interaction.response.defer(ephemeral=True)
         state = State(interaction)
@@ -956,8 +969,8 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @commands.command(name='sync', help="Syncs commands to the tree '~', globally '*', clear '^' or general sync.")
-    @is_owner_developer_predicator()
+    @commands.command(name='sync', help="Sync app commands.")
+    @is_system_owner_developer_predicator()
     async def sync_text_command(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None):
         state = State(ctx)
         synced = []
@@ -997,169 +1010,8 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @app_commands.command(name='arole', description='Marks a role as administrator and syncs all members.')
-    @is_owner_developer_predicator()
-    async def grant_administrator_by_role_app_command(
-        self,
-        interaction: discord.Interaction,
-        role: AppRoleSnowflake
-    ):
-        state = State(interaction)
-        action = None
-        chunk_size = 7
-        pages = []
-        skipped_members, target_members = [], []
-        role_obj = None
-        role_snowflakes = []
-        try:
-            role_obj = await self.role_service.resolve_role(interaction, role)
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-            except Exception as e: 
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-           
-        administrators = await Administrator.fetch_by_guild_and_role(guild_snowflake=interaction.guild.id, role_snowflake=role_obj.id)
-        administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=interaction.guild.id)
-        for administrator_role in administrator_roles:
-            await administrator_role.revoke()
-        for member in role_obj.members:
-            if administrators:
-                for administrator in administrators:
-                    if role_obj.id not in administrator.role_snowflakes:
-                        skipped_members.append(member)
-                        continue
-                    elif role_obj.id in administrator.role_snowflakes:
-                        await administrator.revoke()
-                        action = 'revoked'
-                        target_members.append(member.mention)
-        if action != 'revoked':
-            administrator_role = AdministratorRole(guild_snowflake=interaction.guild.id, role_snowflake=role_obj.id)
-            await administrator_role.grant()
-            administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=interaction.guild.id)
-            for administrator_role in administrator_roles:
-                role_snowflakes.append(administrator_role.role_snowflake)
-            for member in role_obj.members:
-                administrator = Administrator(guild_snowflake=interaction.guild.id, member_snowflake=member.id, role_snowflakes=role_snowflakes)
-                await administrator.grant()
-                action = 'granted'
-                target_members.append(member.mention)
-
-        chunks = [target_members[i:i + chunk_size] for i in range(0, len(target_members), chunk_size)]
-        for index, chunk in enumerate(chunks, start=1):
-            embed = discord.Embed(
-                title=f'{self.emoji.get_random_emoji()} {role_obj.name} Permission Update',
-                description=f'Members {action} `Administrator`.',
-                color=discord.Color.green()
-            )
-            embed.add_field(name=f'Mermbers ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
-            pages.append(embed)
-        if skipped_members:
-            chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
-            for index, chunk in enumerate(chunks, start=1):
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} {role_obj.name} Skipped Members',
-                    description=f'Members with {role_obj.mention}',
-                    color=discord.Color.red()
-                )
-                embed.add_field(name=f'Mermbers ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
-                pages.append(embed)
-
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        
-    # DONE
-    @commands.command(name='arole', help='Marks a role as administrator and syncs all members.')
-    @is_owner_developer_predicator()
-    async def grant_administrator_by_role_text_command(
-        self,
-        ctx: commands.Context,
-        role: RoleSnowflake
-    ):
-        state = State(ctx)
-        action = None
-        chunk_size = 7
-        pages = []
-        skipped_members, target_members = [], []
-        role_obj = None
-        role_snowflakes = []
-        try:
-            role_obj = await self.role_service.resolve_role(ctx, role)
-        except Exception as e:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-            except Exception as e: 
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-           
-        administrators = await Administrator.fetch_by_guild_and_role(guild_snowflake=ctx.guild.id, role_snowflake=role_obj.id)
-        administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=ctx.guild.id)
-        for administrator_role in administrator_roles:
-            await administrator_role.revoke()
-        for member in role_obj.members:
-            if administrators:
-                for administrator in administrators:
-                    if role_obj.id not in administrator.role_snowflakes:
-                        skipped_members.append(member)
-                        continue
-                    elif role_obj.id in administrator.role_snowflakes:
-                        await administrator.revoke()
-                        action = 'revoked'
-                        target_members.append(member.mention)
-        if action != 'revoked':
-            administrator_role = AdministratorRole(guild_snowflake=ctx.guild.id, role_snowflake=role_obj.id)
-            await administrator_role.grant()
-            administrator_roles = await AdministratorRole.fetch_by_guild(guild_snowflake=ctx.guild.id)
-            administrator_roles.append(administrator_role)
-            for administrator_role in administrator_roles:
-                role_snowflakes.append(administrator_role.role_snowflake)
-            for member in role_obj.members:
-                administrator = Administrator(guild_snowflake=ctx.guild.id, member_snowflake=member.id, role_snowflakes=role_snowflakes)
-                await administrator.grant()
-                action = 'granted'
-                target_members.append(member.mention)
-
-        chunks = [target_members[i:i + chunk_size] for i in range(0, len(target_members), chunk_size)]
-        for index, chunk in enumerate(chunks, start=1):
-            embed = discord.Embed(
-                title=f'{self.emoji.get_random_emoji()} {role_obj.name} Permission Update',
-                description=f'Members {action} `Administrator`.',
-                color=discord.Color.green()
-            )
-            embed.add_field(name=f'Mermbers ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
-            pages.append(embed)
-        if skipped_members:
-            chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
-            for index, chunk in enumerate(chunks, start=1):
-                embed = discord.Embed(
-                    title=f'{self.emoji.get_random_emoji()} {role_obj.name} Skipped Members',
-                    description=f'Members with {role_obj.mention}',
-                    color=discord.Color.red()
-                )
-                embed.add_field(name=f'Mermbers ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
-                pages.append(embed)
-
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-        else:
-            try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
-
-    # DONE
     @app_commands.command(name='unload', description="Unloads a cog by name 'vyrtuous.cog.<cog_name>'.")
-    @is_owner_developer_predicator()
+    @is_system_owner_developer_predicator()
     async def unload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
         state = State(interaction)
@@ -1176,8 +1028,8 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @commands.command(name='unload', help="Unload a cog by name 'vyrtuous.cog.<cog_name>'.")
-    @is_owner_developer_predicator()
+    @commands.command(name='unload', help="Unloads a cog by name 'vyrtuous.cog.<cog_name>'.")
+    @is_system_owner_developer_predicator()
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:
