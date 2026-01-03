@@ -86,7 +86,7 @@ Prerequisites:
 1. Clone and cd into directory
 
 ```bash
-git clone https://gitlab.com/vyrtuous/vyrtuous
+git clone https://github.com/brandongrahamcobb/Vyrtuous.git
 cd vyrtuous
 ```
 
