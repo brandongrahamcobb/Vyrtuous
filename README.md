@@ -1,73 +1,81 @@
 **The Vyrtuous Project** is a vegan-owned Discord bot written in Python. It brings together:
 
-* Loading and unloading Cogs, the fundamental components of the Discord bot.
-* Permission scaling for server mute admins, server developers, channel coordinators and channel moderators.
-* PostgreSQL database information about ban, flags and mutes.
-* Aliasing to enable room by room moderation.
-* Reengineered server mute as local mute.
-* Duration and expiration timers with reasons.
+* Permission scaling for guild owners, guild administrators, channel coordinators and channel moderators.
+* Aliasing to enable channel by channel moderation.
+* Channel-scoped right-click mutes.
+* Temporary channels.
+* Visibility of all moderation actions.
+* Video=only channels.
 
-## Project Flow
+# Project Flow
 ![Vyrtuous](resources/images/VyrtuousUML.svg)
 
-## Features
+# Features
 
-Moderation Features
-
-• `Room Ban` — Bans in Discord rooms only persist in the room itself, not the whole server.
-It includes ban durations including a permanent ban.
-Coordinators and above can use the permanent ban.
-It also includes an optional reason (non-optional if permanent).
-
-• `Room Muting` — Mutes in Discord rooms only persist in the room itself, not the whole server.
-It includes mute durations including a permanent mute.
-Coordinators and above can use the permanent ban.
-It also includes an optional reason.
-
-• `Text Muting` — Mutes in Discord text-channels only persist in the room itself, not the whole server.
-It includes mute durations including a permanent mute.
-Coordinators and above can use the permanent ban.
-It also includes an optional reason.
+### Aliases
+* `ban <member> <duration> <reason>` - Bans a member.
+* `flag <member> <reason>` - Flags a member.
+* `vegan <member>` - Tracks new vegans.
+* `tmute <member> <duration> <reason>` - Text mutes a member.
+* `vmute <member> <duration> <reason>` - Voice mutes a member.
+* `carnist <member>` - Removes a vegan.
+* `unban <member>` - Unbans a member.
+* `unflag <member>` - Unflags a member.
+* `untmute <member>` - Undoes a text-mutes for a member.
+* `unvmute <member>` - Undoes a voice-mute for a member.
 
 ## Static Commands
-* `admin <member>` - Creates a server muter. Requires an owner.
+
+## Guild Owner
+* `arole <role>` - Promotes all members part of a role to administrator along with active tracking of who retains the role or loses the role, revoking or granting administrator if a role removed or given, respectively.
+* `hero <member>` - Grants or revokes invincibility for a member.
+
+## Administrator
 * `alias <alias_type> <alias_name> <channel>` - Creates a ban, cow, flag, mute, unban , uncow or unmute alias for a specific channel.
-* `cmds <channel>` - Lists all the aliases present in a channel or use `all` to list all channels in a guild.
-* `coord <channel> <member>` - Creates a coordinator for a given channel. Permitted to use by developers.
-* `coords` - Lists coordinators in the server where the command was run or use `all` to list all coordinators in a guild.
-* `dev <member>` - Creates a developer in the server where the command was run. Requires bot owner or server owner permission.
-* `devs` - Lists developers in the server where the command was run.
-* `flags <channel>` - Lists members who are flagged in the channel or use `all` to list all flags in a guild.
+* `aroles` - Lists all current administrator roles.
+* `cap <channel> <'ban', 'tmute' or 'vmute`> <hours> - Limits the duration of moderator actions by moderators (Coordinators and above bypass these caps).
+* `chown <channel> <member>` - Transfers temporary room ownership to a new member.
+* `clear <member>` - Removes all moderation actions active on a member.
+* `coord <channel> <member>` - Creates a coordinator for a given channel.
+* `mtrack <channel> <scope> <entry_type> <snowflakes>` - Setup for moderation action tracking by 'general', 'channel' or 'member' and their respective ID's.
+* `rmv <source_channel> <target_channel>` - Moves all members from one voice channel to another voice channel.
+* `smute <member>` - Toggles a server mute for a member.
+* `temp <channel> <member>` - Toggles a temporary channel with a channel owner for maintaining temporary channel aliases and their respective bans, flags, text-mutes, vegans and voice-mutes.
+* `temps <scope>` - Lists temporary channels and their aliases.
+* `vr <channel>` - Toggles a video-only channel for maintaining video-only chaennl aliases and their respective bans, flags, text-mutes, vegans and voice-mutes.
+* `vrs <scope>` - Lists video-only channels and their aliases.
+* `stage <channel> <duration>` - Toggles a psuedo-stage for a voice channel.
+* `track <channel>` - Toggles moderation action tracking for a given channel.
+* `tracks <channel>` - Lists the setup created by `!mtrack`.
+* `xalias <alias_name>` - Deletes an alias.
+
+## Coordinator
+* `mod <channel> <member>` - Toggles a moderator in the channel specified.
+* `rmute <channel>` - Mutes everyone in a room besides yourself.
+* `xrmute <channel>` - Unmutes everyone in a room.
+
+## Moderator
+* `caps <scope>` - Lists moderation duration caps.
+* `cmds <channel>` - Lists aliases.
+* `del <message> <channel> ` - Deletes a message.
+* `flags <scope>` - Lists active flags.
+* `migrate <channel_name> <channel> ` - Transfers all the previous setup for a temporary channel to a new channel.
+* `mstage <member> <channel>` - Toggles a voice-mute for a member in a stage channel.
+* `mutes <scope>` - Lists active voice-mutes.
+* `stages <scope>` - Lists active stages.
+* `summary <member> <scope>` - Reports all moderation actions on a member.
+* `tmutes <scope>` - Lists active text-mutes.
+
+## Everyone
+* `admins <scope>` - Lists administrators.
+* `coords <scope>` - Lists coordinators.
 * `help <command>` - Interactive help command paginating commands for members.
-* `mod <channel> <member>` - Creates a moderator in the channel specified requires a developer or above.
-* `mods <channel>` - Lists all mods in the channel specified or use `all` to list all moderators in a guild.
-* `xalias <alias_name>` - Deletes an alias. Requires a coordinator.
-* `xadmin <member>` - Deletes a server muter. Requires an owner.
-* `xcoord <channel> <member>` - Deletes a coordinator from a specified channel. Requires a developer or above.
-* `xdev <member>` - Deletes a developer in the server it was run.
-* `xmod <channel> <member>` - Deletes a moderator in a channel.
+* `ls <scope>` - Lists vegans.
+* `mods <scope>` - Lists moderators.
+* `roleid <role>` - Gets the role ID.
+* `survey <channel>` - Gets all the elevated members in a channel.
 
-## Alias Commands
-* `ban <member> <duration> <reason>` - Bans a member for a certain timeframe (24h by default) via 30m, 2h, 1d like strings for duration and an optional reason for moderaotrs. Permanent bans are set using 0 for duration and it requires a coordinator.
-* `flag <member> <reason>` - Flags a member. Requires a moderator.
-* `mute <member> <duration> <reason>` - Voice mutes a member for a certain timeframe (24h by default) via 30m, 2h, 1d like strings for duration and an optional reason for moderaotrs. Permanent voice mutes are set using 0 for duration and it requires a coordinator.
-* `tmute <member> <duration> <reason>` - Text mutes a member for a certain timeframe (24h by default) via 30m, 2h, 1d like strings for duration and an optional reason for moderaotrs. Permanent text-mutes are set using 0 for duration and it requires a coordinator.
-* `unban <member>    - Unbans a member for a room. Requires moderator.
-* `unflag <member>   - Unflags a member for a room. Requires moderator. 
-* `unmute <member>   - Unvoicemutes a member for a room. Requires moderator. 
-* `untmute <member>  - Untextmutes a member for a room. Requires moderator. 
-
-Lifecycle Features
-
-• `backup` — Creates an immediate backup and sends it over Discord.
-
-• `load <path-to-cog>` — Loads the bot's cogs after an unload.
-
-• `reload <path-to-cog>` - Reloads the bot's cogs on the fly.
-
-• `sync <~|^|*|>` or `sync` - Syncs the command tree for the bot to a guild for application command access.
-
-## Installation
+# Installation
 
 Prerequisites:
 
@@ -92,10 +100,9 @@ nano .env
 ```sh
 docker compose up
 ```
-4. Profit
 
 The bot will connect to Discord, and register commands.
 
-## License
+# License
 
 Distributed under GPL-3.0-or-later. See LICENSE for details.
