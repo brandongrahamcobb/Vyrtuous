@@ -1645,50 +1645,50 @@ class AdminCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    # @app_commands.command(name='temp', description='Toggle a temporary room and assign an owner.', hidden=True)
-    # @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
-    # @is_system_owner_developer_guild_owner_administrator_predicator()
-    # async def toggle_temp_room_app_command(
-    #     self,
-    #     interaction: discord.Interaction,
-    #     channel: AppChannelSnowflake,
-    #     owner: AppMemberSnowflake
-    # ):
-    #     state = State(interaction)
-    #     action = None
-    #     channel_obj = None
-    #     member_obj = None
-    #     try:
-    #         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-    #     except Exception as e:
-    #         try:
-    #             return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-    #         except Exception as e:
-    #             return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #     temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-    #     if temporary_room:
-    #         if temporary_room.member_snowflake:
-    #             await Moderator.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=temporary_room.member_snowflake)
-    #         # await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-    #         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-    #         action = 'removed'
-    #     else:
-    #         try:
-    #             member_obj = await self.member_service.resolve_member(interaction, owner)
-    #         except Exception as e:
-    #             try:
-    #                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-    #             except Exception as e:
-    #                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #         moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-    #         await moderator.grant()
-    #         temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
-    #         await temporary_room.create()
-    #         action = f'created'
-    #     try:
-    #         return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {action} in {channel_obj.mention}.')
-    #     except Exception as e:
-    #         return await state.end(error=f'\u274C {str(e).capitalize()}')
+    @app_commands.command(name='temp', description='Toggle a temporary room and assign an owner.', hidden=True)
+    @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
+    @is_system_owner_developer_guild_owner_administrator_predicator()
+    async def toggle_temp_room_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: AppChannelSnowflake,
+        owner: AppMemberSnowflake
+    ):
+        state = State(interaction)
+        action = None
+        channel_obj = None
+        member_obj = None
+        try:
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+        except Exception as e:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+        if temporary_room:
+            if temporary_room.member_snowflake:
+                await Moderator.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=temporary_room.member_snowflake)
+            # await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            action = 'removed'
+        else:
+            try:
+                member_obj = await self.member_service.resolve_member(interaction, owner)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            await moderator.grant()
+            temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
+            await temporary_room.create()
+            action = f'created'
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {action} in {channel_obj.mention}.')
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @commands.command(name='temp', help='Toggle a temporary room and assign an owner.', hidden=True)
@@ -1736,171 +1736,171 @@ class AdminCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    # @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.', hidden=True)
-    # @is_system_owner_developer_guild_owner_administrator_predicator()
-    # async def list_temp_rooms_app_command(self, interaction: discord.Interaction, scope: str = None):
-    #     state = State(interaction)
-    #     aliases, lines, pages, temporary_rooms = [], [], [], []
-    #     is_at_home = False
-    #     channel_obj = None
-    #     guild_obj = None
-    #     chunk_size = 7
-    #     field_count = 0
-    #     skipped_channel_snowflakes_by_guild_snowflake = {}
-    #     skipped_guild_snowflakes = set()
-    #     title = f'{self.emoji.get_random_emoji()} Temporary Rooms'
+    @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.', hidden=True)
+    @is_system_owner_developer_guild_owner_administrator_predicator()
+    async def list_temp_rooms_app_command(self, interaction: discord.Interaction, scope: str = None):
+        state = State(interaction)
+        aliases, lines, pages, temporary_rooms = [], [], [], []
+        is_at_home = False
+        channel_obj = None
+        guild_obj = None
+        chunk_size = 7
+        field_count = 0
+        skipped_channel_snowflakes_by_guild_snowflake = {}
+        skipped_guild_snowflakes = set()
+        title = f'{self.emoji.get_random_emoji()} Temporary Rooms'
         
-    #     highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
-    #     if scope and scope.lower() == 'all':
-    #         if highest_role not in ('System Owner', 'Guild Owner'):
-    #             try:
-    #                 return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list temporary rooms across all servers.')
-    #             except Exception as e:
-    #                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #         aliases = await Alias.fetch_all()
-    #         temporary_rooms = await TemporaryRoom.fetch_all()
-    #     elif scope:
-    #         try:
-    #             channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
-    #             aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-    #             temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-    #             temporary_rooms = [temporary_room] if temporary_room else []
-    #         except Exception as e:
-    #             if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
-    #                 try:
-    #                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list temporary rooms for specific servers.')
-    #                 except Exception as e:
-    #                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #             guild_obj = self.bot.get_guild(int(scope))
-    #             if not guild_obj:
-    #                 try:
-    #                     return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, server ID or empty. Received: {scope}.")
-    #                 except Exception as e:
-    #                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #             aliases = await Alias.fetch_by_guild(guild_snowflake=int(scope))
-    #             temporary_rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=int(scope))
-    #     else:
-    #         aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
-    #         temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
-    #         temporary_rooms = [temporary_room] if temporary_room else []
-    #         channel_obj = interaction.channel
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        if scope and scope.lower() == 'all':
+            if highest_role not in ('System Owner', 'Guild Owner'):
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list temporary rooms across all servers.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            aliases = await Alias.fetch_all()
+            temporary_rooms = await TemporaryRoom.fetch_all()
+        elif scope:
+            try:
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                temporary_rooms = [temporary_room] if temporary_room else []
+            except Exception as e:
+                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list temporary rooms for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                guild_obj = self.bot.get_guild(int(scope))
+                if not guild_obj:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, server ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                aliases = await Alias.fetch_by_guild(guild_snowflake=int(scope))
+                temporary_rooms = await TemporaryRoom.fetch_by_guild(guild_snowflake=int(scope))
+        else:
+            aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
+            temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
+            temporary_rooms = [temporary_room] if temporary_room else []
+            channel_obj = interaction.channel
         
-    #     if not temporary_rooms:
-    #         try:
-    #             if guild_obj:
-    #                 scope = guild_obj.name
-    #             elif channel_obj:
-    #                 scope = channel_obj.mention
-    #             return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms setup for scope: {scope}.')
-    #         except Exception as e:
-    #             return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if not temporary_rooms:
+            try:
+                if guild_obj:
+                    scope = guild_obj.name
+                elif channel_obj:
+                    scope = channel_obj.mention
+                return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms setup for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
-    # guild_dictionary = {}
-    #     for temporary_room in temporary_rooms:
-    #         guild_dictionary.setdefault(temporary_room.guild_snowflake, {})
-    #         guild_dictionary[temporary_room.guild_snowflake].setdefault(temporary_room.channel_snowflake, [])
-    #         guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake].append({})
-    #         if aliases:
-    #             for alias in aliases:
-    #                 if alias.guild_snowflake == temporary_room.guild_snowflake:
-    #                     if alias.channel_snowflake == temporary_room.channel_snowflake:
-    #                         guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][-1].setdefault(alias.alias_type, [])
-    #                         guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][-1][alias.alias_type].append(alias.alias_name)
+    guild_dictionary = {}
+        for temporary_room in temporary_rooms:
+            guild_dictionary.setdefault(temporary_room.guild_snowflake, {})
+            guild_dictionary[temporary_room.guild_snowflake].setdefault(temporary_room.channel_snowflake, [])
+            guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake].append({})
+            if aliases:
+                for alias in aliases:
+                    if alias.guild_snowflake == temporary_room.guild_snowflake:
+                        if alias.channel_snowflake == temporary_room.channel_snowflake:
+                            guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][-1].setdefault(alias.alias_type, [])
+                            guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][-1][alias.alias_type].append(alias.alias_name)
                             
-    #     for guild_snowflake in guild_dictionary:
-    #         guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
-    #     for guild_snowflake, channels in guild_dictionary.items():
-    #         current_channel = None
-    #         lines = []
-    #         field_count = 0
-    #         guild = self.bot.get_guild(guild_snowflake)
-    #         if not guild:
-    #             skipped_guild_snowflakes.add(guild_snowflake)
-    #             continue
-    #         embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
-    #         for channel_snowflake, channel_data in channels.items():
-    #             channel = guild.get_channel(channel_snowflake)
-    #             if not channel:
-    #                 skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
-    #                 continue
-    #             channel_lines = []
-    #             if channel_data:
-    #                 for entry in channel_data:
-    #                     for alias_type, alias_names in entry.items():
-    #                         channel_lines.append(f'{alias_type}')
-    #                         for name in alias_names:
-    #                             channel_lines.append(f'  ↳ {name}')
-    #             if not channel_lines:
-    #                 lines.append('')
-    #                 current_channel = channel
-    #             else:
-    #                 i = 0
-    #                 while i < len(channel_lines):
-    #                     remaining_space = chunk_size
-    #                     chunk = channel_lines[i:i + remaining_space]
-    #                     if not lines:
-    #                         current_channel = channel
-    #                     lines.extend(chunk)
-    #                     i += remaining_space
-    #             if len(lines) >= chunk_size:
-    #                 embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
-    #                 pages.append(embed)
-    #                 embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-    #                 lines = []
-    #                 current_channel = None
-    #         if lines:
-    #             embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
-    #         pages.append(embed)
-    #     try:
-    #         is_at_home = at_home(ctx_or_interaction_or_message=interaction)
-    #     except Exception as e:
-    #         pass
-    #     if is_at_home:
-    #         if skipped_guild_snowflakes:
-    #             embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
-    #             lines = []
-    #             for guild_snowflake in skipped_guild_snowflakes:
-    #                 if field_count >= chunk_size:
-    #                     embed.description = '\n'.join(lines)
-    #                     pages.append(embed)
-    #                     embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
-    #                     lines = []
-    #                     field_count = 0
-    #                 lines.append(str(guild_snowflake))
-    #                 field_count += 1
-    #             embed.description = '\n'.join(lines)
-    #             pages.append(embed)
-    #         if skipped_channel_snowflakes_by_guild_snowflake:
-    #             for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
-    #                 embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in Server ({guild_snowflake})')
-    #                 field_count = 0
-    #                 lines = []
-    #                 for channel_snowflake in channel_list:
-    #                     if field_count >= chunk_size:
-    #                         embed.description = '\n'.join(lines)
-    #                         pages.append(embed)
-    #                         embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in Server ({guild_snowflake}) continued...')
-    #                         field_count = 0
-    #                         lines = []
-    #                     lines.append(str(channel_snowflake))
-    #                     field_count += 1
-    #                 embed.description = '\n'.join(lines)
-    #                 pages.append(embed)
+        for guild_snowflake, channels in guild_dictionary.items():
+            current_channel = None
+            lines = []
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_data in channels.items():
+                channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
+                    continue
+                channel_lines = []
+                if channel_data:
+                    for entry in channel_data:
+                        for alias_type, alias_names in entry.items():
+                            channel_lines.append(f'{alias_type}')
+                            for name in alias_names:
+                                channel_lines.append(f'  ↳ {name}')
+                if not channel_lines:
+                    lines.append('')
+                    current_channel = channel
+                else:
+                    i = 0
+                    while i < len(channel_lines):
+                        remaining_space = chunk_size
+                        chunk = channel_lines[i:i + remaining_space]
+                        if not lines:
+                            current_channel = channel
+                        lines.extend(chunk)
+                        i += remaining_space
+                if len(lines) >= chunk_size:
+                    embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    lines = []
+                    current_channel = None
+            if lines:
+                embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+        try:
+            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
+        except Exception as e:
+            pass
+        if is_at_home:
+            if skipped_guild_snowflakes:
+                embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
+                lines = []
+                for guild_snowflake in skipped_guild_snowflakes:
+                    if field_count >= chunk_size:
+                        embed.description = '\n'.join(lines)
+                        pages.append(embed)
+                        embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
+                        lines = []
+                        field_count = 0
+                    lines.append(str(guild_snowflake))
+                    field_count += 1
+                embed.description = '\n'.join(lines)
+                pages.append(embed)
+            if skipped_channel_snowflakes_by_guild_snowflake:
+                for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
+                    embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in Server ({guild_snowflake})')
+                    field_count = 0
+                    lines = []
+                    for channel_snowflake in channel_list:
+                        if field_count >= chunk_size:
+                            embed.description = '\n'.join(lines)
+                            pages.append(embed)
+                            embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in Server ({guild_snowflake}) continued...')
+                            field_count = 0
+                            lines = []
+                        lines.append(str(channel_snowflake))
+                        field_count += 1
+                    embed.description = '\n'.join(lines)
+                    pages.append(embed)
                 
-    #     if pages:
-    #         try:
-    #             return await state.end(success=pages)
-    #         except Exception as e:
-    #             try:
-    #                 return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
-    #             except Exception as e:
-    #                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #     else:
-    #         try:
-    #             return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found.')
-    #         except Exception as e:
-    #             return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
     @commands.command(name='temps', help='List temporary rooms with matching command aliases.', hidden=True)

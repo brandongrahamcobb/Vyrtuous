@@ -313,7 +313,13 @@ async def has_equal_or_higher_role(message_ctx_or_interaction, channel_snowflake
     return PERMISSION_TYPES[sender_rank]
 
 async def is_system_owner_developer_guild_owner_administrator_coordinator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
-    checks = ('Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake), ('System Owner', lambda: member_is_system_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)))
+    checks = (
+        'Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+        ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+        ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+        ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake),
+        ('System Owner', lambda: member_is_system_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))
+    )
     for role_name, check in checks:
         try:
             if await check():
@@ -323,7 +329,14 @@ async def is_system_owner_developer_guild_owner_administrator_coordinator_via_ch
     return 'Everyone'
 
 async def is_system_owner_developer_guild_owner_administrator_coordinator_moderator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
-    checks = (('Moderator', lambda: member_is_moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)), ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake), ('System Owner', lambda: member_is_system_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))))
+    checks = (
+        ('Moderator', lambda: member_is_moderator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+        ('Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+        ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+        ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+        ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+        ('System Owner', lambda: member_is_system_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))
+    )
     for role_name, check in checks:
         try:
             if await check():

@@ -1780,57 +1780,57 @@ class ModeratorCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
- # DONE
-    # @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.', hidden=True)
-    # @app_commands.describe(
-    #     old_name='Old temporary room name',
-    #     channel='New channel to migrate to'
-    # )
-    # @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
-    # async def migrate_temp_room_app_command(
-    #     self,
-    #     interaction: discord.Interaction,
-    #     old_name: str,
-    #     channel: AppChannelSnowflake
-    # ):
-    #     state = State(interaction)
-    #     channel_obj = None
-    #     old_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=old_name)
-    #     if old_room:
-    #         try:
-    #             channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-    #         except Exception as e:
-    #             try:
-    #                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-    #             except Exception as e:
-    #                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #         is_owner = old_room.member_snowflake == interaction.user.id
-    #         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
-    #         if highest_role not in ('System Owner', 'Guild Owner', 'Administrator') and not is_owner:
-    #             try:
-    #                 return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
-    #             except Exception as e:
-    #                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #         await TemporaryRoom.update_by_source_and_target(guild_snowflake=interaction.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=channel_obj.name)
-    #         await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await Cap.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await Coordinator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await Flag.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await Moderator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await Vegan.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
-    #         try:
-    #             return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention}.')
-    #         except Exception as e:
-    #             return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #     try:
-    #         return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found called `{old_name}` in {interaction.guild.name}.')
-    #     except Exception as e:
-    #         return await state.end(error=f'\u274C {str(e).capitalize()}')
+    # DONE
+    @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.', hidden=True)
+    @app_commands.describe(
+        old_name='Old temporary room name',
+        channel='New channel to migrate to'
+    )
+    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    async def migrate_temp_room_app_command(
+        self,
+        interaction: discord.Interaction,
+        old_name: str,
+        channel: AppChannelSnowflake
+    ):
+        state = State(interaction)
+        channel_obj = None
+        old_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=old_name)
+        if old_room:
+            try:
+                channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            is_owner = old_room.member_snowflake == interaction.user.id
+            highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+            if highest_role not in ('System Owner', 'Guild Owner', 'Administrator') and not is_owner:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            await TemporaryRoom.update_by_source_and_target(guild_snowflake=interaction.guild.id, room_name=channel_obj.name, source_channel_snowflake=old_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            new_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=channel_obj.name)
+            await Alias.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Ban.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Cap.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Coordinator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Flag.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Moderator.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Stage.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await TextMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await Vegan.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            await VoiceMute.update_by_source_and_target(source_channel_snowflake=new_room.channel_snowflake, target_channel_snowflake=channel_obj.id)
+            try:
+                return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        try:
+            return await state.end(warning=f'\U000026A0\U0000FE0F No temporary rooms found called `{old_name}` in {interaction.guild.name}.')
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
     
     # DONE
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.', hidden=True)
