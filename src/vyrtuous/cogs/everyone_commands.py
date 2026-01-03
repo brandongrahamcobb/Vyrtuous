@@ -431,7 +431,9 @@ class EveryoneCommands(commands.Cog):
         for coordinator in coordinators:
             guild_dictionary.setdefault(coordinator.guild_snowflake, {})
             guild_dictionary[coordinator.guild_snowflake].setdefault(coordinator.channel_snowflake, [])
-            guild_dictionary[coordinator.guild_snowflake][coordinator.channel_snowflake].append(coordinator.member_snowflake)
+            guild_dictionary[coordinator.guild_snowflake][coordinator.channel_snowflake].append({
+                'member_snowflake': coordinator.member_snowflake
+            })
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -595,7 +597,9 @@ class EveryoneCommands(commands.Cog):
         for coordinator in coordinators:
             guild_dictionary.setdefault(coordinator.guild_snowflake, {})
             guild_dictionary[coordinator.guild_snowflake].setdefault(coordinator.channel_snowflake, [])
-            guild_dictionary[coordinator.guild_snowflake][coordinator.channel_snowflake].append(coordinator.member_snowflake)
+            guild_dictionary[coordinator.guild_snowflake][coordinator.channel_snowflake].append({
+                'member_snowflake': coordinator.member_snowflake
+            })
 
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -760,10 +764,13 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
         guild_dictionary = {}
+        guild_dictionary = {}
         for moderator in moderators:
             guild_dictionary.setdefault(moderator.guild_snowflake, {})
             guild_dictionary[moderator.guild_snowflake].setdefault(moderator.channel_snowflake, [])
-            guild_dictionary[moderator.guild_snowflake][moderator.channel_snowflake].append(moderator.member_snowflake)
+            guild_dictionary[moderator.guild_snowflake][moderator.channel_snowflake].append({
+                'member_snowflake': moderator.member_snowflake
+            })
 
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -930,7 +937,9 @@ class EveryoneCommands(commands.Cog):
         for moderator in moderators:
             guild_dictionary.setdefault(moderator.guild_snowflake, {})
             guild_dictionary[moderator.guild_snowflake].setdefault(moderator.channel_snowflake, [])
-            guild_dictionary[moderator.guild_snowflake][moderator.channel_snowflake].append(moderator.member_snowflake)
+            guild_dictionary[moderator.guild_snowflake][moderator.channel_snowflake].append({
+                'member_snowflake': moderator.member_snowflake
+            })
 
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))

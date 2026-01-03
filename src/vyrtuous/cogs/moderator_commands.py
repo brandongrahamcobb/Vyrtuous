@@ -456,9 +456,19 @@ class ModeratorCommands(commands.Cog):
         guild_dictionary = {}
         for cap in caps:
             guild_dictionary.setdefault(cap.guild_snowflake, {})
-            guild_dictionary[cap.guild_snowflake].setdefault(cap.channel_snowflake, {})
-            guild_dictionary[cap.guild_snowflake][cap.channel_snowflake].setdefault(cap.moderation_type, [])
-            guild_dictionary[cap.guild_snowflake][cap.channel_snowflake][cap.moderation_type].append(cap.duration)
+            guild_dictionary[cap.guild_snowflake].setdefault(cap.channel_snowflake, [])
+            channel_entries = guild_dictionary[cap.guild_snowflake][cap.channel_snowflake]
+            entry_found = False
+            for entry in channel_entries:
+                if entry['moderation_type'] == cap.moderation_type:
+                    entry['durations'].append(cap.duration)
+                    entry_found = True
+                    break
+            if not entry_found:
+                channel_entries.append({
+                    'moderation_type': cap.moderation_type,
+                    'durations': [cap.duration]
+                })
 
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -471,15 +481,15 @@ class ModeratorCommands(commands.Cog):
                 continue
             embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
             channel_header_added = False
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, channel_entries in channels.items():
                 lines = []
                 channel = guild.get_channel(channel_snowflake)
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
-                for moderation_type, durations in channel_data.items():
-                    for duration in durations:
-                        lines.append(f'  ↳ {moderation_type} ({DurationObject.from_seconds(duration)})')
+                for entry in channel_entries:
+                    for duration in entry['durations']:
+                        lines.append(f'  ↳ {entry["moderation_type"]} ({DurationObject.from_seconds(duration)})')
                 if not channel_header_added:
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
                     channel_header_added = True
@@ -601,9 +611,19 @@ class ModeratorCommands(commands.Cog):
         guild_dictionary = {}
         for cap in caps:
             guild_dictionary.setdefault(cap.guild_snowflake, {})
-            guild_dictionary[cap.guild_snowflake].setdefault(cap.channel_snowflake, {})
-            guild_dictionary[cap.guild_snowflake][cap.channel_snowflake].setdefault(cap.moderation_type, [])
-            guild_dictionary[cap.guild_snowflake][cap.channel_snowflake][cap.moderation_type].append(cap.duration)
+            guild_dictionary[cap.guild_snowflake].setdefault(cap.channel_snowflake, [])
+            channel_entries = guild_dictionary[cap.guild_snowflake][cap.channel_snowflake]
+            entry_found = False
+            for entry in channel_entries:
+                if entry['moderation_type'] == cap.moderation_type:
+                    entry['durations'].append(cap.duration)
+                    entry_found = True
+                    break
+            if not entry_found:
+                channel_entries.append({
+                    'moderation_type': cap.moderation_type,
+                    'durations': [cap.duration]
+                })
 
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -616,15 +636,15 @@ class ModeratorCommands(commands.Cog):
                 continue
             embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
             channel_header_added = False
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, channel_entries in channels.items():
                 lines = []
                 channel = guild.get_channel(channel_snowflake)
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
-                for moderation_type, durations in channel_data.items():
-                    for duration in durations:
-                        lines.append(f'  ↳ {moderation_type} ({DurationObject.from_seconds(duration)})')
+                for entry in channel_entries:
+                    for duration in entry['durations']:
+                        lines.append(f'  ↳ {entry["moderation_type"]} ({DurationObject.from_seconds(duration)})')
                 if not channel_header_added:
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
                     channel_header_added = True
@@ -632,6 +652,7 @@ class ModeratorCommands(commands.Cog):
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
                     field_count = 0
+                embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
                 field_count += 1
             pages.append(embed)
         try:
@@ -750,9 +771,16 @@ class ModeratorCommands(commands.Cog):
         guild_dictionary = {}
         for alias in aliases:
             guild_dictionary.setdefault(alias.guild_snowflake, {})
-            guild_dictionary[alias.guild_snowflake].setdefault(alias.channel_snowflake, {})
-            guild_dictionary[alias.guild_snowflake][alias.channel_snowflake].setdefault(alias.alias_type, [])
-            guild_dictionary[alias.guild_snowflake][alias.channel_snowflake][alias.alias_type].append(alias.alias_name)
+            guild_dictionary[alias.guild_snowflake].setdefault(alias.channel_snowflake, [])
+            channel_entries = guild_dictionary[alias.guild_snowflake][alias.channel_snowflake]
+            entry_found = False
+            for entry in channel_entries:
+                if alias.alias_type in entry:
+                    entry[alias.alias_type].append(alias.alias_name)
+                    entry_found = True
+                    break
+            if not entry_found:
+                channel_entries.append({alias.alias_type: [alias.alias_name]})
 
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -766,16 +794,17 @@ class ModeratorCommands(commands.Cog):
                 skipped_guild_snowflakes.add(guild_snowflake)
                 continue
             embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, channel_entries in channels.items():
                 channel = guild.get_channel(channel_snowflake)
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
                 channel_lines = []
-                for alias_type, alias_names in channel_data.items():
-                    channel_lines.append(f'{alias_type}')
-                    for name in alias_names:
-                        channel_lines.append(f'  ↳ {name}')
+                for entry in channel_entries:
+                    for alias_type, alias_names in entry.items():
+                        channel_lines.append(f'{alias_type}')
+                        for name in alias_names:
+                            channel_lines.append(f'  ↳ {name}')
                 i = 0
                 while i < len(channel_lines):
                     remaining_space = chunk_size - len(lines)
@@ -908,9 +937,16 @@ class ModeratorCommands(commands.Cog):
         guild_dictionary = {}
         for alias in aliases:
             guild_dictionary.setdefault(alias.guild_snowflake, {})
-            guild_dictionary[alias.guild_snowflake].setdefault(alias.channel_snowflake, {})
-            guild_dictionary[alias.guild_snowflake][alias.channel_snowflake].setdefault(alias.alias_type, [])
-            guild_dictionary[alias.guild_snowflake][alias.channel_snowflake][alias.alias_type].append(alias.alias_name)
+            guild_dictionary[alias.guild_snowflake].setdefault(alias.channel_snowflake, [])
+            channel_entries = guild_dictionary[alias.guild_snowflake][alias.channel_snowflake]
+            entry_found = False
+            for entry in channel_entries:
+                if alias.alias_type in entry:
+                    entry[alias.alias_type].append(alias.alias_name)
+                    entry_found = True
+                    break
+            if not entry_found:
+                channel_entries.append({alias.alias_type: [alias.alias_name]})
 
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -924,16 +960,17 @@ class ModeratorCommands(commands.Cog):
                 skipped_guild_snowflakes.add(guild_snowflake)
                 continue
             embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, channel_entries in channels.items():
                 channel = guild.get_channel(channel_snowflake)
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
                 channel_lines = []
-                for alias_type, alias_names in channel_data.items():
-                    channel_lines.append(f'{alias_type}')
-                    for name in alias_names:
-                        channel_lines.append(f'  ↳ {name}')
+                for entry in channel_entries:
+                    for alias_type, alias_names in entry.items():
+                        channel_lines.append(f'{alias_type}')
+                        for name in alias_names:
+                            channel_lines.append(f'  ↳ {name}')
                 i = 0
                 while i < len(channel_lines):
                     remaining_space = chunk_size - len(lines)

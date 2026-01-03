@@ -537,10 +537,16 @@ class DevCommands(commands.Cog):
         
         guild_dictionary = {}
         for developer_log in developer_logs:
-           guild_dictionary.setdefault(developer_log.guild_snowflake, {})
-           guild_dictionary[developer_log.guild_snowflake].setdefault(developer_log.channel_snowflake, [])
-           guild_dictionary[developer_log.guild_snowflake][developer_log.channel_snowflake].append(developer_log)
-        
+            guild_dictionary.setdefault(developer_log.guild_snowflake, {})
+            guild_dictionary[developer_log.guild_snowflake].setdefault(developer_log.channel_snowflake, [])
+            guild_dictionary[developer_log.guild_snowflake][developer_log.channel_snowflake].append({
+                'developer_snowflakes': developer_log.developer_snowflakes,
+                'id': developer_log.id,
+                'message_snowflake': developer_log.message_snowflake,
+                'notes': developer_log.notes,
+                'resolved': developer_log.resolved,
+            })
+
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
@@ -557,21 +563,21 @@ class DevCommands(commands.Cog):
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
                 lines = []
-                for log in channel_logs:
+                for member_data in channel_logs:
                     try:
-                        msg = await channel.fetch_message(log.message_snowflake)
+                        msg = await channel.fetch_message(member_data['message_snowflake'])
                         lines.append(f'**Message:** {msg.jump_url}')
                     except Exception as e:
-                        skipped_message_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(log.message_snowflake)
-                    if log.resolved == False:
+                        skipped_message_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_data['message_snowflake'])
+                    if member_data['resolved'] == False:
                         resolved = '\u274C'
-                    elif log.resolved == True:
+                    elif member_data['resolved'] == True:
                         resolved = '\u2705'
-                    lines.append(f'{resolved}**Reference:** {log.id}')
+                    lines.append(f"{resolved}**Reference:** {member_data['id']}")
                     if value:
-                        lines.append(f'**Notes:** {log.notes}')
-                    if log.developer_snowflakes:
-                        lines.append(f"**Assigned to:** {', '.join(log.developer_snowflakes)}")
+                        lines.append(f"**Notes:** {member_data['notes']}")
+                    if member_data['developer_snowflakes']:
+                        lines.append(f"**Assigned to:** {', '.join(member_data['developer_snowflakes'])}")
                     field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
@@ -718,10 +724,16 @@ class DevCommands(commands.Cog):
         
         guild_dictionary = {}
         for developer_log in developer_logs:
-           guild_dictionary.setdefault(developer_log.guild_snowflake, {})
-           guild_dictionary[developer_log.guild_snowflake].setdefault(developer_log.channel_snowflake, [])
-           guild_dictionary[developer_log.guild_snowflake][developer_log.channel_snowflake].append(developer_log)
-        
+            guild_dictionary.setdefault(developer_log.guild_snowflake, {})
+            guild_dictionary[developer_log.guild_snowflake].setdefault(developer_log.channel_snowflake, [])
+            guild_dictionary[developer_log.guild_snowflake][developer_log.channel_snowflake].append({
+                'developer_snowflakes': developer_log.developer_snowflakes,
+                'id': developer_log.id,
+                'message_snowflake': developer_log.message_snowflake,
+                'notes': developer_log.notes,
+                'resolved': developer_log.resolved,
+            })
+
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
@@ -738,21 +750,21 @@ class DevCommands(commands.Cog):
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
                 lines = []
-                for log in channel_logs:
+                for member_data in channel_logs:
                     try:
-                        msg = await channel.fetch_message(log.message_snowflake)
+                        msg = await channel.fetch_message(member_data['message_snowflake'])
                         lines.append(f'**Message:** {msg.jump_url}')
                     except Exception as e:
-                        skipped_message_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(log.message_snowflake)
-                    if log.resolved == False:
+                        skipped_message_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_data['message_snowflake'])
+                    if member_data['resolved'] == False:
                         resolved = '\u274C'
-                    elif log.resolved == True:
+                    elif member_data['resolved'] == True:
                         resolved = '\u2705'
-                    lines.append(f'{resolved}**Reference:** {log.id}')
+                    lines.append(f"{resolved}**Reference:** {member_data['id']}")
                     if value:
-                        lines.append(f'**Notes:** {log.notes}')
-                    if log.developer_snowflakes:
-                        lines.append(f"**Assigned to:** {', '.join(log.developer_snowflakes)}")
+                        lines.append(f"**Notes:** {member_data['notes']}")
+                    if member_data['developer_snowflakes']:
+                        lines.append(f"**Assigned to:** {', '.join(member_data['developer_snowflakes'])}")
                     field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)

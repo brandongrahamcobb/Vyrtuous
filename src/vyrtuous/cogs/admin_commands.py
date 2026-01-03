@@ -804,10 +804,16 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
         for entry in history:
             guild_dictionary.setdefault(entry.guild_snowflake, {})
-            guild_dictionary[entry.guild_snowflake].setdefault(entry.channel_snowflake, {})
-            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('enabled', []).append(entry.enabled)
-            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('entry_type', []).append(entry.entry_type)
-            if entry.snowflakes:
+            guild_dictionary[entry.guild_snowflake].setdefault(entry.channel_snowflake, [])
+            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].append({
+                'channels': [],
+                'enabled' : entry.enabled,
+                'entry_type': entry.entry_type,
+                'entry_snowflakes': entry.snowflakes,
+                'members': []
+            })
+
+            if guild_dictionary[entry.guild_snowflake][entry.channel_snowflake]['entry_snowflakes']:
                 for snowflake in entry.snowflakes:
                     guild = self.bot.get_guild(entry.guild_snowflake)
                     if not guild:
@@ -819,9 +825,10 @@ class AdminCommands(commands.Cog):
                             if not member:
                                 skipped_snowflakes.append(snowflake)
                             else:
-                                guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('members', []).append(member.mention)
+                                guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][-1]['members'].append(member.mention)
                         else:
-                            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('channels', []).append(channel.mention)
+                            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][-1]['channels'].append(channel.mention)
+
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
@@ -841,18 +848,16 @@ class AdminCommands(commands.Cog):
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
-                enabled_list = channel_data.get('enabled', [False]) if isinstance(channel_data.get('enabled'), list) else [channel_data.get('enabled', False)]
-                history_list = channel_data.get('entry_type', ['general']) if isinstance(channel_data.get('entry_type'), list) else [channel_data.get('entry_type', 'general')]
-                for enabled, entry_type in zip(enabled_list, history_list):
-                    status = '\u2705' if enabled else '\u26D4'
-                    match entry_type:
+                for entry_data in channel_data:
+                    status = '\u2705' if entry_data['enabled'] else '\u26D4'
+                    match entry_data['entry_type']:
                         case 'general':
                             detail = f'General to: {channel.mention}'
                         case 'channel':
-                            channels_from = ', '.join(channel_mention for channel_mention in channel_data.get('channels', []))
+                            channels_from = ', '.join(channel_mention for channel_mention in entry_data.get('channels', []))
                             detail = f'Channel to: {channel.mention} \nFrom: {channels_from}'
                         case 'member':
-                            members_from = ', '.join(member_mention for member_mention in channel_data.get('members', []))
+                            members_from = ', '.join(member_mention for member_mention in entry_data.get('members', []))
                             detail = f'Members to: {channel.mention} \nFrom: {members_from}'
                         case _:
                             detail = f'{channel.mention}'
@@ -987,10 +992,16 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
         for entry in history:
             guild_dictionary.setdefault(entry.guild_snowflake, {})
-            guild_dictionary[entry.guild_snowflake].setdefault(entry.channel_snowflake, {})
-            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('enabled', []).append(entry.enabled)
-            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('entry_type', []).append(entry.entry_type)
-            if entry.snowflakes:
+            guild_dictionary[entry.guild_snowflake].setdefault(entry.channel_snowflake, [])
+            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].append({
+                'channels': [],
+                'enabled' : entry.enabled,
+                'entry_type': entry.entry_type,
+                'entry_snowflakes': entry.snowflakes,
+                'members': []
+            })
+
+            if guild_dictionary[entry.guild_snowflake][entry.channel_snowflake]['entry_snowflakes']:
                 for snowflake in entry.snowflakes:
                     guild = self.bot.get_guild(entry.guild_snowflake)
                     if not guild:
@@ -1002,9 +1013,10 @@ class AdminCommands(commands.Cog):
                             if not member:
                                 skipped_snowflakes.append(snowflake)
                             else:
-                                guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('members', []).append(member.mention)
+                                guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][-1]['members'].append(member.mention)
                         else:
-                            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake].setdefault('channels', []).append(channel.mention)
+                            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][-1]['channels'].append(channel.mention)
+
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
@@ -1024,18 +1036,16 @@ class AdminCommands(commands.Cog):
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
-                enabled_list = channel_data.get('enabled', [False]) if isinstance(channel_data.get('enabled'), list) else [channel_data.get('enabled', False)]
-                history_list = channel_data.get('entry_type', ['general']) if isinstance(channel_data.get('entry_type'), list) else [channel_data.get('entry_type', 'general')]
-                for enabled, entry_type in zip(enabled_list, history_list):
-                    status = '\u2705' if enabled else '\u26D4'
-                    match entry_type:
+                for entry_data in channel_data:
+                    status = '\u2705' if entry_data['enabled'] else '\u26D4'
+                    match entry_data['entry_type']:
                         case 'general':
                             detail = f'General to: {channel.mention}'
                         case 'channel':
-                            channels_from = ', '.join(channel_mention for channel_mention in channel_data.get('channels', []))
+                            channels_from = ', '.join(channel_mention for channel_mention in entry_data.get('channels', []))
                             detail = f'Channel to: {channel.mention} \nFrom: {channels_from}'
                         case 'member':
-                            members_from = ', '.join(member_mention for member_mention in channel_data.get('members', []))
+                            members_from = ', '.join(member_mention for member_mention in entry_data.get('members', []))
                             detail = f'Members to: {channel.mention} \nFrom: {members_from}'
                         case _:
                             detail = f'{channel.mention}'
@@ -1785,16 +1795,17 @@ class AdminCommands(commands.Cog):
     #         except Exception as e:
     #             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
-    #     guild_dictionary = {}
+    # guild_dictionary = {}
     #     for temporary_room in temporary_rooms:
     #         guild_dictionary.setdefault(temporary_room.guild_snowflake, {})
-    #         guild_dictionary[temporary_room.guild_snowflake].setdefault(temporary_room.channel_snowflake, {})
+    #         guild_dictionary[temporary_room.guild_snowflake].setdefault(temporary_room.channel_snowflake, [])
+    #         guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake].append({})
     #         if aliases:
     #             for alias in aliases:
     #                 if alias.guild_snowflake == temporary_room.guild_snowflake:
     #                     if alias.channel_snowflake == temporary_room.channel_snowflake:
-    #                         guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake].setdefault(alias.alias_type, [])
-    #                         guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][alias.alias_type].append(alias.alias_name)
+    #                         guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][-1].setdefault(alias.alias_type, [])
+    #                         guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][-1][alias.alias_type].append(alias.alias_name)
                             
     #     for guild_snowflake in guild_dictionary:
     #         guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -1815,11 +1826,11 @@ class AdminCommands(commands.Cog):
     #                 continue
     #             channel_lines = []
     #             if channel_data:
-    #                 for alias_type, alias_names in channel_data.items():
-    #                     channel_lines.append(f'{alias_type}')
-    #                     for name in alias_names:
-    #                         channel_lines.append(f'  ↳ {name}')
-
+    #                 for entry in channel_data:
+    #                     for alias_type, alias_names in entry.items():
+    #                         channel_lines.append(f'{alias_type}')
+    #                         for name in alias_names:
+    #                             channel_lines.append(f'  ↳ {name}')
     #             if not channel_lines:
     #                 lines.append('')
     #                 current_channel = channel
@@ -1957,16 +1968,16 @@ class AdminCommands(commands.Cog):
         
         guild_dictionary = {}
         for temporary_room in temporary_rooms:
-            logger.info(temporary_room.guild_snowflake)
             guild_dictionary.setdefault(temporary_room.guild_snowflake, {})
-            guild_dictionary[temporary_room.guild_snowflake].setdefault(temporary_room.channel_snowflake, {})
+            guild_dictionary[temporary_room.guild_snowflake].setdefault(temporary_room.channel_snowflake, [])
+            guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake].append({})
             if aliases:
                 for alias in aliases:
                     if alias.guild_snowflake == temporary_room.guild_snowflake:
                         if alias.channel_snowflake == temporary_room.channel_snowflake:
-                            guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake].setdefault(alias.alias_type, [])
-                            guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][alias.alias_type].append(alias.alias_name)
-
+                            guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][-1].setdefault(alias.alias_type, [])
+                            guild_dictionary[temporary_room.guild_snowflake][temporary_room.channel_snowflake][-1][alias.alias_type].append(alias.alias_name)
+                            
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
@@ -1986,11 +1997,11 @@ class AdminCommands(commands.Cog):
                     continue
                 channel_lines = []
                 if channel_data:
-                    for alias_type, alias_names in channel_data.items():
-                        channel_lines.append(f'{alias_type}')
-                        for name in alias_names:
-                            channel_lines.append(f'  ↳ {name}')
-
+                    for entry in channel_data:
+                        for alias_type, alias_names in entry.items():
+                            channel_lines.append(f'{alias_type}')
+                            for name in alias_names:
+                                channel_lines.append(f'  ↳ {name}')
                 if not channel_lines:
                     lines.append('')
                     current_channel = channel
@@ -2191,13 +2202,14 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
         for video_room in video_rooms:
             guild_dictionary.setdefault(video_room.guild_snowflake, {})
-            guild_dictionary[video_room.guild_snowflake].setdefault(video_room.channel_snowflake, {})
+            guild_dictionary[video_room.guild_snowflake].setdefault(video_room.channel_snowflake, [])
+            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake].append({})
             if aliases:
                 for alias in aliases:
                     if alias.guild_snowflake == video_room.guild_snowflake:
                         if alias.channel_snowflake == video_room.channel_snowflake:
-                            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake].setdefault(alias.alias_type, [])
-                            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake][alias.alias_type].append(alias.alias_name)
+                            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake][-1].setdefault(alias.alias_type, [])
+                            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake][-1][alias.alias_type].append(alias.alias_name)
                             
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -2218,11 +2230,11 @@ class AdminCommands(commands.Cog):
                     continue
                 channel_lines = []
                 if channel_data:
-                    for alias_type, alias_names in channel_data.items():
-                        channel_lines.append(f'{alias_type}')
-                        for name in alias_names:
-                            channel_lines.append(f'  ↳ {name}')
-
+                    for entry in channel_data:
+                        for alias_type, alias_names in entry.items():
+                            channel_lines.append(f'{alias_type}')
+                            for name in alias_names:
+                                channel_lines.append(f'  ↳ {name}')
                 if not channel_lines:
                     lines.append('')
                     current_channel = channel
@@ -2360,14 +2372,15 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
         for video_room in video_rooms:
             guild_dictionary.setdefault(video_room.guild_snowflake, {})
-            guild_dictionary[video_room.guild_snowflake].setdefault(video_room.channel_snowflake, {})
+            guild_dictionary[video_room.guild_snowflake].setdefault(video_room.channel_snowflake, [])
+            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake].append({})
             if aliases:
                 for alias in aliases:
                     if alias.guild_snowflake == video_room.guild_snowflake:
                         if alias.channel_snowflake == video_room.channel_snowflake:
-                            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake].setdefault(alias.alias_type, [])
-                            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake][alias.alias_type].append(alias.alias_name)
-
+                            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake][-1].setdefault(alias.alias_type, [])
+                            guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake][-1][alias.alias_type].append(alias.alias_name)
+                            
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
@@ -2387,11 +2400,11 @@ class AdminCommands(commands.Cog):
                     continue
                 channel_lines = []
                 if channel_data:
-                    for alias_type, alias_names in channel_data.items():
-                        channel_lines.append(f'{alias_type}')
-                        for name in alias_names:
-                            channel_lines.append(f'  ↳ {name}')
-
+                    for entry in channel_data:
+                        for alias_type, alias_names in entry.items():
+                            channel_lines.append(f'{alias_type}')
+                            for name in alias_names:
+                                channel_lines.append(f'  ↳ {name}')
                 if not channel_lines:
                     lines.append('')
                     current_channel = channel
