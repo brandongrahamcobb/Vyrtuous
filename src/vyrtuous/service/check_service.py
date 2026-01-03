@@ -318,7 +318,7 @@ async def is_system_owner_developer_guild_owner_administrator_coordinator_via_ch
         ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
         ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
         ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
-        ('System Owner', lambda: member_is_system_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))
+        ('System Owner', lambda: member_is_system_owner(member_snowflake=member_snowflake))
     )
     for role_name, check in checks:
         try:
@@ -335,7 +335,7 @@ async def is_system_owner_developer_guild_owner_administrator_coordinator_modera
         ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
         ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
         ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
-        ('System Owner', lambda: member_is_system_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))
+        ('System Owner', lambda: member_is_system_owner(member_snowflake=member_snowflake))
     )
     for role_name, check in checks:
         try:
