@@ -24,13 +24,13 @@
 * `untmute <member>` - Undoes a text-mutes for a member.
 * `unvmute <member>` - Undoes a voice-mute for a member.
 
-# Static Commands
+## Static Commands
 
-## Guild Owner
+### Guild Owner
 * `arole <role>` - Promotes all members part of a role to administrator along with active tracking of who retains the role or loses the role, revoking or granting administrator if a role removed or given, respectively.
 * `hero <member>` - Grants or revokes invincibility for a member.
 
-## Administrator
+### Administrator
 * `alias <alias_type> <alias_name> <channel>` - Creates a ban, cow, flag, mute, unban , uncow or unmute alias for a specific channel.
 * `aroles` - Lists all current administrator roles.
 * `cap <channel> <'ban', 'tmute' or 'vmute`> <hours> - Limits the duration of moderator actions by moderators (Coordinators and above bypass these caps).
@@ -49,12 +49,12 @@
 * `tracks <channel>` - Lists the setup created by `!mtrack`.
 * `xalias <alias_name>` - Deletes an alias.
 
-## Coordinator
+### Coordinator
 * `mod <channel> <member>` - Toggles a moderator in the channel specified.
 * `rmute <channel>` - Mutes everyone in a room besides yourself.
 * `xrmute <channel>` - Unmutes everyone in a room.
 
-## Moderator
+### Moderator
 * `caps <scope>` - Lists moderation duration caps.
 * `cmds <channel>` - Lists aliases.
 * `del <message> <channel> ` - Deletes a message.
@@ -66,7 +66,7 @@
 * `summary <member> <scope>` - Reports all moderation actions on a member.
 * `tmutes <scope>` - Lists active text-mutes.
 
-## Everyone
+### Everyone
 * `admins <scope>` - Lists administrators.
 * `coords <scope>` - Lists coordinators.
 * `help <command>` - Interactive help command paginating commands for members.
