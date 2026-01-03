@@ -5,7 +5,7 @@
 * Channel-scoped right-click mutes.
 * Temporary channels.
 * Visibility of all moderation actions.
-* Video=only channels.
+* Video-only channels.
 
 # Project Flow
 ![Vyrtuous](resources/images/VyrtuousUML.svg)
