@@ -1781,7 +1781,7 @@ class ModeratorCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.', hidden=True)
+    @app_commands.command(name='migrate', description='Migrate a temporary room to a new channel.')
     @app_commands.describe(
         old_name='Old temporary room name',
         channel='New channel to migrate to'

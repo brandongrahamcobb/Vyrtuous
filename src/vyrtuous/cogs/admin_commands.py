@@ -1645,7 +1645,7 @@ class AdminCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @app_commands.command(name='temp', description='Toggle a temporary room and assign an owner.', hidden=True)
+    @app_commands.command(name='temp', description='Toggle a temporary room and assign an owner.')
     @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def toggle_temp_room_app_command(
@@ -1736,7 +1736,7 @@ class AdminCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.', hidden=True)
+    @app_commands.command(name='temps', description='List temporary rooms with matching command aliases.')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def list_temp_rooms_app_command(self, interaction: discord.Interaction, scope: str = None):
         state = State(interaction)
@@ -1795,7 +1795,7 @@ class AdminCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
-    guild_dictionary = {}
+        guild_dictionary = {}
         for temporary_room in temporary_rooms:
             guild_dictionary.setdefault(temporary_room.guild_snowflake, {})
             guild_dictionary[temporary_room.guild_snowflake].setdefault(temporary_room.channel_snowflake, [])
