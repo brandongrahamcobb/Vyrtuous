@@ -945,7 +945,7 @@ class AdminCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
-    @commands.command(name='smute', help='Servr mute')
+    @commands.command(name='smute', help='Server mute')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def toggle_server_mute_text_command(
         self,

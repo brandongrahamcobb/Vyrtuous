@@ -17,7 +17,7 @@
 '''
 from os.path import dirname, abspath, expanduser, join
 
-#### DEVELOPEMENT
+#### DEVELOPMENT
 RELEASE_MODE = False
 #### DIRECTORIES
 DIR_BASE = abspath(join(dirname(dirname(dirname(dirname(__file__))))))

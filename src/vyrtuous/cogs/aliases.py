@@ -135,7 +135,7 @@ class Aliases(commands.Cog):
             is_channel_scope = False
             is_modification = False
             reason = 'No reason provided.'
-    
+            ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)               
             cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='ban')
             if not hasattr(cap, 'duration'):
                 cap_duration = DurationObject('8h').to_seconds()
@@ -156,10 +156,10 @@ class Aliases(commands.Cog):
                 modified_reason = ' '.join(args[2:]) if len(args) > 2 else ''
                 match is_reason_modification:
                     case '+':
-                        updated_reason = existing_guestroom_alias_event.reason + modified_reason
+                        reason = existing_guestroom_alias_event.reason + modified_reason
                     case '=' | '-':
-                        updated_reason = modified_reason
-                await Alias.update_reason(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=updated_reason)
+                        reason = modified_reason
+                await Alias.update_reason(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=reason)
             elif is_duration_modification and existing_guestroom_alias_event:
                 is_modification = True
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
@@ -180,6 +180,13 @@ class Aliases(commands.Cog):
                         return await state.end(error=f'\u274C {str(e).capitalize()}')  
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
             else:
+                if not is_modification:
+                    ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)   
+                    if ban:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F An existing ban already exists for {member_obj.mention}. Modify the ban by putting a '+', '-' or '=' in front of the duration (ex. +8h) or a single '+', '-' or '=' and a reason to update the reason.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
@@ -241,7 +248,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = False
-            reason = None
+            reason = 'No reason provided.'
     
             vegan = Vegan(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
             await vegan.create()
@@ -295,6 +302,13 @@ class Aliases(commands.Cog):
                         reason = modified_reason
                 await Alias.update_reason(alias_type=alias.alias_type, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=reason)
             else:
+                if not is_modification:
+                    flag = await Flag.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)   
+                    if flag:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F An existing flag already exists for {member_obj.mention}. Modify the flag by putting a single '+', '-' or '=' and a reason to update the reason.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
                 reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
             
             flag = Flag(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
@@ -343,7 +357,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = False
-            reason = None
+            reason = 'No reason provided.'
     
             try:
                 role = await self.role_service.resolve_role(message, alias.role_snowflake)
@@ -415,10 +429,10 @@ class Aliases(commands.Cog):
                 modified_reason = ' '.join(args[2:]) if len(args) > 2 else ''
                 match is_reason_modification:
                     case '+':
-                        updated_reason = existing_guestroom_alias_event.reason + modified_reason
+                        reason = existing_guestroom_alias_event.reason + modified_reason
                     case '=' | '-':
-                        updated_reason = modified_reason
-                await Alias.update_reason(alias_type=alias.alias_type, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=updated_reason)
+                        reason = modified_reason
+                await Alias.update_reason(alias_type=alias.alias_type, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, updated_reason=reason)
             elif is_duration_modification and existing_guestroom_alias_event:
                 is_modification = True
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
@@ -439,6 +453,13 @@ class Aliases(commands.Cog):
                         return await state.end(error=f'\u274C {str(e).capitalize()}') 
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
             else:
+                if not is_modification:
+                    text_mute = await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)   
+                    if text_mute:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F An existing text-mute already exists for {member_obj.mention}. Modify the text-mute by putting a '+', '-' or '=' in front of the duration (ex. +8h) or a single '+', '-' or '=' and a reason to update the reason.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
@@ -494,6 +515,7 @@ class Aliases(commands.Cog):
         try:
             is_channel_scope = False
             is_modification = False
+            target = 'user'
             reason = 'No reason provided.'
     
             cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='voice_mute')
@@ -539,6 +561,13 @@ class Aliases(commands.Cog):
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
             else:
+                if not is_modification:
+                    voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, target=target)   
+                    if voice_mute:
+                        try:
+                            return await state.end(warning=f"\U000026A0\U0000FE0F An existing voice-mute already exists for {member_obj.mention}. Modify the voice-mute by putting a '+', '-' or '=' in front of the duration (ex. +8h) or a single '+', '-' or '=' and a reason to update the reason.")
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap.duration)
@@ -555,7 +584,7 @@ class Aliases(commands.Cog):
                 except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
     
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target='user')
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target=target)
             await voice_mute.create()
     
             await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
@@ -597,7 +626,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = True
-            reason = None
+            reason = 'No reason provided.'
     
             ban = await Ban.fetch_by_channel_guild_and_member(
                 channel_snowflake=channel_obj.id,
@@ -667,7 +696,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = True
-            reason = None
+            reason = 'No reason provided.'
     
             await Vegan.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, member_snowflake=member_obj.id, guild_snowflake=message.guild.id)
             
@@ -708,7 +737,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = True
-            reason = None
+            reason = 'No reason provided.'
     
             flag = await Flag.fetch_by_channel_guild_and_member(
                 channel_snowflake=channel_obj.id,
@@ -772,7 +801,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = True
-            reason = False
+            reason = 'No reason provided.'
     
             voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(
                 channel_snowflake=channel_obj.id,
@@ -842,7 +871,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = True
-            reason = None
+            reason = 'No reason provided.'
     
             try:
                 role = await self.role_service.resolve_role(message, alias.role_snowflake)
@@ -899,7 +928,7 @@ class Aliases(commands.Cog):
             duration = None
             is_channel_scope = False
             is_modification = True
-            reason = None
+            reason = 'No reason provided.'
     
             text_mute = await TextMute.fetch_by_channel_guild_and_member(
                 channel_snowflake=channel_obj.id,

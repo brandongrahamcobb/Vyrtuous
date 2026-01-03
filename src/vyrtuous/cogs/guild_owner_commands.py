@@ -178,7 +178,7 @@ class GuildOwnerCommands(commands.Cog):
                 description=f'Members {action} `Administrator`.',
                 color=discord.Color.green()
             )
-            embed.add_field(name=f'Mermbers ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
+            embed.add_field(name=f'Members ({len(target_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
             pages.append(embed)
         if skipped_members:
             chunks = [skipped_members[i:i + chunk_size] for i in range(0, len(skipped_members), chunk_size)]
@@ -188,7 +188,7 @@ class GuildOwnerCommands(commands.Cog):
                     description=f'Members with {role_obj.mention}',
                     color=discord.Color.red()
                 )
-                embed.add_field(name=f'Mermbers ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
+                embed.add_field(name=f'Members ({len(skipped_members)})', value='\n'.join([m.mention if isinstance(m, discord.Member) else str(m) for m in chunk]), inline=False)
                 pages.append(embed)
 
         if pages:
@@ -230,7 +230,7 @@ class GuildOwnerCommands(commands.Cog):
             msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
         else:
             Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
-            msg = f'Invincibiility has been disabled for {member_obj.mention}'
+            msg = f'Invincibility has been disabled for {member_obj.mention}'
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
@@ -266,7 +266,7 @@ class GuildOwnerCommands(commands.Cog):
             msg = f'All moderation events have been forgiven and invincibility has been enabled for {member_obj.mention}.'
         else:
             Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
-            msg = f'Invincibiility has been disabled for {member_obj.mention}'
+            msg = f'Invincibility has been disabled for {member_obj.mention}'
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:

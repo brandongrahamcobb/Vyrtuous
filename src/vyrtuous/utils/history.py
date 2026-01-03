@@ -19,6 +19,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.duration import DurationObject
 from vyrtuous.utils.paginator import Paginator 
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.snowflake import *
@@ -71,18 +72,29 @@ class History:
         reason: Optional[str]
     ):
         bot = DiscordBot.get_instance()
+        author_snowflake = None
+        expires_at = None
         history = await History.fetch_all()
-        for entry in history:
-            if message.guild.id == entry.channel_snowflake:
-                channel = bot.get_channel(entry.channel_snowflake)
-                pages = cls.build_history_embeds(
-                        alias=alias, channel=channel, duration=duration, highest_role=highest_role,
-                        is_channel_scope=is_channel_scope, is_modification=is_modification,
-                        member=member, message=message,
-                        reason=reason, 
-                    )
-                paginator = Paginator(bot, channel, pages)
-                await paginator.start()
+        if message:
+            for entry in history:
+                if message.guild.id == entry.channel_snowflake:
+                    channel = bot.get_channel(entry.channel_snowflake)
+                    pages = cls.build_history_embeds(
+                            alias=alias, channel=channel, duration=duration, highest_role=highest_role,
+                            is_channel_scope=is_channel_scope, is_modification=is_modification,
+                            member=member, message=message,
+                            reason=reason, 
+                        )
+                    paginator = Paginator(bot, channel, pages)
+                    await paginator.start()
+            author_snowflake = message.author.id
+        if isinstance(duration, DurationObject):
+            expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+        elif duration is not None:
+            expires_at = datetime.now(timezone.utc) + DurationObject(duration).to_timedelta()
+        else:
+            expires_at = datetime.now(timezone.utc) + DurationObject(0).to_timedelta()
+        await cls.save(action_type=alias.alias_type, channel_snowflake=channel.id, executor_member_snowflake=author_snowflake, expires_at=expires_at, guild_snowflake=channel.guild.id, highest_role=highest_role, is_modification=is_modification, target_member_snowflake=member.id, reason=reason)
 
     @classmethod
     def build_history_embeds(
@@ -267,3 +279,23 @@ class History:
                     )
                 )
         return history
+
+    @classmethod
+    async def save(
+        cls,
+        action_type: Optional[str],
+        channel_snowflake: Optional[int],
+        executor_member_snowflake: Optional[int],
+        expires_at: Optional[datetime],
+        guild_snowflake: Optional[int],
+        highest_role: Optional[str],
+        is_modification: bool,
+        target_member_snowflake: Optional[int],
+        reason: Optional[str]
+    ):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                    INSERT INTO moderation_logs (action_type, channel_snowflake, executor_member_snowflake, expires_at, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                ''', action_type, channel_snowflake, executor_member_snowflake, expires_at, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)

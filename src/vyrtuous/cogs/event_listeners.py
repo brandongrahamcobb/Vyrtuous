@@ -18,6 +18,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from discord.ext import commands
+from types import SimpleNamespace
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.service.check_service import *
@@ -29,8 +30,10 @@ from vyrtuous.utils.administrator import Administrator, AdministratorRole
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
+from vyrtuous.utils.duration import DurationObject
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.flag import Flag
+from vyrtuous.utils.history import History
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.moderator import Moderator
 from vyrtuous.utils.stage import Stage
@@ -196,10 +199,16 @@ class EventListeners(commands.Cog):
                     expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
                     voice_mute = VoiceMute(channel_snowflake=after.channel.id, expires_in=expires_in, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, reason='No reason provided.', target=target)
                     await voice_mute.create()       
-                    should_be_muted = True              
+                    should_be_muted = True           
+                    alias = SimpleNamespace(alias_type='voice_mute')
+                    duration = DurationObject('1h')
+                    await History.send_entry(alias, after.channel, duration, 'Role-specific', True, False, member, None, 'Right-click voice-mute.')
             if before.mute and not after.mute and before.channel:
                 await VoiceMute.delete_by_channel_guild_member_and_target(channel_snowflake=before.channel.id, guild_snowflake=before.channel.guild.id, member_snowflake=member.id, target=target)
                 should_be_muted = False
+                alias = SimpleNamespace(alias_type='unvoice_mute')
+                duration = DurationObject('0')
+                await History.send_entry(alias, after.channel, duration, 'Role-specific', True, False, member, None, 'Right-click undo voice-mute.')
             if after.mute != should_be_muted:
                 try:
                     await member.edit(mute=should_be_muted, reason=f'Setting mute to {should_be_muted} in {after.channel.name}')
