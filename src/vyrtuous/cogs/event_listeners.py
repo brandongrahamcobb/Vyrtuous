@@ -186,7 +186,7 @@ class EventListeners(commands.Cog):
             voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=after.channel.id, guild_snowflake=after.channel.guild.id, member_snowflake=member.id, target='user')
             if voice_mute:
                 should_be_muted = True
-            if not before.mute and after.mute:
+            if not before.mute and before.channel and after.mute:
                 if member.id in Invincibility.get_invincible_members():
                     embed = discord.Embed(
                         title=f'\u1F4AB {member.display_name} is a hero!',
