@@ -20,3 +20,40 @@ SET enabled = EXCLUDED.enabled,
     snowflakes = EXCLUDED.snowflakes,
     updated_at = EXCLUDED.updated_at;
 COMMIT;
+
+
+ALTER TABLE moderation_logs RENAME TO moderation_logs_old;
+CREATE TABLE moderation_logs (
+    action_type TEXT NOT NULL,
+    channel_snowflake BIGINT,
+    executor_member_snowflake BIGINT,
+    expires_at TIMESTAMPTZ,
+    guild_snowflake BIGINT NOT NULL,
+    highest_role TEXT,
+    is_modification BOOLEAN NOT NULL DEFAULT FALSE,
+    target_member_snowflake BIGINT,
+    reason TEXT
+);
+
+INSERT INTO moderation_logs (
+    action_type,
+    channel_snowflake,
+    executor_member_snowflake,
+    expires_at,
+    guild_snowflake,
+    highest_role,
+    is_modification,
+    target_member_snowflake,
+    reason
+)
+SELECT
+    action_type,
+    channel_id,
+    executor_discord_snowflake,
+    NULL,
+    guild_id,
+    NULL,
+    FALSE,
+    target_discord_snowflake,
+    reason
+FROM moderation_logs_old;
