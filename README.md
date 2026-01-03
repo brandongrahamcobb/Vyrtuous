@@ -24,7 +24,7 @@
 * `untmute <member>` - Undoes a text-mutes for a member.
 * `unvmute <member>` - Undoes a voice-mute for a member.
 
-## Static Commands
+# Static Commands
 
 ## Guild Owner
 * `arole <role>` - Promotes all members part of a role to administrator along with active tracking of who retains the role or loses the role, revoking or granting administrator if a role removed or given, respectively.
