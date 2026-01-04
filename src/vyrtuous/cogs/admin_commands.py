@@ -65,7 +65,7 @@ class AdminCommands(commands.Cog):
     @app_commands.describe(
         alias_name='Alias/Pseudonym',
         moderation_type='One of: vegan, carnist, vmute, unvmute, ban, unban, flag, unflag, tmute, untmute, role, unrole',
-        channel='Tag a channel or include its snowflake ID',
+        channel='Tag a channel or include its ID',
         role='Role ID (only for role/unrole)'
     )
     async def create_alias_app_command(
@@ -110,7 +110,7 @@ class AdminCommands(commands.Cog):
         ctx: commands.Context,
         moderation_type: ModerationType = commands.parameter(default=None, description='One of: `vegan`, `carnist`, `vmute`, `unvmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
         alias_name: Optional[str] = commands.parameter(default=None, description='Alias/Pseudonym'),
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID'),
         *,
         role: RoleSnowflake = commands.parameter(default=None, description='Role ID (only for role/unrole)')
     ):
@@ -387,7 +387,7 @@ class AdminCommands(commands.Cog):
     @app_commands.command(name='cap', description='Cap alias duration for mods.')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     @app_commands.describe(
-        channel='Tag a channel or include its snowflake ID',
+        channel='Tag a channel or include its ID',
         moderation_type='One of: `mute`, `ban`, `tmute`',
         hours='(+|-)duration(m|h|d), 0=permanent, default=24h'
     )
@@ -432,7 +432,7 @@ class AdminCommands(commands.Cog):
     async def cap_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID'),
         moderation_type: ModerationType = commands.parameter(default=None, description='One of: `mute`, `ban`, `tmute`'),
         *,
         hours: int = commands.parameter(default=24, description='# of hours')
@@ -468,7 +468,7 @@ class AdminCommands(commands.Cog):
 
     # DONE
     # @app_commands.command(name='chown', description='Change the owner of a temporary room.', hidden=True)
-    # @app_commands.describe(member='Tag a user or provide their snowflake ID', channel='Tag a channel or provide it\'s snowflake ID')
+    # @app_commands.describe(member='Tag a user or provide their ID', channel='Tag a channel or provide it\'s ID')
     # @is_system_owner_developer_guild_owner_administrator_predicator()
     # async def change_temp_room_owner_app_command(
     #     self,
@@ -500,8 +500,8 @@ class AdminCommands(commands.Cog):
     async def change_temp_room_owner_text_command(
         self,
         ctx,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or provide it\'s snowflake ID'),
-        member: MemberSnowflake = commands.parameter(default=None, description='Tag a user or provide their snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or provide it\'s ID'),
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a user or provide their ID')
     ):
         state = State(ctx)
         channel_obj = None
@@ -525,7 +525,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @app_commands.command(name='clear', description='Reset channel/member.')
     @app_commands.describe(
-        scope='Tag a channel/member or include the snowflake ID',
+        scope='Tag a channel/member or include the ID',
         action_type="Specify one of: 'alias', 'all', 'ban', 'coord', 'flag', 'mod', 'temp', 'tmute', 'vegan' or 'vmute', 'vr'"
     )
     @is_system_owner_developer_guild_owner_administrator_predicator()
@@ -543,12 +543,13 @@ class AdminCommands(commands.Cog):
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F You must specify either `alias`, `all`, `ban`, `coord`, `flag`, `mod`, `temp`, `tmute`, `vegan` or `vmute` or `vr`.")
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')   
+                return await state.end(error=f'\u274C {str(e).capitalize()}')  
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except Exception as e:
             try:
                 member_obj = await self.member_service.resolve_member(interaction, scope)
+                highest_role = await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -662,7 +663,7 @@ class AdminCommands(commands.Cog):
     async def clear_channel_access_text_command(
         self,
         ctx: commands.Context,
-        scope: str = commands.parameter(default=None, description='Tag a channel, a member or include the snowflake ID'),
+        scope: str = commands.parameter(default=None, description='Tag a channel, a member or include the ID'),
         *,
         action_type: str = commands.parameter(default=None, description="Specify one of: 'alias','all', 'ban', 'coord', 'flag', 'mod', 'temp', 'tmute', 'vegan' or 'vmute'")
     ):
@@ -680,6 +681,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 member_obj = await self.member_service.resolve_member(ctx, scope)
+                highest_role = await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -789,7 +791,7 @@ class AdminCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='coord', description='Grant/revoke coords.')
-    @app_commands.describe(member='Tag a member or include their snowflake ID', channel='Tag a channel or include its snowflake ID')
+    @app_commands.describe(member='Tag a member or include their ID', channel='Tag a channel or include its ID')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def create_coordinator_app_command(
         self,
@@ -832,8 +834,8 @@ class AdminCommands(commands.Cog):
     async def create_coordinator_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         channel_obj = None
@@ -868,7 +870,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @app_commands.command(name='mtrack', description='Setup history.')
     @app_commands.describe(
-        channel='Tag a channel or include its snowflake ID',
+        channel='Tag a channel or include its ID',
         scope='create | modify | delete',
         entry_type='Type of logs: member, channel, general',
         snowflakes='Optional list of member IDs to include in logs'
@@ -943,7 +945,7 @@ class AdminCommands(commands.Cog):
     async def modify_tracking_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID.'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID.'),
         scope: Optional[str] = commands.parameter(default=None, description='create | modify | delete.'),
         entry_type: Optional[str] = commands.parameter(default=None, description='Type of logs: member, channel, general.'),
         *snowflakes: Optional[int]
@@ -1006,8 +1008,8 @@ class AdminCommands(commands.Cog):
     # DONE
     @app_commands.command(name='rmv', description='VC move.')
     @app_commands.describe(
-        source_channel='Tag the source channel or include its snowflake ID',
-        target_channel='Tag the target channel or include its snowflake ID'
+        source_channel='Tag the source channel or include its ID',
+        target_channel='Tag the target channel or include its ID'
     )
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def room_move_all_app_command(
@@ -1052,8 +1054,8 @@ class AdminCommands(commands.Cog):
     async def room_move_all_text_command(
         self,
         ctx: commands.Context,
-        source_channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
-        target_channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        source_channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID'),
+        target_channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         failed, moved = [], []
@@ -1087,7 +1089,7 @@ class AdminCommands(commands.Cog):
             
     # DONE
     @app_commands.command(name='smute', description='Server mute/server unmute.')
-    @app_commands.describe(member='Tag a member or include their snowflake ID', reason='Optional reason (required for 7 days or more)')
+    @app_commands.describe(member='Tag a member or include their ID', reason='Optional reason (required for 7 days or more)')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def toggle_server_mute_app_command(
         self,
@@ -1131,7 +1133,7 @@ class AdminCommands(commands.Cog):
     async def toggle_server_mute_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their ID'),
         *,
         reason: Optional[str] = commands.parameter(default='No reason provided', description='Optional reason (required for 7 days or more)')
     ):
@@ -1284,7 +1286,7 @@ class AdminCommands(commands.Cog):
     async def stage_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID'),
         *,
         duration: Duration = commands.parameter(default=DurationObject('1h'), description='Options: (+|-)duration(m|h|d) \n 0 - permanent / 24h - default')
     ):
@@ -1393,7 +1395,7 @@ class AdminCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='temp', description='Toggle a temporary room and assign an owner.')
-    @app_commands.describe(channel='Tag a channel or include its snowflake ID', owner='Tag a member or include their snowflake ID')
+    @app_commands.describe(channel='Tag a channel or include its ID', owner='Tag a member or include their ID')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def toggle_temp_room_app_command(
         self,
@@ -1443,7 +1445,7 @@ class AdminCommands(commands.Cog):
     async def toggle_temp_room_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID'),
         owner: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their Discord ID')
     ):
         state = State(ctx)
@@ -1823,7 +1825,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @app_commands.command(name='track', description='Toggle tracking.')
     @is_system_owner_developer_guild_owner_administrator_predicator()
-    @app_commands.describe(channel='Tag a channel or include its snowflake ID')
+    @app_commands.describe(channel='Tag a channel or include its ID')
     async def toggle_tracking_app_command(
         self,
         interaction: discord.Interaction,
@@ -1854,7 +1856,7 @@ class AdminCommands(commands.Cog):
     async def toggle_tracking_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         channel_obj = None
@@ -2255,7 +2257,7 @@ class AdminCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name='vr', description='Start/stop video-only room.')
-    @app_commands.describe(channel='Tag a channel or include the snowflake ID')
+    @app_commands.describe(channel='Tag a channel or include the ID')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def toggle_video_room_app_command(
         self,
@@ -2292,7 +2294,7 @@ class AdminCommands(commands.Cog):
     async def toggle_video_room_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include the snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include the ID')
     ):
         state = State(ctx)
         action = None

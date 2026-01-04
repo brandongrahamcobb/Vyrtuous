@@ -40,7 +40,7 @@ class CoordinatorCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='mod', description="Grant/revoke mods.")
-    @app_commands.describe(member='Tag a member or include their snowflake ID', channel='Tag a channel or include its snowflake ID')
+    @app_commands.describe(member='Tag a member or include their ID', channel='Tag a channel or include its ID')
     @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def create_moderator_app_command(
         self,
@@ -85,8 +85,8 @@ class CoordinatorCommands(commands.Cog):
     async def create_moderator_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         action = None
@@ -121,7 +121,7 @@ class CoordinatorCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='rmute', description='Room mute (except yourself).')
-    @app_commands.describe(channel='Tag a channel or include its snowflake ID')
+    @app_commands.describe(channel='Tag a channel or include its ID')
     @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def room_mute_app_command(
         self,
@@ -188,7 +188,7 @@ class CoordinatorCommands(commands.Cog):
     async def room_mute_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         channel_obj = None
@@ -246,7 +246,7 @@ class CoordinatorCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name='xrmute', description='Unmute all.')
-    @app_commands.describe(channel='Tag a channel or include its snowflake ID')
+    @app_commands.describe(channel='Tag a channel or include its ID')
     @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     async def room_unmute_app_command(
         self,
@@ -310,7 +310,7 @@ class CoordinatorCommands(commands.Cog):
     async def room_unmute_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         channel_obj = None

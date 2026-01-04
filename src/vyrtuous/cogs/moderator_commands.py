@@ -1065,8 +1065,8 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='del', description='Delete message.')
     @app_commands.describe(
-        message='Message snowflake ID',
-        channel='Tag a channel or include its snowflake ID'
+        message='Message ID',
+        channel='Tag a channel or include its ID'
     )
     @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
     async def delete_message_app_command(
@@ -1909,7 +1909,7 @@ class ModeratorCommands(commands.Cog):
         self,
         ctx: commands.Context,
         old_name: Optional[str] = commands.parameter(default=None, description='Provide a channel name'),
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         channel_obj = None
@@ -2320,7 +2320,7 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='mstage', description='Stage mute/unmute.')
-    @app_commands.describe(member='Tag a member or include their snowflake ID')
+    @app_commands.describe(member='Tag a member or include their ID')
     async def stage_mute_app_command(
         self,
         interaction: discord.Interaction,
@@ -2379,8 +2379,8 @@ class ModeratorCommands(commands.Cog):
     async def stage_mute_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
-        channel: ChannelSnowflake = commands.parameter(default=None, description="Tag a channel or include it's snowflake ID")
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their ID'),
+        channel: ChannelSnowflake = commands.parameter(default=None, description="Tag a channel or include it's ID")
     ):
         state = State(ctx)
         channel_obj = None

@@ -1231,7 +1231,7 @@ class EveryoneCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its snowflake ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         channel_obj = None

@@ -38,48 +38,48 @@ class Aliases(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.alias_help = {
             'ban': [
-                '**member** (Required): Tag a member or include their snowflake ID',
+                '**member** (Required): Tag a member or include their ID',
                 '**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason',
                 '**reason** (Optional): Reason (required for 7 days or more)'
             ],
             'vegan': [
-                '**member** (Required): Tag a member or include their snowflake ID'
+                '**member** (Required): Tag a member or include their ID'
             ],
             'carnist': [
-                '**member** (Required): Tag a member or include their snowflake ID'
+                '**member** (Required): Tag a member or include their ID'
             ],
             'unban': [
-                '**member** (Required): Tag a member or include their snowflake ID'
+                '**member** (Required): Tag a member or include their ID'
             ],
             'flag': [
-                '**member** (Required): Tag a member or include their snowflake ID',
+                '**member** (Required): Tag a member or include their ID',
                 '**reason** (Optional): Reason for flagging the user'
             ],
             'unflag': [
-                '**member** (Required): Tag a member or include their snowflake ID'
+                '**member** (Required): Tag a member or include their ID'
             ],
             'voice_mute': [
-                '**member** (Required): Tag a member or include their snowflake ID',
+                '**member** (Required): Tag a member or include their ID',
                 '**duration** (Optional): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason',
                 '**reason** (Optional): Reason (required for 7 days or more)'
             ],
             'unvoice_mute': [
-                '**member** (Required): Tag a member or include their snowflake ID'
+                '**member** (Required): Tag a member or include their ID'
             ],
             'text_mute': [
-                '**member** (Required): Tag a member or include their snowflake ID',
+                '**member** (Required): Tag a member or include their ID',
                 '**duration** (Required): (+|-)duration(m|h|d)\n0 = permanent / 24h = default\n`+` to append, `-` to delete, `=` to overwrite reason',
                 '**reason** (Required): Reason (required for 7 days or more)'
             ],
             'untext_mute': [
-                '**member** (Required): Tag a member or include their snowflake ID'
+                '**member** (Required): Tag a member or include their ID'
             ],
             'role': [
-                '**member** (Required): Tag a member or include their snowflake ID',
+                '**member** (Required): Tag a member or include their ID',
                 '**role** (Required): Role to assign'
             ],
             'unrole': [
-                '**member** (Required): Tag a member or include their snowflake ID',
+                '**member** (Required): Tag a member or include their ID',
                 '**role** (Required): Role to remove'
             ]
         }

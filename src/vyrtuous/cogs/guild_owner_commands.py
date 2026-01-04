@@ -207,7 +207,7 @@ class GuildOwnerCommands(commands.Cog):
             
     # DONE
     @app_commands.command(name='hero', description='Grant/revoke invincibility.')
-    @app_commands.describe(member='Tag a member or include their snowflake ID')
+    @app_commands.describe(member='Tag a member or include their ID')
     @is_system_owner_developer_guild_owner_predicator()
     async def invincibility_app_command(
         self,
@@ -245,7 +245,7 @@ class GuildOwnerCommands(commands.Cog):
     async def invincibility_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(description='Tag a member or include their snowflake ID')
+        member: MemberSnowflake = commands.parameter(description='Tag a member or include their ID')
     ):
         state = State(ctx)
         enabled = None

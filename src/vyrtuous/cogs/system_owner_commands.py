@@ -42,7 +42,7 @@ class SystemOwnerCommands(commands.Cog):
     @app_commands.command(name='adev', description='Assign developer.')
     @app_commands.describe(
         reference='Include an issue reference ID',
-        member='Tag a member or include their snowflake ID',
+        member='Tag a member or include their ID',
     )
     @is_system_owner_predicator()
     async def toggle_issue_to_developer_app_command(
@@ -108,7 +108,7 @@ class SystemOwnerCommands(commands.Cog):
         self,
         ctx: commands.Context,
         reference: Optional[str] = commands.parameter(default=None, description='Include an issue reference ID'),
-        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their ID'),
     ):
         state = State(ctx)
         member_obj = None
@@ -162,7 +162,7 @@ class SystemOwnerCommands(commands.Cog):
             
     # DONE
     @app_commands.command(name='dev', description="Grant/revoke devs.")
-    @app_commands.describe(member='Tag a member or include their snowflake ID')
+    @app_commands.describe(member='Tag a member or include their ID')
     @is_system_owner_predicator()
     async def create_developer_app_command(
         self,
@@ -200,7 +200,7 @@ class SystemOwnerCommands(commands.Cog):
     async def create_developer_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their snowflake ID'),
+        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their ID'),
     ):
         state = State(ctx)
         action = None
