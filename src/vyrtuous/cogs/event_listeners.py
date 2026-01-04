@@ -134,7 +134,7 @@ class EventListeners(commands.Cog):
         for video_room in VideoRoom.video_rooms:
             if after.channel.id != video_room.channel_snowflake:
                 continue
-            if not after.self_video and after.channel != before.channel:
+            if not after.self_video and after.channel != before.channel and after.channel.permissions_for(channel.guild.me).send_messages:
                 await VideoRoom.enforce_video_message(channel_snowflake=after.channel.id, member_snowflake=member.id, message=f'{self.emoji.get_random_emoji()} Hi {member.mention}, {after.channel.mention} is a video only room. You have 5 minutes to turn on your camera!')
             key = (member.guild.id, member.id)
             if before.channel != after.channel:

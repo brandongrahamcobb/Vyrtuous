@@ -134,6 +134,7 @@ class Aliases(commands.Cog):
         try:
             is_channel_scope = False
             is_modification = False
+            override = False
             reason = 'No reason provided.'
             ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)               
             cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='ban')
@@ -182,8 +183,8 @@ class Aliases(commands.Cog):
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.number == 0:
-                    is_modification = True
-                if not is_modification:
+                    override = True
+                if not override:
                     ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)   
                     if ban:
                         try:
@@ -197,6 +198,12 @@ class Aliases(commands.Cog):
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')  
                 reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
+                if override:
+                    await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=None, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
+                else:
+                    ban = Ban(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
+                    await ban.create()
+                
     
             try:
                 await channel_obj.set_permissions(member_obj, view_channel=False, reason=reason)
@@ -209,8 +216,6 @@ class Aliases(commands.Cog):
                 except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
                     
-            ban = Ban(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
-            await ban.create()
     
             await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
             embed = discord.Embed(
@@ -410,6 +415,7 @@ class Aliases(commands.Cog):
         try:
             is_channel_scope = False
             is_modification = False
+            override = False
             reason = 'No reason provided.'
     
             cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='text_mute')
@@ -457,8 +463,8 @@ class Aliases(commands.Cog):
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.number == 0:
-                    is_modification = True
-                if not is_modification:
+                    override = True
+                if not override:
                     text_mute = await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)   
                     if text_mute:
                         try:
@@ -472,14 +478,17 @@ class Aliases(commands.Cog):
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}') 
                 reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
+                if override:
+                    await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=None, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
+                else:
+                    text_mute = TextMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
+                    await text_mute.create()
     
             try:
                 await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False, reason=reason)
             except discord.Forbidden as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
                 
-            text_mute = TextMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason)
-            await text_mute.create()
     
             await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
@@ -519,6 +528,7 @@ class Aliases(commands.Cog):
         try:
             is_channel_scope = False
             is_modification = False
+            override = False
             target = 'user'
             reason = 'No reason provided.'
     
@@ -567,8 +577,8 @@ class Aliases(commands.Cog):
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
                 if duration.number == 0:
-                    is_modification = True
-                if not is_modification:
+                    override = True
+                if not override:
                     voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, target=target)   
                     if voice_mute:
                         try:
@@ -582,16 +592,19 @@ class Aliases(commands.Cog):
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}') 
                 reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
-    
+                if override:
+                    await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=None, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
+                else:
+                    voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target=target)
+                    await voice_mute.create()
+
+
             if member_obj.voice and member_obj.voice.channel and member_obj.voice.channel.id == channel_obj.id:
                 is_channel_scope = True
                 try:
                     await member_obj.edit(mute=True, reason=reason)
                 except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-    
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=duration.expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, reason=reason, target=target)
-            await voice_mute.create()
     
             await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
