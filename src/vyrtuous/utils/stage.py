@@ -192,3 +192,12 @@ class Stage:
                 DELETE FROM active_stages
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2
             ''', channel_snowflake, guild_snowflake)
+
+    @classmethod
+    async def delete_by_guild(self, guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute('''
+                DELETE FROM active_stages
+                WHERE guild_snowflake=$1
+            ''', guild_snowflake)

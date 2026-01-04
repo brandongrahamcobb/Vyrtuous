@@ -24,7 +24,6 @@ from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import Administrator
-from vyrtuous.utils.all import All
 from vyrtuous.utils.developer import Developer
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.moderator import Moderator

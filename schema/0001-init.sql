@@ -19,15 +19,21 @@ CREATE TABLE active_server_voice_mutes (
 );
 
 CREATE TABLE moderation_logs (
-    id BIGSERIAL PRIMARY KEY,
-    action_type TEXT NOT NULL,
-    target_discord_snowflake BIGINT,
-    executor_discord_snowflake BIGINT NOT NULL,
-    guild_id BIGINT NOT NULL,
-    channel_id BIGINT,
+    action_type VARCHAR(255) NOT NULL,
+    channel_members_voice_count INTEGER DEFAULT 0 NOT NULL,
+    channel_snowflake BIGINT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    executor_member_snowflake BIGINT NOT NULL,
+    expires_at TIMESTAMP,
+    guild_members_offline_and_online_member_count INTEGER DEFAULT 0 NOT NULL,
+    guild_members_online_count INTEGER DEFAULT 0 NOT NULL,
+    guild_members_voice_count INTEGER DEFAULT 0 NOT NULL,
+    guild_snowflake BIGINT NOT NULL,
+    highest_role VARCHAR(255),
+    is_modification BOOLEAN DEFAULT FALSE NOT NULL,
+    target_member_snowflake BIGINT,
     reason TEXT,
-    metadata JSONB DEFAULT '{}'::jsonb,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE TABLE statistic_channels (

@@ -539,7 +539,9 @@ class AdminCommands(commands.Cog):
         state = State(interaction)
         channel_obj = None
         highest_role = None
+        is_modification = True
         member_obj = None
+        target = 'user'
         if not action_type:
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F You must specify either `alias`, `all`, `ban`, `coord`, `flag`, `mod`, `temp`, `tmute`, `vegan` or `vmute` or `vr`.")
@@ -556,14 +558,14 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if channel_obj:
-            highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You must be a system owner, a developer or guild owner to delete channel associations.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            view = VerifyView(action_type=action_type, author_snowflake=interaction.user.id, guild_snowflake=interaction.guild.snowflake, member_snowflake=member_obj.id)
+            view = VerifyView(action_type=action_type, author_snowflake=interaction.user.id, guild_snowflake=interaction.guild.id, channel_snowflake=channel_obj.id)
             embed = view.build_embed(action_type=view.action_type, target=view.target)
             await interaction.response.send_message(embed=embed, view=view)
             await view.wait()
@@ -572,27 +574,27 @@ class AdminCommands(commands.Cog):
                 match action_type.lower():
                     case 'all':
                         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                        await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Ban.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                        await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Flag.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                        await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                        await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                        await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await TextMute.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
+                        await Vegan.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
+                        await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, target=target)
                         await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         msg = f'Deleted all associated aliases, moderation actions, roles and room setups for {channel_obj.mention}.'
                     case 'alias':
                         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         msg = f'Deleted all associated aliases in {channel_obj.mention}.'
                     case 'ban':
-                        await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Ban.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated bans in {channel_obj.mention}.'
                     case 'coord':
                         await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         msg = f'Deleted all associated coordinators in {channel_obj.mention}.'
                     case 'flag':
-                        await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Flag.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated flags in {channel_obj.mention}.'
                     case 'mod':
                         await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -601,13 +603,13 @@ class AdminCommands(commands.Cog):
                         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         msg = f'Deleted the associated temporary channel for {channel_obj.mention}.'
                     case 'tmute':
-                        await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await TextMute.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
                     case 'vegan':
-                        await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Vegan.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated new vegans in {channel_obj.mention}.'
                     case 'vmute':
-                        await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, target=target)
                         msg = f'Deleted all associated voice-mutes in {channel_obj.mention}.'
                     case 'vr':
                         await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
@@ -622,38 +624,38 @@ class AdminCommands(commands.Cog):
             embed = view.build_embed(action_type=view.action_type, target=view.target)
             await interaction.response.send_message(embed=embed, view=view)
             await view.wait()
-            state = State(interaction)
+            state = State(ctx)
             if view.result == True:
                 match action_type.lower():
                     case 'all':
-                        await Ban.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Ban.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         await Coordinator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                        await Flag.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Flag.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         await Moderator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                        await TextMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                        await Vegan.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                        await VoiceMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await TextMute.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
+                        await Vegan.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
+                        await VoiceMute.clear_by_member_guild_highest_role_modification_and_target(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id, target=target)
                         msg = f'Deleted all associated moderation actions and roles for {member_obj.mention}.'
                     case 'ban':
-                        await Ban.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Ban.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated bans on {member_obj.mention}.'
                     case 'coord':
                         await Coordinator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated coordinator channels on {member_obj.mention}.'
                     case 'flag':
-                        await Flag.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Flag.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated flags on {member_obj.mention}.'
                     case 'mod':
                         await Moderator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated moderator channels on {member_obj.mention}.'
                     case 'tmute':
-                        await TextMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await TextMute.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated text-mutes on {member_obj.mention}.'
                     case 'vegan':
-                        await Vegan.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Vegan.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated vegan channels on {member_obj.mention}.'
                     case 'vmute':
-                        await VoiceMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await VoiceMute.clear_by_guild_highest_role_member_modification_and_target(ctx_interaction_or_message=interaction, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id, target=target)
                         msg = f'Deleted all associated voice-mutes on {member_obj.mention}.'
                     case _:
                         try:
@@ -683,7 +685,9 @@ class AdminCommands(commands.Cog):
         state = State(ctx)
         channel_obj = None
         highest_role = None
+        is_modification = True
         member_obj = None
+        target = 'user'
         if not action_type:
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F You must specify either `alias`, `all`, `ban`, `coord`, `flag`, `mod`, `temp`, `tmute`, `vegan` or `vmute` or `vr`.")
@@ -700,8 +704,8 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')  
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if channel_obj:
-            highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You must be a system owner, a developer or guild owner to delete channel associations.')
@@ -716,27 +720,27 @@ class AdminCommands(commands.Cog):
                 match action_type.lower():
                     case 'all':
                         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                        await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Ban.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                        await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Flag.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                        await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                        await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                        await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await TextMute.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
+                        await Vegan.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
+                        await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, target=target)
                         await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         msg = f'Deleted all associated aliases, moderation actions, roles and room setups for {channel_obj.mention}.'
                     case 'alias':
                         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         msg = f'Deleted all associated aliases in {channel_obj.mention}.'
                     case 'ban':
-                        await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Ban.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated bans in {channel_obj.mention}.'
                     case 'coord':
                         await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         msg = f'Deleted all associated coordinators in {channel_obj.mention}.'
                     case 'flag':
-                        await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Flag.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated flags in {channel_obj.mention}.'
                     case 'mod':
                         await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
@@ -745,13 +749,13 @@ class AdminCommands(commands.Cog):
                         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         msg = f'Deleted the associated temporary channel for {channel_obj.mention}.'
                     case 'tmute':
-                        await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await TextMute.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
                     case 'vegan':
-                        await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Vegan.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated new vegans in {channel_obj.mention}.'
                     case 'vmute':
-                        await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, target=target)
                         msg = f'Deleted all associated voice-mutes in {channel_obj.mention}.'
                     case 'vr':
                         await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
@@ -770,34 +774,34 @@ class AdminCommands(commands.Cog):
             if view.result == True:
                 match action_type.lower():
                     case 'all':
-                        await Ban.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Ban.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         await Coordinator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                        await Flag.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Flag.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         await Moderator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                        await TextMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                        await Vegan.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                        await VoiceMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await TextMute.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
+                        await Vegan.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
+                        await VoiceMute.clear_by_guild_highest_role_member_modification_and_target(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id, target=target)
                         msg = f'Deleted all associated moderation actions and roles for {member_obj.mention}.'
                     case 'ban':
-                        await Ban.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Ban.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated bans on {member_obj.mention}.'
                     case 'coord':
                         await Coordinator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated coordinator channels on {member_obj.mention}.'
                     case 'flag':
-                        await Flag.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Flag.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated flags on {member_obj.mention}.'
                     case 'mod':
                         await Moderator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated moderator channels on {member_obj.mention}.'
                     case 'tmute':
-                        await TextMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await TextMute.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated text-mutes on {member_obj.mention}.'
                     case 'vegan':
-                        await Vegan.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Vegan.clear_by_guild_highest_role_member_and_modification(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id)
                         msg = f'Deleted all associated vegan channels on {member_obj.mention}.'
                     case 'vmute':
-                        await VoiceMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await VoiceMute.clear_by_guild_highest_role_member_modification_and_target(ctx_interaction_or_message=ctx, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, member_snowflake=member_obj.id, target=target)
                         msg = f'Deleted all associated voice-mutes on {member_obj.mention}.'
                     case _:
                         try:
@@ -1056,7 +1060,7 @@ class AdminCommands(commands.Cog):
                 moved.append(member)
             except discord.Forbidden as e:
                 failed.append(member)
-                logger.warning(f'\U000026A0\U0000FE0F Missing permissions to move {member}.')
+                logger.warning(f'Unable to move member {member.display_name} ({member.id}) from channel {source_channel_obj.name} ({source_channel}) to channel {target_channel_obj.name} ({target_channel}) in guild {ctx.guild.name} ({ctx.guild.id}).')
         embed = discord.Embed(
             title=f'{self.emoji.get_random_emoji()} Moved {source_channel_obj.mention} to {target_channel_obj.mention}',
             color=discord.Color.green()
@@ -1095,7 +1099,7 @@ class AdminCommands(commands.Cog):
                 moved.append(member)
             except discord.Forbidden as e:
                 failed.append(member)
-                logger.warning(f'\U000026A0\U0000FE0F Missing permissions to move {member}.')
+                logger.warning(f'Unable to move member {member.display_name} ({member.id}) from channel {source_channel_obj.name} ({source_channel}) to channel {target_channel_obj.name} ({target_channel}) in guild {ctx.guild.name} ({ctx.guild.id}).')
         embed = discord.Embed(
             title=f'{self.emoji.get_random_emoji()} Moved {source_channel_obj.mention} to {target_channel_obj.mention}',
             color=discord.Color.green()
@@ -1245,7 +1249,7 @@ class AdminCommands(commands.Cog):
                         await member.edit(mute=False, reason='Stage ended — no user-specific mute found')
                         succeeded_members.append(member)
                     except discord.Forbidden as e:
-                        logger.warning(f'Failed to unmute member: {member}')
+                        logger.warning(f'Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {interaction.guild.name} ({interaction.guild.id}).')
                         failed_members.append(member)
             description_lines = [
                 f'**Channel:** {channel_obj.mention}',
@@ -1274,7 +1278,7 @@ class AdminCommands(commands.Cog):
                         await member.edit(mute=True)
                     muted.append(member)
                 except Exception as e:
-                    logger.warning(f'Failed to mute.')
+                    logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {interaction.guild.name} ({interaction.guild.id}).')
                     failed.append(member)
             description_lines = [
                 f'**Channel:** {channel_obj.mention}',
@@ -1358,7 +1362,7 @@ class AdminCommands(commands.Cog):
                         await member.edit(mute=False, reason='Stage ended — no user-specific mute found')
                         succeeded_members.append(member)
                     except discord.Forbidden as e:
-                        logger.warning(f'Failed to unmute member: {member}')
+                        logger.warning(f'Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {ctx.guild.name} ({ctx.guild.id}).')
                         failed_members.append(member)
             description_lines = [
                 f'**Channel:** {channel_obj.mention}',
@@ -1387,7 +1391,7 @@ class AdminCommands(commands.Cog):
                         await member.edit(mute=True)
                     muted.append(member)
                 except Exception as e:
-                    logger.warning(f'Failed to mute.')
+                    logger.warning(f'Unable to voice-mute for member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {ctx.guild.name} ({ctx.guild.id}).')
                     failed.append(member)
             description_lines = [
                 f'**Channel:** {channel_obj.mention}',

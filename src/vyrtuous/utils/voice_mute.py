@@ -18,6 +18,7 @@
 from datetime import datetime
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.history import History
 
 class VoiceMute:
 
@@ -52,13 +53,22 @@ class VoiceMute:
             ''', channel_snowflake, guild_snowflake)
 
     @classmethod
-    async def delete_by_guild_and_member(self, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
+    async def delete_by_guild_member_and_target(self, guild_snowflake: Optional[int], member_snowflake: Optional[int], target: Optional[str]):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
               await conn.execute('''
                 DELETE FROM active_voice_mutes
-                WHERE guild_snowflake=$1 AND member_snowflake=$2 
-            ''', guild_snowflake, member_snowflake)
+                WHERE guild_snowflake=$1 AND member_snowflake=$2 AND target=$3
+            ''', guild_snowflake, member_snowflake, target)
+
+    @classmethod
+    async def delete_by_guild_and_target(self, guild_snowflake: Optional[int], target: Optional[str]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+              await conn.execute('''
+                DELETE FROM active_voice_mutes
+                WHERE guild_snowflake=$1 AND target=$2
+            ''', guild_snowflake, target)
 
     @classmethod
     async def delete_by_channel_guild_member_and_target(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int], target: Optional[str]):
@@ -184,3 +194,37 @@ class VoiceMute:
             for row in rows:
                 voice_mutes.append(VoiceMute(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason'], target=row['target']))
         return voice_mutes
+
+    @classmethod
+    async def clear_by_channel_guild_highest_role_modification_and_target(cls, ctx_interaction_or_message, channel_snowflake: Optional[int], guild_snowflake: Optional[int], highest_role: Optional[str], is_modification: bool, target: Optional[str]):
+        voice_mutes = await cls.fetch_by_channel_guild_and_target(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, target=target)
+        await cls.delete_by_channel_guild_and_target(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, target=target)
+        if voice_mutes:
+            for voice_mute in voice_mutes:
+                await History.save_entry(
+                    ctx_interaction_or_message=ctx_interaction_or_message,
+                    action_type='unvmute',
+                    channel_snowflake=channel_snowflake,
+                    duration=None,
+                    highest_role=highest_role,
+                    is_modification=is_modification,
+                    member_snowflake=voice_mute.member_snowflake,
+                    reason="Clear command"
+                )
+
+    @classmethod
+    async def clear_by_guild_highest_role_member_modification_and_target(cls, ctx_interaction_or_message, guild_snowflake: Optional[int], highest_role: Optional[str], is_modification: bool, member_snowflake: Optional[int], target: Optional[str]):
+        voice_mutes = await cls.fetch_by_guild_member_and_target(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target=target)
+        await cls.delete_by_guild_member_and_target(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target=target)
+        if voice_mutes:
+            for voice_mute in voice_mutes:
+                await History.save_entry(
+                    ctx_interaction_or_message=ctx_interaction_or_message,
+                    action_type='unvmute',
+                    channel_snowflake=voice_mute.channel_snowflake,
+                    duration=None,
+                    highest_role=highest_role,
+                    is_modification=is_modification,
+                    member_snowflake=member_snowflake,
+                    reason="Clear command"
+                )

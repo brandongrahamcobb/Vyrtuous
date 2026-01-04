@@ -74,7 +74,7 @@ class HelpCommand(commands.Cog):
                 if PERMISSION_TYPES.index(user_highest) >= PERMISSION_TYPES.index(perm_level):
                     available.append(command)
             except Exception as e:
-                logger.warning(f'\U000026A0\U0000FE0F Exception while evaluating command {command}: {str(e).capitalize()}')
+                logger.warning(f'Exception while evaluating command {command}: {str(e).capitalize()}')
         return available
     
     async def get_command_permission_level(self, bot, command):

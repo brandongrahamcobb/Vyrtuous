@@ -28,6 +28,7 @@ class Invincibility:
 
     @classmethod
     async def unrestrict(cls, guild_snowflake, member_snowflake):
+        target = 'user'
         bot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         member = guild.get_member(member_snowflake)
@@ -36,24 +37,28 @@ class Invincibility:
         voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target='user')
         if bans:
             for ban in bans:
-                try:
-                    await guild.unban(ban.member_snowflake, reason='Toggle bans')
-                except:
-                    pass
+                channel = guild.get_channel(ban.channel_snowflake)
+                if channel:
+                    try:
+                        await channel.set_permissions(member, overwrite=None)
+                    except discord.Forbidden:
+                        logger.warning(f'Unable to unban {member.name} ({member.id}) in {channel.name} ({channel.id}).')
         if text_mutes:
             for text_mute in text_mutes:
-                ch = guild.get_channel(text_mute.channel_snowflake)
-                text_mute_role = discord.utils.get(guild.roles, name='Toggle text mutes')
-                if ch and text_mute_role and text_mute_role in member.roles:
-                    await member.remove_roles(text_mute_role)
+                channel = guild.get_channel(text_mute.channel_snowflake)
+                if channel:
+                    try:
+                        await channel.set_permissions(member, send_messages=True)
+                    except discord.Forbidden:
+                        logger.warning(f'Unable to untmute {member.name} ({member.id}) in {channel.name} ({channel.id}).')
         if voice_mutes:
             for voice_mute in voice_mutes:
-                ch = guild.get_channel(voice_mute.channel_snowflake)
-                if ch and member.voice and member.voice.mute:
+                channel = guild.get_channel(voice_mute.channel_snowflake)
+                if channel and member.voice and member.voice.mute:
                     await member.edit(mute=False)
         await Ban.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
         await TextMute.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
-        await VoiceMute.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        await VoiceMute.delete_by_guild_member_and_target(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake, target=target)
 
     @classmethod
     def add_invincible_member(cls, member_snowflake: int):

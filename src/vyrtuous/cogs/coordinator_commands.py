@@ -149,7 +149,7 @@ class CoordinatorCommands(commands.Cog):
                 try:
                     await member.edit(mute=True)
                 except Exception as e:
-                    logger.warning(f'Failed to mute {member.id}: {str(e).capitalize()}')
+                    logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {interaction.guild.name} ({interaction.guild.id}).')
                     failed_members.append(member)    
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
             voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
@@ -211,7 +211,7 @@ class CoordinatorCommands(commands.Cog):
                 try:
                     await member.edit(mute=True)
                 except Exception as e:
-                    logger.warning(f'Failed to mute {member.id}: {str(e).capitalize()}')
+                    logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {ctx.guild.name} ({ctx.guild.id}).')
                     failed_members.append(member)
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
             voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
@@ -273,7 +273,7 @@ class CoordinatorCommands(commands.Cog):
                 try:
                     await member.edit(mute=False)
                 except Exception as e:
-                    logger.warning(f'Unmute failed for {member.mention}: {str(e).capitalize()}')
+                    logger.warning(f'Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {interaction.guild.name} ({interaction.guild.id}).')
                     failed_members.append(member)
             await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target='user')         
             unmuted_members.append(member)
@@ -328,7 +328,7 @@ class CoordinatorCommands(commands.Cog):
                 try:
                     await member.edit(mute=False)
                 except Exception as e:
-                    logger.warning(f'Unmute failed for {member.id}: {str(e).capitalize()}')
+                    logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {ctx.guild.name} ({ctx.guild.id}).')
                     failed_members.append(member)
             await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target='user')         
             unmuted_members.append(member)

@@ -18,6 +18,7 @@
 from datetime import datetime
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.history import History
 
 class TextMute:
 
@@ -48,7 +49,16 @@ class TextMute:
                 DELETE FROM active_text_mutes
                 WHERE channel_snowflake=$1 AND guild_snowflake=$2 AND member_snowflake=$3
             ''', channel_snowflake, guild_snowflake, member_snowflake)
-              
+
+    @classmethod
+    async def delete_by_guild(self, guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+              await conn.execute('''
+                DELETE FROM active_text_mutes
+                WHERE guild_snowflake=$1
+            ''', guild_snowflake)
+
     @classmethod
     async def delete_by_guild_and_member(self, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
         bot = DiscordBot.get_instance()
@@ -163,3 +173,37 @@ class TextMute:
             for row in rows:
                 text_mutes.append(TextMute(channel_snowflake=channel_snowflake, expires_in=row['expires_in'], guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason']))
         return text_mutes
+
+    @classmethod
+    async def clear_by_channel_guild_highest_role_and_modification(cls, ctx_interaction_or_message, channel_snowflake: Optional[int], guild_snowflake: Optional[int], highest_role: Optional[str], is_modification: bool):
+        text_mutes = await cls.fetch_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
+        await cls.delete_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
+        if text_mutes:
+            for text_mute in text_mutes:
+                await History.save_entry(
+                    ctx_interaction_or_message=ctx_interaction_or_message,
+                    action_type='untmute',
+                    channel_snowflake=channel_snowflake,
+                    duration=None,
+                    highest_role=highest_role,
+                    is_modification=is_modification,
+                    member_snowflake=voice_mute.member_snowflake,
+                    reason="Clear command"
+                )
+    
+    @classmethod
+    async def clear_by_guild_highest_role_member_and_modification(cls, ctx_interaction_or_message, guild_snowflake: Optional[int], highest_role: Optional[str], is_modification: bool, member_snowflake: Optional[int]):
+        text_mutes = await cls.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        await cls.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        if text_mutes:
+            for text_mute in text_mutes:
+                await History.save_entry(
+                    ctx_interaction_or_message=ctx_interaction_or_message,
+                    action_type='untmute',
+                    channel_snowflake=text_mute.channel_snowflake,
+                    duration=None,
+                    highest_role=highest_role,
+                    is_modification=is_modification,
+                    member_snowflake=member_snowflake,
+                    reason="Clear command"
+                )

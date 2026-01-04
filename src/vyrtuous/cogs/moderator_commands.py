@@ -25,7 +25,6 @@ from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.utils.paginator import Paginator
 from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.all import All
 from vyrtuous.utils.ban import Ban
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.duration import Duration, DurationObject

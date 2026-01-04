@@ -307,3 +307,35 @@ class History:
                     INSERT INTO moderation_logs (action_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 ''', action_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
+
+    @classmethod
+    async def save_entry(
+        cls,
+        ctx_interaction_or_message,
+        action_type: Optional[str],
+        channel_snowflake: Optional[int],
+        duration: Optional[str],
+        highest_role: Optional[str],
+        is_modification: bool,
+        member_snowflake: Optional[int],
+        reason: Optional[str]
+    ):
+        bot = DiscordBot.get_instance()
+        author_snowflake = None
+        expires_at = None
+        if isinstance(ctx_or_interaction_or_message, (commands.Context, discord.Message)):
+            author_snowflake = ctx_or_interaction_or_message.author.id
+        else:
+            author_snowflake = ctx_or_interaction_or_message.user.id
+        channel = ctx_interaction_or_message.channel
+        if isinstance(duration, DurationObject):
+            expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
+        elif duration is not None:
+            expires_at = datetime.now(timezone.utc) + DurationObject(duration).to_timedelta()
+        else:
+            expires_at = datetime.now(timezone.utc) + DurationObject(0).to_timedelta()
+        channel_members_voice_count = sum(len(channel.members) for channel in channel.guild.voice_channels)
+        guild_members_offline_and_online_member_count = sum(1 for member in channel.guild.members if not member.bot)
+        guild_members_online_count = sum(1 for member in channel.guild.members if not member.bot and member.status != discord.Status.offline)
+        guild_members_voice_count = sum(len([member for member in channel.members if not member.bot]) for channel in channel.guild.voice_channels)
+        await cls.save(action_type=alias_type, channel_members_voice_count=channel_members_voice_count, channel_snowflake=channel_snowflake, executor_member_snowflake=author_snowflake, expires_at=expires_at, guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count, guild_members_online_count=guild_members_online_count, guild_members_voice_count=guild_members_voice_count, guild_snowflake=guild.id, highest_role=highest_role, is_modification=is_modification, target_member_snowflake=member_snowflake, reason=reason)

@@ -17,6 +17,7 @@
 '''
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.history import History
 
 class Flag:
 
@@ -145,3 +146,37 @@ class Flag:
                 flags.append(Flag(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=row['member_snowflake'], reason=row['reason']))
         return flags
 
+
+    @classmethod
+    async def clear_by_channel_guild_highest_role_and_modification(cls, ctx_interaction_or_message, channel_snowflake: Optional[int], guild_snowflake: Optional[int], highest_role: Optional[str], is_modification: bool):
+        flags = await cls.fetch_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
+        await cls.delete_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
+        if flags:
+            for flag in flags:
+                await History.save_entry(
+                    ctx_interaction_or_message=ctx_interaction_or_message,
+                    action_type='unflag',
+                    channel_snowflake=channel_snowflake,
+                    duration=None,
+                    highest_role=highest_role,
+                    is_modification=is_modification,
+                    member_snowflake=voice_mute.member_snowflake,
+                    reason="Clear command"
+                )
+    
+    @classmethod
+    async def clear_by_guild_highest_role_member_and_modification(cls, ctx_interaction_or_message, guild_snowflake: Optional[int], highest_role: Optional[str], is_modification: bool, member_snowflake: Optional[int]):
+        flags = await cls.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        await cls.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        if flags:
+            for flag in flags:
+                await History.save_entry(
+                    ctx_interaction_or_message=ctx_interaction_or_message,
+                    action_type='unflag',
+                    channel_snowflake=flag.channel_snowflake,
+                    duration=None,
+                    highest_role=highest_role,
+                    is_modification=is_modification,
+                    member_snowflake=member_snowflake,
+                    reason="Clear command"
+                )

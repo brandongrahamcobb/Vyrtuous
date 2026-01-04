@@ -18,6 +18,7 @@
 from datetime import datetime
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.history import History
 
 class Ban:
 
@@ -57,6 +58,15 @@ class Ban:
                 DELETE FROM active_bans
                 WHERE guild_snowflake=$1 AND member_snowflake=$2
             ''', guild_snowflake, member_snowflake)
+
+    @classmethod
+    async def delete_by_guild(self, guild_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+              await conn.execute('''
+                DELETE FROM active_bans
+                WHERE guild_snowflake=$1
+            ''', guild_snowflake)
 
     async def create(self):
         bot = DiscordBot.get_instance()
@@ -174,3 +184,37 @@ class Ban:
             for row in rows:
                 expired_bans.append(Ban(channel_snowflake=row['channel_snowflake'], expires_in=row['expires_in'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake'], reason=row['reason']))
         return expired_bans
+
+    @classmethod
+    async def clear_by_channel_guild_highest_role_and_modification(cls, ctx_interaction_or_message, channel_snowflake: Optional[int], guild_snowflake: Optional[int], highest_role: Optional[str], is_modification: bool):
+        bans = await cls.fetch_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
+        await cls.delete_by_channel_and_guild(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake)
+        if bans:
+            for ban in bans:
+                await History.save_entry(
+                    ctx_interaction_or_message=ctx_interaction_or_message,
+                    action_type='unban',
+                    channel_snowflake=channel_snowflake,
+                    duration=None,
+                    highest_role=highest_role,
+                    is_modification=is_modification,
+                    member_snowflake=voice_mute.member_snowflake,
+                    reason="Clear command"
+                )
+    
+    @classmethod
+    async def clear_by_guild_highest_role_member_and_modification(cls, ctx_interaction_or_message, guild_snowflake: Optional[int], highest_role: Optional[str], is_modification: bool, member_snowflake: Optional[int]):
+        bans = await cls.fetch_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        await cls.delete_by_guild_and_member(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        if bans:
+            for ban in bans:
+                await History.save_entry(
+                    ctx_interaction_or_message=ctx_interaction_or_message,
+                    action_type='unban',
+                    channel_snowflake=ban.channel_snowflake,
+                    duration=None,
+                    highest_role=highest_role,
+                    is_modification=is_modification,
+                    member_snowflake=member_snowflake,
+                    reason="Clear command"
+                )
