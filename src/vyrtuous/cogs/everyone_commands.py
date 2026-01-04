@@ -79,7 +79,7 @@ class EveryoneCommands(commands.Cog):
                 administrator = await Administrator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 administrators = [administrator] if administrator else None
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators for specific servers.')
                     except Exception as e:
@@ -238,7 +238,7 @@ class EveryoneCommands(commands.Cog):
                 administrator = await Administrator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 administrators = [administrator] if administrator else None
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators for specific servers.')
                     except Exception as e:
@@ -378,7 +378,7 @@ class EveryoneCommands(commands.Cog):
         member_obj = None
         chunk_size = 7
         field_count = 0
-        lines, pages = [], []
+        channel_lines, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
@@ -400,8 +400,9 @@ class EveryoneCommands(commands.Cog):
                 try:
                     member_obj = await self.member_service.resolve_member(interaction, scope)
                     coordinators = await Coordinator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                    title = f'{self.emoji.get_random_emoji()} Coordinator: {member_obj.name}'
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -447,22 +448,31 @@ class EveryoneCommands(commands.Cog):
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
-                channel_lines = []
+                lines = []
                 for member_data in members:
                     member = guild.get_member(member_data['member_snowflake'])
                     if not member:
                         skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_data['member_snowflake'])
                         continue
-                    channel_lines.append(f"**User**: {member.mention}")
+                    if not member_obj:
+                        lines.append(f"**User**: {member.mention}")
                 field_count += 1
                 if field_count == chunk_size:
-                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                    if lines:
+                        embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                    elif channel_lines:
+                        embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
+                        channel_lines = []
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    channel_lines = []
+                    lines = []
                     field_count = 0
-                if channel_lines:
-                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                else:
+                    channel_lines.append(f'{channel.mention}')
+            if channel_lines:
+                embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             is_at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -544,7 +554,7 @@ class EveryoneCommands(commands.Cog):
         member_obj = None
         chunk_size = 7
         field_count = 0
-        lines, pages = [], []
+        channel_lines, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
@@ -566,8 +576,9 @@ class EveryoneCommands(commands.Cog):
                 try:
                     member_obj = await self.member_service.resolve_member(ctx, scope)
                     coordinators = await Coordinator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                    title = f'{self.emoji.get_random_emoji()} Coordinator: {member_obj.name}'
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -616,22 +627,31 @@ class EveryoneCommands(commands.Cog):
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
-                channel_lines = []
+                lines = []
                 for member_data in members:
                     member = guild.get_member(member_data['member_snowflake'])
                     if not member:
                         skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_data['member_snowflake'])
                         continue
-                    channel_lines.append(f"**User**: {member.mention}")
+                    if not member_obj:
+                        lines.append(f"**User**: {member.mention}")
                 field_count += 1
                 if field_count == chunk_size:
-                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                    if lines:
+                        embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                    elif channel_lines:
+                        embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
+                        channel_lines = []
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    channel_lines = []
+                    lines = []
                     field_count = 0
-                if channel_lines:
-                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                else:
+                    channel_lines.append(f'{channel.mention}')
+            if channel_lines:
+                embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             is_at_home = at_home(ctx_or_interaction_or_message=ctx)
@@ -714,7 +734,7 @@ class EveryoneCommands(commands.Cog):
         member_obj = None
         chunk_size = 7
         field_count = 0
-        lines, pages = [], []
+        channel_lines, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
@@ -736,8 +756,9 @@ class EveryoneCommands(commands.Cog):
                 try:
                     member_obj = await self.member_service.resolve_member(interaction, scope)
                     moderators = await Moderator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                    title = f'{self.emoji.get_random_emoji()} Moderator: {member_obj.name}'
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -787,22 +808,31 @@ class EveryoneCommands(commands.Cog):
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
-                channel_lines = []
+                lines = []
                 for member_data in members:
                     member = guild.get_member(member_data['member_snowflake'])
                     if not member:
                         skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_data['member_snowflake'])
                         continue
-                    channel_lines.append(f"**User**: {member.mention}")
+                    if not member_obj:
+                        lines.append(f"**User**: {member.mention}")
                 field_count += 1
                 if field_count == chunk_size:
-                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                    if lines:
+                        embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                    elif channel_lines:
+                        embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
+                        channel_lines = []
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    channel_lines = []
+                    lines = []
                     field_count = 0
-                if channel_lines:
-                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                else:
+                    channel_lines.append(f'{channel.mention}')
+            if channel_lines:
+                embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             is_at_home = at_home(ctx_or_interaction_or_message=interaction)
@@ -884,7 +914,7 @@ class EveryoneCommands(commands.Cog):
         member_obj = None
         chunk_size = 7
         field_count = 0
-        lines, pages = [], []
+        channel_lines, lines, pages = [], [], []
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
@@ -906,8 +936,9 @@ class EveryoneCommands(commands.Cog):
                 try:
                     member_obj = await self.member_service.resolve_member(ctx, scope)
                     moderators = await Moderator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                    title = f'{self.emoji.get_random_emoji()} Moderator: {member_obj.name}'
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -956,22 +987,31 @@ class EveryoneCommands(commands.Cog):
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
-                channel_lines = []
+                lines = []
                 for member_data in members:
                     member = guild.get_member(member_data['member_snowflake'])
                     if not member:
                         skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_data['member_snowflake'])
                         continue
-                    channel_lines.append(f"**User**: {member.mention}")
+                    if not member_obj:
+                        lines.append(f"**User**: {member.mention}")
                 field_count += 1
                 if field_count == chunk_size:
-                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                    if lines:
+                        embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                    elif channel_lines:
+                        embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
+                        channel_lines = []
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    channel_lines = []
+                    lines = []
                     field_count = 0
-                if channel_lines:
-                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(channel_lines), inline=False)
+                if lines:
+                    embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                else:
+                    channel_lines.append(f'{channel.mention}')
+            if channel_lines:
+                embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
         try:
             is_at_home = at_home(ctx_or_interaction_or_message=ctx)

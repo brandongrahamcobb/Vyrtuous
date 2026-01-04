@@ -88,7 +88,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(interaction, scope)
                     bans = await Ban.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list bans for specific servers.')
                         except Exception as e:
@@ -260,7 +260,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(ctx, scope)
                     bans = await Ban.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list bans for specific servers.')
                         except Exception as e:
@@ -427,7 +427,7 @@ class ModeratorCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
                 caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list caps for specific servers.')
                     except Exception as e:
@@ -582,7 +582,7 @@ class ModeratorCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
                 caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list caps for specific servers.')
                     except Exception as e:
@@ -742,7 +742,7 @@ class ModeratorCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list aliases for specific servers.')
                     except Exception as e:
@@ -1156,7 +1156,7 @@ class ModeratorCommands(commands.Cog):
                     title = f'{self.emoji.get_random_emoji()} Flags'
                     flags = await Flag.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list flags for specific servers.')
                         except Exception as e:
@@ -1312,7 +1312,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(ctx, scope)
                     flags = await Flag.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list flags for specific servers.')
                         except Exception as e:
@@ -1482,7 +1482,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(interaction, scope)
                     vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list vegans for specific servers.')
                         except Exception as e:
@@ -1649,7 +1649,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(ctx, scope)
                     vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list vegans for specific servers.')
                         except Exception as e:
@@ -1806,7 +1806,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             is_owner = old_room.member_snowflake == interaction.user.id
             highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
-            if highest_role not in ('System Owner', 'Guild Owner', 'Administrator') and not is_owner:
+            if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
                 except Exception as e:
@@ -1854,7 +1854,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             is_owner = old_room.member_snowflake == ctx.author.id
             highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
-            if highest_role not in ('System Owner', 'Guild Owner', 'Administrator') and not is_owner:
+            if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
                 except Exception as e:
@@ -1918,7 +1918,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(interaction, scope) 
                     voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target=target)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice mutes for specific servers.')
                         except Exception as e:
@@ -2091,7 +2091,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(ctx, scope) 
                     voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target=target)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice mutes for specific servers.')
                         except Exception as e:
@@ -2370,7 +2370,7 @@ class ModeratorCommands(commands.Cog):
                 stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                 stages = [stage] if stage else []
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all stages in a specific server.')
                     except Exception as e:
@@ -2511,7 +2511,7 @@ class ModeratorCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope)
                 stages = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all stages in a specific server.')
                     except Exception as e:
@@ -2966,7 +2966,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(interaction, scope) 
                     text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:
@@ -3137,7 +3137,7 @@ class ModeratorCommands(commands.Cog):
                     member_obj = await self.member_service.resolve_member(ctx, scope) 
                     text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 except Exception as e:
-                    if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                    if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
                             return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
                         except Exception as e:

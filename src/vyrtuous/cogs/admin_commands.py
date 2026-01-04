@@ -168,7 +168,7 @@ class AdminCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             administrator_roles = await AdministratorRole.fetch_all_guilds_and_roles()
         elif scope:
-            if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+            if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all administrator roles in a specific server.')
                 except Exception as e:
@@ -289,7 +289,7 @@ class AdminCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             administrator_roles = await AdministratorRole.fetch_all()
         elif scope:
-            if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+            if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all administrator roles in a specific server.')
                 except Exception as e:
@@ -1332,7 +1332,7 @@ class AdminCommands(commands.Cog):
                 temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                 temporary_rooms = [temporary_room] if temporary_room else []
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list temporary rooms for specific servers.')
                     except Exception as e:
@@ -1503,7 +1503,7 @@ class AdminCommands(commands.Cog):
                 temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                 temporary_rooms = [temporary_room] if temporary_room else []
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list temporary rooms for specific servers.')
                     except Exception as e:
@@ -1724,7 +1724,7 @@ class AdminCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
                 history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list logging routes for specific servers.')
                     except Exception as e:
@@ -1916,7 +1916,7 @@ class AdminCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
                 history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list logging routes for specific servers.')
                     except Exception as e:
@@ -2169,7 +2169,7 @@ class AdminCommands(commands.Cog):
                 video_room = await VideoRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                 video_rooms = [video_room] if video_room else []
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all video rooms in a specific server.')
                     except Exception as e:
@@ -2339,7 +2339,7 @@ class AdminCommands(commands.Cog):
                 video_room = await VideoRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                 video_rooms = [video_room] if video_room else []
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner', 'Administrator'):
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all video rooms in a specific server.')
                     except Exception as e:
