@@ -144,3 +144,12 @@ class Moderator:
             for row in rows:
                 moderators.append(Moderator(channel_snowflake=row['channel_snowflake'], guild_snowflake=row['guild_snowflake'], member_snowflake=row['member_snowflake']))
             return moderators
+
+    @classmethod
+    async def delete_by_guild_and_member(self, guild_snowflake: Optional[int], member_snowflake: Optional[int]):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+              await conn.execute('''
+                DELETE FROM moderators
+                WHERE guild_snowflake=$1 AND member_snowflake=$2
+            ''', guild_snowflake, member_snowflake)

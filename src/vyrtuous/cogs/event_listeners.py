@@ -350,7 +350,7 @@ class EventListeners(commands.Cog):
                     return await state.end(error=f'\u274C {error}')
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
     
@@ -367,7 +367,7 @@ class EventListeners(commands.Cog):
                     return await state.end(error=f'\u274C {error}') 
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}') 
 #    @commands.Cog.listener()

@@ -67,7 +67,7 @@ class EveryoneCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators across all servers.')
                 except Exception as e:
@@ -226,7 +226,7 @@ class EveryoneCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list administrators across all servers.')
                 except Exception as e:
@@ -386,9 +386,9 @@ class EveryoneCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list coordinators across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             coordinators = await Coordinator.fetch_all()
@@ -404,7 +404,7 @@ class EveryoneCommands(commands.Cog):
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list coordinators for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -567,9 +567,9 @@ class EveryoneCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list coordinators across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             coordinators = await Coordinator.fetch_all()
@@ -585,7 +585,7 @@ class EveryoneCommands(commands.Cog):
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list coordinators for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -752,9 +752,9 @@ class EveryoneCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list moderators across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             moderators = await Moderator.fetch_all()
@@ -770,7 +770,7 @@ class EveryoneCommands(commands.Cog):
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list moderators for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -937,9 +937,9 @@ class EveryoneCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list moderators across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             moderators = await Moderator.fetch_all()
@@ -955,7 +955,7 @@ class EveryoneCommands(commands.Cog):
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list moderators for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))

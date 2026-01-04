@@ -75,7 +75,7 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list bans across all servers.')
                 except Exception as e:
@@ -259,7 +259,7 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list bans across all servers.')
                 except Exception as e:
@@ -440,7 +440,7 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list caps across all servers.')
                 except Exception as e:
@@ -595,7 +595,7 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list caps across all servers.')
                 except Exception as e:
@@ -755,7 +755,7 @@ class ModeratorCommands(commands.Cog):
             channel_obj = interaction.channel
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all aliases in all servers.')
                 except Exception as e:
@@ -921,7 +921,7 @@ class ModeratorCommands(commands.Cog):
             channel_obj = ctx.channel
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all aliases in all servers.')
                 except Exception as e:
@@ -932,7 +932,7 @@ class ModeratorCommands(commands.Cog):
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
-                if highest_role not in ('System Owner', 'Guild Owner'):
+                if highest_role not in ('System Owner', 'Developer'):
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list aliases for specific servers.')
                     except Exception as e:
@@ -1164,7 +1164,7 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list flags across all servers.')
                 except Exception as e:
@@ -1331,7 +1331,7 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list flags across all servers.')
                 except Exception as e:
@@ -1491,9 +1491,9 @@ class ModeratorCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @app_commands.command(name='ls', description='List vegans.')
+    @app_commands.command(name='ls', description='List new vegans.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.")
-    async def list_vegans_app_command(
+    async def list_new_vegans_app_command(
         self,
         interaction: discord.Interaction,
         scope: Optional[str] = None
@@ -1512,25 +1512,25 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list vegans across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list new vegans across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            vegans = await Vegan.fetch_all()
+            new_vegans = await Vegan.fetch_all()
         elif scope:
             try:
                 channel_obj = await self.channel_service.resolve_channel(interaction, scope)
-                vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
                     member_obj = await self.member_service.resolve_member(interaction, scope)
-                    vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                    new_vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Vegan: {member_obj.name}'
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list vegans for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list new vegans for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -1539,23 +1539,23 @@ class ModeratorCommands(commands.Cog):
                             return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, member ID/mention, server ID or empty. Received: {scope}.")
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
-                    vegans = await Vegan.fetch_by_guild(guild_snowflake=int(scope))
+                    new_vegans = await Vegan.fetch_by_guild(guild_snowflake=int(scope))
         else:
-            vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
+            new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             channel_obj = interaction.channel
         
-        if not vegans:
+        if not new_vegans:
             try:
                 if guild_obj:
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No vegans exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
         guild_dictionary = {}
-        for vegan in vegans:
+        for vegan in new_vegans:
             guild_dictionary.setdefault(vegan.guild_snowflake, {})
             guild_dictionary[vegan.guild_snowflake].setdefault(vegan.channel_snowflake, [])
             guild_dictionary[vegan.guild_snowflake][vegan.channel_snowflake].append({
@@ -1666,13 +1666,13 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No vegans found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans found.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
                             
     # DONE
-    @commands.command(name='ls', help='List vegans.')
-    async def list_vegans_text_command(
+    @commands.command(name='ls', help='List new vegans.')
+    async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.")
@@ -1692,25 +1692,25 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list vegans across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list new vegans across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            vegans = await Vegan.fetch_all()
+            new_vegans = await Vegan.fetch_all()
         elif scope:
             try:
                 channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
-                vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
                     member_obj = await self.member_service.resolve_member(ctx, scope)
-                    vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                    new_vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Vegan: {member_obj.name}'
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list vegans for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list new vegans for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -1719,23 +1719,23 @@ class ModeratorCommands(commands.Cog):
                             return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, member ID/mention, server ID or empty. Received: {scope}.")
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
-                    vegans = await Vegan.fetch_by_guild(guild_snowflake=int(scope))
+                    new_vegans = await Vegan.fetch_by_guild(guild_snowflake=int(scope))
         else:
-            vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
+            new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
         
-        if not vegans:
+        if not new_vegans:
             try:
                 if guild_obj:
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No vegans exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
         guild_dictionary = {}
-        for vegan in vegans:
+        for vegan in new_vegans:
             guild_dictionary.setdefault(vegan.guild_snowflake, {})
             guild_dictionary[vegan.guild_snowflake].setdefault(vegan.channel_snowflake, [])
             guild_dictionary[vegan.guild_snowflake][vegan.channel_snowflake].append({
@@ -1846,7 +1846,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No vegans found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans found.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
@@ -1974,9 +1974,9 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice mutes across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice-mutes across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             voice_mutes = await VoiceMute.fetch_all_by_target(target=target)
@@ -1992,7 +1992,7 @@ class ModeratorCommands(commands.Cog):
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice mutes for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice-mutes for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -2012,7 +2012,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No voice mutes exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No voice-mutes exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2130,7 +2130,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No voice mutes found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No voice-mutes found.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             
@@ -2158,9 +2158,9 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice mutes across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice-mutes across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             voice_mutes = await VoiceMute.fetch_all_by_target(target=target)
@@ -2176,7 +2176,7 @@ class ModeratorCommands(commands.Cog):
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice mutes for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list voice-mutes for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -2196,7 +2196,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No voice mutes exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No voice-mutes exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2314,7 +2314,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No voice mutes found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No voice-mutes found.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
     
@@ -2450,7 +2450,7 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list stages across all servers.')
                 except Exception as e:
@@ -2592,7 +2592,7 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list stages across all servers.')
                 except Exception as e:
@@ -2727,7 +2727,7 @@ class ModeratorCommands(commands.Cog):
         chunk_size = 7
         field_count = 0
         member_obj = None
-        bans, flags, text_mutes, vegans, voice_mutes = [], [], [], [], []
+        bans, flags, text_mutes, new_vegans, voice_mutes = [], [], [], [], []
         lines, pages = [], []
         target = 'user'
         try:
@@ -2742,7 +2742,7 @@ class ModeratorCommands(commands.Cog):
             bans = await Ban.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             flags = await Flag.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-            vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            new_vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target=target)
         else:        
             try:
@@ -2756,7 +2756,7 @@ class ModeratorCommands(commands.Cog):
             text_mute = await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             text_mutes = [text_mute]
             vegan = await Vegan.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-            vegans = [vegan]
+            new_vegans = [vegan]
             voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target=target)
             voice_mutes = [voice_mute]
         field_count = 0
@@ -2819,8 +2819,8 @@ class ModeratorCommands(commands.Cog):
                 pages.append(embed)
                 lines = []
         embed = discord.Embed(title='Vegan', description=guild.name, color=discord.Color.blue())
-        if vegans:
-            for vegan in vegans:
+        if new_vegans:
+            for vegan in new_vegans:
                 if vegan:
                     channel = guild.get_channel(vegan.channel_snowflake)
                     lines.append(f"**User**: {member_obj.mention}")
@@ -2880,7 +2880,7 @@ class ModeratorCommands(commands.Cog):
         chunk_size = 7
         field_count = 0
         member_obj = None
-        bans, flags, text_mutes, vegans, voice_mutes = [], [], [], [], []
+        bans, flags, text_mutes, new_vegans, voice_mutes = [], [], [], [], []
         lines, pages = [], []
         target = 'user'
         try:
@@ -2894,7 +2894,7 @@ class ModeratorCommands(commands.Cog):
             bans = await Ban.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             flags = await Flag.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-            vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            new_vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target=target)
         else:        
             try:
@@ -2908,7 +2908,7 @@ class ModeratorCommands(commands.Cog):
             text_mute = await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             text_mutes = [text_mute]
             vegan = await Vegan.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-            vegans = [vegan]
+            new_vegans = [vegan]
             voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target=target)
             voice_mutes = [voice_mute]
         field_count = 0
@@ -2971,8 +2971,8 @@ class ModeratorCommands(commands.Cog):
                 pages.append(embed)
                 lines = []
         embed = discord.Embed(title='Vegan', description=guild.name, color=discord.Color.blue())
-        if vegans:
-            for vegan in vegans:
+        if new_vegans:
+            for vegan in new_vegans:
                 if vegan:
                     channel = guild.get_channel(vegan.channel_snowflake)
                     lines.append(f"**User**: {member_obj.mention}")
@@ -3044,9 +3044,9 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text-mutes across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             text_mutes = await TextMute.fetch_all()
@@ -3062,7 +3062,7 @@ class ModeratorCommands(commands.Cog):
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text-mutes for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -3081,7 +3081,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No text mutes exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No text-mutes exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -3198,7 +3198,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No text mutes found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No text-mutes found.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             
@@ -3225,9 +3225,9 @@ class ModeratorCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes across all servers.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text-mutes across all servers.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             text_mutes = await TextMute.fetch_all()
@@ -3243,7 +3243,7 @@ class ModeratorCommands(commands.Cog):
                 except Exception as e:
                     if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
                         try:
-                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text mutes for specific servers.')
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list text-mutes for specific servers.')
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
                     guild_obj = self.bot.get_guild(int(scope))
@@ -3262,7 +3262,7 @@ class ModeratorCommands(commands.Cog):
                     scope = guild_obj.name
                 elif channel_obj:
                     scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No text mutes exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No text-mutes exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -3381,7 +3381,7 @@ class ModeratorCommands(commands.Cog):
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No text mutes found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F No text-mutes found.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             

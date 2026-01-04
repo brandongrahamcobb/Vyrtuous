@@ -149,7 +149,7 @@ class DevCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers across all servers.')
                 except Exception as e:
@@ -283,7 +283,7 @@ class DevCommands(commands.Cog):
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
-            if highest_role not in ('System Owner', 'Guild Owner'):
+            if highest_role not in ('System Owner', 'Developer'):
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers across all servers.')
                 except Exception as e:
