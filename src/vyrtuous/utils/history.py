@@ -94,7 +94,11 @@ class History:
             expires_at = datetime.now(timezone.utc) + DurationObject(duration).to_timedelta()
         else:
             expires_at = datetime.now(timezone.utc) + DurationObject(0).to_timedelta()
-        await cls.save(action_type=alias.alias_type, channel_snowflake=channel.id, executor_member_snowflake=author_snowflake, expires_at=expires_at, guild_snowflake=channel.guild.id, highest_role=highest_role, is_modification=is_modification, target_member_snowflake=member.id, reason=reason)
+        channel_members_voice_count = sum(len(channel.members) for channel in channel.guild.voice_channels)
+        guild_members_offline_and_online_member_count = sum(1 for member in channel.guild.members if not member.bot)
+        guild_members_online_count = sum(1 for member in channel.guild.members if not member.bot and member.status != discord.Status.offline)
+        guild_members_voice_count = sum(len([member for member in channel.members if not member.bot]) for channel in channel.guild.voice_channels)
+        await cls.save(action_type=alias.alias_type, channel_members_voice_count=channel_members_voice_count, channel_snowflake=channel.id, executor_member_snowflake=author_snowflake, expires_at=expires_at, guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count, guild_members_online_count=guild_members_online_count, guild_members_voice_count=guild_members_voice_count, guild_snowflake=channel.guild.id, highest_role=highest_role, is_modification=is_modification, target_member_snowflake=member.id, reason=reason)
 
     @classmethod
     def build_history_embeds(
@@ -284,9 +288,13 @@ class History:
     async def save(
         cls,
         action_type: Optional[str],
+        channel_members_voice_count: Optional[int],
         channel_snowflake: Optional[int],
         executor_member_snowflake: Optional[int],
         expires_at: Optional[datetime],
+        guild_members_offline_and_online_member_count: Optional[int],
+        guild_members_online_count: Optional[int],
+        guild_members_voice_count: Optional[int],
         guild_snowflake: Optional[int],
         highest_role: Optional[str],
         is_modification: bool,
@@ -296,6 +304,6 @@ class History:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             await conn.execute('''
-                    INSERT INTO moderation_logs (action_type, channel_snowflake, executor_member_snowflake, expires_at, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                ''', action_type, channel_snowflake, executor_member_snowflake, expires_at, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
+                    INSERT INTO moderation_logs (action_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                ''', action_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
