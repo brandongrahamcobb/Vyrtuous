@@ -28,6 +28,7 @@ from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.administrator import AdministratorRole
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.ban import Ban
+from vyrtuous.utils.cancel_confirm import VerifyView
 from vyrtuous.utils.cap import Cap
 from vyrtuous.utils.coordinator import Coordinator
 from vyrtuous.utils.duration import AppDuration, Duration, DurationObject
@@ -562,91 +563,103 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F You must be a system owner, a developer or guild owner to delete channel associations.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            match action_type.lower():
-                case 'all':
-                    await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated aliases, moderation actions, roles and room setups for {channel_obj.mention}.'
-                case 'alias':
-                    await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated aliases in {channel_obj.mention}.'
-                case 'ban':
-                    await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated bans in {channel_obj.mention}.'
-                case 'coord':
-                    await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated coordinators in {channel_obj.mention}.'
-                case 'flag':
-                    await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated flags in {channel_obj.mention}.'
-                case 'mod':
-                    await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated moderators in {channel_obj.mention}.'
-                case 'temp':
-                    await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted the associated temporary channel for {channel_obj.mention}.'
-                case 'tmute':
-                    await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
-                case 'vegan':
-                    await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated new vegans in {channel_obj.mention}.'
-                case 'vmute':
-                    await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted all associated voice-mutes in {channel_obj.mention}.'
-                case 'vr':
-                    await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                    msg = f'Deleted the associated video room in {channel_obj.mention}.'
-                case _:
-                    try:
-                        return await state.end(warning=f'\U000026A0\U0000FE0F {action_type} is an unknown action type.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+            view = VerifyView(action_type=action_type, author_snowflake=interaction.user.id, guild_snowflake=interaction.guild.snowflake, member_snowflake=member_obj.id)
+            embed = view.build_embed(action_type=view.action_type, target=view.target)
+            await interaction.response.send_message(embed=embed, view=view)
+            await view.wait()
+            state = State(interaction)
+            if view.result == True:
+                match action_type.lower():
+                    case 'all':
+                        await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated aliases, moderation actions, roles and room setups for {channel_obj.mention}.'
+                    case 'alias':
+                        await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated aliases in {channel_obj.mention}.'
+                    case 'ban':
+                        await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated bans in {channel_obj.mention}.'
+                    case 'coord':
+                        await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated coordinators in {channel_obj.mention}.'
+                    case 'flag':
+                        await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated flags in {channel_obj.mention}.'
+                    case 'mod':
+                        await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated moderators in {channel_obj.mention}.'
+                    case 'temp':
+                        await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted the associated temporary channel for {channel_obj.mention}.'
+                    case 'tmute':
+                        await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
+                    case 'vegan':
+                        await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated new vegans in {channel_obj.mention}.'
+                    case 'vmute':
+                        await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted all associated voice-mutes in {channel_obj.mention}.'
+                    case 'vr':
+                        await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+                        msg = f'Deleted the associated video room in {channel_obj.mention}.'
+                    case _:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F {action_type} is an unknown action type.')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif member_obj:
-            match action_type.lower():
-                case 'all':
-                    await Ban.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    await Coordinator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    await Flag.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    await Moderator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    await TextMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    await Vegan.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    await VoiceMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated moderation actions and roles for {member_obj.mention}.'
-                case 'ban':
-                    await Ban.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated bans on {member_obj.mention}.'
-                case 'coord':
-                    await Coordinator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated coordinator channels on {member_obj.mention}.'
-                case 'flag':
-                    await Flag.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated flags on {member_obj.mention}.'
-                case 'mod':
-                    await Moderator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated moderator channels on {member_obj.mention}.'
-                case 'tmute':
-                    await TextMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated text-mutes on {member_obj.mention}.'
-                case 'vegan':
-                    await Vegan.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated vegan channels on {member_obj.mention}.'
-                case 'vmute':
-                    await VoiceMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated voice-mutes on {member_obj.mention}.'
-                case _:
-                    try:
-                        return await state.end(warning=f'\U000026A0\U0000FE0F {action_type} is an unknown action type.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+            view = VerifyView(action_type=action_type, author_snowflake=interaction.user.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            embed = view.build_embed(action_type=view.action_type, target=view.target)
+            await interaction.response.send_message(embed=embed, view=view)
+            await view.wait()
+            state = State(interaction)
+            if view.result == True:
+                match action_type.lower():
+                    case 'all':
+                        await Ban.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Coordinator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Flag.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Moderator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await TextMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await Vegan.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        await VoiceMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated moderation actions and roles for {member_obj.mention}.'
+                    case 'ban':
+                        await Ban.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated bans on {member_obj.mention}.'
+                    case 'coord':
+                        await Coordinator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated coordinator channels on {member_obj.mention}.'
+                    case 'flag':
+                        await Flag.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated flags on {member_obj.mention}.'
+                    case 'mod':
+                        await Moderator.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated moderator channels on {member_obj.mention}.'
+                    case 'tmute':
+                        await TextMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated text-mutes on {member_obj.mention}.'
+                    case 'vegan':
+                        await Vegan.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated vegan channels on {member_obj.mention}.'
+                    case 'vmute':
+                        await VoiceMute.delete_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated voice-mutes on {member_obj.mention}.'
+                    case _:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F {action_type} is an unknown action type.')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No associated records found for scope: {scope}.')
@@ -665,7 +678,7 @@ class AdminCommands(commands.Cog):
         ctx: commands.Context,
         scope: str = commands.parameter(default=None, description='Tag a channel, a member or include the ID'),
         *,
-        action_type: str = commands.parameter(default=None, description="Specify one of: 'alias','all', 'ban', 'coord', 'flag', 'mod', 'temp', 'tmute', 'vegan' or 'vmute'")
+        action_type: str = commands.parameter(default=None, description="Specify one of: 'alias', 'all', 'ban', 'coord', 'flag', 'mod', 'temp', 'tmute', 'vegan' or 'vmute'")
     ):
         state = State(ctx)
         channel_obj = None
@@ -694,91 +707,103 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F You must be a system owner, a developer or guild owner to delete channel associations.')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-            match action_type.lower():
-                case 'all':
-                    await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated aliases, moderation actions, roles and room setups for {channel_obj.mention}.'
-                case 'alias':
-                    await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated aliases in {channel_obj.mention}.'
-                case 'ban':
-                    await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated bans in {channel_obj.mention}.'
-                case 'coord':
-                    await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated coordinators in {channel_obj.mention}.'
-                case 'flag':
-                    await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated flags in {channel_obj.mention}.'
-                case 'mod':
-                    await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated moderators in {channel_obj.mention}.'
-                case 'temp':
-                    await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted the associated temporary channel for {channel_obj.mention}.'
-                case 'tmute':
-                    await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
-                case 'vegan':
-                    await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated new vegans in {channel_obj.mention}.'
-                case 'vmute':
-                    await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted all associated voice-mutes in {channel_obj.mention}.'
-                case 'vr':
-                    await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                    msg = f'Deleted the associated video room in {channel_obj.mention}.'
-                case _:
-                    try:
-                        return await state.end(warning=f'\U000026A0\U0000FE0F {action_type} is an unknown action type.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+            view = VerifyView(action_type=action_type, author_snowflake=ctx.author.id, guild_snowflake=ctx.guild.id, channel_snowflake=channel_obj.id)
+            embed = view.build_embed(action_type=view.action_type, target=view.target)
+            await ctx.send(embed=embed, view=view)
+            await view.wait()
+            state = State(ctx)
+            if view.result == True:
+                match action_type.lower():
+                    case 'all':
+                        await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated aliases, moderation actions, roles and room setups for {channel_obj.mention}.'
+                    case 'alias':
+                        await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated aliases in {channel_obj.mention}.'
+                    case 'ban':
+                        await Ban.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated bans in {channel_obj.mention}.'
+                    case 'coord':
+                        await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated coordinators in {channel_obj.mention}.'
+                    case 'flag':
+                        await Flag.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated flags in {channel_obj.mention}.'
+                    case 'mod':
+                        await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated moderators in {channel_obj.mention}.'
+                    case 'temp':
+                        await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted the associated temporary channel for {channel_obj.mention}.'
+                    case 'tmute':
+                        await TextMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
+                    case 'vegan':
+                        await Vegan.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated new vegans in {channel_obj.mention}.'
+                    case 'vmute':
+                        await VoiceMute.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated voice-mutes in {channel_obj.mention}.'
+                    case 'vr':
+                        await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted the associated video room in {channel_obj.mention}.'
+                    case _:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F {action_type} is an unknown action type.')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif member_obj:
-            match action_type.lower():
-                case 'all':
-                    await Ban.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    await Coordinator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    await Flag.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    await Moderator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    await TextMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    await Vegan.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    await VoiceMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated moderation actions and roles for {member_obj.mention}.'
-                case 'ban':
-                    await Ban.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated bans on {member_obj.mention}.'
-                case 'coord':
-                    await Coordinator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated coordinator channels on {member_obj.mention}.'
-                case 'flag':
-                    await Flag.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated flags on {member_obj.mention}.'
-                case 'mod':
-                    await Moderator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated moderator channels on {member_obj.mention}.'
-                case 'tmute':
-                    await TextMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated text-mutes on {member_obj.mention}.'
-                case 'vegan':
-                    await Vegan.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated vegan channels on {member_obj.mention}.'
-                case 'vmute':
-                    await VoiceMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
-                    msg = f'Deleted all associated voice-mutes on {member_obj.mention}.'
-                case _:
-                    try:
-                        return await state.end(warning=f'\U000026A0\U0000FE0F {action_type} is an unknown action type.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+            view = VerifyView(action_type=action_type, author_snowflake=ctx.author.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            embed = view.build_embed(action_type=view.action_type, target=view.target)
+            await ctx.send(embed=embed, view=view)
+            await view.wait()
+            state = State(ctx)
+            if view.result == True:
+                match action_type.lower():
+                    case 'all':
+                        await Ban.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Coordinator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Flag.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Moderator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await TextMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await Vegan.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        await VoiceMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated moderation actions and roles for {member_obj.mention}.'
+                    case 'ban':
+                        await Ban.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated bans on {member_obj.mention}.'
+                    case 'coord':
+                        await Coordinator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated coordinator channels on {member_obj.mention}.'
+                    case 'flag':
+                        await Flag.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated flags on {member_obj.mention}.'
+                    case 'mod':
+                        await Moderator.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated moderator channels on {member_obj.mention}.'
+                    case 'tmute':
+                        await TextMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated text-mutes on {member_obj.mention}.'
+                    case 'vegan':
+                        await Vegan.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated vegan channels on {member_obj.mention}.'
+                    case 'vmute':
+                        await VoiceMute.delete_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+                        msg = f'Deleted all associated voice-mutes on {member_obj.mention}.'
+                    case _:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F {action_type} is an unknown action type.')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F No associated records found for scope: {scope}.')
