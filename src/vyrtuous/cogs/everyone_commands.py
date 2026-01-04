@@ -368,7 +368,7 @@ class EveryoneCommands(commands.Cog):
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_coordinators_app_command(
         self,
-        interaction : discord.Interaction,
+        interaction: discord.Interaction,
         scope: Optional[str] = None
     ):
         state = State(interaction)
@@ -456,21 +456,25 @@ class EveryoneCommands(commands.Cog):
                         continue
                     if not member_obj:
                         lines.append(f"**User**: {member.mention}")
+                    else:
+                        if not thumbnail:
+                            embed.set_thumbnail(url=member.display_avatar.url)
+                            thumbnail = True
                 field_count += 1
                 if field_count == chunk_size:
                     if lines:
                         embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                        lines = []
                     elif channel_lines:
                         embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
                         channel_lines = []
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    lines = []
                     field_count = 0
                 if lines:
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
                 else:
-                    channel_lines.append(f'{channel.mention}')
+                    channel_lines.append(channel.mention)
             if channel_lines:
                 embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
@@ -558,6 +562,7 @@ class EveryoneCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
+        thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Coordinators'
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
@@ -635,21 +640,25 @@ class EveryoneCommands(commands.Cog):
                         continue
                     if not member_obj:
                         lines.append(f"**User**: {member.mention}")
+                    else:
+                        if not thumbnail:
+                            embed.set_thumbnail(url=member.display_avatar.url)
+                            thumbnail = True
                 field_count += 1
                 if field_count == chunk_size:
                     if lines:
                         embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                        lines = []
                     elif channel_lines:
                         embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
                         channel_lines = []
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    lines = []
                     field_count = 0
                 if lines:
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
                 else:
-                    channel_lines.append(f'{channel.mention}')
+                    channel_lines.append(channel.mention)
             if channel_lines:
                 embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
             pages.append(embed)
@@ -739,6 +748,7 @@ class EveryoneCommands(commands.Cog):
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Moderators'
+        thumbnail = False
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
         if scope and scope.lower() == 'all':
@@ -816,16 +826,20 @@ class EveryoneCommands(commands.Cog):
                         continue
                     if not member_obj:
                         lines.append(f"**User**: {member.mention}")
+                    else:
+                        if not thumbnail:
+                            embed.set_thumbnail(url=member.display_avatar.url)
+                            thumbnail = True
                 field_count += 1
                 if field_count == chunk_size:
                     if lines:
                         embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                        lines = []
                     elif channel_lines:
                         embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
                         channel_lines = []
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    lines = []
                     field_count = 0
                 if lines:
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
@@ -918,6 +932,7 @@ class EveryoneCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_member_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
+        thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Moderators'
 
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
@@ -995,16 +1010,20 @@ class EveryoneCommands(commands.Cog):
                         continue
                     if not member_obj:
                         lines.append(f"**User**: {member.mention}")
+                    else:
+                        if not thumbnail:
+                            embed.set_thumbnail(url=member.display_avatar.url)
+                            thumbnail = True
                 field_count += 1
                 if field_count == chunk_size:
                     if lines:
                         embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
+                        lines = []
                     elif channel_lines:
                         embed.add_field(name=f'Channels', value='\n'.join(channel_lines), inline=False)
                         channel_lines = []
                     pages.append(embed)
                     embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    lines = []
                     field_count = 0
                 if lines:
                     embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
