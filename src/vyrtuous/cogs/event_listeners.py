@@ -180,6 +180,13 @@ class EventListeners(commands.Cog):
         server_mute = await ServerMute.fetch_by_member(member.id)
         if server_mute:
             if member.guild.id == server_mute.guild_snowflake:
+                if not after.mute:
+                    try:
+                        await member.edit(mute=True, reason='Server mute is active.')
+                    except discord.Forbidden as e:
+                        logger.debug(f'No permission to edit mute for {member.display_name}')
+                    except discord.HTTPException as e:
+                        logger.debug(f'Failed to edit mute for {member.display_name}: {str(e).capitalize()}')
                 return
         if after.channel:                    
             should_be_muted = False

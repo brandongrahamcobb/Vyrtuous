@@ -905,7 +905,7 @@ class AdminCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
-    @app_commands.command(name='smute', description='Server mute.')
+    @app_commands.command(name='smute', description='Server mute/server unmute.')
     @app_commands.describe(member='Tag a member or include their snowflake ID', reason='Optional reason (required for 7 days or more)')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def toggle_server_mute_app_command(
@@ -945,7 +945,7 @@ class AdminCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
-    @commands.command(name='smute', help='Server mute')
+    @commands.command(name='smute', help='Server mute/server unmute.')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def toggle_server_mute_text_command(
         self,
