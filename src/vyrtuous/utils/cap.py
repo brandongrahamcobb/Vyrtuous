@@ -17,7 +17,7 @@
 '''
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.duration import DurationObject
+from vyrtuous.utils.properties.duration import DurationObject
 
 class Cap:
 

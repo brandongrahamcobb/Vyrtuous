@@ -16,7 +16,7 @@
 '''
 from typing import Optional
 from vyrtuous.inc.helpers import *
-from vyrtuous.utils.developer import Developer
+from vyrtuous.enhanced_members.developer import Developer
 from vyrtuous.tests.black_box.test_suite import *
 import pytest
 

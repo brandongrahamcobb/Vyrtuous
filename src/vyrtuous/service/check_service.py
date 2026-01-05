@@ -18,10 +18,10 @@
 from discord import app_commands
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.administrator import Administrator
-from vyrtuous.utils.coordinator import Coordinator
-from vyrtuous.utils.developer import Developer
-from vyrtuous.utils.moderator import Moderator
+from vyrtuous.enhanced_members.administrator import Administrator
+from vyrtuous.enhanced_members.coordinator import Coordinator
+from vyrtuous.enhanced_members.developer import Developer
+from vyrtuous.enhanced_members.moderator import Moderator
 from vyrtuous.utils.permission import PERMISSION_TYPES
 from vyrtuous.utils.setup_logging import logger
 
@@ -268,7 +268,7 @@ async def member_is_moderator(channel_snowflake: int, guild_snowflake: int, memb
     return True
 
 async def has_equal_or_higher_role(message_ctx_interaction, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, sender_snowflake: int) -> bool:
-    bot = DiscordBot.get_instance()
+    bot = DiscordBot.get_instance() 
     async def get_highest_role(member_sf):
         try:
             if await member_is_system_owner( member_snowflake=member_sf):
@@ -303,6 +303,12 @@ async def has_equal_or_higher_role(message_ctx_interaction, channel_snowflake: i
                 pass
         return PERMISSION_TYPES.index('Everyone')
     sender_rank = await get_highest_role(sender_snowflake)
+    if isinstance(message_ctx_interaction, (commands.Context, discord.Message)):
+        if message_ctx_interaction.author.id == member_snowflake:
+            return PERMISSION_TYPE[sender_rank]
+    elif isinstance(message_ctx_interaction, discord.Interaction):
+        if message_ctx_interaction.user.id == member_snowflake:
+            return PERMISSION_TYPE[sender_rank]
     target_rank = await get_highest_role(member_snowflake)
     msg = f'You may not execute this command on this `{PERMISSION_TYPES[target_rank]}` because they have equal or higher role than you in this channel/server.'
     if sender_rank <= target_rank:

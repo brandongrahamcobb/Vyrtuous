@@ -19,10 +19,10 @@
 from datetime import datetime, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.duration import DurationObject
-from vyrtuous.utils.paginator import Paginator 
+from vyrtuous.utils.properties.duration import DurationObject
+from vyrtuous.service.paginator_service import Paginator 
 from vyrtuous.utils.setup_logging import logger
-from vyrtuous.utils.snowflake import *
+from vyrtuous.utils.properties.snowflake import *
 import discord
 
 class History:

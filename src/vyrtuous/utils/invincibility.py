@@ -16,9 +16,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.ban import Ban
-from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.voice_mute import VoiceMute
+from vyrtuous.moderation_action.ban import Ban
+from vyrtuous.moderation_action.text_mute import TextMute
+from vyrtuous.moderation_action.voice_mute import VoiceMute
 import discord
 
 class Invincibility:

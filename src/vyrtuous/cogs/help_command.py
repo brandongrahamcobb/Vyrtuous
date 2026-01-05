@@ -21,12 +21,12 @@ from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.paginator import Paginator
+from vyrtuous.service.paginator_service import Paginator
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.permission import PERMISSION_TYPES
-from vyrtuous.utils.state import State
+from vyrtuous.service.state_service import State
 
 import inspect
     

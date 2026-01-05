@@ -22,12 +22,12 @@ from vyrtuous.inc.helpers import *
 from vyrtuous.service.check_service import *
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.member_service import MemberService
-from vyrtuous.utils.administrator import AdministratorRole
-from vyrtuous.utils.developer import Developer
+from vyrtuous.enhanced_members.administrator import AdministratorRole
+from vyrtuous.enhanced_members.developer import Developer
 from vyrtuous.utils.developer_log import DeveloperLog
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.snowflake import *
-from vyrtuous.utils.state import State
+from vyrtuous.utils.properties.snowflake import *
+from vyrtuous.service.state_service import State
 from vyrtuous.utils.invincibility import Invincibility
 
 class SystemOwnerCommands(commands.Cog):

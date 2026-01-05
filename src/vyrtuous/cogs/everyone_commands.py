@@ -23,13 +23,13 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.role_service import RoleService
-from vyrtuous.utils.administrator import Administrator
-from vyrtuous.utils.developer import Developer
+from vyrtuous.enhanced_members.administrator import Administrator
+from vyrtuous.enhanced_members.developer import Developer
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.moderator import Moderator
-from vyrtuous.utils.snowflake import *
-from vyrtuous.utils.state import State
-from vyrtuous.utils.temporary_room import TemporaryRoom
+from vyrtuous.enhanced_members.moderator import Moderator
+from vyrtuous.utils.properties.snowflake import *
+from vyrtuous.service.state_service import State
+from vyrtuous.rooms.temporary_room import TemporaryRoom
    
 import discord
 
@@ -733,7 +733,277 @@ class EveryoneCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators found.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
+    
+    # DONE
+    @app_commands.command(name='devs', description='List devs.')
+    @app_commands.describe(scope="Specify one of: 'all', server ID or empty.")
+    async def list_developers_app_command(
+        self,
+        interaction : discord.Interaction,
+        scope: Optional[str] = None
+    ):
+        state = State(interaction)
+        at_home = True
+        guild_obj = None
+        member_obj = None
+        chunk_size = 7
+        field_count = 0
+        pages = []
+        skipped_guild_snowflakes = set()
+        skipped_member_snowflakes_by_guild_snowflake = {}
+        title = f'{self.emoji.get_random_emoji()} Developers'
+
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        if scope and scope.lower() == 'all':
+            if highest_role not in ('System Owner', 'Developer'):
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers across all servers.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            developers = await Developer.fetch_all()
+        elif scope:
+            try:
+                member_obj = await self.member_service.resolve_member(interaction, scope) 
+                developers = await Developer.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            except Exception as e:
+                if highest_role not in ('System Owner', 'Guild Owner', 'Developer'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                guild_obj = self.bot.get_guild(int(scope))
+                if not guild_obj:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, member ID/mention, server ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                developers = await Developer.fetch_by_guild(guild_snowflake=int(scope))
+        else:
+            developers = await Developer.fetch_by_guild(guild_snowflake=interaction.guild.id)
+            guild_obj = interaction.guild
         
+        if not developers:
+            try:
+                if scope:
+                    msg = f'No developers are setup for scope: {scope}.'
+                else:
+                    msg = f'No developers are setup in {guild_obj.name}.'
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developers exist for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for developer in developers:
+            guild_dictionary.setdefault(developer.guild_snowflake, {})
+            guild_dictionary[developer.guild_snowflake].setdefault(developer.member_snowflake, [])
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake in guild_dictionary.keys():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for member_snowflake in guild_dictionary[guild_snowflake]:
+                if field_count >= chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                member_obj = guild.get_member(member_snowflake)
+                if not member_obj:
+                    skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_snowflake)
+                    continue
+                embed.add_field(name=f'{member_obj.name} ({member_snowflake})', value=member_obj.mention, inline=False)
+                field_count += 1
+            pages.append(embed)
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
+        except Exception as e:
+            pass
+        if is_at_home:
+            if skipped_guild_snowflakes:
+                embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
+                lines = []
+                for guild_snowflake in skipped_guild_snowflakes:
+                    if field_count >= chunk_size:
+                        embed.description = '\n'.join(lines)
+                        pages.append(embed)
+                        embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
+                        lines = []
+                        field_count = 0
+                    lines.append(str(guild_snowflake))
+                    field_count += 1
+                embed.description = '\n'.join(lines)
+                pages.append(embed)
+            if skipped_member_snowflakes_by_guild_snowflake:
+                for guild_snowflake, member_list in skipped_member_snowflakes_by_guild_snowflake.items():
+                    embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Members in Server ({guild_snowflake})')
+                    field_count = 0
+                    lines = []
+                    for member_snowflake in member_list:
+                        if field_count >= chunk_size:
+                            embed.description = '\n'.join(lines)
+                            pages.append(embed)
+                            embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Members in Server ({guild_snowflake}) continued...')
+                            field_count = 0
+                            lines = []
+                        lines.append(str(member_snowflake))
+                        field_count += 1
+                    embed.description = '\n'.join(lines)
+                    pages.append(embed)
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developers found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+
+    # DONE
+    @commands.command(name='devs', help='List devs.')
+    async def list_developers_text_command(
+        self,
+        ctx: commands.Context,
+        *,
+        scope: Optional[str] = commands.parameter(default=None, description="'all', a specific server or user mention/ID")
+    ):
+        state = State(ctx)
+        is_at_home = False
+        guild_obj = None
+        member_obj = None
+        chunk_size = 7
+        field_count = 0
+        pages = []
+        skipped_guild_snowflakes = set()
+        skipped_member_snowflakes_by_guild_snowflake = {}
+        title = f'{self.emoji.get_random_emoji()} Developers'
+
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        if scope and scope.lower() == 'all':
+            if highest_role not in ('System Owner', 'Developer'):
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers across all servers.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+            developers = await Developer.fetch_all()
+        elif scope:
+            try:
+                member_obj = await self.member_service.resolve_member(ctx, scope) 
+                developers = await Developer.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            except Exception as e:
+                if highest_role not in ('System Owner', 'Guild Owner', 'Developer'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list developers for specific servers.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                guild_obj = self.bot.get_guild(int(scope))
+                if not guild_obj:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, member ID/mention, role ID/mention, server ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                developers = await Developer.fetch_by_guild(guild_snowflake=int(scope))
+        else:
+            developers = await Developer.fetch_by_guild(guild_snowflake=ctx.guild.id)
+            guild_obj = ctx.guild
+        
+        if not developers:
+            try:
+                if scope:
+                    msg = f'No developers are setup for scope: {scope}.'
+                else:
+                    msg = f'No developers are setup in {guild_obj.name}.'
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developers exist for scope: {scope}.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+        
+        guild_dictionary = {}
+        for developer in developers:
+            guild_dictionary.setdefault(developer.guild_snowflake, {})
+            guild_dictionary[developer.guild_snowflake].setdefault(developer.member_snowflake, [])
+
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+
+        for guild_snowflake in guild_dictionary.keys():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for member_snowflake in guild_dictionary[guild_snowflake]:
+                if field_count >= chunk_size:
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    field_count = 0
+                member_obj = guild.get_member(member_snowflake)
+                if not member_obj:
+                    skipped_member_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(member_snowflake)
+                    continue
+                embed.add_field(name=f'{member_obj.name} ({member_snowflake})', value=member_obj.mention, inline=False)
+                field_count += 1
+            pages.append(embed)
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
+        except Exception as e:
+            pass
+        if is_at_home:
+            if skipped_guild_snowflakes:
+                embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
+                lines = []
+                for guild_snowflake in skipped_guild_snowflakes:
+                    if field_count >= chunk_size:
+                        embed.description = '\n'.join(lines)
+                        pages.append(embed)
+                        embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
+                        lines = []
+                        field_count = 0
+                    lines.append(str(guild_snowflake))
+                    field_count += 1
+                embed.description = '\n'.join(lines)
+                pages.append(embed)
+            if skipped_member_snowflakes_by_guild_snowflake:
+                for guild_snowflake, member_list in skipped_member_snowflakes_by_guild_snowflake.items():
+                    embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Members in Server ({guild_snowflake})')
+                    field_count = 0
+                    lines = []
+                    for member_snowflake in member_list:
+                        if field_count >= chunk_size:
+                            embed.description = '\n'.join(lines)
+                            pages.append(embed)
+                            embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Members in Server ({guild_snowflake}) continued...')
+                            field_count = 0
+                            lines = []
+                        lines.append(str(member_snowflake))
+                        field_count += 1
+                    embed.description = '\n'.join(lines)
+                    pages.append(embed)
+
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No developers found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
+
     # DONE
     @app_commands.command(name='mods', description='Lists mods.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")

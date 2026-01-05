@@ -21,11 +21,11 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.check_service import *
 from vyrtuous.service.member_service import MemberService
-from vyrtuous.utils.ban import Ban
-from vyrtuous.utils.flag import Flag
-from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.vegan import Vegan
-from vyrtuous.utils.voice_mute import VoiceMute
+from vyrtuous.moderation_action.ban import Ban
+from vyrtuous.moderation_action.flag import Flag
+from vyrtuous.moderation_action.text_mute import TextMute
+from vyrtuous.moderation_action.vegan import Vegan
+from vyrtuous.moderation_action.voice_mute import VoiceMute
 
 class Alias:
     

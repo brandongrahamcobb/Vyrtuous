@@ -22,9 +22,9 @@ from datetime import datetime, timezone
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.developer import Developer
+from vyrtuous.enhanced_members.developer import Developer
 from vyrtuous.utils.developer_log import DeveloperLog
-from vyrtuous.utils.paginator import Paginator
+from vyrtuous.service.paginator_service import Paginator
 from vyrtuous.utils.time_to_complete import TimeToComplete
 import asyncio
 import discord

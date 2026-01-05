@@ -27,7 +27,12 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bot.discord_client import DiscordClient
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import *
-from vyrtuous.utils.state import State
+from vyrtuous.enhanced_members.administrator import Administrator
+from vyrtuous.enhanced_members.coordinator import Coordinator
+from vyrtuous.enhanced_members.developer import Developer
+from vyrtuous.enhanced_members.moderator import Moderator
+from vyrtuous.utils.permission import PERMISSION_TYPES
+from vyrtuous.service.state_service import State
 from vyrtuous.tests.black_box.make_mock_objects import *
 import asyncpg
 import discord
@@ -281,6 +286,44 @@ def extract_embed_text(embed: discord.Embed) -> str:
     for field in embed.fields:
         parts.append(f"{field.name}: {field.value}")
     return "\n".join(parts)
+
+@pytest_asyncio.fixture(scope="function")
+async def permission(request, voice_channel_one, guild, privileged_author):
+    perm_type = request.param
+    if perm_type is None:
+        yield None
+        return
+    PERMISSION_CLASSES = {
+        'Administrator': Administrator,
+        'Coordinator': Coordinator,
+        'Developer': Developer,
+        'Moderator': Moderator,
+    }
+    perm_class = PERMISSION_CLASSES[perm_type]
+    CHANNEL_CLASSES = {'Coordinator', 'Moderator'}
+    ROLE_CLASSES = {'Administrator'}
+    if perm_type in CHANNEL_CLASSES:
+        perm_instance = perm_class(
+            channel_snowflake=voice_channel_one.id,
+            guild_snowflake=guild.id,
+            member_snowflake=privileged_author.id
+        )
+    elif perm_type in ROLE_CLASSES:
+        perm_instance = perm_class(
+            guild_snowflake=guild.id,
+            member_snowflake=privileged_author.id,
+            role_snowflakes=[ROLE_ID]
+        )
+    else:
+        perm_instance = perm_class(
+            guild_snowflake=guild.id,
+            member_snowflake=privileged_author.id
+        )
+    await perm_instance.grant()
+    try:
+        yield perm_instance
+    finally:
+        await perm_instance.revoke()
 
 # def _get_start_time(self, ctx_or_interaction):
 #     if hasattr(ctx_or_interaction, "created_at"):

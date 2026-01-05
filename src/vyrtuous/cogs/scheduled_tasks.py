@@ -19,16 +19,16 @@ from datetime import datetime, timedelta, timezone
 from discord.ext import commands, tasks
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
-from vyrtuous.utils.ban import Ban
+from vyrtuous.moderation_action.ban import Ban
 from vyrtuous.utils.database import Database
-from vyrtuous.utils.developer import Developer
-from vyrtuous.utils.duration import DurationObject
+from vyrtuous.enhanced_members.developer import Developer
+from vyrtuous.utils.properties.duration import DurationObject
 from vyrtuous.utils.developer_log import DeveloperLog
 from vyrtuous.utils.setup_logging import logger
-from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.stage import Stage
-from vyrtuous.utils.video_room import VideoRoom
-from vyrtuous.utils.voice_mute import VoiceMute
+from vyrtuous.moderation_action.text_mute import TextMute
+from vyrtuous.rooms.stage import Stage
+from vyrtuous.rooms.video_room import VideoRoom
+from vyrtuous.moderation_action.voice_mute import VoiceMute
 
 import discord
 

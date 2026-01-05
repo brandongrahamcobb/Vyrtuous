@@ -22,16 +22,16 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.role_service import RoleService
 from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.ban import Ban
+from vyrtuous.moderation_action.ban import Ban
 from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.duration import DurationObject
+from vyrtuous.utils.properties.duration import DurationObject
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.flag import Flag
+from vyrtuous.moderation_action.flag import Flag
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.history import History
-from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.vegan import Vegan
-from vyrtuous.utils.voice_mute import VoiceMute
+from vyrtuous.moderation_action.text_mute import TextMute
+from vyrtuous.moderation_action.vegan import Vegan
+from vyrtuous.moderation_action.voice_mute import VoiceMute
 
 class Aliases(commands.Cog):
 

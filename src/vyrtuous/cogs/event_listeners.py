@@ -26,23 +26,23 @@ from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.administrator import Administrator, AdministratorRole
+from vyrtuous.enhanced_members.administrator import Administrator, AdministratorRole
 from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.ban import Ban
+from vyrtuous.moderation_action.ban import Ban
 from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.duration import DurationObject
+from vyrtuous.utils.properties.duration import DurationObject
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.flag import Flag
+from vyrtuous.moderation_action.flag import Flag
 from vyrtuous.utils.history import History
 from vyrtuous.utils.invincibility import Invincibility
-from vyrtuous.utils.moderator import Moderator
-from vyrtuous.utils.stage import Stage
-from vyrtuous.utils.state import State
-from vyrtuous.utils.server_mute import ServerMute
-from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.video_room import VideoRoom
-from vyrtuous.utils.voice_mute import VoiceMute
+from vyrtuous.enhanced_members.moderator import Moderator
+from vyrtuous.rooms.stage import Stage
+from vyrtuous.service.state_service import State
+from vyrtuous.moderation_action.server_mute import ServerMute
+from vyrtuous.rooms.temporary_room import TemporaryRoom
+from vyrtuous.moderation_action.text_mute import TextMute
+from vyrtuous.rooms.video_room import VideoRoom
+from vyrtuous.moderation_action.voice_mute import VoiceMute
 import asyncio
 import discord
 import time
@@ -336,14 +336,14 @@ class EventListeners(commands.Cog):
         try:
             match type(error):
                 case commands.BadArgument:
-                    return await state.end(error=f'\u274C {error}')    
+                    return await state.end(error=f'\U000026A0\U0000FE0F{error}')    
                 case commands.CheckFailure:
-                    return await state.end(error=f'\u274C {error}')
+                    return await state.end(error=f'\U000026A0\U0000FE0F {error}')
                 case commands.MissingRequiredArgument:
                     missing = error.param.name
-                    return await state.end(error=f'\u274C Missing required argument: `{missing}`')
+                    return await state.end(error=f'\U000026A0\U0000FE0F Missing required argument: `{missing}`')
                 case ValueError:
-                    return await state.end(error=f'\u274C {error}')
+                    return await state.end(error=f'\U000026A0\U0000FE0F {error}')
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')
@@ -356,11 +356,11 @@ class EventListeners(commands.Cog):
         try:
             match type(error):
                 case app_commands.BadArgument:
-                    return await state.end(error=f'\u274C {error}') 
+                    return await state.end(error=f'\U000026A0\U0000FE0F {error}') 
                 case app_commands.CheckFailure:
-                    return await state.end(error=f'\u274C {error}')
+                    return await state.end(error=f'\U000026A0\U0000FE0F {error}')
                 case ValueError:
-                    return await state.end(error=f'\u274C {error}') 
+                    return await state.end(error=f'\U000026A0\U0000FE0F {error}') 
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e)}')

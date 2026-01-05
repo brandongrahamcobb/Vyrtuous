@@ -21,7 +21,7 @@ from typing import Union
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 from vyrtuous.utils.setup_logging import logger
-from vyrtuous.utils.snowflake import *
+from vyrtuous.utils.properties.snowflake import *
 import discord
 
 class MessageService:

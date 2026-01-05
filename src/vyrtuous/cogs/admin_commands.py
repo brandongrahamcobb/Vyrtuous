@@ -25,30 +25,30 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.role_service import RoleService
-from vyrtuous.utils.administrator import AdministratorRole
+from vyrtuous.enhanced_members.administrator import AdministratorRole
 from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.ban import Ban
+from vyrtuous.moderation_action.ban import Ban
 from vyrtuous.utils.cancel_confirm import VerifyView
 from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.coordinator import Coordinator
-from vyrtuous.utils.duration import AppDuration, Duration, DurationObject
+from vyrtuous.enhanced_members.coordinator import Coordinator
+from vyrtuous.utils.properties.duration import AppDuration, Duration, DurationObject
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.moderation_type import AppModerationType, ModerationType
-from vyrtuous.utils.moderator import Moderator
+from vyrtuous.utils.properties.moderation_type import AppModerationType, ModerationType
+from vyrtuous.enhanced_members.moderator import Moderator
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.flag import Flag
+from vyrtuous.moderation_action.flag import Flag
 from vyrtuous.utils.invincibility import Invincibility
-from vyrtuous.utils.server_mute import ServerMute
+from vyrtuous.moderation_action.server_mute import ServerMute
 from vyrtuous.utils.setup_logging import logger
-from vyrtuous.utils.snowflake import *
-from vyrtuous.utils.stage import Stage
-from vyrtuous.utils.state import State
+from vyrtuous.utils.properties.snowflake import *
+from vyrtuous.rooms.stage import Stage
+from vyrtuous.service.state_service import State
 from vyrtuous.utils.history import History
-from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.vegan import Vegan
-from vyrtuous.utils.voice_mute import VoiceMute
-from vyrtuous.utils.video_room import VideoRoom
+from vyrtuous.rooms.temporary_room import TemporaryRoom
+from vyrtuous.moderation_action.text_mute import TextMute
+from vyrtuous.moderation_action.vegan import Vegan
+from vyrtuous.moderation_action.voice_mute import VoiceMute
+from vyrtuous.rooms.video_room import VideoRoom
 
 class AdminCommands(commands.Cog):
 

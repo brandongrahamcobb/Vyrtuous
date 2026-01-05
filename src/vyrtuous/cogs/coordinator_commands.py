@@ -24,10 +24,10 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.moderator import Moderator
-from vyrtuous.utils.state import State
-from vyrtuous.utils.voice_mute import VoiceMute
-from vyrtuous.utils.snowflake import *
+from vyrtuous.enhanced_members.moderator import Moderator
+from vyrtuous.service.state_service import State
+from vyrtuous.moderation_action.voice_mute import VoiceMute
+from vyrtuous.utils.properties.snowflake import *
 
 class CoordinatorCommands(commands.Cog):
 

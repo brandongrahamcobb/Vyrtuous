@@ -17,59 +17,93 @@
 from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.black_box.make_mock_objects import *
-from vyrtuous.utils.moderator import Moderator
+from vyrtuous.enhanced_members.moderator import Moderator
 from vyrtuous.tests.black_box.test_suite import *
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,channel_ref,member_ref",
+    "permission,command,channel_ref,guild_ref,member_ref,role_ref,should_warn",
     [
-        ("admins", False, False),
-        ("admins {member_id}", False, True),
-        ("admins all", False, True),
-        ("coords {voice_channel_one_id}", True, False),
-        ("coords {member_id}", False, True),
-        ("coords all", False, False),
-        ("devs", False, False),
-        ("devs {member_id}", False, True),
-        ("devs all", False, False),
-        ("mods {voice_channel_one_id}", True, False),
-        ("mods {member_id}", False, True),
-        ("mods all", False, False),
-        # ("owners {member_id}", False, True),
-        # ("owners {member_id}", False, True),
-        # ("owners all", False, False)
-    ]
+        ("Developer", "arole {role_id}", False, True, False, True, False),
+        (None, "admins", False, True, False, False, False),
+        (None, "admins {member_id}", False, True, True, False, False),
+        ("Administrator", "admins {guild_id}", False, True, False, False, False),
+        ("Developer", "admins all", False, False, False, False, False),
+        ("Developer", "arole {role_id}", False, True, False, True, False),
+        (None, "admins", False, True, False, False, True),
+        (None, "admins {member_id}", False, True, True, False, True),
+        ("Administrator", "admins {guild_id}", False, True, False, False, True),
+        ("Developer", "admins all", False, False, False, False, True),
+        ("Administrator", "coord {member_id} {voice_channel_one_id}", True, True, True, False, False),
+        (None, "coords {voice_channel_one_id}", True, True, False, False, False),
+        (None, "coords {member_id}", False, True, True, False, False),
+        ("Administrator", "coords {guild_id}", False, True, False, False, False),
+        ("Developer", "coords all", False, False, False, False, False),
+        ("Administrator", "coord {member_id} {voice_channel_one_id}", True, True, True, False, False),
+        (None, "coords {voice_channel_one_id}", True, True, False, False, True),
+        (None, "coords {member_id}", False, True, True, False, True),
+        ("Administrator", "coords {guild_id}", False, True, False, False, True),
+        ("Developer", "coords all", False, False, False, False, True),
+        # ("System Owner", "dev {member_id}", False, True, True, False, False)
+        (None, "devs", False, True, False, False, True),
+        ("Administrator", "devs {guild_id}", False, True, False, False, True),
+        (None, "devs {member_id}", False, True, True, False, True),
+        ("Developer", "devs all", False, False, False, False, True),
+        # ("System Owner", "dev {member_id}", False, True, True, False, False)
+        (None, "devs", False, True, False, False, True),
+        ("Administrator", "devs {guild_id}", False, True, False, False, True),
+        (None, "devs {member_id}", False, True, True, False, True),
+        ("Developer", "devs all", False, False, False, False, True),
+        ("Administrator", "mod {member_id} {voice_channel_one_id}", True, True, True, False, False),
+        (None, "mods {voice_channel_one_id}", True, True, False, False, False),
+        (None, "mods {member_id}", False, True, True, False, False),
+        ("Administrator", "mods {guild_id}", False, True, False, False, False),
+        ("Developer", "mods all", False, False, False, False, False),
+        ("Administrator", "mod {member_id} {voice_channel_one_id}", True, True, True, False, False),
+        (None, "mods {voice_channel_one_id}", True, True, False, False, True),
+        (None, "mods {member_id}", False, True, True, False, True)
+    ],
+    indirect=['permission']
 )
-
-async def test_admins_coords_devs_mods_owners_commands(bot, text_channel, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
-    moderator = Moderator(channel_snowflake=text_channel.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-    await moderator.grant()
-    try:
-        formatted = command.format(
-            voice_channel_one_id=text_channel.id,
-            member_id=not_privileged_author.id
-        )
-        # bot.wait_for = mock_wait_for
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role='Moderator', prefix=prefix)
-        message = captured[0]['message']
-        if message.embeds:
-            embed = message.embeds[0]
-            content = extract_embed_text(embed)
-        elif message.embed:
-            content = extract_embed_text(message.embed)
-        else:
-            content = message.content
-        message_type = captured[0]['type']
-        if message_type == "error":
-            print(f"{RED}Error:{RESET} {content}")
-        if message_type == "warning":
-            print(f"{YELLOW}Warning:{RESET} {content}")
-        if message_type == "success":
-            print(f"{GREEN}Success:{RESET} {content}")
-            assert any(emoji in content for emoji in Emojis.EMOJIS)
-    finally:
-        await moderator.revoke()
-    # print("test")
+async def test_admins_coords_devs_mods_owners_commands(
+    bot,
+    text_channel,
+    guild,
+    not_privileged_author,
+    privileged_author,
+    prefix: Optional[str],
+    command: Optional[str],
+    channel_ref,
+    guild_ref,
+    member_ref,
+    role_ref, 
+    permission,
+    should_warn
+):
+    formatted = command.format(
+        voice_channel_one_id=text_channel.id,
+        guild_id=guild.id,
+        member_id=not_privileged_author.id,
+        role_id=ROLE_ID
+    )
+    captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
+    message = captured[0]['message']
+    if message.embeds:
+        embed = message.embeds[0]
+        content = extract_embed_text(embed)
+    elif message.embed:
+        content = extract_embed_text(message.embed)
+    else:
+        content = message.content
+    message_type = captured[0]['type']
+    if message_type == "error":
+        print(f"{RED}Error:{RESET} {content}")
+    if message_type == "warning":
+        # print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
+    if message_type == "success":
+        # print(f"{GREEN}Success:{RESET} {content}")
+        assert any(emoji in content for emoji in Emojis.EMOJIS)

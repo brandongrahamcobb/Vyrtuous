@@ -23,21 +23,21 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.paginator import Paginator
+from vyrtuous.service.paginator_service import Paginator
 from vyrtuous.utils.alias import Alias
-from vyrtuous.utils.ban import Ban
+from vyrtuous.moderation_action.ban import Ban
 from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.duration import Duration, DurationObject
+from vyrtuous.utils.properties.duration import Duration, DurationObject
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.flag import Flag
+from vyrtuous.moderation_action.flag import Flag
 from vyrtuous.utils.setup_logging import logger
-from vyrtuous.utils.snowflake import *
-from vyrtuous.utils.stage import Stage
-from vyrtuous.utils.state import State
-from vyrtuous.utils.temporary_room import TemporaryRoom
-from vyrtuous.utils.text_mute import TextMute
-from vyrtuous.utils.vegan import Vegan
-from vyrtuous.utils.voice_mute import VoiceMute
+from vyrtuous.utils.properties.snowflake import *
+from vyrtuous.rooms.stage import Stage
+from vyrtuous.service.state_service import State
+from vyrtuous.rooms.temporary_room import TemporaryRoom
+from vyrtuous.moderation_action.text_mute import TextMute
+from vyrtuous.moderation_action.vegan import Vegan
+from vyrtuous.moderation_action.voice_mute import VoiceMute
    
 class ModeratorCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
