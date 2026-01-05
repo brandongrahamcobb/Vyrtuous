@@ -178,8 +178,10 @@ class DevCommands(commands.Cog):
         
         if not developers:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
+                if scope:
+                    msg = f'No developers are setup for scope: {scope}.'
+                else:
+                    msg = f'No developers are setup in {guild_obj.name}.'
                 return await state.end(warning=f'\U000026A0\U0000FE0F No developers exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
@@ -312,8 +314,10 @@ class DevCommands(commands.Cog):
         
         if not developers:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
+                if scope:
+                    msg = f'No developers are setup for scope: {scope}.'
+                else:
+                    msg = f'No developers are setup in {guild_obj.name}.'
                 return await state.end(warning=f'\U000026A0\U0000FE0F No developers exist for scope: {scope}.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
@@ -405,9 +409,9 @@ class DevCommands(commands.Cog):
     async def update_developer_logs_app_command(
         self,
         ctx: commands.Context,
-        reference: Optional[str],
-        action: Optional[str],
-        notes: Optional[str]
+        reference: str,
+        action: str,
+        notes: Optional[str] = None
     ):       
         state = State(ctx)
         developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=reference)
@@ -435,8 +439,8 @@ class DevCommands(commands.Cog):
     async def update_developer_logs_text_command(
         self,
         ctx: commands.Context,
-        reference: Optional[str] = commands.parameter(default=None, description='Specify the developer log reference ID.'),
-        action: Optional[str] = commands.parameter(default='append', description="Specify one of: 'resolve' or 'append' or 'overwrite'."),
+        reference: str = commands.parameter(default=None, description='Specify the developer log reference ID.'),
+        action: str = commands.parameter(default='append', description="Specify one of: 'resolve' or 'append' or 'overwrite'."),
         *,
         notes: Optional[str] = commands.parameter(default=None, description='Optionally specify notes.')
     ):       
@@ -470,11 +474,11 @@ class DevCommands(commands.Cog):
     @is_system_owner_developer_predicator()
     async def list_developer_logs_text_command(
         self,
-        ctx: commands.Context,
+        interaction: discord.Interaction,
         scope: Optional[str],
         value: Optional[str]
     ):
-        state = State(ctx)
+        state = State(interaction)
         is_at_home = False
         channel_obj = None
         developer_logs = []
@@ -490,8 +494,8 @@ class DevCommands(commands.Cog):
             developer_logs = await DeveloperLog.fetch_all()
         elif scope and scope.lower() == 'resolved':
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, value) 
-                developer_logs = await DeveloperLog.fetch_resolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                channel_obj = await self.channel_service.resolve_channel(interaction, value) 
+                developer_logs = await DeveloperLog.fetch_resolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 guild_obj = self.bot.get_guild(value)
                 if guild_obj:
@@ -505,8 +509,8 @@ class DevCommands(commands.Cog):
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif scope and scope.lower() == 'unresolved':
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, value) 
-                developer_logs = await DeveloperLog.fetch_unresolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                channel_obj = await self.channel_service.resolve_channel(interaction, value) 
+                developer_logs = await DeveloperLog.fetch_unresolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 guild_obj = self.bot.get_guild(value)
                 if guild_obj:
@@ -520,20 +524,18 @@ class DevCommands(commands.Cog):
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')                        
         else:
-            try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', 'resolved' or 'unresolved'. Value must be one of channel ID/mention, member ID/mention, reference ID, server ID or empty. Received: {value}.")
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+            channel_obj = interaction.channel
+            guild_obj = interaction.guild
         
         if not developer_logs:
+            if scope:
+                msg = f'No developer logs exist for scope: {scope}.'
+            else:
+                msg = f'No developer logs exist for {channel_obj.mention} in {guild_obj.name}.'
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No developer logs exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}.')
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                return await state.end(error=f'\u274C {str(e).capitalize()}') 
         
         guild_dictionary = {}
         for developer_log in developer_logs:
@@ -588,7 +590,7 @@ class DevCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
+            is_at_home = at_home(interaction_interaction_or_message=interaction)
         except Exception as e:
             pass
         if is_at_home:
@@ -658,6 +660,7 @@ class DevCommands(commands.Cog):
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
+        *,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', 'resolved' or 'unresolved."),
         value: Optional[str] = commands.parameter(default=None, description='Specify one of: channel ID/mention, reference ID or server ID.')
     ):
@@ -707,20 +710,18 @@ class DevCommands(commands.Cog):
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')                        
         else:
-            try:
-                return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', 'resolved' or 'unresolved'. Value must be one of channel ID/mention, member ID/mention, reference ID, server ID or empty. Received: {value}.")
-            except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+            channel_obj = ctx.channel
+            guild_obj = ctx.guild
         
         if not developer_logs:
+            if scope:
+                msg = f'No developer logs exist for scope: {scope}.'
+            else:
+                msg = f'No developer logs exist for {channel_obj.mention} in {guild_obj.name}.'
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No developer logs exist for scope: {scope}.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}.')
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')
+                return await state.end(error=f'\u274C {str(e).capitalize()}') 
         
         guild_dictionary = {}
         for developer_log in developer_logs:
@@ -940,7 +941,11 @@ class DevCommands(commands.Cog):
     # DONE
     @app_commands.command(name='sync', description="Sync app commands.")
     @is_system_owner_developer_predicator()
-    async def sync_app_command(self, interaction: discord.Interaction, spec: Optional[Literal['~', '*', '^']] = None):
+    async def sync_app_command(
+        self,
+        interaction: discord.Interaction,
+        spec: Optional[Literal['~', '*', '^']] = None
+    ):
         await interaction.response.defer(ephemeral=True)
         state = State(interaction)
         guilds = interaction.client.guilds
@@ -983,7 +988,12 @@ class DevCommands(commands.Cog):
     # DONE
     @commands.command(name='sync', help="Sync app commands.")
     @is_system_owner_developer_predicator()
-    async def sync_text_command(self, ctx: commands.Context, guilds: commands.Greedy[discord.Object], spec: Optional[Literal['~', '*', '^']] = None):
+    async def sync_text_command(
+        self,
+        ctx: commands.Context,
+        guilds: commands.Greedy[discord.Object],
+        spec: Optional[Literal['~', '*', '^']] = None
+    ):
         state = State(ctx)
         synced = []
         if not guilds:

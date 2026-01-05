@@ -311,9 +311,9 @@ def extract_embed_text(embed: discord.Embed) -> str:
     return "\n".join(parts)
 
 
-def _get_start_time(self, ctx_interaction):
-    if hasattr(ctx_interaction, "created_at"):
-        return ctx_interaction.created_at
-    if hasattr(ctx_interaction, "message") and hasattr(ctx_interaction.message, "created_at"):
-        return ctx_interaction.message.created_at
+def _get_start_time(self, ctx_or_interaction):
+    if hasattr(ctx_or_interaction, "created_at"):
+        return ctx_or_interaction.created_at
+    if hasattr(ctx_or_interaction, "message") and hasattr(ctx_or_interaction.message, "created_at"):
+        return ctx_or_interaction.message.created_at
     return datetime.now(timezone.utc)

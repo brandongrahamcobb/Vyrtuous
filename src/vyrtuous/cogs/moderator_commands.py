@@ -105,14 +105,15 @@ class ModeratorCommands(commands.Cog):
         else:
             bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             channel_obj = interaction.channel 
+            guild_obj = interaction.guild
 
         if not bans:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No bans exist for scope: {scope}.')
+                if scope:
+                    msg = f'No bans exist for scope: {scope}.'
+                else:
+                    msg = f'No bans exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -240,7 +241,8 @@ class ModeratorCommands(commands.Cog):
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
-       scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
+        *,
+        scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
         is_at_home = False
@@ -289,16 +291,18 @@ class ModeratorCommands(commands.Cog):
         else:
             bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
+            guild_obj = ctx.guild
 
         if not bans:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No bans exist for scope: {scope}.')
+                if scope:
+                    msg = f'No bans exist for scope: {scope}.'
+                else:
+                    msg = f'No bans exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
+
         guild_dictionary = {}
         for ban in bans:
             guild_dictionary.setdefault(ban.guild_snowflake, {})
@@ -465,14 +469,15 @@ class ModeratorCommands(commands.Cog):
         else:
             caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             channel_obj = interaction.channel
+            guild_obj = interaction.guild
 
         if not caps:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No caps setup for scope: {scope}.')
+                if scope:
+                    msg = f'No caps exist for scope: {scope}.'
+                else:
+                    msg = f'No caps exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -579,6 +584,7 @@ class ModeratorCommands(commands.Cog):
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
+        *,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
@@ -620,14 +626,15 @@ class ModeratorCommands(commands.Cog):
         else:
             caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
-        
+            guild_obj = ctx.guild
+
         if not caps:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No caps setup for scope: {scope}.')
+                if scope:
+                    msg = f'No caps exist for scope: {scope}.'
+                else:
+                    msg = f'No caps exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -780,14 +787,15 @@ class ModeratorCommands(commands.Cog):
         else:
             aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             channel_obj = interaction.channel
+            guild_obj = interaction.guild
 
         if not aliases:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found for scope: {scope}.')
+                if scope:
+                    msg = f'No aliases exist for scope: {scope}.'
+                else:
+                    msg = f'No aliases exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
@@ -901,6 +909,7 @@ class ModeratorCommands(commands.Cog):
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
+        *,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
@@ -946,14 +955,15 @@ class ModeratorCommands(commands.Cog):
         else:
             aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
+            guild_obj = ctx.guild
 
         if not aliases:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No aliases found for scope: {scope}.')
+                if scope:
+                    msg = f'No aliases exist for scope: {scope}.'
+                else:
+                    msg = f'No aliases exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
@@ -1193,14 +1203,16 @@ class ModeratorCommands(commands.Cog):
                     flags = await Flag.fetch_by_guild(guild_snowflake=int(scope))
         else:
             flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
-        
+            channel_obj = interaction.channel
+            guild_obj = interaction.guild
+
         if not flags:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No flags exist for scope: {scope}.')
+                if scope:
+                    msg = f'No flags exist for scope: {scope}.'
+                else:
+                    msg = f'No flags exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1313,6 +1325,7 @@ class ModeratorCommands(commands.Cog):
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
+        *,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.")
     ):
         state = State(ctx)
@@ -1361,14 +1374,15 @@ class ModeratorCommands(commands.Cog):
         else:
             flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
+            guild_obj = ctx.guild
         
         if not flags:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No flags exist for scope: {scope}.')
+                if scope:
+                    msg = f'No flags exist for scope: {scope}.'
+                else:
+                    msg = f'No flags exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1542,14 +1556,15 @@ class ModeratorCommands(commands.Cog):
         else:
             new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             channel_obj = interaction.channel
-        
+            guild_obj = interaction.guild
+
         if not new_vegans:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans exist for scope: {scope}.')
+                if scope:
+                    msg = f'No new vegans exist for scope: {scope}.'
+                else:
+                    msg = f'No new vegans exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1674,6 +1689,7 @@ class ModeratorCommands(commands.Cog):
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
+        *,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.")
     ):
         state = State(ctx)
@@ -1722,14 +1738,15 @@ class ModeratorCommands(commands.Cog):
         else:
             new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
-        
+            guild_obj = ctx.guild
+
         if not new_vegans:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No new vegans exist for scope: {scope}.')
+                if scope:
+                    msg = f'No new vegans exist for scope: {scope}.'
+                else:
+                    msg = f'No new vegans exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1907,7 +1924,7 @@ class ModeratorCommands(commands.Cog):
     async def migrate_temp_room_text_command(
         self,
         ctx: commands.Context,
-        old_name: Optional[str] = commands.parameter(default=None, description='Provide a channel name'),
+        old_name: str = commands.parameter(default=None, description='Provide a channel name'),
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
@@ -2004,14 +2021,15 @@ class ModeratorCommands(commands.Cog):
         else:
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, target=target)
             channel_obj = interaction.channel
+            guild_obj = interaction.guild
 
         if not voice_mutes:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No voice-mutes exist for scope: {scope}.')
+                if scope:
+                    msg = f'No voice-mutes exist for scope: {scope}.'
+                else:
+                    msg = f'No voice-mutes exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2188,14 +2206,15 @@ class ModeratorCommands(commands.Cog):
         else:
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, target=target)
             channel_obj = ctx.channel
+            guild_obj = ctx.guild
 
         if not voice_mutes:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No voice-mutes exist for scope: {scope}.')
+                if scope:
+                    msg = f'No voice-mutes exist for scope: {scope}.'
+                else:
+                    msg = f'No voice-mutes exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2477,14 +2496,15 @@ class ModeratorCommands(commands.Cog):
             stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             stages = [stage] if stage else []
             channel_obj = interaction.channel
-        
+            guild_obj = interaction.guild
+
         if not stages:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No stages setup for scope: {scope}.')
+                if scope:
+                    msg = f'No stages exist for scope: {scope}.'
+                else:
+                    msg = f'No stages exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2617,14 +2637,15 @@ class ModeratorCommands(commands.Cog):
         else:
             stages = await Stage.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
-        
+            guild_obj = ctx.guild
+
         if not stages:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No stages setup for scope: {scope}.')
+                if scope:
+                    msg = f'No stages exist for scope: {scope}.'
+                else:
+                    msg = f'No stages exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -2872,7 +2893,8 @@ class ModeratorCommands(commands.Cog):
     async def list_moderation_summary_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(default=None, description='Specify a member ID/mention.'),  
+        member: MemberSnowflake = commands.parameter(default=None, description='Specify a member ID/mention.'),
+        *,  
         scope: Optional[str] = commands.parameter(default=None, description="Specify 'all' or a channel ID/mention.")
     ):
         state = State(ctx)
@@ -3073,14 +3095,16 @@ class ModeratorCommands(commands.Cog):
                     text_mutes = await TextMute.fetch_by_guild(guild_snowflake=int(scope))
         else:
             text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
-        
+            channel_obj = interaction.channel
+            guild_obj = interaction.guild
+
         if not text_mutes:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No text-mutes exist for scope: {scope}.')
+                if scope:
+                    msg = f'No text-mutes exist for scope: {scope}.'
+                else:
+                    msg = f'No text-mutes exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -3207,6 +3231,7 @@ class ModeratorCommands(commands.Cog):
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
+        *,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
@@ -3254,14 +3279,16 @@ class ModeratorCommands(commands.Cog):
                     text_mutes = await TextMute.fetch_by_guild(guild_snowflake=int(scope))
         else:
             text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
-        
+            channel_obj = ctx.channel
+            guild_obj = ctx.guild
+
         if not text_mutes:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No text-mutes exist for scope: {scope}.')
+                if scope:
+                    msg = f'No text-mutes exist for scope: {scope}.'
+                else:
+                    msg = f'No text-mutes exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         

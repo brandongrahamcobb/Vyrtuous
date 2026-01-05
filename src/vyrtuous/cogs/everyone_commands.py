@@ -96,9 +96,11 @@ class EveryoneCommands(commands.Cog):
         
         if not administrators:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                return await state.end(warning=f'\U000026A0\U0000FE0F No administrators exist for scope: {scope}.')
+                if scope:
+                    msg = f'No administrators exist for scope: {scope}.'
+                else:
+                    msg = f'No administrators exist in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -255,9 +257,11 @@ class EveryoneCommands(commands.Cog):
         
         if not administrators:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                return await state.end(warning=f'\U000026A0\U0000FE0F No administrators exist for scope: {scope}.')
+                if scope:
+                    msg = f'No administrators exist for scope: {scope}.'
+                else:
+                    msg = f'No administrators exist in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -416,14 +420,15 @@ class EveryoneCommands(commands.Cog):
         else:
             coordinators = await Coordinator.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             channel_obj = interaction.channel
+            guild_obj = interaction.guild
         
         if not coordinators:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators exist for scope: {scope}.')
+                if scope:
+                    msg = f'No coordinators exist for scope: {scope}.'
+                else:
+                    msg = f'No coordinators exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -548,6 +553,7 @@ class EveryoneCommands(commands.Cog):
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
+        *,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
@@ -597,14 +603,15 @@ class EveryoneCommands(commands.Cog):
         else:
             coordinators = await Coordinator.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
+            guild_obj = ctx.guild
         
         if not coordinators:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No coordinators exist for scope: {scope}.')
+                if scope:
+                    msg = f'No coordinators exist for scope: {scope}.'
+                else:
+                    msg = f'No coordinators exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -782,14 +789,15 @@ class EveryoneCommands(commands.Cog):
         else:
             moderators = await Moderator.fetch_by_channel_and_guild(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id)
             channel_obj = interaction.channel
+            guild_obj = interaction.guild
         
         if not moderators:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No moderators exist for scope: {scope}.')
+                if scope:
+                    msg = f'No moderators exist for scope: {scope}.'
+                else:
+                    msg = f'No moderators exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -918,6 +926,7 @@ class EveryoneCommands(commands.Cog):
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
+        *,
         scope: Optional[str] = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
     ):
         state = State(ctx)
@@ -967,14 +976,15 @@ class EveryoneCommands(commands.Cog):
         else:
             moderators = await Moderator.fetch_by_channel_and_guild(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id)
             channel_obj = ctx.channel
+            guild_obj = ctx.guild
         
         if not moderators:
             try:
-                if guild_obj:
-                    scope = guild_obj.name
-                elif channel_obj:
-                    scope = channel_obj.mention
-                return await state.end(warning=f'\U000026A0\U0000FE0F No moderators exist for scope: {scope}.')
+                if scope:
+                    msg = f'No moderators exist for scope: {scope}.'
+                else:
+                    msg = f'No moderators exist for {channel_obj.mention} in {guild_obj.name}'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         

@@ -48,7 +48,7 @@ class SystemOwnerCommands(commands.Cog):
     async def toggle_issue_to_developer_app_command(
         self,
         interaction: discord.Interaction,
-        reference: Optional[str],
+        reference: str,
         member: AppMemberSnowflake,
     ):
         state = State(interaction)
@@ -107,7 +107,7 @@ class SystemOwnerCommands(commands.Cog):
     async def toggle_issue_to_developer_text_command(
         self,
         ctx: commands.Context,
-        reference: Optional[str] = commands.parameter(default=None, description='Include an issue reference ID'),
+        reference: str = commands.parameter(default=None, description='Include an issue reference ID'),
         member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their ID'),
     ):
         state = State(ctx)
