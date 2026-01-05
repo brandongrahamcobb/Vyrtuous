@@ -720,7 +720,6 @@ class ModeratorCommands(commands.Cog):
                         field_count += 1
                     embed.description = '\n'.join(lines)
                     pages.append(embed)
-
         if pages:
             try:
                 return await state.end(success=pages)
@@ -2017,7 +2016,7 @@ class ModeratorCommands(commands.Cog):
                             return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, member ID/mention, server ID or empty. Received: {scope}.")
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
-                    voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=scope, target=target)
+                    voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=int(scope), target=target)
         else:
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, target=target)
             channel_obj = interaction.channel
@@ -2202,7 +2201,7 @@ class ModeratorCommands(commands.Cog):
                             return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, member ID/mention, server ID or empty. Received: {scope}.")
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
-                    voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=scope, target=target)
+                    voice_mutes = await VoiceMute.fetch_by_guild_and_target(guild_snowflake=int(scope), target=target)
         else:
             voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, target=target)
             channel_obj = ctx.channel

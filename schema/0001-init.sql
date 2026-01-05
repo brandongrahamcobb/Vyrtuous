@@ -14,9 +14,9 @@ CREATE TABLE moderation_logs (
     action_type VARCHAR(255) NOT NULL,
     channel_members_voice_count INTEGER DEFAULT 0 NOT NULL,
     channel_snowflake BIGINT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     executor_member_snowflake BIGINT NOT NULL,
-    expires_at TIMESTAMP,
+    expires_at TIMESTAMPTZ,
     guild_members_offline_and_online_member_count INTEGER DEFAULT 0 NOT NULL,
     guild_members_online_count INTEGER DEFAULT 0 NOT NULL,
     guild_members_voice_count INTEGER DEFAULT 0 NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE moderation_logs (
     is_modification BOOLEAN DEFAULT FALSE NOT NULL,
     target_member_snowflake BIGINT,
     reason TEXT,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE moderators (

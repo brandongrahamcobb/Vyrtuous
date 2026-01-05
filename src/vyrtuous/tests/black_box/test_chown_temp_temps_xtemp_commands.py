@@ -50,7 +50,7 @@ async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, not_priv
             member_id=not_privileged_author.id,
             member_mention=not_privileged_author.mention
         )
-        bot.wait_for = mock_wait_for
+        bot.wait_for = AsyncMock(return_value=None)
         captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
         message = captured['message']
         message_type = captured['type']

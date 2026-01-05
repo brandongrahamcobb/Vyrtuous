@@ -48,12 +48,24 @@ RESET = "\033[0m"
 @pytest.fixture(scope="function")
 def guild():
 
+    privileged_author_obj = create_member(
+        bot=True,
+        id=PRIVILEGED_AUTHOR_ID,
+        name=PRIVILEGED_AUTHOR_NAME
+    )
+    
+    not_privileged_author_obj = create_member(
+        bot=False,
+        id=NOT_PRIVILEGED_AUTHOR_ID,
+        name=NOT_PRIVILEGED_AUTHOR_NAME
+    )
+    
     guild_obj = create_guild(
         bot=None,
         channels={},
         id=GUILD_ID,
         name=GUILD_NAME,
-        members={},
+        members=[privileged_author_obj, not_privileged_author_obj],
         owner_snowflake=PRIVILEGED_AUTHOR_ID,
         roles={}
     )
@@ -77,24 +89,7 @@ def guild():
     channels = {TEXT_CHANNEL_ID: text_channel_obj, VOICE_CHANNEL_ONE_ID: voice_channel_obj}
     
     guild_obj.channels = channels
-
-    privileged_author_obj = create_member(
-        bot=True,
-        guild=guild_obj,
-        id=PRIVILEGED_AUTHOR_ID,
-        name=PRIVILEGED_AUTHOR_NAME
-    )
-    
-    not_privileged_author_obj = create_member(
-        bot=False,
-        guild=guild_obj,
-        id=NOT_PRIVILEGED_AUTHOR_ID,
-        name=NOT_PRIVILEGED_AUTHOR_NAME
-    )
-    
-    guild_obj.members[privileged_author_obj.id] = privileged_author_obj
-    guild_obj.members[not_privileged_author_obj.id] = not_privileged_author_obj
-    for member in guild_obj.members.values():
+    for member in guild_obj.members:
         voice_channel = list(guild_obj.channels.values())[1]
         member.voice.channel = voice_channel
         voice_channel.members.append(member)
@@ -104,14 +99,14 @@ def guild():
         guild=guild_obj,
         id=ROLE_ID,
         name=ROLE_NAME,
-        members=list(guild_obj.members.values())
+        members=guild_obj.members
     )
     guild_obj.roles[ROLE_ID] = role_obj
 
     return guild_obj
 
 @pytest_asyncio.fixture(scope="function")
-async def bot(guild):
+async def bot(guild, privileged_author):
     database: Optional[str] = os.getenv('POSTGRES_DB')
     host: Optional[str] = os.getenv('POSTGRES_HOST')
     password: Optional[str] = os.getenv('POSTGRES_PASSWORD')
@@ -209,10 +204,11 @@ async def capture(author, channel):
             content=content,
             embeds=embeds,
             file=file,
-            guild=channel.guild, 
+            guild=channel.guild,
+            id=MESSAGE_ID,
             paginated=paginated
         )
-    async def _end(self, *, success=None, warning=None, error=None, embed=None, embeds=None,**kwargs):
+    async def _end(self, *, success=None, warning=None, error=None, **kwargs):
         if success is not None:
             kind = "success"
             payload = success
@@ -226,7 +222,7 @@ async def capture(author, channel):
             kind = "unknown"
             content = None
         content, embeds, file = _normalize_payload(payload)
-        msg = await _send(self, content=content, embed=embed, embeds=embeds, file=file, **kwargs)
+        msg = await _send(self, content=content, embeds=embeds, file=file, **kwargs)
         captured.append({"type": kind, "message": msg})
         return msg
     State._send_message = _send
@@ -238,7 +234,7 @@ async def capture(author, channel):
         State._send_message = send
 
 @contextmanager
-def prepare_discord_state(bot, channel, guild, highest_role):
+def prepare_discord_state(author, bot, channel, content, guild, highest_role):
     with ExitStack() as stack:
         stack.enter_context(patch("discord.utils.get", side_effect=lambda iterable, name=None: next((r for r in iterable if r.name == name), None)))
         stack.enter_context(patch("vyrtuous.service.check_service.has_equal_or_higher_role", new=AsyncMock(return_value=False)))
@@ -256,7 +252,7 @@ async def command(bot, ctx):
 async def on_message(bot, message):
     bot.loop = asyncio.get_running_loop()
     bot.dispatch("message", message)
-    await asyncio.sleep(0)
+    await asyncio.sleep(3)
 
 async def prepared_command_handling(author, bot, channel, content, guild, highest_role, prefix):
     captured = []
@@ -270,13 +266,16 @@ async def prepared_command_handling(author, bot, channel, content, guild, highes
         id=MESSAGE_ID
     )
     mock_bot_user = guild.me
-    with patch.object(bot, "_connection", create=True) as mock_conn, ExitStack() as stack, prepare_discord_state(bot, channel, guild, highest_role):
+    with patch.object(bot, "_connection", create=True) as mock_conn, ExitStack() as stack, prepare_discord_state(author, bot, channel, content, guild, highest_role):
         mock_conn.user = mock_bot_user
         mock_conn.return_value = mock_bot_user
         ctx = await prepare_context(bot, message, prefix)
         async with capture(author, channel) as captured_messages:
-            await command(bot, ctx)
-            await on_message(bot, message)
+            if ctx.command:
+                await command(bot, ctx)
+            else:
+                message.content = f'{prefix}{message.content}'
+                await on_message(bot, message)
     return captured_messages
         
 def extract_embed_text(embed: discord.Embed) -> str:

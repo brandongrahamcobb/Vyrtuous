@@ -120,7 +120,7 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
             "permissions": 104189505,       # example permissions integer
             "communication_disabled_until": None
         },
-        "content": "Hello, world!",         # The message content
+        "content": content,        # The message content
         "timestamp": "2025-01-04T12:00:00.000000+00:00",  # creation timestamp ISO format
         "edited_timestamp": None,
         "tts": False,
@@ -134,8 +134,22 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
         "webhook_id": None,
         "type": 0,                          # message type, usually 0 (default)
         "activity": None,
-        "application": None,
-        "message_reference": None,
+        "application": {
+            "id": 0,
+            "flags": 0,
+            "cover_image": None,
+            "description": "Test application",
+            "icon": None,
+            "name": "TestApp",
+            "team": None,
+            "verify_key": None,
+        },
+        "message_reference": {
+            "message_id": 123,
+            "channel_id": channel.id,
+            "guild_id": guild.id if guild else None,
+            "type": 0
+        },
         "flags": 0
     }
 
@@ -160,11 +174,11 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
             self.view = view
         return self
     
-    MockMessage = type(
+    return type(
         'MockMessage',
         (discord.Message,),
         {
-            '__init__': lambda self: discord.Message.__init__(self, state=state, channel=channel, data=data),
+            '__init__': lambda self: discord.Message.__init__(self, state=create_state(), channel=channel, data=data),
             'add_reaction': add_reaction,
             'allowed_mentions': allowed_mentions,
             'attachments': [],
@@ -178,13 +192,14 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
             'embed': embed,
             'embeds': embeds or [],
             'file': file,
+            'flags': 0,
             'guild': guild,
             'id': id,
             'reactions': [],
-            'remove_reaction': remove_reaction
+            'remove_reaction': remove_reaction,
+            'type': 0
         }
-    )
-    return MockMessage
+    )()
 
 def create_guild(bot, channels=None, id=None, name=None, members=None, owner_snowflake=None, roles=None):
 
@@ -244,7 +259,9 @@ def create_guild(bot, channels=None, id=None, name=None, members=None, owner_sno
     def get_member(self, member_snowflake):
         if member_snowflake is None:
             return None
-        return self.members.get(member_snowflake)
+        for member in self.members:
+            if member.id == member_snowflake:
+                return member
 
     def get_role(self, role_snowflake):
         if role_snowflake is None:
@@ -302,18 +319,16 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
 
-    async def send_message(author=None, channel=None, content=None, embeds=None, params=None, **kwargs):
-        return {
-            'author': {
-                'id': author.id,
-                'username': author.name
-            },
-            'channel_id': channel.id,
-            'content': content,
-            'embeds': embeds,
-            'id': MESSAGE_ID,
-            'params': params
-        }
+    async def send(self, content=None, author=None, embeds=None, **kwargs):
+        msg = create_message(
+            author=guild.me,
+            channel=self,
+            guild=guild,
+            content=content,
+            id=MESSAGE_ID
+        )
+        self.append_message(msg)
+        return msg
 
     async def set_permissions(self, target, **overwrites):
         self.overwrites[target.id] = overwrites
@@ -334,6 +349,7 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
             'overwrites': {},
             'permissions_for': permissions_for,
             'set_permissions': set_permissions,
+            'send': send,
             'send_messages': True,
             'type': channel_type
         }

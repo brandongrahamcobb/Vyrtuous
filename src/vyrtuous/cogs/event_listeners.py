@@ -285,7 +285,7 @@ class EventListeners(commands.Cog):
     
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if not (message.guild and message.author.id != self.bot.user.id) or self.config['release_mode'] == False:
+        if not message.guild or (self.config['release_mode'] and message.author.id == self.bot.user.id):
             return
         prefix = self.config['discord_command_prefix']
         if not message.content.startswith(prefix):

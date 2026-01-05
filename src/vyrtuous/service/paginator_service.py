@@ -45,8 +45,6 @@ class Paginator:
             self.message = await self.channel_ctx_interaction_or_message.original_response()
         elif isinstance(self.channel_ctx_interaction_or_message, discord.Message):
             self.message = await self.channel_ctx_interaction_or_message.reply(embed=embed)
-        elif hasattr(self.channel_ctx_interaction_or_message, 'send'):  # allows channel objects
-            self.message = await self.channel_ctx_interaction_or_message.send(embed=embed)
         else:
             self.message = await self.channel_ctx_interaction_or_message.send(embed=embed)
         for emoji in self.NAV_EMOJIS:
