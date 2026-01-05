@@ -154,15 +154,16 @@ CREATE TABLE active_stages (
     PRIMARY KEY (channel_snowflake, guild_snowflake)
 );
 
-CREATE TABLE statistic_channels (
+CREATE TABLE history (
     channel_snowflake BIGINT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     enabled BOOLEAN DEFAULT FALSE,
+    entry_type TEXT NOT NULL,
     guild_snowflake BIGINT NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
     snowflakes BIGINT[],
     statistic_type TEXT DEFAULT 'general',
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE vegans (

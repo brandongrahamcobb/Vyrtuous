@@ -28,7 +28,7 @@ import discord
 class History:
         
     ACTION_TYPES = ['create', 'delete', 'modify']
-    ENTRY_TYPES = ['channel', 'general', 'member']
+    ENTRY_TYPES = ['all', 'channel', 'member']
 
     def __init__(self, channel_snowflake: Optional[int], enabled: Optional[bool], guild_snowflake: Optional[int], snowflakes: list[int|None], entry_type: Optional[str]):
         self.action: Optional[str]

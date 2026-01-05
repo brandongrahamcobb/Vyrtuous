@@ -909,7 +909,7 @@ class AdminCommands(commands.Cog):
     @app_commands.describe(
         channel='Tag a channel or include its ID',
         scope='create | modify | delete',
-        entry_type='Type of logs: member, channel, general',
+        entry_type='all | channel | general',
         snowflakes='Optional list of member IDs to include in logs'
     )
     @is_system_owner_developer_guild_owner_administrator_predicator()
@@ -932,7 +932,7 @@ class AdminCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        if entry_type != 'general':
+        if entry_type != 'all':
             match entry_type:
                 case 'channel':
                     for snowflake in snowflakes:
@@ -963,12 +963,17 @@ class AdminCommands(commands.Cog):
                 case 'modify':
                     await History.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, entry_type=entry_type, snowflakes=snowflakes)
                     scope = 'modified'
+                case _:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of 'create', 'delete' or 'modify'.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}') 
         else:
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of 'create', 'delete' or 'modify'.")
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')      
-        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Tracking Channel {scope.capitalize()} for {channel_obj.mention}', color=0x00FF00)
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Tracking {scope.capitalize()} for {channel_obj.mention}', color=0x00FF00)
         if snowflakes:
             embed.add_field(name='Processed Snowflakes', value=', '.join(str(s) for s in snowflakes), inline=False)
         if failed_snowflakes:
@@ -986,7 +991,7 @@ class AdminCommands(commands.Cog):
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID.'),
         scope: Optional[str] = commands.parameter(default=None, description='create | modify | delete.'),
-        entry_type: Optional[str] = commands.parameter(default=None, description='Type of logs: member, channel, general.'),
+        entry_type: Optional[str] = commands.parameter(default=None, description='all | channel | member.'),
         *snowflakes: Optional[int]
     ):
         state = State(ctx)
@@ -1000,7 +1005,7 @@ class AdminCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        if entry_type != 'general':
+        if entry_type != 'all':
             match entry_type:
                 case 'channel':
                     for snowflake in snowflakes:
@@ -1031,12 +1036,17 @@ class AdminCommands(commands.Cog):
                 case 'modify':
                     await History.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, entry_type=entry_type, snowflakes=snowflakes)
                     scope = 'modified'
+                case _:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of 'create', 'delete' or 'modify'.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}') 
         else:
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of 'create', 'delete' or 'modify'.")
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')        
-        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Tracking Channel {scope.capitalize()} for {channel_obj.mention}', color=0x00FF00)
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Tracking {scope.capitalize()} for {channel_obj.mention}', color=0x00FF00)
         if snowflakes:
             embed.add_field(name='Processed Snowflakes', value=', '.join(str(s) for s in snowflakes), inline=False)
         if failed_snowflakes:
@@ -1933,7 +1943,7 @@ class AdminCommands(commands.Cog):
         channel_obj = None
         chunk_size = 7
         field_count = 0
-        history, pages = [], []
+        history, lines, pages = [], [], []
         skipped_guild_snowflakes = set()
         skipped_snowflakes = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -2023,29 +2033,31 @@ class AdminCommands(commands.Cog):
                 continue
             embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
             for channel_snowflake, channel_data in channels.items():
-                if field_count >= chunk_size:
-                    pages.append(embed)
-                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    field_count = 0
                 channel = guild.get_channel(channel_snowflake)
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
+                lines = []
                 for entry_data in channel_data:
                     status = '\u2705' if entry_data['enabled'] else '\u26D4'
                     match entry_data['entry_type']:
-                        case 'general':
-                            detail = f'General to: {channel.mention}'
+                        case 'all':
+                            lines.append(f'{status} All Actions: {channel.mention}')
                         case 'channel':
                             channels_from = ', '.join(channel_mention for channel_mention in entry_data.get('channels', []))
-                            detail = f'Channel to: {channel.mention} \nFrom: {channels_from}'
+                            lines.append(f'{status} Channel-specific Actions: {channel.mention} \nFrom: {channels_from}')
                         case 'member':
                             members_from = ', '.join(member_mention for member_mention in entry_data.get('members', []))
-                            detail = f'Members to: {channel.mention} \nFrom: {members_from}'
-                        case _:
-                            detail = f'{channel.mention}'
-                    embed.add_field(name=status, value=detail, inline=False)
+                            lines.append(f'{status} Member-specific Actions: {channel.mention} \nFrom: {members_from}')
                     field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(name='Channels', value='\n'.join(lines), inline=False)
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    lines = []
+                    field_count = 0
+            if lines:
+                embed.add_field(name='Channels', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
@@ -2125,7 +2137,7 @@ class AdminCommands(commands.Cog):
         channel_obj = None
         chunk_size = 7
         field_count = 0
-        history, pages = [], []
+        history, lines, pages = [], [], []
         skipped_guild_snowflakes = set()
         skipped_snowflakes = []
         skipped_channel_snowflakes_by_guild_snowflake = {}
@@ -2211,29 +2223,31 @@ class AdminCommands(commands.Cog):
                 continue
             embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
             for channel_snowflake, channel_data in channels.items():
-                if field_count >= chunk_size:
-                    pages.append(embed)
-                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-                    field_count = 0
                 channel = guild.get_channel(channel_snowflake)
                 if not channel:
                     skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
                     continue
+                lines = []
                 for entry_data in channel_data:
                     status = '\u2705' if entry_data['enabled'] else '\u26D4'
                     match entry_data['entry_type']:
-                        case 'general':
-                            detail = f'General to: {channel.mention}'
+                        case 'all':
+                            lines.append(f'{status} All Actions: {channel.mention}')
                         case 'channel':
                             channels_from = ', '.join(channel_mention for channel_mention in entry_data.get('channels', []))
-                            detail = f'Channel to: {channel.mention} \nFrom: {channels_from}'
+                            lines.append(f'{status} Channel-specific Actions: {channel.mention} \nFrom: {channels_from}')
                         case 'member':
                             members_from = ', '.join(member_mention for member_mention in entry_data.get('members', []))
-                            detail = f'Members to: {channel.mention} \nFrom: {members_from}'
-                        case _:
-                            detail = f'{channel.mention}'
-                    embed.add_field(name=status, value=detail, inline=False)
+                            lines.append(f'{status} Member-specific Actions: {channel.mention} \nFrom: {members_from}')
                     field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(name='Channels', value='\n'.join(lines), inline=False)
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    lines = []
+                    field_count = 0
+            if lines:
+                embed.add_field(name='Channels', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
