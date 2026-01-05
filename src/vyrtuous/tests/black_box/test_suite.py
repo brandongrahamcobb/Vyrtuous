@@ -17,7 +17,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 import builtins
-from contextlib import contextmanager, ExitStack
+from contextlib import asynccontextmanager, contextmanager, ExitStack
 from datetime import datetime, timezone
 from discord.ext.commands import Context, view as cmd_view
 from types import SimpleNamespace
@@ -27,6 +27,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.bot.discord_client import DiscordClient
 from vyrtuous.config import Config
 from vyrtuous.inc.helpers import *
+from vyrtuous.utils.state import State
 from vyrtuous.tests.black_box.make_mock_objects import *
 import asyncpg
 import discord
@@ -41,35 +42,37 @@ RESET = "\033[0m"
 
 @pytest.fixture(scope="function")
 def guild():
+
+    guild_obj = create_guild(
+        bot=None,
+        channels={},
+        id=GUILD_ID,
+        name=GUILD_NAME,
+        members={},
+        owner_snowflake=PRIVILEGED_AUTHOR_ID,
+        roles={}
+    )
+
     text_channel_obj = create_channel(
         channel_type='text',
+        guild=guild_obj,
         id=TEXT_CHANNEL_ID,
         name=TEXT_CHANNEL_NAME,
         object_channel=discord.TextChannel
     )
 
     voice_channel_obj = create_channel(
-        channel_type='voice'
+        channel_type='voice',
+        guild=guild_obj,
         id=VOICE_CHANNEL_ONE_ID,
         name=VOICE_CHANNEL_ONE_NAME,
         object_channel=discord.VoiceChannel
     )
 
-    channels = {TEXT_CHANNEL_ID: text_channel, VOICE_CHANNEL_ONE_ID: voice_channel}
-
-    guild_obj = create_guild(
-        bot=None,
-        channels=channels,
-        id=GUILD_ID,
-        name=GUILD_NAME,
-        members={},
-        owner_id=PRIVILEGED_AUTHOR_ID,
-        roles={}
-    )
-
-    for channel in guild_obj.channels.values():
-        channel.guild = guild_obj
+    channels = {TEXT_CHANNEL_ID: text_channel_obj, VOICE_CHANNEL_ONE_ID: voice_channel_obj}
     
+    guild_obj.channels = channels
+
     privileged_author_obj = create_member(
         bot=True,
         guild=guild_obj,
@@ -96,7 +99,7 @@ def guild():
         guild=guild_obj,
         id=ROLE_ID,
         name=ROLE_NAME,
-        members=list(guild_obj.members.values()))
+        members=list(guild_obj.members.values())
     )
     guild_obj.roles[ROLE_ID] = role_obj
 
@@ -173,11 +176,12 @@ async def prepare_context(bot, message, prefix):
     view.skip_ws()
     return ctx
 
-async def capture(channel):
+@asynccontextmanager
+async def capture(author, channel):
     captured = []
     send = State._send_message
     async def _send(self, content=None, embed=None, file=None, paginated=False, allowed_mentions=None):
-        msg = await send(self, content=content, embed=embed, file=file, paginated=paginated, allowed_mentions=allowed_mentions)
+        msg = create_message(allowed_mentions=allowed_mentions, author=author, channel=channel, content=content, embeds=[embed], file=file, guild=channel.guild, paginated=paginated)
         captured.append(msg)
         return msg
     State._send_message = _send
@@ -191,18 +195,15 @@ def prepare_discord_state(bot, channel, guild, highest_role):
     with ExitStack() as stack:
         stack.enter_context(patch("discord.utils.get", side_effect=lambda iterable, name=None: next((r for r in iterable if r.name == name), None)))
         stack.enter_context(patch("vyrtuous.service.check_service.has_equal_or_higher_role", new=AsyncMock(return_value=False)))
-        stack.enter_context(patch("vyrtuous.service.check_service.is_system_owner_developer_guild_owner_administrator_coordinator", new=AsyncMock(return_value=highest_role)))
         stack.enter_context(patch("vyrtuous.service.check_service.is_system_owner_developer_guild_owner_administrator_coordinator_moderator", new=AsyncMock(return_value=highest_role)))
-        stack.enter_context(patch.object(bot, "get_channel", side_effect=lambda cid: guild.get_channel(cid)))
         stack.enter_context(patch.object(bot, "get_guild", side_effect=lambda gid: guild if gid == guild.id else None))
-        stack.enter_context(patch.object(bot, "get_role", side_effect=lambda uid: guild.get_role(uid)))
-        stack.enter_context(patch.object(bot, "get_user", side_effect=lambda uid: guild.get_member(uid)))
         stack.enter_context(patch.object(bot, "load_extension", new_callable=AsyncMock))
         stack.enter_context(patch.object(bot, "reload_extension", new_callable=AsyncMock))
         stack.enter_context(patch.object(bot, "unload_extension", new_callable=AsyncMock))
         yield
 
 async def command(bot, ctx):
+    bot.loop = asyncio.get_running_loop()
     await bot.invoke(ctx)
 
 async def on_message(bot, message):
@@ -215,17 +216,18 @@ async def prepared_command_handling(author, bot, channel, content, guild, highes
     message = create_message(
         allowed_mentions=True,
         author=author,
+        bot=bot,
         channel=channel,
         content=content,
         guild=guild,
         id=MESSAGE_ID
     )
     mock_bot_user = guild.me
-    with patch.object(bot, "_connection", create=True) as mock_conn, ExitStack() as stack:
+    with patch.object(bot, "_connection", create=True) as mock_conn, ExitStack() as stack, prepare_discord_state(bot, channel, guild, highest_role):
         mock_conn.user = mock_bot_user
         mock_conn.return_value = mock_bot_user
         ctx = await prepare_context(bot, message, prefix)
-        with capture(channel) as captured_messages, prepare_discord_state(bot, channel, guild, highest_role):
+        async with capture(author, channel) as captured_messages:
             await command(bot, ctx)
             await on_message(bot, message)
     return captured_messages
