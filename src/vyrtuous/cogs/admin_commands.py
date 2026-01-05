@@ -924,6 +924,7 @@ class AdminCommands(commands.Cog):
         state = State(interaction)
         channel_obj = None
         channel_objs, failed_snowflakes, member_objs = [], [], []
+        enabled = True
         try:
             channel_obj = await self.channel_service.resolve_channel(interaction, channel) 
         except Exception as e:
@@ -950,7 +951,10 @@ class AdminCommands(commands.Cog):
         if scope:
             match scope.lower():
                 case 'create':
-                    history = History(channel_snowflake=channel_obj.id, enabled=True, guild_snowflake=interaction.guild.id, entry_type=entry_type, snowflakes=snowflakes)
+                    old_history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                    if old_history:
+                        enabled = old_history[0].enabled
+                    history = History(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=interaction.guild.id, entry_type=entry_type, snowflakes=snowflakes)
                     await history.create()
                     scope = 'created'
                 case 'delete':
@@ -964,13 +968,11 @@ class AdminCommands(commands.Cog):
                 return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of 'create', 'delete' or 'modify'.")
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')      
-        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Log {scope.capitalize()}', color=0x00FF00)
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Tracking Channel {scope.capitalize()} for {channel_obj.mention}', color=0x00FF00)
         if snowflakes:
             embed.add_field(name='Processed Snowflakes', value=', '.join(str(s) for s in snowflakes), inline=False)
         if failed_snowflakes:
             embed.add_field(name='Failed Snowflakes', value=', '.join(str(s) for s in failed_snowflakes), inline=False)
-        if not snowflakes and entry_type == 'general':
-            embed.description = f'{self.emoji.get_random_emoji()} Log {scope} successfully for general statistics.'
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -990,6 +992,7 @@ class AdminCommands(commands.Cog):
         state = State(ctx)
         channel_obj = None
         channel_objs, failed_snowflakes, member_objs = [], [], []
+        enabled = True
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel) 
         except Exception as e:
@@ -1016,7 +1019,10 @@ class AdminCommands(commands.Cog):
         if scope:
             match scope.lower():
                 case 'create':
-                    history = History(channel_snowflake=channel_obj.id, enabled=True, guild_snowflake=ctx.guild.id, entry_type=entry_type, snowflakes=snowflakes)
+                    old_history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                    if old_history:
+                        enabled = old_history[0].enabled
+                    history = History(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=ctx.guild.id, entry_type=entry_type, snowflakes=snowflakes)
                     await history.create()
                     scope = 'created'
                 case 'delete':
@@ -1030,13 +1036,11 @@ class AdminCommands(commands.Cog):
                 return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of 'create', 'delete' or 'modify'.")
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')        
-        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Log {scope.capitalize()} for {channel_obj.mention}', color=0x00FF00)
+        embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Tracking Channel {scope.capitalize()} for {channel_obj.mention}', color=0x00FF00)
         if snowflakes:
             embed.add_field(name='Processed Snowflakes', value=', '.join(str(s) for s in snowflakes), inline=False)
         if failed_snowflakes:
             embed.add_field(name='Failed Snowflakes', value=', '.join(str(s) for s in failed_snowflakes), inline=False)
-        if not snowflakes and entry_type == 'general':
-            embed.description = f'{self.emoji.get_random_emoji()} Log {scope} successfully.'
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -1877,7 +1881,7 @@ class AdminCommands(commands.Cog):
             await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
         for entry in history:
-            if entry.enabled:
+            if not entry.enabled:
                 action = 'start'
                 enabled = True
             else:
@@ -1907,7 +1911,7 @@ class AdminCommands(commands.Cog):
             await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
         for entry in history:
-            if entry.enabled:
+            if not entry.enabled:
                 action = 'start'
                 enabled = True
             else:
