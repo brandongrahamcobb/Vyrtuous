@@ -65,9 +65,9 @@ class HelpCommand(commands.Cog):
                         lines.append(f'• {line}')
             return lines
         
-    async def get_available_commands(self, bot, ctx_or_interaction) -> list[commands.Command]:
+    async def get_available_commands(self, bot, ctx_interaction) -> list[commands.Command]:
         available = []
-        user_highest = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx_or_interaction)
+        user_highest = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx_interaction)
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
@@ -101,7 +101,7 @@ class HelpCommand(commands.Cog):
         }
         return colors.get(perm_level, discord.Color.greyple())
     
-    async def group_commands_by_permission(self, bot, ctx_or_interaction, commands_list):
+    async def group_commands_by_permission(self, bot, ctx_interaction, commands_list):
         permission_groups = {level:[] for level in PERMISSION_TYPES}
         for command in commands_list:
             perm_level = await self.get_command_permission_level(bot, command)
@@ -111,12 +111,12 @@ class HelpCommand(commands.Cog):
                 permission_groups['Everyone'].append(command)
         return permission_groups
 
-    async def resolve_command_or_alias(self, ctx_or_interaction, name: str):
+    async def resolve_command_or_alias(self, ctx_interaction, name: str):
         cmd = self.bot.get_command(name.lower())
         if cmd:
             return ('command', cmd)
-        alias = await Alias.fetch_by_guild_and_name(alias_name=name.lower(), guild_snowflake=ctx_or_interaction.guild.id)
-        if alias and alias.guild_snowflake == ctx_or_interaction.guild.id:
+        alias = await Alias.fetch_by_guild_and_name(alias_name=name.lower(), guild_snowflake=ctx_interaction.guild.id)
+        if alias and alias.guild_snowflake == ctx_interaction.guild.id:
             return ('alias', alias)
         return (None, None)
 
@@ -142,8 +142,8 @@ class HelpCommand(commands.Cog):
             func = func.__wrapped__
         return func
 
-    async def get_permission_filtered_aliases(self, ctx_or_interaction):
-        aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx_or_interaction.channel.id, guild_snowflake=ctx_or_interaction.guild.id)
+    async def get_permission_filtered_aliases(self, ctx_interaction):
+        aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=ctx_interaction.channel.id, guild_snowflake=ctx_interaction.guild.id)
         if aliases:
             grouped = defaultdict(list)
             for alias in aliases:

@@ -219,7 +219,7 @@ class AdminCommands(commands.Cog):
                 field_count += 1
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             pass
         if is_at_home:
@@ -340,7 +340,7 @@ class AdminCommands(commands.Cog):
                 field_count += 1
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         if is_at_home:
@@ -527,7 +527,7 @@ class AdminCommands(commands.Cog):
     @app_commands.command(name='clear', description='Reset channel/member.')
     @app_commands.describe(
         scope='Tag a channel/member or include the ID',
-        action_type="Specify one of: 'alias', 'all', 'ban', 'coord', 'flag', 'mod', 'temp', 'tmute', 'vegan' or 'vmute', 'vr'"
+        action_type="Specify one of: alias, all, ban, coord, flag, mod, temp, tmute, track, vegan or vmute, vr"
     )
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def clear_channel_access_app_command(
@@ -577,13 +577,14 @@ class AdminCommands(commands.Cog):
                         await Ban.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         await Flag.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
+                        await History.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         await TextMute.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await Vegan.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification, target=target)
                         await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-                        msg = f'Deleted all associated aliases, moderation actions, roles and room setups for {channel_obj.mention}.'
+                        msg = f'Deleted all associated aliases, moderation actions, roles, room setups and tracking for {channel_obj.mention}.'
                     case 'alias':
                         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         msg = f'Deleted all associated aliases in {channel_obj.mention}.'
@@ -604,6 +605,9 @@ class AdminCommands(commands.Cog):
                         msg = f'Deleted the associated temporary channel for {channel_obj.mention}.'
                     case 'tmute':
                         await TextMute.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
+                        msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
+                    case 'track':
+                        await History.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                         msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
                     case 'vegan':
                         await Vegan.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, highest_role=highest_role, is_modification=is_modification)
@@ -680,7 +684,7 @@ class AdminCommands(commands.Cog):
         ctx: commands.Context,
         scope: str = commands.parameter(default=None, description='Tag a channel, a member or include the ID'),
         *,
-        action_type: str = commands.parameter(default=None, description="Specify one of: 'alias', 'all', 'ban', 'coord', 'flag', 'mod', 'temp', 'tmute', 'vegan' or 'vmute'")
+        action_type: str = commands.parameter(default=None, description="Specify one of: alias, all, ban, coord, flag, mod, temp, tmute, track, vegan or vmute")
     ):
         state = State(ctx)
         channel_obj = None
@@ -723,13 +727,14 @@ class AdminCommands(commands.Cog):
                         await Ban.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await Coordinator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         await Flag.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
+                        await History.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         await Moderator.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         await TextMute.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await Vegan.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification, target=target)
                         await VideoRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-                        msg = f'Deleted all associated aliases, moderation actions, roles and room setups for {channel_obj.mention}.'
+                        msg = f'Deleted all associated aliases, moderation actions, roles, room setups and tracking for {channel_obj.mention}.'
                     case 'alias':
                         await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                         msg = f'Deleted all associated aliases in {channel_obj.mention}.'
@@ -751,6 +756,9 @@ class AdminCommands(commands.Cog):
                     case 'tmute':
                         await TextMute.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated text-mutes in {channel_obj.mention}.'
+                    case 'track':
+                        await History.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+                        msg = f'Deleted all associated tracking in {channel_obj.mention}.'
                     case 'vegan':
                         await Vegan.clear_by_channel_guild_highest_role_and_modification(ctx_interaction_or_message=ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, highest_role=highest_role, is_modification=is_modification)
                         msg = f'Deleted all associated new vegans in {channel_obj.mention}.'
@@ -1631,7 +1639,7 @@ class AdminCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             pass
         if is_at_home:
@@ -1802,7 +1810,7 @@ class AdminCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         if is_at_home:
@@ -1868,24 +1876,27 @@ class AdminCommands(commands.Cog):
             channel_obj = interaction.channel
             await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-        if not history:
-            action = 'start'
-            enabled = True
-        else:
-            action = 'stop'
-            enabled = False
-        await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=interaction.guild.id)
+        for entry in history:
+            if entry.enabled:
+                action = 'start'
+                enabled = True
+            else:
+                action = 'stop'
+                enabled = False
+            await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=interaction.guild.id)
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Logging messages will now {action} being sent to {channel_obj.mention}.')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
+
     # DONE
     @commands.command(name='track', help='Toggle tracking.')
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def toggle_tracking_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(description='Tag a channel or include its ID')
+        *,
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
     ):
         state = State(ctx)
         channel_obj = None
@@ -1895,13 +1906,14 @@ class AdminCommands(commands.Cog):
             channel_obj = ctx.channel
             await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-        if not history:
-            action = 'start'
-            enabled = True
-        else:
-            action = 'stop'
-            enabled = False
-        await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=ctx.guild.id)
+        for entry in history:
+            if entry.enabled:
+                action = 'start'
+                enabled = True
+            else:
+                action = 'stop'
+                enabled = False
+            await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=ctx.guild.id)
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} Logging messages will now {action} being sent to {channel_obj.mention}.')
         except Exception as e:
@@ -2032,7 +2044,7 @@ class AdminCommands(commands.Cog):
                     field_count += 1
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             pass
         if is_at_home:
@@ -2168,7 +2180,7 @@ class AdminCommands(commands.Cog):
                 'members': []
             })
 
-            if guild_dictionary[entry.guild_snowflake][entry.channel_snowflake]['entry_snowflakes']:
+            if guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][0]['entry_snowflakes']:
                 for snowflake in entry.snowflakes:
                     guild = self.bot.get_guild(entry.guild_snowflake)
                     if not guild:
@@ -2180,9 +2192,9 @@ class AdminCommands(commands.Cog):
                             if not member:
                                 skipped_snowflakes.append(snowflake)
                             else:
-                                guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][-1]['members'].append(member.mention)
+                                guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][0]['members'].append(member.mention)
                         else:
-                            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][-1]['channels'].append(channel.mention)
+                            guild_dictionary[entry.guild_snowflake][entry.channel_snowflake][0]['channels'].append(channel.mention)
 
         for guild_snowflake in guild_dictionary:
             guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
@@ -2220,7 +2232,7 @@ class AdminCommands(commands.Cog):
                     field_count += 1
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         if is_at_home:
@@ -2468,7 +2480,7 @@ class AdminCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             pass
         if is_at_home:
@@ -2638,7 +2650,7 @@ class AdminCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         if is_at_home:

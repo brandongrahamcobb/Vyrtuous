@@ -31,7 +31,7 @@ class MessageService:
 
     async def send_message(
         self,
-        ctx_or_interaction_or_message: Union[commands.Context, discord.Interaction, discord.Message],
+        ctx_interaction_or_message: Union[commands.Context, discord.Interaction, discord.Message],
         *,
         content: str = None,
         file: discord.File = None,
@@ -39,46 +39,46 @@ class MessageService:
         allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(),
         ephemeral: bool = None
     ):
-        if isinstance(ctx_or_interaction_or_message, commands.Context):
-            can_send = ctx_or_interaction_or_message.guild and isinstance(
-                ctx_or_interaction_or_message.channel, discord.abc.GuildChannel
-            ) and ctx_or_interaction_or_message.channel.permissions_for(ctx_or_interaction_or_message.guild.me).send_messages
+        if isinstance(ctx_interaction_or_message, commands.Context):
+            can_send = ctx_interaction_or_message.guild and isinstance(
+                ctx_interaction_or_message.channel, discord.abc.GuildChannel
+            ) and ctx_interaction_or_message.channel.permissions_for(ctx_interaction_or_message.guild.me).send_messages
             if can_send:
                 try:
                     return await self._send_message(
-                        lambda **kw: ctx_or_interaction_or_message.reply(**kw),
+                        lambda **kw: ctx_interaction_or_message.reply(**kw),
                         content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
                     )
                 except discord.HTTPException as e:
                     if getattr(e, 'code', None) == 50035:
                         return await self._send_message(
-                            lambda **kw: ctx_or_interaction_or_message.send(**kw),
+                            lambda **kw: ctx_interaction_or_message.send(**kw),
                             content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
                         )
                     else:
                         raise
             else:
                 return await self.send_dm(
-                    ctx_or_interaction_or_message.author,
+                    ctx_interaction_or_message.author,
                     content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
                 )
-        elif isinstance(ctx_or_interaction_or_message, discord.Interaction):
+        elif isinstance(ctx_interaction_or_message, discord.Interaction):
             if ephemeral is None:
                 ephemeral = True
-            if ctx_or_interaction_or_message.response.is_done():
+            if ctx_interaction_or_message.response.is_done():
                 return await self._send_message(
-                    lambda **kw: ctx_or_interaction_or_message.followup.send(**kw, ephemeral=ephemeral),
+                    lambda **kw: ctx_interaction_or_message.followup.send(**kw, ephemeral=ephemeral),
                     content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
                 )
             else:
                 await self._send_message(
-                    lambda **kw: ctx_or_interaction_or_message.response.send_message(**kw, ephemeral=ephemeral),
+                    lambda **kw: ctx_interaction_or_message.response.send_message(**kw, ephemeral=ephemeral),
                     content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
                 )
-                return await ctx_or_interaction_or_message.original_response()
-        elif isinstance(ctx_or_interaction_or_message, discord.Message):
+                return await ctx_interaction_or_message.original_response()
+        elif isinstance(ctx_interaction_or_message, discord.Message):
             return await self._send_message(
-                lambda **kw: ctx_or_interaction_or_message.reply(**kw),
+                lambda **kw: ctx_interaction_or_message.reply(**kw),
                 content=content, file=file, embed=embed, allowed_mentions=allowed_mentions
             )
         else:

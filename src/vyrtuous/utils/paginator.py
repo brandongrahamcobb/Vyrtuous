@@ -27,9 +27,9 @@ class Paginator:
         "\u27a1\ufe0f": 1
     }
 
-    def __init__(self, bot, ctx_or_interaction, pages, state=None, *, timeout=60):
+    def __init__(self, bot, ctx_interaction_or_message, pages, state=None, *, timeout=60):
         self.bot = bot
-        self.ctx_or_interaction = ctx_or_interaction
+        self.ctx_interaction_or_message = ctx_interaction_or_message
         self.pages = pages
         self.state = state
         self.current_page = 0
@@ -39,22 +39,24 @@ class Paginator:
 
     async def start(self):
         embed = self.get_current_embed()
-        if isinstance(self.ctx_or_interaction, discord.Interaction):
-            if not self.ctx_or_interaction.response.is_done():
-                await self.ctx_or_interaction.response.send_message(embed=embed)
-            self.message = await self.ctx_or_interaction.original_response()
+        if isinstance(self.ctx_interaction_or_message, discord.Interaction):
+            if not self.ctx_interaction_or_message.response.is_done():
+                await self.ctx_interaction_or_message.response.send_message(embed=embed)
+            self.message = await self.ctx_interaction_or_message.original_response()
+        elif isinstance(self.ctx_interaction_or_message, discord.Message):
+            self.message = await self.ctx_interaction_or_message.reply(embed=embed)
         else:
-            self.message = await self.ctx_or_interaction.send(embed=embed)
-            for emoji in self.NAV_EMOJIS:
-                await self.message.add_reaction(emoji)
-            self.bot.loop.create_task(self.wait_for_reactions())
+            self.message = await self.ctx_interaction_or_message.send(embed=embed)
+        for emoji in self.NAV_EMOJIS:
+            await self.message.add_reaction(emoji)
+        self.bot.loop.create_task(self.wait_for_reactions())
         return self.message
 
     def get_current_embed(self):
         embed = self.pages[self.current_page].copy()
         total_pages = len(self.pages)
         label = 'page'
-        embed.set_footer(text=f'{label} {self.current_page + 1}/{total_pages} • {self.ctx_or_interaction.guild.name}')
+        embed.set_footer(text=f'{label} {self.current_page + 1}/{total_pages} • {self.ctx_interaction_or_message.guild.name}')
         return embed
     
     async def wait_for_reactions(self):

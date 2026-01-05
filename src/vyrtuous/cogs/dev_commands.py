@@ -212,7 +212,7 @@ class DevCommands(commands.Cog):
                 field_count += 1
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=interaction)
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             pass
         if is_at_home:
@@ -346,7 +346,7 @@ class DevCommands(commands.Cog):
                 field_count += 1
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         if is_at_home:
@@ -588,7 +588,7 @@ class DevCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         if is_at_home:
@@ -775,7 +775,7 @@ class DevCommands(commands.Cog):
                 embed.add_field(name=f'Channel: {channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
         try:
-            is_at_home = at_home(ctx_or_interaction_or_message=ctx)
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         if is_at_home:

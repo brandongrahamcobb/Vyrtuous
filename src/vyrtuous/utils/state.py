@@ -46,31 +46,31 @@ class State:
         '\U0001F4DD': 'report'
     }
 
-    def __init__(self, ctx_or_interaction: Union[commands.Context, discord.Interaction, discord.Message]):
+    def __init__(self, ctx_interaction: Union[commands.Context, discord.Interaction, discord.Message]):
         self.bot = DiscordBot.get_instance()
         self.config = self.bot.config
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.counter = TimeToComplete()
-        self.ctx_or_interaction = ctx_or_interaction
+        self.ctx_interaction = ctx_interaction
         self._reported_users = set()
         self.is_ephemeral = False
-        self.start_time = self._get_start_time(ctx_or_interaction)
+        self.start_time = self._get_start_time(ctx_interaction)
         self.message = None
         self.paginator = None
-        if isinstance(ctx_or_interaction, commands.Context):
-            self.submitter_id = ctx_or_interaction.author.id
-        elif isinstance(ctx_or_interaction, discord.Interaction):
-            self.submitter_id = ctx_or_interaction.user.id
-        elif isinstance(ctx_or_interaction, discord.Message):
-            self.submitter_id = ctx_or_interaction.author.id
+        if isinstance(ctx_interaction, commands.Context):
+            self.submitter_id = ctx_interaction.author.id
+        elif isinstance(ctx_interaction, discord.Interaction):
+            self.submitter_id = ctx_interaction.user.id
+        elif isinstance(ctx_interaction, discord.Message):
+            self.submitter_id = ctx_interaction.author.id
 
-    def _get_start_time(self, ctx_or_interaction):
-        if isinstance(ctx_or_interaction, commands.Context):
-            return ctx_or_interaction.message.created_at
-        elif isinstance(ctx_or_interaction, discord.Interaction):
+    def _get_start_time(self, ctx_interaction):
+        if isinstance(ctx_interaction, commands.Context):
+            return ctx_interaction.message.created_at
+        elif isinstance(ctx_interaction, discord.Interaction):
             return discord.utils.utcnow()
-        elif isinstance(ctx_or_interaction, discord.Message):
-            return ctx_or_interaction.created_at
+        elif isinstance(ctx_interaction, discord.Message):
+            return ctx_interaction.created_at
         else:
             raise TypeError('Expected Context, Interaction, or Message')
 
@@ -101,7 +101,7 @@ class State:
         if error or warning:
             show_error_emoji = True
         if isinstance(message_obj, list) and message_obj:
-            self.paginator = Paginator(bot=self.bot, ctx_or_interaction=self.ctx_or_interaction, pages=message_obj)
+            self.paginator = Paginator(bot=self.bot, ctx_interaction_or_message=self.ctx_interaction, pages=message_obj)
             self.message = await self.paginator.start()
             cache[self.message.id] = {
                 'date': self.start_time,
@@ -138,17 +138,17 @@ class State:
         }
         if file is not None:
             kwargs['file'] = file
-        if isinstance(self.ctx_or_interaction, discord.Interaction) and not paginated:
-            if not self.ctx_or_interaction.response.is_done():
-                await self.ctx_or_interaction.response.defer(ephemeral=True)
+        if isinstance(self.ctx_interaction, discord.Interaction) and not paginated:
+            if not self.ctx_interaction.response.is_done():
+                await self.ctx_interaction.response.defer(ephemeral=True)
                 self.is_ephemeral = True
-            return await self.ctx_or_interaction.followup.send(**kwargs)
-        elif isinstance(self.ctx_or_interaction, discord.Interaction) and paginated:
-            if not self.ctx_or_interaction.response.is_done():
-                await self.ctx_or_interaction.response.defer()
-            return await self.ctx_or_interaction.followup.send(**kwargs)
+            return await self.ctx_interaction.followup.send(**kwargs)
+        elif isinstance(self.ctx_interaction, discord.Interaction) and paginated:
+            if not self.ctx_interaction.response.is_done():
+                await self.ctx_interaction.response.defer()
+            return await self.ctx_interaction.followup.send(**kwargs)
         else:
-            return await self.ctx_or_interaction.channel.send(**kwargs)
+            return await self.ctx_interaction.channel.send(**kwargs)
 
 
     async def _add_reactions(self, show_error_emoji: bool, paginated: bool):
@@ -201,8 +201,8 @@ class State:
         embed.add_field(name='Health', value=self.health_type, inline=True)
         embed.add_field(name='Speed', value=f'{self.elapsed:.2f} sec.', inline=True)
         embed.add_field(name='Success', value=str(self.success), inline=True)
-        if isinstance(self.ctx_or_interaction, discord.Interaction):
-            await self.ctx_or_interaction.followup.send(f'{user.mention}, here is the info', embed=embed, ephemeral=True)
+        if isinstance(self.ctx_interaction, discord.Interaction):
+            await self.ctx_interaction.followup.send(f'{user.mention}, here is the info', embed=embed, ephemeral=True)
         else:
             try:
                 await user.send(embed=embed)
@@ -227,11 +227,11 @@ class State:
         online_developer_mentions = []
         member = self.bot.get_user(self.config['discord_owner_id'])
         online_developer_mentions.append(member.mention)
-        if self.ctx_or_interaction.guild:
-            developers = await Developer.fetch_by_guild(self.ctx_or_interaction.guild.id)
+        if self.ctx_interaction.guild:
+            developers = await Developer.fetch_by_guild(self.ctx_interaction.guild.id)
             message = f'Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}'
             for dev in developers:
-                member = self.ctx_or_interaction.guild.get_member(dev.member_snowflake)
+                member = self.ctx_interaction.guild.get_member(dev.member_snowflake)
                 if member.state != discord.Status.offline:
                     online_developer_mentions.append(member.mention)
                 if member and member.status != discord.Status.offline:
