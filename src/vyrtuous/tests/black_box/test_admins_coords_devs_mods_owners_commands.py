@@ -54,18 +54,21 @@ async def test_admins_coords_devs_mods_owners_commands(bot, text_channel, guild,
         )
         # bot.wait_for = mock_wait_for
         captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role='Moderator', prefix=prefix)
-        message = captured[0].content
-        print(message)
-        if isinstance(message, discord.Embed):
-            content = extract_embed_text(message)
+        message = captured[0]['message']
+        if message.embeds:
+            embed = message.embeds[0]
+            content = extract_embed_text(embed)
+        elif message.embed:
+            content = extract_embed_text(message.embed)
         else:
-            content = message
+            content = message.content
+        message_type = captured[0]['type']
         if message_type == "error":
             print(f"{RED}Error:{RESET} {content}")
         if message_type == "warning":
             print(f"{YELLOW}Warning:{RESET} {content}")
         if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
+            print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in Emojis.EMOJIS)
     finally:
         await moderator.revoke()

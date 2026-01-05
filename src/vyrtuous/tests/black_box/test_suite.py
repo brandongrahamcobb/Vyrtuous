@@ -176,18 +176,58 @@ async def prepare_context(bot, message, prefix):
     view.skip_ws()
     return ctx
 
+def _normalize_payload(payload):
+    if payload is None:
+        return None, None
+    if isinstance(payload, str):
+        return payload, None
+    if isinstance(payload, discord.Embed):
+        return None, [payload]
+    if isinstance(payload, list):
+        return None, payload
+    raise TypeError(f"Unsupported payload type: {type(payload)}")
+
 @asynccontextmanager
 async def capture(author, channel):
     captured = []
     send = State._send_message
-    async def _send(self, content=None, embed=None, file=None, paginated=False, allowed_mentions=None):
-        msg = create_message(allowed_mentions=allowed_mentions, author=author, channel=channel, content=content, embeds=[embed], file=file, guild=channel.guild, paginated=paginated)
-        captured.append(msg)
+    end = State.end
+    async def _send(self, content=None, embed=None, embeds=None,file=None, paginated=False, allowed_mentions=None):
+        if embed:
+            embeds = [embed]
+        return create_message(
+            allowed_mentions=allowed_mentions,
+            author=author,
+            channel=channel,
+            content=content,
+            embeds=embeds,
+            file=file,
+            guild=channel.guild, 
+            paginated=paginated
+        )
+    async def _end(self, *, success=None, warning=None, error=None, embed=None, embeds=None,**kwargs):
+        if success is not None:
+            kind = "success"
+            payload = success
+        elif warning is not None:
+            kind = "warning"
+            payload = warning
+        elif error is not None:
+            kind = "error"
+            payload = error
+        else:
+            kind = "unknown"
+            content = None
+        content, embeds = _normalize_payload(payload)
+        msg = await _send(self, content=content, embed=embed, embeds=embeds, **kwargs)
+        captured.append({"type": kind, "message": msg})
         return msg
     State._send_message = _send
+    State.end = _end
     try:
         yield captured
     finally:
+        State.end = end
         State._send_message = send
 
 @contextmanager

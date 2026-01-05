@@ -94,7 +94,7 @@ def create_member(bot=False, channel=None, guild=None, id=None, name=None):
         }
     )(state=create_state(), guild=guild, data=data)
 
-def create_message(allowed_mentions=None, author=None, bot=False, content=None, channel=None, embeds=None, file=None, guild=None, id=None, paginated=None, **kwargs):
+def create_message(allowed_mentions=None, author=None, bot=False, content=None, channel=None, embed=None, embeds=None, file=None, guild=None, id=None, paginated=None, **kwargs):
 
     data = {
         "id": id,          # Message ID
@@ -175,6 +175,7 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
             'created_at': datetime.now(timezone.utc),
             'edit': edit,
             'edited_embeds': [],
+            'embed': embed,
             'embeds': embeds or [],
             'file': file,
             'guild': guild,
