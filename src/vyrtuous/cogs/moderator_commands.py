@@ -1514,6 +1514,7 @@ class ModeratorCommands(commands.Cog):
         is_at_home = False
         channel_obj = None
         guild_obj = None
+        member_obj = None
         chunk_size = 7
         field_count = 0
         channel_lines, pages = [], []
@@ -1695,6 +1696,7 @@ class ModeratorCommands(commands.Cog):
         is_at_home = False
         channel_obj = None
         guild_obj = None
+        member_obj = None
         chunk_size = 7
         field_count = 0
         new_page = False
@@ -1748,7 +1750,6 @@ class ModeratorCommands(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        
         guild_dictionary = {}
         for vegan in new_vegans:
             guild_dictionary.setdefault(vegan.guild_snowflake, {})

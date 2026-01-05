@@ -100,7 +100,7 @@ async def test_admins_coords_devs_mods_owners_commands(
     captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
     message = captured[0]['message']
     if message.embeds:
-        embed = message.embeds[0]
+        embed = message.embeds.values()[0]
         content = extract_embed_text(embed)
     elif message.embed:
         content = extract_embed_text(message.embed)
@@ -110,11 +110,11 @@ async def test_admins_coords_devs_mods_owners_commands(
     if message_type == "error":
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
-        # print(f"{YELLOW}Warning:{RESET} {content}")
+        print(f"{YELLOW}Warning:{RESET} {content}")
         if should_warn:
             assert True
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
             assert any(str(channel_value) in content for channel_value in channel_values)
         if ref_guild:

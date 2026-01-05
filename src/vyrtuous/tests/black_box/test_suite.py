@@ -194,9 +194,8 @@ async def capture(author, channel):
     captured = []
     send = State._send_message
     end = State.end
-    async def _send(self, content=None, embed=None, embeds=None,file=None, paginated=False, allowed_mentions=None):
-        if embed:
-            embeds = [embed]
+    async def _send(self, content=None, embeds=None, file=None, paginated=False, allowed_mentions=None):
+        # print(embeds)
         return create_message(
             allowed_mentions=allowed_mentions,
             author=author,
@@ -222,6 +221,7 @@ async def capture(author, channel):
             kind = "unknown"
             content = None
         content, embeds, file = _normalize_payload(payload)
+        embeds = [e.to_dict() if isinstance(e, discord.Embed) else e for e in (embeds or [])]
         msg = await _send(self, content=content, embeds=embeds, file=file, **kwargs)
         captured.append({"type": kind, "message": msg})
         return msg
@@ -255,7 +255,6 @@ async def on_message(bot, message):
     await asyncio.sleep(3)
 
 async def prepared_command_handling(author, bot, channel, content, guild, highest_role, prefix):
-    captured = []
     message = create_message(
         allowed_mentions=True,
         author=author,
@@ -270,13 +269,13 @@ async def prepared_command_handling(author, bot, channel, content, guild, highes
         mock_conn.user = mock_bot_user
         mock_conn.return_value = mock_bot_user
         ctx = await prepare_context(bot, message, prefix)
-        async with capture(author, channel) as captured_messages:
+        async with capture(author, channel) as captured:
             if ctx.command:
                 await command(bot, ctx)
             else:
                 message.content = f'{prefix}{message.content}'
                 await on_message(bot, message)
-    return captured_messages
+    return captured
         
 def extract_embed_text(embed: discord.Embed) -> str:
     parts = []

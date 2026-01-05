@@ -128,7 +128,7 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
         "mentions": [],                     # list of mentioned user objects
         "mention_roles": [],                # list of mentioned role IDs
         "attachments": [],                  # list of attachments
-        "embeds": [],                       # list of embeds
+        "embeds": embeds if embeds else [],                       # list of embeds
         "reactions": [],                    # list of reactions
         "pinned": False,
         "webhook_id": None,
@@ -189,8 +189,8 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
             'created_at': datetime.now(timezone.utc),
             'edit': edit,
             'edited_embeds': [],
-            'embed': embed,
-            'embeds': embeds or [],
+            'embed': {},
+            'embeds': [],
             'file': file,
             'flags': 0,
             'guild': guild,
