@@ -183,13 +183,15 @@ async def prepare_context(bot, message, prefix):
 
 def _normalize_payload(payload):
     if payload is None:
-        return None, None
+        return None, None, None
     if isinstance(payload, str):
-        return payload, None
+        return payload, None, None
     if isinstance(payload, discord.Embed):
-        return None, [payload]
+        return None, [payload], None
     if isinstance(payload, list):
-        return None, payload
+        return None, payload, None
+    if isinstance(payload, discord.File):
+        return None, None, payload
     raise TypeError(f"Unsupported payload type: {type(payload)}")
 
 @asynccontextmanager
@@ -223,8 +225,8 @@ async def capture(author, channel):
         else:
             kind = "unknown"
             content = None
-        content, embeds = _normalize_payload(payload)
-        msg = await _send(self, content=content, embed=embed, embeds=embeds, **kwargs)
+        content, embeds, file = _normalize_payload(payload)
+        msg = await _send(self, content=content, embed=embed, embeds=embeds, file=file, **kwargs)
         captured.append({"type": kind, "message": msg})
         return msg
     State._send_message = _send

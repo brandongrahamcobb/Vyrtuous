@@ -22,32 +22,42 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "permission,command,should_warn",
     [
-        ("backup")
-    ]
+        ('Developer', "backup", False)
+    ],
+    indirect=['permission']
 )
 
-async def test_backup_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str]):
-    developer = Developer(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-    await developer.grant()
-    try:
-        voice_channel_one.messages.clear() 
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
-        message = captured['message']
-        message_type = captured['type']
-        if isinstance(message, discord.Embed):
-            content = extract_embed_text(message)
-        elif isinstance(message, discord.File):
-            content = message.filename
-        else:
-            content = message
-        if message_type == "error":
-            print(f"{RED}Error:{RESET} {content}")
-        if message_type == "warning":
-            print(f"{YELLOW}Warning:{RESET} {content}")
-        if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
-            assert content.startswith("backup")
-    finally:
-        await developer.revoke()
+async def test_backup_command(
+    bot,
+    command: Optional[str],
+    guild,
+    permission,
+    prefix: Optional[str],
+    privileged_author,
+    should_warn,
+    text_channel,
+    voice_channel_one
+):
+    captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=command, guild=guild, highest_role=permission, prefix=prefix)
+    message = captured[0]['message']
+    if message.embeds:
+        embed = message.embeds[0]
+        content = extract_embed_text(embed)
+    elif message.embed:
+        content = extract_embed_text(message.embed)
+    elif message.content:
+        content = message.content
+    elif message.file:
+        content = message.file.filename
+    message_type = captured[0]['type']
+    if message_type == "error":
+        print(f"{RED}Error:{RESET} {content}")
+    if message_type == "warning":
+        print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
+    if message_type == "success":
+        # print(f"{GREEN}Success:{RESET} {content}")
+        assert content.startswith("backup")
