@@ -24,24 +24,28 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "permission,command,channel_ref,guild_ref,member_ref,role_ref,should_warn",
+    "permission,command,ref_channel,ref_guild,ref_member,ref_role,should_warn",
     [
-        ("Developer", "arole {role_id}", False, True, False, True, False),
+        ("Developer", "arole {role_id}", False, False, False, True, False),
+        ("Administrator", "aroles {guild_id}", False, True, False, False, False),
+        ("Developer", "aroles all", False, False, False, False, False),
         (None, "admins", False, True, False, False, False),
         (None, "admins {member_id}", False, True, True, False, False),
         ("Administrator", "admins {guild_id}", False, True, False, False, False),
         ("Developer", "admins all", False, False, False, False, False),
-        ("Developer", "arole {role_id}", False, True, False, True, False),
+        ("Developer", "arole {role_id}", False, False, False, True, False),
+        ("Administrator", "aroles {guild_id}", False, True, False, False, True),
+        ("Developer", "aroles all", False, False, False, False, True),
         (None, "admins", False, True, False, False, True),
         (None, "admins {member_id}", False, True, True, False, True),
         ("Administrator", "admins {guild_id}", False, True, False, False, True),
         ("Developer", "admins all", False, False, False, False, True),
-        ("Administrator", "coord {member_id} {voice_channel_one_id}", True, True, True, False, False),
+        ("Administrator", "coord {member_id} {voice_channel_one_id}", True, False, True, False, False),
         (None, "coords {voice_channel_one_id}", True, True, False, False, False),
         (None, "coords {member_id}", False, True, True, False, False),
         ("Administrator", "coords {guild_id}", False, True, False, False, False),
         ("Developer", "coords all", False, False, False, False, False),
-        ("Administrator", "coord {member_id} {voice_channel_one_id}", True, True, True, False, False),
+        ("Administrator", "coord {member_id} {voice_channel_one_id}", True, False, True, False, False),
         (None, "coords {voice_channel_one_id}", True, True, False, False, True),
         (None, "coords {member_id}", False, True, True, False, True),
         ("Administrator", "coords {guild_id}", False, True, False, False, True),
@@ -56,12 +60,12 @@ import pytest
         ("Administrator", "devs {guild_id}", False, True, False, False, True),
         (None, "devs {member_id}", False, True, True, False, True),
         ("Developer", "devs all", False, False, False, False, True),
-        ("Administrator", "mod {member_id} {voice_channel_one_id}", True, True, True, False, False),
+        ("Administrator", "mod {member_id} {voice_channel_one_id}", True, False, True, False, False),
         (None, "mods {voice_channel_one_id}", True, True, False, False, False),
         (None, "mods {member_id}", False, True, True, False, False),
         ("Administrator", "mods {guild_id}", False, True, False, False, False),
         ("Developer", "mods all", False, False, False, False, False),
-        ("Administrator", "mod {member_id} {voice_channel_one_id}", True, True, True, False, False),
+        ("Administrator", "mod {member_id} {voice_channel_one_id}", True, False, True, False, False),
         (None, "mods {voice_channel_one_id}", True, True, False, False, True),
         (None, "mods {member_id}", False, True, True, False, True)
     ],
@@ -69,21 +73,26 @@ import pytest
 )
 async def test_admins_coords_devs_mods_owners_commands(
     bot,
-    text_channel,
+    command: Optional[str],
     guild,
     not_privileged_author,
+    permission,
     privileged_author,
     prefix: Optional[str],
-    command: Optional[str],
-    channel_ref,
-    guild_ref,
-    member_ref,
-    role_ref, 
-    permission,
-    should_warn
+    ref_channel,
+    ref_guild,
+    ref_member,
+    ref_role,
+    role,
+    should_warn,
+    text_channel,
+    voice_channel_one
 ):
+    channel_values = (voice_channel_one.mention, voice_channel_one.id, voice_channel_one.name)
+    guild_values = (guild.id, guild.name)
+    role_values = (role.id, role.name)
     formatted = command.format(
-        voice_channel_one_id=text_channel.id,
+        voice_channel_one_id=voice_channel_one.id,
         guild_id=guild.id,
         member_id=not_privileged_author.id,
         role_id=ROLE_ID
@@ -106,4 +115,10 @@ async def test_admins_coords_devs_mods_owners_commands(
             assert True
     if message_type == "success":
         # print(f"{GREEN}Success:{RESET} {content}")
+        if ref_channel:
+            assert any(str(channel_value) in content for channel_value in channel_values)
+        if ref_guild:
+            assert any(str(guild_value) in content for guild_value in guild_values)
+        if ref_role:
+            assert any(str(role_value) in content for role_value in role_values)
         assert any(emoji in content for emoji in Emojis.EMOJIS)
