@@ -1369,7 +1369,7 @@ class AdminCommands(commands.Cog):
                 await Moderator.delete_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=temporary_room.member_snowflake)
             # await Alias.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             await TemporaryRoom.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            action = 'removed'
+            msg = f'Temporary room removed in {channel_obj.mention}.' 
         else:
             try:
                 member_obj = await self.member_service.resolve_member(ctx, owner)
@@ -1382,9 +1382,9 @@ class AdminCommands(commands.Cog):
             await moderator.grant()
             temporary_room = TemporaryRoom(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, room_name=channel_obj.name)
             await temporary_room.create()
-            action = f'created'
+            msg = f'Temporary room created in {channel_obj.mention} with owner {member_obj.mention}.'
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {action} in {channel_obj.mention}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
@@ -1586,7 +1586,7 @@ class AdminCommands(commands.Cog):
             temporary_rooms = await TemporaryRoom.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
                 aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                 temporary_room = await TemporaryRoom.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                 temporary_rooms = [temporary_room] if temporary_room else []

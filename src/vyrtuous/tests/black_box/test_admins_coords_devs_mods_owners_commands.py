@@ -113,6 +113,8 @@ async def test_admins_coords_devs_mods_owners_commands(
         print(f"{YELLOW}Warning:{RESET} {content}")
         if should_warn:
             assert True
+        else:
+            assert False
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:

@@ -176,6 +176,8 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(
         # print(f"{YELLOW}Warning:{RESET} {content}")
         if should_warn:
             assert True
+        else:
+            assert False
     if message_type == "success":
         # print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
@@ -186,3 +188,4 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(
             assert any(str(member_value) in content for member_value in member_values)
         if moderation_type:
             assert moderation_type in content 
+        assert any(emoji in content for emoji in Emojis.EMOJIS)
