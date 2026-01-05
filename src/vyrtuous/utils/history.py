@@ -75,18 +75,17 @@ class History:
         author_snowflake = None
         expires_at = None
         history = await History.fetch_all()
+        logger.info(history)
         if message:
             for entry in history:
-                if message.channel.id == entry.channel_snowflake:
-                    channel = bot.get_channel(entry.channel_snowflake)
-                    pages = cls.build_history_embeds(
-                            alias=alias, channel=channel, duration=duration, highest_role=highest_role,
-                            is_channel_scope=is_channel_scope, is_modification=is_modification,
-                            member=member, message=message,
-                            reason=reason, 
-                        )
-                    paginator = Paginator(bot, message, pages)
-                    await paginator.start()
+                pages = cls.build_history_embeds(
+                        alias=alias, channel=channel, duration=duration, highest_role=highest_role,
+                        is_channel_scope=is_channel_scope, is_modification=is_modification,
+                        member=member, message=message,
+                        reason=reason, 
+                    )
+                paginator = Paginator(bot, message, pages)
+                await paginator.start()
             author_snowflake = message.author.id
         if isinstance(duration, DurationObject):
             expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
@@ -338,4 +337,4 @@ class History:
         guild_members_offline_and_online_member_count = sum(1 for member in channel.guild.members if not member.bot)
         guild_members_online_count = sum(1 for member in channel.guild.members if not member.bot and member.status != discord.Status.offline)
         guild_members_voice_count = sum(len([member for member in channel.members if not member.bot]) for channel in channel.guild.voice_channels)
-        await cls.save(action_type=action_type, channel_members_voice_count=channel_members_voice_count, channel_snowflake=channel_snowflake, executor_member_snowflake=author_snowflake, expires_at=expires_at, guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count, guild_members_online_count=guild_members_online_count, guild_members_voice_count=guild_members_voice_count, guild_snowflake=guild.id, highest_role=highest_role, is_modification=is_modification, target_member_snowflake=member_snowflake, reason=reason)
+        await cls.save(action_type=action_type, channel_members_voice_count=channel_members_voice_count, channel_snowflake=channel_snowflake, executor_member_snowflake=author_snowflake, expires_at=expires_at, guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count, guild_members_online_count=guild_members_online_count, guild_members_voice_count=guild_members_voice_count, guild_snowflake=channel.guild.id, highest_role=highest_role, is_modification=is_modification, target_member_snowflake=member_snowflake, reason=reason)

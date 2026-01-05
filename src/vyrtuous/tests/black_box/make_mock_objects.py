@@ -19,50 +19,43 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from vyrtuous.inc.helpers import *
 import asyncio
+import discord
 
-def make_mock_state():
+def create_http():
+    http = SimpleNamespace(allowed_mentions=None)
+    return http
 
-    async def send_message(author=None, channel_id=None, content=None, embeds=None, params=None, **kwargs):
-        return {
-            'author': {
-                'id': author.id,
-                'username': author.name
-            },
-            'channel_id': channel_id,
-            'content': content,
-            'embeds': embeds,
-            'id': MESSAGE_ID,
-            'params': params
-        }
-
-    async def create_message(channel=None, embeds=None, **kwargs):
-        msg = make_mock_message(channel=channel, embeds=embeds)
-        if hasattr(channel, "messages"):
-            channel.messages.append(msg)
-        return msg
-
-    mock_http = SimpleNamespace(
-        allowed_mentions=None,
-        create_message=create_message,
-        send_message=send_message
-    )
-
-    return SimpleNamespace(
-        allowed_mentions=None,
-        http=mock_http,
-        create_message=make_mock_message
-    )
-
-def make_mock_member(bot=True, guild=None, id=None, name=None, voice_channel=False):
+def create_member(bot=False, channel=None, guild=None, id=None, name=None):
 
     async def edit(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
         return self
-    
+
+    async def update_voice_state(self, *, channel=None, mute=None):
+        before = SimpleNamespace(
+            channel=self.voice.channel,
+            mute=self.voice.mute
+        )
+        if before.channel and self in before.channel.members:
+            before.channel.members.remove(self)
+        if channel:
+            if self not in channel.members:
+                channel.members.append(self)
+        self.voice.channel = channel
+        if mute is not None:
+            self.voice.mute = mute
+        after = SimpleNamespace(
+            channel=self.voice.channel,
+            mute=self.voice.mute
+        )
+        self.guild.on_voice_state_update(self, before, after)
+        return before, after
+
+
     return type(
         'MockMember',
-        (),
+        (discord.Member,),
         {
             'bot': bot,
             'display_avatar': SimpleNamespace(url="https://example.com"),
@@ -70,23 +63,23 @@ def make_mock_member(bot=True, guild=None, id=None, name=None, voice_channel=Fal
             'edit': edit,
             'guild': guild,
             'id': id,
-            'name': name,
             'mention': f'<@{id}>',
-            'voice': SimpleNamespace(channel=voice_channel, mute=False)
+            'update_voice_state': update_voice_state,
+            'voice': SimpleNamespace(channel=channel, mute=False)
         }
     )()
 
-def make_mock_message(allowed_mentions=None, author=None, content=None, channel=None, embeds=None, guild=None, id=None, **kwargs):
+def create_message(allowed_mentions=None, author=None, content=None, channel=None, embeds=None, guild=None, id=None, **kwargs):
 
     async def add_reaction(self, emoji):
         self.reactions.append(emoji)
     
+    async def clear_reactions(self):
+        self.reactions.clear()
+
     async def remove_reaction(self, emoji, user):
         if emoji in self.reactions:
             self.reactions.remove(emoji)
-    
-    async def clear_reactions(self):
-        self.reactions.clear()
     
     async def edit(self, *, content=None, embed=None, embeds=None, view=None, **kwargs):
         if content is not None:
@@ -101,7 +94,7 @@ def make_mock_message(allowed_mentions=None, author=None, content=None, channel=
     
     return type(
         'MockMessage',
-        (),
+        (discord.Message,),
         {
             'add_reaction': add_reaction,
             'allowed_mentions': allowed_mentions,
@@ -118,69 +111,90 @@ def make_mock_message(allowed_mentions=None, author=None, content=None, channel=
             'id': id,
             'reactions': [],
             'remove_reaction': remove_reaction,
-            '_state': make_mock_state()
+            '_state': create_http()
         }
     )()
 
-def make_mock_guild(bot, channel_defs=None, id=None, name=None, members=None, owner_id=None, roles=None):
+def create_guild(bot, channels=None, id=None, name=None, members=None, owner_snowflake=None, roles=None):
+
+    def on_voice_state_update(self, member, before, after):
+        self.me.dispatch('voice_state_update', member, before, after)
+
+    def get_channel(self, channel_snowflake):
+        if channel_snowflake is None:
+            return None
+        return self.channels.get(channel_snowflake)
+
+    def get_member(self, member_snowflake):
+        if member_snowflake is None:
+            return None
+        return self.members.get(member_snowflake)
+
+    def get_role(self, role_snowflake):
+        if role_snowflake is None:
+            return None
+        return self.roles.get(role_snowflake)
+
     guild = type(
         'MockGuild',
-        (),
+        (discord.Guild,),
         {
             'id': id,
-            'channels': {},
-            'get_channel': lambda self, channel_id: self.channels.get(channel_id),
+            'channels': channels,
+            'on_voice_state_update': on_voice_state_update,
+            'get_channel': get_channel,
+            'get_member': get_member,
+            "get_role": get_role,
             'me': bot,
             'members': members,
-            'get_member': lambda self, member_id: self.members.get(member_id),
             'name': name,
-            'owner_id': owner_id,
-            "get_role": lambda self, role_id: roles.get(role_id),
-            "roles": roles
+            'owner_id': owner_snowflake,
+            "roles": roles,
+            '_state': create_http()
         }
     )()
-    channels = {}
-    for cid, (name, channel_type) in channel_defs.items():
-        channels[cid] = make_mock_channel(channel_type=channel_type, guild=guild, id=cid, name=name)
-    guild.channels = channels
-    for member in (members or {}).values():
-        client_channel = list(channels.values())[0]
-        member.voice.channel = client_channel
-        client_channel.members.append(member)
-        for role in roles.values():
-            role.members.append(member)
-    guild.add_member = lambda member: guild.members.update({member.id: member})
     return guild
 
-def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
+
+def create_channel(channel_type=None, guild=None, id=None, name=None, object_channel=discord.VoiceChannel):
     
     _messages = []
+
+    def append_message(self, msg):
+        _messages.append(msg)
+
+    async def fetch_message(self, message_snowflake):
+        if message_snowflake is None:
+            return None
+        for msg in self.messages:
+            if msg.id == message_snowflake:
+                return msg
+        raise ValueError(f"Message with snowflake {message_snowflake} not found")
+
+    def permissions_for(self, member):
+        return SimpleNamespace(send_messages=True)
+
+    async def send_message(author=None, content=None, embeds=None, params=None, **kwargs):
+        return {
+            'author': {
+                'id': author.id,
+                'username': author.name
+            },
+            'channel_id': self.id,
+            'content': content,
+            'embeds': embeds,
+            'id': MESSAGE_ID,
+            'params': params
+        }
 
     async def set_permissions(self, target, **overwrites):
         self.overwrites[target.id] = overwrites
         return True
 
-    async def fetch_message(self, message_id):
-        print(self.messages)
-        for msg in self.messages:
-            if getattr(msg, "id", None) == message_id:
-                return msg
-        # fallback for tests
-        if self.messages:
-            return self.messages[-1]
-        raise ValueError(f"Message with ID {message_id} not found")
-    
-    def permissions_for(self, member):
-        return SimpleNamespace(send_messages=True)
-    
-    async def append_message(self, msg):
-        _messages.append(msg)
-    
     return type(
         'MockChannel',
-        (),
+        (object_channel,),
         {
-            '_state': make_mock_state(),
             'append_message': append_message,
             'guild': guild,
             'id': id,
@@ -193,42 +207,61 @@ def make_mock_channel(channel_type=None, guild=None, id=None, name=None):
             'permissions_for': permissions_for,
             'set_permissions': set_permissions,
             'send_messages': True,
-            'type': channel_type
+            'type': channel_type,
+            '_state': create_http()
         }
     )()
-
-async def mock_wait_for(event, timeout=None, check=None):
-    raise asyncio.TimeoutError()
-
-def make_mock_interaction(bot, guild, channel, user, command_name, options=None):
-    command = bot.tree.get_command(command_name)
-    assert command is not None
-    assert command.id is not None
-
-    class MockResponse:
-        async def send_message(self, *args, **kwargs): pass
-        async def defer(self, *args, **kwargs): pass
-        def is_done(self): return False
-
-    class MockFollowup:
-        async def send(self, *args, **kwargs): pass
-
+    
+def create_role(guild=None, id=None, name=None, members=None):
     return SimpleNamespace(
-        type=discord.InteractionType.application_command,
-        data={
-            'id': command.id,
-            'name': command_name,
-            'type': 1,
-            'options': [
-                {'name': k, 'type': 3, 'value': v}
-                for k, v in (options or {}).items()
-            ]
-        },
         guild=guild,
-        channel=channel,
-        user=user,
-        client=bot,
-        response=MockResponse(),
-        followup=MockFollowup(),
-        created_at=datetime.now(timezone.utc)
+        id=id,
+        name=name,
+        members=members,
+        mention=f"<@&{id}>"
     )
+    
+    # channels = {}
+    # for cid, (name, channel_type) in channel_defs.items():
+    #     channels[cid] = make_mock_channel(channel_type=channel_type, guild=guild, id=cid, name=name)
+    # for member in (members or {}).values():
+    #     client_channel = list(channels.values())[0]
+    #     member.voice.channel = client_channel
+    #     client_channel.members.append(member)
+    #     for role in roles.values():
+    #         role.members.append(member)
+    # guild.add_member = lambda member: guild.members.update({member.id: member})
+
+
+# def make_mock_interaction(bot, guild, channel, user, command_name, options=None):
+#     command = bot.tree.get_command(command_name)
+#     assert command is not None
+#     assert command.id is not None
+
+#     class MockResponse:
+#         async def send_message(self, *args, **kwargs): pass
+#         async def defer(self, *args, **kwargs): pass
+#         def is_done(self): return False
+
+#     class MockFollowup:
+#         async def send(self, *args, **kwargs): pass
+
+#     return SimpleNamespace(
+#         type=discord.InteractionType.application_command,
+#         data={
+#             'id': command.id,
+#             'name': command_name,
+#             'type': 1,
+#             'options': [
+#                 {'name': k, 'type': 3, 'value': v}
+#                 for k, v in (options or {}).items()
+#             ]
+#         },
+#         guild=guild,
+#         channel=channel,
+#         user=user,
+#         client=bot,
+#         response=MockResponse(),
+#         followup=MockFollowup(),
+#         created_at=datetime.now(timezone.utc)
+#     )

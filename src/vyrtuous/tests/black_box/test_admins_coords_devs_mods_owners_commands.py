@@ -44,17 +44,16 @@ import pytest
     ]
 )
 
-async def test_admins_coords_devs_mods_owners_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
+async def test_admins_coords_devs_mods_owners_commands(bot, text_channel, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str], channel_ref, member_ref):    
     moderator = Moderator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
     await moderator.grant()
     try:
-        voice_channel_one.messages.clear() 
         formatted = command.format(
             voice_channel_one_id=voice_channel_one.id,
             member_id=not_privileged_author.id
         )
-        bot.wait_for = mock_wait_for
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
+        # bot.wait_for = mock_wait_for
+        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role='Moderator', prefix=prefix)
         message = captured['message']
         message_type = captured['type']
         if isinstance(message, discord.Embed):

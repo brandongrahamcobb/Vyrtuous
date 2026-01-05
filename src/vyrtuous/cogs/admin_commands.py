@@ -633,7 +633,7 @@ class AdminCommands(commands.Cog):
             embed = view.build_embed(action_type=view.action_type, target=view.target)
             await interaction.response.send_message(embed=embed, view=view)
             await view.wait()
-            state = State(ctx)
+            state = State(interaction)
             if view.result == True:
                 match action_type.lower():
                     case 'all':
@@ -935,7 +935,7 @@ class AdminCommands(commands.Cog):
                 moved.append(member)
             except discord.Forbidden as e:
                 failed.append(member)
-                logger.warning(f'Unable to move member {member.display_name} ({member.id}) from channel {source_channel_obj.name} ({source_channel}) to channel {target_channel_obj.name} ({target_channel}) in guild {ctx.guild.name} ({ctx.guild.id}).')
+                logger.warning(f'Unable to move member {member.display_name} ({member.id}) from channel {source_channel_obj.name} ({source_channel}) to channel {target_channel_obj.name} ({target_channel}) in guild {interaction.guild.name} ({interaction.guild.id}).')
         embed = discord.Embed(
             title=f'{self.emoji.get_random_emoji()} Moved {source_channel_obj.mention} to {target_channel_obj.mention}',
             color=discord.Color.green()

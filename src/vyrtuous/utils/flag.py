@@ -160,7 +160,7 @@ class Flag:
                     duration=None,
                     highest_role=highest_role,
                     is_modification=is_modification,
-                    member_snowflake=voice_mute.member_snowflake,
+                    member_snowflake=flag.member_snowflake,
                     reason="Clear command"
                 )
     
