@@ -101,7 +101,7 @@ class State:
         if error or warning:
             show_error_emoji = True
         if isinstance(message_obj, list) and message_obj:
-            self.paginator = Paginator(bot=self.bot, ctx_interaction_or_message=self.ctx_or_interaction, pages=message_obj)
+            self.paginator = Paginator(bot=self.bot, ctx_channel_interaction_or_message=self.ctx_or_interaction, pages=message_obj)
             self.message = await self.paginator.start()
             cache[self.message.id] = {
                 'date': self.start_time,
