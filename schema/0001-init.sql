@@ -10,14 +10,6 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE active_server_voice_mutes (
-    guild_id BIGINT NOT NULL,
-    discord_snowflake BIGINT NOT NULL,
-    expires_in TIMESTAMPTZ,
-    reason TEXT,
-    PRIMARY KEY (guild_id, discord_snowflake)
-);
-
 CREATE TABLE moderation_logs (
     action_type VARCHAR(255) NOT NULL,
     channel_members_voice_count INTEGER DEFAULT 0 NOT NULL,
@@ -34,25 +26,6 @@ CREATE TABLE moderation_logs (
     target_member_snowflake BIGINT,
     reason TEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-CREATE TABLE statistic_channels (
-    guild_id   BIGINT NOT NULL,
-    channel_id BIGINT NOT NULL,
-    type       TEXT DEFAULT 'general',
-    snowflakes BIGINT[],
-    enabled BOOLEAN DEFAULT FALSE,
-    PRIMARY KEY (guild_id, channel_id)
-);
-
-CREATE TABLE temporary_rooms (
-    channel_snowflake BIGINT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    guild_snowflake BIGINT NOT NULL,
-    owner_snowflake BIGINT NOT NULL,
-    room_name TEXT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (guild_snowflake, room_name)
 );
 
 CREATE TABLE moderators (
@@ -234,4 +207,12 @@ CREATE TABLE developer_logs (
     notes TEXT,
     resolved BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE video_rooms (
+    channel_snowflake BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, room_name)
 );
