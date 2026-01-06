@@ -15,6 +15,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 from discord.http import HTTPClient
 from discord.state import ConnectionState
@@ -29,6 +30,7 @@ def create_state():
     hooks = {}
     http = HTTPClient(dispatch)
     state = ConnectionState(dispatch=dispatch, handlers=handlers, hooks=hooks, http=http)
+    state._channels = {}
     return state
 
 def create_member(bot=False, channel=None, guild=None, id=None, name=None):
@@ -270,7 +272,7 @@ def create_guild(bot, channels=None, id=None, name=None, members=None, owner_sno
             if role.id == role_snowflake:
                 return role
 
-    guild = type(
+    return type(
         'MockGuild',
         (discord.Guild,),
         {
@@ -288,11 +290,10 @@ def create_guild(bot, channels=None, id=None, name=None, members=None, owner_sno
             "roles": roles
         }
     )(data=data, state=create_state())
-    return guild
 
 
 def create_channel(channel_type=None, guild=None, id=None, name=None, object_channel=discord.VoiceChannel):
-    
+
     _messages = []
     data = {
         "id": id,
@@ -322,17 +323,6 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
 
-    # async def send(self, content=None, author=None, embeds=None, **kwargs):
-    #     msg = create_message(
-    #         author=guild.me,
-    #         channel=self,
-    #         guild=guild,
-    #         content=content,
-    #         id=MESSAGE_ID
-    #     )
-    #     self.append_message(msg)
-    #     return msg
-
     async def set_permissions(self, target, **overwrites):
         self.overwrites[target.id] = overwrites
         return True
@@ -352,7 +342,6 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
             'overwrites': {},
             'permissions_for': permissions_for,
             'set_permissions': set_permissions,
-            # 'send': send,
             'send_messages': True,
             'type': channel_type
         }

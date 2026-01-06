@@ -247,10 +247,13 @@ def prepare_discord_state(author, bot, channel, content, guild, highest_role):
         stack.enter_context(patch("discord.utils.get", side_effect=lambda iterable, name=None: next((r for r in iterable if r.name == name), None)))
         stack.enter_context(patch("vyrtuous.service.check_service.has_equal_or_higher_role", new=AsyncMock(return_value=False)))
         stack.enter_context(patch("vyrtuous.service.check_service.is_system_owner_developer_guild_owner_administrator_coordinator_moderator", new=AsyncMock(return_value=highest_role)))
+        # stack.enter_context(patch.object(bot, "get_channel", side_effect=lambda cid: channel if cid == channel.id else None))
         stack.enter_context(patch.object(bot, "get_guild", side_effect=lambda gid: guild if gid == guild.id else None))
         stack.enter_context(patch.object(bot, "load_extension", new_callable=AsyncMock))
         stack.enter_context(patch.object(bot, "reload_extension", new_callable=AsyncMock))
         stack.enter_context(patch.object(bot, "unload_extension", new_callable=AsyncMock))
+        stack.enter_context(patch("vyrtuous.service.paginator_service.Paginator.start", new_callable=AsyncMock))
+        
         # stack.enter_context(patch("vyrtuous.bot.discord_bot.DiscordBot.tree", new_callable=PropertyMock, return_value=MagicMock(sync=AsyncMock(return_value=[]), copy_global_to=MagicMock(), clear_commands=MagicMock())))
         yield
 
