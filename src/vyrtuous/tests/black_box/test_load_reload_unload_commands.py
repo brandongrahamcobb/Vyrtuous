@@ -24,35 +24,48 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "permission,command,should_warn",
     [
-        f"{action} {cog}"
+        ('Developer', f"{action} {cog}", False)
         for action in ("load", "reload", "unload")
         for cog in DISCORD_COGS
         if cog != "vyrtuous.cogs.dev_commands"
-    ]
+    ],
+    indirect=['permission']
 )
 
-async def test_clear_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str]):
-    developer = Developer(guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-    await developer.grant()
-    try:
-        voice_channel_one.messages.clear() 
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="DevCommands", content=command, guild=guild, isinstance_patch="vyrtuous.cogs.dev_commands.isinstance", prefix=prefix)
-        message = captured['message']
-        message_type = captured['type']
-        if isinstance(message, discord.Embed):
-            content = extract_embed_text(message)
-        elif isinstance(message, discord.File):
-            content = message.filename
-        else:
-            content = message
-        if message_type == "error":
-            print(f"{RED}Error:{RESET} {content}")
-        if message_type == "warning":
-            print(f"{YELLOW}Warning:{RESET} {content}")
-        if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
-            assert any(emoji in content for emoji in Emojis.EMOJIS)
-    finally:
-        await developer.revoke()
+async def test_load_reload_unload_command(
+    bot,
+    command: Optional[str],
+    not_privileged_author,
+    permission,
+    prefix: Optional[str],
+    privileged_author,
+    should_warn,
+    text_channel,
+    voice_channel_one,guild
+):
+    formatted = command
+    captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
+    message = captured[0]['message']
+    message_type = captured[0]['type']
+    if message.embeds:
+        embed = message.embeds[0]
+        content = extract_embed_text(embed)
+    elif message.embed:
+        content = extract_embed_text(message.embed)
+    else:
+        content = message.content
+    if message_type == "error":
+        print(f"{RED}Error:{RESET} {content}")
+    if message_type == "warning":
+        print(f"{YELLOW}Warning:{RESET} {content}")
+    if message_type == "success":
+        # print(f"{GREEN}Success:{RESET} {content}")
+        # if ref_channel:
+        #     assert any(str(channel_value) in content for channel_value in channel_values)
+        # if ref_guild:
+        #     assert any(str(guild_value) in content for guild_value in guild_values)
+        # if ref_member:
+        #     assert any(str(member_value) in content for member_value in member_values)
+        assert any(emoji in content for emoji in Emojis.EMOJIS)

@@ -24,35 +24,46 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "permission,command,ref_channel,should_warn",
     [
-        ("survey {voice_channel_one_id}")
-    ]
+        (None,"survey {voice_channel_one_id}", True, False)
+    ],
+    indirect=['permission']
 )
 
-async def test_survey_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], command: Optional[str]):    
-    moderator = Moderator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-    await moderator.grant()
-    try:
-        formatted = command.format(
-            voice_channel_one_id=voice_channel_one.id
-        )
-        voice_channel_one.messages.clear() 
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="EveryoneCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.everyone_commands.isinstance", prefix=prefix)
-        message = captured['message']
-        message_type = captured['type']
-        if isinstance(message, discord.Embed):
-            content = extract_embed_text(message)
-        elif isinstance(message, discord.File):
-            content = message.filename
-        else:
-            content = message
-        if message_type == "error":
-            print(f"{RED}Error:{RESET} {content}")
-        if message_type == "warning":
-            print(f"{YELLOW}Warning:{RESET} {content}")
-        if message_type == "success":
-            print(f"{GREEN}Success:{RESET} {content}")
-            assert any(emoji in content for emoji in Emojis.EMOJIS) 
-    finally:
-        await moderator.revoke()
+async def test_survey_command(
+    bot,
+    command: Optional[str],
+    guild,
+    not_privileged_author,
+    permission,
+    prefix: Optional[str],
+    privileged_author,
+    ref_channel,
+    should_warn,
+    text_channel,
+    voice_channel_one
+):    
+    channel_values = (voice_channel_one.mention, voice_channel_one.id, voice_channel_one.name)
+    formatted = command.format(
+        voice_channel_one_id=voice_channel_one.id
+    )
+    captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
+    message = captured[0]['message']
+    message_type = captured[0]['type']
+    if message.embeds:
+        embed = message.embeds[0]
+        content = extract_embed_text(embed)
+    elif message.embed:
+        content = extract_embed_text(message.embed)
+    else:
+        content = message.content
+    if message_type == "error":
+        print(f"{RED}Error:{RESET} {content}")
+    if message_type == "warning":
+        print(f"{YELLOW}Warning:{RESET} {content}")
+    if message_type == "success":
+        print(f"{GREEN}Success:{RESET} {content}")
+        if ref_channel:
+            assert any(str(channel_value) in content for channel_value in channel_values)
+        assert any(emoji in content for emoji in Emojis.EMOJIS)

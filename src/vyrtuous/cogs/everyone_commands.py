@@ -1436,7 +1436,7 @@ class EveryoneCommands(commands.Cog):
             except commands.CheckFailure:
                 pass
             try:
-                if await member_is_developer(member.id):
+                if await member_is_developer(interaction.guild.id, member.id):
                     developers.append(member)
             except commands.CheckFailure:
                 pass
@@ -1516,10 +1516,10 @@ class EveryoneCommands(commands.Cog):
         channel_obj = None
         chunk_size = 7
         pages = []
-        system_owners, developers, guild_owners, administrators, moderators, coordinators = [], [], [], [], []
+        system_owners, developers, guild_owners, administrators, moderators, coordinators = [], [], [], [], [], []
         try:
             channel_obj = await self.channel_service.resolve_channel(ctx, channel)
-        except:
+        except Exception as e:
             channel_obj = ctx.channel
         for member in channel_obj.members:
             try:
@@ -1528,7 +1528,7 @@ class EveryoneCommands(commands.Cog):
             except commands.CheckFailure:
                 pass
             try:
-                if await member_is_developer(member.id):
+                if await member_is_developer(ctx.guild.id, member.id):
                     developers.append(member)
             except commands.CheckFailure:
                 pass

@@ -83,14 +83,13 @@ async def test_admins_coords_devs_mods_owners_commands(
     ref_guild,
     ref_member,
     ref_role,
-    role,
     should_warn,
     text_channel,
     voice_channel_one
 ):
     channel_values = (voice_channel_one.mention, voice_channel_one.id, voice_channel_one.name)
     guild_values = (guild.id, guild.name)
-    role_values = (role.id, role.name)
+    role_values = (ROLE_ID, ROLE_NAME)
     formatted = command.format(
         voice_channel_one_id=voice_channel_one.id,
         guild_id=guild.id,
@@ -100,7 +99,7 @@ async def test_admins_coords_devs_mods_owners_commands(
     captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
     message = captured[0]['message']
     if message.embeds:
-        embed = message.embeds.values()[0]
+        embed = message.embeds[0]
         content = extract_embed_text(embed)
     elif message.embed:
         content = extract_embed_text(message.embed)

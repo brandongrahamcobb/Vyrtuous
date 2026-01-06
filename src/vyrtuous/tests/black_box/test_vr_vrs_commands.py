@@ -24,42 +24,63 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,channel_ref,should_warn",
+    "permission,command,ref_channel,ref_guild,should_warn",
     [
-        ("vr {voice_channel_one_id}", True, False),
-        ("vrs", False, False),
-        ("vr {voice_channel_one_id}", True, False),
-        ("vrs", False, True)
-    ]
+        ("Administrator", "vr {voice_channel_one_id}", True, False, False),
+        ("Administrator", "vrs {voice_channel_one_id}", True, False, False),
+        ("Administrator", "vrs {guild_id}", False, True, False),
+        ("Developer", "vrs all", False, False, False),
+        ("Administrator", "vrs", False, True, False),
+        ("Administrator", "vr {voice_channel_one_id}", True, False, False),
+        ("Administrator", "vrs", False, True, True),
+        ("Administrator", "vrs {voice_channel_one_id}", True, False, True),
+        ("Administrator", "vrs {guild_id}", False, True, True),
+        ("Developer", "vrs all", False, False, True)
+    ],
+    indirect=['permission']
 )
-
-async def test_chown_temp_xtemp_commands(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], role, command: Optional[str], channel_ref, should_warn):    
-    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
-    await administrator.grant()
-    try:
-        channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
-        voice_channel_one.messages.clear() 
-        formatted = command.format(
-            voice_channel_one_id=voice_channel_one.id
-        )
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        message = captured['message']
-        message_type = captured['type']
-        if isinstance(message, discord.Embed):
-            content = extract_embed_text(message)
-        elif isinstance(message, discord.File):
-            content = message.filename
+async def test_chown_temp_xtemp_commands(
+    bot,
+    command: Optional[str],
+    guild,
+    not_privileged_author,
+    permission,
+    prefix: Optional[str],
+    privileged_author,
+    ref_channel,
+    ref_guild,
+    should_warn,
+    text_channel,
+    voice_channel_one
+):
+    channel_values = (voice_channel_one.mention, voice_channel_one.id)
+    guild_values = (guild.name, guild.id)
+    formatted = command.format(
+        guild_id=guild.id,
+        voice_channel_one_id=voice_channel_one.id
+    )
+    captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
+    message = captured[0]['message']
+    message_type = captured[0]['type']
+    if message.embeds:
+        embed = message.embeds[0]
+        content = extract_embed_text(embed)
+    elif message.embed:
+        content = extract_embed_text(message.embed)
+    else:
+        content = message.content
+    if message_type == "error":
+        print(f"{RED}Error:{RESET} {content}")
+    if message_type == "warning":
+        # print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
         else:
-            content = message
-        if message_type == "error":
-            print(f"{RED}Error:{RESET} {content}")
-        if message_type == "warning":
-            print(f"{YELLOW}Warning:{RESET} {content}")
-            assert should_warn
-        if message_type == "success":
-            print(f"{GREEN}Success:{RESET} {content}")
-            if channel_ref:
-                assert channel_value in content
-            assert any(emoji in content for emoji in Emojis.EMOJIS)
-    finally:
-        await administrator.revoke()
+            assert False
+    if message_type == "success":
+        # print(f"{GREEN}Success:{RESET} {content}")
+        if ref_channel:
+            assert any(str(channel_value) in content for channel_value in channel_values)
+        if ref_guild:
+            assert any(str(guild_value) in content for guild_value in guild_values)
+        assert any(emoji in content for emoji in Emojis.EMOJIS)

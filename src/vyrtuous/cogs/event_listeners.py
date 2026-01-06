@@ -328,6 +328,7 @@ class EventListeners(commands.Cog):
                 return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
+
         await alias.handler(alias, args, channel_obj, executor_role, existing_guestroom_alias_event, is_duration_modification, is_reason_modification, member_obj, message, state)
         
     @commands.Cog.listener()

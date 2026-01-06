@@ -266,7 +266,9 @@ def create_guild(bot, channels=None, id=None, name=None, members=None, owner_sno
     def get_role(self, role_snowflake):
         if role_snowflake is None:
             return None
-        return self.roles.get(role_snowflake)
+        for role in self.roles:
+            if role.id == role_snowflake:
+                return role
 
     guild = type(
         'MockGuild',
@@ -278,6 +280,7 @@ def create_guild(bot, channels=None, id=None, name=None, members=None, owner_sno
             'get_channel': get_channel,
             'get_member': get_member,
             "get_role": get_role,
+            'icon': SimpleNamespace(url="https://example.com"),
             'me': bot,
             'members': members,
             'name': name,
@@ -319,16 +322,16 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
 
-    async def send(self, content=None, author=None, embeds=None, **kwargs):
-        msg = create_message(
-            author=guild.me,
-            channel=self,
-            guild=guild,
-            content=content,
-            id=MESSAGE_ID
-        )
-        self.append_message(msg)
-        return msg
+    # async def send(self, content=None, author=None, embeds=None, **kwargs):
+    #     msg = create_message(
+    #         author=guild.me,
+    #         channel=self,
+    #         guild=guild,
+    #         content=content,
+    #         id=MESSAGE_ID
+    #     )
+    #     self.append_message(msg)
+    #     return msg
 
     async def set_permissions(self, target, **overwrites):
         self.overwrites[target.id] = overwrites
@@ -349,7 +352,7 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
             'overwrites': {},
             'permissions_for': permissions_for,
             'set_permissions': set_permissions,
-            'send': send,
+            # 'send': send,
             'send_messages': True,
             'type': channel_type
         }

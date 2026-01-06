@@ -17,6 +17,7 @@
 '''
 from datetime import datetime, timedelta, timezone
 from discord import app_commands
+from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
 from vyrtuous.service.channel_service import ChannelService
@@ -126,7 +127,8 @@ class CoordinatorCommands(commands.Cog):
     async def room_mute_app_command(
         self,
         interaction: discord.Interaction,
-        channel: AppChannelSnowflake
+        channel: AppChannelSnowflake,
+        reason: Optional[str] = 'No reason provided.'
     ):
         state = State(interaction)
         channel_obj = None
@@ -152,7 +154,7 @@ class CoordinatorCommands(commands.Cog):
                     logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {interaction.guild.name} ({interaction.guild.id}).')
                     failed_members.append(member)    
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=interaction.guild.id, member_snowflake=member.id, reason=reason, target='user')
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
@@ -188,7 +190,8 @@ class CoordinatorCommands(commands.Cog):
     async def room_mute_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
+        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID'),
+        reason: str = commands.parameter(default='No reason provided.', description='Specify a reason.')
     ):
         state = State(ctx)
         channel_obj = None
@@ -214,7 +217,7 @@ class CoordinatorCommands(commands.Cog):
                     logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {ctx.guild.name} ({ctx.guild.id}).')
                     failed_members.append(member)
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
+            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=ctx.guild.id, member_snowflake=member.id, reason=reason, target='user')
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [

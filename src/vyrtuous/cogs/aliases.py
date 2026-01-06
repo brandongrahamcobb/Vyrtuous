@@ -217,7 +217,7 @@ class Aliases(commands.Cog):
                 except discord.Forbidden as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
                     
-    
+            print("test")
             await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
             embed = discord.Embed(
                 title=f'{self.emoji.get_random_emoji()} {member_obj.display_name} has been Banned',

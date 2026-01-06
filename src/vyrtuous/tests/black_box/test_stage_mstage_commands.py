@@ -25,47 +25,59 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,duration,channel_ref,member_ref",
+    "permission,command,duration,ref_channel,ref_member,should_warn",
     [
-        ("stage {voice_channel_one_id}", '1m', True, False),
-        ("mstage {not_privileged_author_id}", None, False, True),
-        ("stage {voice_channel_one_id}", None, True, False),
-        ("stage {voice_channel_one_id}", '1h', True, False),
-        ("stage {voice_channel_one_id}", None, True, False),
-        ("stage {voice_channel_one_id}", '1d', True, False),
-        ("stage {voice_channel_one_id}", None, True, False)
-    ]
+        ("Administrator", "stage {voice_channel_one_id}", '1m', True, False, False),
+        ("Administrator", "mstage {not_privileged_author_id}", None, False, True, False),
+        ("Administrator", "stage {voice_channel_one_id}", None, True, False, False),
+        ("Administrator", "stage {voice_channel_one_id}", '1h', True, False, False),
+        ("Administrator", "stage {voice_channel_one_id}", None, True, False, False),
+        ("Administrator", "stage {voice_channel_one_id}", '1d', True, False, False),
+        ("Administrator", "stage {voice_channel_one_id}", None, True, False, False)
+    ],
+    indirect=['permission']
 )
 
-async def test_cstage_mstage_pstage_xstage_command(bot, voice_channel_one, guild, not_privileged_author, privileged_author, prefix: Optional[str], role, command: Optional[str], duration, channel_ref, member_ref):
-    voice_channel_one.messages.clear() 
+async def test_stage_mstage_command(
+    bot,
+    command: Optional[str],
+    duration,
+    guild,
+    not_privileged_author,
+    permission,
+    prefix: Optional[str],
+    privileged_author,
+    ref_channel,
+    ref_member,
+    should_warn,
+    text_channel,
+    voice_channel_one
+):
+    channel_values = (voice_channel_one.mention, voice_channel_one.id)
+    member_values = (not_privileged_author.mention, not_privileged_author.id)
     formatted = command.format(
             not_privileged_author_id=not_privileged_author.id,
             voice_channel_one_id=voice_channel_one.id,
             duration=duration
         )
-    if "cstage" in command or "xstage" in command:
-        administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
-        await administrator.grant()
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        await administrator.revoke()
+    captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
+    message = captured[0]['message']
+    message_type = captured[0]['type']
+    if message.embeds:
+        embed = message.embeds[0]
+        content = extract_embed_text(embed)
+    elif message.embed:
+        content = extract_embed_text(message.embed)
     else:
-        moderator = Moderator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-        await moderator.grant()
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="ModeratorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.moderator_commands.isinstance", prefix=prefix)
-        await moderator.revoke()
-    message = captured['message']
-    message_type = captured['type']
-    if isinstance(message, discord.Embed):
-        content = extract_embed_text(message)
-    elif isinstance(message, discord.File):
-        content = message.filename
-    else:
-        content = message
+        content = message.content
     if message_type == "error":
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
         # print(f"{GREEN}Success:{RESET} {content}")
+        if ref_channel:
+            assert any(str(channel_value) in content for channel_value in channel_values)
+        if ref_member:
+            assert any(str(member_value) in content for member_value in member_values)
         assert any(emoji in content for emoji in Emojis.EMOJIS)

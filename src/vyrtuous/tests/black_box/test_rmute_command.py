@@ -21,36 +21,59 @@ from vyrtuous.enhanced_members.coordinator import Coordinator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,member_ref",
+    "permission,command,needs_message_id,ref_channel,ref_guild,ref_member,should_warn",
     [
-        ("rmute", "True"),
-        ("rmute", "True")
-    ]
+        ("Coordinator", "rmute {voice_channel_id}", True, False, False, False, False),
+        ("Coordinator", "xrmute {voice_channel_id}", True, False, False, False, False)
+    ],
+    indirect=['permission']
 )
-
-async def test_rmute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
-    coordinator = Coordinator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-    await coordinator.grant()
-    try:
-        voice_channel_one.messages.clear() 
-        formatted = f"{command} {voice_channel_one.id}"
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="CoordinatorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.coordinator_commands.isinstance", prefix=prefix)
-        message = captured['message']
-        message_type = captured['type']
-        if isinstance(message, discord.Embed):
-            content = extract_embed_text(message)
-        elif isinstance(message, discord.File):
-            content = message.filename
-        else:
-            content = message
-        if message_type == "error":
-            print(f"{RED}Error:{RESET} {content}")
-        if message_type == "warning":
-            print(f"{YELLOW}Warning:{RESET} {content}")
-        if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
-            assert any(emoji in content for emoji in Emojis.EMOJIS)
-    finally:
-        await coordinator.revoke()
+async def test_rmute_command(
+    bot,
+    command: Optional[str],
+    guild,
+    needs_message_id,
+    not_privileged_author,
+    permission,
+    prefix: Optional[str],
+    privileged_author,
+    ref_channel,
+    ref_guild,
+    ref_member,
+    should_warn,
+    text_channel,
+    voice_channel_one
+):
+    channel_values = (voice_channel_one.mention, voice_channel_one.id)
+    guild_values = (guild.name, guild.id)
+    member_values = (not_privileged_author.mention, not_privileged_author.id)
+    
+    formatted = command.format(
+        voice_channel_id=voice_channel_one.id
+    )
+    captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
+    message = captured[0]['message']
+    message_type = captured[0]['type']
+    if message.embeds:
+        embed = message.embeds[0]
+        content = extract_embed_text(embed)
+    elif message.embed:
+        content = extract_embed_text(message.embed)
+    else:
+        content = message.content
+    if message_type == "error":
+        print(f"{RED}Error:{RESET} {content}")
+    if message_type == "warning":
+        print(f"{YELLOW}Warning:{RESET} {content}")
+    if message_type == "success":
+        # print(f"{GREEN}Success:{RESET} {content}")
+        if ref_channel:
+            assert any(str(channel_value) in content for channel_value in channel_values)
+        if ref_guild:
+            assert any(str(guild_value) in content for guild_value in guild_values)
+        if ref_member:
+            assert any(str(member_value) in content for member_value in member_values)
+        assert any(emoji in content for emoji in Emojis.EMOJIS)

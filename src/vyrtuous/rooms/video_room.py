@@ -128,7 +128,7 @@ class VideoRoom:
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch('''
-                SELECT created_at, guild_snowflake, member_snowflake, updated_at
+                SELECT created_at, channel_snowflake, guild_snowflake, updated_at
                 FROM video_rooms
                 WHERE guild_snowflake=$1
             ''', guild_snowflake)

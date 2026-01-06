@@ -78,7 +78,7 @@ def guild():
         object_channel=discord.TextChannel
     )
 
-    voice_channel_obj = create_channel(
+    voice_channel_one_obj = create_channel(
         channel_type='voice',
         guild=guild_obj,
         id=VOICE_CHANNEL_ONE_ID,
@@ -86,7 +86,15 @@ def guild():
         object_channel=discord.VoiceChannel
     )
 
-    channels = {TEXT_CHANNEL_ID: text_channel_obj, VOICE_CHANNEL_ONE_ID: voice_channel_obj}
+    voice_channel_two_obj = create_channel(
+        channel_type='voice',
+        guild=guild_obj,
+        id=VOICE_CHANNEL_TWO_ID,
+        name=VOICE_CHANNEL_TWO_NAME,
+        object_channel=discord.VoiceChannel
+    )
+
+    channels = {TEXT_CHANNEL_ID: text_channel_obj, VOICE_CHANNEL_ONE_ID: voice_channel_one_obj, VOICE_CHANNEL_TWO_ID: voice_channel_two_obj}
     
     guild_obj.channels = channels
     for member in guild_obj.members:
@@ -101,7 +109,7 @@ def guild():
         name=ROLE_NAME,
         members=guild_obj.members
     )
-    guild_obj.roles[ROLE_ID] = role_obj
+    guild_obj.roles = [role_obj]
 
     return guild_obj
 
@@ -243,6 +251,7 @@ def prepare_discord_state(author, bot, channel, content, guild, highest_role):
         stack.enter_context(patch.object(bot, "load_extension", new_callable=AsyncMock))
         stack.enter_context(patch.object(bot, "reload_extension", new_callable=AsyncMock))
         stack.enter_context(patch.object(bot, "unload_extension", new_callable=AsyncMock))
+        # stack.enter_context(patch("vyrtuous.bot.discord_bot.DiscordBot.tree", new_callable=PropertyMock, return_value=MagicMock(sync=AsyncMock(return_value=[]), copy_global_to=MagicMock(), clear_commands=MagicMock())))
         yield
 
 async def command(bot, ctx):

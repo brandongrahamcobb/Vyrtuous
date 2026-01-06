@@ -23,42 +23,54 @@ import pytest
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,channel_ref_one,channel_ref_two",
+    "permission,command,ref_channel_one,ref_channel_two,should_warn",
     [
-        ("rmv {source_id} {target_id}", True, True)
-    ]
+        ('Administrator', "rmv {source_id} {target_id}", True, True, False)
+    ],
+    indirect=['permission']
 )
 
-async def test_rmv_command(bot, voice_channel_one, voice_channel_two, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], channel_ref_one, channel_ref_two):
-    administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
-    await administrator.grant()
-    try:
-        voice_channel_one.messages.clear() 
-        channel_value_one = voice_channel_one.mention if channel_ref_one else voice_channel_one.name
-        channel_value_two = voice_channel_two.mention if channel_ref_two else voice_channel_two.name
-        source_id = voice_channel_one.id
-        target_id = voice_channel_two.id
-        formatted = command.format(
-            source_id=source_id,
-            target_id=target_id
-        )
-        captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="AdminCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.admin_commands.isinstance", prefix=prefix)
-        message = captured['message']
-        message_type = captured['type']
-        if isinstance(message, discord.Embed):
-            content = extract_embed_text(message)
-        elif isinstance(message, discord.File):
-            content = message.filename
-        else:
-            content = message
-        if message_type == "error":
-            print(f"{RED}Error:{RESET} {content}")
-        if message_type == "warning":
-            print(f"{YELLOW}Warning:{RESET} {content}")
-        if message_type == "success":
-            # print(f"{GREEN}Success:{RESET} {content}")
-            assert any(emoji in content for emoji in Emojis.EMOJIS)
-            assert channel_value_one in content
-            assert channel_value_two in content
-    finally:
-        await administrator.revoke()
+async def test_rmv_command(
+    bot,
+    command: Optional[str],
+    guild,
+    not_privileged_author,
+    permission,
+    prefix: Optional[str],
+    privileged_author,
+    ref_channel_one,
+    ref_channel_two,
+    should_warn,
+    text_channel,
+    voice_channel_one,
+    voice_channel_two
+):
+    channel_one_values = (voice_channel_one.mention, voice_channel_one.id)
+    channel_two_values = (voice_channel_two.mention, voice_channel_two.id)
+    source_id = voice_channel_one.id
+    target_id = voice_channel_two.id
+    formatted = command.format(
+        source_id=source_id,
+        target_id=target_id
+    )
+    captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
+    message = captured[0]['message']
+    message_type = captured[0]['type']
+    if message.embeds:
+        embed = message.embeds[0]
+        content = extract_embed_text(embed)
+    elif message.embed:
+        content = extract_embed_text(message.embed)
+    else:
+        content = message.content
+    if message_type == "error":
+        print(f"{RED}Error:{RESET} {content}")
+    if message_type == "warning":
+        print(f"{YELLOW}Warning:{RESET} {content}")
+    if message_type == "success":
+        # print(f"{GREEN}Success:{RESET} {content}")
+        if ref_channel_one:
+            assert any(str(channel_one_value) in content for channel_one_value in channel_one_values)
+        if ref_channel_two:
+            assert any(str(channel_two_value) in content for channel_two_value in channel_two_values)
+        assert any(emoji in content for emoji in Emojis.EMOJIS)

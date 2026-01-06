@@ -1757,39 +1757,44 @@ class AdminCommands(commands.Cog):
             channel_obj = interaction.channel
         if scope is None and entry_type is None:
             history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            for entry in history:
-                if not entry.enabled:
-                    action = 'enabled'
-                    enabled = True
-                else:
-                    action = 'disabled'
-                    enabled = False
-                await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=interaction.guild.id)
+            if history:
+                for entry in history:
+                    if not entry.enabled:
+                        action = 'enabled'
+                        enabled = True
+                    else:
+                        action = 'disabled'
+                        enabled = False
+                    await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=interaction.guild.id)
+                    try:
+                        return await state.end(success=f"{self.emoji.get_random_emoji()} Tracking has been {action} in {channel_obj.mention}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+            else:
                 try:
-                    return await state.end(success=f"{self.emoji.get_random_emoji()} Tracking has been {action} in {channel_obj.mention}.")
+                    return await state.end(warning=f"\U000026A0\U0000FE0F No tracking exists for {channel_obj.mention}.")
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}') 
-        elif entry_type != 'all':
-            match entry_type:
-                case 'channel':
-                    for snowflake in snowflakes:
-                        try:
-                            channel = await self.channel_service.resolve_channel(interaction, snowflake)
-                            channel_mentions.append(channel.mention)
-                        except Exception as e:
-                            failed_snowflakes.append(snowflake)
-                            continue
-                case 'member':
-                    for snowflake in snowflakes:
-                        try:
-                            member = await self.member_service.resolve_member(interaction, snowflake)
-                            member_mentions.append(member.mention)
-                        except Exception as e:
-                            failed_snowflakes.append(snowflake)
-                            continue
-        elif scope:
+        elif scope and entry_type:
             match scope.lower():
                 case 'create':
+                    match entry_type:
+                        case 'channel':
+                            for snowflake in snowflakes:
+                                try:
+                                    channel = await self.channel_service.resolve_channel(interaction, snowflake)
+                                    channel_mentions.append(channel.mention)
+                                except Exception as e:
+                                    failed_snowflakes.append(snowflake)
+                                    continue
+                        case 'member':
+                            for snowflake in snowflakes:
+                                try:
+                                    member = await self.member_service.resolve_member(interaction, snowflake)
+                                    member_mentions.append(member.mention)
+                                except Exception as e:
+                                    failed_snowflakes.append(snowflake)
+                                    continue
                     old_history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                     if old_history:
                         enabled = old_history[0].enabled
@@ -1800,6 +1805,23 @@ class AdminCommands(commands.Cog):
                     await History.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                     scope = 'deleted'
                 case 'modify':
+                    match entry_type:
+                        case 'channel':
+                            for snowflake in snowflakes:
+                                try:
+                                    channel = await self.channel_service.resolve_channel(interaction, snowflake)
+                                    channel_mentions.append(channel.mention)
+                                except Exception as e:
+                                    failed_snowflakes.append(snowflake)
+                                    continue
+                        case 'member':
+                            for snowflake in snowflakes:
+                                try:
+                                    member = await self.member_service.resolve_member(interaction, snowflake)
+                                    member_mentions.append(member.mention)
+                                except Exception as e:
+                                    failed_snowflakes.append(snowflake)
+                                    continue
                     await History.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, entry_type=entry_type, snowflakes=snowflakes)
                     scope = 'modified'
                 case _:
@@ -1846,39 +1868,44 @@ class AdminCommands(commands.Cog):
             channel_obj = ctx.channel
         if scope is None and entry_type is None:
             history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            for entry in history:
-                if not entry.enabled:
-                    action = 'enabled'
-                    enabled = True
-                else:
-                    action = 'disabled'
-                    enabled = False
-                await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=ctx.guild.id)
+            if history:
+                for entry in history:
+                    if not entry.enabled:
+                        action = 'enabled'
+                        enabled = True
+                    else:
+                        action = 'disabled'
+                        enabled = False
+                    await History.update_by_channel_enabled_and_guild(channel_snowflake=channel_obj.id, enabled=enabled, guild_snowflake=ctx.guild.id)
+                    try:
+                        return await state.end(success=f"{self.emoji.get_random_emoji()} Tracking has been {action} in {channel_obj.mention}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+            else:
                 try:
-                    return await state.end(success=f"{self.emoji.get_random_emoji()} Tracking has been {action} in {channel_obj.mention}.")
+                    return await state.end(warning=f"\U000026A0\U0000FE0F No tracking exists for {channel_obj.mention}.")
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}') 
-        elif entry_type != 'all':
-            match entry_type:
-                case 'channel':
-                    for snowflake in snowflakes:
-                        try:
-                            channel = await self.channel_service.resolve_channel(ctx, snowflake)
-                            channel_mentions.append(channel.mention)
-                        except Exception as e:
-                            failed_snowflakes.append(snowflake)
-                            continue
-                case 'member':
-                    for snowflake in snowflakes:
-                        try:
-                            member = await self.member_service.resolve_member(ctx, snowflake)
-                            member_mentions.append(member.mention)
-                        except Exception as e:
-                            failed_snowflakes.append(snowflake)
-                            continue
-        elif scope:
+        elif scope and entry_type:
             match scope.lower():
                 case 'create':
+                    match entry_type:
+                        case 'channel':
+                            for snowflake in snowflakes:
+                                try:
+                                    channel = await self.channel_service.resolve_channel(ctx, snowflake)
+                                    channel_mentions.append(channel.mention)
+                                except Exception as e:
+                                    failed_snowflakes.append(snowflake)
+                                    continue
+                        case 'member':
+                            for snowflake in snowflakes:
+                                try:
+                                    member = await self.member_service.resolve_member(ctx, snowflake)
+                                    member_mentions.append(member.mention)
+                                except Exception as e:
+                                    failed_snowflakes.append(snowflake)
+                                    continue
                     old_history = await History.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                     if old_history:
                         enabled = old_history[0].enabled
@@ -1889,6 +1916,23 @@ class AdminCommands(commands.Cog):
                     await History.delete_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
                     scope = 'deleted'
                 case 'modify':
+                    match entry_type:
+                        case 'channel':
+                            for snowflake in snowflakes:
+                                try:
+                                    channel = await self.channel_service.resolve_channel(ctx, snowflake)
+                                    channel_mentions.append(channel.mention)
+                                except Exception as e:
+                                    failed_snowflakes.append(snowflake)
+                                    continue
+                        case 'member':
+                            for snowflake in snowflakes:
+                                try:
+                                    member = await self.member_service.resolve_member(ctx, snowflake)
+                                    member_mentions.append(member.mention)
+                                except Exception as e:
+                                    failed_snowflakes.append(snowflake)
+                                    continue
                     await History.update_by_channel_guild_and_type(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, entry_type=entry_type, snowflakes=snowflakes)
                     scope = 'modified'
                 case _:
@@ -1900,7 +1944,7 @@ class AdminCommands(commands.Cog):
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of 'create', 'delete' or 'modify'.")
             except Exception as e:
-                return await state.end(error=f'\u274C {str(e).capitalize()}')        
+                return await state.end(error=f'\u274C {str(e).capitalize()}') 
         embed = discord.Embed(title=f'{self.emoji.get_random_emoji()} Tracking {scope.capitalize()} for {channel_obj.mention}', color=0x00FF00)
         if channel_mentions:
             embed.add_field(name='Processed Channels', value=', '.join(channel_mention for channel_mention in channel_mentions), inline=False)
@@ -2554,7 +2598,6 @@ class AdminCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Video Rooms'
-
         highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
@@ -2589,7 +2632,7 @@ class AdminCommands(commands.Cog):
             video_rooms = [video_room] if video_room else []
             channel_obj = ctx.channel
             guild_obj = ctx.guild
-        
+
         if not video_rooms:
             try:
                 if scope:
