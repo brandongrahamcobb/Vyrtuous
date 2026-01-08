@@ -72,8 +72,8 @@ async def test_stage_mstage_command(
         content = message.content
     if message_type == "error":
         print(f"{RED}Error:{RESET} {content}")
-    if message_type == "warning":
-        print(f"{YELLOW}Warning:{RESET} {content}")
+    # if message_type == "warning":
+        # print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
         # print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:

@@ -63,7 +63,7 @@ async def test_survey_command(
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        print(f"{GREEN}Success:{RESET} {content}")
+        # print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
             assert any(str(channel_value) in content for channel_value in channel_values)
         assert any(emoji in content for emoji in Emojis.EMOJIS)

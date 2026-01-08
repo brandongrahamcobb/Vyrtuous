@@ -77,15 +77,16 @@ class History:
         history = await History.fetch_all()
         if message:
             for entry in history:
-                channel = bot.get_channel(entry.channel_snowflake)
-                pages = cls.build_history_embeds(
-                        alias=alias, channel=channel, duration=duration, highest_role=highest_role,
-                        is_channel_scope=is_channel_scope, is_modification=is_modification,
-                        member=member, message=message,
-                        reason=reason
-                    )
-                paginator = Paginator(bot, channel, pages)
-                await paginator.start()
+                channel_obj = bot.get_channel(entry.channel_snowflake)
+                if channel_obj:
+                    pages = cls.build_history_embeds(
+                            alias=alias, channel=channel_obj, duration=duration, highest_role=highest_role,
+                            is_channel_scope=is_channel_scope, is_modification=is_modification,
+                            member=member, message=message,
+                            reason=reason
+                        )
+                    paginator = Paginator(bot, channel, pages)
+                    await paginator.start()
             author_snowflake = message.author.id
         if isinstance(duration, DurationObject):
             expires_at = datetime.now(timezone.utc) + duration.to_timedelta()

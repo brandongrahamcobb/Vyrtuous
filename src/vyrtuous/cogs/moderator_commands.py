@@ -3346,9 +3346,7 @@ class ModeratorCommands(commands.Cog):
             pages.append(embed)
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
-            logger.info(f'Success {at_home}')
         except Exception as e:
-            logger.info(f'Test {at_home}')
             pass
         if is_at_home:
             if skipped_guild_snowflakes:

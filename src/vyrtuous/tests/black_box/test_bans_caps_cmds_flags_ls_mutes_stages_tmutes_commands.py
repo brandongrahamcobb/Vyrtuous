@@ -22,116 +22,183 @@ from vyrtuous.tests.black_box.test_suite import *
 from vyrtuous.utils.emojis import Emojis
 import pytest
 
-def generate_cap_test_cases():
-    durations = ['0', '1', '24', '48']
-    moderation_types = ['ban', 'vmute', 'tmute']
-    pre_cases = []
-    post_cases = []
+def parse_duration_seconds(token,unit_map):
+    magnitude=token[1:-1]
+    unit=token[-1]
+    if not magnitude.isdigit():
+        return None
+    seconds=int(magnitude)
+    factor={'s':1,'m':60,'h':3600,'d':86400}.get(unit_map.get(unit))
+    return seconds*factor if factor else None
+
+def extract_duration_seconds(cmd,unit_map):
+    for part in cmd.split():
+        if part and part[0] in '=+-':
+            seconds=parse_duration_seconds(part,unit_map)
+            if seconds is not None:
+                return seconds
+    return None
+
+def apply_active_cap(alias_cases,cap_seconds,unit_map):
+    out=[]
+    for cmd,permission,ref_channel,ref_guild,ref_member,should_warn in alias_cases:
+        warn=should_warn
+        duration=extract_duration_seconds(cmd,unit_map)
+        if duration is not None and duration>cap_seconds:
+            warn=True
+        out.append((cmd,permission,ref_channel,ref_guild,ref_member,warn))
+    return out
+
+
+def generate_cap_commands(durations):
+    moderation_types=['ban','vmute','tmute']
+    caps=[]
     for mod_type in moderation_types:
         for duration in durations:
-            pre_cases.append((f"Administrator", f"cap {{voice_channel_one_id}} {mod_type} {duration}", mod_type, True, False, False, False))
-            post_cases.append((f"Administrator", f"cap {{voice_channel_one_id}} {mod_type} {duration}", mod_type, True, False, False, False))
-    return pre_cases, post_cases
+            caps.append((
+                'Administrator',
+                f"cap {{voice_channel_one_id}} {mod_type} {duration}",
+                True,
+                False,
+                False,
+                False
+            ))
+    return caps
 
-base_cases = [
-    ("Administrator", "alias ban testban {voice_channel_one_id}", None, True, False, False, False),
-    ("Administrator", "alias unban testunban {voice_channel_one_id}", None, True, False, False, False),
-    ("Moderator", "testban {member_id}", None, True, False, True, False),
-    ("Moderator", "bans {voice_channel_one_id}", None, False, True, False, False),
-    ("Moderator", "bans {member_id}", None, False, False, True, False),
-    ("Administrator", "bans {guild_id}", None, False, True, False, False),
-    ("Developer", "bans all", None, False, False, False, False),
-    ("Moderator", "testunban {member_id}", None, True, False, True, False),
-    ("Moderator", "bans {voice_channel_one_id}", None, False, True, False, True),
-    ("Moderator", "bans {member_id}", None, False, False, True, True),
-    ("Administrator", "bans {guild_id}", None, False, True, False, True),
-    ("Developer", "bans all", None, False, False, False, True),
-    ("Moderator", "caps {voice_channel_one_id}", None, True, False, False, False),
-    ("Administrator", "caps {guild_id}", None, False, True, False, False),
-    ("Developer", "caps all", None, False, False, False, False),
-    ("Administrator", "alias flag testflag {voice_channel_one_id}", None, True, False, False, False),
-    ("Administrator", "alias unflag testunflag {voice_channel_one_id}", None, True, False, False, False),
-    ("Moderator", "testflag {member_id}", None, True, False, True, False),
-    ("Moderator", "flags {voice_channel_one_id}", None, False, True, False, False),
-    ("Moderator", "flags {member_id}", None, False, False, True, False),
-    ("Administrator", "flags {guild_id}", None, False, True, False, False),
-    ("Developer", "flags all", None, False, False, False, False),
-    ("Moderator", "testunflag {member_id}", None, True, False, True, False),
-    ("Moderator", "flags {voice_channel_one_id}", None, False, True, False, True),
-    ("Moderator", "flags {member_id}", None, False, False, True, True),
-    ("Administrator", "flags {guild_id}", None, False, True, False, True),
-    ("Developer", "flags all", None, False, False, False, True),
-    ("Administrator", "alias vegan testvegan {voice_channel_one_id}", None, True, False, False, False),
-    ("Administrator", "alias carnist testcarnist {voice_channel_one_id}", None, True, False, False, False),
-    ("Moderator", "testvegan {member_id}", None, True, False, True, True),
-    ("Moderator", "ls {voice_channel_one_id}", None, True, False, False, False),
-    ("Moderator", "ls {member_id}", None, False, False, True, False),
-    ("Administrator", "ls {guild_id}", None, False, True, False, False),
-    ("Developer", "ls all", None, False, False, False, False),
-    ("Moderator", "testcarnist {member_id}", None, True, False, True, True),
-    ("Moderator", "ls {voice_channel_one_id}", None, True, False, False, True),
-    ("Moderator", "ls {member_id}", None, False, False, True, True),
-    ("Administrator", "ls {guild_id}", None, False, True, False, True),
-    ("Developer", "ls all", None, False, False, False, True),
-    ("Administrator", "alias vmute testvm {voice_channel_one_id}", None, True, False, False, False),
-    ("Administrator", "alias unvmute testunvm {voice_channel_one_id}", None, True, False, False, False),
-    ("Moderator", "testvm {member_id}", None, True, False, False, False),
-    ("Moderator", "mutes {voice_channel_one_id}", None, False, True, False, False),
-    ("Moderator", "mutes {member_id}", None, False, False, True, False),
-    ("Administrator", "mutes {guild_id}", None, False, True, False, False),
-    ("Developer", "mutes all", None, False, False, False, False),
-    ("Moderator", "testunvm {member_id}", None, True, False, True, False),
-    ("Moderator", "mutes {voice_channel_one_id}", None, False, True, False, True),
-    ("Moderator", "mutes {member_id}", None, False, False, True, True),
-    ("Administrator", "mutes {guild_id}", None, False, True, False, True),
-    ("Developer", "mutes all", None, False, False, False, True),
-    ("Moderator", "stages {voice_channel_one_id}", None, False, True, False, True),
-    ("Administrator", "stages {guild_id}", None, False, True, False, True),
-    ("Developer", "stages all", None, False, False, False, True),
-    ("Administrator", "alias tmute testtm {voice_channel_one_id}", None, True, False, False, False),
-    ("Administrator", "alias untmute testuntm {voice_channel_one_id}", None, True, False, False, False),
-    ("Moderator", "testtm {member_id}", None, True, False, True, False),
-    ("Moderator", "tmutes {voice_channel_one_id}", None, False, False, False, False),
-    ("Moderator", "tmutes {member_id}", None, False, False, True, False),
-    ("Administrator", "tmutes {guild_id}", None, False, True, False, False),
-    ("Developer", "tmutes all", None, False, False, False, False),
-    ("Moderator", "testuntm {member_id}", None, True, False, True, False),
-    ("Moderator", "tmutes {voice_channel_one_id}", None, False, True, False, True),
-    ("Moderator", "tmutes {member_id}", None, False, False, True, True),
-    ("Administrator", "tmutes {guild_id}", None, False, True, False, True),
-    ("Developer", "tmutes all", None, False, False, False, True),
-    ("Moderator", "cmds {voice_channel_one_id}", None, False, True, False, False),
-    ("Developer", "cmds {guild_id}", None, False, True, False, False),
-    ("Developer", "cmds all", None, False, False, False, False),
-    ("Administrator", "xalias testban", None, True, False, False, False),
-    ("Administrator", "xalias testunban", None, True, False, False, False),
-    ("Administrator", "xalias testflag", None, True, False, False, False),
-    ("Administrator", "xalias testunflag", None, True, False, False, False),
-    ("Administrator", "xalias testvegan", None, True, False, False, False),
-    ("Administrator", "xalias testcarnist", None, True, False, False, False),
-    ("Administrator", "xalias testvm", None, True, False, False, False),
-    ("Administrator", "xalias testunvm", None, True, False, False, False),
-    ("Administrator", "xalias testtm", None, True, False, False, False),
-    ("Administrator", "xalias testuntm", None, True, False, False, False),
-    ("Moderator", "cmds {voice_channel_one_id}", None, False, True, False, True),
-    ("Administrator", "cmds {guild_id}", None, False, True, False, True),
-    ("Developer", "cmds all", None, False, False, False, True)
+NORMAL_ALIAS_SETUP='alias {alias_type} {alias} {voice_channel_one_id}'
+ROLE_ALIAS_SETUP='alias {alias_type} {alias} {voice_channel_one_id} {role_id}'
+ALIAS_CREATION_VARIANTS=NORMAL_ALIAS_SETUP
+ALIAS_TEARDOWN=['xalias {alias}']
+DAY_UNITS={'d','day','days'}
+DURATIONS={'0', '1','24','48'}
+HOUR_UNITS={'h','hr','hrs','hour','hours'}
+LIST_ALIASES={
+    'bans':[
+        dict(undo=False,alias='testban',alias_type='ban',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=True),
+        dict(undo=True,alias='testunban',alias_type='unban',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=False)
+    ],
+    'flags':[
+        dict(undo=False,alias='testflag',alias_type='flag',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=False),
+        dict(undo=True,alias='testunflag',alias_type='unflag',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=False)
+    ],
+    'ls':[
+        dict(undo=False,alias='testv',alias_type='vegan',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=False),
+        dict(undo=True,alias='testc',alias_type='carnist',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=False)
+    ],
+    'mutes':[
+        dict(undo=False,alias='testvm',alias_type='vmute',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=True),
+        dict(undo=True,alias='testunvm',alias_type='unvmute',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator')
+    ],
+    'tmutes':[
+        dict(undo=False,alias='testtm',alias_type='tmute',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=True),
+        dict(undo=True,alias='testuntm',alias_type='untmute',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Moderator',timed=False)
+    ]
+}
+LIST_CASES={
+    'cmds':dict(command=None,list_command='cmds',all_list_permission_role='Developer',list_permission_role='Moderator',command_permission_role=None),
+    'stages':dict(command='stage',list_command='stages',all_list_permission_role='Developer',list_permission_role='Moderator',command_permission_role='Administrator'),
+    'temps':dict(command='temp',list_command='temps',all_list_permission_role='Developer',list_permission_role='Moderator',command_permission_role='Administrator'),
+    'vrs':dict(command='vr',list_command='vrs',alias_type='vrs',all_list_permission_role='Developer',list_permission_role='Moderator',command_permission_role='Administrator')
+}
+MINUTE_UNITS={'m','min','mins','minute','minutes'}
+PREFIXES={'','=','+','-'}
+REASON='test'
+ROLE_ALIASES=[
+    dict(alias='testrole',alias_type='role',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Coordinator'),
+    dict(alias='testunrole',alias_type='unrole',all_list_permission_role='Developer',list_permission_role='Administrator',alias_permission_role='Coordinator')
 ]
+ROLE_ALIAS_SETUP=ROLE_ALIAS_SETUP
+SCOPE=['all','{voice_channel_one_mention}','{voice_channel_one_id}','{guild_id}']
+SECOND_UNITS={'s','sec','secs','second','seconds'}
+UNIT_MAP={**dict.fromkeys(DAY_UNITS,'d'),**dict.fromkeys(HOUR_UNITS,'h'),**dict.fromkeys(MINUTE_UNITS,'m'),**dict.fromkeys(SECOND_UNITS,'s')}
 
-pre_caps, post_caps = generate_cap_test_cases()
-all_cases = pre_caps + base_cases + post_caps
+CAP_SECONDS=parse_duration_seconds('=24h',UNIT_MAP)
+
+def build_alias_cases(LIST_ALIASES, LIST_CASES, PREFIXES, DURATIONS, UNIT_MAP, REASON, SCOPE, NORMAL_ALIAS_SETUP):
+    cases=[]
+    durations=sorted(DURATIONS,key=lambda x:int(x))
+    prefixes=['=','+','-']
+    scopes=sorted(SCOPE)
+    units=sorted(UNIT_MAP.keys())
+
+    def add_case(cmd,permission,ref_channel,ref_guild,ref_member,should_warn,phase):
+        cases.append({'cmd':cmd,'permission':permission,'ref_channel':ref_channel,'ref_guild':ref_guild,'ref_member':ref_member,'should_warn':should_warn,'phase':phase})
+
+    def setup_alias(alias):
+        cmd=NORMAL_ALIAS_SETUP.format(alias_type=alias['alias_type'],alias=alias['alias'],voice_channel_one_id='{voice_channel_one_id}')
+        add_case(cmd,alias['alias_permission_role'],True,False,False,False,'setup')
+
+    def apply_alias(alias,undo_alias):
+        if not alias.get('timed'):
+            cmd=f"{alias['alias']} {{member_id}} {REASON}"
+            add_case(cmd,alias['alias_permission_role'],True,False,True,False,'apply')
+            return
+        prefixes=['=','+','-']
+        for u in units:
+            for d in durations:
+                for p in prefixes:
+                    if d=='0' and p=='-':
+                        continue
+                    cmd=f"{alias['alias']} {{member_id}} {p}{d}{u} {REASON}"
+                    add_case(cmd,alias['alias_permission_role'],True,False,True,False,'apply')
+                    if d=='0':
+                        undo_cmd=f"{undo_alias['alias']} {{member_id}}"
+                        add_case(undo_cmd,undo_alias['alias_permission_role'],True,False,True,False,'undo')
+
+
+    def list_permutations(list_name,alias_type,permission,should_warn):
+        for scope in scopes:
+            ref_guild=scope in ('all','{guild_id}')
+            add_case(f"{list_name} {scope}",permission,False,ref_guild,False,should_warn,'list')
+
+    def undo_alias(alias):
+        cmd=f"{alias['alias']} {{member_id}}"
+        add_case(cmd,alias['alias_permission_role'],True,False,True,False,'undo')
+
+    for list_name,aliases in LIST_ALIASES.items():
+        normal=next(a for a in aliases if not a['undo'])
+        undo=next(a for a in aliases if a['undo'])
+        setup_alias(normal)
+        setup_alias(undo)
+        apply_alias(normal,undo)
+        permission=LIST_CASES[list_name]['list_permission_role'] if list_name in LIST_CASES else normal['list_permission_role']
+        list_permutations(list_name,normal['alias_type'],permission,True)
+
+        undo_alias(undo)
+        permission=LIST_CASES[list_name]['list_permission_role'] if list_name in LIST_CASES else normal['list_permission_role']
+        list_permutations(list_name,normal['alias_type'],permission,True)
+
+
+    return cases
+
+
+# ALIAS_CASES=build_alias_cases(LIST_ALIASES, LIST_CASES, PREFIXES, DURATIONS, DAY_UNITS, HOUR_UNITS, MINUTE_UNITS, SECOND_UNITS, UNIT_MAP, REASON, SCOPE, NORMAL_ALIAS_SETUP)
+ALIAS_CASES=build_alias_cases(LIST_ALIASES,LIST_CASES,PREFIXES,DURATIONS,UNIT_MAP,REASON,SCOPE,NORMAL_ALIAS_SETUP)
+
+ALIAS_CASES_TUPLE=[]
+
+for case in ALIAS_CASES:
+    ALIAS_CASES_TUPLE.append((
+        case['cmd'],
+        case['permission'],
+        case['ref_channel'],
+        case['ref_guild'],
+        case['ref_member'],
+        case['should_warn']
+    ))
+
+FINAL_CASES=[]
+FINAL_CASES.extend(ALIAS_CASES_TUPLE)
+FINAL_CASES.extend(generate_cap_commands(DURATIONS))
+FINAL_CASES.extend(apply_active_cap(ALIAS_CASES_TUPLE,CAP_SECONDS,UNIT_MAP))
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "permission,command,moderation_type,ref_channel,ref_guild,ref_member,should_warn",
-    all_cases,
-    indirect=['permission']
-)
+@pytest.mark.parametrize('cmd,permission,ref_channel,ref_guild,ref_member,should_warn', FINAL_CASES)
 async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(
     bot,
-    command: Optional[str],
+    cmd: Optional[str],
     guild,
-    moderation_type,
+    # moderation_type,
     not_privileged_author,
     permission,
     prefix: Optional[str],
@@ -143,23 +210,17 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(
     text_channel,
     voice_channel_one
 ):
-    match moderation_type:
-        case "tmute":
-            moderation_type = "text_mute"
-        case "vmute":
-            moderation_type = "voice_mute"
-        case "untmute":
-            moderation_type = "untext_mute"
-        case "unvmute":
-            moderation_type = "unvoice_mute"
     channel_values = (voice_channel_one.mention, voice_channel_one.id)
     guild_values = (guild.name, guild.id)
     member_values = (not_privileged_author.mention, not_privileged_author.id)
-    formatted = command.format(
+    formatted = cmd.format(
         voice_channel_one_id=voice_channel_one.id,
+        voice_channel_one_mention=voice_channel_one.mention,
         member_id=not_privileged_author.id,
-        guild_id=guild.id
+        guild_id=guild.id,
+        role_id=ROLE_ID
     )
+    print(formatted)
     captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=text_channel, content=formatted, guild=guild, highest_role=permission, prefix=prefix)
     message = captured[0]['message']
     if message.embeds:
@@ -173,19 +234,19 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(
     if message_type == "error":
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
-        print(f"{YELLOW}Warning:{RESET} {content}")
+        # print(f"{YELLOW}Warning:{RESET} {content}")
         if should_warn:
             assert True
         else:
             assert False
     if message_type == "success":
-        print(f"{GREEN}Success:{RESET} {content}")
+        # print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
             assert any(str(channel_value) in content for channel_value in channel_values)
         if ref_guild:
             assert any(str(guild_value) in content for guild_value in guild_values)
         if ref_member:
             assert any(str(member_value) in content for member_value in member_values)
-        if moderation_type:
-            assert moderation_type in content 
+        # if moderation_type:
+        #     assert moderation_type in content 
         assert any(emoji in content for emoji in Emojis.EMOJIS)

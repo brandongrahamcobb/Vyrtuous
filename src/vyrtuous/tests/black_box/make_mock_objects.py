@@ -21,6 +21,7 @@ from discord.http import HTTPClient
 from discord.state import ConnectionState
 from types import SimpleNamespace
 from vyrtuous.inc.helpers import *
+import aiohttp
 import asyncio
 import discord
 
@@ -29,6 +30,8 @@ def create_state():
     handlers = {}
     hooks = {}
     http = HTTPClient(dispatch)
+    # http._global_over = asyncio.Event()
+    # http._global_over.set()
     state = ConnectionState(dispatch=dispatch, handlers=handlers, hooks=hooks, http=http)
     state._channels = {}
     return state
@@ -322,7 +325,7 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
 
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
-
+    
     async def set_permissions(self, target, **overwrites):
         self.overwrites[target.id] = overwrites
         return True
@@ -342,6 +345,7 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
             'overwrites': {},
             'permissions_for': permissions_for,
             'set_permissions': set_permissions,
+            # 'send': send,
             'send_messages': True,
             'type': channel_type
         }

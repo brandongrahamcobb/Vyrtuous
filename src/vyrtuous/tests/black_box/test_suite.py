@@ -146,7 +146,7 @@ def text_channel(guild):
 
 @pytest.fixture(scope="function")
 def role(guild):
-    roles_list = list(guild.roles.values())
+    roles_list = guild.roles
     for role in roles_list:
         if role.id == ROLE_ID:
             return role
@@ -202,8 +202,23 @@ async def capture(author, channel):
     captured = []
     send = State._send_message
     end = State.end
-    async def _send(self, content=None, embeds=None, file=None, paginated=False, allowed_mentions=None):
-        # print(embeds)
+    async def _send(self, *, content=None, embed=None, embeds=None, file=None, paginated=False, allowed_mentions=None):
+        if embed:
+            embeds = [embed]
+        return create_message(
+            allowed_mentions=allowed_mentions,
+            author=author,
+            channel=channel,
+            content=content,
+            embeds=embeds,
+            file=file,
+            guild=channel.guild,
+            id=MESSAGE_ID,
+            paginated=paginated
+        )
+    async def send(*, content=None, embed=None, embeds=None, file=None, paginated=False, allowed_mentions=None):
+        if embed:
+            embeds = [embed]
         return create_message(
             allowed_mentions=allowed_mentions,
             author=author,
@@ -233,7 +248,9 @@ async def capture(author, channel):
         msg = await _send(self, content=content, embeds=embeds, file=file, **kwargs)
         captured.append({"type": kind, "message": msg})
         return msg
+    # channel.send = _send
     State._send_message = _send
+    channel.send = send
     State.end = _end
     try:
         yield captured
@@ -254,7 +271,7 @@ def prepare_discord_state(author, bot, channel, content, guild, highest_role):
         stack.enter_context(patch.object(bot, "unload_extension", new_callable=AsyncMock))
         stack.enter_context(patch("vyrtuous.service.paginator_service.Paginator.start", new_callable=AsyncMock))
         
-        # stack.enter_context(patch("vyrtuous.bot.discord_bot.DiscordBot.tree", new_callable=PropertyMock, return_value=MagicMock(sync=AsyncMock(return_value=[]), copy_global_to=MagicMock(), clear_commands=MagicMock())))
+        stack.enter_context(patch("vyrtuous.bot.discord_bot.DiscordBot.tree", new_callable=PropertyMock, return_value=MagicMock(sync=AsyncMock(return_value=[]), copy_global_to=MagicMock(), clear_commands=MagicMock())))
         yield
 
 async def command(bot, ctx):
@@ -264,7 +281,7 @@ async def command(bot, ctx):
 async def on_message(bot, message):
     bot.loop = asyncio.get_running_loop()
     bot.dispatch("message", message)
-    await asyncio.sleep(3)
+    await asyncio.sleep(1)
 
 async def prepared_command_handling(author, bot, channel, content, guild, highest_role, prefix):
     message = create_message(
@@ -336,26 +353,3 @@ async def permission(request, voice_channel_one, guild, privileged_author):
         yield perm_instance
     finally:
         await perm_instance.revoke()
-
-# def _get_start_time(self, ctx_or_interaction):
-#     if hasattr(ctx_or_interaction, "created_at"):
-#         return ctx_or_interaction.created_at
-#     if hasattr(ctx_or_interaction, "message") and hasattr(ctx_or_interaction.message, "created_at"):
-#         return ctx_or_interaction.message.created_at
-#     return datetime.now(timezone.utc)
-
-# @pytest_asyncio.fixture(scope="function")
-# async def client():
-#     database: Optional[str] = os.getenv('POSTGRES_DB')
-#     host: Optional[str] = os.getenv('POSTGRES_HOST')
-#     password: Optional[str] = os.getenv('POSTGRES_PASSWORD')
-#     user: Optional[str] = os.getenv('POSTGRES_USER')
-#     dsn = f"postgres://{user}:{password}@{host}:{5432}/{database}"
-#     if not all([database, host, password, user]):
-#         pytest.skip("Database environment variables not set")
-#     db_pool = await asyncpg.create_pool(dsn=dsn)
-#     config = Config().get_config()
-#     client = DiscordClient(config=config, db_pool=db_pool)
-#     type(bot).guilds = property(lambda self: [guild])
-#     yield client
-#     await db_pool.close()

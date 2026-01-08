@@ -109,13 +109,13 @@ async def test_admins_coords_devs_mods_owners_commands(
     if message_type == "error":
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
-        print(f"{YELLOW}Warning:{RESET} {content}")
+        # print(f"{YELLOW}Warning:{RESET} {content}")
         if should_warn:
             assert True
         else:
             assert False
     if message_type == "success":
-        print(f"{GREEN}Success:{RESET} {content}")
+        # print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
             assert any(str(channel_value) in content for channel_value in channel_values)
         if ref_guild:
