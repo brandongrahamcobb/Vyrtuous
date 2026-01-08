@@ -85,7 +85,7 @@ class History:
                             member=member, message=message,
                             reason=reason
                         )
-                    paginator = Paginator(bot, channel, pages)
+                    paginator = Paginator(bot, channel_obj, pages)
                     await paginator.start()
             author_snowflake = message.author.id
         if isinstance(duration, DurationObject):

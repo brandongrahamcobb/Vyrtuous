@@ -37,9 +37,9 @@ from vyrtuous.utils.properties.moderation_type import AppModerationType, Moderat
 from vyrtuous.enhanced_members.moderator import Moderator
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.moderation_action.flag import Flag
-from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.moderation_action.server_mute import ServerMute
 from vyrtuous.utils.setup_logging import logger
+from vyrtuous.utils.permission import TARGET_PERMISSIONS
 from vyrtuous.utils.properties.snowflake import *
 from vyrtuous.rooms.stage import Stage
 from vyrtuous.service.state_service import State
@@ -911,159 +911,169 @@ class AdminCommands(commands.Cog):
 
     # @app_commands.command(name='pc', description='View permissions.')
     # @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
-    # @is_system_owner_developer_guild_owner_administrator_predicator()
-    # async def list_video_rooms_app_command(self, interaction: discord.Interaction, scope: str = None):
-    #     state = State(interaction)
-    #     lines, pages = [], [], [], []
-    #     channel_obj = None
-    #     guild_obj = None
-    #     chunk_size = 7
-    #     field_count = 0
-    #     title = f'{self.emoji.get_random_emoji()} Permissions'
 
-    #     highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
-    #     if scope and scope.lower() == 'all':
-    #         if highest_role not in ('System Owner', 'Developer'):
-    #             try:
-    #                return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list video rooms across all servers.')
-    #             except Exception as e:
-    #                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #         video_rooms = await VideoRoom.fetch_all()
-    #     elif scope:
-    #         try:
-    #             channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
-    #         except Exception as e:
-    #             if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
-    #                 try:
-    #                     return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all video rooms in a specific server.')
-    #                 except Exception as e:
-    #                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #             guild_obj = self.bot.get_guild(int(scope))
-    #             if not guild_obj:
-    #                 try:
-    #                     return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, server ID or empty. Received: {scope}.")
-    #                 except Exception as e:
-    #                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #     else:
-    #         channel_obj = interaction.channel
-    #         guild_obj = interaction.guild
+    @commands.command(name='pc', help='View permissions.')
+    @is_system_owner_developer_guild_owner_administrator_predicator()
+    async def list_permissions_text_command(
+        self,
+        ctx: commands.Context,
+        scope: str = commands.parameter(default=None, description="Specify one of: 'all', channel ID/mention, server ID or empty.")
+            ):
+        state = State(ctx)
+        lines, pages = [], []
+        channel_obj = None
+        guild_obj = None
+        chunk_size = 7
+        field_count = 0
+        skipped_guild_snowflakes = set()
+        skipped_channel_snowflakes_by_guild_snowflake = {}
+        title = f'{self.emoji.get_random_emoji()} Permissions'
+
+        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        if scope and scope.lower() == 'all':
+            if highest_role not in ('System Owner', 'Developer'):
+                try:
+                   return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list missing permissions across all servers.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        elif scope:
+            try:
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
+                channels = [channel_obj] 
+            except Exception as e:
+                if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
+                    try:
+                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to list all missing permissions in a specific server.')
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                guild_obj = self.bot.get_guild(int(scope))
+                if not guild_obj:
+                    try:
+                        return await state.end(warning=f"\U000026A0\U0000FE0F Scope must be one of: 'all', channel ID/mention, server ID or empty. Received: {scope}.")
+                    except Exception as e:
+                        return await state.end(error=f'\u274C {str(e).capitalize()}')
+                channels = guild_obj.channels
+        else:
+            channels = [ctx.channel]
+            guild_obj = ctx.guild
         
-    #     # if not video_rooms:
-    #     #     try:
-    #     #         if scope:
-    #     #             msg = f'No video rooms setup for scope: {scope}.'
-    #     #         else:
-    #     #             msg = f'No video room setup for {channel_obj.mention} in {guild_obj.name}.'
-    #     #         return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
-    #     #     except Exception as e:
-    #     #         return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if not channels:
+            try:
+                if scope:
+                    msg = f'No channels exist for scope: {scope}.'
+                else:
+                    msg = f'No channels exist in {guild_obj.name}.'
+                return await state.end(warning=f'\U000026A0\U0000FE0F {msg}')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
         
-    #     guild_dictionary = {}
-    #     for video_room in video_rooms:
-    #         guild_dictionary.setdefault(video_room.guild_snowflake, {})
-    #         guild_dictionary[video_room.guild_snowflake].setdefault(video_room.channel_snowflake, [])
-    #         guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake].append({})
-    #         if aliases:
-    #             for alias in aliases:
-    #                 if alias.guild_snowflake == video_room.guild_snowflake:
-    #                     if alias.channel_snowflake == video_room.channel_snowflake:
-    #                         guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake][-1].setdefault(alias.alias_type, [])
-    #                         guild_dictionary[video_room.guild_snowflake][video_room.channel_snowflake][-1][alias.alias_type].append(alias.alias_name)
+        guild_dictionary = {}
+        for channel in channels:
+            permissions = channel.permissions_for(guild_obj.me)
+            missing = []
+            for permission in TARGET_PERMISSIONS:
+                if not getattr(permissions, permission):
+                    missing.append(permission)
+            if not missing:
+                continue
+            guild_dictionary.setdefault(channel.guild.id, {})[channel.id] = [
+                {'Missing Permissions': missing}
+            ]
                             
-    #     for guild_snowflake in guild_dictionary:
-    #         guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
+        for guild_snowflake in guild_dictionary:
+            guild_dictionary[guild_snowflake] = dict(sorted(guild_dictionary[guild_snowflake].items()))
 
-    #     for guild_snowflake, channels in guild_dictionary.items():
-    #         current_channel = None
-    #         lines = []
-    #         field_count = 0
-    #         guild = self.bot.get_guild(guild_snowflake)
-    #         if not guild:
-    #             skipped_guild_snowflakes.add(guild_snowflake)
-    #             continue
-    #         embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
-    #         for channel_snowflake, channel_data in channels.items():
-    #             channel = guild.get_channel(channel_snowflake)
-    #             if not channel:
-    #                 skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
-    #                 continue
-    #             channel_lines = []
-    #             if channel_data:
-    #                 for entry in channel_data:
-    #                     for alias_type, alias_names in entry.items():
-    #                         channel_lines.append(f'{alias_type}')
-    #                         for name in alias_names:
-    #                             channel_lines.append(f'  ↳ {name}')
-    #             if not channel_lines:
-    #                 lines.append('')
-    #                 current_channel = channel
-    #             else:
-    #                 i = 0
-    #                 while i < len(channel_lines):
-    #                     remaining_space = chunk_size
-    #                     chunk = channel_lines[i:i + remaining_space]
-    #                     if not lines:
-    #                         current_channel = channel
-    #                     lines.extend(chunk)
-    #                     i += remaining_space
-    #             if len(lines) >= chunk_size:
-    #                 embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
-    #                 pages.append(embed)
-    #                 embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
-    #                 lines = []
-    #                 current_channel = None
-    #         if lines:
-    #             embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
-    #         pages.append(embed)
-    #     try:
-    #         is_at_home = at_home(ctx_interaction_or_message=interaction)
-    #     except Exception as e:
-    #         pass
-    #     if is_at_home:
-    #         if skipped_guild_snowflakes:
-    #             embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
-    #             lines = []
-    #             for guild_snowflake in skipped_guild_snowflakes:
-    #                 if field_count >= chunk_size:
-    #                     embed.description = '\n'.join(lines)
-    #                     pages.append(embed)
-    #                     embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
-    #                     lines = []
-    #                     field_count = 0
-    #                 lines.append(str(guild_snowflake))
-    #                 field_count += 1
-    #             embed.description = '\n'.join(lines)
-    #             pages.append(embed)
-    #         if skipped_channel_snowflakes_by_guild_snowflake:
-    #             for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
-    #                 embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in Server ({guild_snowflake})')
-    #                 field_count = 0
-    #                 lines = []
-    #                 for channel_snowflake in channel_list:
-    #                     if field_count >= chunk_size:
-    #                         embed.description = '\n'.join(lines)
-    #                         pages.append(embed)
-    #                         embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in Server ({guild_snowflake}) continued...')
-    #                         field_count = 0
-    #                         lines = []
-    #                     lines.append(str(channel_snowflake))
-    #                     field_count += 1
-    #                 embed.description = '\n'.join(lines)
-    #                 pages.append(embed)
+        for guild_snowflake, channels in guild_dictionary.items():
+            current_channel = None
+            lines = []
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            if not guild:
+                skipped_guild_snowflakes.add(guild_snowflake)
+                continue
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_data in channels.items():
+                channel = guild.get_channel(channel_snowflake)
+                if not channel:
+                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(guild_snowflake, []).append(channel_snowflake)
+                    continue
+                channel_lines = []
+                if channel_data:
+                    for entry in channel_data:
+                        for section_name, permissions in entry.items():
+                            channel_lines.append(section_name)
+                            for permission in permissions:
+                                channel_lines.append(f'  ↳ {permission}')
+                if not channel_lines:
+                    lines.append('')
+                    current_channel = channel
+                else:
+                    i = 0
+                    while i < len(channel_lines):
+                        remaining_space = chunk_size
+                        chunk = channel_lines[i:i + remaining_space]
+                        if not lines:
+                            current_channel = channel
+                        lines.extend(chunk)
+                        i += remaining_space
+                if len(lines) >= chunk_size:
+                    embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
+                    pages.append(embed)
+                    embed = discord.Embed(title=title, description=f'{guild.name} continued...', color=discord.Color.blue())
+                    lines = []
+                    current_channel = None
+            if lines:
+                embed.add_field(name=f'Channel: {current_channel.mention}', value='\n'.join(lines), inline=False)
+            pages.append(embed)
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
+        except Exception as e:
+            pass
+        if is_at_home:
+            if skipped_guild_snowflakes:
+                embed = discord.Embed(title='Skipped Servers', description='\u200b', color=discord.Color.blue())
+                lines = []
+                for guild_snowflake in skipped_guild_snowflakes:
+                    if field_count >= chunk_size:
+                        embed.description = '\n'.join(lines)
+                        pages.append(embed)
+                        embed = discord.Embed(title='Skipped Servers continued...', color=discord.Color.red())
+                        lines = []
+                        field_count = 0
+                    lines.append(str(guild_snowflake))
+                    field_count += 1
+                embed.description = '\n'.join(lines)
+                pages.append(embed)
+            if skipped_channel_snowflakes_by_guild_snowflake:
+                for guild_snowflake, channel_list in skipped_channel_snowflakes_by_guild_snowflake.items():
+                    embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in Server ({guild_snowflake})')
+                    field_count = 0
+                    lines = []
+                    for channel_snowflake in channel_list:
+                        if field_count >= chunk_size:
+                            embed.description = '\n'.join(lines)
+                            pages.append(embed)
+                            embed = discord.Embed(color=discord.Color.red(), title=f'Skipped Channels in Server ({guild_snowflake}) continued...')
+                            field_count = 0
+                            lines = []
+                        lines.append(str(channel_snowflake))
+                        field_count += 1
+                    embed.description = '\n'.join(lines)
+                    pages.append(embed)
 
-    #     if pages:
-    #         try:
-    #             return await state.end(success=pages)
-    #         except Exception as e:
-    #             try:
-    #                 return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
-    #             except Exception as e:
-    #                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-    #     else:
-    #         try:
-    #             return await state.end(warning=f'\U000026A0\U0000FE0F No video rooms found.')
-    #         except Exception as e:
-    #             return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if pages:
+            try:
+                return await state.end(success=pages)
+            except Exception as e:
+                try:
+                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                except Exception as e:
+                    return await state.end(error=f'\u274C {str(e).capitalize()}')
+        else:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F No permissions found.')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
     @app_commands.command(name='rmv', description='VC move.')

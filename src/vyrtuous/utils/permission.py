@@ -16,3 +16,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 PERMISSION_TYPES = ['Everyone', 'Moderator', 'Coordinator', 'Administrator', 'Guild Owner', 'Developer', 'System Owner']
+TARGET_PERMISSIONS = (
+    'add_reactions',
+    'manage_messages',
+    'move_members',
+    'mute_members',
+    'send_messages',
+    'view_channel'
+)
