@@ -165,10 +165,12 @@ class History:
             title = None
             action = None
         embed_user = discord.Embed(title=f"{title} - User Identity", color=color, timestamp=datetime.now(timezone.utc))
+        bot = DiscordBot.get_instance()
+        channel_obj = bot.get_channel(alias.channel_snowflake)
         if not action:
             embed_user.description = None
         else:
-            embed_user.description = f"**Target:** {member.mention} {action} in {channel.mention}"
+            embed_user.description = f"**Target:** {member.mention} {action} in {channel_obj.mention}"
         embed_user.set_thumbnail(url=message.author.display_avatar.url)
         user_priority = f"**Display Name:** {member.display_name}\n**Username:** @{member.name}\n**User ID:** `{member.id}`\n**Account Age:** <t:{int(member.created_at.timestamp())}:R>\n**Server Join:** <t:{int(member.joined_at.timestamp())}:R>"
         embed_user.add_field(name='👤 Target User', value=user_priority, inline=False)

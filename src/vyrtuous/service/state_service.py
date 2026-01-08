@@ -231,7 +231,7 @@ class State:
             message = f'Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}'
             for dev in developers:
                 member = self.ctx_interaction_or_message.guild.get_member(dev.member_snowflake)
-                if member.state != discord.Status.offline:
+                if member.status != discord.Status.offline:
                     online_developer_mentions.append(member.mention)
                 if member and member.status != discord.Status.offline:
                     try:

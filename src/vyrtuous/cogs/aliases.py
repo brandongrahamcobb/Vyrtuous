@@ -140,7 +140,7 @@ class Aliases(commands.Cog):
 
             cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='ban')
             if not hasattr(cap, 'duration'):
-                cap_duration = DurationObject('24h').to_seconds()
+                cap_duration = DurationObject('8h').to_seconds()
             else:
                 cap_duration = cap.duration    
                             
@@ -418,7 +418,7 @@ class Aliases(commands.Cog):
     
             cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='text_mute')
             if not hasattr(cap, 'duration'):
-                cap_duration = DurationObject('24h').to_seconds()
+                cap_duration = DurationObject('8h').to_seconds()
             else:
                 cap_duration = cap.duration
                     
@@ -531,7 +531,7 @@ class Aliases(commands.Cog):
     
             cap = await Cap.fetch_by_channel_guild_and_moderation_type(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type='voice_mute')
             if not hasattr(cap, 'duration'):
-                cap_duration = DurationObject('24h').to_seconds()
+                cap_duration = DurationObject('8h').to_seconds()
             else:
                 cap_duration = cap.duration
     
