@@ -20,7 +20,7 @@ import discord
 
 class RoleService:
     
-    async def resolve_role(
+    async def search(
         self,
         ctx_interaction_or_message,
         scope: Optional[Union[int, str, discord.Role]]

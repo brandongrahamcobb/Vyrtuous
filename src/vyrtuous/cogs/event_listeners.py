@@ -158,7 +158,7 @@ class EventListeners(commands.Cog):
             allowed = False
         if not allowed:
             return
-        # member_permission_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator_via_channel_member(after.channel, member)
+        # member_permission_role = await permission_check_specific(after.channel, member)
 
         target = 'user'
         # if after.channel:
@@ -301,9 +301,9 @@ class EventListeners(commands.Cog):
             return
         state = State(message)
         try:
-            channel_obj = await self.channel_service.resolve_channel(message, alias.channel_snowflake)
+            channel_obj = await self.channel_service.search(message, alias.channel_snowflake)
             member = args[0] if len(args) > 0 else None
-            member_obj = await self.member_service.resolve_member(message, member)
+            member_obj = await self.member_service.search(message, member)
             await has_equal_or_higher_role(message, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, sender_snowflake=message.author.id)
             check_not_self(message, member_snowflake=member_obj.id)
             if not alias.handler:
@@ -315,14 +315,20 @@ class EventListeners(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         existing_guestroom_alias_event = await Alias.get_existing_guestroom_alias_event(alias=alias, channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
         target = args[1] if len(args) > 1 else '24h'
+        duration = DurationObject(target if target else '8h')
         is_reason_modification = target in ['+', '-', '=']
         is_duration_modification = target.startswith(('+', '-', '=')) and not is_reason_modification
-        executor_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator_via_channel_member(channel_snowflake=alias.channel_snowflake, guild_snowflake=message.guild.id, member_snowflake=message.author.id)
+        executor_role = await permission_check_specific(channel_snowflake=alias.channel_snowflake, guild_snowflake=message.guild.id, member_snowflake=message.author.id)
         if executor_role == 'Everyone':
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to {alias.alias_type} users.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
+        if duration.number == 0 and executor_role in ('Moderator', 'Everyone'):
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to modify or set permanent actions as a {executor_role} in {channel_obj.mention}.')
+            except:
+                return await state.end(error=f'\u274C {str(e).capitalize()}') 
         if is_reason_modification and executor_role in ('Moderator', 'Everyone'):
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F You are not permitted to modify {alias.alias_type}s.')

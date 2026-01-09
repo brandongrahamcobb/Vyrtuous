@@ -74,7 +74,7 @@ class EveryoneCommands(commands.Cog):
             administrators = await Administrator.fetch_all()
         elif scope:
             try:
-                member_obj = await self.member_service.resolve_member(interaction, scope) 
+                member_obj = await self.member_service.search(interaction, scope) 
                 administrator = await Administrator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                 administrators = [administrator] if administrator else None
             except Exception as e:
@@ -235,7 +235,7 @@ class EveryoneCommands(commands.Cog):
             administrators = await Administrator.fetch_all()
         elif scope:
             try:
-                member_obj = await self.member_service.resolve_member(ctx, scope)
+                member_obj = await self.member_service.search(ctx, scope)
                 administrator = await Administrator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                 administrators = [administrator] if administrator else None
             except Exception as e:
@@ -397,11 +397,11 @@ class EveryoneCommands(commands.Cog):
             coordinators = await Coordinator.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                channel_obj = await self.channel_service.search(interaction, scope) 
                 coordinators = await Coordinator.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(interaction, scope)
+                    member_obj = await self.member_service.search(interaction, scope)
                     coordinators = await Coordinator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Coordinator: {member_obj.name}'
                 except Exception as e:
@@ -580,11 +580,11 @@ class EveryoneCommands(commands.Cog):
             coordinators = await Coordinator.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                channel_obj = await self.channel_service.search(ctx, scope) 
                 coordinators = await Coordinator.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(ctx, scope)
+                    member_obj = await self.member_service.search(ctx, scope)
                     coordinators = await Coordinator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Coordinator: {member_obj.name}'
                 except Exception as e:
@@ -763,7 +763,7 @@ class EveryoneCommands(commands.Cog):
             developers = await Developer.fetch_all()
         elif scope:
             try:
-                member_obj = await self.member_service.resolve_member(interaction, scope) 
+                member_obj = await self.member_service.search(interaction, scope) 
                 developers = await Developer.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Guild Owner', 'Developer'):
@@ -898,7 +898,7 @@ class EveryoneCommands(commands.Cog):
             developers = await Developer.fetch_all()
         elif scope:
             try:
-                member_obj = await self.member_service.resolve_member(ctx, scope) 
+                member_obj = await self.member_service.search(ctx, scope) 
                 developers = await Developer.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Guild Owner', 'Developer'):
@@ -1036,11 +1036,11 @@ class EveryoneCommands(commands.Cog):
             moderators = await Moderator.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                channel_obj = await self.channel_service.search(interaction, scope) 
                 moderators = await Moderator.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(interaction, scope)
+                    member_obj = await self.member_service.search(interaction, scope)
                     moderators = await Moderator.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Moderator: {member_obj.name}'
                 except Exception as e:
@@ -1223,11 +1223,11 @@ class EveryoneCommands(commands.Cog):
             moderators = await Moderator.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                channel_obj = await self.channel_service.search(ctx, scope) 
                 moderators = await Moderator.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(ctx, scope)
+                    member_obj = await self.member_service.search(ctx, scope)
                     moderators = await Moderator.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Moderator: {member_obj.name}'
                 except Exception as e:
@@ -1426,7 +1426,7 @@ class EveryoneCommands(commands.Cog):
         pages = []
         system_owners, developers, guild_owners, administrators, moderators, coordinators = [], [], [], [], [], []
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            channel_obj = await self.channel_service.search(interaction, channel)
         except:
             channel_obj = interaction.channel
         for member in channel_obj.members:
@@ -1518,7 +1518,7 @@ class EveryoneCommands(commands.Cog):
         pages = []
         system_owners, developers, guild_owners, administrators, moderators, coordinators = [], [], [], [], [], []
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            channel_obj = await self.channel_service.search(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
         for member in channel_obj.members:

@@ -218,9 +218,9 @@ class ScheduledTasks(commands.Cog):
                             continue
                         try:
                             await member.send(embed=embed)
-                            logger.info(f"Sent the issue to member {user.display_name} ({user.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}).")
+                            logger.info(f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}).")
                         except Exception as e:
-                            logger.warning(f"Unable to send the issue to member {user.display_name} ({user.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}).")
+                            logger.warning(f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}).")
             logger.info(f'Sent developer log to developers.') 
     
     @tasks.loop(minutes=1)

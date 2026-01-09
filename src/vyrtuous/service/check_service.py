@@ -145,7 +145,7 @@ async def is_system_owner(ctx_interaction_or_message):
         raise NotSystemOwner()
     return True
 
-def is_system_owner_developer_predicator():
+def developer_predicator():
     async def predicate(ctx_interaction_or_message):
         for check in (is_system_owner, is_developer):
             try:
@@ -157,7 +157,7 @@ def is_system_owner_developer_predicator():
     predicate._permission_level = 'Developer'
     return commands.check(predicate)
 
-def is_system_owner_developer_guild_owner_predicator():
+def guild_owner_predicator():
     async def predicate(ctx_interaction_or_message):
         for check in (is_system_owner, is_developer, is_guild_owner):
             try:
@@ -169,7 +169,7 @@ def is_system_owner_developer_guild_owner_predicator():
     predicate._permission_level = 'Guild Owner'
     return commands.check(predicate)
                           
-def is_system_owner_predicator():
+def sys_owner_predicator():
     async def predicate(ctx_interaction_or_message):
         if await is_system_owner(ctx_interaction_or_message):
             return True
@@ -177,7 +177,7 @@ def is_system_owner_predicator():
     predicate._permission_level = 'System Owner'
     return commands.check(predicate)
 
-def is_system_owner_developer_guild_owner_administrator_predicator():
+def administrator_predicator():
     async def predicate(ctx_interaction_or_message):
         for check in (is_system_owner, is_developer, is_guild_owner, is_administrator):
             try:
@@ -189,7 +189,7 @@ def is_system_owner_developer_guild_owner_administrator_predicator():
     predicate._permission_level = 'Administrator'
     return commands.check(predicate)
     
-def is_system_owner_developer_guild_owner_administrator_coordinator_predicator():
+def coordinator_predicator():
     async def predicate(ctx_interaction_or_message):
         for check in (is_system_owner, is_developer, is_guild_owner, is_administrator, is_coordinator):
             try:
@@ -201,7 +201,7 @@ def is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
     predicate._permission_level = 'Coordinator'
     return commands.check(predicate)
     
-def is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator():
+def moderator_predicator():
     async def predicate(ctx_interaction_or_message):
         for check in (is_system_owner, is_developer, is_guild_owner, is_administrator, is_coordinator, is_moderator):
             try:
@@ -354,7 +354,7 @@ async def is_system_owner_developer_guild_owner_administrator_coordinator_via_ch
             continue
     return 'Everyone'
 
-async def is_system_owner_developer_guild_owner_administrator_coordinator_moderator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
+async def permission_check_specific(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
     checks = (
         ('System Owner', lambda: member_is_system_owner(member_snowflake=member_snowflake)),
         ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),

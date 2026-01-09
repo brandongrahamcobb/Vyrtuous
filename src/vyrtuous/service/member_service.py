@@ -22,7 +22,7 @@ import discord
 
 class MemberService:
 
-    async def resolve_member(self, ctx_interaction_or_message, scope):
+    async def search(self, ctx_interaction_or_message, scope):
         guild = ctx_interaction_or_message.guild
         if isinstance(scope, discord.Member):
             return scope

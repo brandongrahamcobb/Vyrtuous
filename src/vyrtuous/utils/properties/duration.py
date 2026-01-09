@@ -110,6 +110,8 @@ class DurationObject:
 
     @property
     def expires_in(self) -> datetime:
+        if self.number == 0:
+            return None
         return self.target_datetime()
     
     @classmethod

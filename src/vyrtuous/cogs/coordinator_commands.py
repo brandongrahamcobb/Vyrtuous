@@ -42,7 +42,7 @@ class CoordinatorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='mod', description="Grant/revoke mods.")
     @app_commands.describe(member='Tag a member or include their ID', channel='Tag a channel or include its ID')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
+    @coordinator_predicator()
     async def create_moderator_app_command(
         self,
         interaction: discord.Interaction,
@@ -54,12 +54,12 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            channel_obj = await self.channel_service.search(interaction, channel)
         except Exception as e:
             channel_obj = interaction.channel
             await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
-            member_obj = await self.member_service.resolve_member(interaction, member)
+            member_obj = await self.member_service.search(interaction, member)
             check_not_self(interaction, member_snowflake=member_obj.id)
             highest_role = await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
@@ -82,7 +82,7 @@ class CoordinatorCommands(commands.Cog):
               
     # DONE
     @commands.command(name='mod', help='Grant/revoke mods.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
+    @coordinator_predicator()
     async def create_moderator_text_command(
         self,
         ctx: commands.Context,
@@ -94,12 +94,12 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            channel_obj = await self.channel_service.search(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
             await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
         try:
-            member_obj = await self.member_service.resolve_member(ctx, member)
+            member_obj = await self.member_service.search(ctx, member)
             check_not_self(ctx, member_snowflake=member_obj.id)
             highest_role = await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
@@ -123,7 +123,7 @@ class CoordinatorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='rmute', description='Room mute (except yourself).')
     @app_commands.describe(channel='Tag a channel or include its ID')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
+    @coordinator_predicator()
     async def room_mute_app_command(
         self,
         interaction: discord.Interaction,
@@ -134,7 +134,7 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = None
         muted_members, pages, skipped_members, failed_members = [], [], [], []
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            channel_obj = await self.channel_service.search(interaction, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -186,7 +186,7 @@ class CoordinatorCommands(commands.Cog):
 
     # DONE
     @commands.command(name='rmute', help='Room mute (except yourself).')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
+    @coordinator_predicator()
     async def room_mute_text_command(
         self,
         ctx: commands.Context,
@@ -197,7 +197,7 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = None
         muted_members, pages, skipped_members, failed_members = [], [], [], []
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            channel_obj = await self.channel_service.search(ctx, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -250,7 +250,7 @@ class CoordinatorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='xrmute', description='Unmute all.')
     @app_commands.describe(channel='Tag a channel or include its ID')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
+    @coordinator_predicator()
     async def room_unmute_app_command(
         self,
         interaction: discord.Interaction,
@@ -261,7 +261,7 @@ class CoordinatorCommands(commands.Cog):
         chunk_size = 7
         failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            channel_obj = await self.channel_service.search(interaction, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -309,7 +309,7 @@ class CoordinatorCommands(commands.Cog):
     
     # DONE
     @commands.command(name='xrmute', help='Unmute all.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_predicator()
+    @coordinator_predicator()
     async def room_unmute_text_command(
         self,
         ctx: commands.Context,
@@ -319,7 +319,7 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = None
         failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            channel_obj = await self.channel_service.search(ctx, channel)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
         for member in channel_obj.members:

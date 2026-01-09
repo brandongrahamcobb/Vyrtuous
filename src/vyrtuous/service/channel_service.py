@@ -20,7 +20,7 @@ from vyrtuous.utils.setup_logging import logger
 
 class ChannelService:
 
-    async def resolve_channel(
+    async def search(
         self,
         ctx_interaction_or_message,
         scope: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]]

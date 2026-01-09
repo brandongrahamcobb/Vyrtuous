@@ -52,7 +52,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='bans', description='List bans.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_bans_app_command(
         self,
         interaction: discord.Interaction,
@@ -82,11 +82,11 @@ class ModeratorCommands(commands.Cog):
             bans = await Ban.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                channel_obj = await self.channel_service.search(interaction, scope) 
                 bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(interaction, scope)
+                    member_obj = await self.member_service.search(interaction, scope)
                     bans = await Ban.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Bans for {member_obj.name}'
                 except Exception as e:
@@ -237,7 +237,7 @@ class ModeratorCommands(commands.Cog):
         
     # DONE
     @commands.command(name='bans', description='List bans.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
@@ -268,11 +268,11 @@ class ModeratorCommands(commands.Cog):
             bans = await Ban.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
+                channel_obj = await self.channel_service.search(ctx, scope)
                 bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(ctx, scope)
+                    member_obj = await self.member_service.search(ctx, scope)
                     bans = await Ban.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Bans for {member_obj.name}'
                 except Exception as e:
@@ -423,7 +423,7 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='caps', description="List caps.")
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
     async def list_caps_app_command(
         self,
@@ -451,7 +451,7 @@ class ModeratorCommands(commands.Cog):
             caps = await Cap.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
+                channel_obj = await self.channel_service.search(interaction, scope)
                 caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
@@ -580,7 +580,7 @@ class ModeratorCommands(commands.Cog):
 
     # DONE
     @commands.command(name='caps', help="List caps.")
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
@@ -608,7 +608,7 @@ class ModeratorCommands(commands.Cog):
             caps = await Cap.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
+                channel_obj = await self.channel_service.search(ctx, scope)
                 caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
@@ -737,7 +737,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='cmds', description="List aliases.")
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_commands_app_command(
         self,
         interaction: discord.Interaction,
@@ -755,7 +755,7 @@ class ModeratorCommands(commands.Cog):
         title = f'{self.emoji.get_random_emoji()} Alias(es)'
         
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
+            channel_obj = await self.channel_service.search(interaction, scope)
         except:
             channel_obj = interaction.channel
         highest_role = await permission_check(interaction)
@@ -768,7 +768,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                channel_obj = await self.channel_service.search(interaction, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
@@ -904,7 +904,7 @@ class ModeratorCommands(commands.Cog):
         
     # DONE
     @commands.command(name='cmds', help="List aliases.")
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
@@ -923,7 +923,7 @@ class ModeratorCommands(commands.Cog):
         title = f'{self.emoji.get_random_emoji()} Alias(es)'
 
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
+            channel_obj = await self.channel_service.search(ctx, scope)
         except:
             channel_obj = ctx.channel
         highest_role = await permission_check(ctx)
@@ -936,7 +936,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                channel_obj = await self.channel_service.search(ctx, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer'):
@@ -1076,7 +1076,7 @@ class ModeratorCommands(commands.Cog):
         message='Message ID',
         channel='Tag a channel or include its ID'
     )
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def delete_message_app_command(
         self,
         interaction: discord.Interaction,
@@ -1086,7 +1086,7 @@ class ModeratorCommands(commands.Cog):
         state = State(interaction)
         channel_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            channel_obj = await self.channel_service.search(interaction, channel)
         except:
             channel_obj = interaction.channel
         msg = await channel_obj.fetch_message(message)
@@ -1113,7 +1113,7 @@ class ModeratorCommands(commands.Cog):
 
     # DONE
     @commands.command(name='del', help='Delete message.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
@@ -1124,7 +1124,7 @@ class ModeratorCommands(commands.Cog):
         state = State(ctx)
         channel_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            channel_obj = await self.channel_service.search(ctx, channel)
         except:
             channel_obj = ctx.channel
         msg = await channel_obj.fetch_message(message)
@@ -1151,7 +1151,7 @@ class ModeratorCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='flags', description='List flags.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_flags_app_command(
         self,
         interaction: discord.Interaction,
@@ -1180,11 +1180,11 @@ class ModeratorCommands(commands.Cog):
             flags = await Flag.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                channel_obj = await self.channel_service.search(interaction, scope) 
                 flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(interaction, scope)
+                    member_obj = await self.member_service.search(interaction, scope)
                     flags = await Flag.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Flags for {member_obj.name}'
                 except Exception as e:
@@ -1320,7 +1320,7 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @commands.command(name='flags', help='List flags.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
@@ -1350,11 +1350,11 @@ class ModeratorCommands(commands.Cog):
             flags = await Flag.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                channel_obj = await self.channel_service.search(ctx, scope) 
                 flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(ctx, scope)
+                    member_obj = await self.member_service.search(ctx, scope)
                     flags = await Flag.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Flags for {member_obj.name}'
                 except Exception as e:
@@ -1533,11 +1533,11 @@ class ModeratorCommands(commands.Cog):
             new_vegans = await Vegan.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
+                channel_obj = await self.channel_service.search(interaction, scope)
                 new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(interaction, scope)
+                    member_obj = await self.member_service.search(interaction, scope)
                     new_vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Vegan: {member_obj.name}'
                 except Exception as e:
@@ -1716,11 +1716,11 @@ class ModeratorCommands(commands.Cog):
             new_vegans = await Vegan.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                channel_obj = await self.channel_service.search(ctx, scope) 
                 new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(ctx, scope)
+                    member_obj = await self.member_service.search(ctx, scope)
                     new_vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Vegan: {member_obj.name}'
                 except Exception as e:
@@ -1872,7 +1872,7 @@ class ModeratorCommands(commands.Cog):
         old_name='Old temporary room name',
         channel='New channel to migrate to'
     )
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def migrate_temp_room_app_command(
         self,
         interaction: discord.Interaction,
@@ -1884,7 +1884,7 @@ class ModeratorCommands(commands.Cog):
         old_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=old_name)
         if old_room:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+                channel_obj = await self.channel_service.search(interaction, channel)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -1920,7 +1920,7 @@ class ModeratorCommands(commands.Cog):
     
     # DONE
     @commands.command(name='migrate', help='Migrate a temporary room to a new channel by snowflake.', hidden=True)
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def migrate_temp_room_text_command(
         self,
         ctx: commands.Context,
@@ -1932,7 +1932,7 @@ class ModeratorCommands(commands.Cog):
         old_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=ctx.guild.id, room_name=old_name)
         if old_room:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+                channel_obj = await self.channel_service.search(ctx, channel)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -1968,7 +1968,7 @@ class ModeratorCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='mutes', description='List mutes.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_mutes_app_command(
         self,
         interaction: discord.Interaction,
@@ -1998,11 +1998,11 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_all_by_target(target=target)
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                channel_obj = await self.channel_service.search(interaction, scope) 
                 voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target=target)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(interaction, scope) 
+                    member_obj = await self.member_service.search(interaction, scope) 
                     voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target=target)
                     title = f'{self.emoji.get_random_emoji()} Voice Mutes for {member_obj.name}'
                 except Exception as e:
@@ -2153,7 +2153,7 @@ class ModeratorCommands(commands.Cog):
             
     # DONE
     @commands.command(name='mutes', help='List mutes.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_mutes_text_command(
         self,
         ctx: commands.Context,
@@ -2183,11 +2183,11 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_all_by_target(target=target)
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                channel_obj = await self.channel_service.search(ctx, scope) 
                 voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target=target)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(ctx, scope) 
+                    member_obj = await self.member_service.search(ctx, scope) 
                     voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target=target)
                     title = f'{self.emoji.get_random_emoji()} Voice Mutes for {member_obj.name}'
                 except Exception as e:
@@ -2349,11 +2349,11 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            channel_obj = await self.channel_service.search(interaction, channel)
         except:
             channel_obj = interaction.channel
         try:
-            member_obj = await self.member_service.resolve_member(interaction, member)
+            member_obj = await self.member_service.search(interaction, member)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F Could not resolve a valid member `{member}`.')
@@ -2393,7 +2393,7 @@ class ModeratorCommands(commands.Cog):
                 
     # DONE
     @commands.command(name='mstage', help='Stage mute/unmute.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def stage_mute_text_command(
         self,
         ctx: commands.Context,
@@ -2404,11 +2404,11 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
+            channel_obj = await self.channel_service.search(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
         try:
-            member_obj = await self.member_service.resolve_member(ctx, member)
+            member_obj = await self.member_service.search(ctx, member)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F Could not resolve a valid member `{member}`.')
@@ -2449,7 +2449,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='stages', description='List stages.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_stages_app_command(
         self,
         interaction: discord.Interaction,
@@ -2476,7 +2476,7 @@ class ModeratorCommands(commands.Cog):
             stages = await Stage.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
+                channel_obj = await self.channel_service.search(interaction, scope)
                 stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                 stages = [stage] if stage else []
             except Exception as e:
@@ -2592,7 +2592,7 @@ class ModeratorCommands(commands.Cog):
                  
     # DONE
     @commands.command(name='stages', help='List stages.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
@@ -2619,7 +2619,7 @@ class ModeratorCommands(commands.Cog):
             stages = await Stage.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
+                channel_obj = await self.channel_service.search(ctx, scope)
                 stages = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
@@ -2736,7 +2736,7 @@ class ModeratorCommands(commands.Cog):
         member='Specify a member ID/mention.',
         scope="Specify 'all' or a channel ID/mention."
     )
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_moderation_summary_app_command(
         self,
         interaction: discord.Interaction,
@@ -2751,7 +2751,7 @@ class ModeratorCommands(commands.Cog):
         lines, pages = [], []
         target = 'user'
         try:
-            member_obj = await self.member_service.resolve_member(interaction, member) 
+            member_obj = await self.member_service.search(interaction, member) 
         except Exception as e:
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}.")
@@ -2766,7 +2766,7 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target=target)
         else:        
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
+                channel_obj = await self.channel_service.search(interaction, scope)
             except Exception as e:
                 channel_obj = interaction.channel
             ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -2889,7 +2889,7 @@ class ModeratorCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     @commands.command(name='summary', description='Moderation summary.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_moderation_summary_text_command(
         self,
         ctx: commands.Context,
@@ -2905,7 +2905,7 @@ class ModeratorCommands(commands.Cog):
         lines, pages = [], []
         target = 'user'
         try:
-            member_obj = await self.member_service.resolve_member(ctx, member) 
+            member_obj = await self.member_service.search(ctx, member) 
         except Exception as e:
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}.")
@@ -2919,7 +2919,7 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target=target)
         else:        
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
+                channel_obj = await self.channel_service.search(ctx, scope)
             except Exception as e:
                 channel_obj = ctx.channel
             ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -3044,7 +3044,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name='tmutes', description='List text-mutes.')
     @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.")
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_text_mutes_app_command(
         self,
         interaction: discord.Interaction,
@@ -3073,11 +3073,11 @@ class ModeratorCommands(commands.Cog):
             text_mutes = await TextMute.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
+                channel_obj = await self.channel_service.search(interaction, scope) 
                 text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(interaction, scope) 
+                    member_obj = await self.member_service.search(interaction, scope) 
                     text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Text Mutes for {member_obj.name}'
                 except Exception as e:
@@ -3227,7 +3227,7 @@ class ModeratorCommands(commands.Cog):
             
     # DONE
     @commands.command(name='tmutes', help='List text-mutes.')
-    @is_system_owner_developer_guild_owner_administrator_coordinator_moderator_predicator()
+    @moderator_predicator()
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
@@ -3257,11 +3257,11 @@ class ModeratorCommands(commands.Cog):
             text_mutes = await TextMute.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
+                channel_obj = await self.channel_service.search(ctx, scope) 
                 text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.resolve_member(ctx, scope) 
+                    member_obj = await self.member_service.search(ctx, scope) 
                     text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Text Mutes for {member_obj.name}'
                 except Exception as e:

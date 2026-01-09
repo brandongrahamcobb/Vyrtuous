@@ -44,7 +44,7 @@ class SystemOwnerCommands(commands.Cog):
         reference='Include an issue reference ID',
         member='Tag a member or include their ID',
     )
-    @is_system_owner_predicator()
+    @sys_owner_predicator()
     async def toggle_issue_to_developer_app_command(
         self,
         interaction: discord.Interaction,
@@ -54,7 +54,7 @@ class SystemOwnerCommands(commands.Cog):
         state = State(interaction)
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(interaction, member)
+            member_obj = await self.member_service.search(interaction, member)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -103,7 +103,7 @@ class SystemOwnerCommands(commands.Cog):
 
     # DONE
     @commands.command(name='adev', help='Assign developer.')
-    @is_system_owner_predicator()
+    @sys_owner_predicator()
     async def toggle_issue_to_developer_text_command(
         self,
         ctx: commands.Context,
@@ -113,7 +113,7 @@ class SystemOwnerCommands(commands.Cog):
         state = State(ctx)
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, member)
+            member_obj = await self.member_service.search(ctx, member)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -163,7 +163,7 @@ class SystemOwnerCommands(commands.Cog):
     # DONE
     @app_commands.command(name='dev', description="Grant/revoke devs.")
     @app_commands.describe(member='Tag a member or include their ID')
-    @is_system_owner_predicator()
+    @sys_owner_predicator()
     async def create_developer_app_command(
         self,
         interaction: discord.Interaction,
@@ -173,7 +173,7 @@ class SystemOwnerCommands(commands.Cog):
         action = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(interaction, member)
+            member_obj = await self.member_service.search(interaction, member)
             check_not_self(interaction, member_snowflake=member_obj.id)
             await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
@@ -196,7 +196,7 @@ class SystemOwnerCommands(commands.Cog):
         
     # DONE
     @commands.command(name='dev', help="Grant/revoke devs.")
-    @is_system_owner_predicator()
+    @sys_owner_predicator()
     async def create_developer_text_command(
         self,
         ctx: commands.Context,
@@ -206,7 +206,7 @@ class SystemOwnerCommands(commands.Cog):
         action = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, member)
+            member_obj = await self.member_service.search(ctx, member)
             check_not_self(ctx, member_snowflake=member_obj.id)
             await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:

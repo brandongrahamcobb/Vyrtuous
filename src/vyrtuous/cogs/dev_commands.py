@@ -46,7 +46,7 @@ class DevCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='backup', description='DB backup.')
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def app_backup(
         self,
         interaction: discord.Interaction
@@ -66,7 +66,7 @@ class DevCommands(commands.Cog):
         
     # DONE
     @commands.command(name='backup', help='DB backup.')
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def text_backup(
         self,
         ctx: commands.Context
@@ -84,7 +84,7 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     @app_commands.command(name='cogs', description='Lists cogs.')
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def list_cogs_app_command(self, interaction: discord.Interaction):
         state = State(interaction)
         loaded, not_loaded = [], []
@@ -106,7 +106,7 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     @commands.command(name='cogs', help='Lists cogs.')
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def list_cogs_text_command(self, ctx: commands.Context):
         state = State(ctx)
         loaded, not_loaded = [], []
@@ -133,7 +133,7 @@ class DevCommands(commands.Cog):
         action="'resolve' or 'append' or 'overwrite'.",
         notes='Optionally specify notes to append or overwrite.'
     )
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def update_developer_logs_app_command(
         self,
         ctx: commands.Context,
@@ -163,7 +163,7 @@ class DevCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     @commands.command(name='dlog', help='Resolve or update the notes on an issue by reference')
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def update_developer_logs_text_command(
         self,
         ctx: commands.Context,
@@ -199,7 +199,7 @@ class DevCommands(commands.Cog):
         scope="Specify one of: 'all', 'resolved' or 'unresolved'",
         value='Specify one of: channel ID/mention, reference ID and server ID.'
     )
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def list_developer_logs_text_command(
         self,
         interaction: discord.Interaction,
@@ -222,7 +222,7 @@ class DevCommands(commands.Cog):
             developer_logs = await DeveloperLog.fetch_all()
         elif scope and scope.lower() == 'resolved':
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, value) 
+                channel_obj = await self.channel_service.search(interaction, value) 
                 developer_logs = await DeveloperLog.fetch_resolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 guild_obj = self.bot.get_guild(value)
@@ -237,7 +237,7 @@ class DevCommands(commands.Cog):
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif scope and scope.lower() == 'unresolved':
             try:
-                channel_obj = await self.channel_service.resolve_channel(interaction, value) 
+                channel_obj = await self.channel_service.search(interaction, value) 
                 developer_logs = await DeveloperLog.fetch_unresolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 guild_obj = self.bot.get_guild(value)
@@ -384,7 +384,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     @commands.command(name='dlogs', help="List issues.")
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
@@ -408,7 +408,7 @@ class DevCommands(commands.Cog):
             developer_logs = await DeveloperLog.fetch_all()
         elif scope and scope.lower() == 'resolved':
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, value) 
+                channel_obj = await self.channel_service.search(ctx, value) 
                 developer_logs = await DeveloperLog.fetch_resolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 guild_obj = self.bot.get_guild(value)
@@ -423,7 +423,7 @@ class DevCommands(commands.Cog):
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
         elif scope and scope.lower() == 'unresolved':
             try:
-                channel_obj = await self.channel_service.resolve_channel(ctx, value) 
+                channel_obj = await self.channel_service.search(ctx, value) 
                 developer_logs = await DeveloperLog.fetch_unresolved_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 guild_obj = self.bot.get_guild(value)
@@ -571,7 +571,7 @@ class DevCommands(commands.Cog):
         
     # DONE
     @app_commands.command(name='load', description="Loads a cog by name 'vyrtuous.cog.<cog_name>.'")
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
         state = State(interaction)
@@ -589,7 +589,7 @@ class DevCommands(commands.Cog):
 
     # DONE    
     @commands.command(name='load', help="Loads a cog by name 'vyrtuous.cog.<cog_name>.'")
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def load_text_command(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:
@@ -606,7 +606,7 @@ class DevCommands(commands.Cog):
     
     # DONE
     @app_commands.command(name='ping', description='Ping me!')
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def ping_app_command(
         self,
         interaction: discord.Interaction
@@ -619,7 +619,7 @@ class DevCommands(commands.Cog):
 
     # DONE
     @commands.command(name='ping', help='Ping me!')
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def ping_text_command(
         self,
         ctx: commands.Context
@@ -633,7 +633,7 @@ class DevCommands(commands.Cog):
     # DONE
     @app_commands.command(name='reload', description="Reloads a cog by name 'vyrtuous.cog.<cog_name>'.")
     @app_commands.check(at_home)
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def reload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
         state = State(interaction)
@@ -651,7 +651,7 @@ class DevCommands(commands.Cog):
             
     # DONE
     @commands.command(name='reload', help="Reloads a cog by name 'vyrtuous.cog.<cog_name>'.")
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def reload_text_command(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:
@@ -668,7 +668,7 @@ class DevCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name='sync', description="Sync app commands.")
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def sync_app_command(
         self,
         interaction: discord.Interaction,
@@ -715,7 +715,7 @@ class DevCommands(commands.Cog):
         
     # DONE
     @commands.command(name='sync', help="Sync app commands.")
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def sync_text_command(
         self,
         ctx: commands.Context,
@@ -761,7 +761,7 @@ class DevCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name='unload', description="Unloads a cog by name 'vyrtuous.cog.<cog_name>'.")
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def unload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
         state = State(interaction)
@@ -779,7 +779,7 @@ class DevCommands(commands.Cog):
 
     # DONE
     @commands.command(name='unload', help="Unloads a cog by name 'vyrtuous.cog.<cog_name>'.")
-    @is_system_owner_developer_predicator()
+    @developer_predicator()
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
         state = State(ctx)
         try:

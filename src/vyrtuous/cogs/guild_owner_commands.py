@@ -40,7 +40,7 @@ class GuildOwnerCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name='arole', description='Role -> Administrator.')
-    @is_system_owner_developer_guild_owner_predicator()
+    @guild_owner_predicator()
     async def grant_administrator_by_role_app_command(
         self,
         interaction: discord.Interaction,
@@ -54,7 +54,7 @@ class GuildOwnerCommands(commands.Cog):
         role_obj = None
         role_snowflakes = []
         try:
-            role_obj = await self.role_service.resolve_role(interaction, role)
+            role_obj = await self.role_service.search(interaction, role)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -123,7 +123,7 @@ class GuildOwnerCommands(commands.Cog):
         
     # DONE
     @commands.command(name='arole', help='Role -> Administrator.')
-    @is_system_owner_developer_guild_owner_predicator()
+    @guild_owner_predicator()
     async def grant_administrator_by_role_text_command(
         self,
         ctx: commands.Context,
@@ -137,7 +137,7 @@ class GuildOwnerCommands(commands.Cog):
         role_obj = None
         role_snowflakes = []
         try:
-            role_obj = await self.role_service.resolve_role(ctx, role)
+            role_obj = await self.role_service.search(ctx, role)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -208,7 +208,7 @@ class GuildOwnerCommands(commands.Cog):
     # DONE
     @app_commands.command(name='hero', description='Grant/revoke invincibility.')
     @app_commands.describe(member='Tag a member or include their ID')
-    @is_system_owner_developer_guild_owner_predicator()
+    @guild_owner_predicator()
     async def invincibility_app_command(
         self,
         interaction: discord.Interaction,
@@ -218,7 +218,7 @@ class GuildOwnerCommands(commands.Cog):
         enabled = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(interaction, member)
+            member_obj = await self.member_service.search(interaction, member)
             check_not_self(interaction, member_snowflake=member_obj.id)
             await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
@@ -241,7 +241,7 @@ class GuildOwnerCommands(commands.Cog):
            
     # DONE
     @commands.command(name='hero', help='Grant/revoke invincibility.')
-    @is_system_owner_developer_guild_owner_predicator()
+    @guild_owner_predicator()
     async def invincibility_text_command(
         self,
         ctx: commands.Context,
@@ -251,7 +251,7 @@ class GuildOwnerCommands(commands.Cog):
         enabled = None
         member_obj = None
         try:
-            member_obj = await self.member_service.resolve_member(ctx, member)
+            member_obj = await self.member_service.search(ctx, member)
             check_not_self(ctx, member_snowflake=member_obj.id)
             await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:

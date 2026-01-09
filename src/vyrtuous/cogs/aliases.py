@@ -142,8 +142,7 @@ class Aliases(commands.Cog):
             if not hasattr(cap, 'duration'):
                 cap_duration = DurationObject('8h').to_seconds()
             else:
-                cap_duration = cap.duration    
-                            
+                cap_duration = cap.duration  
             if is_reason_modification and existing_guestroom_alias_event:
                 is_modification = True
                 duration = DurationObject.from_expires_in(existing_guestroom_alias_event.expires_in)
@@ -169,28 +168,29 @@ class Aliases(commands.Cog):
                 if delta.total_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap_duration)
                     try:
-                        return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                        return await state.end(warning=f'\U000026A0\U0000FE0F Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')  
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=Ban)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                delta = duration.expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() < 0 and duration.number != 0:
-                    try:
-                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}') 
-                ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
-                if duration.number == 0:
+                if duration.number != 0:
+                    delta = duration.expires_in - datetime.now(timezone.utc)
+                    if delta.total_seconds() < 0:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}') 
+                else:
                     override = True
+                ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)
                 if not override:
                     if ban:
                         try:
                             return await state.end(warning=f"\U000026A0\U0000FE0F An existing ban already exists for {member_obj.mention}. Modify the ban by putting a '+', '-' or '=' in front of the duration (ex. +8h) or a single '+', '-' or '=' and a reason to update the reason.")
                         except Exception as e:
                             return await state.end(error=f'\u274C {str(e).capitalize()}')
-                if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
+                if duration.to_seconds() > cap_duration and executor_role == 'Moderator':
                     duration = DurationObject.from_seconds(cap_duration)
                     try:
                         return await state.end(warning=f'\U000026A0\U0000FE0F Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
@@ -364,7 +364,7 @@ class Aliases(commands.Cog):
             reason = 'No reason provided.'
     
             try:
-                role = await self.role_service.resolve_role(message, alias.role_snowflake)
+                role = await self.role_service.search(message, alias.role_snowflake)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Role `{alias.role_snowflake}` was not found.')
@@ -446,21 +446,22 @@ class Aliases(commands.Cog):
                 if delta.total_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap_duration)
                     try:
-                        return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                        return await state.end(warning=f'\U000026A0\U0000FE0F Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}') 
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=TextMute)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                delta = duration.expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() < 0 and duration.number != 0:
-                    try:
-                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}') 
-                text_mute = await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)   
-                if duration.number == 0:
+                if duration.number != 0:
+                    delta = duration.expires_in - datetime.now(timezone.utc)
+                    if delta.total_seconds() < 0:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}') 
+                else:
                     override = True
+                text_mute = await TextMute.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id)   
                 if not override:
                     if text_mute:
                         try:
@@ -470,7 +471,7 @@ class Aliases(commands.Cog):
                 if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap_duration)
                     try:
-                        return await state.end(warning=f'\u274C Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                        return await state.end(warning=f'\U000026A0\U0000FE0F Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}') 
                 reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
@@ -484,7 +485,6 @@ class Aliases(commands.Cog):
                 await channel_obj.set_permissions(member_obj, send_messages=False, add_reactions=False, reason=reason)
             except discord.Forbidden as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-                
     
             await History.send_entry(alias, channel_obj, duration, executor_role, is_channel_scope, is_modification, member_obj, message, reason)
     
@@ -560,21 +560,22 @@ class Aliases(commands.Cog):
                 if delta.total_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap_duration)
                     try:
-                        return await state.end(warning=f'\u274C Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                        return await state.end(warning=f'\U000026A0\U0000FE0F Cannot extend the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}')
                 await Alias.update_duration(channel_snowflake=channel_obj.id, expires_in=updated_expires_in, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, moderation_type=VoiceMute)
             else:
                 duration = DurationObject(args[1] if len(args) > 1 else '8h')
-                delta = duration.expires_in - datetime.now(timezone.utc)
-                if delta.total_seconds() < 0 and duration.number != 0:
-                    try:
-                        return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
-                    except Exception as e:
-                        return await state.end(error=f'\u274C {str(e).capitalize()}') 
-                voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, target=target)    
-                if duration.number == 0:
+                if duration.number != 0:
+                    delta = duration.expires_in - datetime.now(timezone.utc)
+                    if delta.total_seconds() < 0:
+                        try:
+                            return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to decrease the duration below the current time.')
+                        except Exception as e:
+                            return await state.end(error=f'\u274C {str(e).capitalize()}') 
+                else:
                     override = True
+                voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, member_snowflake=member_obj.id, target=target)    
                 if not override:
                     if voice_mute:
                         try:
@@ -584,7 +585,7 @@ class Aliases(commands.Cog):
                 if duration.to_seconds() > cap_duration and executor_role not in ('System Owner', 'Guild Owner', 'Administrator', 'Coordinator'):
                     duration = DurationObject.from_seconds(cap_duration)
                     try:
-                        return await state.end(warning=f'\u274C Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
+                        return await state.end(warning=f'\U000026A0\U0000FE0F Cannot set the ban beyond {duration} as a {executor_role} in {channel_obj.mention}.')
                     except:
                         return await state.end(error=f'\u274C {str(e).capitalize()}') 
                 reason = ' '.join(args[2:]) if len(args) > 2 else 'No reason provided.'
@@ -889,7 +890,7 @@ class Aliases(commands.Cog):
             reason = 'No reason provided.'
     
             try:
-                role = await self.role_service.resolve_role(message, alias.role_snowflake)
+                role = await self.role_service.search(message, alias.role_snowflake)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Role `{alias.role_snowflake}` was not found.')
