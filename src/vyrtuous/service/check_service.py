@@ -213,7 +213,24 @@ def is_system_owner_developer_guild_owner_administrator_coordinator_moderator_pr
     predicate._permission_level = 'Moderator'
     return commands.check(predicate)
 
-async def is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx_interaction_or_message) -> str:
+# async def permission_check(ctx_interaction_or_message) -> str:
+#     checks = (
+#         ('System Owner', is_system_owner),
+#         ('Developer', is_developer),
+#         ('Guild Owner', is_guild_owner),
+#         ('Administrator', is_administrator),
+#         ('Coordinator', is_coordinator),
+#         ('Moderator', is_moderator),
+#     )
+#     for role_name, check in checks:
+#         try:
+#             if await check(ctx_interaction_or_message):
+#                 return role_name
+#         except commands.CheckFailure:
+#             continue
+#     return 'Everyone'
+
+async def permission_check(ctx_interaction_or_message, omit=()) -> str:
     checks = (
         ('System Owner', is_system_owner),
         ('Developer', is_developer),
@@ -222,7 +239,10 @@ async def is_system_owner_developer_guild_owner_administrator_coordinator_modera
         ('Coordinator', is_coordinator),
         ('Moderator', is_moderator),
     )
+    omit_set = set(omit)
     for role_name, check in checks:
+        if role_name in omit_set:
+            continue
         try:
             if await check(ctx_interaction_or_message):
                 return role_name
@@ -305,10 +325,10 @@ async def has_equal_or_higher_role(message_ctx_interaction, channel_snowflake: i
     sender_rank = await get_highest_role(sender_snowflake)
     if isinstance(message_ctx_interaction, (commands.Context, discord.Message)):
         if message_ctx_interaction.author.id == member_snowflake:
-            return PERMISSION_TYPE[sender_rank]
+            return PERMISSION_TYPES[sender_rank]
     elif isinstance(message_ctx_interaction, discord.Interaction):
         if message_ctx_interaction.user.id == member_snowflake:
-            return PERMISSION_TYPE[sender_rank]
+            return PERMISSION_TYPES[sender_rank]
     target_rank = await get_highest_role(member_snowflake)
     msg = f'You may not execute this command on this `{PERMISSION_TYPES[target_rank]}` because they have equal or higher role than you in this channel/server.'
     if sender_rank <= target_rank:

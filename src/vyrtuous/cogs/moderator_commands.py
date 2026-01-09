@@ -72,7 +72,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Bans'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -258,7 +258,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Bans'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -441,7 +441,7 @@ class ModeratorCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Caps'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -598,7 +598,7 @@ class ModeratorCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Caps'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -758,7 +758,7 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except:
             channel_obj = interaction.channel
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -926,7 +926,7 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except:
             channel_obj = ctx.channel
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1170,7 +1170,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Flags'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1340,7 +1340,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Flags'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1523,7 +1523,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Vegans'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1706,7 +1706,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Vegans'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1891,7 +1891,7 @@ class ModeratorCommands(commands.Cog):
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             is_owner = old_room.member_snowflake == interaction.user.id
-            highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+            highest_role = await permission_check(interaction)
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
@@ -1939,7 +1939,7 @@ class ModeratorCommands(commands.Cog):
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             is_owner = old_room.member_snowflake == ctx.author.id
-            highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+            highest_role = await permission_check(ctx)
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
@@ -1988,7 +1988,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Voice Mutes'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2173,7 +2173,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Voice Mutes'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2466,7 +2466,7 @@ class ModeratorCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Stages'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2609,7 +2609,7 @@ class ModeratorCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Stages'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -3063,7 +3063,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Text Mutes'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -3247,7 +3247,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Text Mutes'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:

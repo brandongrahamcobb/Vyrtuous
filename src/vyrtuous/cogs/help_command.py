@@ -67,7 +67,7 @@ class HelpCommand(commands.Cog):
         
     async def get_available_commands(self, bot, ctx_or_interaction) -> list[commands.Command]:
         available = []
-        user_highest = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx_or_interaction)
+        user_highest = await permission_check(ctx_or_interaction)
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
@@ -249,7 +249,7 @@ class HelpCommand(commands.Cog):
                 short_desc = self.aliases_cog.alias_type_to_description.get(alias.alias_type, 'No description')
                 perm_level_for_alias = self.aliases_cog.alias_type_to_permission_level.get(alias.alias_type, 'Everyone')
                 perm_alias_map[perm_level_for_alias].append(f'**{alias.alias_name}** – {short_desc}')
-        user_highest = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        user_highest = await permission_check(interaction)
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
             if PERMISSION_TYPES.index(perm_level) > user_index:
@@ -383,7 +383,7 @@ class HelpCommand(commands.Cog):
                 short_desc = self.aliases_cog.alias_type_to_description.get(alias.alias_type, 'No description')
                 perm_level_for_alias = self.aliases_cog.alias_type_to_permission_level.get(alias.alias_type, 'Everyone')
                 perm_alias_map[perm_level_for_alias].append(f'**{alias.alias_name}** – {short_desc}')
-        user_highest = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        user_highest = await permission_check(ctx)
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
             if PERMISSION_TYPES.index(perm_level) > user_index:

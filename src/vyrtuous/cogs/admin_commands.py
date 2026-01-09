@@ -16,39 +16,41 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timezone
-from discord import app_commands
 from typing import Optional
+
+from discord import app_commands
+
 from vyrtuous.inc.helpers import *
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.enhanced_members.administrator import AdministratorRole
+from vyrtuous.enhanced_members.coordinator import Coordinator
+from vyrtuous.enhanced_members.moderator import Moderator
+from vyrtuous.moderation_action.ban import Ban
+from vyrtuous.moderation_action.flag import Flag
+from vyrtuous.moderation_action.server_mute import ServerMute
+from vyrtuous.moderation_action.text_mute import TextMute
+from vyrtuous.moderation_action.vegan import Vegan
+from vyrtuous.moderation_action.voice_mute import VoiceMute
+from vyrtuous.rooms.stage import Stage
+from vyrtuous.rooms.temporary_room import TemporaryRoom
+from vyrtuous.rooms.video_room import VideoRoom
 from vyrtuous.service.channel_service import ChannelService
 from vyrtuous.service.check_service import *
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.role_service import RoleService
-from vyrtuous.enhanced_members.administrator import AdministratorRole
+from vyrtuous.service.state_service import State
 from vyrtuous.utils.alias import Alias
-from vyrtuous.moderation_action.ban import Ban
 from vyrtuous.utils.cancel_confirm import VerifyView
 from vyrtuous.utils.cap import Cap
-from vyrtuous.enhanced_members.coordinator import Coordinator
 from vyrtuous.utils.properties.duration import AppDuration, Duration, DurationObject
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.properties.moderation_type import AppModerationType, ModerationType
-from vyrtuous.enhanced_members.moderator import Moderator
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.moderation_action.flag import Flag
-from vyrtuous.moderation_action.server_mute import ServerMute
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.permission import TARGET_PERMISSIONS
 from vyrtuous.utils.properties.snowflake import *
-from vyrtuous.rooms.stage import Stage
-from vyrtuous.service.state_service import State
 from vyrtuous.utils.history import History
-from vyrtuous.rooms.temporary_room import TemporaryRoom
-from vyrtuous.moderation_action.text_mute import TextMute
-from vyrtuous.moderation_action.vegan import Vegan
-from vyrtuous.moderation_action.voice_mute import VoiceMute
-from vyrtuous.rooms.video_room import VideoRoom
 
 class AdminCommands(commands.Cog):
 
@@ -65,7 +67,8 @@ class AdminCommands(commands.Cog):
     @is_system_owner_developer_guild_owner_administrator_predicator()
     @app_commands.describe(
         alias_name='Alias/Pseudonym',
-        moderation_type='One of: vegan, carnist, vmute, unvmute, ban, unban, flag, unflag, tmute, untmute, role, unrole',
+        moderation_type='One of: vegan, carnist, vmute, unvmute,' \
+                        'ban, unban, flag, unflag, tmute, untmute, role, unrole',
         channel='Tag a channel or include its ID',
         role='Role ID (only for role/unrole)'
     )
@@ -92,28 +95,52 @@ class AdminCommands(commands.Cog):
             role_snowflake = role_obj.id
         except Exception as e:
             role_snowflake = None
-        alias = Alias(alias_name=alias_name, alias_type=moderation_type, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, role_snowflake=role_snowflake)
+        alias = Alias(alias_name=alias_name, alias_type=moderation_type,
+            channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id,
+            role_snowflake=role_snowflake
+                )
         await alias.create()
         if role_snowflake:
-            msg = f'Alias `{alias_name}` of type `{moderation_type}`  created successfully for channel {channel_obj.mention} and role {role_obj.mention}.'
+            msg = f'Alias `{alias_name}` of type `{moderation_type}` ' \
+                f'created successfully for channel {channel_obj.mention} ' \
+                f'and role {role_obj.mention}.'
         else:
-            msg = f'Alias `{alias_name}`  of type `{moderation_type}`  created successfully for channel {channel_obj.mention}.'
+            msg = f'Alias `{alias_name}`  of type `{moderation_type}` ' \
+                f'created successfully for channel {channel_obj.mention}.'
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @commands.command(name='alias', help='Set an alias for a vegan, carnist, mute, unmute, ban, unban, flag, unflag, tmute, untmute, role, or unrole action.')
+    @commands.command(
+        name='alias',
+        help='Set an alias for a vegan, carnist, mute, unmute, ban, ' \
+             'unban, flag, unflag, tmute, untmute, role, or unrole action.'
+            )
     @is_system_owner_developer_guild_owner_administrator_predicator()
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
-        moderation_type: ModerationType = commands.parameter(default=None, description='One of: `vegan`, `carnist`, `vmute`, `unvmute`, `ban`, `unban`, `flag`, `unflag`, `tmute`, `untmute`, `role`, `unrole`'),
-        alias_name: str = commands.parameter(default=None, description='Alias/Pseudonym'),
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID'),
+        moderation_type: ModerationType = commands.parameter(
+            default=None,
+            description='One of: `vegan`, `carnist`, `vmute`, ' \
+                '`unvmute`, `ban`, `unban`, `flag`, ' \
+                '`unflag`, `tmute`, `untmute`, `role`, `unrole`'
+                    ),
+        alias_name: str = commands.parameter(
+            default=None,
+            description='Alias/Pseudonym'
+                ),
+        channel: ChannelSnowflake = commands.parameter(
+            default=None,
+            description='Tag a channel or include its ID'
+                ),
         *,
-        role: Optional[RoleSnowflake] = commands.parameter(default=None, description='Role ID (only for role/unrole)')
+        role: Optional[RoleSnowflake] = commands.parameter(
+            default=None,
+            description='Role ID (only for role/unrole)'
+                )
     ):
         state = State(ctx)
         channel_obj = None
@@ -130,17 +157,22 @@ class AdminCommands(commands.Cog):
             role_snowflake = role_obj.id
         except Exception as e:
             role_snowflake = None
-        alias = Alias(alias_name=alias_name, alias_type=moderation_type, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, role_snowflake=role_snowflake)
+        alias = Alias(alias_name=alias_name,  alias_type=moderation_type,
+            channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id,
+            role_snowflake=role_snowflake
+                )
         await alias.create()
         if role_snowflake:
-            msg = f'Alias `{alias_name}` of type `{moderation_type}`  created successfully for channel {channel_obj.mention} and role {role_obj.mention}.'
+            msg = f'Alias `{alias_name}` of type `{moderation_type}` ' \
+                f'created successfully for channel {channel_obj.mention} ' \
+                f'and role {role_obj.mention}.'
         else:
-            msg = f'Alias `{alias_name}`  of type `{moderation_type}`  created successfully for channel {channel_obj.mention}.'
+            msg = f'Alias `{alias_name}`  of type `{moderation_type}` ' \
+                f'created successfully for channel {channel_obj.mention}.'
         try:
             return await state.end(success=f'{self.emoji.get_random_emoji()} {msg}')
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
-    
 
     @app_commands.command(name='aroles', description='Administrator roles.')
     @app_commands.describe(scope="Specify one of: 'all', server ID or empty.")
@@ -151,16 +183,16 @@ class AdminCommands(commands.Cog):
         scope: Optional[str] = None
     ):
         state = State(interaction)
-        is_at_home = False
         chunk_size = 7
-        guild_obj = None
         field_count = 0
+        guild_obj = None
+        is_at_home = False
         pages = []
         skipped_guild_snowflakes = set()
         skipped_role_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Administrator Roles'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -284,7 +316,7 @@ class AdminCommands(commands.Cog):
         skipped_role_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Administrator Roles'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -473,32 +505,32 @@ class AdminCommands(commands.Cog):
             return await state.end(error=f'\u274C {str(e).capitalize()}')
 
     # DONE
-    # @app_commands.command(name='chown', description='Change the owner of a temporary room.', hidden=True)
-    # @app_commands.describe(member='Tag a user or provide their ID', channel='Tag a channel or provide it\'s ID')
-    # @is_system_owner_developer_guild_owner_administrator_predicator()
-    # async def change_temp_room_owner_app_command(
-    #     self,
-    #     interaction,
-    #     channel: AppChannelSnowflake,
-    #     member: AppMemberSnowflake
-    # ):
-    #     state = State(interaction)
-    #     channel_obj = None
-    #     member_obj = None
-    #     try:
-    #         channel_obj = await self.channel_service.resolve_channel(interaction, channel)
-    #         member_obj = await self.member_service.resolve_member(interaction, member)
-    #         check_not_self(interaction, member_snowflake=member_obj.id)
-    #     except Exception as e:
-    #         try:
-    #             return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
-    #         except Exception as e:
-    #             return await state.end(error=f'\u274C {str(e).capitalize()}') 
-    #     await TemporaryRoom.update_owner(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
-    #     try:
-    #         return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} ownership transferred to {member_obj.mention}.')
-    #     except Exception as e:
-    #         return await state.end(error=f'\u274C {str(e).capitalize()}')
+    @app_commands.command(name='chown', description='Change the owner of a temporary room.')
+    @app_commands.describe(member='Tag a user or provide their ID', channel='Tag a channel or provide it\'s ID')
+    @is_system_owner_developer_guild_owner_administrator_predicator()
+    async def change_temp_room_owner_app_command(
+        self,
+        interaction,
+        channel: AppChannelSnowflake,
+        member: AppMemberSnowflake
+    ):
+        state = State(interaction)
+        channel_obj = None
+        member_obj = None
+        try:
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
+            member_obj = await self.member_service.resolve_member(interaction, member)
+            check_not_self(interaction, member_snowflake=member_obj.id)
+        except Exception as e:
+            try:
+                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+            except Exception as e:
+                return await state.end(error=f'\u274C {str(e).capitalize()}') 
+        await TemporaryRoom.update_owner(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        try:
+            return await state.end(success=f'{self.emoji.get_random_emoji()} Temporary room {channel_obj.mention} ownership transferred to {member_obj.mention}.')
+        except Exception as e:
+            return await state.end(error=f'\u274C {str(e).capitalize()}')
             
     # DONE
     @commands.command(name='chown', help='Change the owner of a temporary room.', hidden=True)
@@ -563,7 +595,7 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if channel_obj:
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner'):
                 try:
@@ -713,7 +745,7 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')  
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if channel_obj:
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner'):
                 try:
@@ -923,13 +955,14 @@ class AdminCommands(commands.Cog):
         lines, pages = [], []
         channel_obj = None
         guild_obj = None
+        is_at_home = False
         chunk_size = 7
         field_count = 0
         skipped_guild_snowflakes = set()
         skipped_channel_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Permissions'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1569,7 +1602,7 @@ class AdminCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Temporary Rooms'
         
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1741,7 +1774,7 @@ class AdminCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Temporary Rooms'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2144,7 +2177,7 @@ class AdminCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Logging Routes'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2341,7 +2374,7 @@ class AdminCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         title = f'{self.emoji.get_random_emoji()} Logging Routes'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2593,7 +2626,7 @@ class AdminCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Video Rooms'
 
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(interaction)
+        highest_role = await permission_check(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2764,7 +2797,7 @@ class AdminCommands(commands.Cog):
         skipped_channel_snowflakes_by_guild_snowflake = {}
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Video Rooms'
-        highest_role = await is_system_owner_developer_guild_owner_administrator_coordinator_moderator(ctx)
+        highest_role = await permission_check(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
