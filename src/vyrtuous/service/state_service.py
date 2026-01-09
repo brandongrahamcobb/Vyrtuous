@@ -26,6 +26,7 @@ from vyrtuous.enhanced_members.developer import Developer
 from vyrtuous.utils.developer_log import DeveloperLog
 from vyrtuous.service.paginator_service import Paginator
 from vyrtuous.utils.time_to_complete import TimeToComplete
+from vyrtuous.utils.setup_logging import logger
 import asyncio
 import discord
 
@@ -231,17 +232,12 @@ class State:
             message = f'Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}'
             for dev in developers:
                 member = self.ctx_interaction_or_message.guild.get_member(dev.member_snowflake)
-                if member.status != discord.Status.offline:
-                    online_developer_mentions.append(member.mention)
                 if member and member.status != discord.Status.offline:
+                    online_developer_mentions.append(member.mention)
                     try:
                         await member.send(message)
                     except discord.Forbidden as e:
-                        pass
-                try:
-                    await member.send(message)
-                except discord.Forbidden as e:
-                    pass
+                        logger.warning(f"Unable to send a developer log ID: {id}")
         message = 'Your report has been submitted'
         if online_developer_mentions:
             message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
