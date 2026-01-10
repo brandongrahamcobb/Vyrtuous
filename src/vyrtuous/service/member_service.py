@@ -22,17 +22,17 @@ import discord
 
 class MemberService:
 
-    async def search(self, ctx_interaction_or_message, scope):
+    async def resolve_member(self, ctx_interaction_or_message, member_str):
         guild = ctx_interaction_or_message.guild
-        if isinstance(scope, discord.Member):
-            return scope
-        if isinstance(scope, int):
-            member_id = scope
-        elif isinstance(scope, str):
-            if scope.isdigit():
-                member_id = int(scope)
-            elif scope.startswith('<@') and scope.endswith('>'):
-                member_id = int(scope[2:-1].replace('!', ''))
+        if isinstance(member_str, discord.Member):
+            return member_str
+        if isinstance(member_str, int):
+            member_id = member_str
+        elif isinstance(member_str, str):
+            if member_str.isdigit():
+                member_id = int(member_str)
+            elif member_str.startswith('<@') and member_str.endswith('>'):
+                member_id = int(member_str[2:-1].replace('!', ''))
             else:
                 raise commands.BadArgument('Invalid member identifier')
         else:
@@ -44,5 +44,5 @@ class MemberService:
             member = await guild.fetch_member(member_id)
             return member
         except discord.NotFound:
-            raise commands.BadArgument(f'Member `{scope}` not found in {ctx_interaction_or_message.guild.name}.')
+            raise commands.BadArgument(f'Member `{member_str}` not found in {ctx_interaction_or_message.guild.name}.')
 

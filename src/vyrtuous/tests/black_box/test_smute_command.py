@@ -17,7 +17,7 @@
 '''
 from typing import Optional
 from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.enhanced_members.administrator import Administrator
+from vyrtuous.enhanced_member.administrator import Administrator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 

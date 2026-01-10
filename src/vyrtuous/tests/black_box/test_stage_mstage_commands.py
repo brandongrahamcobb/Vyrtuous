@@ -18,8 +18,8 @@ from typing import Optional
 from vyrtuous.inc.helpers import *
 from vyrtuous.tests.black_box.make_mock_objects import *
 from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.enhanced_members.administrator import Administrator
-from vyrtuous.enhanced_members.moderator import Moderator
+from vyrtuous.enhanced_member.administrator import Administrator
+from vyrtuous.enhanced_member.moderator import Moderator
 from vyrtuous.utils.emojis import Emojis
 import pytest
 

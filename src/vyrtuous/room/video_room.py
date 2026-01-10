@@ -19,10 +19,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.room.room import Room
 from vyrtuous.utils.setup_logging import logger
 import asyncio
 
-class VideoRoom:
+class VideoRoom(Room):
 
     COOLDOWN = timedelta(minutes=30)
     cooldowns = {}

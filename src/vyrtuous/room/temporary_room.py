@@ -17,8 +17,9 @@
 '''
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.room.room import Room
 
-class TemporaryRoom:
+class TemporaryRoom(Room):
         
     def __init__(self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], member_snowflake: Optional[int], room_name: Optional[str]):
         self.bot = DiscordBot.get_instance()

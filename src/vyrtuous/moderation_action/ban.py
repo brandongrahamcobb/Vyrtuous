@@ -18,9 +18,10 @@
 from datetime import datetime
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.moderation_action.moderation_action import ModerationAction
 from vyrtuous.utils.history import History
 
-class Ban:
+class Ban(ModerationAction):
 
     PLURAL = "Bans"
     SINGULAR = "Ban"

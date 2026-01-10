@@ -20,33 +20,33 @@ from vyrtuous.utils.setup_logging import logger
 
 class ChannelService:
 
-    async def search(
+    async def resolve_channel(
         self,
         ctx_interaction_or_message,
-        scope: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]]
+        channel_str: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]]
     ) -> Union[discord.TextChannel, discord.VoiceChannel]:
         try:
-            if isinstance(scope, (discord.TextChannel, discord.VoiceChannel)):
-                logger.debug(f'Direct channel: {scope.id}')
-                return scope
-            if isinstance(scope, int):
-                c = ctx_interaction_or_message.guild.get_channel(scope)
+            if isinstance(channel_str, (discord.TextChannel, discord.VoiceChannel)):
+                logger.debug(f'Direct channel: {channel_str.id}')
+                return channel_str
+            if isinstance(channel_str, int):
+                c = ctx_interaction_or_message.guild.get_channel(channel_str)
                 if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                     logger.debug(f'Resolved channel by int ID: {c.id}')
                     return c
-            if isinstance(scope, str):
-                if scope.isdigit():
-                    cid = int(scope)
+            if isinstance(channel_str, str):
+                if channel_str.isdigit():
+                    cid = int(channel_str)
                     c = ctx_interaction_or_message.guild.get_channel(cid)
                     if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                         logger.debug(f'Resolved channel by str ID: {c.id}')
                         return c
-                elif scope.startswith('<#') and scope.endswith('>'):
-                    cid = int(scope[2:-1])
+                elif channel_str.startswith('<#') and channel_str.endswith('>'):
+                    cid = int(channel_str[2:-1])
                     c = ctx_interaction_or_message.guild.get_channel(cid)
                     if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                         logger.debug(f'Channel mention resolved: {c.id}')
                         return c
         except Exception as e:
             logger.warning(f'Channel resolution error: {str(e).capitalize()}')
-        raise ValueError(f'Channel `{scope}` not found in {ctx_interaction_or_message.guild.name}.')
+        raise ValueError(f'Channel `{channel_str}` not found in {ctx_interaction_or_message.guild.name}.')

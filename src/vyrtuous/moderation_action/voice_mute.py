@@ -19,8 +19,9 @@ from datetime import datetime
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.history import History
+from vyrtuous.moderation_action.moderation_action import ModerationAction
 
-class VoiceMute:
+class VoiceMute(ModerationAction):
 
     PLURAL = 'Voice Mutes'
     SINGULAR = 'Voice Mute'

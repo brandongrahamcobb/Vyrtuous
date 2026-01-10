@@ -19,12 +19,13 @@
 from datetime import datetime
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.emojis import Emojis
+from vyrtuous.room.room import Room
 from typing import Optional
 
 import discord
 import time
 
-class Stage:
+class Stage(Room):
 
     PLURAL = "Stages"
     SINGULAR = "Stage"

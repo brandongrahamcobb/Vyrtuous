@@ -32,9 +32,9 @@ from vyrtuous.utils.emojis import Emojis
 from vyrtuous.moderation_action.flag import Flag
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.properties.snowflake import *
-from vyrtuous.rooms.stage import Stage
+from vyrtuous.room.stage import Stage
 from vyrtuous.service.state_service import State
-from vyrtuous.rooms.temporary_room import TemporaryRoom
+from vyrtuous.room.temporary_room import TemporaryRoom
 from vyrtuous.moderation_action.text_mute import TextMute
 from vyrtuous.moderation_action.vegan import Vegan
 from vyrtuous.moderation_action.voice_mute import VoiceMute
@@ -72,7 +72,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Bans'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -82,11 +82,11 @@ class ModeratorCommands(commands.Cog):
             bans = await Ban.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope) 
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
                 bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(interaction, scope)
+                    member_obj = await self.member_service.resolve_member(interaction, scope)
                     bans = await Ban.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Bans for {member_obj.name}'
                 except Exception as e:
@@ -258,7 +258,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Bans'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -268,11 +268,11 @@ class ModeratorCommands(commands.Cog):
             bans = await Ban.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
                 bans = await Ban.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(ctx, scope)
+                    member_obj = await self.member_service.resolve_member(ctx, scope)
                     bans = await Ban.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Bans for {member_obj.name}'
                 except Exception as e:
@@ -441,7 +441,7 @@ class ModeratorCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Caps'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -451,7 +451,7 @@ class ModeratorCommands(commands.Cog):
             caps = await Cap.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
                 caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
@@ -598,7 +598,7 @@ class ModeratorCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Caps'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -608,7 +608,7 @@ class ModeratorCommands(commands.Cog):
             caps = await Cap.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
                 caps = await Cap.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
@@ -755,10 +755,10 @@ class ModeratorCommands(commands.Cog):
         title = f'{self.emoji.get_random_emoji()} Alias(es)'
         
         try:
-            channel_obj = await self.channel_service.search(interaction, scope)
+            channel_obj = await self.channel_service.resolve_channel(interaction, scope)
         except:
             channel_obj = interaction.channel
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -768,7 +768,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope) 
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
@@ -923,10 +923,10 @@ class ModeratorCommands(commands.Cog):
         title = f'{self.emoji.get_random_emoji()} Alias(es)'
 
         try:
-            channel_obj = await self.channel_service.search(ctx, scope)
+            channel_obj = await self.channel_service.resolve_channel(ctx, scope)
         except:
             channel_obj = ctx.channel
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -936,7 +936,7 @@ class ModeratorCommands(commands.Cog):
             aliases = await Alias.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope) 
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer'):
@@ -1086,7 +1086,7 @@ class ModeratorCommands(commands.Cog):
         state = State(interaction)
         channel_obj = None
         try:
-            channel_obj = await self.channel_service.search(interaction, channel)
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         except:
             channel_obj = interaction.channel
         msg = await channel_obj.fetch_message(message)
@@ -1124,7 +1124,7 @@ class ModeratorCommands(commands.Cog):
         state = State(ctx)
         channel_obj = None
         try:
-            channel_obj = await self.channel_service.search(ctx, channel)
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except:
             channel_obj = ctx.channel
         msg = await channel_obj.fetch_message(message)
@@ -1170,7 +1170,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Flags'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1180,11 +1180,11 @@ class ModeratorCommands(commands.Cog):
             flags = await Flag.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope) 
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
                 flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(interaction, scope)
+                    member_obj = await self.member_service.resolve_member(interaction, scope)
                     flags = await Flag.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Flags for {member_obj.name}'
                 except Exception as e:
@@ -1340,7 +1340,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Flags'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1350,11 +1350,11 @@ class ModeratorCommands(commands.Cog):
             flags = await Flag.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope) 
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
                 flags = await Flag.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(ctx, scope)
+                    member_obj = await self.member_service.resolve_member(ctx, scope)
                     flags = await Flag.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Flags for {member_obj.name}'
                 except Exception as e:
@@ -1523,7 +1523,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Vegans'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1533,11 +1533,11 @@ class ModeratorCommands(commands.Cog):
             new_vegans = await Vegan.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
                 new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(interaction, scope)
+                    member_obj = await self.member_service.resolve_member(interaction, scope)
                     new_vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Vegan: {member_obj.name}'
                 except Exception as e:
@@ -1706,7 +1706,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Vegans'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1716,11 +1716,11 @@ class ModeratorCommands(commands.Cog):
             new_vegans = await Vegan.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope) 
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
                 new_vegans = await Vegan.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(ctx, scope)
+                    member_obj = await self.member_service.resolve_member(ctx, scope)
                     new_vegans = await Vegan.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Vegan: {member_obj.name}'
                 except Exception as e:
@@ -1884,14 +1884,14 @@ class ModeratorCommands(commands.Cog):
         old_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=interaction.guild.id, room_name=old_name)
         if old_room:
             try:
-                channel_obj = await self.channel_service.search(interaction, channel)
+                channel_obj = await self.channel_service.resolve_channel(interaction, channel)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             is_owner = old_room.member_snowflake == interaction.user.id
-            highest_role = await permission_check(interaction)
+            highest_role = await role_check_without_specifics(interaction)
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
@@ -1932,14 +1932,14 @@ class ModeratorCommands(commands.Cog):
         old_room = await TemporaryRoom.fetch_by_guild_and_room_name(guild_snowflake=ctx.guild.id, room_name=old_name)
         if old_room:
             try:
-                channel_obj = await self.channel_service.search(ctx, channel)
+                channel_obj = await self.channel_service.resolve_channel(ctx, channel)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
             is_owner = old_room.member_snowflake == ctx.author.id
-            highest_role = await permission_check(ctx)
+            highest_role = await role_check_without_specifics(ctx)
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator') and not is_owner:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F Only owners, developers and administrators can migrate rooms.')
@@ -1988,7 +1988,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Voice Mutes'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1998,11 +1998,11 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_all_by_target(target=target)
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope) 
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
                 voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target=target)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(interaction, scope) 
+                    member_obj = await self.member_service.resolve_member(interaction, scope) 
                     voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target=target)
                     title = f'{self.emoji.get_random_emoji()} Voice Mutes for {member_obj.name}'
                 except Exception as e:
@@ -2173,7 +2173,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Voice Mutes'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2183,11 +2183,11 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_all_by_target(target=target)
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope) 
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
                 voice_mutes = await VoiceMute.fetch_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target=target)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(ctx, scope) 
+                    member_obj = await self.member_service.resolve_member(ctx, scope) 
                     voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target=target)
                     title = f'{self.emoji.get_random_emoji()} Voice Mutes for {member_obj.name}'
                 except Exception as e:
@@ -2349,18 +2349,18 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.search(interaction, channel)
+            channel_obj = await self.channel_service.resolve_channel(interaction, channel)
         except:
             channel_obj = interaction.channel
         try:
-            member_obj = await self.member_service.search(interaction, member)
+            member_obj = await self.member_service.resolve_member(interaction, member)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F Could not resolve a valid member `{member}`.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}') 
         try:
-            check_not_self(interaction, member_snowflake=member_obj.id)
+            not_bot(interaction, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to affect {interaction.guild.me.mention}.')
@@ -2404,18 +2404,18 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.search(ctx, channel)
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
         try:
-            member_obj = await self.member_service.search(ctx, member)
+            member_obj = await self.member_service.resolve_member(ctx, member)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F Could not resolve a valid member `{member}`.')
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}') 
         try:
-            check_not_self(ctx, member_snowflake=member_obj.id)
+            not_bot(ctx, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F You are not authorized to affect {ctx.guild.me.mention}.')
@@ -2466,7 +2466,7 @@ class ModeratorCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Stages'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2476,7 +2476,7 @@ class ModeratorCommands(commands.Cog):
             stages = await Stage.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
                 stage = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
                 stages = [stage] if stage else []
             except Exception as e:
@@ -2609,7 +2609,7 @@ class ModeratorCommands(commands.Cog):
         skipped_guild_snowflakes = set()
         title = f'{self.emoji.get_random_emoji()} Stages'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2619,7 +2619,7 @@ class ModeratorCommands(commands.Cog):
             stages = await Stage.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
                 stages = await Stage.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 if highest_role not in ('System Owner', 'Developer', 'Guild Owner', 'Administrator'):
@@ -2751,7 +2751,7 @@ class ModeratorCommands(commands.Cog):
         lines, pages = [], []
         target = 'user'
         try:
-            member_obj = await self.member_service.search(interaction, member) 
+            member_obj = await self.member_service.resolve_member(interaction, member) 
         except Exception as e:
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}.")
@@ -2766,7 +2766,7 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, target=target)
         else:        
             try:
-                channel_obj = await self.channel_service.search(interaction, scope)
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope)
             except Exception as e:
                 channel_obj = interaction.channel
             ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
@@ -2905,7 +2905,7 @@ class ModeratorCommands(commands.Cog):
         lines, pages = [], []
         target = 'user'
         try:
-            member_obj = await self.member_service.search(ctx, member) 
+            member_obj = await self.member_service.resolve_member(ctx, member) 
         except Exception as e:
             try:
                 return await state.end(warning=f"\U000026A0\U0000FE0F {str(e).capitalize()}.")
@@ -2919,7 +2919,7 @@ class ModeratorCommands(commands.Cog):
             voice_mutes = await VoiceMute.fetch_by_guild_member_and_target(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, target=target)
         else:        
             try:
-                channel_obj = await self.channel_service.search(ctx, scope)
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope)
             except Exception as e:
                 channel_obj = ctx.channel
             ban = await Ban.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
@@ -3063,7 +3063,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Text Mutes'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -3073,11 +3073,11 @@ class ModeratorCommands(commands.Cog):
             text_mutes = await TextMute.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope) 
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
                 text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(interaction, scope) 
+                    member_obj = await self.member_service.resolve_member(interaction, scope) 
                     text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Text Mutes for {member_obj.name}'
                 except Exception as e:
@@ -3247,7 +3247,7 @@ class ModeratorCommands(commands.Cog):
         thumbnail = False
         title = f'{self.emoji.get_random_emoji()} Text Mutes'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -3257,11 +3257,11 @@ class ModeratorCommands(commands.Cog):
             text_mutes = await TextMute.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope) 
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
                 text_mutes = await TextMute.fetch_by_channel_and_guild(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             except Exception as e:
                 try:
-                    member_obj = await self.member_service.search(ctx, scope) 
+                    member_obj = await self.member_service.resolve_member(ctx, scope) 
                     text_mutes = await TextMute.fetch_by_guild_and_member(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
                     title = f'{self.emoji.get_random_emoji()} Text Mutes for {member_obj.name}'
                 except Exception as e:

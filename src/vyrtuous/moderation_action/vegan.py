@@ -17,8 +17,9 @@
 '''
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.moderation_action.moderation_action import ModerationAction
 
-class Vegan:
+class Vegan(ModerationAction):
 
     PLURAL = "Vegans"
     SINGULAR = "Vegan"

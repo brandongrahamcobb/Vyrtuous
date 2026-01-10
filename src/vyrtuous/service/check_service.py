@@ -18,10 +18,10 @@
 from discord import app_commands
 from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.enhanced_members.administrator import Administrator
-from vyrtuous.enhanced_members.coordinator import Coordinator
-from vyrtuous.enhanced_members.developer import Developer
-from vyrtuous.enhanced_members.moderator import Moderator
+from vyrtuous.enhanced_member.administrator import Administrator
+from vyrtuous.enhanced_member.coordinator import Coordinator
+from vyrtuous.enhanced_member.developer import Developer
+from vyrtuous.enhanced_member.moderator import Moderator
 from vyrtuous.utils.permission import PERMISSION_TYPES
 from vyrtuous.utils.setup_logging import logger
 
@@ -213,7 +213,7 @@ def moderator_predicator():
     predicate._permission_level = 'Moderator'
     return commands.check(predicate)
 
-# async def permission_check(ctx_interaction_or_message) -> str:
+# async def role_check_without_specifics(ctx_interaction_or_message) -> str:
 #     checks = (
 #         ('System Owner', is_system_owner),
 #         ('Developer', is_developer),
@@ -230,7 +230,7 @@ def moderator_predicator():
 #             continue
 #     return 'Everyone'
 
-async def permission_check(ctx_interaction_or_message, omit=()) -> str:
+async def role_check_without_specifics(ctx_interaction_or_message, omit=()) -> str:
     checks = (
         ('System Owner', is_system_owner),
         ('Developer', is_developer),
@@ -287,7 +287,7 @@ async def member_is_moderator(channel_snowflake: int, guild_snowflake: int, memb
         raise NotModerator
     return True
 
-async def has_equal_or_higher_role(message_ctx_interaction, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, sender_snowflake: int) -> bool:
+async def has_equal_or_higher_role(ctx_interaction_or_message, channel_snowflake: int, guild_snowflake: int, member_snowflake: int, sender_snowflake: int) -> bool:
     bot = DiscordBot.get_instance() 
     async def get_highest_role(member_sf):
         try:
@@ -323,38 +323,38 @@ async def has_equal_or_higher_role(message_ctx_interaction, channel_snowflake: i
                 pass
         return PERMISSION_TYPES.index('Everyone')
     sender_rank = await get_highest_role(sender_snowflake)
-    if isinstance(message_ctx_interaction, (commands.Context, discord.Message)):
-        if message_ctx_interaction.author.id == member_snowflake:
+    if isinstance(ctx_interaction_or_message, (commands.Context, discord.Message)):
+        if ctx_interaction_or_message.author.id == member_snowflake:
             return PERMISSION_TYPES[sender_rank]
-    elif isinstance(message_ctx_interaction, discord.Interaction):
-        if message_ctx_interaction.user.id == member_snowflake:
+    elif isinstance(ctx_interaction_or_message, discord.Interaction):
+        if ctx_interaction_or_message.user.id == member_snowflake:
             return PERMISSION_TYPES[sender_rank]
     target_rank = await get_highest_role(member_snowflake)
     msg = f'You may not execute this command on this `{PERMISSION_TYPES[target_rank]}` because they have equal or higher role than you in this channel/server.'
     if sender_rank <= target_rank:
-        if isinstance(message_ctx_interaction, discord.Interaction):
+        if isinstance(ctx_interaction_or_message, discord.Interaction):
             raise app_commands.CheckFailure(msg)
         else:
             raise commands.CheckFailure(msg)
     return PERMISSION_TYPES[sender_rank]
 
-async def is_system_owner_developer_guild_owner_administrator_coordinator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
-    checks = (
-        ('System Owner', lambda: member_is_system_owner(member_snowflake=member_snowflake)),
-        ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
-        ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
-        ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
-        ('Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))
-    )
-    for role_name, check in checks:
-        try:
-            if await check():
-                return role_name
-        except (NotSystemOwner, NotGuildOwner, NotDeveloper, NotAdministrator, NotCoordinator):
-            continue
-    return 'Everyone'
+# async def is_system_owner_developer_guild_owner_administrator_coordinator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
+#     checks = (
+#         ('System Owner', lambda: member_is_system_owner(member_snowflake=member_snowflake)),
+#         ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+#         ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+#         ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
+#         ('Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))
+#     )
+#     for role_name, check in checks:
+#         try:
+#             if await check():
+#                 return role_name
+#         except (NotSystemOwner, NotGuildOwner, NotDeveloper, NotAdministrator, NotCoordinator):
+#             continue
+#     return 'Everyone'
 
-async def permission_check_specific(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
+async def role_check_with_specifics(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
     checks = (
         ('System Owner', lambda: member_is_system_owner(member_snowflake=member_snowflake)),
         ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
@@ -371,7 +371,7 @@ async def permission_check_specific(channel_snowflake: int, guild_snowflake: int
             continue
     return 'Everyone'
 
-def check_not_self(ctx_interaction_or_message, member_snowflake: int):
+def not_bot(ctx_interaction_or_message, member_snowflake: int):
     try:
         if member_snowflake == ctx_interaction_or_message.guild.me.id:
             raise commands.CheckFailure('You cannot execute actions on {ctx_interaction_or_message.guild.me.mention}.')

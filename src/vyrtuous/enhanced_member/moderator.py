@@ -17,8 +17,9 @@
 '''
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.enhanced_member.enhanced_member import EnhancedMember
 
-class Moderator:
+class Moderator(EnhancedMember):
 
     PLURAL = "Moderators"
     SINGULAR = "Moderator"

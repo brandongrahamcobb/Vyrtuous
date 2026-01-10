@@ -20,28 +20,28 @@ import discord
 
 class RoleService:
     
-    async def search(
+    async def resolve_role(
         self,
         ctx_interaction_or_message,
-        scope: Optional[Union[int, str, discord.Role]]
+        role_str: Optional[Union[int, str, discord.Role]]
     ) -> discord.Role:
         try:
-            if isinstance(scope, discord.Role):
-                logger.info(f'Direct role: {scope.id}')
-                return scope
-            if isinstance(scope, int):
-                role = ctx_interaction_or_message.guild.get_role(scope)
+            if isinstance(role_str, discord.Role):
+                logger.info(f'Direct role: {role_str.id}')
+                return role_str
+            if isinstance(role_str, int):
+                role = ctx_interaction_or_message.guild.get_role(role_str)
                 if role:
                     logger.info(f'Resolved role by int ID: {role.id}')
                     return role
-            if isinstance(scope, str):
-                if scope.isdigit():
-                    role = ctx_interaction_or_message.guild.get_role(int(scope))
+            if isinstance(role_str, str):
+                if role_str.isdigit():
+                    role = ctx_interaction_or_message.guild.get_role(int(role_str))
                     if role:
                         logger.info(f'Resolved role by str ID: {role.id}')
                         return role
-                if scope.startswith('<@&') and scope.endswith('>'):
-                    role_id = int(scope[3:-1])
+                if role_str.startswith('<@&') and role_str.endswith('>'):
+                    role_id = int(role_str[3:-1])
                     role = ctx_interaction_or_message.guild.get_role(role_id)
                     if role:
                         logger.info(f'Role mention resolved: {role.id}')
@@ -49,4 +49,4 @@ class RoleService:
         except Exception as e:
             logger.warning(f'Role resolution error: {str(e).capitalize()}')
             raise
-        raise ValueError('Role could not be resolved from scope `{scope}`.')
+        raise ValueError('Role could not be resolved from role_str `{role_str}`.')

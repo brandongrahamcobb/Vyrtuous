@@ -18,8 +18,9 @@
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import *
+from vyrtuous.enhanced_member.enhanced_member import EnhancedMember
 
-class Developer:
+class Developer(EnhancedMember):
 
     PLURAL = "Developers"
     SINGULAR = "Developer"

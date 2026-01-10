@@ -1,0 +1,4 @@
+
+
+class ModerationAction(object):
+    pass

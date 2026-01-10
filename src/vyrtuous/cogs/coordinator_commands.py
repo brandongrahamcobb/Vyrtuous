@@ -16,19 +16,23 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
 from datetime import datetime, timedelta, timezone
-from discord import app_commands
 from typing import Optional
+
+from discord import app_commands
+
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import *
+from vyrtuous.enhanced_member.moderator import Moderator
+from vyrtuous.moderation_action.voice_mute import VoiceMute
 from vyrtuous.service.channel_service import ChannelService
-from vyrtuous.service.check_service import *
+from vyrtuous.service.check_service import coordinator_predicator, \
+    has_equal_or_higher_role, \
+    not_bot
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.emojis import Emojis
-from vyrtuous.enhanced_members.moderator import Moderator
 from vyrtuous.service.state_service import State
-from vyrtuous.moderation_action.voice_mute import VoiceMute
+from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.properties.snowflake import *
+from vyrtuous.utils.setup_logging import logger
 
 class CoordinatorCommands(commands.Cog):
 
@@ -40,8 +44,14 @@ class CoordinatorCommands(commands.Cog):
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         
     # DONE
-    @app_commands.command(name='mod', description="Grant/revoke mods.")
-    @app_commands.describe(member='Tag a member or include their ID', channel='Tag a channel or include its ID')
+    @app_commands.command(
+        name='mod',
+        description='Grant/revoke mods.'
+    )
+    @app_commands.describe(
+        member='Tag a member or include their ID',
+        channel='Tag a channel or include its ID'
+    )
     @coordinator_predicator()
     async def create_moderator_app_command(
         self,
@@ -54,29 +64,60 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.search(interaction, channel)
+            channel_obj = await self.channel_service.resolve_channel(
+                ctx_interaction_or_message=interaction,
+                channel_str=channel
+            )
         except Exception as e:
             channel_obj = interaction.channel
-            await self.message_service.send_message(interaction, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+            await self.message_service.send_message(
+                interaction,
+                content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.'
+            )
         try:
-            member_obj = await self.member_service.search(interaction, member)
-            check_not_self(interaction, member_snowflake=member_obj.id)
-            highest_role = await has_equal_or_higher_role(interaction, channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
+            member_obj = await self.member_service.resolve_member(
+                ctx_interaction_or_message=interaction,
+                member_str=member
+            )
+            not_bot(
+                ctx_interaction_or_message=interaction,
+                member_snowflake=member_obj.id
+            )
+            highest_role = await has_equal_or_higher_role(
+                ctx_interaction_or_message=interaction,
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=interaction.guild.id,
+                member_snowflake=member_obj.id,
+                sender_snowflake=interaction.user.id
+            )
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'{str(e).capitalize()}'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+        moderator = await Moderator.fetch_by_channel_guild_and_member(
+            channel_snowflake=channel_obj.id,
+            guild_snowflake=interaction.guild.id,
+            member_snowflake=member_obj.id
+        )
         if moderator:
             await moderator.revoke()
             action = 'revoked'
         else:
-            moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            moderator = Moderator(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=interaction.guild.id,
+                member_snowflake=member_obj.id
+            )
             await moderator.grant()
             action = 'granted'
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Moderator access for {member_obj.mention} has been {action} in {channel_obj.mention}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} ' \
+                f'Moderator access for {member_obj.mention} has been ' \
+                f'{action} in {channel_obj.mention}.'
+            )
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
               
@@ -86,42 +127,79 @@ class CoordinatorCommands(commands.Cog):
     async def create_moderator_text_command(
         self,
         ctx: commands.Context,
-        member: MemberSnowflake = commands.parameter(default=None, description='Tag a member or include their ID'),
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
+        member: MemberSnowflake = commands.parameter(
+            default=None,
+            description='Tag a member or include their ID'
+        ),
+        channel: ChannelSnowflake = commands.parameter(
+            default=None,
+            description='Tag a channel or include its ID'
+        )
     ):
         state = State(ctx)
         action = None
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await self.channel_service.search(ctx, channel)
+            channel_obj = await self.channel_service.resolve_channel(
+                ctx_interaction_or_message=ctx,
+                channel_str=channel
+            )
         except Exception as e:
             channel_obj = ctx.channel
-            await self.message_service.send_message(ctx, content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.')
+            await self.message_service.send_message(
+                ctx_interaction_or_message=ctx,
+                content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.'
+            )
         try:
-            member_obj = await self.member_service.search(ctx, member)
-            check_not_self(ctx, member_snowflake=member_obj.id)
-            highest_role = await has_equal_or_higher_role(ctx, channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
+            member_obj = await self.member_service.resolve_member(
+                ctx_interaction_or_message=ctx,
+                member_str=member
+            )
+            not_bot(ctx, member_snowflake=member_obj.id)
+            highest_role = await has_equal_or_higher_role(
+                ctx_interaction_or_message=ctx,
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=member_obj.id,
+                sender_snowflake=ctx.author.id
+            )
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'{str(e).capitalize()}'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
-        moderator = await Moderator.fetch_by_channel_guild_and_member(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+        moderator = await Moderator.fetch_by_channel_guild_and_member(
+            channel_snowflake=channel_obj.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=member_obj.id
+        )
         if moderator:
             await moderator.revoke()
             action = 'revoked'
         else:
-            moderator = Moderator(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            moderator = Moderator(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=member_obj.id
+            )
             await moderator.grant()
             action = 'granted'
         try:
-            return await state.end(success=f'{self.emoji.get_random_emoji()} Moderator access for {member_obj.mention} has been {action} in {channel_obj.mention}.')
+            return await state.end(success=f'{self.emoji.get_random_emoji()} ' \
+                f'Moderator access for {member_obj.mention} has been ' \
+                f'{action} in {channel_obj.mention}.'
+            )
         except Exception as e:
             return await state.end(error=f'\u274C {str(e).capitalize()}')
         
     # DONE
-    @app_commands.command(name='rmute', description='Room mute (except yourself).')
+    @app_commands.command(
+        name='rmute',
+        description='Room mute (except yourself).'
+    )
     @app_commands.describe(channel='Tag a channel or include its ID')
     @coordinator_predicator()
     async def room_mute_app_command(
@@ -134,34 +212,60 @@ class CoordinatorCommands(commands.Cog):
         channel_obj = None
         muted_members, pages, skipped_members, failed_members = [], [], [], []
         try:
-            channel_obj = await self.channel_service.search(interaction, channel)
+            channel_obj = await self.channel_service.resolve_channel(
+                ctx_interaction_or_message=interaction,
+                channel_str=channel
+            )
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'{str(e).capitalize()}'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         for member in channel_obj.members:
             if member.id == interaction.user.id:
                 continue
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=interaction.guild.id,
+                member_snowflake=member.id,
+                target='user'
+            )
             if voice_mute:
                 skipped_members.append(member)
                 continue
-            if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
-                try:
-                    await member.edit(mute=True)
-                except Exception as e:
-                    logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {interaction.guild.name} ({interaction.guild.id}).')
-                    failed_members.append(member)    
-            expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=interaction.guild.id, member_snowflake=member.id, reason=reason, target='user')
+            if member.voice and member.voice.channel:
+                if member.voice.channel.id == channel_obj.id:
+                    try:
+                        await member.edit(mute=True)
+                    except Exception as e:
+                        logger.warning(f'Unable to voice-mute member ' \
+                            f'{member.display_name} ({member.id}) in channel ' \
+                            f'{channel_obj.name} ({channel_obj.id}) in guild ' \
+                            f'{interaction.guild.name} ({interaction.guild.id}).'
+                        )
+                        failed_members.append(member)    
+            expires_in = datetime.now(timezone.utc) \
+                + timedelta(hours=1)
+            voice_mute = VoiceMute(
+                channel_snowflake=channel_obj.id,
+                expires_in=expires_in,
+                guild_snowflake=interaction.guild.id,
+                member_snowflake=member.id,
+                reason=reason,
+                target='user'
+            )
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
             f'**Channel:** {channel_obj.mention}',
             f'**Muted:** {len(muted_members)} users',
             f'**Failed:** {len(failed_members)} users',
-            f'**Skipped:** {len(channel_obj.members) - len(muted_members) - len(failed_members)}'
+            f'**Skipped:** {len(channel_obj.members) \
+                - len(muted_members) \
+                - len(failed_members)
+            }'
         ]
         embed = discord.Embed(
             description='\n'.join(description_lines),
@@ -175,12 +279,16 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(success=pages)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                        f'Embed size is too large. Limit the scope.'
+                    )
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'No members found.'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
@@ -190,41 +298,73 @@ class CoordinatorCommands(commands.Cog):
     async def room_mute_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID'),
-        reason: str = commands.parameter(default='No reason provided.', description='Specify a reason.')
+        channel: ChannelSnowflake = commands.parameter(
+            default=None,
+            description='Tag a channel or include its ID'
+        ),
+        reason: str = commands.parameter(
+            default='No reason provided.',
+            description='Specify a reason.'
+        )
     ):
         state = State(ctx)
         channel_obj = None
         muted_members, pages, skipped_members, failed_members = [], [], [], []
         try:
-            channel_obj = await self.channel_service.search(ctx, channel)
+            channel_obj = await self.channel_service.resolve_channel(
+                ctx_interaction_or_message=ctx,
+                channel_str=channel
+            )
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'{str(e).capitalize()}'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         for member in channel_obj.members:
             if member.id == ctx.author.id:
                 continue
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=member.id,
+                target='user'
+            )
             if voice_mute:
                 skipped_members.append(member)
                 continue
-            if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
-                try:
-                    await member.edit(mute=True)
-                except Exception as e:
-                    logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {ctx.guild.name} ({ctx.guild.id}).')
-                    failed_members.append(member)
-            expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
-            voice_mute = VoiceMute(channel_snowflake=channel_obj.id, expires_in=expires_in, guild_snowflake=ctx.guild.id, member_snowflake=member.id, reason=reason, target='user')
+            if member.voice and member.voice.channel:
+                if member.voice.channel.id == channel_obj.id:
+                    try:
+                        await member.edit(mute=True)
+                    except Exception as e:
+                        logger.warning(f'Unable to voice-mute member ' \
+                            f'{member.display_name} ({member.id}) in channel ' \
+                            f'{channel_obj.name} ({channel_obj.id}) in guild ' \
+                            f'{ctx.guild.name} ({ctx.guild.id}).'
+                        )
+                        failed_members.append(member)
+            expires_in = datetime.now(timezone.utc) \
+                + timedelta(hours=1)
+            voice_mute = VoiceMute(
+                channel_snowflake=channel_obj.id,
+                expires_in=expires_in,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=member.id,
+                reason=reason,
+                target='user'
+            )
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
             f'**Channel:** {channel_obj.mention}',
             f'**Muted:** {len(muted_members)} users',
             f'**Failed:** {len(failed_members)} users',
-            f'**Skipped:** {len(channel_obj.members) - len(muted_members) - len(failed_members)}'
+            f'**Skipped:** {len(channel_obj.members) \
+                - len(muted_members) \
+                - len(failed_members)
+            }'
         ]
         embed = discord.Embed(
             description='\n'.join(description_lines),
@@ -238,12 +378,16 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(success=pages)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                        f'Embed size is too large. Limit the scope.'
+                    )
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'No members found.'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
 
@@ -261,30 +405,53 @@ class CoordinatorCommands(commands.Cog):
         chunk_size = 7
         failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
-            channel_obj = await self.channel_service.search(interaction, channel)
+            channel_obj = await self.channel_service.resolve_channel(
+                ctx_interaction_or_message=interaction,
+                channel_str=channel
+            )
         except Exception as e:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'{str(e).capitalize()}'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
         for member in channel_obj.members:
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, member_snowflake=member.id, target='user')
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=interaction.guild.id,
+                member_snowflake=member.id,
+                target='user'
+            )
             if not voice_mute:
                 skipped_members.append(member)
                 continue
-            if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
-                try:
-                    await member.edit(mute=False)
-                except Exception as e:
-                    logger.warning(f'Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {interaction.guild.name} ({interaction.guild.id}).')
-                    failed_members.append(member)
-            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id, target='user')         
+            if member.voice and member.voice.channel:
+                if member.voice.channel.id == channel_obj.id:
+                    try:
+                        await member.edit(mute=False)
+                    except Exception as e:
+                        logger.warning(f'Unable to undo voice-mute ' \
+                            f'for member {member.display_name} ({member.id}) ' \
+                            f'in channel {channel_obj.name} ({channel_obj.id}) ' \
+                            f'in guild {interaction.guild.name} ' \
+                            f'({interaction.guild.id}).'
+                        )
+                        failed_members.append(member)
+            await VoiceMute.delete_by_channel_guild_and_target(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=interaction.guild.id,
+                target='user'
+            )
             unmuted_members.append(member)
         description_lines = [
             f'**Channel:** {channel_obj.mention}',
             f'**Unmuted:** {len(unmuted_members)} users',
             f'**Failed:** {len(failed_members)} users',
-            f'**Skipped:** {len(channel_obj.members) - len(unmuted_members) - len(failed_members)}'
+            f'**Skipped:** {len(channel_obj.members) \
+                - len(unmuted_members) \
+                - len(failed_members)
+            }'
         ]
         embed = discord.Embed(
             description='\n'.join(description_lines),
@@ -298,12 +465,16 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(success=pages)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                        f'Embed size is too large. Limit the scope.'
+                    )
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'No members found.'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
     
@@ -313,33 +484,58 @@ class CoordinatorCommands(commands.Cog):
     async def room_unmute_text_command(
         self,
         ctx: commands.Context,
-        channel: ChannelSnowflake = commands.parameter(default=None, description='Tag a channel or include its ID')
+        channel: ChannelSnowflake = commands.parameter(
+            default=None,
+            description='Tag a channel or include its ID'
+        )
     ):
         state = State(ctx)
         channel_obj = None
         failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
-            channel_obj = await self.channel_service.search(ctx, channel)
+            channel_obj = await self.channel_service.resolve_channel(
+                ctx_interaction_or_message=ctx,
+                channel_str=channel
+            )
         except Exception as e:
-            return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
+            return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                f'{str(e).capitalize()}'
+            )
         for member in channel_obj.members:
-            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, member_snowflake=member.id, target='user')
+            voice_mute = await VoiceMute.fetch_by_channel_guild_member_and_target(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=member.id,
+                target='user'
+            )
             if not voice_mute:
                 skipped_members.append(member)
                 continue
-            if member.voice and member.voice.channel and member.voice.channel.id == channel_obj.id:
-                try:
-                    await member.edit(mute=False)
-                except Exception as e:
-                    logger.warning(f'Unable to voice-mute member {member.display_name} ({member.id}) in channel {channel_obj.name} ({channel_obj.id}) in guild {ctx.guild.name} ({ctx.guild.id}).')
-                    failed_members.append(member)
-            await VoiceMute.delete_by_channel_guild_and_target(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, target='user')         
+            if member.voice and member.voice.channel:
+                if member.voice.channel.id == channel_obj.id:
+                    try:
+                        await member.edit(mute=False)
+                    except Exception as e:
+                        logger.warning(f'Unable to voice-mute member ' \
+                            f'{member.display_name} ({member.id}) in channel ' \
+                            f'{channel_obj.name} ({channel_obj.id}) in guild ' \
+                            f'{ctx.guild.name} ({ctx.guild.id}).'
+                        )
+                        failed_members.append(member)
+            await VoiceMute.delete_by_channel_guild_and_target(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=ctx.guild.id,
+                target='user'
+            )
             unmuted_members.append(member)
         description_lines = [
             f'**Channel:** {channel_obj.mention}',
             f'**Unmuted:** {len(unmuted_members)} users',
             f'**Failed:** {len(failed_members)} users',
-            f'**Skipped:** {len(channel_obj.members) - len(unmuted_members) - len(failed_members)}'
+            f'**Skipped:** {len(channel_obj.members) \
+                - len(unmuted_members) \
+                - len(failed_members)
+            }'
         ]
         embed = discord.Embed(
             description='\n'.join(description_lines),
@@ -353,12 +549,16 @@ class CoordinatorCommands(commands.Cog):
                 return await state.end(success=pages)
             except Exception as e:
                 try:
-                    return await state.end(warning=f'\U000026A0\U0000FE0F Embed size is too large. Limit the scope.')
+                    return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                        f'Embed size is too large. Limit the scope.'
+                    )
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
         else:
             try:
-                return await state.end(warning=f'\U000026A0\U0000FE0F No members found.')
+                return await state.end(warning=f'\U000026A0\U0000FE0F ' \
+                    f'No members found.'
+                )
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}')
     

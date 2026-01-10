@@ -23,7 +23,7 @@ from vyrtuous.service.check_service import *
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.role_service import RoleService
-from vyrtuous.enhanced_members.administrator import Administrator, AdministratorRole
+from vyrtuous.enhanced_member.administrator import Administrator, AdministratorRole
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.properties.snowflake import *
 from vyrtuous.service.state_service import State
@@ -54,7 +54,7 @@ class GuildOwnerCommands(commands.Cog):
         role_obj = None
         role_snowflakes = []
         try:
-            role_obj = await self.role_service.search(interaction, role)
+            role_obj = await self.role_service.resolve_role(interaction, role)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -137,7 +137,7 @@ class GuildOwnerCommands(commands.Cog):
         role_obj = None
         role_snowflakes = []
         try:
-            role_obj = await self.role_service.search(ctx, role)
+            role_obj = await self.role_service.resolve_role(ctx, role)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -218,8 +218,8 @@ class GuildOwnerCommands(commands.Cog):
         enabled = None
         member_obj = None
         try:
-            member_obj = await self.member_service.search(interaction, member)
-            check_not_self(interaction, member_snowflake=member_obj.id)
+            member_obj = await self.member_service.resolve_member(interaction, member)
+            not_bot(interaction, member_snowflake=member_obj.id)
             await has_equal_or_higher_role(interaction, channel_snowflake=interaction.channel.id, guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id, sender_snowflake=interaction.user.id)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -251,8 +251,8 @@ class GuildOwnerCommands(commands.Cog):
         enabled = None
         member_obj = None
         try:
-            member_obj = await self.member_service.search(ctx, member)
-            check_not_self(ctx, member_snowflake=member_obj.id)
+            member_obj = await self.member_service.resolve_member(ctx, member)
+            not_bot(ctx, member_snowflake=member_obj.id)
             await has_equal_or_higher_role(ctx, channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id, sender_snowflake=ctx.author.id)
         except Exception as e:
             try:

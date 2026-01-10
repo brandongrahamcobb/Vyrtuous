@@ -22,20 +22,25 @@ from discord import app_commands
 
 from vyrtuous.inc.helpers import *
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.enhanced_members.administrator import AdministratorRole
-from vyrtuous.enhanced_members.coordinator import Coordinator
-from vyrtuous.enhanced_members.moderator import Moderator
+from vyrtuous.enhanced_member.administrator import AdministratorRole
+from vyrtuous.enhanced_member.coordinator import Coordinator
+from vyrtuous.enhanced_member.moderator import Moderator
 from vyrtuous.moderation_action.ban import Ban
 from vyrtuous.moderation_action.flag import Flag
 from vyrtuous.moderation_action.server_mute import ServerMute
 from vyrtuous.moderation_action.text_mute import TextMute
 from vyrtuous.moderation_action.vegan import Vegan
 from vyrtuous.moderation_action.voice_mute import VoiceMute
-from vyrtuous.rooms.stage import Stage
-from vyrtuous.rooms.temporary_room import TemporaryRoom
-from vyrtuous.rooms.video_room import VideoRoom
+from vyrtuous.room.stage import Stage
+from vyrtuous.room.temporary_room import TemporaryRoom
+from vyrtuous.room.video_room import VideoRoom
 from vyrtuous.service.channel_service import ChannelService
-from vyrtuous.service.check_service import *
+from vyrtuous.service.check_service import administrator_predicator, \
+    at_home, \
+    has_equal_or_higher_role, \
+    not_bot, \
+    role_check_with_specifics, \
+    role_check_without_specifics
 from vyrtuous.service.member_service import MemberService
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.role_service import RoleService
@@ -43,9 +48,12 @@ from vyrtuous.service.state_service import State
 from vyrtuous.utils.alias import Alias
 from vyrtuous.utils.cancel_confirm import VerifyView
 from vyrtuous.utils.cap import Cap
-from vyrtuous.utils.properties.duration import AppDuration, Duration, DurationObject
+from vyrtuous.utils.properties.duration import AppDuration, \
+    Duration, \
+    DurationObject
 from vyrtuous.utils.emojis import Emojis
-from vyrtuous.utils.properties.moderation_type import AppModerationType, ModerationType
+from vyrtuous.utils.properties.moderation_type import AppModerationType, \
+    ModerationType
 from vyrtuous.utils.emojis import Emojis
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.permission import TARGET_PERMISSIONS
@@ -84,7 +92,7 @@ class AdminCommands(commands.Cog):
         channel_obj, role_obj = None, None
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, channel)
+                await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -92,7 +100,7 @@ class AdminCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}') 
         try:
-            role_obj = await self.role_service.search(interaction, role)
+            role_obj = await self.role_service.resolve_role(interaction, role)
             role_snowflake = role_obj.id
         except Exception as e:
             role_snowflake = None
@@ -146,7 +154,7 @@ class AdminCommands(commands.Cog):
         channel_obj, role_obj = None, None
         try:
             channel_obj = \
-                await self.channel_service.search(ctx, channel)
+                await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -155,7 +163,7 @@ class AdminCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f'\u274C {str(e).capitalize()}') 
         try:
-            role_obj = await self.role_service.search(ctx, role)
+            role_obj = await self.role_service.resolve_role(ctx, role)
             role_snowflake = role_obj.id
         except Exception as e:
             role_snowflake = None
@@ -191,7 +199,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_guilds, skipped_roles = {}, set(), {}
         title = f'{self.emoji.get_random_emoji()} Administrator Roles'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -376,7 +384,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_guilds, skipped_roles = {}, set(), {}
         title = f'{self.emoji.get_random_emoji()} Administrator Roles'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -558,7 +566,7 @@ class AdminCommands(commands.Cog):
         seconds = int(hours) * 3600
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, channel)
+                await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -626,7 +634,7 @@ class AdminCommands(commands.Cog):
         seconds = int(hours) * 3600
         try:
             channel_obj = \
-                await self.channel_service.search(ctx, channel)
+                await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -693,10 +701,10 @@ class AdminCommands(commands.Cog):
         channel_obj, member_obj = None, None
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, channel)
+                await self.channel_service.resolve_channel(interaction, channel)
             member_obj = \
-                await self.member_service.search(interaction, member)
-            check_not_self(interaction, member_snowflake=member_obj.id)
+                await self.member_service.resolve_member(interaction, member)
+            not_bot(interaction, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -740,10 +748,10 @@ class AdminCommands(commands.Cog):
         channel_obj, member_obj = None, None
         try:
             channel_obj = \
-                await self.channel_service.search(ctx, channel)
+                await self.channel_service.resolve_channel(ctx, channel)
             member_obj = \
-                await self.member_service.search(ctx, member)
-            check_not_self(ctx, member_snowflake=member_obj.id)
+                await self.member_service.resolve_member(ctx, member)
+            not_bot(ctx, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -792,10 +800,10 @@ class AdminCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')  
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, scope)
+                await self.channel_service.resolve_channel(interaction, scope)
         except Exception as e:
             try:
-                member_obj = await self.member_service.search(interaction, scope)
+                member_obj = await self.member_service.resolve_member(interaction, scope)
                 highest_role = await has_equal_or_higher_role(
                     interaction, channel_snowflake=interaction.channel.id,
                     guild_snowflake=interaction.guild.id,
@@ -807,7 +815,7 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if channel_obj:
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner'):
                 try:
@@ -1151,10 +1159,10 @@ class AdminCommands(commands.Cog):
                 return await state.end(error=f'\u274C {str(e).capitalize()}')   
         try:
             channel_obj = \
-                await self.channel_service.search(ctx, scope)
+                await self.channel_service.resolve_channel(ctx, scope)
         except Exception as e:
             try:
-                member_obj = await self.member_service.search(ctx, scope)
+                member_obj = await self.member_service.resolve_member(ctx, scope)
                 highest_role = await has_equal_or_higher_role(
                     ctx,
                     channel_snowflake=ctx.channel.id,
@@ -1167,7 +1175,7 @@ class AdminCommands(commands.Cog):
                     return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
                 except Exception as e:
                     return await state.end(error=f'\u274C {str(e).capitalize()}')  
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if channel_obj:
             if highest_role not in ('System Owner', 'Developer', 'Guild Owner'):
                 try:
@@ -1505,7 +1513,7 @@ class AdminCommands(commands.Cog):
         channel_obj, member_obj = None, None
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, channel)
+                await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
             channel_obj = interaction.channel
             await self.message_service.send_message(
@@ -1513,10 +1521,10 @@ class AdminCommands(commands.Cog):
                 content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.'
             )
         try:
-            member_obj = await self.member_service.search(interaction, member)
-            check_not_self(interaction, member_snowflake=member_obj.id)
+            member_obj = await self.member_service.resolve_member(interaction, member)
+            not_bot(interaction, member_snowflake=member_obj.id)
             highest_role = await has_equal_or_higher_role(
-                message_ctx_interaction=interaction,
+                ctx_interaction_or_message=interaction,
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=interaction.guild.id,
                 member_snowflake=member_obj.id,
@@ -1575,7 +1583,7 @@ class AdminCommands(commands.Cog):
         channel_obj, member_obj = None, None
         try:
             channel_obj = \
-                await self.channel_service.search(ctx, channel)
+                await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
             await self.message_service.send_message(
@@ -1583,10 +1591,10 @@ class AdminCommands(commands.Cog):
                 content=f'\U000026A0\U0000FE0F Defaulting to {channel_obj.mention}.'
             )
         try:
-            member_obj = await self.member_service.search(ctx, member)
-            check_not_self(ctx, member_snowflake=member_obj.id)
+            member_obj = await self.member_service.resolve_member(ctx, member)
+            not_bot(ctx, member_snowflake=member_obj.id)
             highest_role = await has_equal_or_higher_role(
-                message_ctx_interaction=ctx,
+                ctx_interaction_or_message=ctx,
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=ctx.guild.id,
                 member_snowflake=member_obj.id,
@@ -1646,7 +1654,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_channels, skipped_guilds = {}, set()
         title = f'{self.emoji.get_random_emoji()} Permissions'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -1658,7 +1666,7 @@ class AdminCommands(commands.Cog):
         elif scope:
             try:
                 channel_obj = \
-                    await self.channel_service.search(ctx, scope)
+                    await self.channel_service.resolve_channel(ctx, scope)
                 channels = [channel_obj] 
             except Exception as e:
                 if highest_role not in (
@@ -1857,9 +1865,9 @@ class AdminCommands(commands.Cog):
         failed, moved = [], []
         try:
             source_channel_obj = \
-                await self.channel_service.search(interaction, source_channel)
+                await self.channel_service.resolve_channel(interaction, source_channel)
             target_channel_obj = \
-                await self.channel_service.search(interaction, target_channel)
+                await self.channel_service.resolve_channel(interaction, target_channel)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
         for member in source_channel_obj.members:
@@ -1926,9 +1934,9 @@ class AdminCommands(commands.Cog):
         failed, moved = [], []
         try:
             source_channel_obj = \
-                await self.channel_service.search(ctx, source_channel)
+                await self.channel_service.resolve_channel(ctx, source_channel)
             target_channel_obj = \
-                await self.channel_service.search(ctx, target_channel)
+                await self.channel_service.resolve_channel(ctx, target_channel)
         except Exception as e:
             return await state.end(warning=f'\U000026A0\U0000FE0F ' \
                 f'{str(e).capitalize()}'
@@ -1997,8 +2005,8 @@ class AdminCommands(commands.Cog):
         state = State(interaction)
         member_obj = None
         try:
-            member_obj = await self.member_service.search(interaction, member)
-            check_not_self(interaction, member_snowflake=member_obj.id)
+            member_obj = await self.member_service.resolve_member(interaction, member)
+            not_bot(interaction, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -2057,8 +2065,8 @@ class AdminCommands(commands.Cog):
         member_obj = None
         try:
             member_obj = \
-                await self.member_service.search(ctx, member)
-            check_not_self(ctx, member_snowflake=member_obj.id)
+                await self.member_service.resolve_member(ctx, member)
+            not_bot(ctx, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -2124,7 +2132,7 @@ class AdminCommands(commands.Cog):
             is_modification = True
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, channel)
+                await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
             channel_obj = interaction.channel
         stage = await Stage.fetch_by_channel_and_guild(
@@ -2209,7 +2217,7 @@ class AdminCommands(commands.Cog):
             )
             await stage.create()
             for member in channel_obj.members:
-                if await permission_check_specific(
+                if await role_check_with_specifics(
                     channel_snowflake=channel_obj.id,
                     guild_snowflake=interaction.guild.id,
                     member_snowflake=member.id
@@ -2292,7 +2300,7 @@ class AdminCommands(commands.Cog):
             is_modification = True
         try:
             channel_obj = \
-                await self.channel_service.search(ctx, channel)
+                await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
         stage = await Stage.fetch_by_channel_and_guild(
@@ -2378,7 +2386,7 @@ class AdminCommands(commands.Cog):
             )
             await stage.create()
             for member in channel_obj.members:
-                if await permission_check_specific(
+                if await role_check_with_specifics(
                     channel_snowflake=channel_obj.id,
                     guild_snowflake=ctx.guild.id,
                     member_snowflake=member.id
@@ -2457,7 +2465,7 @@ class AdminCommands(commands.Cog):
         channel_obj, member_obj = None, None
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, channel)
+                await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -2483,7 +2491,7 @@ class AdminCommands(commands.Cog):
         else:
             try:
                 member_obj = \
-                    await self.member_service.search(interaction, owner)
+                    await self.member_service.resolve_member(interaction, owner)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -2535,7 +2543,7 @@ class AdminCommands(commands.Cog):
         action = None
         channel_obj, member_obj = None, None
         try:
-            channel_obj = await self.channel_service.search(ctx, channel)
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -2562,7 +2570,7 @@ class AdminCommands(commands.Cog):
             action = 'removed' 
         else:
             try:
-                member_obj = await self.member_service.search(ctx, owner)
+                member_obj = await self.member_service.resolve_member(ctx, owner)
             except Exception as e:
                 try:
                     return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -2609,7 +2617,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_channels, skipped_guilds = {}, {}, set()
         title = f'{self.emoji.get_random_emoji()} Temporary Rooms'
         
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2624,7 +2632,7 @@ class AdminCommands(commands.Cog):
         elif scope:
             try:
                 channel_obj = \
-                    await self.channel_service.search(interaction, scope) 
+                    await self.channel_service.resolve_channel(interaction, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(
                     channel_snowflake=channel_obj.id,
                     guild_snowflake=interaction.guild.id)
@@ -2854,7 +2862,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_channels, skipped_guilds = {}, {}, set()
         title = f'{self.emoji.get_random_emoji()} Temporary Rooms'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -2869,7 +2877,7 @@ class AdminCommands(commands.Cog):
         elif scope:
             try:
                 channel_obj = \
-                    await self.channel_service.search(ctx, scope)
+                    await self.channel_service.resolve_channel(ctx, scope)
                 aliases = await Alias.fetch_by_channel_and_guild(
                     channel_snowflake=channel_obj.id,
                     guild_snowflake=ctx.guild.id
@@ -3097,7 +3105,7 @@ class AdminCommands(commands.Cog):
         enabled = True
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, channel) 
+                await self.channel_service.resolve_channel(interaction, channel) 
         except Exception as e:
             channel_obj = interaction.channel
         if scope is None and entry_type is None:
@@ -3139,7 +3147,7 @@ class AdminCommands(commands.Cog):
                             for snowflake in snowflakes:
                                 try:
                                     channel = \
-                                        await self.channel_service.search(interaction, snowflake)
+                                        await self.channel_service.resolve_channel(interaction, snowflake)
                                     channel_mentions.append(channel.mention)
                                 except Exception as e:
                                     failed_snowflakes.append(snowflake)
@@ -3148,7 +3156,7 @@ class AdminCommands(commands.Cog):
                             for snowflake in snowflakes:
                                 try:
                                     member = \
-                                        await self.member_service.search(interaction, snowflake)
+                                        await self.member_service.resolve_member(interaction, snowflake)
                                     member_mentions.append(member.mention)
                                 except Exception as e:
                                     failed_snowflakes.append(snowflake)
@@ -3180,7 +3188,7 @@ class AdminCommands(commands.Cog):
                             for snowflake in snowflakes:
                                 try:
                                     channel = \
-                                        await self.channel_service.search(interaction, snowflake)
+                                        await self.channel_service.resolve_channel(interaction, snowflake)
                                     channel_mentions.append(channel.mention)
                                 except Exception as e:
                                     failed_snowflakes.append(snowflake)
@@ -3189,7 +3197,7 @@ class AdminCommands(commands.Cog):
                             for snowflake in snowflakes:
                                 try:
                                     member = \
-                                        await self.member_service.search(interaction, snowflake)
+                                        await self.member_service.resolve_member(interaction, snowflake)
                                     member_mentions.append(member.mention)
                                 except Exception as e:
                                     failed_snowflakes.append(snowflake)
@@ -3267,7 +3275,7 @@ class AdminCommands(commands.Cog):
         channel_mentions, failed_snowflakes, member_mentions = [], [], []
         enabled = True
         try:
-            channel_obj = await self.channel_service.search(ctx, channel) 
+            channel_obj = await self.channel_service.resolve_channel(ctx, channel) 
         except Exception as e:
             channel_obj = ctx.channel
         if scope is None and entry_type is None:
@@ -3308,7 +3316,7 @@ class AdminCommands(commands.Cog):
                             for snowflake in snowflakes:
                                 try:
                                     channel = \
-                                        await self.channel_service.search(ctx, snowflake)
+                                        await self.channel_service.resolve_channel(ctx, snowflake)
                                     channel_mentions.append(channel.mention)
                                 except Exception as e:
                                     failed_snowflakes.append(snowflake)
@@ -3317,7 +3325,7 @@ class AdminCommands(commands.Cog):
                             for snowflake in snowflakes:
                                 try:
                                     member = \
-                                        await self.member_service.search(ctx, snowflake)
+                                        await self.member_service.resolve_member(ctx, snowflake)
                                     member_mentions.append(member.mention)
                                 except Exception as e:
                                     failed_snowflakes.append(snowflake)
@@ -3349,7 +3357,7 @@ class AdminCommands(commands.Cog):
                             for snowflake in snowflakes:
                                 try:
                                     channel = \
-                                        await self.channel_service.search(ctx, snowflake)
+                                        await self.channel_service.resolve_channel(ctx, snowflake)
                                     channel_mentions.append(channel.mention)
                                 except Exception as e:
                                     failed_snowflakes.append(snowflake)
@@ -3358,7 +3366,7 @@ class AdminCommands(commands.Cog):
                             for snowflake in snowflakes:
                                 try:
                                     member = \
-                                        await self.member_service.search(ctx, snowflake)
+                                        await self.member_service.resolve_member(ctx, snowflake)
                                     member_mentions.append(member.mention)
                                 except Exception as e:
                                     failed_snowflakes.append(snowflake)
@@ -3429,7 +3437,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_channels, skipped_guilds, skipped_snowflakes = {}, {}, set(), []
         title = f'{self.emoji.get_random_emoji()} Logging Routes'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -3442,7 +3450,7 @@ class AdminCommands(commands.Cog):
             history = await History.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(interaction, scope) 
+                channel_obj = await self.channel_service.resolve_channel(interaction, scope) 
                 history = await History.fetch_by_channel_and_guild(
                     channel_snowflake=channel_obj.id,
                     guild_snowflake=interaction.guild.id
@@ -3700,7 +3708,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_channels, skipped_guilds, skipped_snowflakes = {}, {}, set(), []
         title = f'{self.emoji.get_random_emoji()} Logging Routes'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -3713,7 +3721,7 @@ class AdminCommands(commands.Cog):
             history = await History.fetch_all()
         elif scope:
             try:
-                channel_obj = await self.channel_service.search(ctx, scope) 
+                channel_obj = await self.channel_service.resolve_channel(ctx, scope) 
                 history = await History.fetch_by_channel_and_guild(
                     channel_snowflake=channel_obj.id,
                     guild_snowflake=ctx.guild.id
@@ -3963,7 +3971,7 @@ class AdminCommands(commands.Cog):
         channel_obj = None
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, channel)
+                await self.channel_service.resolve_channel(interaction, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -4015,7 +4023,7 @@ class AdminCommands(commands.Cog):
         channel_obj = None
         try:
             channel_obj = \
-                await self.channel_service.search(ctx, channel)
+                await self.channel_service.resolve_channel(ctx, channel)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
@@ -4075,7 +4083,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_channels, skipped_guilds = {}, {}, set()
         title = f'{self.emoji.get_random_emoji()} Video Rooms'
 
-        highest_role = await permission_check(interaction)
+        highest_role = await role_check_without_specifics(interaction)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -4089,7 +4097,7 @@ class AdminCommands(commands.Cog):
         elif scope:
             try:
                 channel_obj = \
-                    await self.channel_service.search(interaction, scope) 
+                    await self.channel_service.resolve_channel(interaction, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(
                     channel_snowflake=channel_obj.id,
                     guild_snowflake=interaction.guild.id
@@ -4315,7 +4323,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary, skipped_channels, skipped_guilds = {}, {}, set()
         title = f'{self.emoji.get_random_emoji()} Video Rooms'
 
-        highest_role = await permission_check(ctx)
+        highest_role = await role_check_without_specifics(ctx)
         if scope and scope.lower() == 'all':
             if highest_role not in ('System Owner', 'Developer'):
                 try:
@@ -4329,7 +4337,7 @@ class AdminCommands(commands.Cog):
         elif scope:
             try:
                 channel_obj = \
-                    await self.channel_service.search(ctx, scope) 
+                    await self.channel_service.resolve_channel(ctx, scope) 
                 aliases = await Alias.fetch_by_channel_and_guild(
                     channel_snowflake=channel_obj.id,
                     guild_snowflake=ctx.guild.id
@@ -4561,7 +4569,7 @@ class AdminCommands(commands.Cog):
         )
         try:
             channel_obj = \
-                await self.channel_service.search(interaction, alias.channel_snowflake)
+                await self.channel_service.resolve_channel(interaction, alias.channel_snowflake)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F {str(e).capitalize()}')
@@ -4610,7 +4618,7 @@ class AdminCommands(commands.Cog):
         )
         try:
             channel_obj = \
-                await self.channel_service.search(ctx, alias.channel_snowflake)
+                await self.channel_service.resolve_channel(ctx, alias.channel_snowflake)
         except Exception as e:
             try:
                 return await state.end(warning=f'\U000026A0\U0000FE0F ' \
