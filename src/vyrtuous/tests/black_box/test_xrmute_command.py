@@ -17,8 +17,8 @@
 # '''
 # from typing import Optional
 # from vyrtuous.tests.black_box.test_suite import *
-# from vyrtuous.enhanced_member.coordinator import Coordinator
-# from vyrtuous.utils.emojis import Emojis
+# from vyrtuous.database.roles.coordinator import Coordinator
+# from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
 # import pytest
 
 # @pytest.mark.asyncio
@@ -34,7 +34,7 @@
 #     coordinator = Coordinator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
 #     await coordinator.grant()
 #     try:
-#         voice_channel_one.messages.clear() 
+#         voice_channel_one.messages.clear()
 #         formatted = f"{command} {voice_channel_one.id}"
 #         captured = await prepared_command_handling(author=privileged_author, bot=bot, channel=voice_channel_one, cog="CoordinatorCommands", content=formatted, guild=guild, isinstance_patch="vyrtuous.cogs.coordinator_commands.isinstance", prefix=prefix)
 #         message = captured['message']
@@ -51,6 +51,6 @@
 #             print(f"{YELLOW}Warning:{RESET} {content}")
 #         if message_type == "success":
 #             # print(f"{GREEN}Success:{RESET} {content}")
-#             assert any(emoji in content for emoji in Emojis.EMOJIS)
+#             assert any(emoji in content for emoji in EMOJIS)
 #     finally:
 #         await coordinator.revoke()

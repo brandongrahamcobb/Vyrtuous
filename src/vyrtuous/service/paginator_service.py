@@ -1,33 +1,33 @@
+"""paginator.py  The purpose of this program is to handle multiple page embeds in Discord.
 
-''' paginator.py  The purpose of this program is to handle multiple page embeds in Discord.
+Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
-    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-'''
 from discord.ui import Button, View
 import asyncio
 import discord
 
+
 class Paginator:
 
-    NAV_EMOJIS = {
-        "\u2b05\ufe0f": -1,
-        "\u27a1\ufe0f": 1
-    }
+    NAV_EMOJIS = {"\u2b05\ufe0f": -1, "\u27a1\ufe0f": 1}
 
-    def __init__(self, bot, channel_ctx_interaction_or_message, pages, state=None, *, timeout=60):
+    def __init__(
+        self, bot, channel_ctx_interaction_or_message, pages, state=None, *, timeout=60
+    ):
         self.bot = bot
         self.channel_ctx_interaction_or_message = channel_ctx_interaction_or_message
         self.pages = pages
@@ -41,12 +41,20 @@ class Paginator:
         embed = self.get_current_embed()
         if isinstance(self.channel_ctx_interaction_or_message, discord.Interaction):
             if not self.channel_ctx_interaction_or_message.response.is_done():
-                await self.channel_ctx_interaction_or_message.response.send_message(embed=embed)
-            self.message = await self.channel_ctx_interaction_or_message.original_response()
+                await self.channel_ctx_interaction_or_message.response.send_message(
+                    embed=embed
+                )
+            self.message = (
+                await self.channel_ctx_interaction_or_message.original_response()
+            )
         elif isinstance(self.channel_ctx_interaction_or_message, discord.Message):
-            self.message = await self.channel_ctx_interaction_or_message.reply(embed=embed)
+            self.message = await self.channel_ctx_interaction_or_message.reply(
+                embed=embed
+            )
         else:
-            self.message = await self.channel_ctx_interaction_or_message.send(embed=embed)
+            self.message = await self.channel_ctx_interaction_or_message.send(
+                embed=embed
+            )
         for emoji in self.NAV_EMOJIS:
             await self.message.add_reaction(emoji)
         self.bot.loop.create_task(self.wait_for_reactions())
@@ -55,10 +63,12 @@ class Paginator:
     def get_current_embed(self):
         embed = self.pages[self.current_page].copy()
         total_pages = len(self.pages)
-        label = 'page'
-        embed.set_footer(text=f'{label} {self.current_page + 1}/{total_pages} • {self.channel_ctx_interaction_or_message.guild.name}')
+        label = "page"
+        embed.set_footer(
+            text=f"{label} {self.current_page + 1}/{total_pages} • {self.channel_ctx_interaction_or_message.guild.name}"
+        )
         return embed
-    
+
     async def wait_for_reactions(self):
         def check(reaction, user):
             return (
@@ -66,6 +76,7 @@ class Paginator:
                 and str(reaction.emoji) in self.NAV_EMOJIS
                 and not user.bot
             )
+
         while True:
             try:
                 reaction, user = await self.bot.wait_for(
@@ -87,5 +98,7 @@ class Paginator:
         async with self._reaction_lock:
             action = self.NAV_EMOJIS[str(reaction.emoji)]
             if isinstance(action, int):
-                self.current_page = max(0, min(self.current_page + action, len(self.pages) - 1))
+                self.current_page = max(
+                    0, min(self.current_page + action, len(self.pages) - 1)
+                )
                 await self.message.edit(embed=self.get_current_embed())

@@ -1,3 +1,0 @@
-
-class EnhancedMember:
-    pass

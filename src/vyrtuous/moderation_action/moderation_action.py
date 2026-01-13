@@ -1,4 +1,0 @@
-
-
-class ModerationAction(object):
-    pass

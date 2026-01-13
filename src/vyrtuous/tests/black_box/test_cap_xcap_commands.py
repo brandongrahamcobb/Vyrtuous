@@ -17,8 +17,8 @@
 # from typing import Optional
 # from vyrtuous.inc.helpers import *
 # from vyrtuous.tests.black_box.test_suite import *
-# from vyrtuous.enhanced_member.administrator import Administrator
-# from vyrtuous.utils.emojis import Emojis
+# from vyrtuous.database.roles.administrator import Administrator
+# from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
 # import pytest
 
 # def generate_cap_test_cases():
@@ -47,7 +47,7 @@
 #                 moderation_type = "untext_mute"
 #             case "unvmute":
 #                 moderation_type = "unvoice_mute"
-#         voice_channel_one.messages.clear() 
+#         voice_channel_one.messages.clear()
 #         formatted = command.format(
 #             voice_channel_one_id=voice_channel_one.id
 #         )
@@ -65,8 +65,8 @@
 #         if message_type == "warning":
 #             print(f"{YELLOW}Warning:{RESET} {content}")
 #         if message_type == "success":
-#             assert any(emoji in content for emoji in Emojis.EMOJIS)
-#             assert moderation_type in content 
+#             assert any(emoji in content for emoji in EMOJIS)
+#             assert moderation_type in content
 #             if channel_ref:
 #                 assert channel_value in content
 #     finally:

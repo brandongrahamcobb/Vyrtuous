@@ -1,108 +1,110 @@
-''' emojis.py A utility class for managing emojis used by the Vyrtuous bot.
-    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+"""emojis.py A utility class for managing emojis used by the Vyrtuous bot.
+Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-'''
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import random
+
 
 class Emojis:
 
     EMOJIS = [
-        '\U0001F436',
-        '\U0001F431',
-        '\U0001F42D',
-        '\U0001F439',
-        '\U0001F430',
-        '\U0001F98A',
-        '\U0001F43B',
-        '\U0001F43C',
-        '\U0001F428',
-        '\U0001F42F',
-        '\U0001F981',
-        '\U0001F42E',
-        '\U0001F437',
-        '\U0001F43D',
-        '\U0001F438',
-        '\U0001F435',
-        '\U0001F412',
-        '\U0001F98D',
-        '\U0001F9A7',
-        '\U0001F414',
-        '\U0001F427',
-        '\U0001F426',
-        '\U0001F424',
-        '\U0001F423',
-        '\U0001F425',
-        '\U0001F986',
-        '\U0001F9A2',
-        '\U0001F989',
-        '\U0001F99A',
-        '\U0001F99C',
-        '\U0001F43A',
-        '\U0001F99D',
-        '\U0001F9A8',
-        '\U0001F9A1',
-        '\U0001F417',
-        '\U0001F434',
-        '\U0001F984',
-        '\U0001F41D',
-        '\U0001F41B',
-        '\U0001F98B',
-        '\U0001F40C',
-        '\U0001F41E',
-        '\U0001F40C',
-        '\U0001FAB2',
-        '\U0001F997',
-        '\U0001F577',
-        '\U0001F982',
-        '\U0001F422',
-        '\U0001F40D',
-        '\U0001F98E',
-        '\U0001F996',
-        '\U0001F995',
-        '\U0001F419',
-        '\U0001F991',
-        '\U0001F990',
-        '\U0001F99E',
-        '\U0001F980',
-        '\U0001F421',
-        '\U0001F420',
-        '\U0001F41F',
-        '\U0001F42C',
-        '\U0001F988',
-        '\U0001F433',
-        '\U0001F40B',
-        '\U0001F9AD',
-        '\U0001F40A',
-        '\U0001F406',
-        '\U0001F405',
-        '\U0001F403',
-        '\U0001F402',
-        '\U0001F42B',
-        '\U0001F42A',
-        '\U0001F999',
-        '\U0001F992',
-        '\U0001F98F',
-        '\U0001F99B',
-        '\U0001F418',
-        '\U0001F998',
-        '\U0001F9A5',
-        '\U0001F9A6',
-        '\U0001F9A8',
-        '\U0001F9A9',
-        '\U0001F54A'
+        "\U0001f436",
+        "\U0001f431",
+        "\U0001f42d",
+        "\U0001f439",
+        "\U0001f430",
+        "\U0001f98a",
+        "\U0001f43b",
+        "\U0001f43c",
+        "\U0001f428",
+        "\U0001f42f",
+        "\U0001f981",
+        "\U0001f42e",
+        "\U0001f437",
+        "\U0001f43d",
+        "\U0001f438",
+        "\U0001f435",
+        "\U0001f412",
+        "\U0001f98d",
+        "\U0001f9a7",
+        "\U0001f414",
+        "\U0001f427",
+        "\U0001f426",
+        "\U0001f424",
+        "\U0001f423",
+        "\U0001f425",
+        "\U0001f986",
+        "\U0001f9a2",
+        "\U0001f989",
+        "\U0001f99a",
+        "\U0001f99c",
+        "\U0001f43a",
+        "\U0001f99d",
+        "\U0001f9a8",
+        "\U0001f9a1",
+        "\U0001f417",
+        "\U0001f434",
+        "\U0001f984",
+        "\U0001f41d",
+        "\U0001f41b",
+        "\U0001f98b",
+        "\U0001f40c",
+        "\U0001f41e",
+        "\U0001f40c",
+        "\U0001fab2",
+        "\U0001f997",
+        "\U0001f577",
+        "\U0001f982",
+        "\U0001f422",
+        "\U0001f40d",
+        "\U0001f98e",
+        "\U0001f996",
+        "\U0001f995",
+        "\U0001f419",
+        "\U0001f991",
+        "\U0001f990",
+        "\U0001f99e",
+        "\U0001f980",
+        "\U0001f421",
+        "\U0001f420",
+        "\U0001f41f",
+        "\U0001f42c",
+        "\U0001f988",
+        "\U0001f433",
+        "\U0001f40b",
+        "\U0001f9ad",
+        "\U0001f40a",
+        "\U0001f406",
+        "\U0001f405",
+        "\U0001f403",
+        "\U0001f402",
+        "\U0001f42b",
+        "\U0001f42a",
+        "\U0001f999",
+        "\U0001f992",
+        "\U0001f98f",
+        "\U0001f99b",
+        "\U0001f418",
+        "\U0001f998",
+        "\U0001f9a5",
+        "\U0001f9a6",
+        "\U0001f9a8",
+        "\U0001f9a9",
+        "\U0001f54a",
     ]
-    
+
     def get_random_emoji(self):
         return random.choice(self.EMOJIS)

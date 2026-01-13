@@ -1,38 +1,42 @@
-''' duration.py The purpose of this program is to provide the Duration utility class.
+"""duration.py The purpose of this program is to provide the Duration utility class.
 
-    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-'''
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 from datetime import datetime, timedelta, timezone
 from discord import app_commands
 from discord.ext import commands
 from typing import Optional
 import discord
 
-class DurationObject:
-            
-    DAY_UNITS = {'d', 'day', 'days'}
-    HOUR_UNITS = {'h', 'hr', 'hrs', 'hour', 'hours'}
-    MINUTE_UNITS = {'m', 'min', 'mins', 'minute', 'minutes'}
-    SECOND_UNITS = {'s', 'sec', 'secs', 'second', 'seconds'}
-    PREFIXES = {'+', '-', '='}
 
-    UNIT_MAP = {**dict.fromkeys(DAY_UNITS, 'd'),
-                **dict.fromkeys(HOUR_UNITS, 'h'),
-                **dict.fromkeys(MINUTE_UNITS, 'm'),
-                **dict.fromkeys(SECOND_UNITS, 's')}
+class DurationObject:
+
+    DAY_UNITS = {"d", "day", "days"}
+    HOUR_UNITS = {"h", "hr", "hrs", "hour", "hours"}
+    MINUTE_UNITS = {"m", "min", "mins", "minute", "minutes"}
+    SECOND_UNITS = {"s", "sec", "secs", "second", "seconds"}
+    PREFIXES = {"+", "-", "="}
+
+    UNIT_MAP = {
+        **dict.fromkeys(DAY_UNITS, "d"),
+        **dict.fromkeys(HOUR_UNITS, "h"),
+        **dict.fromkeys(MINUTE_UNITS, "m"),
+        **dict.fromkeys(SECOND_UNITS, "s"),
+    }
 
     def __init__(self, duration: str):
         self._duration: str = ""
@@ -64,7 +68,7 @@ class DurationObject:
 
     @property
     def prefix(self) -> str:
-        return self._prefix or '+'
+        return self._prefix or "+"
 
     @prefix.setter
     def prefix(self, value: str):
@@ -86,7 +90,7 @@ class DurationObject:
 
     @property
     def unit(self) -> str:
-        return self._unit or 'h'
+        return self._unit or "h"
 
     @unit.setter
     def unit(self, value: str):
@@ -106,28 +110,28 @@ class DurationObject:
 
     @property
     def sign(self) -> int:
-        return -1 if self.prefix == '-' else 1
+        return -1 if self.prefix == "-" else 1
 
     @property
     def expires_in(self) -> datetime:
         if self.number == 0:
             return None
         return self.target_datetime()
-    
+
     @classmethod
-    def from_timedelta(cls, td: timedelta, prefix: str = '+') -> "DurationObject":
+    def from_timedelta(cls, td: timedelta, prefix: str = "+") -> "DurationObject":
         total_seconds = int(td.total_seconds())
         if total_seconds % 86400 == 0:
-            number, suffix = total_seconds // 86400, 'd'
+            number, suffix = total_seconds // 86400, "d"
         elif total_seconds % 3600 == 0:
-            number, suffix = total_seconds // 3600, 'h'
+            number, suffix = total_seconds // 3600, "h"
         elif total_seconds % 60 == 0:
-            number, suffix = total_seconds // 60, 'm'
+            number, suffix = total_seconds // 60, "m"
         else:
-            number, suffix = total_seconds, 's'
+            number, suffix = total_seconds, "s"
         obj = cls(f"{prefix}{number}{suffix}")
         return obj
-    
+
     @classmethod
     def from_expires_in(cls, expires_in: datetime) -> "DurationObject":
         if expires_in is None:
@@ -138,29 +142,29 @@ class DurationObject:
         if total_seconds < 0:
             total_seconds = 0
         if total_seconds % 86400 == 0:
-            number, unit = total_seconds // 86400, 'd'
+            number, unit = total_seconds // 86400, "d"
         elif total_seconds % 3600 == 0:
-            number, unit = total_seconds // 3600, 'h'
+            number, unit = total_seconds // 3600, "h"
         elif total_seconds % 60 == 0:
-            number, unit = total_seconds // 60, 'm'
+            number, unit = total_seconds // 60, "m"
         else:
-            number, unit = total_seconds, 's'
+            number, unit = total_seconds, "s"
         return cls(f"+{number}{unit}")
-    
+
     @classmethod
     def from_seconds(cls, seconds: int):
         duration = DurationObject(f"{seconds}s")
         return duration
-    
+
     def to_timedelta(self) -> timedelta:
         match self.unit:
-            case 'd':
+            case "d":
                 return timedelta(days=self.number * self.sign)
-            case 'h':
+            case "h":
                 return timedelta(hours=self.number * self.sign)
-            case 'm':
+            case "m":
                 return timedelta(minutes=self.number * self.sign)
-            case 's':
+            case "s":
                 return timedelta(seconds=self.number * self.sign)
             case _:
                 raise ValueError(f"Unsupported unit: {self.unit}")
@@ -179,28 +183,30 @@ class DurationObject:
         s = self._duration.lower()
         if s == "0":
             self.number = 0
-            self.unit = 'h'
-            self.prefix = '+'
+            self.unit = "h"
+            self.prefix = "+"
             return
         if s[0] in self.PREFIXES:
             self.prefix = s[0]
             self.is_modification = True
             s = s[1:]
         else:
-            self.prefix = '+'
+            self.prefix = "+"
             self.is_modification = False
-        num_str = ''
+        num_str = ""
         for char in s:
             if char.isdigit():
                 num_str += char
             else:
                 break
         if not num_str:
-            raise commands.BadArgument(f"No numeric duration found in '{self._duration}'")
+            raise commands.BadArgument(
+                f"No numeric duration found in '{self._duration}'"
+            )
         self.number = int(num_str)
-        s = s[len(num_str):].strip()
+        s = s[len(num_str) :].strip()
         if not s:
-            self.unit = 'h'
+            self.unit = "h"
         else:
             unit = self.UNIT_MAP.get(s)
             if not unit:
@@ -209,17 +215,20 @@ class DurationObject:
                         unit = self.UNIT_MAP[known]
                         break
             if not unit:
-                raise commands.BadArgument(f"Invalid duration unit in '{self._duration}'")
+                raise commands.BadArgument(
+                    f"Invalid duration unit in '{self._duration}'"
+                )
             self.unit = unit
 
 
 class Converter(commands.Converter):
-    
+
     def __init__(self, duration_cls=DurationObject):
         self.duration_cls = duration_cls
-    
+
     async def convert(self, ctx: commands.Context, arg):
         return self.duration_cls(arg).duration
+
 
 class Transformer(app_commands.Transformer):
 
@@ -228,10 +237,12 @@ class Transformer(app_commands.Transformer):
 
     async def transform(self, interaction: discord.Interaction, arg):
         return self.duration_cls(arg).duration
-        
+
+
 class Duration(Converter):
     def __init__(self):
         super().__init__(DurationObject)
+
 
 class AppDuration(Transformer):
     def __init__(self):

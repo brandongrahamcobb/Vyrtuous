@@ -9,12 +9,14 @@ if len(sys.argv) < 2:
 folder_path = sys.argv[1]
 recursive = "--recursive" in sys.argv
 
+
 def process_file(filepath):
     for line in fileinput.input(filepath, inplace=True):
         if line.startswith("from vyrtuous.tests.black_box.test_suite import"):
             print("from vyrtuous.tests.black_box.test_suite import *")
         else:
             print(line, end="")
+
 
 if recursive:
     for root, dirs, files in os.walk(folder_path):

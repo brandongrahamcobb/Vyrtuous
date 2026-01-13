@@ -17,8 +17,8 @@
 # from typing import Optional
 # from vyrtuous.inc.helpers import *
 # from vyrtuous.tests.black_box.test_suite import *
-# from vyrtuous.enhanced_member.administrator import Administrator
-# from vyrtuous.utils.emojis import Emojis
+# from vyrtuous.database.roles.administrator import Administrator
+# from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
 # import discord
 # import pytest
 

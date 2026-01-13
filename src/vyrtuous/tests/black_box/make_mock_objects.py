@@ -1,20 +1,20 @@
+"""make_mock_objects.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
+Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
-''' make_mock_objects.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
-    Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-'''
 from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 from discord.http import HTTPClient
@@ -25,6 +25,7 @@ import aiohttp
 import asyncio
 import discord
 
+
 def create_state():
     dispatch = lambda event, *args: None
     handlers = {}
@@ -32,42 +33,42 @@ def create_state():
     http = HTTPClient(dispatch)
     # http._global_over = asyncio.Event()
     # http._global_over.set()
-    state = ConnectionState(dispatch=dispatch, handlers=handlers, hooks=hooks, http=http)
+    state = ConnectionState(
+        dispatch=dispatch, handlers=handlers, hooks=hooks, http=http
+    )
     state._channels = {}
     return state
+
 
 def create_member(bot=False, channel=None, guild=None, id=None, name=None):
 
     data = {
         "user": {
-            "id": id,       # member's user ID
-            "username": NOT_PRIVILEGED_AUTHOR_ID,         # username
-            "discriminator": "1234",        # discriminator
-            "avatar": None,                 # avatar hash
-            "bot": False                     # whether the user is a bot
+            "id": id,  # member's user ID
+            "username": NOT_PRIVILEGED_AUTHOR_ID,  # username
+            "discriminator": "1234",  # discriminator
+            "avatar": None,  # avatar hash
+            "bot": False,  # whether the user is a bot
         },
-        "nick": NOT_PRIVILEGED_AUTHOR_NAME,                   # nickname in the guild
-        "roles": [],                        # list of role IDs
+        "nick": NOT_PRIVILEGED_AUTHOR_NAME,  # nickname in the guild
+        "roles": [],  # list of role IDs
         "joined_at": "2025-01-01T00:00:00.000000+00:00",  # ISO timestamp
-        "premium_since": None,              # boosting start date
-        "pending": False,                   # if membership is pending verification
-        "deaf": False,                      # voice state
-        "mute": False,                      # voice state
-        "communication_disabled_until": None, # timeout until
-        "flags": 0,                         # member flags
-        "avatar": None
+        "premium_since": None,  # boosting start date
+        "pending": False,  # if membership is pending verification
+        "deaf": False,  # voice state
+        "mute": False,  # voice state
+        "communication_disabled_until": None,  # timeout until
+        "flags": 0,  # member flags
+        "avatar": None,
     }
-    
+
     async def edit(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
         return self
 
     async def update_voice_state(self, *, channel=None, mute=None):
-        before = SimpleNamespace(
-            channel=self.voice.channel,
-            mute=self.voice.mute
-        )
+        before = SimpleNamespace(channel=self.voice.channel, mute=self.voice.mute)
         if before.channel and self in before.channel.members:
             before.channel.members.remove(self)
         if channel:
@@ -76,45 +77,56 @@ def create_member(bot=False, channel=None, guild=None, id=None, name=None):
         self.voice.channel = channel
         if mute is not None:
             self.voice.mute = mute
-        after = SimpleNamespace(
-            channel=self.voice.channel,
-            mute=self.voice.mute
-        )
+        after = SimpleNamespace(channel=self.voice.channel, mute=self.voice.mute)
         self.guild.on_voice_state_update(self, before, after)
         return before, after
 
     return type(
-        'MockMember',
+        "MockMember",
         (discord.Member,),
         {
-            'bot': bot,
-            'display_avatar': SimpleNamespace(url="https://example.com"),
-            'display_name': name,
-            'edit': edit,
-            'guild': guild,
-            'id': id,
-            'mention': f'<@{id}>',
-            'update_voice_state': update_voice_state,
-            'voice': SimpleNamespace(channel=channel, mute=False)
-        }
+            "bot": bot,
+            "display_avatar": SimpleNamespace(url="https://example.com"),
+            "display_name": name,
+            "edit": edit,
+            "guild": guild,
+            "id": id,
+            "mention": f"<@{id}>",
+            "update_voice_state": update_voice_state,
+            "voice": SimpleNamespace(channel=channel, mute=False),
+        },
     )(state=create_state(), guild=guild, data=data)
 
-def create_message(allowed_mentions=None, author=None, bot=False, content=None, channel=None, embed=None, embeds=None, file=None, guild=None, id=None, paginated=None, **kwargs):
+
+def create_message(
+    allowed_mentions=None,
+    author=None,
+    bot=False,
+    content=None,
+    channel=None,
+    embed=None,
+    embeds=None,
+    file=None,
+    guild=None,
+    id=None,
+    paginated=None,
+    **kwargs,
+):
 
     data = {
-        "id": id,          # Message ID
+        "id": id,  # Message ID
         "channel_id": channel.id,  # The channel ID the message belongs to
-        "guild_id": guild.id,    # Guild ID (optional for DMs)
-        "author": {                         # User who sent the message
+        "guild_id": guild.id,  # Guild ID (optional for DMs)
+        "author": {  # User who sent the message
             "id": author.id,
             "username": author.name,
             "discriminator": "1234",
             "avatar": None,
             "bot": False,
             "system": False,
-            "public_flags": 0
+            "public_flags": 0,
         },
-        "member": {                         # Optional guild-specific member info
+        "member": {  # Optional guild-specific member info
             "nick": "Tester",
             "roles": [],
             "joined_at": "2025-01-01T00:00:00.000000+00:00",
@@ -122,22 +134,22 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
             "deaf": False,
             "mute": False,
             "pending": False,
-            "permissions": 104189505,       # example permissions integer
-            "communication_disabled_until": None
+            "permissions": 104189505,  # example permissions integer
+            "communication_disabled_until": None,
         },
-        "content": content,        # The message content
+        "content": content,  # The message content
         "timestamp": "2025-01-04T12:00:00.000000+00:00",  # creation timestamp ISO format
         "edited_timestamp": None,
         "tts": False,
         "mention_everyone": False,
-        "mentions": [],                     # list of mentioned user objects
-        "mention_roles": [],                # list of mentioned role IDs
-        "attachments": [],                  # list of attachments
-        "embeds": embeds if embeds else [],                       # list of embeds
-        "reactions": [],                    # list of reactions
+        "mentions": [],  # list of mentioned user objects
+        "mention_roles": [],  # list of mentioned role IDs
+        "attachments": [],  # list of attachments
+        "embeds": embeds if embeds else [],  # list of embeds
+        "reactions": [],  # list of reactions
         "pinned": False,
         "webhook_id": None,
-        "type": 0,                          # message type, usually 0 (default)
+        "type": 0,  # message type, usually 0 (default)
         "activity": None,
         "application": {
             "id": 0,
@@ -153,21 +165,21 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
             "message_id": 123,
             "channel_id": channel.id,
             "guild_id": guild.id if guild else None,
-            "type": 0
+            "type": 0,
         },
-        "flags": 0
+        "flags": 0,
     }
 
     async def add_reaction(self, emoji):
         self.reactions.append(emoji)
-    
+
     async def clear_reactions(self):
         self.reactions.clear()
 
     async def remove_reaction(self, emoji, user):
         if emoji in self.reactions:
             self.reactions.remove(emoji)
-    
+
     async def edit(self, *, content=None, embed=None, embeds=None, view=None, **kwargs):
         if content is not None:
             self.content = content
@@ -178,83 +190,94 @@ def create_message(allowed_mentions=None, author=None, bot=False, content=None, 
         if view is not None:
             self.view = view
         return self
-    
+
     return type(
-        'MockMessage',
+        "MockMessage",
         (discord.Message,),
         {
-            '__init__': lambda self: discord.Message.__init__(self, state=create_state(), channel=channel, data=data),
-            'add_reaction': add_reaction,
-            'allowed_mentions': allowed_mentions,
-            'attachments': [],
-            'author': author,
-            'content': content,
-            'channel': channel,
-            'clear_reactions': clear_reactions,
-            'created_at': datetime.now(timezone.utc),
-            'edit': edit,
-            'edited_embeds': [],
-            'embed': {},
-            'embeds': [],
-            'file': file,
-            'flags': 0,
-            'guild': guild,
-            'id': id,
-            'reactions': [],
-            'remove_reaction': remove_reaction,
-            'type': 0
-        }
+            "__init__": lambda self: discord.Message.__init__(
+                self, state=create_state(), channel=channel, data=data
+            ),
+            "add_reaction": add_reaction,
+            "allowed_mentions": allowed_mentions,
+            "attachments": [],
+            "author": author,
+            "content": content,
+            "channel": channel,
+            "clear_reactions": clear_reactions,
+            "created_at": datetime.now(timezone.utc),
+            "edit": edit,
+            "edited_embeds": [],
+            "embed": {},
+            "embeds": [],
+            "file": file,
+            "flags": 0,
+            "guild": guild,
+            "id": id,
+            "reactions": [],
+            "remove_reaction": remove_reaction,
+            "type": 0,
+        },
     )()
 
-def create_guild(bot, channels=None, id=None, name=None, members=None, owner_snowflake=None, roles=None):
+
+def create_guild(
+    bot,
+    channels=None,
+    id=None,
+    name=None,
+    members=None,
+    owner_snowflake=None,
+    roles=None,
+):
 
     data = {
-        "id": id,           
-        "name": name,               
-        "icon": None,                       
-        "splash": None,                     
-        "discovery_splash": None,           
-        "owner_id": owner_snowflake,     
-        "region": None,                     
-        "afk_channel_id": None,             
-        "afk_timeout": 300,                 
-        "widget_enabled": False,            
-        "widget_channel_id": None,          
-        "verification_level": 0,            
-        "default_message_notifications": 0, 
-        "explicit_content_filter": 0,       
-        "roles": [],                        
-        "emojis": [],                       
-        "features": [],                     
-        "mfa_level": 0,                     
-        "application_id": None,             
-        "system_channel_id": None,          
-        "system_channel_flags": 0,          
-        "rules_channel_id": None,           
-        "joined_at": "2025-01-01T00:00:00.000000+00:00", 
-        "large": False,                     
-        "member_count": 0,                  
-        "voice_states": {},                 
-        "members": [],                      
-        "channels": [],                     
-        "presences": {},                    
-        "max_presences": None,              
-        "max_members": None,                
-        "vanity_url_code": None,            
-        "description": None,                
-        "banner": None,                     
-        "premium_tier": 0,                  
-        "premium_subscription_count": 0,    
-        "preferred_locale": "en-US",        
-        "public_updates_channel_id": None,  
-        "max_video_channel_users": 25,      
-        "approximate_member_count": None,   
+        "id": id,
+        "name": name,
+        "icon": None,
+        "splash": None,
+        "discovery_splash": None,
+        "owner_id": owner_snowflake,
+        "region": None,
+        "afk_channel_id": None,
+        "afk_timeout": 300,
+        "widget_enabled": False,
+        "widget_channel_id": None,
+        "verification_level": 0,
+        "default_message_notifications": 0,
+        "explicit_content_filter": 0,
+        "roles": [],
+        "emojis": [],
+        "features": [],
+        "mfa_level": 0,
+        "application_id": None,
+        "system_channel_id": None,
+        "system_channel_flags": 0,
+        "rules_channel_id": None,
+        "joined_at": "2025-01-01T00:00:00.000000+00:00",
+        "large": False,
+        "member_count": 0,
+        "voice_states": {},
+        "members": [],
+        "channels": [],
+        "presences": {},
+        "max_presences": None,
+        "max_members": None,
+        "vanity_url_code": None,
+        "description": None,
+        "banner": None,
+        "premium_tier": 0,
+        "premium_subscription_count": 0,
+        "preferred_locale": "en-US",
+        "public_updates_channel_id": None,
+        "max_video_channel_users": 25,
+        "approximate_member_count": None,
         "approximate_presence_count": None,
-        "nsfw_level": 0                     
+        "nsfw_level": 0,
     }
 
     def on_voice_state_update(self, member, before, after):
-        self.me.dispatch('voice_state_update', member, before, after)
+        self.me.dispatch("voice_state_update", member, before, after)
 
     def get_channel(self, channel_snowflake):
         if channel_snowflake is None:
@@ -276,40 +299,46 @@ def create_guild(bot, channels=None, id=None, name=None, members=None, owner_sno
                 return role
 
     return type(
-        'MockGuild',
+        "MockGuild",
         (discord.Guild,),
         {
-            'id': id,
-            'channels': channels,
-            'on_voice_state_update': on_voice_state_update,
-            'get_channel': get_channel,
-            'get_member': get_member,
+            "id": id,
+            "channels": channels,
+            "on_voice_state_update": on_voice_state_update,
+            "get_channel": get_channel,
+            "get_member": get_member,
             "get_role": get_role,
-            'icon': SimpleNamespace(url="https://example.com"),
-            'me': bot,
-            'members': members,
-            'name': name,
-            'owner_id': owner_snowflake,
-            "roles": roles
-        }
+            "icon": SimpleNamespace(url="https://example.com"),
+            "me": bot,
+            "members": members,
+            "name": name,
+            "owner_id": owner_snowflake,
+            "roles": roles,
+        },
     )(data=data, state=create_state())
 
 
-def create_channel(channel_type=None, guild=None, id=None, name=None, object_channel=discord.VoiceChannel):
+def create_channel(
+    channel_type=None,
+    guild=None,
+    id=None,
+    name=None,
+    object_channel=discord.VoiceChannel,
+):
 
     _messages = []
     data = {
         "id": id,
         "name": name,
         "type": channel_type or 0,
-        "position": 0,       # required
-        "nsfw": False,       # usually required for text channels
-        "topic": "",         # for TextChannel
-        "bitrate": 64000,    # for VoiceChannel
-        "user_limit": 0,     # for VoiceChannel
+        "position": 0,  # required
+        "nsfw": False,  # usually required for text channels
+        "topic": "",  # for TextChannel
+        "bitrate": 64000,  # for VoiceChannel
+        "user_limit": 0,  # for VoiceChannel
         "rate_limit_per_user": 0,
         "parent_id": None,
-        "guild_id": getattr(guild, "id", None)
+        "guild_id": getattr(guild, "id", None),
     }
 
     def append_message(self, msg):
@@ -325,41 +354,38 @@ def create_channel(channel_type=None, guild=None, id=None, name=None, object_cha
 
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
-    
+
     async def set_permissions(self, target, **overwrites):
         self.overwrites[target.id] = overwrites
         return True
 
     return type(
-        'MockChannel',
+        "MockChannel",
         (object_channel,),
         {
-            'append_message': append_message,
-            'guild': guild,
-            'id': id,
-            'fetch_message': fetch_message,
-            'members': [],
-            'mention': f'<#{id}>',
-            'messages': _messages,
-            'name': name,
-            'overwrites': {},
-            'permissions_for': permissions_for,
-            'set_permissions': set_permissions,
+            "append_message": append_message,
+            "guild": guild,
+            "id": id,
+            "fetch_message": fetch_message,
+            "members": [],
+            "mention": f"<#{id}>",
+            "messages": _messages,
+            "name": name,
+            "overwrites": {},
+            "permissions_for": permissions_for,
+            "set_permissions": set_permissions,
             # 'send': send,
-            'send_messages': True,
-            'type': channel_type
-        }
+            "send_messages": True,
+            "type": channel_type,
+        },
     )(state=create_state(), guild=guild, data=data)
-    
+
+
 def create_role(guild=None, id=None, name=None, members=None):
     return SimpleNamespace(
-        guild=guild,
-        id=id,
-        name=name,
-        members=members,
-        mention=f"<@&{id}>"
+        guild=guild, id=id, name=name, members=members, mention=f"<@&{id}>"
     )
-    
+
     # channels = {}
     # for cid, (name, channel_type) in channel_defs.items():
     #     channels[cid] = make_mock_channel(channel_type=channel_type, guild=guild, id=cid, name=name)
