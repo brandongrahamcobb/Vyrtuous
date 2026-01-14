@@ -17,12 +17,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-from discord.ext import commands
 from typing import Optional
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.properties.duration import DurationObject
-from vyrtuous.service.paginator_service import Paginator
+
+from discord.ext import commands
 import discord
+
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.properties.duration import DurationObject
+from vyrtuous.service.messaging.paginator_service import Paginator
+
 
 class History:
 
@@ -267,7 +270,7 @@ class History:
                     )
                     embeds.append(reason_embed)
         return embeds
-    
+
     @classmethod
     async def save(
         cls,

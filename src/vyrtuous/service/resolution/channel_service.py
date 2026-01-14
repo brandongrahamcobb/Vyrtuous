@@ -15,16 +15,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import discord
 from typing import Optional, Union
-from vyrtuous.utils.setup_logging import logger
+
+import discord
+
+from vyrtuous.service.logging_service import logger
 
 async def resolve_channel(
     self,
     ctx_interaction_or_message,
-    channel_str: Optional[
-        Union[int, str, discord.TextChannel, discord.VoiceChannel]
-    ],
+    channel_str: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]],
 ) -> Union[discord.TextChannel, discord.VoiceChannel]:
     try:
         if isinstance(channel_str, (discord.TextChannel, discord.VoiceChannel)):

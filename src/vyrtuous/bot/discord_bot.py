@@ -17,10 +17,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from discord.ext import commands
-from vyrtuous.inc.helpers import DISCORD_COGS
-from vyrtuous.utils.setup_logging import logger
 import asyncpg
 import discord
+
+from vyrtuous.inc.helpers import DISCORD_COGS
+from vyrtuous.service.logging_service import logger
 
 
 class DiscordBot(commands.Bot):

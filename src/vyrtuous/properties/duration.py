@@ -17,9 +17,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Optional
+
 from discord import app_commands
 from discord.ext import commands
-from typing import Optional
 import discord
 
 

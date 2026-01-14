@@ -2,6 +2,7 @@ import os
 import re
 import sys
 
+
 def find_channel_snowflake_in_triple_sql(root):
     extensions = {".py"}
     results = []
@@ -17,11 +18,12 @@ def find_channel_snowflake_in_triple_sql(root):
                     for block in sql_block_pattern.finditer(content):
                         sql_text = block.group(1)
                         if target_pattern.search(sql_text):
-                            line_number = content[:block.start()].count("\n") + 1
+                            line_number = content[: block.start()].count("\n") + 1
                             results.append((path, line_number))
                 except Exception:
                     pass
     return results
+
 
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else "."
@@ -29,6 +31,7 @@ def main():
     for path, line in results:
         print(f"{path}:{line}")
     print(f"\nTotal matches: {len(results)}")
+
 
 if __name__ == "__main__":
     main()

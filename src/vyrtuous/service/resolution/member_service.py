@@ -16,10 +16,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from discord.ext import commands
-from typing import Optional, Union
-from vyrtuous.utils.setup_logging import logger
-
 import discord
+
 
 async def resolve_member(ctx_interaction_or_message, member_str):
     guild = ctx_interaction_or_message.guild

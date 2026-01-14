@@ -18,9 +18,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from typing import Optional
-import asyncpg
 import os
 import subprocess
+
+import asyncpg
 
 
 class Database:

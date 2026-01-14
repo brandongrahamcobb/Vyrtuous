@@ -17,21 +17,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
+
 from discord.ext import commands
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.text_mute import TextMute
-from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.service.role_service import resolve_role
+from vyrtuous.database.logs.history import History
+from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.settings.cap import Cap
+from vyrtuous.properties.duration import DurationObject
+from vyrtuous.service.logging_service import logger
+from vyrtuous.service.resolution.role_service import resolve_role
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.history import History
 from vyrtuous.utils.invincibility import Invincibility
-from vyrtuous.utils.properties.duration import DurationObject
-from vyrtuous.utils.setup_logging import logger
-import discord
+
 
 class Aliases(commands.Cog):
 
@@ -106,9 +109,6 @@ class Aliases(commands.Cog):
             "unrole": "Coordinator",
         }
         self.bot = bot
-        
-        
-        
         self.invincible_members = Invincibility.get_invincible_members()
 
     async def handle_ban_alias(
@@ -154,13 +154,11 @@ class Aliases(commands.Cog):
                         reason = existing_guestroom_alias_event.reason + modified_reason
                     case "=" | "-":
                         reason = modified_reason
-                set_kwargs = {
-                    'reason': reason
-                }
+                set_kwargs = {"reason": reason}
                 where_kwargs = {
-                    'channel_snowflake': channel_obj.id,
-                    'guild_snowflake': message.guild.id,
-                    'member_snowflake': member_obj.id
+                    "channel_snowflake": channel_obj.id,
+                    "guild_snowflake": message.guild.id,
+                    "member_snowflake": member_obj.id,
                 }
                 await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             elif is_duration_modification and existing_guestroom_alias_event:
@@ -196,13 +194,11 @@ class Aliases(commands.Cog):
                         )
                     except Exception as e:
                         return await state.end(error=f"\u274c {str(e).capitalize()}")
-                set_kwargs = {
-                    'expired_in': updated_expires_in
-                }
+                set_kwargs = {"expired_in": updated_expires_in}
                 where_kwargs = {
-                    'channel_snowflake': channel_obj.id,
-                    'guild_snowflake': message.guild.id,
-                    'member_snowflake': member_obj.id
+                    "channel_snowflake": channel_obj.id,
+                    "guild_snowflake": message.guild.id,
+                    "member_snowflake": member_obj.id,
                 }
                 await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             else:
@@ -259,13 +255,11 @@ class Aliases(commands.Cog):
                             )
 
                 if ban and override:
-                    set_kwargs = {
-                        'expired_in': None
-                    }
+                    set_kwargs = {"expired_in": None}
                     where_kwargs = {
-                        'channel_snowflake': channel_obj.id,
-                        'guild_snowflake': message.guild.id,
-                        'member_snowflake': member_obj.id,
+                        "channel_snowflake": channel_obj.id,
+                        "guild_snowflake": message.guild.id,
+                        "member_snowflake": member_obj.id,
                     }
                     await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
                 else:
@@ -398,7 +392,7 @@ class Aliases(commands.Cog):
         is_reason_modification,
         member_obj,
         message,
-        state
+        state,
     ):
         try:
             duration = None
@@ -416,13 +410,11 @@ class Aliases(commands.Cog):
                         reason = existing_guestroom_alias_event.reason + modified_reason
                     case "=" | "-":
                         reason = modified_reason
-                set_kwargs = {
-                    'reason': reason
-                }
+                set_kwargs = {"reason": reason}
                 where_kwargs = {
-                    'channel_snowflake': channel_obj.id,
-                    'guild_snowflake': message.guild.id,
-                    'member_snowflake': member_obj.id,
+                    "channel_snowflake": channel_obj.id,
+                    "guild_snowflake": message.guild.id,
+                    "member_snowflake": member_obj.id,
                 }
                 await Flag.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             else:
@@ -430,7 +422,7 @@ class Aliases(commands.Cog):
                     flag = await Flag.select(
                         channel_snowflake=channel_obj.id,
                         guild_snowflake=message.guild.id,
-                        member_snowflake=member_obj.id
+                        member_snowflake=member_obj.id,
                     )
                     if flag:
                         try:
@@ -450,7 +442,7 @@ class Aliases(commands.Cog):
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=message.guild.id,
                 member_snowflake=member_obj.id,
-                reason=reason
+                reason=reason,
             )
             await flag.create()
 
@@ -467,12 +459,11 @@ class Aliases(commands.Cog):
                 is_modification=is_modification,
                 member=member_obj,
                 message=message,
-                reason=reason
+                reason=reason,
             )
 
             embed = discord.Embed(
-                title=f"{get_random_emoji()} "
-                f"{member_obj.display_name} Flagged",
+                title=f"{get_random_emoji()} " f"{member_obj.display_name} Flagged",
                 description=(
                     f"**By:** {message.author.mention}\n"
                     f"**User:** {member_obj.mention}\n"
@@ -541,8 +532,7 @@ class Aliases(commands.Cog):
             )
 
             embed = discord.Embed(
-                title=f"{get_random_emoji()} "
-                f"{member_obj.display_name} Roled",
+                title=f"{get_random_emoji()} " f"{member_obj.display_name} Roled",
                 description=(
                     f"**By:** {message.author.mention}\n"
                     f"**User:** {member_obj.mention}\n"
@@ -605,13 +595,11 @@ class Aliases(commands.Cog):
                         reason = existing_guestroom_alias_event.reason + modified_reason
                     case "=" | "-":
                         reason = modified_reason
-                set_kwargs = {
-                    'reason': reason
-                }
+                set_kwargs = {"reason": reason}
                 where_kwargs = {
-                    'channel_snowflake': channel_obj.id,
-                    'guild_snowflake': message.guild.id,
-                    'member_snowflake': member_obj.id,
+                    "channel_snowflake": channel_obj.id,
+                    "guild_snowflake": message.guild.id,
+                    "member_snowflake": member_obj.id,
                 }
                 await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             elif is_duration_modification and existing_guestroom_alias_event:
@@ -647,13 +635,11 @@ class Aliases(commands.Cog):
                         )
                     except Exception as e:
                         return await state.end(error=f"\u274c {str(e).capitalize()}")
-                set_kwargs = {
-                    'expired_in': updated_expires_in
-                }
+                set_kwargs = {"expired_in": updated_expires_in}
                 where_kwargs = {
-                    'channel_snowflake': channel_obj.id,
-                    'guild_snowflake': message.guild.id,
-                    'member_snowflake': member_obj.id,
+                    "channel_snowflake": channel_obj.id,
+                    "guild_snowflake": message.guild.id,
+                    "member_snowflake": member_obj.id,
                 }
                 await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             else:
@@ -708,15 +694,15 @@ class Aliases(commands.Cog):
                     except Exception as e:
                         return await state.end(error=f"\u274c {str(e).capitalize()}")
                 if text_mute and override:
-                    set_kwargs = {
-                        'expired_in': None
-                    }
+                    set_kwargs = {"expired_in": None}
                     where_kwargs = {
-                        'channel_snowflake': channel_obj.id,
-                        'guild_snowflake': message.guild.id,
-                        'member_snowflake': member_obj.id,
+                        "channel_snowflake": channel_obj.id,
+                        "guild_snowflake": message.guild.id,
+                        "member_snowflake": member_obj.id,
                     }
-                    await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                    await TextMute.update(
+                        set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                    )
                 else:
                     text_mute = TextMute(
                         channel_snowflake=channel_obj.id,
@@ -750,8 +736,7 @@ class Aliases(commands.Cog):
             )
 
             embed = discord.Embed(
-                title=f"{get_random_emoji()} "
-                f"{member_obj.display_name} Text Muted",
+                title=f"{get_random_emoji()} " f"{member_obj.display_name} Text Muted",
                 description=(
                     f"**By:** {message.author.mention}\n"
                     f"**User:** {member_obj.mention}\n"
@@ -819,13 +804,11 @@ class Aliases(commands.Cog):
                         reason = existing_guestroom_alias_event.reason + modified_reason
                     case "=" | "-":
                         reason = modified_reason
-                set_kwargs = {
-                    'reason': reason
-                }
+                set_kwargs = {"reason": reason}
                 where_kwargs = {
-                    'channel_snowflake': channel_obj.id,
-                    'guild_snowflake': message.guild.id,
-                    'member_snowflake': member_obj.id,
+                    "channel_snowflake": channel_obj.id,
+                    "guild_snowflake": message.guild.id,
+                    "member_snowflake": member_obj.id,
                 }
                 await VoiceMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             elif is_duration_modification and existing_guestroom_alias_event:
@@ -861,13 +844,11 @@ class Aliases(commands.Cog):
                             return await state.end(
                                 error=f"\u274c {str(e).capitalize()}"
                             )
-                set_kwargs = {
-                    'expired_in': updated_expires_in
-                }
+                set_kwargs = {"expired_in": updated_expires_in}
                 where_kwargs = {
-                    'channel_snowflake': channel_obj.id,
-                    'guild_snowflake': message.guild.id,
-                    'member_snowflake': member_obj.id
+                    "channel_snowflake": channel_obj.id,
+                    "guild_snowflake": message.guild.id,
+                    "member_snowflake": member_obj.id,
                 }
                 await VoiceMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             else:
@@ -922,15 +903,15 @@ class Aliases(commands.Cog):
                                 error=f"\u274c {str(e).capitalize()}"
                             )
                 if voice_mute and override:
-                    set_kwargs = {
-                        'expired_in': None
-                    }
+                    set_kwargs = {"expired_in": None}
                     where_kwargs = {
-                        'channel_snowflake': channel_obj.id,
-                        'guild_snowflake': message.guild.id,
-                        'member_snowflake': member_obj.id
+                        "channel_snowflake": channel_obj.id,
+                        "guild_snowflake": message.guild.id,
+                        "member_snowflake": member_obj.id,
                     }
-                    await VoiceMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                    await VoiceMute.update(
+                        set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                    )
                 else:
                     voice_mute = VoiceMute(
                         channel_snowflake=channel_obj.id,

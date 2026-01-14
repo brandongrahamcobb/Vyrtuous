@@ -16,8 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from vyrtuous.inc.helpers import DISCORD_COGS
-from vyrtuous.utils.setup_logging import logger
+from vyrtuous.service.logging_service import logger
 import asyncpg
 import discord
 

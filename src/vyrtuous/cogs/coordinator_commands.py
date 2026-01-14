@@ -22,27 +22,29 @@ from typing import Optional
 from discord import app_commands
 from discord.ext import commands
 import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.service.channel_service import resolve_channel
+from vyrtuous.properties.snowflake import (
+    AppChannelSnowflake,
+    AppMemberSnowflake,
+    ChannelSnowflake,
+    MemberSnowflake,
+)
+from vyrtuous.service.logging_service import logger
 from vyrtuous.service.check_service import (
     coordinator_predicator,
     has_equal_or_higher_role,
     not_bot,
 )
-from vyrtuous.service.member_service import resolve_member
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.channel_service import resolve_channel
+from vyrtuous.service.resolution.member_service import resolve_member
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.properties.snowflake import (
-    AppChannelSnowflake,
-    AppMemberSnowflake,
-    ChannelSnowflake,
-    MemberSnowflake
-)
-from vyrtuous.utils.setup_logging import logger
+
 
 class CoordinatorCommands(commands.Cog):
 
@@ -108,7 +110,7 @@ class CoordinatorCommands(commands.Cog):
             await Moderator.delete(
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id
+                member_snowflake=member_obj.id,
             )
             action = "revoked"
         else:
@@ -184,7 +186,7 @@ class CoordinatorCommands(commands.Cog):
             await Moderator.delete(
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id
+                member_snowflake=member_obj.id,
             )
             action = "revoked"
         else:
@@ -473,7 +475,7 @@ class CoordinatorCommands(commands.Cog):
                             f"{member.display_name} ({member.id}) in channel "
                             f"{channel_obj.name} ({channel_obj.id}) in guild "
                             f"{ctx.guild.name} ({ctx.guild.id}). "
-                            f'{str(e).capitalize()}'
+                            f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
             await VoiceMute.delete(

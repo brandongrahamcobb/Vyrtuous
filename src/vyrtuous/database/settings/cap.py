@@ -17,7 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
+
 from vyrtuous.database.database_factory import DatabaseFactory
+
 
 class Cap(DatabaseFactory):
 
@@ -29,7 +31,7 @@ class Cap(DatabaseFactory):
         "channel_snowflake",
         "duration",
         "guild_snowflake",
-        "moderation_type"
+        "moderation_type",
     ]
     OPTIONAL_ARGS = [
         "created_at",

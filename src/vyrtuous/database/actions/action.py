@@ -18,5 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from vyrtuous.database.database_factory import DatabaseFactory
 
+
 class Action(DatabaseFactory):
     pass

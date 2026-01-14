@@ -18,7 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from typing import Optional
+
 from vyrtuous.database.roles.permission_role import PermissionRole
+
 
 class Administrator(PermissionRole):
 
@@ -40,7 +42,7 @@ class Administrator(PermissionRole):
         member_snowflake: Optional[int],
         role_snowflakes: list[int | None],
         created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None
+        updated_at: Optional[datetime] = None,
     ):
         super().__init__()
         self.created_at = created_at
@@ -49,6 +51,7 @@ class Administrator(PermissionRole):
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.role_snowflakes = role_snowflakes
         self.updated_at = updated_at
+
 
 class AdministratorRole(PermissionRole):
 
@@ -63,7 +66,7 @@ class AdministratorRole(PermissionRole):
         guild_snowflake: list[int | None],
         role_snowflake: list[int | None],
         created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None
+        updated_at: Optional[datetime] = None,
     ):
         super().__init__()
         self.created_at = created_at

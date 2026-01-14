@@ -18,7 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timezone
 from typing import Optional
+
 from vyrtuous.database.database_factory import DatabaseFactory
+
 
 class DeveloperLog(DatabaseFactory):
 
@@ -30,7 +32,7 @@ class DeveloperLog(DatabaseFactory):
         "channel_snowflake",
         "developer_snowflakes",
         "guild_snowflake",
-        "message_snowflake"
+        "message_snowflake",
     ]
     OPTIONAL_ARGS = [
         "created_at",

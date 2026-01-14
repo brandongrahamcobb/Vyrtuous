@@ -32,7 +32,7 @@ from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.developer import Developer
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.utils.permission import PERMISSION_TYPES
-from vyrtuous.service.state_service import StateService
+from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.tests.black_box.make_mock_objects import *
 import asyncpg
 import discord
@@ -439,4 +439,3 @@ async def permission(request, voice_channel_one, guild, privileged_author):
             if getattr(perm_instance, k, None) is not None
         }
         await perm_class.delete(**delete_kwargs)
-

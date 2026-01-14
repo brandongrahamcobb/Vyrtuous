@@ -20,13 +20,16 @@ from typing import Literal, Optional
 
 from discord import app_commands
 from discord.ext import commands
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.database.database import Database
+from vyrtuous.database.logs.developer_log import DeveloperLog
 from vyrtuous.inc.helpers import DISCORD_COGS_CLASSES
-from vyrtuous.service.check_service import (
-    at_home,
-    developer_predicator
-)
-from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.check_service import at_home, developer_predicator
+from vyrtuous.service.logging_service import logger
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
@@ -35,14 +38,10 @@ from vyrtuous.service.scope_service import (
     generate_skipped_guilds,
     generate_skipped_messages,
     clean_guild_dictionary,
-    flush_page
+    flush_page,
 )
-from vyrtuous.service.state_service import StateService
-from vyrtuous.database.database import Database
-from vyrtuous.database.logs.developer_log import DeveloperLog
 from vyrtuous.utils.emojis import get_random_emoji
-import discord
-from vyrtuous.utils.setup_logging import logger
+
 
 class DevCommands(commands.Cog):
 
@@ -93,8 +92,7 @@ class DevCommands(commands.Cog):
         state = StateService(interaction)
         loaded, not_loaded = [], []
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"Cogs for {interaction.guild.me.name}",
+            title=f"{get_random_emoji()} " f"Cogs for {interaction.guild.me.name}",
             color=discord.Color.blurple(),
         )
         for cog in sorted(DISCORD_COGS_CLASSES):
@@ -245,14 +243,19 @@ class DevCommands(commands.Cog):
         value: Optional[str],
     ):
         state = StateService(interaction)
-        developer_logs, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=DeveloperLog, state=state, target=target)
-        
+        developer_logs, title = await resolve_objects(
+            ctx_interaction_or_message=interaction,
+            obj=DeveloperLog,
+            state=state,
+            target=target,
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             logger.warning(f"{str(e).capitalize()}")
             pass
-    
+
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
 
@@ -276,7 +279,12 @@ class DevCommands(commands.Cog):
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_messages=skipped_messages)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_messages=skipped_messages,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -288,9 +296,7 @@ class DevCommands(commands.Cog):
                 channel = guild.get_channel(channel_snowflake)
                 lines = []
                 for member_data in channel_logs:
-                    msg = await channel.fetch_message(
-                        member_data["message_snowflake"]
-                    )
+                    msg = await channel.fetch_message(member_data["message_snowflake"])
                     lines.append(f"**Message:** {msg.jump_url}")
                     if member_data["resolved"] == False:
                         resolved = "\u274c"
@@ -365,14 +371,16 @@ class DevCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        developer_logs, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=DeveloperLog, state=state, target=target)
-        
+        developer_logs, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=DeveloperLog, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             logger.warning(f"{str(e).capitalize()}")
             pass
-    
+
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
 
@@ -396,7 +404,12 @@ class DevCommands(commands.Cog):
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_messages=skipped_messages)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_messages=skipped_messages,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -408,9 +421,7 @@ class DevCommands(commands.Cog):
                 channel = guild.get_channel(channel_snowflake)
                 lines = []
                 for member_data in channel_logs:
-                    msg = await channel.fetch_message(
-                            member_data["message_snowflake"]
-                        )
+                    msg = await channel.fetch_message(member_data["message_snowflake"])
                     lines.append(f"**Message:** {msg.jump_url}")
                     if member_data["resolved"] == False:
                         resolved = "\u274c"
@@ -487,8 +498,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Successfully loaded {module}."
+                success=f"{get_random_emoji()} " f"Successfully loaded {module}."
             )
         except Exception as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -512,8 +522,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Successfully loaded {module}."
+                success=f"{get_random_emoji()} " f"Successfully loaded {module}."
             )
         except Exception as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -559,8 +568,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Successfully reloaded {module}."
+                success=f"{get_random_emoji()} " f"Successfully reloaded {module}."
             )
         except Exception as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -584,8 +592,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Successfully reloaded {module}."
+                success=f"{get_random_emoji()} " f"Successfully reloaded {module}."
             )
         except Exception as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -618,9 +625,7 @@ class DevCommands(commands.Cog):
                     msg = f"Synced {len(synced)} " f"commands globally."
                 else:
                     msg = f"Synced {len(synced)} " f"commands to the current server."
-                return await state.end(
-                    success=f"{get_random_emoji()} " f"{msg}"
-                )
+                return await state.end(success=f"{get_random_emoji()} " f"{msg}")
             except Exception as e:
                 try:
                     return await state.end(
@@ -671,9 +676,7 @@ class DevCommands(commands.Cog):
                     msg = f"Synced {len(synced)} commands globally."
                 else:
                     msg = f"Synced {len(synced)} commands to the " f"current server."
-                return await state.end(
-                    success=f"{get_random_emoji()} " f"{msg}"
-                )
+                return await state.end(success=f"{get_random_emoji()} " f"{msg}")
             except Exception as e:
                 try:
                     return await state.end(
@@ -717,8 +720,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Successfully unloaded {module}."
+                success=f"{get_random_emoji()} " f"Successfully unloaded {module}."
             )
         except Exception as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -742,8 +744,7 @@ class DevCommands(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Successfully unloaded {module}."
+                success=f"{get_random_emoji()} " f"Successfully unloaded {module}."
             )
         except Exception as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")

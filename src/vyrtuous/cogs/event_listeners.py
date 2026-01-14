@@ -27,40 +27,39 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
-from vyrtuous.database.roles.coordinator import Coordinator
-from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.actions.action import Action
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.server_mute import ServerMute
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
+from vyrtuous.database.logs.history import History
+from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
+from vyrtuous.database.roles.coordinator import Coordinator
+from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.rooms.stage import Stage
 from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.rooms.video_room import VideoRoom
+from vyrtuous.database.settings.cap import Cap
+from vyrtuous.properties.duration import DurationObject
 from vyrtuous.service.check_service import (
     has_equal_or_higher_role,
     role_check_with_specifics,
-    not_bot
+    not_bot,
 )
-from vyrtuous.service.channel_service import resolve_channel
-from vyrtuous.service.member_service import resolve_member
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
-from vyrtuous.database.settings.cap import Cap
+from vyrtuous.service.logging_service import logger
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.channel_service import resolve_channel
+from vyrtuous.service.resolution.member_service import resolve_member
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.history import History
 from vyrtuous.utils.invincibility import Invincibility
-from vyrtuous.utils.properties.duration import DurationObject
-from vyrtuous.utils.setup_logging import logger
 
 
 class EventListeners(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-        
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.flags = []
@@ -68,7 +67,6 @@ class EventListeners(commands.Cog):
         self.join_log = defaultdict(list)
         self._ready_done = False
         self.deleted_rooms = {}
-        
 
     async def cog_load(self):
         VideoRoom.video_rooms = await VideoRoom.select()
@@ -81,7 +79,7 @@ class EventListeners(commands.Cog):
                         reason="Enforce default video-only status",
                     )
                 except discord.Forbidden as e:
-                    logger.warning(f'{str(e).capitalize()}')
+                    logger.warning(f"{str(e).capitalize()}")
                     pass
         self.flags = await Flag.select()
 
@@ -99,12 +97,10 @@ class EventListeners(commands.Cog):
             )
         if room:
             old_id = room.channel_snowflake
-        set_kwargs = {
-            'channel_snowflake': channel.id
-        }
+        set_kwargs = {"channel_snowflake": channel.id}
         where_kwargs = {
-            'channel_snowflake': old_id,
-            'guild_snowflake': channel.guild.id
+            "channel_snowflake": old_id,
+            "guild_snowflake": channel.guild.id,
         }
         await Action.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
         await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
@@ -243,7 +239,8 @@ class EventListeners(commands.Cog):
                         await member.edit(mute=True, reason="Server mute is active.")
                     except discord.Forbidden as e:
                         logger.debug(
-                            f"No permission to " f"edit mute for {member.display_name}. {str(e).capitalize()}"
+                            f"No permission to "
+                            f"edit mute for {member.display_name}. {str(e).capitalize()}"
                         )
                     except discord.HTTPException as e:
                         logger.debug(
@@ -326,7 +323,8 @@ class EventListeners(commands.Cog):
                     )
                 except discord.Forbidden as e:
                     logger.debug(
-                        f"No permission to edit " f"mute for {member.display_name}. {str(e).capitalize()}"
+                        f"No permission to edit "
+                        f"mute for {member.display_name}. {str(e).capitalize()}"
                     )
                 except discord.HTTPException as e:
                     logger.debug(
@@ -360,9 +358,7 @@ class EventListeners(commands.Cog):
     async def on_member_join(self, member: discord.Member):
         user_id = member.id
         guild = member.guild
-        bans = await Ban.select(
-            guild_snowflake=guild.id, member_snowflake=user_id
-        )
+        bans = await Ban.select(guild_snowflake=guild.id, member_snowflake=user_id)
         text_mutes = await TextMute.select(
             guild_snowflake=guild.id, member_snowflake=user_id
         )
@@ -593,8 +589,7 @@ class EventListeners(commands.Cog):
         if not relevant_added_roles and not relevant_removed_roles:
             return
         administrator = await Administrator.select(
-            guild_snowflake=after.guild.id,
-            member_snowflake=after.id
+            guild_snowflake=after.guild.id, member_snowflake=after.id
         )
         if not administrator and relevant_added_roles:
             administrator = Administrator(
@@ -606,28 +601,35 @@ class EventListeners(commands.Cog):
             return
         if administrator:
             where_kwargs = {
-                'guild_snowflake': after.guild.id,
-                'member_snowflake': after.id
+                "guild_snowflake": after.guild.id,
+                "member_snowflake": after.id,
             }
             for role_snowflake in relevant_added_roles:
                 if role_snowflake not in administrator.role_snowflakes:
                     set_kwargs = {
-                        'role_snowflakes': administrator.role_snowflakes.append(role_snowflake)
+                        "role_snowflakes": administrator.role_snowflakes.append(
+                            role_snowflake
+                        )
                     }
-                    await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                    await Administrator.update(
+                        set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                    )
             for role_snowflake in relevant_removed_roles:
                 if role_snowflake in administrator.role_snowflakes:
                     set_kwargs = {
-                        'role_snowflakes': administrator.role_snowflakes.remove(role_snowflake)
+                        "role_snowflakes": administrator.role_snowflakes.remove(
+                            role_snowflake
+                        )
                     }
-                    await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                    await Administrator.update(
+                        set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                    )
             remaining_admin_roles = (
                 set(administrator.role_snowflakes) & after_role_snowflakes
             )
             if not remaining_admin_roles:
                 await Administrator.delete(
-                    guild_snowflake=after.guild.id,
-                    member_snowflake=after.id
+                    guild_snowflake=after.guild.id, member_snowflake=after.id
                 )
 
     @commands.Cog.listener()

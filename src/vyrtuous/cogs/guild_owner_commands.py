@@ -18,34 +18,34 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from discord import app_commands
 from discord.ext import commands
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.member_service import resolve_member
-from vyrtuous.service.role_service import resolve_role
-from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.service.state_service import StateService
-from vyrtuous.utils.invincibility import Invincibility
 import discord
-from vyrtuous.utils.properties.snowflake import (
+
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
+from vyrtuous.properties.snowflake import (
     AppMemberSnowflake,
     AppRoleSnowflake,
     MemberSnowflake,
-    RoleSnowflake
+    RoleSnowflake,
 )
 from vyrtuous.service.check_service import (
     guild_owner_predicator,
     has_equal_or_higher_role,
-    not_bot
+    not_bot,
 )
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.member_service import resolve_member
+from vyrtuous.service.resolution.role_service import resolve_role
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.invincibility import Invincibility
+
 
 class GuildOwnerCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.message_service = MessageService(self.bot, self.bot.db_pool)
-        
-        
 
     # DONE
     @app_commands.command(name="arole", description="Role -> Administrator.")
@@ -80,9 +80,9 @@ class GuildOwnerCommands(commands.Cog):
         )
         for administrator_role in administrator_roles:
             await AdministratorRole.delete(
-                    guild_snowflake=administrator_role.guild_snowflake,
-                    member_snowflake=administrator_role.member_snowflake
-                )
+                guild_snowflake=administrator_role.guild_snowflake,
+                member_snowflake=administrator_role.member_snowflake,
+            )
         for member in role_obj.members:
             if administrators:
                 for administrator in administrators:
@@ -92,7 +92,7 @@ class GuildOwnerCommands(commands.Cog):
                     elif role_obj.id in administrator.role_snowflakes:
                         await Administrator.delete(
                             guild_snowflake=interaction.guild.id,
-                            member_snowflake=member.id
+                            member_snowflake=member.id,
                         )
                         action = "revoked"
                         target_members.append(member.mention)
@@ -122,8 +122,7 @@ class GuildOwnerCommands(commands.Cog):
         ]
         for index, chunk in enumerate(chunks, start=1):
             embed = discord.Embed(
-                title=f"{get_random_emoji()}"
-                f"{role_obj.name} Permission Update",
+                title=f"{get_random_emoji()}" f"{role_obj.name} Permission Update",
                 description=f"Members {action} `Administrator`.",
                 color=discord.Color.green(),
             )
@@ -145,8 +144,7 @@ class GuildOwnerCommands(commands.Cog):
             ]
             for index, chunk in enumerate(chunks, start=1):
                 embed = discord.Embed(
-                    title=f"{get_random_emoji()} "
-                    f"{role_obj.name} Skipped Members",
+                    title=f"{get_random_emoji()} " f"{role_obj.name} Skipped Members",
                     description=f"Members with {role_obj.mention}",
                     color=discord.Color.red(),
                 )
@@ -195,9 +193,9 @@ class GuildOwnerCommands(commands.Cog):
         )
         for administrator_role in administrator_roles:
             await AdministratorRole.delete(
-                    guild_snowflake=administrator_role.guild_snowflake,
-                    member_snowflake=administrator_role.member_snowflake
-                )
+                guild_snowflake=administrator_role.guild_snowflake,
+                member_snowflake=administrator_role.member_snowflake,
+            )
         for member in role_obj.members:
             if administrators:
                 for administrator in administrators:
@@ -206,8 +204,7 @@ class GuildOwnerCommands(commands.Cog):
                         continue
                     elif role_obj.id in administrator.role_snowflakes:
                         await Administrator.delete(
-                            guild_snowflake=ctx.guild.id,
-                            member_snowflake=member.id
+                            guild_snowflake=ctx.guild.id, member_snowflake=member.id
                         )
                         action = "revoked"
                         target_members.append(member.mention)
@@ -238,8 +235,7 @@ class GuildOwnerCommands(commands.Cog):
         ]
         for index, chunk in enumerate(chunks, start=1):
             embed = discord.Embed(
-                title=f"{get_random_emoji()} "
-                f"{role_obj.name} Permission Update",
+                title=f"{get_random_emoji()} " f"{role_obj.name} Permission Update",
                 description=f"Members {action} `Administrator`.",
                 color=discord.Color.green(),
             )
@@ -261,8 +257,7 @@ class GuildOwnerCommands(commands.Cog):
             ]
             for index, chunk in enumerate(chunks, start=1):
                 embed = discord.Embed(
-                    title=f"{get_random_emoji()} "
-                    f"{role_obj.name} Skipped Members",
+                    title=f"{get_random_emoji()} " f"{role_obj.name} Skipped Members",
                     description=f"Members with {role_obj.mention}",
                     color=discord.Color.red(),
                 )

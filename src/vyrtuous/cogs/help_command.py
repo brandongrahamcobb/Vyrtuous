@@ -17,19 +17,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from collections import defaultdict
+from typing import Optional
+import inspect
+
 from discord import app_commands
 from discord.ext import commands
-from typing import Optional
-from vyrtuous.service.check_service import role_check_without_specifics
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.setup_logging import logger
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.permission import PERMISSION_TYPES
-from vyrtuous.database.actions.alias import Alias
-from vyrtuous.service.state_service import StateService
-
 import discord
-import inspect
+
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.database.actions.alias import Alias
+from vyrtuous.service.check_service import role_check_without_specifics
+from vyrtuous.service.logging_service import logger
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.utils.permission import PERMISSION_TYPES
+
 
 class HelpCommand(commands.Cog):
 
@@ -562,6 +564,7 @@ class HelpCommand(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
+
 
 async def setup(bot: DiscordBot):
     cog = HelpCommand(bot)

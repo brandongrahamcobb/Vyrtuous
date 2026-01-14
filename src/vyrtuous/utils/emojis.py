@@ -16,6 +16,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import random
+
 EMOJIS = [
     "\U0001f436",
     "\U0001f431",
@@ -101,6 +102,7 @@ EMOJIS = [
     "\U0001f9a9",
     "\U0001f54a",
 ]
+
 
 def get_random_emoji(self):
     return random.choice(self.EMOJIS)

@@ -18,11 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import asyncio
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.rooms.room import Room
+from vyrtuous.service.logging_service import logger
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.setup_logging import logger
-import asyncio
+
 
 class VideoRoom(Room):
 
@@ -45,7 +47,11 @@ class VideoRoom(Room):
     video_tasks = {}
 
     def __init__(
-        self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], created_at: Optional[datetime] = None, updated_at: Optional[datetime] = None
+        self,
+        channel_snowflake: Optional[int],
+        guild_snowflake: Optional[int],
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
     ):
         super().__init__()
         self.channel_mention = f"<#{channel_snowflake}>"
@@ -91,8 +97,10 @@ class VideoRoom(Room):
             return
         cls.cooldowns[member_snowflake] = now
         await channel.send(message)
+
         async def reset_cooldown():
             await asyncio.sleep(cls.COOLDOWN.total_seconds())
             if cls.cooldowns.get(member_snowflake) == now:
                 del cls.cooldowns[member_snowflake]
+
         asyncio.create_task(reset_cooldown())

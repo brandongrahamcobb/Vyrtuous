@@ -17,20 +17,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
+
 from discord.ext import commands, tasks
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.ban import Ban
-from vyrtuous.database.database import Database
-from vyrtuous.database.roles.developer import Developer
-from vyrtuous.utils.properties.duration import DurationObject
-from vyrtuous.database.logs.developer_log import DeveloperLog
-from vyrtuous.utils.setup_logging import logger
 from vyrtuous.database.actions.text_mute import TextMute
+from vyrtuous.database.actions.voice_mute import VoiceMute
+from vyrtuous.database.database import Database
+from vyrtuous.database.logs.developer_log import DeveloperLog
+from vyrtuous.database.roles.developer import Developer
 from vyrtuous.database.rooms.stage import Stage
 from vyrtuous.database.rooms.video_room import VideoRoom
-from vyrtuous.database.actions.voice_mute import VoiceMute
+from vyrtuous.properties.duration import DurationObject
+from vyrtuous.service.logging_service import logger
 
-import discord
 
 class ScheduledTasks(commands.Cog):
 

@@ -16,8 +16,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional, Union
-from vyrtuous.utils.setup_logging import logger
+
 import discord
+
+from vyrtuous.service.logging_service import logger
+
 
 async def resolve_role(
     ctx_interaction_or_message,

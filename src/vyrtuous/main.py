@@ -17,18 +17,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.bot.discord_client import DiscordClient
-from vyrtuous.config import Config
-from vyrtuous.inc.helpers import PATH_LOG
-from vyrtuous.database.database import Database
-from vyrtuous.utils.setup_logging import logger, setup_logging
-
 import asyncio
-import debugpy
-import pytest
-import subprocess
 
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.config import Config
+from vyrtuous.database.database import Database
+from vyrtuous.inc.helpers import PATH_LOG
+from vyrtuous.service.logging_service import logger, setup_logging
+
+import debugpy
 
 async def main():
 
@@ -42,7 +39,6 @@ async def main():
 
     discord_bot = DiscordBot(config=config, db_pool=db_pool)
     await discord_bot.start(config["vyrtuous_api_key"])
-
 
 if __name__ == "__main__":
     try:

@@ -18,15 +18,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from discord import app_commands
 from discord.ext import commands
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.roles.administrator import Administrator
 from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.developer import Developer
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.utils.permission import PERMISSION_TYPES
-from vyrtuous.utils.setup_logging import logger
-
-import discord
 
 
 class NotCoordinator(commands.CheckFailure):
@@ -382,8 +381,6 @@ async def has_equal_or_higher_role(
     member_snowflake: int,
     sender_snowflake: int,
 ) -> bool:
-    bot = DiscordBot.get_instance()
-
     async def get_highest_role(member_sf):
         try:
             if await member_is_system_owner(member_snowflake=member_sf):

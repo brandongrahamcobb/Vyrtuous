@@ -18,31 +18,33 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from discord import app_commands
 from discord.ext import commands
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.check_service import (
-    has_equal_or_higher_role,
-    not_bot,
-    sys_owner_predicator
-)
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.member_service import resolve_member
-from vyrtuous.database.roles.developer import Developer
 from vyrtuous.database.logs.developer_log import DeveloperLog
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.service.state_service import StateService
-from vyrtuous.utils.properties.snowflake import (
+from vyrtuous.database.roles.developer import Developer
+from vyrtuous.properties.snowflake import (
     AppMemberSnowflake,
     MemberSnowflake,
 )
-import discord
-from vyrtuous.utils.setup_logging import logger
+from vyrtuous.service.check_service import (
+    has_equal_or_higher_role,
+    not_bot,
+    sys_owner_predicator,
+)
+from vyrtuous.service.logging_service import logger
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.member_service import resolve_member
+from vyrtuous.utils.emojis import get_random_emoji
+
 
 class SystemOwnerCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.message_service = MessageService(self.bot, self.bot.db_pool)
-        
+
     # DONE
     @app_commands.command(name="adev", description="Assign developer.")
     @app_commands.describe(
@@ -84,7 +86,7 @@ class SystemOwnerCommands(commands.Cog):
                         )
                     except Exception as e:
                         link = "Unknown message"
-                        logger.warning(f'{str(e).capitalize()}')
+                        logger.warning(f"{str(e).capitalize()}")
                         pass
                 if developer.member_snowflake in developer_log.developer_snowflakes:
                     await developer_log.unassign(member_snowflake=member_obj.id)
@@ -101,7 +103,7 @@ class SystemOwnerCommands(commands.Cog):
                             f"{get_random_emoji()} Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}"
                         )
                     except Exception as e:
-                        logger.warning(f'{str(e).capitalize()}')
+                        logger.warning(f"{str(e).capitalize()}")
                         pass
                     try:
                         return await state.end(
@@ -165,7 +167,7 @@ class SystemOwnerCommands(commands.Cog):
                         )
                     except Exception as e:
                         link = "Unknown message"
-                        logger.warning(f'{str(e).capitalize()}')
+                        logger.warning(f"{str(e).capitalize()}")
                         pass
                 if developer.member_snowflake in developer_log.developer_snowflakes:
                     await developer_log.unassign(member_snowflake=member_obj.id)
@@ -182,7 +184,7 @@ class SystemOwnerCommands(commands.Cog):
                             f"{get_random_emoji()} Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}"
                         )
                     except Exception as e:
-                        logger.warning(f'{str(e).capitalize()}')
+                        logger.warning(f"{str(e).capitalize()}")
                         pass
                     try:
                         return await state.end(
@@ -236,7 +238,9 @@ class SystemOwnerCommands(commands.Cog):
             guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
         )
         if developer:
-            await Developer.delete(guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id)
+            await Developer.delete(
+                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
+            )
             action = "revoked"
         else:
             developer = Developer(
@@ -285,7 +289,9 @@ class SystemOwnerCommands(commands.Cog):
             guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
         )
         if developer:
-            await Developer.delete(guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id)
+            await Developer.delete(
+                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
+            )
             action = "revoked"
         else:
             developer = Developer(

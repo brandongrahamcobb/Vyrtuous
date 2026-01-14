@@ -17,27 +17,43 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
+
 from discord import app_commands
 from discord.ext import commands
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.check_service import *
-from vyrtuous.service.channel_service import resolve_channel
-from vyrtuous.service.member_service import resolve_member
-from vyrtuous.service.message_service import MessageService
 from vyrtuous.database.actions.action import Action
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.settings.cap import Cap
-from vyrtuous.utils.properties.duration import DurationObject
-from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.database.actions.flag import Flag
-from vyrtuous.utils.setup_logging import logger
-from vyrtuous.utils.properties.snowflake import *
-from vyrtuous.database.rooms.stage import Stage
-from vyrtuous.service.state_service import StateService
-from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.actions.text_mute import TextMute
-from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.actions.voice_mute import VoiceMute
+from vyrtuous.database.roles.coordinator import Coordinator
+from vyrtuous.database.roles.moderator import Moderator
+from vyrtuous.database.roles.vegan import Vegan
+from vyrtuous.database.rooms.stage import Stage
+from vyrtuous.database.rooms.temporary_room import TemporaryRoom
+from vyrtuous.properties.duration import DurationObject
+from vyrtuous.properties.snowflake import AppMessageSnowflake, MessageSnowflake
+from vyrtuous.properties.snowflake import (
+    AppChannelSnowflake,
+    AppMemberSnowflake,
+    ChannelSnowflake,
+    MemberSnowflake,
+)
+from vyrtuous.service.check_service import (
+    moderator_predicator,
+    at_home,
+    has_equal_or_higher_role,
+    not_bot,
+    role_check_without_specifics,
+)
+from vyrtuous.service.logging_service import logger
+from vyrtuous.service.resolution.channel_service import resolve_channel
+from vyrtuous.service.resolution.member_service import resolve_member
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
@@ -46,22 +62,10 @@ from vyrtuous.service.scope_service import (
     generate_skipped_guilds,
     generate_skipped_members,
     clean_guild_dictionary,
-    flush_page
+    flush_page,
 )
-import discord
-from vyrtuous.service.check_service import (
-    moderator_predicator,
-    at_home,
-    has_equal_or_higher_role,
-    not_bot,
-    role_check_without_specifics
-)
-from vyrtuous.utils.properties.snowflake import (
-    AppChannelSnowflake,
-    AppMemberSnowflake,
-    ChannelSnowflake,
-    MemberSnowflake
-)
+from vyrtuous.utils.emojis import get_random_emoji
+
 
 class ModeratorCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
@@ -79,17 +83,20 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        bans, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target)
-    
+        bans, title = await resolve_objects(
+            ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-        
+
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
         guild_dictionary = {}
-    
+
         for ban in bans:
             guild_dictionary.setdefault(ban.guild_snowflake, {})
             guild_dictionary[ban.guild_snowflake].setdefault(ban.channel_snowflake, [])
@@ -104,7 +111,12 @@ class ModeratorCommands(commands.Cog):
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -133,7 +145,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Information",
+                            name="Information",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -147,7 +159,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Information", value="\n".join(channel_lines), inline=False
+                    name="Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
         if is_at_home:
@@ -176,7 +188,7 @@ class ModeratorCommands(commands.Cog):
                     title="Skipped Members in Server",
                 )
         await StateService.send_pages(obj=Ban, pages=pages, state=state)
-    
+
     # DONE
     @commands.command(name="bans", description="List bans.")
     @moderator_predicator()
@@ -190,17 +202,20 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        bans, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target)
-    
+        bans, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-        
+
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
         guild_dictionary = {}
-    
+
         for ban in bans:
             guild_dictionary.setdefault(ban.guild_snowflake, {})
             guild_dictionary[ban.guild_snowflake].setdefault(ban.channel_snowflake, [])
@@ -215,7 +230,12 @@ class ModeratorCommands(commands.Cog):
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -244,7 +264,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Information",
+                            name="Information",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -258,7 +278,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Information", value="\n".join(channel_lines), inline=False
+                    name="Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
         if is_at_home:
@@ -287,7 +307,7 @@ class ModeratorCommands(commands.Cog):
                     title="Skipped Members in Server",
                 )
         await StateService.send_pages(obj=Ban, pages=pages, state=state)
-    
+
     # DONE
     @app_commands.command(name="caps", description="List caps.")
     @moderator_predicator()
@@ -298,20 +318,25 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        caps, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Cap, state=state, target=target)
-    
+        caps, title = await resolve_objects(
+            ctx_interaction_or_message=interaction, obj=Cap, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-        
+
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
-    
+
         for cap in caps:
             guild_dictionary.setdefault(cap.guild_snowflake, {})
             guild_dictionary[cap.guild_snowflake].setdefault(cap.channel_snowflake, [])
-            channel_entries = guild_dictionary[cap.guild_snowflake][cap.channel_snowflake]
+            channel_entries = guild_dictionary[cap.guild_snowflake][
+                cap.channel_snowflake
+            ]
             entry_found = False
             for entry in channel_entries:
                 if entry["moderation_type"] == cap.moderation_type:
@@ -320,13 +345,20 @@ class ModeratorCommands(commands.Cog):
                     break
             if not entry_found:
                 channel_entries.append(
-                    {"moderation_type": cap.moderation_type, "durations": [cap.duration]}
+                    {
+                        "moderation_type": cap.moderation_type,
+                        "durations": [cap.duration],
+                    }
                 )
 
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
-    
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
+
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
@@ -352,7 +384,9 @@ class ModeratorCommands(commands.Cog):
                 if field_count + 1 >= chunk_size:
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(
-                    name=f"Channel: {channel.mention}", value="\n".join(lines), inline=False
+                    name=f"Channel: {channel.mention}",
+                    value="\n".join(lines),
+                    inline=False,
                 )
                 field_count += 1
             pages.append(embed)
@@ -376,7 +410,7 @@ class ModeratorCommands(commands.Cog):
                 )
 
         await StateService.send_pages(obj=Cap, pages=pages, state=state)
-    
+
     # DONE
     @commands.command(name="caps", help="List caps.")
     @moderator_predicator()
@@ -390,20 +424,25 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        caps, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Cap, state=state, target=target)
-    
+        caps, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Cap, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-        
+
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
-    
+
         for cap in caps:
             guild_dictionary.setdefault(cap.guild_snowflake, {})
             guild_dictionary[cap.guild_snowflake].setdefault(cap.channel_snowflake, [])
-            channel_entries = guild_dictionary[cap.guild_snowflake][cap.channel_snowflake]
+            channel_entries = guild_dictionary[cap.guild_snowflake][
+                cap.channel_snowflake
+            ]
             entry_found = False
             for entry in channel_entries:
                 if entry["moderation_type"] == cap.moderation_type:
@@ -412,13 +451,20 @@ class ModeratorCommands(commands.Cog):
                     break
             if not entry_found:
                 channel_entries.append(
-                    {"moderation_type": cap.moderation_type, "durations": [cap.duration]}
+                    {
+                        "moderation_type": cap.moderation_type,
+                        "durations": [cap.duration],
+                    }
                 )
-                
+
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
-    
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
+
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
@@ -444,7 +490,9 @@ class ModeratorCommands(commands.Cog):
                 if field_count + 1 >= chunk_size:
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(
-                    name=f"Channel: {channel.mention}", value="\n".join(lines), inline=False
+                    name=f"Channel: {channel.mention}",
+                    value="\n".join(lines),
+                    inline=False,
                 )
                 field_count += 1
             pages.append(embed)
@@ -468,7 +516,7 @@ class ModeratorCommands(commands.Cog):
                 )
 
         await StateService.send_pages(obj=Cap, pages=pages, state=state)
-    
+
     # DONE
     @app_commands.command(name="cmds", description="List aliases.")
     @app_commands.describe(
@@ -479,19 +527,27 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        aliases, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Action, state=state, target=target)
-    
+        aliases, title = await resolve_objects(
+            ctx_interaction_or_message=interaction,
+            obj=Action,
+            state=state,
+            target=target,
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-        
+
         chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
-    
+
         for alias in aliases:
             guild_dictionary.setdefault(alias.guild_snowflake, {})
-            guild_dictionary[alias.guild_snowflake].setdefault(alias.channel_snowflake, [])
+            guild_dictionary[alias.guild_snowflake].setdefault(
+                alias.channel_snowflake, []
+            )
             channel_entries = guild_dictionary[alias.guild_snowflake][
                 alias.channel_snowflake
             ]
@@ -506,7 +562,11 @@ class ModeratorCommands(commands.Cog):
 
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             current_channel = None
@@ -568,7 +628,7 @@ class ModeratorCommands(commands.Cog):
                 )
 
         await StateService.send_pages(obj=Action, pages=pages, state=state)
-    
+
     # DONE
     @commands.command(name="cmds", help="List aliases.")
     @moderator_predicator()
@@ -582,19 +642,24 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        aliases, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Action, state=state, target=target)
-    
+        aliases, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Action, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-        
+
         chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
-    
+
         for alias in aliases:
             guild_dictionary.setdefault(alias.guild_snowflake, {})
-            guild_dictionary[alias.guild_snowflake].setdefault(alias.channel_snowflake, [])
+            guild_dictionary[alias.guild_snowflake].setdefault(
+                alias.channel_snowflake, []
+            )
             channel_entries = guild_dictionary[alias.guild_snowflake][
                 alias.channel_snowflake
             ]
@@ -607,10 +672,13 @@ class ModeratorCommands(commands.Cog):
             if not entry_found:
                 channel_entries.append({alias.alias_type: [alias.alias_name]})
 
-
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             current_channel = None
@@ -688,9 +756,7 @@ class ModeratorCommands(commands.Cog):
         state = StateService(interaction)
         channel_obj = None
         try:
-            channel_obj = await resolve_channel(
-                interaction, channel
-            )
+            channel_obj = await resolve_channel(interaction, channel)
         except:
             channel_obj = interaction.channel
         msg = await channel_obj.fetch_message(message)
@@ -788,17 +854,23 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        flags, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Flag, state=state, target=target)
-    
+        flags, title = await resolve_objects(
+            ctx_interaction_or_message=interaction, obj=Flag, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         member_obj = None
         try:
-            member_obj = await resolve_member(ctx_interaction_or_message=interaction, member_str=target)
+            member_obj = await resolve_member(
+                ctx_interaction_or_message=interaction, member_str=target
+            )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
@@ -817,7 +889,12 @@ class ModeratorCommands(commands.Cog):
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -847,7 +924,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Channels",
+                            name="Channels",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -863,7 +940,7 @@ class ModeratorCommands(commands.Cog):
                     channel_lines.append(channel.mention)
             if channel_lines:
                 embed.add_field(
-                    name=f"Channels", value="\n".join(channel_lines), inline=False
+                    name="Channels", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -908,19 +985,25 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        flags, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Flag, state=state, target=target)
-    
+        flags, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Flag, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         member_obj = None
         try:
-            member_obj = await resolve_member(ctx_interaction_or_message=ctx, member_str=target)
+            member_obj = await resolve_member(
+                ctx_interaction_or_message=ctx, member_str=target
+            )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
         guild_dictionary = {}
@@ -937,7 +1020,12 @@ class ModeratorCommands(commands.Cog):
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -967,7 +1055,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Channels",
+                            name="Channels",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -981,7 +1069,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Channels", value="\n".join(channel_lines), inline=False
+                    name="Channels", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -1022,19 +1110,28 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        vegans, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Vegan, state=state, target=target)
-    
+        vegans, title = await resolve_objects(
+            ctx_interaction_or_message=interaction,
+            obj=Vegan,
+            state=state,
+            target=target,
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         member_obj = None
         try:
-            member_obj = await resolve_member(ctx_interaction_or_message=interaction, member_str=target)
+            member_obj = await resolve_member(
+                ctx_interaction_or_message=interaction, member_str=target
+            )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
         guild_dictionary = {}
@@ -1051,7 +1148,12 @@ class ModeratorCommands(commands.Cog):
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -1081,7 +1183,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Channels",
+                            name="Channels",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -1095,7 +1197,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Channels", value="\n".join(channel_lines), inline=False
+                    name="Channels", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -1139,19 +1241,25 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        vegans, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Vegan, state=state, target=target)
-    
+        vegans, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Vegan, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         member_obj = None
         try:
-            member_obj = await resolve_member(ctx_interaction_or_message=ctx, member_str=target)
+            member_obj = await resolve_member(
+                ctx_interaction_or_message=ctx, member_str=target
+            )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
         guild_dictionary = {}
@@ -1168,7 +1276,12 @@ class ModeratorCommands(commands.Cog):
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -1198,7 +1311,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Channels",
+                            name="Channels",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -1212,7 +1325,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Channels", value="\n".join(channel_lines), inline=False
+                    name="Channels", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -1265,9 +1378,7 @@ class ModeratorCommands(commands.Cog):
         )
         if old_room:
             try:
-                channel_obj = await resolve_channel(
-                    interaction, channel
-                )
+                channel_obj = await resolve_channel(interaction, channel)
             except Exception as e:
                 try:
                     return await state.end(
@@ -1284,7 +1395,7 @@ class ModeratorCommands(commands.Cog):
             ):
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Only owners, developers and administrators can migrate rooms."
+                        warning="\U000026a0\U0000fe0f Only owners, developers and administrators can migrate rooms."
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1391,7 +1502,7 @@ class ModeratorCommands(commands.Cog):
             ):
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Only owners, developers and administrators can migrate rooms."
+                        warning="\U000026a0\U0000fe0f Only owners, developers and administrators can migrate rooms."
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1464,19 +1575,28 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        voice_mutes, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=VoiceMute, state=state, target=target)
-    
+        voice_mutes, title = await resolve_objects(
+            ctx_interaction_or_message=interaction,
+            obj=VoiceMute,
+            state=state,
+            target=target,
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         member_obj = None
         try:
-            member_obj = await resolve_member(ctx_interaction_or_message=interaction, member_str=target)
+            member_obj = await resolve_member(
+                ctx_interaction_or_message=interaction, member_str=target
+            )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
         guild_dictionary = {}
@@ -1499,7 +1619,12 @@ class ModeratorCommands(commands.Cog):
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -1533,7 +1658,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Information",
+                            name="Information",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -1547,7 +1672,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Information", value="\n".join(channel_lines), inline=False
+                    name="Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -1591,19 +1716,25 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        voice_mutes, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=VoiceMute, state=state, target=target)
-    
+        voice_mutes, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=VoiceMute, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         member_obj = None
         try:
-            member_obj = await resolve_member(ctx_interaction_or_message=ctx, member_str=target)
+            member_obj = await resolve_member(
+                ctx_interaction_or_message=ctx, member_str=target
+            )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
         guild_dictionary = {}
@@ -1626,7 +1757,12 @@ class ModeratorCommands(commands.Cog):
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -1660,7 +1796,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Information",
+                            name="Information",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -1674,7 +1810,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Information", value="\n".join(channel_lines), inline=False
+                    name="Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -1719,14 +1855,14 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         member_obj = None
         try:
-            channel_obj = await resolve_channel(
-                interaction, channel
-            )
-        except:
+            channel_obj = await resolve_channel(interaction, channel)
+        except Exception as e:
             channel_obj = interaction.channel
+            logger.warning(f"{str(e).capitalize()}")
         try:
             member_obj = await resolve_member(interaction, member)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             try:
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f Could not resolve a valid member `{member}`."
@@ -1736,6 +1872,7 @@ class ModeratorCommands(commands.Cog):
         try:
             not_bot(interaction, member_snowflake=member_obj.id)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             try:
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f You are not authorized to affect {interaction.guild.me.mention}."
@@ -1743,7 +1880,7 @@ class ModeratorCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
-            highest_role = await has_equal_or_higher_role(
+            await has_equal_or_higher_role(
                 interaction,
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=interaction.guild.id,
@@ -1803,9 +1940,11 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
+            logger.warning(f"{str(e).capitalize()}")
         try:
             member_obj = await resolve_member(ctx, member)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             try:
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f Could not resolve a valid member `{member}`."
@@ -1816,13 +1955,14 @@ class ModeratorCommands(commands.Cog):
             not_bot(ctx, member_snowflake=member_obj.id)
         except Exception as e:
             try:
+                logger.warning(f"{str(e).capitalize()}")
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f You are not authorized to affect {ctx.guild.me.mention}."
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
-            highest_role = await has_equal_or_higher_role(
+            await has_equal_or_higher_role(
                 ctx,
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=ctx.guild.id,
@@ -1872,13 +2012,19 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        stages, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Stage, state=state, target=target)
-    
+        stages, title = await resolve_objects(
+            ctx_interaction_or_message=interaction,
+            obj=Stage,
+            state=state,
+            target=target,
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
 
@@ -1893,7 +2039,11 @@ class ModeratorCommands(commands.Cog):
 
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -1954,13 +2104,16 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        stages, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Stage, state=state, target=target)
-    
+        stages, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Stage, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
 
@@ -1975,7 +2128,11 @@ class ModeratorCommands(commands.Cog):
 
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -2048,13 +2205,29 @@ class ModeratorCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-            
-        bans, ban_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target)
-        flags, flag_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Flag, state=state, target=target)
-        text_mutes, text_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=TextMute, state=state, target=target)
-        vegans, vegan_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Vegan, state=state, target=target)
-        voice_mutes, voice_mute_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target)
-        
+
+        bans, ban_title = await resolve_objects(
+            ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target
+        )
+        flags, flag_title = await resolve_objects(
+            ctx_interaction_or_message=interaction, obj=Flag, state=state, target=target
+        )
+        text_mutes, text_title = await resolve_objects(
+            ctx_interaction_or_message=interaction,
+            obj=TextMute,
+            state=state,
+            target=target,
+        )
+        vegans, vegan_title = await resolve_objects(
+            ctx_interaction_or_message=interaction,
+            obj=Vegan,
+            state=state,
+            target=target,
+        )
+        voice_mutes, voice_mute_title = await resolve_objects(
+            ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target
+        )
+
         guild = self.bot.get_guild(interaction.guild.id)
 
         embed = discord.Embed(
@@ -2075,7 +2248,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, ban_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, ban_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2105,7 +2280,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, flag_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, flag_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2135,7 +2312,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, ban_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, ban_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2163,7 +2342,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, vegan_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, vegan_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2193,7 +2374,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, voice_mute_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, voice_mute_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2202,7 +2385,7 @@ class ModeratorCommands(commands.Cog):
                     inline=False,
                 )
                 pages.append(embed)
-        
+
         await StateService.send_pages(obj=Action, pages=pages, state=state)
 
     @commands.command(name="summary", description="Moderation summary.")
@@ -2231,15 +2414,25 @@ class ModeratorCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-            
-        bans, ban_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target)
-        flags, flag_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Flag, state=state, target=target)
-        text_mutes, text_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=TextMute, state=state, target=target)
-        vegans, vegan_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Vegan, state=state, target=target)
-        voice_mutes, voice_mute_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target)
-        
+
+        bans, ban_title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target
+        )
+        flags, flag_title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Flag, state=state, target=target
+        )
+        text_mutes, text_title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=TextMute, state=state, target=target
+        )
+        vegans, vegan_title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Vegan, state=state, target=target
+        )
+        voice_mutes, voice_mute_title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target
+        )
+
         guild = self.bot.get_guild(ctx.guild.id)
-        
+
         embed = discord.Embed(
             title=ban_title, description=guild.name, color=discord.Color.blue()
         )
@@ -2258,7 +2451,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, ban_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, ban_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2288,7 +2483,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, flag_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, flag_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2318,7 +2515,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, ban_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, ban_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2346,7 +2545,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, vegan_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, vegan_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2376,7 +2577,9 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        embed, field_count = flush_page(embed, pages, voice_mute_title, guild.name)
+                        embed, field_count = flush_page(
+                            embed, pages, voice_mute_title, guild.name
+                        )
                         lines = []
             if lines:
                 embed.add_field(
@@ -2385,7 +2588,7 @@ class ModeratorCommands(commands.Cog):
                     inline=False,
                 )
                 pages.append(embed)
-        
+
         await StateService.send_pages(obj=Action, pages=pages, state=state)
 
     # DONE
@@ -2398,19 +2601,28 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        text_mutes, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=TextMute, state=state, target=target)
-    
+        text_mutes, title = await resolve_objects(
+            ctx_interaction_or_message=interaction,
+            obj=TextMute,
+            state=state,
+            target=target,
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         member_obj = None
         try:
-            member_obj = await resolve_member(ctx_interaction_or_message=interaction, member_str=target)
+            member_obj = await resolve_member(
+                ctx_interaction_or_message=interaction, member_str=target
+            )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         thumbnail = False
         guild_dictionary = {}
@@ -2433,7 +2645,12 @@ class ModeratorCommands(commands.Cog):
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -2447,9 +2664,9 @@ class ModeratorCommands(commands.Cog):
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
                     if not member:
-                        skipped_members.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
+                        skipped_members.setdefault(guild_snowflake, []).append(
+                            member_data["member_snowflake"]
+                        )
                         continue
                     if not member_obj:
                         lines.append(
@@ -2472,7 +2689,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Information",
+                            name="Information",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -2486,7 +2703,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Information", value="\n".join(channel_lines), inline=False
+                    name="Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -2531,19 +2748,25 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        text_mutes, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=TextMute, state=state, target=target)
-    
+        text_mutes, title = await resolve_objects(
+            ctx_interaction_or_message=ctx, obj=TextMute, state=state, target=target
+        )
+
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
 
         member_obj = None
         try:
-            member_obj = await resolve_member(ctx_interaction_or_message=ctx, member_str=target)
+            member_obj = await resolve_member(
+                ctx_interaction_or_message=ctx, member_str=target
+            )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             pass
-                
+
         channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         thumbnail = False
         guild_dictionary = {}
@@ -2566,7 +2789,12 @@ class ModeratorCommands(commands.Cog):
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_channels = await generate_skipped_channels(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
@@ -2600,7 +2828,7 @@ class ModeratorCommands(commands.Cog):
                         lines = []
                     elif channel_lines:
                         embed.add_field(
-                            name=f"Information",
+                            name="Information",
                             value="\n".join(channel_lines),
                             inline=False,
                         )
@@ -2614,7 +2842,7 @@ class ModeratorCommands(commands.Cog):
                     )
             if channel_lines:
                 embed.add_field(
-                    name=f"Information", value="\n".join(channel_lines), inline=False
+                    name="Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -2643,8 +2871,9 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-                
+
         await StateService.send_pages(obj=TextMute, pages=pages, state=state)
+
 
 async def setup(bot: DiscordBot):
     cog = ModeratorCommands(bot)

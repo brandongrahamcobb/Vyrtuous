@@ -15,9 +15,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from datetime import datetime
 from typing import Optional
+
 from vyrtuous.database.rooms.room import Room
+
 
 class TemporaryRoom(Room):
 
@@ -44,7 +47,7 @@ class TemporaryRoom(Room):
         member_snowflake: Optional[int],
         room_name: Optional[str],
         created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None
+        updated_at: Optional[datetime] = None,
     ):
         super().__init__()
         self.channel_mention = f"<#{channel_snowflake}>"

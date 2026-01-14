@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from quart import Quart, request, redirect
-from vyrtuous.utils.setup_logging import logger
+from vyrtuous.service.logging_service import logger
 
 import aiohttp
 import asyncio

@@ -16,8 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from vyrtuous.bot.discord_bot import DiscordBot
 import discord
+
+from vyrtuous.bot.discord_bot import DiscordBot
 
 
 class VerifyView(discord.ui.View):

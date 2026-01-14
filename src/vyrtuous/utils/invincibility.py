@@ -16,12 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.utils.setup_logging import logger
-import discord
+from vyrtuous.service.logging_service import logger
+
 
 class Invincibility:
 

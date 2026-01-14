@@ -1,4 +1,4 @@
-"""setup_logging.py The purpose of this program is to set up logging for Vyrtuous.
+"""logging_service.py The purpose of this program is to set up logging for Vyrtuous.
 
 Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from os import makedirs
 from os.path import dirname, exists
 from typing import Any, Dict
-
 import logging
 
 global logger

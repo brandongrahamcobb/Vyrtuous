@@ -18,7 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from typing import Optional
+
 from vyrtuous.database.roles.permission_role import PermissionRole
+
 
 class Developer(PermissionRole):
 

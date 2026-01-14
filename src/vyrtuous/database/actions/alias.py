@@ -15,9 +15,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from collections import defaultdict
 from typing import Optional
 from vyrtuous.database.actions.action import Action
+
 
 class Alias(Action):
 
@@ -27,8 +29,7 @@ class Alias(Action):
     UNDO = "alias"
     REQUIRED_INSTANTIATION_ARGS = [
         "alias_name",
-        "alias_type"
-        "channel_snowflake",
+        "alias_type" "channel_snowflake",
         "guild_snowflake",
     ]
     OPTIONAL_ARGS = [
@@ -96,7 +97,7 @@ class Alias(Action):
         ):
             raise ValueError("Invalid alias_type.")
         self._alias_type = alias_type
-        
+
     @classmethod
     def format_aliases(cls, aliases) -> list[str]:
         lines = []
@@ -126,4 +127,3 @@ class Alias(Action):
                 else:
                     lines.append(f"`{alias.alias_name}`")
         return lines
-    

@@ -17,13 +17,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.database.rooms.room import Room
 from typing import Optional
+import time
 
 import discord
-import time
+
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.database.rooms.room import Room
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 class Stage(Room):
@@ -51,8 +52,8 @@ class Stage(Room):
         channel_snowflake: Optional[int],
         expires_in: Optional[datetime],
         guild_snowflake: Optional[int],
-        reason: Optional[str] = 'No reason provided.',
-        target: Optional[str] = 'room',
+        reason: Optional[str] = "No reason provided.",
+        target: Optional[str] = "room",
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):

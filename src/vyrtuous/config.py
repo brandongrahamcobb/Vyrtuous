@@ -16,11 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from dotenv import load_dotenv
 from typing import Any, Dict
-from vyrtuous.inc.helpers import *
-
 import os
+
+from dotenv import load_dotenv
 
 
 class Config:

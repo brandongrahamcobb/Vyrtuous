@@ -17,21 +17,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Union
-from cachetools import TTLCache
 from datetime import datetime, timezone
-from discord.ext import commands
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.database.roles.developer import Developer
-from vyrtuous.database.logs.developer_log import DeveloperLog
-from vyrtuous.service.paginator_service import Paginator
-from vyrtuous.utils.time_to_complete import TimeToComplete
-from vyrtuous.utils.setup_logging import logger
 import asyncio
+
+from cachetools import TTLCache
+from discord.ext import commands
 import discord
 
-cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.database.logs.developer_log import DeveloperLog
+from vyrtuous.database.roles.developer import Developer
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.paginator_service import Paginator
+from vyrtuous.service.logging_service import logger
+from vyrtuous.utils.time_to_complete import TimeToComplete
 
+cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
 
 class StateService:
 
@@ -255,6 +256,7 @@ class StateService:
             try:
                 await user.send(embed=embed)
             except discord.Forbidden as e:
+                logger.info(f"{str(e).capitalize()}")
                 pass
 
     async def report_issue(self, user):
@@ -263,6 +265,7 @@ class StateService:
             try:
                 await user.send("You already reported this message.")
             except discord.Forbidden as e:
+                logger.info(f"{str(e).capitalize()}")
                 pass
             return
         self._reported_users.add(user.id)
@@ -276,6 +279,7 @@ class StateService:
             reference = await developer_log.create()
             id = reference.id
         except discord.Forbidden as e:
+            logger.info(f"{str(e).capitalize()}")
             pass
         online_developer_mentions = []
         member = self.bot.get_user(self.config["discord_owner_id"])
@@ -294,21 +298,23 @@ class StateService:
                     try:
                         await member.send(message)
                     except discord.Forbidden as e:
-                        logger.warning(f"Unable to send a developer log ID: {id}")
+                        logger.warning(
+                            f"Unable to send a developer log ID: {id}. {str(e).capitalize()}"
+                        )
         message = "Your report has been submitted"
         if online_developer_mentions:
             message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
         await user.send(message)
-
 
     async def send_pages(obj, pages, state):
         if pages:
             try:
                 return await state.end(success=pages)
             except Exception as e:
+                logger.info(f"{str(e).capitalize()}")
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
+                        warning="\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
