@@ -55,11 +55,16 @@ class Administrator(PermissionRole):
 
 class AdministratorRole(PermissionRole):
 
+    ACT = "arole"
+    PLURAL = "Administrator Roles"
+    SINGULAR = "Administrator Role"
+    UNDO = "arole"
     REQUIRED_INSTANTIATION_ARGS = [
         "guild_snowflake",
         "role_snowflake",
     ]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
+    TABLE_NAME = "administrator_roles"
 
     def __init__(
         self,

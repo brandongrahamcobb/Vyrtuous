@@ -92,7 +92,7 @@ class EventListeners(commands.Cog):
                 return
         room = self.deleted_rooms.pop(name, None)
         if not room:
-            room = await TemporaryRoom.select_and_room_name(
+            room = await TemporaryRoom.select(
                 guild_snowflake=guild.id, room_name=name
             )
         if room:

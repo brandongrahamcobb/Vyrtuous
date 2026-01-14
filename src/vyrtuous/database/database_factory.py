@@ -37,19 +37,14 @@ class DatabaseFactory(object):
         #             reason="Clear command"
         #         )
 
-    async def create(self, **kwargs):
+    async def create(self):
         table_name = getattr(self, "TABLE_NAME")
-        fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(
-            self, "OPTIONAL_ARGS"
-        )
-        for key in kwargs:
-            if key not in fields:
-                raise ValueError(
-                    f"Invalid argument '{key}' for {self.__class__.__name__}"
-                )
-        insert_fields = list(kwargs)
+        fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(self, "OPTIONAL_ARGS")
+        insert_fields = [f for f in fields if getattr(self, f, None) is not None]
+        if not insert_fields:
+            raise ValueError("No fields available to insert")
         placeholders = ", ".join(f"${i+1}" for i in range(len(insert_fields)))
-        values = [kwargs[f] for f in insert_fields]
+        values = [getattr(self, f) for f in insert_fields]
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
                 f"""

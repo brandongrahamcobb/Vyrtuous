@@ -1363,7 +1363,7 @@ class ModeratorCommands(commands.Cog):
     ):
         state = StateService(interaction)
         channel_obj = None
-        old_room = await TemporaryRoom.select_and_room_name(
+        old_room = await TemporaryRoom.select(
             guild_snowflake=interaction.guild.id, room_name=old_name
         )
         if old_room:
@@ -1389,54 +1389,61 @@ class ModeratorCommands(commands.Cog):
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
-            await TemporaryRoom.update_channel(
-                guild_snowflake=interaction.guild.id,
-                room_name=channel_obj.name,
-                source_channel_snowflake=old_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            set_kwargs = {
+                "channel_snowflake": channel_obj.id
+            }
+            temp_where_kwargs = {
+                "channel_snowflake": old_room.channel_snowflake,
+                "guild_snowflake": interaction.guild.id,
+                "room_name": channel_obj.name,
+            }
+            where_kwargs = {
+                "channel_snowflake": old_room.channel_snowflake,
+                "guild_snowflake": interaction.guild.id,
+            }
+            await TemporaryRoom.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=temp_where_kwargs,
             )
-            new_room = await TemporaryRoom.select_and_room_name(
-                guild_snowflake=interaction.guild.id, room_name=channel_obj.name
+            await Alias.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Alias.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Ban.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Ban.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Cap.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Cap.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Coordinator.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Coordinator.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Flag.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Flag.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Moderator.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Moderator.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Stage.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Stage.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await TextMute.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await TextMute.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Vegan.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Vegan.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
-            )
-            await VoiceMute.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await VoiceMute.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
             try:
                 return await state.end(
@@ -1470,7 +1477,7 @@ class ModeratorCommands(commands.Cog):
     ):
         state = StateService(ctx)
         channel_obj = None
-        old_room = await TemporaryRoom.select_and_room_name(
+        old_room = await TemporaryRoom.select(
             guild_snowflake=ctx.guild.id, room_name=old_name
         )
         if old_room:
@@ -1496,54 +1503,61 @@ class ModeratorCommands(commands.Cog):
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
-            await TemporaryRoom.update_channel(
-                guild_snowflake=ctx.guild.id,
-                room_name=channel_obj.name,
-                source_channel_snowflake=old_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            set_kwargs = {
+                "channel_snowflake": channel_obj.id
+            }
+            temp_where_kwargs = {
+                "channel_snowflake": old_room.channel_snowflake,
+                "guild_snowflake": ctx.guild.id,
+                "room_name": channel_obj.name,
+            }
+            where_kwargs = {
+                "channel_snowflake": old_room.channel_snowflake,
+                "guild_snowflake": ctx.guild.id,
+            }
+            await TemporaryRoom.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=temp_where_kwargs,
             )
-            new_room = await TemporaryRoom.select_and_room_name(
-                guild_snowflake=ctx.guild.id, room_name=channel_obj.name
+            await Alias.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Alias.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Ban.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Ban.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Cap.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Cap.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Coordinator.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Coordinator.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Flag.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Flag.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Moderator.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Moderator.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Stage.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Stage.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await TextMute.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await TextMute.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await Vegan.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
-            await Vegan.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
-            )
-            await VoiceMute.update_channel(
-                source_channel_snowflake=new_room.channel_snowflake,
-                target_channel_snowflake=channel_obj.id,
+            await VoiceMute.update(
+                set_kwargs=set_kwargs,
+                where_kwargs=where_kwargs,
             )
             try:
                 return await state.end(
