@@ -35,7 +35,7 @@
 # @pytest.mark.parametrize("command,moderation_type,channel_ref", generate_cap_test_cases())
 # async def test_cap_commands(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], role, command: Optional[str], moderation_type, channel_ref):
 #     administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
-#     await administrator.grant()
+#     await administrator.create()
 #     try:
 #         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
 #         match moderation_type:
@@ -70,4 +70,4 @@
 #             if channel_ref:
 #                 assert channel_value in content
 #     finally:
-#         await administrator.revoke()
+#         await administrator.delete()

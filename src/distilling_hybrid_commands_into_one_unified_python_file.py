@@ -1,3 +1,3 @@
-# DONE
-
-# DONE
+pyflakes
+coverage
+hypothesis

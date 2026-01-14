@@ -42,6 +42,7 @@ class Coordinator(PermissionRole):
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):
+        super().__init__()
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
         self.created_at = created_at

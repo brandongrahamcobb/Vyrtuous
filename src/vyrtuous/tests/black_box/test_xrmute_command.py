@@ -32,7 +32,7 @@
 
 # async def test_xrmute_command(bot, voice_channel_one, guild, privileged_author, not_privileged_author, prefix: Optional[str], command: Optional[str], member_ref):
 #     coordinator = Coordinator(channel_snowflake=voice_channel_one.id, guild_snowflake=guild.id, member_snowflake=privileged_author.id)
-#     await coordinator.grant()
+#     await coordinator.create()
 #     try:
 #         voice_channel_one.messages.clear()
 #         formatted = f"{command} {voice_channel_one.id}"
@@ -53,4 +53,4 @@
 #             # print(f"{GREEN}Success:{RESET} {content}")
 #             assert any(emoji in content for emoji in EMOJIS)
 #     finally:
-#         await coordinator.revoke()
+#         await coordinator.delete()

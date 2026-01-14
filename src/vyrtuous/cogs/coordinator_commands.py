@@ -20,7 +20,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from discord import app_commands
-
+from discord.ext import commands
+import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.roles.vegan import Vegan
@@ -33,18 +34,20 @@ from vyrtuous.service.check_service import (
 )
 from vyrtuous.service.member_service import resolve_member
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import State
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
-from vyrtuous.utils.properties.snowflake import *
+from vyrtuous.service.state_service import StateService
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.properties.snowflake import (
+    AppChannelSnowflake,
+    AppMemberSnowflake,
+    ChannelSnowflake,
+    MemberSnowflake
+)
 from vyrtuous.utils.setup_logging import logger
-from vyrtuous.service.scope_service import generate_skipped_dict_pages, generate_skipped_set_pages, send_pages
 
 class CoordinatorCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-        
-        
         self.message_service = MessageService(self.bot, self.bot.db_pool)
 
     # DONE
@@ -60,7 +63,7 @@ class CoordinatorCommands(commands.Cog):
         member: AppMemberSnowflake,
         channel: AppChannelSnowflake,
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         action = None
         channel_obj = None
         member_obj = None
@@ -69,6 +72,7 @@ class CoordinatorCommands(commands.Cog):
                 ctx_interaction_or_message=interaction, channel_str=channel
             )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             channel_obj = interaction.channel
             await self.message_service.send_message(
                 interaction,
@@ -81,7 +85,7 @@ class CoordinatorCommands(commands.Cog):
             not_bot(
                 ctx_interaction_or_message=interaction, member_snowflake=member_obj.id
             )
-            highest_role = await has_equal_or_higher_role(
+            await has_equal_or_higher_role(
                 ctx_interaction_or_message=interaction,
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=interaction.guild.id,
@@ -101,7 +105,11 @@ class CoordinatorCommands(commands.Cog):
             member_snowflake=member_obj.id,
         )
         if moderator:
-            await moderator.revoke()
+            await Moderator.delete(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=interaction.guild.id,
+                member_snowflake=member_obj.id
+            )
             action = "revoked"
         else:
             moderator = Moderator(
@@ -109,7 +117,7 @@ class CoordinatorCommands(commands.Cog):
                 guild_snowflake=interaction.guild.id,
                 member_snowflake=member_obj.id,
             )
-            await moderator.grant()
+            await moderator.create()
             action = "granted"
         try:
             return await state.end(
@@ -133,7 +141,7 @@ class CoordinatorCommands(commands.Cog):
             default=None, description="Tag a channel or include its ID"
         ),
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         action = None
         channel_obj = None
         member_obj = None
@@ -142,6 +150,7 @@ class CoordinatorCommands(commands.Cog):
                 ctx_interaction_or_message=ctx, channel_str=channel
             )
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             channel_obj = ctx.channel
             await self.message_service.send_message(
                 ctx_interaction_or_message=ctx,
@@ -152,7 +161,7 @@ class CoordinatorCommands(commands.Cog):
                 ctx_interaction_or_message=ctx, member_str=member
             )
             not_bot(ctx, member_snowflake=member_obj.id)
-            highest_role = await has_equal_or_higher_role(
+            await has_equal_or_higher_role(
                 ctx_interaction_or_message=ctx,
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=ctx.guild.id,
@@ -172,7 +181,11 @@ class CoordinatorCommands(commands.Cog):
             member_snowflake=member_obj.id,
         )
         if moderator:
-            await moderator.revoke()
+            await Moderator.delete(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=ctx.guild.id,
+                member_snowflake=member_obj.id
+            )
             action = "revoked"
         else:
             moderator = Moderator(
@@ -180,7 +193,7 @@ class CoordinatorCommands(commands.Cog):
                 guild_snowflake=ctx.guild.id,
                 member_snowflake=member_obj.id,
             )
-            await moderator.grant()
+            await moderator.create()
             action = "granted"
         try:
             return await state.end(
@@ -201,7 +214,7 @@ class CoordinatorCommands(commands.Cog):
         channel: AppChannelSnowflake,
         reason: Optional[str] = "No reason provided.",
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         channel_obj = None
         muted_members, pages, skipped_members, failed_members = [], [], [], []
         try:
@@ -236,7 +249,8 @@ class CoordinatorCommands(commands.Cog):
                             f"Unable to voice-mute member "
                             f"{member.display_name} ({member.id}) in channel "
                             f"{channel_obj.name} ({channel_obj.id}) in guild "
-                            f"{interaction.guild.name} ({interaction.guild.id})."
+                            f"{interaction.guild.name} ({interaction.guild.id}). "
+                            f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -266,7 +280,7 @@ class CoordinatorCommands(commands.Cog):
         )
         pages.append(embed)
 
-        await send_pages(obj=Vegan, pages=pages, state=state)
+        await StateService.send_pages(obj=Vegan, pages=pages, state=state)
 
     # DONE
     @commands.command(name="rmute", help="Room mute (except yourself).")
@@ -281,7 +295,7 @@ class CoordinatorCommands(commands.Cog):
             default="No reason provided.", description="Specify a reason."
         ),
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         channel_obj = None
         muted_members, pages, skipped_members, failed_members = [], [], [], []
         try:
@@ -316,7 +330,8 @@ class CoordinatorCommands(commands.Cog):
                             f"Unable to voice-mute member "
                             f"{member.display_name} ({member.id}) in channel "
                             f"{channel_obj.name} ({channel_obj.id}) in guild "
-                            f"{ctx.guild.name} ({ctx.guild.id})."
+                            f"{ctx.guild.name} ({ctx.guild.id}). "
+                            f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -346,7 +361,7 @@ class CoordinatorCommands(commands.Cog):
         )
         pages.append(embed)
 
-        await send_pages(obj=Vegan, pages=pages, state=state)
+        await StateService.send_pages(obj=Vegan, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="xrmute", description="Unmute all.")
@@ -355,9 +370,8 @@ class CoordinatorCommands(commands.Cog):
     async def room_unmute_app_command(
         self, interaction: discord.Interaction, channel: AppChannelSnowflake
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         channel_obj = None
-        chunk_size = 7
         failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
             channel_obj = await resolve_channel(
@@ -390,7 +404,8 @@ class CoordinatorCommands(commands.Cog):
                             f"for member {member.display_name} ({member.id}) "
                             f"in channel {channel_obj.name} ({channel_obj.id}) "
                             f"in guild {interaction.guild.name} "
-                            f"({interaction.guild.id})."
+                            f"({interaction.guild.id}). "
+                            f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
             await VoiceMute.delete(
@@ -415,7 +430,7 @@ class CoordinatorCommands(commands.Cog):
         )
         pages.append(embed)
 
-        await send_pages(obj=VoiceMute, pages=pages, state=state)
+        await StateService.send_pages(obj=VoiceMute, pages=pages, state=state)
 
     # DONE
     @commands.command(name="xrmute", help="Unmute all.")
@@ -427,7 +442,7 @@ class CoordinatorCommands(commands.Cog):
             default=None, description="Tag a channel or include its ID"
         ),
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         channel_obj = None
         failed_members, pages, skipped_members, unmuted_members = [], [], [], []
         try:
@@ -454,10 +469,11 @@ class CoordinatorCommands(commands.Cog):
                         await member.edit(mute=False)
                     except Exception as e:
                         logger.warning(
-                            f"Unable to voice-mute member "
+                            "Unable to voice-mute member "
                             f"{member.display_name} ({member.id}) in channel "
                             f"{channel_obj.name} ({channel_obj.id}) in guild "
-                            f"{ctx.guild.name} ({ctx.guild.id})."
+                            f"{ctx.guild.name} ({ctx.guild.id}). "
+                            f'{str(e).capitalize()}'
                         )
                         failed_members.append(member)
             await VoiceMute.delete(
@@ -482,7 +498,7 @@ class CoordinatorCommands(commands.Cog):
         )
         pages.append(embed)
 
-        await send_pages(obj=VoiceMute, pages=pages, state=state)
+        await StateService.send_pages(obj=VoiceMute, pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

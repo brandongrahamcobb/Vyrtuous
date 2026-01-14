@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.rooms.room import Room
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.setup_logging import logger
 import asyncio
 
@@ -45,13 +45,15 @@ class VideoRoom(Room):
     video_tasks = {}
 
     def __init__(
-        self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]
+        self, channel_snowflake: Optional[int], guild_snowflake: Optional[int], created_at: Optional[datetime] = None, updated_at: Optional[datetime] = None
     ):
-        self.bot = DiscordBot.get_instance()
+        super().__init__()
         self.channel_mention = f"<#{channel_snowflake}>"
         self.channel_snowflake = channel_snowflake
+        self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.is_video_room: Optional[bool] = True
+        self.updated_at = updated_at
 
     @classmethod
     async def enforce_video(cls, member, channel, delay):
@@ -65,13 +67,13 @@ class VideoRoom(Room):
         try:
             await member.move_to(None)
         except Exception as e:
-            logger.info("Unable to enforce video by kicking the user.")
+            logger.info(f"Unable to enforce video by kicking the user. {e}")
         try:
             await member.send(
-                f"{cls.emoji.get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel."
+                f"{get_random_emoji()} You were kicked from {channel.mention} because your video feed stopped. {channel.mention} is a video-only channel."
             )
         except Exception as e:
-            logger.info("Unable to send a message to enforce video.")
+            logger.info(f"Unable to send a message to enforce video. {e}")
 
     @classmethod
     def cancel_task(cls, key):

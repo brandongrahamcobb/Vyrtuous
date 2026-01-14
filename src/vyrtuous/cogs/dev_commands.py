@@ -19,34 +19,43 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from typing import Literal, Optional
 
 from discord import app_commands
-
+from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.inc.helpers import DISCORD_COGS_CLASSES
-from vyrtuous.service.channel_service import resolve_channel
-from vyrtuous.service.check_service import *
+from vyrtuous.service.check_service import (
+    at_home,
+    developer_predicator
+)
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import State
+from vyrtuous.service.scope_service import (
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    resolve_objects,
+    generate_skipped_channels,
+    generate_skipped_guilds,
+    generate_skipped_messages,
+    clean_guild_dictionary,
+    flush_page
+)
+from vyrtuous.service.state_service import StateService
 from vyrtuous.database.database import Database
 from vyrtuous.database.logs.developer_log import DeveloperLog
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
-from vyrtuous.service.scope_service import generate_skipped_dict_pages, generate_skipped_set_pages, send_pages
-
+from vyrtuous.utils.emojis import get_random_emoji
+import discord
+from vyrtuous.utils.setup_logging import logger
 
 class DevCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-        
         self.message_service = MessageService(self.bot, self.bot.db_pool)
-        
-        
 
     # DONE
     @app_commands.command(name="backup", description="DB backup.")
     @developer_predicator()
     async def app_backup(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        state = State(interaction)
+        state = StateService(interaction)
         db = Database(directory="/app/backups")
         try:
             db.create_backup_directory()
@@ -64,7 +73,7 @@ class DevCommands(commands.Cog):
     @commands.command(name="backup", help="DB backup.")
     @developer_predicator()
     async def text_backup(self, ctx: commands.Context):
-        state = State(ctx)
+        state = StateService(ctx)
         db = Database(directory="/app/backups")
         try:
             db.create_backup_directory()
@@ -81,7 +90,7 @@ class DevCommands(commands.Cog):
     @app_commands.command(name="cogs", description="Lists cogs.")
     @developer_predicator()
     async def list_cogs_app_command(self, interaction: discord.Interaction):
-        state = State(interaction)
+        state = StateService(interaction)
         loaded, not_loaded = [], []
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
@@ -109,7 +118,7 @@ class DevCommands(commands.Cog):
     @commands.command(name="cogs", help="Lists cogs.")
     @developer_predicator()
     async def list_cogs_text_command(self, ctx: commands.Context):
-        state = State(ctx)
+        state = StateService(ctx)
         loaded, not_loaded = [], []
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"Cogs for {ctx.guild.me.name}",
@@ -149,8 +158,8 @@ class DevCommands(commands.Cog):
         action: str,
         notes: Optional[str] = None,
     ):
-        state = State(ctx)
-        developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=reference)
+        state = StateService(ctx)
+        developer_log = await DeveloperLog.select(id=reference, resolved=False)
         if not developer_log:
             try:
                 return await state.end(
@@ -163,7 +172,7 @@ class DevCommands(commands.Cog):
             await developer_log.resolve()
             detail = (
                 "resolved the issue. The record "
-                f"will remain in the database for the next 30 days."
+                "will remain in the database for the next 30 days."
             )
         elif action and action.lower() == "append":
             await developer_log.append(notes)
@@ -197,8 +206,8 @@ class DevCommands(commands.Cog):
             default=None, description="Optionally specify notes."
         ),
     ):
-        state = State(ctx)
-        developer_log = await DeveloperLog.fetch_unresolved_by_reference(id=reference)
+        state = StateService(ctx)
+        developer_log = await DeveloperLog.select(id=reference, resolved=False)
         if not developer_log:
             try:
                 return await state.end(
@@ -229,108 +238,24 @@ class DevCommands(commands.Cog):
         value="Specify one of: channel ID/mention, reference ID and server ID.",
     )
     @developer_predicator()
-    async def list_developer_logs_text_command(
+    async def list_developer_logs_app_command(
         self,
         interaction: discord.Interaction,
         target: Optional[str],
         value: Optional[str],
     ):
-        state = State(interaction)
-        is_at_home = False
-        channel_obj, guild_obj = None, None
-        developer_logs = []
+        state = StateService(interaction)
+        developer_logs, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=DeveloperLog, state=state, target=target)
+        
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
+        except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
+            pass
+    
         chunk_size, field_count, lines, pages = 7, 0, [], []
-        skipped_channels, skipped_guilds, skipped_messages = {}, set(), {}
-        title = f"{get_random_emoji()} Developer Logs"
-        if target and target.lower() == "all":
-            developer_logs = await DeveloperLog.fetch_all()
-        elif target and target.lower() == "resolved":
-            try:
-                channel_obj = await resolve_channel(
-                    ctx_interaction_or_message=interaction, channel_str=value
-                )
-                developer_logs = await DeveloperLog.select(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=interaction.guild.id,
-                    resolved=True
-                )
-            except Exception as e:
-                guild_obj = self.bot.get_guild(value)
-                if guild_obj:
-                    developer_logs = await DeveloperLog.select(
-                        guild_snowflake=value,
-                        resolved=True
-                    )
-                else:
-                    developer_log = await DeveloperLog.select(
-                        id=value,
-                        resolved=True
-                    )
-                    if not developer_log:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"Value must be one of: channel ID/mention, "
-                                f"reference ID, server ID or empty. Received: {value}."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-        elif target and target.lower() == "unresolved":
-            try:
-                channel_obj = await resolve_channel(
-                    ctx_interaction_or_message=interaction, channel_str=value
-                )
-                developer_logs = (
-                    await DeveloperLog.select(
-                        channel_snowflake=channel_obj.id,
-                        guild_snowflake=interaction.guild.id,
-                        resolved=False
-                    )
-                )
-            except Exception as e:
-                guild_obj = self.bot.get_guild(value)
-                if guild_obj:
-                    developer_logs = await DeveloperLog.select(
-                        guild_snowflake=value,
-                        resolved=False
-                    )
-                else:
-                    developer_log = await DeveloperLog.select(
-                        id=value,
-                        resolved=False
-                    )
-                    developer_logs = [developer_log]
-                    if not developer_logs:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"Value must be one of: channel ID/mention, "
-                                f"reference ID, server ID or empty. Received: {value}."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-        else:
-            channel_obj = interaction.channel
-            guild_obj = interaction.guild
-
-        if not developer_logs:
-            if target:
-                msg = f"No developer logs exist for target: {target}."
-            else:
-                msg = (
-                    f"No developer logs exist for {channel_obj.mention} "
-                    f"in {guild_obj.name}."
-                )
-            try:
-                return await state.end(warning=f"\U000026a0\U0000fe0f {msg}.")
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-
         guild_dictionary = {}
+
         for developer_log in developer_logs:
             guild_dictionary.setdefault(developer_log.guild_snowflake, {})
             guild_dictionary[developer_log.guild_snowflake].setdefault(
@@ -348,38 +273,25 @@ class DevCommands(commands.Cog):
                 }
             )
 
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+        skipped_channels = generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_messages = await generate_skipped_messages(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_messages=skipped_messages)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, channel_logs in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(guild_snowflake, []).append(
-                        channel_snowflake
-                    )
-                    continue
                 lines = []
                 for member_data in channel_logs:
-                    try:
-                        msg = await channel.fetch_message(
-                            member_data["message_snowflake"]
-                        )
-                        lines.append(f"**Message:** {msg.jump_url}")
-                    except Exception as e:
-                        skipped_messages.setdefault(guild_snowflake, []).append(
-                            member_data["message_snowflake"]
-                        )
+                    msg = await channel.fetch_message(
+                        member_data["message_snowflake"]
+                    )
+                    lines.append(f"**Message:** {msg.jump_url}")
                     if member_data["resolved"] == False:
                         resolved = "\u274c"
                     elif member_data["resolved"] == True:
@@ -399,13 +311,7 @@ class DevCommands(commands.Cog):
                         value="\n".join(lines),
                         inline=False,
                     )
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -413,10 +319,7 @@ class DevCommands(commands.Cog):
                     inline=False,
                 )
             pages.append(embed)
-        try:
-            is_at_home = at_home(interaction_interaction_or_message=interaction)
-        except Exception as e:
-            pass
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -443,7 +346,7 @@ class DevCommands(commands.Cog):
                     title="Skipped Messages in Server",
                 )
 
-        await send_pages(obj=DeveloperLog, pages=pages, state=state)
+        await StateService.send_pages(obj=DeveloperLog, pages=pages, state=state)
 
     @commands.command(name="dlogs", help="List issues.")
     @developer_predicator()
@@ -458,101 +361,21 @@ class DevCommands(commands.Cog):
         value: Optional[str] = commands.parameter(
             default=None,
             description="Specify one of: channel ID/mention, "
-            f"reference ID or server ID.",
+            "reference ID or server ID.",
         ),
     ):
-        state = State(ctx)
-        is_at_home = False
-        channel_obj, guild_obj = None, None
-        developer_logs = []
+        state = StateService(ctx)
+        developer_logs, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=DeveloperLog, state=state, target=target)
+        
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
+        except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
+            pass
+    
         chunk_size, field_count, lines, pages = 7, 0, [], []
-        skipped_channels, skipped_guilds, skipped_messages = {}, set(), {}
-        title = f"{get_random_emoji()} Developer Logs"
-        if target and target.lower() == "all":
-            developer_logs = await DeveloperLog.select()
-        elif target and target.lower() == "resolved":
-            try:
-                channel_obj = await resolve_channel(
-                    ctx_interaction_or_message=ctx, channel_str=value
-                )
-                developer_logs = await DeveloperLog.select(
-                    channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, resolved=True
-                )
-            except Exception as e:
-                guild_obj = self.bot.get_guild(value)
-                if guild_obj:
-                    developer_logs = await DeveloperLog.select(
-                        guild_snowflake=value,
-                        resolved=True
-                    )
-                else:
-                    developer_log = await DeveloperLog.select(
-                        id=value,
-                        resolved=True
-                    )
-                    if not developer_log:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"Value must be one of: channel ID/mention, "
-                                f"reference ID, server ID or empty. Received: {value}."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-        elif target and target.lower() == "unresolved":
-            try:
-                channel_obj = await resolve_channel(
-                    ctx_interaction_or_message=ctx, channel_str=value
-                )
-                developer_logs = (
-                    await DeveloperLog.select(
-                        channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id, resolved=False
-                    )
-                )
-            except Exception as e:
-                guild_obj = self.bot.get_guild(value)
-                if guild_obj:
-                    developer_logs = await DeveloperLog.select(
-                        guild_snowflake=value,
-                        resolved=False
-                    )
-                else:
-                    developer_log = await DeveloperLog.select(
-                        id=value,
-                        resolved=True
-                    )
-                    developer_logs = [developer_log]
-                    if not developer_logs:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"Value must be one of: channel ID/mention, "
-                                f"reference ID, server ID or empty. Received: {value}."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-        else:
-            channel_obj = ctx.channel
-            guild_obj = ctx.guild
-
-        if not developer_logs:
-            if target:
-                msg = f"No developer logs exist for target: {target}."
-            else:
-                msg = (
-                    f"No developer logs exist for {channel_obj.mention} "
-                    f"in {guild_obj.name}."
-                )
-            try:
-                return await state.end(warning=f"\U000026a0\U0000fe0f {msg}.")
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-
         guild_dictionary = {}
+
         for developer_log in developer_logs:
             guild_dictionary.setdefault(developer_log.guild_snowflake, {})
             guild_dictionary[developer_log.guild_snowflake].setdefault(
@@ -570,38 +393,25 @@ class DevCommands(commands.Cog):
                 }
             )
 
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+        skipped_channels = generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_messages = await generate_skipped_messages(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_messages=skipped_messages)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, channel_logs in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(guild_snowflake, []).append(
-                        channel_snowflake
-                    )
-                    continue
                 lines = []
                 for member_data in channel_logs:
-                    try:
-                        msg = await channel.fetch_message(
+                    msg = await channel.fetch_message(
                             member_data["message_snowflake"]
                         )
-                        lines.append(f"**Message:** {msg.jump_url}")
-                    except Exception as e:
-                        skipped_messages.setdefault(guild_snowflake, []).append(
-                            member_data["message_snowflake"]
-                        )
+                    lines.append(f"**Message:** {msg.jump_url}")
                     if member_data["resolved"] == False:
                         resolved = "\u274c"
                     elif member_data["resolved"] == True:
@@ -621,13 +431,7 @@ class DevCommands(commands.Cog):
                         value="\n".join(lines),
                         inline=False,
                     )
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -635,10 +439,6 @@ class DevCommands(commands.Cog):
                     inline=False,
                 )
             pages.append(embed)
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            pass
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -665,7 +465,7 @@ class DevCommands(commands.Cog):
                     title="Skipped Messages in Server",
                 )
 
-        await send_pages(obj=DeveloperLog, pages=pages, state=state)
+        await StateService.send_pages(obj=DeveloperLog, pages=pages, state=state)
 
     # DONE
     @app_commands.command(
@@ -674,7 +474,7 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = State(interaction)
+        state = StateService(interaction)
         try:
             await interaction.client.load_extension(module)
         except commands.ExtensionError as e:
@@ -699,7 +499,7 @@ class DevCommands(commands.Cog):
     )
     @developer_predicator()
     async def load_text_command(self, ctx: commands.Context, *, module: str):
-        state = State(ctx)
+        state = StateService(ctx)
         try:
             await self.bot.load_extension(module)
         except commands.ExtensionError as e:
@@ -722,7 +522,7 @@ class DevCommands(commands.Cog):
     @app_commands.command(name="ping", description="Ping me!")
     @developer_predicator()
     async def ping_app_command(self, interaction: discord.Interaction):
-        state = State(interaction)
+        state = StateService(interaction)
         try:
             return await state.end(success=f"{get_random_emoji()} " f"Pong!")
         except Exception as e:
@@ -732,7 +532,7 @@ class DevCommands(commands.Cog):
     @commands.command(name="ping", help="Ping me!")
     @developer_predicator()
     async def ping_text_command(self, ctx: commands.Context):
-        state = State(ctx)
+        state = StateService(ctx)
         try:
             return await state.end(success=f"{get_random_emoji()} " f"Pong!")
         except Exception as e:
@@ -746,7 +546,7 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def reload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = State(interaction)
+        state = StateService(interaction)
         try:
             await interaction.client.reload_extension(module)
         except commands.ExtensionError as e:
@@ -771,7 +571,7 @@ class DevCommands(commands.Cog):
     )
     @developer_predicator()
     async def reload_text_command(self, ctx: commands.Context, *, module: str):
-        state = State(ctx)
+        state = StateService(ctx)
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
@@ -799,7 +599,7 @@ class DevCommands(commands.Cog):
         spec: Optional[Literal["~", "*", "^"]] = None,
     ):
         await interaction.response.defer(ephemeral=True)
-        state = State(interaction)
+        state = StateService(interaction)
         guilds = interaction.client.guilds
         synced = []
         if not guilds:
@@ -853,7 +653,7 @@ class DevCommands(commands.Cog):
         guilds: commands.Greedy[discord.Object],
         spec: Optional[Literal["~", "*", "^"]] = None,
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         synced = []
         if not guilds:
             if spec == "~":
@@ -904,7 +704,7 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def unload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = State(interaction)
+        state = StateService(interaction)
         try:
             await interaction.client.unload_extension(module)
         except commands.ExtensionError as e:
@@ -929,7 +729,7 @@ class DevCommands(commands.Cog):
     )
     @developer_predicator()
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
-        state = State(ctx)
+        state = StateService(ctx)
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:

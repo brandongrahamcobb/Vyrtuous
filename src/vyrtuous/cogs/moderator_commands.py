@@ -16,31 +16,52 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from collections import defaultdict
 from typing import Optional
 from discord import app_commands
+from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.check_service import *
 from vyrtuous.service.channel_service import resolve_channel
 from vyrtuous.service.member_service import resolve_member
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.paginator_service import Paginator
 from vyrtuous.database.actions.action import Action
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.settings.cap import Cap
-from vyrtuous.utils.properties.duration import Duration, DurationObject
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+from vyrtuous.utils.properties.duration import DurationObject
+from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.database.actions.flag import Flag
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.utils.properties.snowflake import *
 from vyrtuous.database.rooms.stage import Stage
-from vyrtuous.service.state_service import State
+from vyrtuous.service.state_service import StateService
 from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.service.scope_service import generate_skipped_dict_pages, generate_skipped_set_pages, send_pages, ScopeService
-
+from vyrtuous.service.scope_service import (
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    resolve_objects,
+    generate_skipped_channels,
+    generate_skipped_guilds,
+    generate_skipped_members,
+    clean_guild_dictionary,
+    flush_page
+)
+import discord
+from vyrtuous.service.check_service import (
+    moderator_predicator,
+    at_home,
+    has_equal_or_higher_role,
+    not_bot,
+    role_check_without_specifics
+)
+from vyrtuous.utils.properties.snowflake import (
+    AppChannelSnowflake,
+    AppMemberSnowflake,
+    ChannelSnowflake,
+    MemberSnowflake
+)
 
 class ModeratorCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
@@ -57,8 +78,8 @@ class ModeratorCommands(commands.Cog):
     async def list_bans_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = State(interaction)
-        bans, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target)
+        state = StateService(interaction)
+        bans, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
@@ -67,7 +88,7 @@ class ModeratorCommands(commands.Cog):
         
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        guild_dictionary = {}
     
         for ban in bans:
             guild_dictionary.setdefault(ban.guild_snowflake, {})
@@ -79,41 +100,29 @@ class ModeratorCommands(commands.Cog):
                     "expires_in": DurationObject.from_expires_in(ban.expires_in),
                 }
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_members = await generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_members.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
-                    else:
-                        channel_lines.append(
-                            f"**Channel**: {channel.mention}\n**Expires in**: {member_data['expires_in']}\n**Reason**: {member_data['reason']}"
-                        )
-                        if not thumbnail:
-                            embed.set_thumbnail(url=member.display_avatar.url)
-                            thumbnail = True
+                    channel_lines.append(
+                        f"**Channel**: {channel.mention}\n**Expires in**: {member_data['expires_in']}\n**Reason**: {member_data['reason']}"
+                    )
+                    if not thumbnail:
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                        thumbnail = True
                 if field_count == chunk_size:
                     if lines:
                         embed.add_field(
@@ -129,13 +138,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -172,7 +175,7 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-        await send_pages(obj=Ban, pages=pages, state=state)
+        await StateService.send_pages(obj=Ban, pages=pages, state=state)
     
     # DONE
     @commands.command(name="bans", description="List bans.")
@@ -186,8 +189,8 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, server ID or empty.",
         ),
     ):
-        state = State(ctx)
-        bans, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target)
+        state = StateService(ctx)
+        bans, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
@@ -196,7 +199,7 @@ class ModeratorCommands(commands.Cog):
         
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        guild_dictionary = {}
     
         for ban in bans:
             guild_dictionary.setdefault(ban.guild_snowflake, {})
@@ -208,41 +211,29 @@ class ModeratorCommands(commands.Cog):
                     "expires_in": DurationObject.from_expires_in(ban.expires_in),
                 }
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_members = await generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
+
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_members.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
-                    else:
-                        channel_lines.append(
-                            f"**Channel**: {channel.mention}\n**Expires in**: {member_data['expires_in']}\n**Reason**: {member_data['reason']}"
-                        )
-                        if not thumbnail:
-                            embed.set_thumbnail(url=member.display_avatar.url)
-                            thumbnail = True
+                    channel_lines.append(
+                        f"**Channel**: {channel.mention}\n**Expires in**: {member_data['expires_in']}\n**Reason**: {member_data['reason']}"
+                    )
+                    if not thumbnail:
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                        thumbnail = True
                 if field_count == chunk_size:
                     if lines:
                         embed.add_field(
@@ -258,13 +249,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -301,7 +286,7 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-        await send_pages(obj=Ban, pages=pages, state=state)
+        await StateService.send_pages(obj=Ban, pages=pages, state=state)
     
     # DONE
     @app_commands.command(name="caps", description="List caps.")
@@ -312,16 +297,16 @@ class ModeratorCommands(commands.Cog):
     async def list_caps_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = State(interaction)
-        caps, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=interaction, obj=Cap, state=state, target=target)
+        state = StateService(interaction)
+        caps, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Cap, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             pass
         
-        chunk_size, field_count, pages = [], 7, 0, []
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
     
         for cap in caps:
             guild_dictionary.setdefault(cap.guild_snowflake, {})
@@ -337,17 +322,14 @@ class ModeratorCommands(commands.Cog):
                 channel_entries.append(
                     {"moderation_type": cap.moderation_type, "durations": [cap.duration]}
                 )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
     
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -355,11 +337,6 @@ class ModeratorCommands(commands.Cog):
             for channel_snowflake, channel_entries in channels.items():
                 lines = []
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 for entry in channel_entries:
                     for duration in entry["durations"]:
                         lines.append(
@@ -373,18 +350,13 @@ class ModeratorCommands(commands.Cog):
                     )
                     channel_header_added = True
                 if field_count + 1 >= chunk_size:
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(
                     name=f"Channel: {channel.mention}", value="\n".join(lines), inline=False
                 )
                 field_count += 1
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -402,8 +374,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
                 )
-        await send_pages(obj=Cap, pages=pages, state=state)
-    
+
+        await StateService.send_pages(obj=Cap, pages=pages, state=state)
     
     # DONE
     @commands.command(name="caps", help="List caps.")
@@ -417,16 +389,16 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, server ID or empty.",
         ),
     ):
-        state = State(ctx)
-        caps, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=ctx, obj=Cap, state=state, target=target)
+        state = StateService(ctx)
+        caps, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Cap, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         
-        chunk_size, field_count, pages = [], 7, 0, []
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
     
         for cap in caps:
             guild_dictionary.setdefault(cap.guild_snowflake, {})
@@ -442,17 +414,14 @@ class ModeratorCommands(commands.Cog):
                 channel_entries.append(
                     {"moderation_type": cap.moderation_type, "durations": [cap.duration]}
                 )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+                
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
     
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
@@ -460,11 +429,6 @@ class ModeratorCommands(commands.Cog):
             for channel_snowflake, channel_entries in channels.items():
                 lines = []
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 for entry in channel_entries:
                     for duration in entry["durations"]:
                         lines.append(
@@ -478,18 +442,13 @@ class ModeratorCommands(commands.Cog):
                     )
                     channel_header_added = True
                 if field_count + 1 >= chunk_size:
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(
                     name=f"Channel: {channel.mention}", value="\n".join(lines), inline=False
                 )
                 field_count += 1
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -507,8 +466,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
                 )
-        await send_pages(obj=Cap, pages=pages, state=state)
-    
+
+        await StateService.send_pages(obj=Cap, pages=pages, state=state)
     
     # DONE
     @app_commands.command(name="cmds", description="List aliases.")
@@ -519,16 +478,16 @@ class ModeratorCommands(commands.Cog):
     async def list_commands_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = State(interaction)
-        aliases, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=interaction, obj=Action, state=state, target=target)
+        state = StateService(interaction)
+        aliases, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Action, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             pass
         
-        chunk_size, field_count, pages = [], 7, 0, []
-        guild_dictionary, skipped_channels, skipped_guilds = {}, {}, set()
+        chunk_size, field_count, pages = 7, 0, []
+        guild_dictionary = {}
     
         for alias in aliases:
             guild_dictionary.setdefault(alias.guild_snowflake, {})
@@ -544,28 +503,21 @@ class ModeratorCommands(commands.Cog):
                     break
             if not entry_found:
                 channel_entries.append({alias.alias_type: [alias.alias_name]})
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
+
         for guild_snowflake, channels in guild_dictionary.items():
             current_channel = None
             lines = []
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, channel_entries in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 channel_lines = []
                 for entry in channel_entries:
                     for alias_type, alias_names in entry.items():
@@ -586,12 +538,7 @@ class ModeratorCommands(commands.Cog):
                             value="\n".join(lines),
                             inline=False,
                         )
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title=title,
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
                         current_channel = None
             if lines:
@@ -601,6 +548,7 @@ class ModeratorCommands(commands.Cog):
                     inline=False,
                 )
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -618,8 +566,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
                 )
-        await send_pages(obj=Action, pages=pages, state=state)
-    
+
+        await StateService.send_pages(obj=Action, pages=pages, state=state)
     
     # DONE
     @commands.command(name="cmds", help="List aliases.")
@@ -633,16 +581,16 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, server ID or empty.",
         ),
     ):
-        state = State(ctx)
-        aliases, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=ctx, obj=Action, state=state, target=target)
+        state = StateService(ctx)
+        aliases, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Action, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             pass
         
-        chunk_size, field_count, pages = [], 7, 0, []
-        guild_dictionary, skipped_channels, skipped_guilds = {}, {}, set()
+        chunk_size, field_count, pages = 7, 0, []
+        guild_dictionary = {}
     
         for alias in aliases:
             guild_dictionary.setdefault(alias.guild_snowflake, {})
@@ -658,28 +606,22 @@ class ModeratorCommands(commands.Cog):
                     break
             if not entry_found:
                 channel_entries.append({alias.alias_type: [alias.alias_name]})
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
+
         for guild_snowflake, channels in guild_dictionary.items():
             current_channel = None
             lines = []
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, channel_entries in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 channel_lines = []
                 for entry in channel_entries:
                     for alias_type, alias_names in entry.items():
@@ -700,12 +642,7 @@ class ModeratorCommands(commands.Cog):
                             value="\n".join(lines),
                             inline=False,
                         )
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title=title,
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
                         current_channel = None
             if lines:
@@ -715,6 +652,7 @@ class ModeratorCommands(commands.Cog):
                     inline=False,
                 )
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -732,7 +670,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
                 )
-        await send_pages(obj=Action, pages=pages, state=state)
+
+        await StateService.send_pages(obj=Action, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="del", description="Delete message.")
@@ -746,7 +685,7 @@ class ModeratorCommands(commands.Cog):
         message: AppMessageSnowflake,
         channel: AppChannelSnowflake = None,
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         channel_obj = None
         try:
             channel_obj = await resolve_channel(
@@ -802,7 +741,7 @@ class ModeratorCommands(commands.Cog):
             default=None, description="Channel or snowflake"
         ),
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         channel_obj = None
         try:
             channel_obj = await resolve_channel(ctx, channel)
@@ -848,8 +787,8 @@ class ModeratorCommands(commands.Cog):
     async def list_flags_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = State(interaction)
-        flags, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=interaction, obj=Flag, state=state, target=target)
+        state = StateService(interaction)
+        flags, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Flag, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
@@ -864,7 +803,7 @@ class ModeratorCommands(commands.Cog):
 
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        guild_dictionary = {}
 
         for flag in flags:
             guild_dictionary.setdefault(flag.guild_snowflake, {})
@@ -874,35 +813,23 @@ class ModeratorCommands(commands.Cog):
             guild_dictionary[flag.guild_snowflake][flag.channel_snowflake].append(
                 {"member_snowflake": flag.member_snowflake, "reason": flag.reason}
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_members.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
                     if not member_obj:
                         lines.append(f"**User**: {member.mention}")
                     else:
@@ -925,13 +852,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -945,10 +866,7 @@ class ModeratorCommands(commands.Cog):
                     name=f"Channels", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            pass
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -974,7 +892,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-        await send_pages(obj=Flag, pages=pages, state=state)
+
+        await StateService.send_pages(obj=Flag, pages=pages, state=state)
 
     # DONE
     @commands.command(name="flags", help="List flags.")
@@ -988,8 +907,8 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.",
         ),
     ):
-        state = State(ctx)
-        flags, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=ctx, obj=Flag, state=state, target=target)
+        state = StateService(ctx)
+        flags, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Flag, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
@@ -1004,7 +923,7 @@ class ModeratorCommands(commands.Cog):
                 
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        guild_dictionary = {}
 
         for flag in flags:
             guild_dictionary.setdefault(flag.guild_snowflake, {})
@@ -1014,35 +933,23 @@ class ModeratorCommands(commands.Cog):
             guild_dictionary[flag.guild_snowflake][flag.channel_snowflake].append(
                 {"member_snowflake": flag.member_snowflake, "reason": flag.reason}
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_members.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
                     if not member_obj:
                         lines.append(f"**User**: {member.mention}")
                     else:
@@ -1065,13 +972,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -1083,6 +984,7 @@ class ModeratorCommands(commands.Cog):
                     name=f"Channels", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -1108,7 +1010,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-        await send_pages(obj=Flag, pages=pages, state=state)
+
+        await StateService.send_pages(obj=Flag, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="ls", description="List new vegans.")
@@ -1118,97 +1021,25 @@ class ModeratorCommands(commands.Cog):
     async def list_new_vegans_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = State(interaction)
-        is_at_home = False
-        channel_obj = None
-        guild_obj = None
+        state = StateService(interaction)
+        vegans, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Vegan, state=state, target=target)
+    
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
+        except Exception as e:
+            pass
+
         member_obj = None
-        chunk_size = 7
-        field_count = 0
-        channel_lines, pages = [], []
-        (
-            skipped_channel_snowflakes_by_guild_snowflake,
-            skipped_member_snowflakes_by_guild_snowflake,
-        ) = ({}, {})
-        skipped_guild_snowflakes = set()
+        try:
+            member_obj = await resolve_member(ctx_interaction_or_message=interaction, member_str=target)
+        except Exception as e:
+            pass
+                
+        channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
-        title = f"{get_random_emoji()} Vegans"
-
-        highest_role = await role_check_without_specifics(interaction)
-        if target and target.lower() == "all":
-            if highest_role not in ("System Owner", "Developer"):
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f You are not authorized to list new vegans across all servers."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-            new_vegans = await Vegan.fetch_all()
-        elif target:
-            try:
-                channel_obj = await resolve_channel(
-                    interaction, target
-                )
-                new_vegans = await Vegan.select(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=interaction.guild.id,
-                )
-            except Exception as e:
-                try:
-                    member_obj = await resolve_member(
-                        interaction, target
-                    )
-                    new_vegans = await Vegan.select(
-                        guild_snowflake=interaction.guild.id,
-                        member_snowflake=member_obj.id,
-                    )
-                    title = f"{get_random_emoji()} Vegan: {member_obj.name}"
-                except Exception as e:
-                    if highest_role not in (
-                        "System Owner",
-                        "Developer",
-                        "Guild Owner",
-                        "Administrator",
-                    ):
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f You are not authorized to list new vegans for specific servers."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-                    guild_obj = self.bot.get_guild(int(target))
-                    if not guild_obj:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f target must be one of: 'all', channel ID/mention, member ID/mention, server ID or empty. Received: {target}."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-                    new_vegans = await Vegan.select(guild_snowflake=int(target))
-        else:
-            new_vegans = await Vegan.select(
-                channel_snowflake=interaction.channel.id,
-                guild_snowflake=interaction.guild.id,
-            )
-            channel_obj = interaction.channel
-            guild_obj = interaction.guild
-
-        if not new_vegans:
-            try:
-                if target:
-                    msg = f"No new vegans exist for target: {target}."
-                else:
-                    msg = f"No new vegans exist for {channel_obj.mention} in {guild_obj.name}"
-                return await state.end(warning=f"\U000026a0\U0000fe0f {msg}")
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-
         guild_dictionary = {}
-        for vegan in new_vegans:
+
+        for vegan in vegans:
             guild_dictionary.setdefault(vegan.guild_snowflake, {})
             guild_dictionary[vegan.guild_snowflake].setdefault(
                 vegan.channel_snowflake, []
@@ -1216,35 +1047,23 @@ class ModeratorCommands(commands.Cog):
             guild_dictionary[vegan.guild_snowflake][vegan.channel_snowflake].append(
                 {"member_snowflake": vegan.member_snowflake}
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guild_snowflakes.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_member_snowflakes_by_guild_snowflake.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
                     if not member_obj:
                         lines.append(f"**User**: {member.mention}")
                     else:
@@ -1267,13 +1086,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -1285,84 +1098,34 @@ class ModeratorCommands(commands.Cog):
                     name=f"Channels", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            pass
-        if is_at_home:
-            if skipped_guild_snowflakes:
-                embed = discord.Embed(
-                    title="Skipped Servers",
-                    description="\u200b",
-                    color=discord.Color.blue(),
-                )
-                lines = []
-                for guild_snowflake in skipped_guild_snowflakes:
-                    if field_count >= chunk_size:
-                        embed.description = "\n".join(lines)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Skipped Servers continued...",
-                            color=discord.Color.red(),
-                        )
-                        lines = []
-                        field_count = 0
-                    lines.append(str(guild_snowflake))
-                    field_count += 1
-                embed.description = "\n".join(lines)
-                pages.append(embed)
-            if skipped_channel_snowflakes_by_guild_snowflake:
-                for (
-                    guild_snowflake,
-                    channel_list,
-                ) in skipped_channel_snowflakes_by_guild_snowflake.items():
-                    embed = discord.Embed(
-                        color=discord.Color.red(),
-                        title=f"Skipped Channels in Server ({guild_snowflake})",
-                    )
-                    field_count = 0
-                    lines = []
-                    for channel_snowflake in channel_list:
-                        if field_count >= chunk_size:
-                            embed.description = "\n".join(lines)
-                            pages.append(embed)
-                            embed = discord.Embed(
-                                color=discord.Color.red(),
-                                title=f"Skipped Channels in Server ({guild_snowflake}) continued...",
-                            )
-                            field_count = 0
-                            lines = []
-                        lines.append(str(channel_snowflake))
-                        field_count += 1
-                    embed.description = "\n".join(lines)
-                    pages.append(embed)
-            if skipped_member_snowflakes_by_guild_snowflake:
-                for (
-                    guild_snowflake,
-                    member_list,
-                ) in skipped_member_snowflakes_by_guild_snowflake.items():
-                    embed = discord.Embed(
-                        color=discord.Color.red(),
-                        title=f"Skipped Members in Server ({guild_snowflake})",
-                    )
-                    field_count = 0
-                    lines = []
-                    for member_snowflake in member_list:
-                        if field_count >= chunk_size:
-                            embed.description = "\n".join(lines)
-                            pages.append(embed)
-                            embed = discord.Embed(
-                                color=discord.Color.red(),
-                                title=f"Skipped Members in Server ({guild_snowflake}) continued...",
-                            )
-                            field_count = 0
-                            lines = []
-                        lines.append(str(member_snowflake))
-                        field_count += 1
-                    embed.description = "\n".join(lines)
-                    pages.append(embed)
 
-        await send_pages(obj=Vegan, pages=pages, state=state)
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_channels:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_channels,
+                    title="Skipped Channels in Server",
+                )
+            if skipped_members:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_members,
+                    title="Skipped Members in Server",
+                )
+
+        await StateService.send_pages(obj=Vegan, pages=pages, state=state)
 
     # DONE
     @commands.command(name="ls", help="List new vegans.")
@@ -1375,90 +1138,25 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.",
         ),
     ):
-        state = State(ctx)
-        is_at_home = False
-        channel_obj = None
-        guild_obj = None
+        state = StateService(ctx)
+        vegans, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Vegan, state=state, target=target)
+    
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
+        except Exception as e:
+            pass
+
         member_obj = None
-        chunk_size = 7
-        field_count = 0
-        new_page = False
-        channel_lines, pages = [], []
-        (
-            skipped_channel_snowflakes_by_guild_snowflake,
-            skipped_member_snowflakes_by_guild_snowflake,
-        ) = ({}, {})
-        skipped_guild_snowflakes = set()
+        try:
+            member_obj = await resolve_member(ctx_interaction_or_message=ctx, member_str=target)
+        except Exception as e:
+            pass
+                
+        channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
-        title = f"{get_random_emoji()} Vegans"
-
-        highest_role = await role_check_without_specifics(ctx)
-        if target and target.lower() == "all":
-            if highest_role not in ("System Owner", "Developer"):
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f You are not authorized to list new vegans across all servers."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-            new_vegans = await Vegan.fetch_all()
-        elif target:
-            try:
-                channel_obj = await resolve_channel(ctx, target)
-                new_vegans = await Vegan.select(
-                    channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-                )
-            except Exception as e:
-                try:
-                    member_obj = await resolve_member(ctx, target)
-                    new_vegans = await Vegan.select(
-                        guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-                    )
-                    title = f"{get_random_emoji()} Vegan: {member_obj.name}"
-                except Exception as e:
-                    if highest_role not in (
-                        "System Owner",
-                        "Developer",
-                        "Guild Owner",
-                        "Administrator",
-                    ):
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f You are not authorized to list new vegans for specific servers."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-                    guild_obj = self.bot.get_guild(int(target))
-                    if not guild_obj:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f target must be one of: 'all', channel ID/mention, member ID/mention, server ID or empty. Received: {target}."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-                    new_vegans = await Vegan.select(guild_snowflake=int(target))
-        else:
-            new_vegans = await Vegan.select(
-                channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id
-            )
-            channel_obj = ctx.channel
-            guild_obj = ctx.guild
-
-        if not new_vegans:
-            try:
-                if target:
-                    msg = f"No new vegans exist for target: {target}."
-                else:
-                    msg = f"No new vegans exist for {channel_obj.mention} in {guild_obj.name}"
-                return await state.end(warning=f"\U000026a0\U0000fe0f {msg}")
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
         guild_dictionary = {}
-        for vegan in new_vegans:
+
+        for vegan in vegans:
             guild_dictionary.setdefault(vegan.guild_snowflake, {})
             guild_dictionary[vegan.guild_snowflake].setdefault(
                 vegan.channel_snowflake, []
@@ -1466,35 +1164,23 @@ class ModeratorCommands(commands.Cog):
             guild_dictionary[vegan.guild_snowflake][vegan.channel_snowflake].append(
                 {"member_snowflake": vegan.member_snowflake}
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guild_snowflakes.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_member_snowflakes_by_guild_snowflake.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
                     if not member_obj:
                         lines.append(f"**User**: {member.mention}")
                     else:
@@ -1517,13 +1203,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -1535,84 +1215,34 @@ class ModeratorCommands(commands.Cog):
                     name=f"Channels", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            pass
-        if is_at_home:
-            if skipped_guild_snowflakes:
-                embed = discord.Embed(
-                    title="Skipped Servers",
-                    description="\u200b",
-                    color=discord.Color.blue(),
-                )
-                lines = []
-                for guild_snowflake in skipped_guild_snowflakes:
-                    if field_count >= chunk_size:
-                        embed.description = "\n".join(lines)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Skipped Servers continued...",
-                            color=discord.Color.red(),
-                        )
-                        lines = []
-                        field_count = 0
-                    lines.append(str(guild_snowflake))
-                    field_count += 1
-                embed.description = "\n".join(lines)
-                pages.append(embed)
-            if skipped_channel_snowflakes_by_guild_snowflake:
-                for (
-                    guild_snowflake,
-                    channel_list,
-                ) in skipped_channel_snowflakes_by_guild_snowflake.items():
-                    embed = discord.Embed(
-                        color=discord.Color.red(),
-                        title=f"Skipped Channels in Server ({guild_snowflake})",
-                    )
-                    field_count = 0
-                    lines = []
-                    for channel_snowflake in channel_list:
-                        if field_count >= chunk_size:
-                            embed.description = "\n".join(lines)
-                            pages.append(embed)
-                            embed = discord.Embed(
-                                color=discord.Color.red(),
-                                title=f"Skipped Channels in Server ({guild_snowflake}) continued...",
-                            )
-                            field_count = 0
-                            lines = []
-                        lines.append(str(channel_snowflake))
-                        field_count += 1
-                    embed.description = "\n".join(lines)
-                    pages.append(embed)
-            if skipped_member_snowflakes_by_guild_snowflake:
-                for (
-                    guild_snowflake,
-                    member_list,
-                ) in skipped_member_snowflakes_by_guild_snowflake.items():
-                    embed = discord.Embed(
-                        color=discord.Color.red(),
-                        title=f"Skipped Members in Server ({guild_snowflake})",
-                    )
-                    field_count = 0
-                    lines = []
-                    for member_snowflake in member_list:
-                        if field_count >= chunk_size:
-                            embed.description = "\n".join(lines)
-                            pages.append(embed)
-                            embed = discord.Embed(
-                                color=discord.Color.red(),
-                                title=f"Skipped Members in Server ({guild_snowflake}) continued...",
-                            )
-                            field_count = 0
-                            lines = []
-                        lines.append(str(member_snowflake))
-                        field_count += 1
-                    embed.description = "\n".join(lines)
-                    pages.append(embed)
 
-        await send_pages(obj=Vegan, pages=pages, state=state)
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_channels:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_channels,
+                    title="Skipped Channels in Server",
+                )
+            if skipped_members:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_members,
+                    title="Skipped Members in Server",
+                )
+
+        await StateService.send_pages(obj=Vegan, pages=pages, state=state)
 
     # DONE
     @app_commands.command(
@@ -1628,7 +1258,7 @@ class ModeratorCommands(commands.Cog):
         old_name: str,
         channel: AppChannelSnowflake,
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         channel_obj = None
         old_room = await TemporaryRoom.select_and_room_name(
             guild_snowflake=interaction.guild.id, room_name=old_name
@@ -1737,7 +1367,7 @@ class ModeratorCommands(commands.Cog):
             default=None, description="Tag a channel or include its ID"
         ),
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         channel_obj = None
         old_room = await TemporaryRoom.select_and_room_name(
             guild_snowflake=ctx.guild.id, room_name=old_name
@@ -1833,8 +1463,8 @@ class ModeratorCommands(commands.Cog):
     async def list_mutes_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = State(interaction)
-        voice_mutes, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=interaction, obj=VoiceMute, state=state, target=target)
+        state = StateService(interaction)
+        voice_mutes, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=VoiceMute, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
@@ -1849,7 +1479,7 @@ class ModeratorCommands(commands.Cog):
                 
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        guild_dictionary = {}
 
         for voice_mute in voice_mutes:
             guild_dictionary.setdefault(voice_mute.guild_snowflake, {})
@@ -1865,35 +1495,23 @@ class ModeratorCommands(commands.Cog):
                     "expires_in": DurationObject.from_expires_in(voice_mute.expires_in),
                 }
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_members.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
                     if not member_obj:
                         lines.append(
                             f"**User**: {member.mention}\n**Expires in**: {member_data['expires_in']}"
@@ -1920,13 +1538,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -1938,6 +1550,7 @@ class ModeratorCommands(commands.Cog):
                     name=f"Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -1963,7 +1576,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-        await send_pages(obj=VoiceMute, pages=pages, state=state)
+
+        await StateService.send_pages(obj=VoiceMute, pages=pages, state=state)
 
     # DONE
     @commands.command(name="mutes", help="List mutes.")
@@ -1976,8 +1590,8 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.",
         ),
     ):
-        state = State(ctx)
-        voice_mutes, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=ctx, obj=VoiceMute, state=state, target=target)
+        state = StateService(ctx)
+        voice_mutes, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=VoiceMute, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
@@ -1992,7 +1606,7 @@ class ModeratorCommands(commands.Cog):
                 
         channel_lines, chunk_size, field_count, pages = [], 7, 0, []
         thumbnail = False
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        guild_dictionary = {}
 
         for voice_mute in voice_mutes:
             guild_dictionary.setdefault(voice_mute.guild_snowflake, {})
@@ -2008,35 +1622,23 @@ class ModeratorCommands(commands.Cog):
                     "expires_in": DurationObject.from_expires_in(voice_mute.expires_in),
                 }
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_members.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
                     if not member_obj:
                         lines.append(
                             f"**User**: {member.mention}\n**Expires in**: {member_data['expires_in']}"
@@ -2063,13 +1665,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -2081,6 +1677,7 @@ class ModeratorCommands(commands.Cog):
                     name=f"Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -2106,7 +1703,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-        await send_pages(obj=VoiceMute, pages=pages, state=state)
+
+        await StateService.send_pages(obj=VoiceMute, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="mstage", description="Stage mute/unmute.")
@@ -2117,7 +1715,7 @@ class ModeratorCommands(commands.Cog):
         member: AppMemberSnowflake,
         channel: AppChannelSnowflake,
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         channel_obj = None
         member_obj = None
         try:
@@ -2198,7 +1796,7 @@ class ModeratorCommands(commands.Cog):
             default=None, description="Tag a channel or include it's ID"
         ),
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         channel_obj = None
         member_obj = None
         try:
@@ -2273,81 +1871,17 @@ class ModeratorCommands(commands.Cog):
     async def list_stages_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = State(interaction)
-        is_at_home = False
-        channel_obj = None
-        guild_obj = None
-        chunk_size = 7
-        field_count = 0
-        pages = []
-        skipped_channel_snowflakes_by_guild_snowflake = {}
-        skipped_guild_snowflakes = set()
-        title = f"{get_random_emoji()} Stages"
-
-        highest_role = await role_check_without_specifics(interaction)
-        if target and target.lower() == "all":
-            if highest_role not in ("System Owner", "Developer"):
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f You are not authorized to list stages across all servers."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-            stages = await Stage.fetch_all()
-        elif target:
-            try:
-                channel_obj = await resolve_channel(
-                    interaction, target
-                )
-                stage = await Stage.select(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=interaction.guild.id,
-                )
-                stages = [stage] if stage else []
-            except Exception as e:
-                if highest_role not in (
-                    "System Owner",
-                    "Developer",
-                    "Guild Owner",
-                    "Administrator",
-                ):
-                    try:
-                        return await state.end(
-                            warning=f"\U000026a0\U0000fe0f You are not authorized to list all stages in a specific server."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-                guild_obj = self.bot.get_guild(int(target))
-                if not guild_obj:
-                    try:
-                        return await state.end(
-                            warning=f"\U000026a0\U0000fe0f target must be one of: 'all', channel ID/mention, server ID or empty. Received: {target}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-                stages = await Stage.select(guild_snowflake=int(target))
-        else:
-            stage = await Stage.select(
-                channel_snowflake=interaction.channel.id,
-                guild_snowflake=interaction.guild.id,
-            )
-            stages = [stage] if stage else []
-            channel_obj = interaction.channel
-            guild_obj = interaction.guild
-
-        if not stages:
-            try:
-                if target:
-                    msg = f"No stages exist for target: {target}."
-                else:
-                    msg = (
-                        f"No stages exist for {channel_obj.mention} in {guild_obj.name}"
-                    )
-                return await state.end(warning=f"\U000026a0\U0000fe0f {msg}")
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-
+        state = StateService(interaction)
+        stages, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Stage, state=state, target=target)
+    
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=interaction)
+        except Exception as e:
+            pass
+                
+        chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
+
         for stage in stages:
             guild_dictionary.setdefault(stage.guild_snowflake, {})
             guild_dictionary[stage.guild_snowflake].setdefault(
@@ -2356,102 +1890,57 @@ class ModeratorCommands(commands.Cog):
             guild_dictionary[stage.guild_snowflake][stage.channel_snowflake][
                 "expires_in"
             ] = DurationObject.from_expires_in(stage.expires_in)
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guild_snowflakes.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, channel_data in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
-                channel_lines = []
-                channel_lines.append(f"**Expires in**: {channel_data['expires_in']}")
+                lines = []
+                lines.append(f"**Expires in**: {channel_data['expires_in']}")
                 field_count += 1
                 if field_count == chunk_size:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(channel_lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    channel_lines = []
-                    field_count = 0
-                if channel_lines:
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
+                if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(channel_lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
             pages.append(embed)
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            pass
-        if is_at_home:
-            if skipped_guild_snowflakes:
-                embed = discord.Embed(
-                    title=title, description="\u200b", color=discord.Color.blue()
-                )
-                lines = []
-                for guild_snowflake in skipped_guild_snowflakes:
-                    if field_count >= chunk_size:
-                        embed.description = "\n".join(lines)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Skipped Servers continued...",
-                            color=discord.Color.red(),
-                        )
-                        lines = []
-                        field_count = 0
-                    lines.append(str(guild_snowflake))
-                    field_count += 1
-                embed.description = "\n".join(lines)
-                pages.append(embed)
-            if skipped_channel_snowflakes_by_guild_snowflake:
-                for (
-                    guild_snowflake,
-                    channel_list,
-                ) in skipped_channel_snowflakes_by_guild_snowflake.items():
-                    embed = discord.Embed(
-                        color=discord.Color.red(),
-                        title=f"Skipped Channels in Server ({guild_snowflake})",
-                    )
-                    field_count = 0
-                    lines = []
-                    for channel_snowflake in channel_list:
-                        if field_count >= chunk_size:
-                            embed.description = "\n".join(lines)
-                            pages.append(embed)
-                            embed = discord.Embed(
-                                color=discord.Color.red(),
-                                title=f"Skipped Channels in Server ({guild_snowflake}) continued...",
-                            )
-                            field_count = 0
-                            lines = []
-                        lines.append(str(channel_snowflake))
-                        field_count += 1
-                    embed.description = "\n".join(lines)
-                    pages.append(embed)
 
-        await send_pages(obj=Stage, pages=pages, state=state)
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_channels:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_channels,
+                    title="Skipped Channels in Server",
+                )
+
+        await StateService.send_pages(obj=Stage, pages=pages, state=state)
 
     # DONE
     @commands.command(name="stages", help="List stages.")
@@ -2464,75 +1953,17 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, server ID or empty.",
         ),
     ):
-        state = State(ctx)
-        is_at_home = False
-        channel_obj = None
-        guild_obj = None
-        chunk_size = 7
-        field_count = 0
-        pages = []
-        skipped_channel_snowflakes_by_guild_snowflake = {}
-        skipped_guild_snowflakes = set()
-        title = f"{get_random_emoji()} Stages"
-
-        highest_role = await role_check_without_specifics(ctx)
-        if target and target.lower() == "all":
-            if highest_role not in ("System Owner", "Developer"):
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f You are not authorized to list stages across all servers."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-            stages = await Stage.fetch_all()
-        elif target:
-            try:
-                channel_obj = await resolve_channel(ctx, target)
-                stages = await Stage.select(
-                    channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-                )
-            except Exception as e:
-                if highest_role not in (
-                    "System Owner",
-                    "Developer",
-                    "Guild Owner",
-                    "Administrator",
-                ):
-                    try:
-                        return await state.end(
-                            warning=f"\U000026a0\U0000fe0f You are not authorized to list all stages in a specific server."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-                guild_obj = self.bot.get_guild(int(target))
-                if not guild_obj:
-                    try:
-                        return await state.end(
-                            warning=f"\U000026a0\U0000fe0f target must be one of: 'all', channel ID/mention, server ID or empty. Received: {target}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-                stages = await Stage.select(guild_snowflake=int(target))
-        else:
-            stages = await Stage.select(
-                channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id
-            )
-            channel_obj = ctx.channel
-            guild_obj = ctx.guild
-
-        if not stages:
-            try:
-                if target:
-                    msg = f"No stages exist for target: {target}."
-                else:
-                    msg = (
-                        f"No stages exist for {channel_obj.mention} in {guild_obj.name}"
-                    )
-                return await state.end(warning=f"\U000026a0\U0000fe0f {msg}")
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-
+        state = StateService(ctx)
+        stages, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Stage, state=state, target=target)
+    
+        try:
+            is_at_home = at_home(ctx_interaction_or_message=ctx)
+        except Exception as e:
+            pass
+                
+        chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+
         for stage in stages:
             guild_dictionary.setdefault(stage.guild_snowflake, {})
             guild_dictionary[stage.guild_snowflake].setdefault(
@@ -2541,104 +1972,56 @@ class ModeratorCommands(commands.Cog):
             guild_dictionary[stage.guild_snowflake][stage.channel_snowflake][
                 "expires_in"
             ] = DurationObject.from_expires_in(stage.expires_in)
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guild_snowflakes.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, channel_data in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channel_snowflakes_by_guild_snowflake.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
-                channel_lines = []
-                channel_lines.append(f"**Expires in**: {channel_data['expires_in']}")
+                lines = []
+                lines.append(f"**Expires in**: {channel_data['expires_in']}")
                 field_count += 1
                 if field_count == chunk_size:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(channel_lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    channel_lines = []
-                    field_count = 0
-                if channel_lines:
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
-                        value="\n".join(channel_lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
             pages.append(embed)
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            pass
-        if is_at_home:
-            if skipped_guild_snowflakes:
-                embed = discord.Embed(
-                    title="Skipped Servers",
-                    description="\u200b",
-                    color=discord.Color.blue(),
-                )
-                lines = []
-                for guild_snowflake in skipped_guild_snowflakes:
-                    if field_count >= chunk_size:
-                        embed.description = "\n".join(lines)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Skipped Servers continued...",
-                            color=discord.Color.red(),
-                        )
-                        lines = []
-                        field_count = 0
-                    lines.append(str(guild_snowflake))
-                    field_count += 1
-                embed.description = "\n".join(lines)
-                pages.append(embed)
-            if skipped_channel_snowflakes_by_guild_snowflake:
-                for (
-                    guild_snowflake,
-                    channel_list,
-                ) in skipped_channel_snowflakes_by_guild_snowflake.items():
-                    embed = discord.Embed(
-                        color=discord.Color.red(),
-                        title=f"Skipped Channels in Server ({guild_snowflake})",
-                    )
-                    field_count = 0
-                    lines = []
-                    for channel_snowflake in channel_list:
-                        if field_count >= chunk_size:
-                            embed.description = "\n".join(lines)
-                            pages.append(embed)
-                            embed = discord.Embed(
-                                color=discord.Color.red(),
-                                title=f"Skipped Channels in Server ({guild_snowflake}) continued...",
-                            )
-                            field_count = 0
-                            lines = []
-                        lines.append(str(channel_snowflake))
-                        field_count += 1
-                    embed.description = "\n".join(lines)
-                    pages.append(embed)
 
-        await send_pages(obj=Stage, pages=pages, state=state)
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_channels:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_channels,
+                    title="Skipped Channels in Server",
+                )
+
+        await StateService.send_pages(obj=Stage, pages=pages, state=state)
 
     @app_commands.command(name="summary", description="Moderation summary.")
     @app_commands.describe(
@@ -2652,13 +2035,10 @@ class ModeratorCommands(commands.Cog):
         member: AppMemberSnowflake,
         target: Optional[str] = None,
     ):
-        state = State(interaction)
-        chunk_size = 7
-        field_count = 0
-        member_obj = None
-        bans, flags, text_mutes, new_vegans, voice_mutes = [], [], [], [], []
-        lines, pages = [], []
-        target = "user"
+        state = StateService(interaction)
+
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+
         try:
             member_obj = await resolve_member(interaction, member)
         except Exception as e:
@@ -2668,67 +2048,17 @@ class ModeratorCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-        if target and target.lower() == "all":
-            channel_obj = interaction.channel
-            bans = await Ban.select(
-                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-            )
-            flags = await Flag.select(
-                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-            )
-            text_mutes = await TextMute.select(
-                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-            )
-            new_vegans = await Vegan.select(
-                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-            )
-            voice_mutes = await VoiceMute.select_member_and_target(
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-                target=target,
-            )
-        else:
-            try:
-                channel_obj = await resolve_channel(
-                    interaction, target
-                )
-            except Exception as e:
-                channel_obj = interaction.channel
-            ban = await Ban.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            bans = [ban]
-            flag = await Flag.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            flags = [flag]
-            text_mute = await TextMute.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            text_mutes = [text_mute]
-            vegan = await Vegan.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            new_vegans = [vegan]
-            voice_mute = await VoiceMute.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-                target=target,
-            )
-            voice_mutes = [voice_mute]
-        field_count = 0
+            
+        bans, ban_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target)
+        flags, flag_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Flag, state=state, target=target)
+        text_mutes, text_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=TextMute, state=state, target=target)
+        vegans, vegan_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Vegan, state=state, target=target)
+        voice_mutes, voice_mute_title = await resolve_objects(ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target)
+        
         guild = self.bot.get_guild(interaction.guild.id)
+
         embed = discord.Embed(
-            title="Bans", description=guild.name, color=discord.Color.blue()
+            title=ban_title, description=guild.name, color=discord.Color.blue()
         )
         if bans:
             for ban in bans:
@@ -2745,14 +2075,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Bans",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, ban_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -2762,8 +2086,9 @@ class ModeratorCommands(commands.Cog):
                 embed.set_thumbnail(url=member_obj.display_avatar.url)
                 pages.append(embed)
                 lines = []
+
         embed = discord.Embed(
-            title="Flags", description=guild.name, color=discord.Color.blue()
+            title=flag_title, description=guild.name, color=discord.Color.blue()
         )
         if flags:
             for flag in flags:
@@ -2780,14 +2105,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Flags",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, flag_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -2797,8 +2116,9 @@ class ModeratorCommands(commands.Cog):
                 embed.set_thumbnail(url=member_obj.display_avatar.url)
                 pages.append(embed)
                 lines = []
+
         embed = discord.Embed(
-            title="Text Mutes", description=guild.name, color=discord.Color.blue()
+            title=text_title, description=guild.name, color=discord.Color.blue()
         )
         if text_mutes:
             for text_mute in text_mutes:
@@ -2815,14 +2135,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Text Mutes",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, ban_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -2832,11 +2146,12 @@ class ModeratorCommands(commands.Cog):
                 embed.set_thumbnail(url=member_obj.display_avatar.url)
                 pages.append(embed)
                 lines = []
+
         embed = discord.Embed(
-            title="Vegan", description=guild.name, color=discord.Color.blue()
+            title=vegan_title, description=guild.name, color=discord.Color.blue()
         )
-        if new_vegans:
-            for vegan in new_vegans:
+        if vegans:
+            for vegan in vegans:
                 if vegan:
                     channel = guild.get_channel(vegan.channel_snowflake)
                     lines.append(f"**User**: {member_obj.mention}")
@@ -2848,14 +2163,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Vegan",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, vegan_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -2865,8 +2174,9 @@ class ModeratorCommands(commands.Cog):
                 embed.set_thumbnail(url=member_obj.display_avatar.url)
                 pages.append(embed)
                 lines = []
+
         embed = discord.Embed(
-            title="Voice Mutes", description=guild.name, color=discord.Color.blue()
+            title=voice_mute_title, description=guild.name, color=discord.Color.blue()
         )
         if voice_mutes:
             for voice_mute in voice_mutes:
@@ -2883,14 +2193,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Voice Mutes",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, voice_mute_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -2898,24 +2202,8 @@ class ModeratorCommands(commands.Cog):
                     inline=False,
                 )
                 pages.append(embed)
-
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        else:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No moderation actions found for {member_obj.mention}."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        await StateService.send_pages(obj=Action, pages=pages, state=state)
 
     @commands.command(name="summary", description="Moderation summary.")
     @moderator_predicator()
@@ -2930,13 +2218,10 @@ class ModeratorCommands(commands.Cog):
             default=None, description="Specify 'all' or a channel ID/mention."
         ),
     ):
-        state = State(ctx)
-        chunk_size = 7
-        field_count = 0
-        member_obj = None
-        bans, flags, text_mutes, new_vegans, voice_mutes = [], [], [], [], []
-        lines, pages = [], []
-        target = "user"
+        state = StateService(ctx)
+
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+
         try:
             member_obj = await resolve_member(ctx, member)
         except Exception as e:
@@ -2946,64 +2231,17 @@ class ModeratorCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-        if target and target.lower() == "all":
-            bans = await Ban.select(
-                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-            )
-            flags = await Flag.select(
-                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-            )
-            text_mutes = await TextMute.select(
-                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-            )
-            new_vegans = await Vegan.select(
-                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-            )
-            voice_mutes = await VoiceMute.select_member_and_target(
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-                target=target,
-            )
-        else:
-            try:
-                channel_obj = await resolve_channel(ctx, target)
-            except Exception as e:
-                channel_obj = ctx.channel
-            ban = await Ban.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            bans = [ban]
-            flag = await Flag.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            flags = [flag]
-            text_mute = await TextMute.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            text_mutes = [text_mute]
-            vegan = await Vegan.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            new_vegans = [vegan]
-            voice_mute = await VoiceMute.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-                target=target,
-            )
-            voice_mutes = [voice_mute]
-        field_count = 0
+            
+        bans, ban_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target)
+        flags, flag_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Flag, state=state, target=target)
+        text_mutes, text_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=TextMute, state=state, target=target)
+        vegans, vegan_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Vegan, state=state, target=target)
+        voice_mutes, voice_mute_title = await resolve_objects(ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target)
+        
         guild = self.bot.get_guild(ctx.guild.id)
+        
         embed = discord.Embed(
-            title="Bans", description=guild.name, color=discord.Color.blue()
+            title=ban_title, description=guild.name, color=discord.Color.blue()
         )
         if bans:
             for ban in bans:
@@ -3020,14 +2258,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Bans",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, ban_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -3037,8 +2269,9 @@ class ModeratorCommands(commands.Cog):
                 embed.set_thumbnail(url=member_obj.display_avatar.url)
                 pages.append(embed)
                 lines = []
+
         embed = discord.Embed(
-            title="Flags", description=guild.name, color=discord.Color.blue()
+            title=flag_title, description=guild.name, color=discord.Color.blue()
         )
         if flags:
             for flag in flags:
@@ -3055,14 +2288,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Flags",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, flag_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -3072,8 +2299,9 @@ class ModeratorCommands(commands.Cog):
                 embed.set_thumbnail(url=member_obj.display_avatar.url)
                 pages.append(embed)
                 lines = []
+
         embed = discord.Embed(
-            title="Text Mutes", description=guild.name, color=discord.Color.blue()
+            title=text_title, description=guild.name, color=discord.Color.blue()
         )
         if text_mutes:
             for text_mute in text_mutes:
@@ -3090,14 +2318,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Text Mutes",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, ban_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -3107,11 +2329,12 @@ class ModeratorCommands(commands.Cog):
                 embed.set_thumbnail(url=member_obj.display_avatar.url)
                 pages.append(embed)
                 lines = []
+
         embed = discord.Embed(
-            title="Vegan", description=guild.name, color=discord.Color.blue()
+            title=vegan_title, description=guild.name, color=discord.Color.blue()
         )
-        if new_vegans:
-            for vegan in new_vegans:
+        if vegans:
+            for vegan in vegans:
                 if vegan:
                     channel = guild.get_channel(vegan.channel_snowflake)
                     lines.append(f"**User**: {member_obj.mention}")
@@ -3123,14 +2346,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Vegan",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, vegan_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -3140,8 +2357,9 @@ class ModeratorCommands(commands.Cog):
                 embed.set_thumbnail(url=member_obj.display_avatar.url)
                 pages.append(embed)
                 lines = []
+
         embed = discord.Embed(
-            title="Voice Mutes", description=guild.name, color=discord.Color.blue()
+            title=voice_mute_title, description=guild.name, color=discord.Color.blue()
         )
         if voice_mutes:
             for voice_mute in voice_mutes:
@@ -3158,14 +2376,8 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         embed.set_thumbnail(url=member_obj.display_avatar.url)
-                        pages.append(embed)
-                        embed = discord.Embed(
-                            title="Voice Mutes",
-                            description=f"{guild.name} continued...",
-                            color=discord.Color.blue(),
-                        )
+                        embed, field_count = flush_page(embed, pages, voice_mute_title, guild.name)
                         lines = []
-                        field_count = 0
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -3173,23 +2385,8 @@ class ModeratorCommands(commands.Cog):
                     inline=False,
                 )
                 pages.append(embed)
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        else:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No moderation actions found for {member_obj.mention}."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        await StateService.send_pages(obj=Action, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="tmutes", description="List text-mutes.")
@@ -3200,8 +2397,8 @@ class ModeratorCommands(commands.Cog):
     async def list_text_mutes_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = State(interaction)
-        text_mutes, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=interaction, obj=TextMute, state=state, target=target)
+        state = StateService(interaction)
+        text_mutes, title = await resolve_objects(ctx_interaction_or_message=interaction, obj=TextMute, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
@@ -3214,9 +2411,9 @@ class ModeratorCommands(commands.Cog):
         except Exception as e:
             pass
                 
-        channel_lines, chunk_size, field_count, pages = [], 7, 0, []
+        channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         thumbnail = False
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        guild_dictionary = {}
 
         for text_mute in text_mutes:
             guild_dictionary.setdefault(text_mute.guild_snowflake, {})
@@ -3232,27 +2429,20 @@ class ModeratorCommands(commands.Cog):
                     "expires_in": DurationObject.from_expires_in(text_mute.expires_in),
                 }
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_members = await generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
@@ -3287,13 +2477,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -3304,6 +2488,8 @@ class ModeratorCommands(commands.Cog):
                 embed.add_field(
                     name=f"Information", value="\n".join(channel_lines), inline=False
                 )
+            pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -3329,7 +2515,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-        await send_pages(obj=TextMute, pages=pages, state=state)
+
+        await StateService.send_pages(obj=TextMute, pages=pages, state=state)
 
     # DONE
     @commands.command(name="tmutes", help="List text-mutes.")
@@ -3343,8 +2530,8 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, server ID or empty.",
         ),
     ):
-        state = State(ctx)
-        text_mutes, title = await ScopeService.resolve_objects_and_title(ctx_interaction_or_message=ctx, obj=TextMute, state=state, target=target)
+        state = StateService(ctx)
+        text_mutes, title = await resolve_objects(ctx_interaction_or_message=ctx, obj=TextMute, state=state, target=target)
     
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
@@ -3357,9 +2544,9 @@ class ModeratorCommands(commands.Cog):
         except Exception as e:
             pass
                 
-        channel_lines, chunk_size, field_count, pages = [], 7, 0, []
+        channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         thumbnail = False
-        guild_dictionary, skipped_channels, skipped_guilds, skipped_members = {}, {}, set(), {}
+        guild_dictionary = {}
 
         for text_mute in text_mutes:
             guild_dictionary.setdefault(text_mute.guild_snowflake, {})
@@ -3375,35 +2562,23 @@ class ModeratorCommands(commands.Cog):
                     "expires_in": DurationObject.from_expires_in(text_mute.expires_in),
                 }
             )
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
+
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_members = await generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(guild_dictionary=guild_dictionary, skipped_channels=skipped_channels, skipped_guilds=skipped_guilds, skipped_members=skipped_members)
 
         for guild_snowflake, channels in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            if not guild:
-                skipped_guilds.add(guild_snowflake)
-                continue
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
             for channel_snowflake, members in channels.items():
                 channel = guild.get_channel(channel_snowflake)
-                if not channel:
-                    skipped_channels.setdefault(
-                        guild_snowflake, []
-                    ).append(channel_snowflake)
-                    continue
                 lines = []
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
-                    if not member:
-                        skipped_members.setdefault(
-                            guild_snowflake, []
-                        ).append(member_data["member_snowflake"])
-                        continue
                     if not member_obj:
                         lines.append(
                             f"**User**: {member.mention}\n**Expires in**: {member_data['expires_in']}"
@@ -3430,13 +2605,7 @@ class ModeratorCommands(commands.Cog):
                             inline=False,
                         )
                         channel_lines = []
-                    pages.append(embed)
-                    embed = discord.Embed(
-                        title=title,
-                        description=f"{guild.name} continued...",
-                        color=discord.Color.blue(),
-                    )
-                    field_count = 0
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -3448,6 +2617,7 @@ class ModeratorCommands(commands.Cog):
                     name=f"Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -3473,7 +2643,8 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-        await send_pages(obj=TextMute, pages=pages, state=state)
+                
+        await StateService.send_pages(obj=TextMute, pages=pages, state=state)
 
 async def setup(bot: DiscordBot):
     cog = ModeratorCommands(bot)

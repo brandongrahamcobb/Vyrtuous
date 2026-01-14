@@ -18,8 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timezone
 from typing import Optional
-from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import *
 from vyrtuous.database.database_factory import DatabaseFactory
 
 class DeveloperLog(DatabaseFactory):
@@ -55,7 +53,7 @@ class DeveloperLog(DatabaseFactory):
         resolved: bool = False,
         updated_at: Optional[datetime] = None,
     ):
-        self.bot = DiscordBot.get_instance()
+        super().__init__()
         self.channel_snowflake = channel_snowflake
         self.created_at: datetime = created_at or datetime.now(timezone.utc)
         self.developer_snowflakes = developer_snowflakes
@@ -65,46 +63,3 @@ class DeveloperLog(DatabaseFactory):
         self.notes = notes
         self.resolved = resolved
         self.updated_at: datetime = updated_at or datetime.now(timezone.utc)
-
-    async def append(self, notes: str):
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE developer_logs
-                SET notes = COALESCE(notes, '') || $1,
-                    updated_at=NOW()
-                WHERE id=$2
-            """,
-                f"\n{notes}",
-                self.id,
-            )
-            self.notes = self.notes + f"{notes}"
-            self.updated_at = datetime.now(timezone.utc)
-
-    async def assign(self, member_snowflake: Optional[int]):
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE developer_logs
-                SET developer_snowflakes = array_append(COALESCE(developer_snowflakes, '{}'), $1),
-                    updated_at = NOW()
-                WHERE id = $2 AND NOT $1 = ANY(COALESCE(developer_snowflakes, '{}'))
-            """,
-                member_snowflake,
-                self.id,
-            )
-            self.updated_at = datetime.now(timezone.utc)
-
-    async def unassign(self, member_snowflake: Optional[int]):
-        async with self.bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE developer_logs
-                SET developer_snowflakes = array_remove(COALESCE(developer_snowflakes, '{}'), $1),
-                    updated_at = NOW()
-                WHERE id = $2
-            """,
-                member_snowflake,
-                self.id,
-            )
-            self.updated_at = datetime.now(timezone.utc)

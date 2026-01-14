@@ -17,18 +17,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from discord import app_commands
+from discord.ext import commands
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import *
-from vyrtuous.service.check_service import *
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.member_service import resolve_member
 from vyrtuous.service.role_service import resolve_role
 from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
-from vyrtuous.utils.properties.snowflake import *
-from vyrtuous.service.state_service import State
+from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.invincibility import Invincibility
-
+import discord
+from vyrtuous.utils.properties.snowflake import (
+    AppMemberSnowflake,
+    AppRoleSnowflake,
+    MemberSnowflake,
+    RoleSnowflake
+)
+from vyrtuous.service.check_service import (
+    guild_owner_predicator,
+    has_equal_or_higher_role,
+    not_bot
+)
 
 class GuildOwnerCommands(commands.Cog):
 
@@ -44,7 +53,7 @@ class GuildOwnerCommands(commands.Cog):
     async def grant_administrator_by_role_app_command(
         self, interaction: discord.Interaction, role: AppRoleSnowflake
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         action = None
         chunk_size = 7
         pages = []
@@ -70,7 +79,10 @@ class GuildOwnerCommands(commands.Cog):
             guild_snowflake=interaction.guild.id
         )
         for administrator_role in administrator_roles:
-            await administrator_role.revoke()
+            await AdministratorRole.delete(
+                    guild_snowflake=administrator_role.guild_snowflake,
+                    member_snowflake=administrator_role.member_snowflake
+                )
         for member in role_obj.members:
             if administrators:
                 for administrator in administrators:
@@ -78,14 +90,17 @@ class GuildOwnerCommands(commands.Cog):
                         skipped_members.append(member)
                         continue
                     elif role_obj.id in administrator.role_snowflakes:
-                        await administrator.revoke()
+                        await Administrator.delete(
+                            guild_snowflake=interaction.guild.id,
+                            member_snowflake=member.id
+                        )
                         action = "revoked"
                         target_members.append(member.mention)
         if action != "revoked":
             administrator_role = AdministratorRole(
                 guild_snowflake=interaction.guild.id, role_snowflake=role_obj.id
             )
-            await administrator_role.grant()
+            await administrator_role.create()
             administrator_roles = await AdministratorRole.select(
                 guild_snowflake=interaction.guild.id
             )
@@ -97,7 +112,7 @@ class GuildOwnerCommands(commands.Cog):
                     member_snowflake=member.id,
                     role_snowflakes=role_snowflakes,
                 )
-                await administrator.grant()
+                await administrator.create()
                 action = "granted"
                 target_members.append(member.mention)
 
@@ -147,24 +162,7 @@ class GuildOwnerCommands(commands.Cog):
                 )
                 pages.append(embed)
 
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f "
-                        f"Embed size is too large. Limit the scope."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        else:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"No members found."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+        await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
 
     # DONE
     @commands.command(name="arole", help="Role -> Administrator.")
@@ -172,7 +170,7 @@ class GuildOwnerCommands(commands.Cog):
     async def grant_administrator_by_role_text_command(
         self, ctx: commands.Context, role: RoleSnowflake
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         action = None
         chunk_size = 7
         pages = []
@@ -189,14 +187,17 @@ class GuildOwnerCommands(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
 
-        administrators = await Administrator.select_and_role(
+        administrators = await Administrator.select(
             guild_snowflake=ctx.guild.id, role_snowflake=role_obj.id
         )
         administrator_roles = await AdministratorRole.select(
             guild_snowflake=ctx.guild.id
         )
         for administrator_role in administrator_roles:
-            await administrator_role.revoke()
+            await AdministratorRole.delete(
+                    guild_snowflake=administrator_role.guild_snowflake,
+                    member_snowflake=administrator_role.member_snowflake
+                )
         for member in role_obj.members:
             if administrators:
                 for administrator in administrators:
@@ -204,14 +205,17 @@ class GuildOwnerCommands(commands.Cog):
                         skipped_members.append(member)
                         continue
                     elif role_obj.id in administrator.role_snowflakes:
-                        await administrator.revoke()
+                        await Administrator.delete(
+                            guild_snowflake=ctx.guild.id,
+                            member_snowflake=member.id
+                        )
                         action = "revoked"
                         target_members.append(member.mention)
         if action != "revoked":
             administrator_role = AdministratorRole(
                 guild_snowflake=ctx.guild.id, role_snowflake=role_obj.id
             )
-            await administrator_role.grant()
+            await administrator_role.create()
             administrator_roles = await AdministratorRole.select(
                 guild_snowflake=ctx.guild.id
             )
@@ -224,7 +228,7 @@ class GuildOwnerCommands(commands.Cog):
                     member_snowflake=member.id,
                     role_snowflakes=role_snowflakes,
                 )
-                await administrator.grant()
+                await administrator.create()
                 action = "granted"
                 target_members.append(member.mention)
 
@@ -274,24 +278,7 @@ class GuildOwnerCommands(commands.Cog):
                 )
                 pages.append(embed)
 
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f "
-                        f"Embed size is too large. Limit the scope."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        else:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"No members found."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+        await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="hero", description="Grant/revoke invincibility.")
@@ -300,7 +287,7 @@ class GuildOwnerCommands(commands.Cog):
     async def invincibility_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         enabled = None
         member_obj = None
         try:
@@ -354,7 +341,7 @@ class GuildOwnerCommands(commands.Cog):
             description="Tag a member or include their ID"
         ),
     ):
-        state = State(ctx)
+        state = StateService(ctx)
         enabled = None
         member_obj = None
         try:

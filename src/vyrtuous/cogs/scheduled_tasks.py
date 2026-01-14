@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime, timedelta, timezone
 from discord.ext import commands, tasks
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.inc.helpers import *
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.database import Database
 from vyrtuous.database.roles.developer import Developer
@@ -32,7 +31,6 @@ from vyrtuous.database.rooms.video_room import VideoRoom
 from vyrtuous.database.actions.voice_mute import VoiceMute
 
 import discord
-
 
 class ScheduledTasks(commands.Cog):
 
@@ -59,7 +57,6 @@ class ScheduledTasks(commands.Cog):
 
     @tasks.loop(minutes=5)
     async def check_expired_bans(self):
-        now = datetime.now(timezone.utc)
         expired_bans = await Ban.select(expired=True)
         if expired_bans:
             for expired_ban in expired_bans:
@@ -107,13 +104,12 @@ class ScheduledTasks(commands.Cog):
                     )
                 except discord.Forbidden as e:
                     logger.warning(
-                        f"Unable to unban member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                        f"Unable to unban member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
                     )
-            logger.info(f"Cleaned up expired bans.")
+            logger.info("Cleaned up expired bans.")
 
     @tasks.loop(seconds=15)
     async def check_expired_voice_mutes(self):
-        now = datetime.now(timezone.utc)
         expired_voice_mutes = await VoiceMute.select(expired=True)
         if expired_voice_mutes:
             for expired_voice_mute in expired_voice_mutes:
@@ -171,17 +167,16 @@ class ScheduledTasks(commands.Cog):
                         )
                     except discord.Forbidden as e:
                         logger.warning(
-                            f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                            f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
                         )
                 else:
                     logger.info(
                         f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
                     )
-            logger.info(f"Cleaned up expired voice-mutes.")
+            logger.info("Cleaned up expired voice-mutes.")
 
     @tasks.loop(minutes=1)
     async def check_expired_stages(self):
-        now = datetime.now(timezone.utc)
         expired_stages = await Stage.select(expired=True)
         if expired_stages:
             for expired_stage in expired_stages:
@@ -247,13 +242,13 @@ class ScheduledTasks(commands.Cog):
                             )
                         except discord.Forbidden as e:
                             logger.warning(
-                                f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                                f"Unable to undo voice-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
                             )
                     else:
                         logger.info(
                             f"Member {member.display_name} ({member.id}) is not in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), skipping undo voice-mute."
                         )
-            logger.info(f"Cleaned up expired stages.")
+            logger.info("Cleaned up expired stages.")
 
     #    @tasks.loop(minutes=5)
     #    async def update_video_room_status(self):
@@ -270,7 +265,7 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(hours=8)
     async def check_expired_developer_logs(self):
         now = datetime.now(timezone.utc)
-        developer_logs = await DeveloperLog.fetch_all_resolved()
+        developer_logs = await DeveloperLog.select(resolved=True)
         if developer_logs:
             for developer_log in developer_logs:
                 channel_snowflake = developer_log.channel_snowflake
@@ -304,7 +299,7 @@ class ScheduledTasks(commands.Cog):
                         msg = await channel.fetch_message(developer_log.message)
                     except Exception as e:
                         logger.warning(
-                            f"Unable to locate a message {msg} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
+                            f"Unable to locate a message {msg} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log. {str(e).capitalize()}"
                         )
                     time_since_updated = await DurationObject.from_expires_at(
                         developer_log.updated_at
@@ -318,7 +313,7 @@ class ScheduledTasks(commands.Cog):
                         value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {developer_log.notes}",
                         inline=False,
                     )
-                    developers = await Developer.fetch_all()
+                    developers = await Developer.select()
                     for developer in developers:
                         member = guild.get_member(developer.member_snowflake)
                         if member is None:
@@ -333,13 +328,12 @@ class ScheduledTasks(commands.Cog):
                             )
                         except Exception as e:
                             logger.warning(
-                                f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                                f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
                             )
-            logger.info(f"Sent developer log to developers.")
+            logger.info("Sent developer log to developers.")
 
     @tasks.loop(minutes=1)
     async def check_expired_text_mutes(self):
-        now = datetime.now(timezone.utc)
         expired_text_mutes = await TextMute.select(expired=True)
         if expired_text_mutes:
             for expired_text_mute in expired_text_mutes:
@@ -386,9 +380,9 @@ class ScheduledTasks(commands.Cog):
                     )
                 except discord.Forbidden as e:
                     logger.warning(
-                        f"Unable to undo text-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                        f"Unable to undo text-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
                     )
-            logger.info(f"Cleaned up expired text-mutes.")
+            logger.info("Cleaned up expired text-mutes.")
 
     @tasks.loop(hours=24)
     async def backup_database(self):
@@ -396,7 +390,7 @@ class ScheduledTasks(commands.Cog):
             db = Database()
             db.create_backup_directory()
             db.execute_backup()
-            logger.info(f"Backup completed successfully.")
+            logger.info("Backup completed successfully.")
         except Exception as e:
             logger.error(f"Error during database backup: {str(e).capitalize()}")
 

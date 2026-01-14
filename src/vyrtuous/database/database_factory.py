@@ -3,15 +3,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 
 class DatabaseFactory(object):
 
-    ACT = ""
-    PLURAL = ""
-    SINGULAR = ""
-    UNDO = ""
-    REQUIRED_INSTANTIATION_ARGS = []
-    OPTIONAL_ARGS = []
-    TABLE_NAME = ""
-
-    def __init(self):
+    def __init__(self):
         self.bot = DiscordBot.get_instance()
 
         # if actions:
@@ -26,117 +18,81 @@ class DatabaseFactory(object):
         #             member_snowflake=action.member_snowflake,
         #             reason="Clear command"
         #         )
-
     async def create(self, **kwargs):
-        table_name = getattr(self.__class__, "TABLE_NAME")
-        fields = getattr(self.__class__, "REQUIRED_INSTANTIATION_ARGS") + getattr(
-            self.__class__, "OPTIONAL_ARGS"
-        )
-        for key in kwargs.keys():
+        table_name = getattr(self, "TABLE_NAME")
+        fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(self, "OPTIONAL_ARGS")
+        for key in kwargs:
             if key not in fields:
-                raise ValueError(
-                    f"Invalid argument '{key}' " f"for {self.__class__.__name__}"
-                )
-        insert_fields = [
-            f
-            for f in kwargs
-            if hasattr(self.__class__, f) and getattr(self.__class__, f) is not None
-        ]
+                raise ValueError(f"Invalid argument '{key}' for {self.__class__.__name__}")
+        insert_fields = list(kwargs)
         placeholders = ", ".join(f"${i+1}" for i in range(len(insert_fields)))
-        values = [getattr(self.__class__, f) for f in insert_fields]
+        values = [kwargs[f] for f in insert_fields]
         async with self.bot.db_pool.acquire() as conn:
             await conn.execute(
-                t"""
-                    INSERT INTO {table_name} ({', '.join(insert_fields)})
-                    VALUES ({placeholders})
-                    ON CONFLICT DO NOTHING
+                f"""
+                INSERT INTO {table_name} ({', '.join(insert_fields)})
+                VALUES ({placeholders})
+                ON CONFLICT DO NOTHING
                 """,
                 *values,
             )
-
+    
     @classmethod
     async def delete(cls, **kwargs):
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls.__class__, "TABLE_NAME")
-        fields = getattr(cls.__class__, "REQUIRED_INSTANTIATION_ARGS") + getattr(
-            cls.__class__, "OPTIONAL_ARGS"
-        )
-        filter_fields = [
-            f
-            for f in fields
-            if hasattr(cls.__class__, f) and getattr(cls.__class__, f) is not None
-        ]
-        if not filter_fields:
-            raise ValueError("No fields provided to specify deletion.")
+        fields = getattr(cls, 'REQUIRED_INSTANTIATION_ARGS') + getattr(cls, 'OPTIONAL_ARGS')
+        table_name = getattr(cls, 'TABLE_NAME')
+        for key in kwargs:
+            if key not in fields:
+                raise ValueError(f"Invalid argument '{key}' for {cls.__name__}")
         conditions = []
         values = []
-        for i, field in enumerate(filter_fields):
-            value = kwargs.get(field, getattr(cls.__class__, field))
-            conditions.append(f"{field} = ${i+1}")
-            values.append(value)
+        if kwargs:
+            for index, field in enumerate(sorted(kwargs)):
+                conditions.append(f'{field}=${index+1}')
+                values.append(kwargs[field])
+        where_clause = 'WHERE ' + ' AND '.join(conditions) if conditions else ''
         async with bot.db_pool.acquire() as conn:
-            await conn.execute(
-                t"""
-                    DELETE FROM {table_name}
-                    WHERE {' AND '.join(conditions)}
-                """,
-                *values,
-            )
-
+            await conn.execute(f'DELETE FROM {table_name} {where_clause}', *values)
+            print(f'DELETE FROM {table_name} {where_clause}')
+    
     @classmethod
     async def select(cls, **kwargs):
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls.__class__, "TABLE_NAME")
-        fields = getattr(cls.__class__, "REQUIRED_INSTANTIATION_ARGS") + getattr(
-            cls.__class__, "OPTIONAL_ARGS"
-        )
-        for key in kwargs.keys():
+        table_name = getattr(cls, "TABLE_NAME")
+        fields = getattr(cls, "REQUIRED_INSTANTIATION_ARGS") + getattr(cls, "OPTIONAL_ARGS")
+        for key in kwargs:
             if key not in fields:
-                raise ValueError(
-                    f"Invalid argument '{key}' " f"for {cls.__class__.__name__}"
-                )
-        filter_fields = [
-            f
-            for f in kwargs
-            if hasattr(cls.__class__, f) and getattr(cls.__class__, f) is not None
-        ]
+                raise ValueError(f"Invalid argument '{key}' for {cls.__name__}")
+        conditions = []
         values = []
-        if filter_fields:
-            conditions = []
-            for index, field in enumerate(filter_fields):
-                if field == "expired" and kwargs.get("expired") is True:
-                    conditions.append("expires_in < NOW()")
-                else:
-                    value = kwargs.get(field, getattr(cls.__class__, field))
-                    conditions.append(f"{field}=${index+1}")
-                    values.append(value)
-            where_clause = "WHERE " + " AND ".join(conditions)
+        for field in kwargs:
+            if field == "expired" and kwargs.get("expired") is True:
+                conditions.append("expires_in < NOW()")
+            else:
+                conditions.append(f"{field}=${len(values)+1}")
+                values.append(kwargs[field])
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ''
         async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                f"""
-                SELECT * FROM {table_name}
-                {where_clause}
-            """,
-                *values,
-            )
+            rows = await conn.fetch(f"SELECT * FROM {table_name} {where_clause}", *values)
+            print(f'SELECT * FROM {table_name} {where_clause}')
         children = []
         for row in rows:
             row_data = {k: row[k] for k in row.keys() if k in fields}
-            obj = cls.__class__(**row_data)
-            children.append(obj)
+            children.append(cls(**row_data))
         return children
     
     @classmethod
     async def update(cls, *, set_kwargs: dict, where_kwargs: dict):
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls.__class__, 'TABLE_NAME')
-        fields = getattr(cls.__class__, 'REQUIRED_INSTANTIATION_ARGS') + getattr(cls.__class__, 'OPTIONAL_ARGS')
+        table_name = getattr(cls, 'TABLE_NAME')
+        fields = getattr(cls, 'REQUIRED_INSTANTIATION_ARGS') + getattr(cls, 'OPTIONAL_ARGS')
         for key in set_kwargs.keys():
             if key not in fields:
-                raise ValueError(f"Invalid update field '{key}' for {cls.__class__.__name__}")
+                raise ValueError(f"Invalid update field '{key}' for {cls.__name__}")
         for key in where_kwargs.keys():
             if key not in fields:
-                raise ValueError(f"Invalid filter field '{key}' for {cls.__class__.__name__}")
+                raise ValueError(f"Invalid filter field '{key}' for {cls.__name__}")
         if not set_kwargs:
             raise ValueError('No fields provided to update')
         if not where_kwargs:

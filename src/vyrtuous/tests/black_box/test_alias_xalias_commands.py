@@ -55,7 +55,7 @@
 
 # async def test_alias_xalias_command(bot, voice_channel_one, guild, privileged_author, prefix: Optional[str], command: Optional[str], role, alias_type, alias_name, channel_ref, role_ref):
 #     administrator = Administrator(guild_snowflake=guild.id, member_snowflake=privileged_author.id, role_snowflakes=[role.id])
-#     await administrator.grant()
+#     await administrator.create()
 #     try:
 #         channel_value = voice_channel_one.mention if channel_ref else voice_channel_one.name
 #         role_value = role.mention if role_ref else role.name
@@ -84,4 +84,4 @@
 #             if role_ref:
 #                 assert role_value in content
 #     finally:
-#         await administrator.revoke()
+#         await administrator.delete()

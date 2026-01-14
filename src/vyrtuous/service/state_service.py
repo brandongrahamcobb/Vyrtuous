@@ -33,7 +33,7 @@ import discord
 cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
 
 
-class State:
+class StateService:
 
     COLOR_MAP = {"\u2705": 0x57F287, "\u26a0\ufe0f": 0xFEE65C, "\u274c": 0xED4245}
 

@@ -18,19 +18,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import defaultdict
 from discord import app_commands
+from discord.ext import commands
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.service.check_service import *
+from vyrtuous.service.check_service import role_check_without_specifics
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.paginator_service import Paginator
 from vyrtuous.utils.setup_logging import logger
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.alias import Alias
 from vyrtuous.utils.permission import PERMISSION_TYPES
-from vyrtuous.service.state_service import State
+from vyrtuous.database.actions.alias import Alias
+from vyrtuous.service.state_service import StateService
 
+import discord
 import inspect
-
 
 class HelpCommand(commands.Cog):
 
@@ -54,7 +53,7 @@ class HelpCommand(commands.Cog):
         self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]
     ) -> list[str]:
         lines = []
-        aliases = await Action.select(guild_snowflake=guild_snowflake)
+        aliases = await Alias.select(guild_snowflake=guild_snowflake)
         if aliases:
             grouped = defaultdict(list)
             for alias in aliases:
@@ -127,7 +126,7 @@ class HelpCommand(commands.Cog):
         cmd = self.bot.get_command(name.lower())
         if cmd:
             return ("command", cmd)
-        alias = await Action.select(
+        alias = await Alias.select(
             alias_name=name.lower(), guild_snowflake=ctx_or_interaction.guild.id
         )
         if alias and alias.guild_snowflake == ctx_or_interaction.guild.id:
@@ -157,7 +156,7 @@ class HelpCommand(commands.Cog):
         return func
 
     async def get_permission_filtered_aliases(self, ctx_or_interaction):
-        aliases = await Action.select(
+        aliases = await Alias.select(
             channel_snowflake=ctx_or_interaction.channel.id,
             guild_snowflake=ctx_or_interaction.guild.id,
         )
@@ -185,7 +184,7 @@ class HelpCommand(commands.Cog):
     async def help_app_command(
         self, interaction: discord.Interaction, command_name: Optional[str] = None
     ):
-        state = State(interaction)
+        state = StateService(interaction)
         bot = interaction.client
         pages, param_details, parameters = [], [], []
         if command_name:
@@ -300,7 +299,7 @@ class HelpCommand(commands.Cog):
         permission_groups = await self.group_commands_by_permission(
             bot, interaction, all_commands
         )
-        aliases = await Action.select(
+        aliases = await Alias.select(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
         )
@@ -355,7 +354,7 @@ class HelpCommand(commands.Cog):
         if not pages:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No commands available to you."
+                    warning="\U000026a0\U0000fe0f No commands available to you."
                 )
             except Exception as e:
                 try:
@@ -376,7 +375,7 @@ class HelpCommand(commands.Cog):
 
     @commands.command(name="help")
     async def help_text_command(self, ctx, *, command_name: str = None):
-        state = State(ctx)
+        state = StateService(ctx)
         bot = ctx.bot
         pages, param_details, parameters = [], [], []
         if command_name:
@@ -491,7 +490,7 @@ class HelpCommand(commands.Cog):
         permission_groups = await self.group_commands_by_permission(
             bot, ctx, all_commands
         )
-        aliases = await Action.select(
+        aliases = await Alias.select(
             channel_snowflake=ctx.channel.id, guild_snowflake=ctx.guild.id
         )
         perm_alias_map = defaultdict(list)
@@ -545,7 +544,7 @@ class HelpCommand(commands.Cog):
         if not pages:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No commands available to you."
+                    warning="\U000026a0\U0000fe0f No commands available to you."
                 )
             except Exception as e:
                 try:
@@ -563,7 +562,6 @@ class HelpCommand(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-
 
 async def setup(bot: DiscordBot):
     cog = HelpCommand(bot)

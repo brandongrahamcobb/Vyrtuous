@@ -17,23 +17,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-
-from vyrtuous.database.actions.action import Action
+from discord.ext import commands
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.service.check_service import *
-from vyrtuous.service.channel_service import resolve_channel
-from vyrtuous.service.member_service import resolve_member
 from vyrtuous.service.role_service import resolve_role
 from vyrtuous.database.settings.cap import Cap
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.history import History
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.properties.duration import DurationObject
-
+from vyrtuous.utils.setup_logging import logger
+import discord
 
 class Aliases(commands.Cog):
 
@@ -196,7 +194,7 @@ class Aliases(commands.Cog):
                             f"Cannot extend the ban beyond {duration} as "
                             f"a {executor_role} in {channel_obj.mention}."
                         )
-                    except:
+                    except Exception as e:
                         return await state.end(error=f"\u274c {str(e).capitalize()}")
                 set_kwargs = {
                     'expired_in': updated_expires_in
@@ -214,7 +212,7 @@ class Aliases(commands.Cog):
                     if delta.total_seconds() < 0:
                         try:
                             return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
+                                warning="\U000026a0\U0000fe0f "
                                 "You are not authorized to decrease the "
                                 "duration below the current time."
                             )
@@ -255,7 +253,7 @@ class Aliases(commands.Cog):
                                 f"as a {executor_role} in "
                                 f"{channel_obj.mention}."
                             )
-                        except:
+                        except Exception as e:
                             return await state.end(
                                 error=f"\u274c {str(e).capitalize()}"
                             )
@@ -327,6 +325,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -384,6 +383,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -487,6 +487,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -515,6 +516,7 @@ class Aliases(commands.Cog):
                 )
             except Exception as e:
                 try:
+                    logger.warning(f"{str(e).capitalize()}")
                     return await state.end(
                         warning=f"\U000026a0\U0000fe0f "
                         f"Role `{alias.role_snowflake}` was not found."
@@ -555,6 +557,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -642,7 +645,7 @@ class Aliases(commands.Cog):
                             f"Cannot extend the ban beyond {duration} "
                             f"as a {executor_role} in {channel_obj.mention}."
                         )
-                    except:
+                    except Exception as e:
                         return await state.end(error=f"\u274c {str(e).capitalize()}")
                 set_kwargs = {
                     'expired_in': updated_expires_in
@@ -660,9 +663,9 @@ class Aliases(commands.Cog):
                     if delta.total_seconds() < 0:
                         try:
                             return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"You are not authorized to decrease the "
-                                f"duration below the current time."
+                                warning="\U000026a0\U0000fe0f "
+                                "You are not authorized to decrease the "
+                                "duration below the current time."
                             )
                         except Exception as e:
                             return await state.end(
@@ -702,7 +705,7 @@ class Aliases(commands.Cog):
                             f"Cannot set the ban beyond {duration} as "
                             f"a {executor_role} in {channel_obj.mention}."
                         )
-                    except:
+                    except Exception as e:
                         return await state.end(error=f"\u274c {str(e).capitalize()}")
                 if text_mute and override:
                     set_kwargs = {
@@ -764,6 +767,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -853,7 +857,7 @@ class Aliases(commands.Cog):
                                 f"Cannot extend the ban beyond {duration} "
                                 f"as a {executor_role} in {channel_obj.mention}."
                             )
-                        except:
+                        except Exception as e:
                             return await state.end(
                                 error=f"\u274c {str(e).capitalize()}"
                             )
@@ -873,9 +877,9 @@ class Aliases(commands.Cog):
                     if delta.total_seconds() < 0:
                         try:
                             return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"You are not authorized to decrease "
-                                f"the duration below the current time."
+                                warning="\U000026a0\U0000fe0f "
+                                "You are not authorized to decrease "
+                                "the duration below the current time."
                             )
                         except Exception as e:
                             return await state.end(
@@ -913,7 +917,7 @@ class Aliases(commands.Cog):
                                 f"Cannot set the ban beyond {duration} as a "
                                 f"{executor_role} in {channel_obj.mention}."
                             )
-                        except:
+                        except Exception as e:
                             return await state.end(
                                 error=f"\u274c {str(e).capitalize()}"
                             )
@@ -976,6 +980,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -1013,7 +1018,7 @@ class Aliases(commands.Cog):
                 try:
                     return await state.end(
                         warning="\U000026a0\U0000fe0f "
-                        f"Only coordinators and above can undo permanent bans."
+                        "Only coordinators and above can undo permanent bans."
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1065,6 +1070,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -1121,6 +1127,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -1199,6 +1206,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -1241,8 +1249,8 @@ class Aliases(commands.Cog):
                     try:
                         return await state.end(
                             warning="\U000026a0\U0000fe0f "
-                            f"Only coordinators and above can undo "
-                            f"permanent voice-mutes."
+                            "Only coordinators and above can undo "
+                            "permanent voice-mutes."
                         )
                     except Exception as e:
                         return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1289,6 +1297,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -1317,6 +1326,7 @@ class Aliases(commands.Cog):
                 )
             except Exception as e:
                 try:
+                    logger.warning(f"{str(e).capitalize()}")
                     return await state.end(
                         warning=f"\U000026a0\U0000fe0f "
                         f"Role `{alias.role_snowflake}` was not found."
@@ -1365,6 +1375,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
     # DONE
@@ -1406,8 +1417,8 @@ class Aliases(commands.Cog):
                     try:
                         return await state.end(
                             warning="\U000026a0\U0000fe0f "
-                            f"Only coordinators and above can undo "
-                            f"permanent text-mutes."
+                            "Only coordinators and above can undo "
+                            "permanent text-mutes."
                         )
                     except Exception as e:
                         return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1451,6 +1462,7 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
             raise
 
 

@@ -15,8 +15,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+from datetime import datetime
 from typing import Optional
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.rooms.room import Room
 
 class TemporaryRoom(Room):
@@ -43,12 +43,16 @@ class TemporaryRoom(Room):
         guild_snowflake: Optional[int],
         member_snowflake: Optional[int],
         room_name: Optional[str],
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None
     ):
-        self.bot = DiscordBot.get_instance()
+        super().__init__()
         self.channel_mention = f"<#{channel_snowflake}>"
         self.channel_snowflake = channel_snowflake
+        self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.is_temp_room: Optional[bool] = True
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.member_snowflake = member_snowflake
         self.room_name = room_name
+        self.updated_at = updated_at

@@ -23,10 +23,12 @@ import asyncio
 import time
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
+from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.actions.action import Action
 from vyrtuous.database.actions.ban import Ban
@@ -37,13 +39,17 @@ from vyrtuous.database.actions.voice_mute import VoiceMute
 from vyrtuous.database.rooms.stage import Stage
 from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.rooms.video_room import VideoRoom
-from vyrtuous.service.check_service import *
+from vyrtuous.service.check_service import (
+    has_equal_or_higher_role,
+    role_check_with_specifics,
+    not_bot
+)
 from vyrtuous.service.channel_service import resolve_channel
 from vyrtuous.service.member_service import resolve_member
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import State
+from vyrtuous.service.state_service import StateService
 from vyrtuous.database.settings.cap import Cap
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.history import History
 from vyrtuous.utils.invincibility import Invincibility
 from vyrtuous.utils.properties.duration import DurationObject
@@ -65,7 +71,7 @@ class EventListeners(commands.Cog):
         
 
     async def cog_load(self):
-        VideoRoom.video_rooms = await VideoRoom.fetch_all()
+        VideoRoom.video_rooms = await VideoRoom.select()
         for room in VideoRoom.video_rooms:
             channel = self.bot.get_channel(room.channel_snowflake)
             if channel:
@@ -75,8 +81,9 @@ class EventListeners(commands.Cog):
                         reason="Enforce default video-only status",
                     )
                 except discord.Forbidden as e:
+                    logger.warning(f'{str(e).capitalize()}')
                     pass
-        self.flags = await Flag.fetch_all()
+        self.flags = await Flag.select()
 
     @commands.Cog.listener()
     async def on_guild_channel_grant(self, channel: discord.abc.GuildChannel):
@@ -85,38 +92,37 @@ class EventListeners(commands.Cog):
         for c in guild.channels:
             if c.id != channel.id and c.name == name:
                 return
-        async with self.bot.db_pool.acquire() as conn:
-            room = self.deleted_rooms.pop(name, None)
-            if not room:
-                room = await TemporaryRoom.select_and_room_name(
-                    guild_snowflake=guild.id, room_name=name
-                )
-            if room:
-                old_id = room.channel_snowflake
-            set_kwargs = {
-                'channel_snowflake': channel.id
-            }
-            where_kwargs = {
-                'channel_snowflake': old_id,
-                'guild_snowflake': channel.guild.id
-            }
-            await Action.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            await Cap.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            await Coordinator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            await Moderator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            await Stage.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            await VoiceMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            bans = await Ban.select(guild_snowflake=guild.id)
-            for ban in bans:
-                member = self.bot.get_user(ban.member_snowflake)
-                await channel.set_permissions(member=member, view_channel=False)
-            text_mutes = await TextMute.select(guild_snowflake=guild.id)
-            for text_mute in text_mutes:
-                member = self.bot.get_user(text_mute.member_snowflake)
-                await channel.set_permissions(member=member, send_messages=False)
+        room = self.deleted_rooms.pop(name, None)
+        if not room:
+            room = await TemporaryRoom.select_and_room_name(
+                guild_snowflake=guild.id, room_name=name
+            )
+        if room:
+            old_id = room.channel_snowflake
+        set_kwargs = {
+            'channel_snowflake': channel.id
+        }
+        where_kwargs = {
+            'channel_snowflake': old_id,
+            'guild_snowflake': channel.guild.id
+        }
+        await Action.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Cap.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Coordinator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Moderator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Stage.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await VoiceMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        bans = await Ban.select(guild_snowflake=guild.id)
+        for ban in bans:
+            member = self.bot.get_user(ban.member_snowflake)
+            await channel.set_permissions(member=member, view_channel=False)
+        text_mutes = await TextMute.select(guild_snowflake=guild.id)
+        for text_mute in text_mutes:
+            member = self.bot.get_user(text_mute.member_snowflake)
+            await channel.set_permissions(member=member, send_messages=False)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
@@ -237,7 +243,7 @@ class EventListeners(commands.Cog):
                         await member.edit(mute=True, reason="Server mute is active.")
                     except discord.Forbidden as e:
                         logger.debug(
-                            f"No permission to " f"edit mute for {member.display_name}"
+                            f"No permission to " f"edit mute for {member.display_name}. {str(e).capitalize()}"
                         )
                     except discord.HTTPException as e:
                         logger.debug(
@@ -320,7 +326,7 @@ class EventListeners(commands.Cog):
                     )
                 except discord.Forbidden as e:
                     logger.debug(
-                        f"No permission to edit " f"mute for {member.display_name}"
+                        f"No permission to edit " f"mute for {member.display_name}. {str(e).capitalize()}"
                     )
                 except discord.HTTPException as e:
                     logger.debug(
@@ -376,7 +382,8 @@ class EventListeners(commands.Cog):
                         f"Unable to ban member "
                         f"{member.display_name} ({member.id}) "
                         f"in channel {channel.name} ({channel.id}) "
-                        f"in guild {guild.name} ({guild.id})."
+                        f"in guild {guild.name} ({guild.id}). "
+                        f"{str(e).capitalize()}"
                     )
         if text_mutes:
             for text_mute in text_mutes:
@@ -394,7 +401,8 @@ class EventListeners(commands.Cog):
                         f"Unable to text-mute member "
                         f"{member.display_name} ({member.id}) "
                         f"in channel {channel.name} ({channel.id}) "
-                        f"in guild {guild.name} ({guild.id})."
+                        f"in guild {guild.name} ({guild.id}). "
+                        f"{str(e).capitalize()}"
                     )
 
     @commands.Cog.listener()
@@ -428,7 +436,7 @@ class EventListeners(commands.Cog):
         )
         if not alias:
             return
-        state = State(message)
+        state = StateService(message)
         try:
             channel_obj = await resolve_channel(
                 ctx_interaction_or_message=message, channel_str=alias.channel_snowflake
@@ -464,17 +472,26 @@ class EventListeners(commands.Cog):
             guild_snowflake=message.guild.id,
             member_snowflake=member_obj.id,
         )
-        target = args[1] if len(args) > 1 else "24h"
-        duration = DurationObject(target if target else "8h")
+        target = args[1] if len(args) > 2 else "8h"
         is_reason_modification = target in ["+", "-", "="]
-        if not is_reason_modification:
-            if target.startswith(("+", "-", "=")):
-                is_duration_modification = True
         executor_role = await role_check_with_specifics(
             channel_snowflake=alias.channel_snowflake,
             guild_snowflake=message.guild.id,
             member_snowflake=message.author.id,
         )
+        if not is_reason_modification:
+            duration = DurationObject(target)
+            if target.startswith(("+", "-", "=")):
+                is_duration_modification = True
+            if duration.number == 0 and executor_role in ("Moderator", "Everyone"):
+                try:
+                    return await state.end(
+                        warning=f"\U000026a0\U0000fe0f "
+                        f"You are not permitted to modify or set permanent "
+                        f"actions as a {executor_role} in {channel_obj.mention}."
+                    )
+                except Exception as e:
+                    return await state.end(error=f"\u274c {str(e).capitalize()}")
         if executor_role == "Everyone":
             try:
                 return await state.end(
@@ -482,15 +499,6 @@ class EventListeners(commands.Cog):
                     f"You are not permitted to {alias.alias_type} users."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        if duration.number == 0 and executor_role in ("Moderator", "Everyone"):
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"You are not permitted to modify or set permanent "
-                    f"actions as a {executor_role} in {channel_obj.mention}."
-                )
-            except:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         if is_reason_modification and executor_role in ("Moderator", "Everyone"):
             try:
@@ -516,7 +524,7 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        state = State(ctx)
+        state = StateService(ctx)
         try:
             match type(error):
                 case commands.BadArgument:
@@ -529,7 +537,7 @@ class EventListeners(commands.Cog):
                         error=f"\U000026a0\U0000fe0f "
                         f"Missing required argument: `{missing}`"
                     )
-                case ValueError:
+                case ValueError():
                     return await state.end(error=f"\U000026a0\U0000fe0f {error}")
         except Exception as e:
             try:
@@ -539,14 +547,14 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
-        state = State(interaction)
+        state = StateService(interaction)
         try:
             match type(error):
                 case app_commands.BadArgument:
                     return await state.end(error=f"\U000026a0\U0000fe0f {error}")
                 case app_commands.CheckFailure:
                     return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-                case ValueError:
+                case ValueError():
                     return await state.end(error=f"\U000026a0\U0000fe0f {error}")
         except Exception as e:
             try:
@@ -585,6 +593,7 @@ class EventListeners(commands.Cog):
         if not relevant_added_roles and not relevant_removed_roles:
             return
         administrator = await Administrator.select(
+            guild_snowflake=after.guild.id,
             member_snowflake=after.id
         )
         if not administrator and relevant_added_roles:
@@ -593,36 +602,48 @@ class EventListeners(commands.Cog):
                 member_snowflake=after.id,
                 role_snowflakes=list(after_role_snowflakes),
             )
-            await administrator.grant()
+            await administrator.create()
             return
         if administrator:
+            where_kwargs = {
+                'guild_snowflake': after.guild.id,
+                'member_snowflake': after.id
+            }
             for role_snowflake in relevant_added_roles:
                 if role_snowflake not in administrator.role_snowflakes:
-                    administrator.update_by_new_role(role_snowflake)
+                    set_kwargs = {
+                        'role_snowflakes': administrator.role_snowflakes.append(role_snowflake)
+                    }
+                    await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             for role_snowflake in relevant_removed_roles:
                 if role_snowflake in administrator.role_snowflakes:
-                    administrator.update_by_removed_role(role_snowflake)
+                    set_kwargs = {
+                        'role_snowflakes': administrator.role_snowflakes.remove(role_snowflake)
+                    }
+                    await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
             remaining_admin_roles = (
                 set(administrator.role_snowflakes) & after_role_snowflakes
             )
             if not remaining_admin_roles:
-                await administrator.revoke()
+                await Administrator.delete(
+                    guild_snowflake=after.guild.id,
+                    member_snowflake=after.id
+                )
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
-        async with self.bot.db_pool.acquire() as conn:
-            administrators = await Administrator.fetch_by_role(role_snowflake=role.id)
-            for administrator in administrators:
-                role_snowflakes = set(administrator.role_snowflake)
-                guild_snowflakes = set(administrator.guild_snowflake)
-                role_snowflakes.discard(role.id)
-                if not role_snowflakes:
-                    guild_snowflakes.discard(role.guild)
-                Administrator.update_guilds_and_roles_by_member(
-                    guild_snowflake=list(guild_snowflakes),
-                    member_snowflake=administrator.member_snowflake,
-                    role_snowflakes=list(role_snowflakes),
-                )
+        administrators = await Administrator.select(role_snowflake=role.id)
+        for administrator in administrators:
+            role_snowflakes = set(administrator.role_snowflake)
+            guild_snowflakes = set(administrator.guild_snowflake)
+            role_snowflakes.discard(role.id)
+            if not role_snowflakes:
+                guild_snowflakes.discard(role.guild)
+            Administrator.update_guilds_and_roles_by_member(
+                guild_snowflake=list(guild_snowflakes),
+                member_snowflake=administrator.member_snowflake,
+                role_snowflakes=list(role_snowflakes),
+            )
 
     async def print_flags(
         self, member: discord.Member, after_channel: discord.abc.GuildChannel

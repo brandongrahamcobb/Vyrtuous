@@ -17,14 +17,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
+from discord.ext import commands
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.properties.duration import DurationObject
 from vyrtuous.service.paginator_service import Paginator
-from vyrtuous.utils.setup_logging import logger
-from vyrtuous.utils.properties.snowflake import *
 import discord
-
 
 class History:
 
@@ -82,7 +80,7 @@ class History:
         bot = DiscordBot.get_instance()
         author_snowflake = None
         expires_at = None
-        history = await History.fetch_all()
+        history = await History.select()
         if message:
             for entry in history:
                 channel_obj = bot.get_channel(entry.channel_snowflake)
@@ -269,157 +267,7 @@ class History:
                     )
                     embeds.append(reason_embed)
         return embeds
-
-    @classmethod
-    async def delete(
-        cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]
-    ):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                DELETE FROM history
-                WHERE channel_snowflake=$1 AND guild_snowflake=$2
-            """,
-                channel_snowflake,
-                guild_snowflake,
-            )
-
-    @classmethod
-    async def select(
-        cls, channel_snowflake: Optional[int], guild_snowflake: Optional[int]
-    ):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, entry_type, updated_at
-                FROM history
-                WHERE channel_snowflake=$1 AND guild_snowflake=$2
-            """,
-                channel_snowflake,
-                guild_snowflake,
-            )
-        history = []
-        if rows:
-            for row in rows:
-                history.append(
-                    History(
-                        channel_snowflake=channel_snowflake,
-                        enabled=row["enabled"],
-                        guild_snowflake=guild_snowflake,
-                        snowflakes=row["snowflakes"],
-                        entry_type=row["entry_type"],
-                    )
-                )
-            return history
-
-    @classmethod
-    async def select(cls, guild_snowflake: Optional[int]):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, entry_type, updated_at
-                FROM history
-                WHERE guild_snowflake=$1
-            """,
-                guild_snowflake,
-            )
-        history = []
-        if rows:
-            for row in rows:
-                history.append(
-                    History(
-                        channel_snowflake=row["channel_snowflake"],
-                        enabled=row["enabled"],
-                        guild_snowflake=guild_snowflake,
-                        snowflakes=row["snowflakes"],
-                        entry_type=row["entry_type"],
-                    )
-                )
-            return history
-
-    @classmethod
-    async def update_by_channel_guild_and_type(
-        cls,
-        channel_snowflake: Optional[int],
-        guild_snowflake: Optional[int],
-        snowflakes: list[int | None],
-        entry_type: Optional[str],
-    ):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE history
-                SET snowflakes=$3, entry_type=$4, enabled=TRUE
-                WHERE channel_snowflake=$1 AND guild_snowflake=$2
-            """,
-                channel_snowflake,
-                guild_snowflake,
-                snowflakes,
-                entry_type,
-            )
-
-    @classmethod
-    async def update_by_channel_enabled_and_guild(
-        cls,
-        channel_snowflake: Optional[int],
-        enabled: Optional[bool],
-        guild_snowflake: Optional[int],
-    ):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                UPDATE history
-                SET enabled=$2
-                WHERE channel_snowflake=$1 AND guild_snowflake=$3
-            """,
-                channel_snowflake,
-                enabled,
-                guild_snowflake,
-            )
-
-    async def create(self):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO history (channel_snowflake, enabled, guild_snowflake, snowflakes, entry_type)
-                VALUES ($1, TRUE, $2, $3, $4)
-            """,
-                self.channel_snowflake,
-                self.guild_snowflake,
-                self.snowflakes,
-                self.entry_type,
-            )
-
-    @classmethod
-    async def fetch_all(cls):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT channel_snowflake, created_at, enabled, guild_snowflake, snowflakes, entry_type, updated_at
-                FROM history
-            """
-            )
-        history = []
-        if rows:
-            for row in rows:
-                history.append(
-                    History(
-                        channel_snowflake=row["channel_snowflake"],
-                        enabled=row["enabled"],
-                        guild_snowflake=row["guild_snowflake"],
-                        snowflakes=row["snowflakes"],
-                        entry_type=row["entry_type"],
-                    )
-                )
-        return history
-
+    
     @classmethod
     async def save(
         cls,
@@ -471,7 +319,6 @@ class History:
         member_snowflake: Optional[int],
         reason: Optional[str],
     ):
-        bot = DiscordBot.get_instance()
         author_snowflake = None
         expires_at = None
         if isinstance(ctx_interaction_or_message, (commands.Context, discord.Message)):

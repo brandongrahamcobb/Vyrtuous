@@ -43,11 +43,10 @@ class ServerMute(Action):
         guild_snowflake: Optional[int],
         member_snowflake: Optional[int],
         created_at: Optional[datetime] = None,
-        expired: bool = False,
-        expires_in: Optional[datetime] = None,
         reason: Optional[str] = "No reason provided.",
         updated_at: Optional[datetime] = None,
     ):
+        super().__init__()
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake

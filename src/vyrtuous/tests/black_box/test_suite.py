@@ -32,7 +32,7 @@ from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.developer import Developer
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.utils.permission import PERMISSION_TYPES
-from vyrtuous.service.state_service import State
+from vyrtuous.service.state_service import StateService
 from vyrtuous.tests.black_box.make_mock_objects import *
 import asyncpg
 import discord
@@ -205,8 +205,8 @@ def _normalize_payload(payload):
 @asynccontextmanager
 async def capture(author, channel):
     captured = []
-    send = State._send_message
-    end = State.end
+    send = StateService._send_message
+    end = StateService.end
 
     async def _send(
         self,
@@ -277,14 +277,14 @@ async def capture(author, channel):
         return msg
 
     # channel.send = _send
-    State._send_message = _send
+    StateService._send_message = _send
     channel.send = send
-    State.end = _end
+    StateService.end = _end
     try:
         yield captured
     finally:
-        State.end = end
-        State._send_message = send
+        StateService.end = end
+        StateService._send_message = send
 
 
 @contextmanager
@@ -429,8 +429,14 @@ async def permission(request, voice_channel_one, guild, privileged_author):
         perm_instance = perm_class(
             guild_snowflake=guild.id, member_snowflake=privileged_author.id
         )
-    await perm_instance.grant()
+    await perm_instance.create()
     try:
         yield perm_instance
     finally:
-        await perm_instance.revoke()
+        delete_kwargs = {
+            k: getattr(perm_instance, k)
+            for k in perm_class.REQUIRED_INSTANTIATION_ARGS
+            if getattr(perm_instance, k, None) is not None
+        }
+        await perm_class.delete(**delete_kwargs)
+

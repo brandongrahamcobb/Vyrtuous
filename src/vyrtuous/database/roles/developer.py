@@ -28,6 +28,7 @@ class Developer(PermissionRole):
     UNDO = "dev"
     REQUIRED_INSTANTIATION_ARGS = ["guild_snowflake", "member_snowflake"]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
+    TABLE_NAME = "developers"
 
     def __init__(
         self,
@@ -36,6 +37,7 @@ class Developer(PermissionRole):
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):
+        super().__init__()
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake

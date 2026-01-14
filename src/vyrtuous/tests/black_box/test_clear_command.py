@@ -40,7 +40,7 @@ async def test_clear_command(
     developer = Developer(
         guild_snowflake=guild.id, member_snowflake=privileged_author.id
     )
-    await developer.grant()
+    await developer.create()
     try:
         voice_channel_one.messages.clear()
         formatted = command.format(
@@ -73,4 +73,4 @@ async def test_clear_command(
             # print(f"{GREEN}Success:{RESET} {content}")
             assert any(emoji in content for emoji in EMOJIS)
     finally:
-        await developer.revoke()
+        await developer.delete()

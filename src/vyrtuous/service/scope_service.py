@@ -162,3 +162,103 @@ async def resolve_objects(
     
     title = f"{get_random_emoji()} {obj.PLURAL}"
     return objects, title
+
+def generate_skipped_guilds(guild_dictionary: dict) -> set:
+    bot = DiscordBot.get_instance()
+    skipped_guilds = set()
+    for guild_snowflake in guild_dictionary:
+        if not bot.get_guild(guild_snowflake):
+            skipped_guilds.add(guild_snowflake)
+    return skipped_guilds
+
+def generate_skipped_channels(guild_dictionary: dict) -> dict:
+    bot = DiscordBot.get_instance()
+    skipped_channels = {}
+    for guild_snowflake, guild_data in guild_dictionary.items():
+        guild = bot.get_guild(guild_snowflake)
+        if not guild:
+            continue
+        for channel_snowflake in guild_data.get('channels', {}):
+            if not guild.get_channel(channel_snowflake):
+                skipped_channels.setdefault(guild_snowflake, []).append(channel_snowflake)
+    return skipped_channels
+
+def generate_skipped_members(guild_dictionary: dict) -> dict:
+    bot = DiscordBot.get_instance()
+    skipped_members = {}
+    for guild_snowflake, guild_data in guild_dictionary.items():
+        guild = bot.get_guild(guild_snowflake)
+        if not guild:
+            continue
+        for members in guild_data.get('channels', {}).values():
+            for member_data in members:
+                if not guild.get_member(member_data['member_snowflake']):
+                    skipped_members.setdefault(guild_snowflake, []).append(
+                        member_data['member_snowflake']
+                    )
+    return skipped_members
+
+def generate_skipped_roles(guild_dictionary: dict) -> dict:
+    bot = DiscordBot.get_instance()
+    skipped_roles = {}
+    for guild_snowflake, guild_data in guild_dictionary.items():
+        guild = bot.get_guild(guild_snowflake)
+        if not guild:
+            continue
+        for role_snowflake in guild_data.get('roles', []):
+            if not guild.get_role(role_snowflake):
+                skipped_roles.setdefault(guild_snowflake, []).append(role_snowflake)
+    return skipped_roles
+
+def clean_guild_dictionary(guild_dictionary: dict, *, skipped_channels: dict | None = None, skipped_guilds: set | None = None, skipped_members: dict | None = None, skipped_roles: dict | None = None) -> dict:
+    cleaned = {}
+    skipped_channels = skipped_channels or {}
+    skipped_guilds = skipped_guilds or set()
+    skipped_members = skipped_members or {}
+    skipped_roles = skipped_roles or {}
+    for guild_snowflake, guild_data in guild_dictionary.items():
+        if guild_snowflake in skipped_guilds:
+            continue
+        channels = {}
+        for channel_snowflake, members in guild_data.get('channels', {}).items():
+            if channel_snowflake in skipped_channels.get(guild_snowflake, []):
+                continue
+            filtered_members = [
+                member for member in members
+                if member['member_snowflake'] not in skipped_members.get(guild_snowflake, [])
+            ]
+            channels[channel_snowflake] = filtered_members
+        roles = [
+            role for role in guild_data.get('roles', [])
+            if role not in skipped_roles.get(guild_snowflake, [])
+        ]
+        cleaned[guild_snowflake] = {'channels': channels, 'roles': roles}
+    return cleaned
+
+async def generate_skipped_messages(guild_dictionary: dict) -> dict:
+    bot = DiscordBot.get_instance()
+    skipped_messages = {}
+    for guild_snowflake, guild_data in guild_dictionary.items():
+        guild = bot.get_guild(guild_snowflake)
+        if not guild:
+            continue
+        for channel_snowflake, channel_logs in guild_data.get('channels', {}).items():
+            channel = guild.get_channel(channel_snowflake)
+            if not channel:
+                continue
+            for member_data in channel_logs:
+                try:
+                    await channel.fetch_message(member_data['message_snowflake'])
+                except Exception:
+                    skipped_messages.setdefault(guild_snowflake, []).append(
+                        member_data['message_snowflake']
+                    )
+    return skipped_messages
+
+def flush_page(embed, pages, title, guild_name):
+    pages.append(embed)
+    return discord.Embed(
+        title=title,
+        description=f'{guild_name} continued...',
+        color=discord.Color.blue(),
+    ), 0

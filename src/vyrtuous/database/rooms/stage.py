@@ -56,6 +56,7 @@ class Stage(Room):
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):
+        super().__init__()
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.expires_in = expires_in
