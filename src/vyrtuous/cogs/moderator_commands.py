@@ -23,7 +23,7 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.action import Action
+from vyrtuous.database.actions.alias import Alias
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.settings.cap import Cap
 from vyrtuous.database.actions.flag import Flag
@@ -109,7 +109,7 @@ class ModeratorCommands(commands.Cog):
             )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -228,7 +228,7 @@ class ModeratorCommands(commands.Cog):
             )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -351,7 +351,7 @@ class ModeratorCommands(commands.Cog):
                     }
                 )
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -457,7 +457,7 @@ class ModeratorCommands(commands.Cog):
                     }
                 )
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -529,7 +529,7 @@ class ModeratorCommands(commands.Cog):
         state = StateService(interaction)
         aliases, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
-            obj=Action,
+            obj=Alias,
             state=state,
             target=target,
         )
@@ -540,17 +540,14 @@ class ModeratorCommands(commands.Cog):
             logger.warning(f"{str(e).capitalize()}")
             pass
 
-        chunk_size, field_count, pages = 7, 0, []
+        channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         guild_dictionary = {}
 
         for alias in aliases:
-            guild_dictionary.setdefault(alias.guild_snowflake, {})
-            guild_dictionary[alias.guild_snowflake].setdefault(
-                alias.channel_snowflake, []
-            )
-            channel_entries = guild_dictionary[alias.guild_snowflake][
-                alias.channel_snowflake
-            ]
+            guild_dictionary.setdefault(alias.guild_snowflake, {"channels": {}, "members": [], "roles": []})
+            channels = guild_dictionary[alias.guild_snowflake]["channels"]
+            channels.setdefault(alias.channel_snowflake, [])
+            channel_entries = channels[alias.channel_snowflake]
             entry_found = False
             for entry in channel_entries:
                 if alias.alias_type in entry:
@@ -560,7 +557,7 @@ class ModeratorCommands(commands.Cog):
             if not entry_found:
                 channel_entries.append({alias.alias_type: [alias.alias_name]})
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -568,15 +565,13 @@ class ModeratorCommands(commands.Cog):
             skipped_guilds=skipped_guilds,
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             current_channel = None
             lines = []
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, channel_entries in channels.items():
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_entries in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
                 for entry in channel_entries:
@@ -585,7 +580,7 @@ class ModeratorCommands(commands.Cog):
                         for name in alias_names:
                             channel_lines.append(f"  ↳ {name}")
                 i = 0
-                while i < len(channel_lines):
+                while i <= len(channel_lines):
                     remaining_space = chunk_size - len(lines)
                     chunk = channel_lines[i : i + remaining_space]
                     if not lines:
@@ -627,7 +622,7 @@ class ModeratorCommands(commands.Cog):
                     title="Skipped Channels in Server",
                 )
 
-        await StateService.send_pages(obj=Action, pages=pages, state=state)
+        await StateService.send_pages(obj=Alias, pages=pages, state=state)
 
     # DONE
     @commands.command(name="cmds", help="List aliases.")
@@ -643,7 +638,7 @@ class ModeratorCommands(commands.Cog):
     ):
         state = StateService(ctx)
         aliases, title = await resolve_objects(
-            ctx_interaction_or_message=ctx, obj=Action, state=state, target=target
+            ctx_interaction_or_message=ctx, obj=Alias, state=state, target=target
         )
 
         try:
@@ -652,17 +647,14 @@ class ModeratorCommands(commands.Cog):
             logger.warning(f"{str(e).capitalize()}")
             pass
 
-        chunk_size, field_count, pages = 7, 0, []
+        channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         guild_dictionary = {}
 
         for alias in aliases:
-            guild_dictionary.setdefault(alias.guild_snowflake, {})
-            guild_dictionary[alias.guild_snowflake].setdefault(
-                alias.channel_snowflake, []
-            )
-            channel_entries = guild_dictionary[alias.guild_snowflake][
-                alias.channel_snowflake
-            ]
+            guild_dictionary.setdefault(alias.guild_snowflake, {"channels": {}, "members": [], "roles": []})
+            channels = guild_dictionary[alias.guild_snowflake]["channels"]
+            channels.setdefault(alias.channel_snowflake, [])
+            channel_entries = channels[alias.channel_snowflake]
             entry_found = False
             for entry in channel_entries:
                 if alias.alias_type in entry:
@@ -672,7 +664,7 @@ class ModeratorCommands(commands.Cog):
             if not entry_found:
                 channel_entries.append({alias.alias_type: [alias.alias_name]})
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -680,15 +672,13 @@ class ModeratorCommands(commands.Cog):
             skipped_guilds=skipped_guilds,
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             current_channel = None
             lines = []
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, channel_entries in channels.items():
+            embed = discord.Embed(title=title, description=guild.name, color=discord.Color.blue())
+            for channel_snowflake, channel_entries in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
                 for entry in channel_entries:
@@ -697,7 +687,7 @@ class ModeratorCommands(commands.Cog):
                         for name in alias_names:
                             channel_lines.append(f"  ↳ {name}")
                 i = 0
-                while i < len(channel_lines):
+                while i <= len(channel_lines):
                     remaining_space = chunk_size - len(lines)
                     chunk = channel_lines[i : i + remaining_space]
                     if not lines:
@@ -720,7 +710,7 @@ class ModeratorCommands(commands.Cog):
                     inline=False,
                 )
             pages.append(embed)
-
+        
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -739,7 +729,7 @@ class ModeratorCommands(commands.Cog):
                     title="Skipped Channels in Server",
                 )
 
-        await StateService.send_pages(obj=Action, pages=pages, state=state)
+        await StateService.send_pages(obj=Alias, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="del", description="Delete message.")
@@ -886,7 +876,7 @@ class ModeratorCommands(commands.Cog):
                 {"member_snowflake": flag.member_snowflake, "reason": flag.reason}
             )
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
@@ -1017,7 +1007,7 @@ class ModeratorCommands(commands.Cog):
                 {"member_snowflake": flag.member_snowflake, "reason": flag.reason}
             )
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
@@ -1145,7 +1135,7 @@ class ModeratorCommands(commands.Cog):
                 {"member_snowflake": vegan.member_snowflake}
             )
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
@@ -1273,7 +1263,7 @@ class ModeratorCommands(commands.Cog):
                 {"member_snowflake": vegan.member_snowflake}
             )
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
@@ -1408,7 +1398,7 @@ class ModeratorCommands(commands.Cog):
             new_room = await TemporaryRoom.select_and_room_name(
                 guild_snowflake=interaction.guild.id, room_name=channel_obj.name
             )
-            await Action.update_channel(
+            await Alias.update_channel(
                 source_channel_snowflake=new_room.channel_snowflake,
                 target_channel_snowflake=channel_obj.id,
             )
@@ -1515,7 +1505,7 @@ class ModeratorCommands(commands.Cog):
             new_room = await TemporaryRoom.select_and_room_name(
                 guild_snowflake=ctx.guild.id, room_name=channel_obj.name
             )
-            await Action.update_channel(
+            await Alias.update_channel(
                 source_channel_snowflake=new_room.channel_snowflake,
                 target_channel_snowflake=channel_obj.id,
             )
@@ -1616,7 +1606,7 @@ class ModeratorCommands(commands.Cog):
                 }
             )
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
@@ -1754,7 +1744,7 @@ class ModeratorCommands(commands.Cog):
                 }
             )
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
@@ -2037,7 +2027,7 @@ class ModeratorCommands(commands.Cog):
                 "expires_in"
             ] = DurationObject.from_expires_in(stage.expires_in)
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -2126,7 +2116,7 @@ class ModeratorCommands(commands.Cog):
                 "expires_in"
             ] = DurationObject.from_expires_in(stage.expires_in)
 
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -2386,7 +2376,7 @@ class ModeratorCommands(commands.Cog):
                 )
                 pages.append(embed)
 
-        await StateService.send_pages(obj=Action, pages=pages, state=state)
+        await StateService.send_pages(obj=Alias, pages=pages, state=state)
 
     @commands.command(name="summary", description="Moderation summary.")
     @moderator_predicator()
@@ -2589,7 +2579,7 @@ class ModeratorCommands(commands.Cog):
                 )
                 pages.append(embed)
 
-        await StateService.send_pages(obj=Action, pages=pages, state=state)
+        await StateService.send_pages(obj=Alias, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="tmutes", description="List text-mutes.")
@@ -2643,7 +2633,7 @@ class ModeratorCommands(commands.Cog):
             )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
@@ -2787,7 +2777,7 @@ class ModeratorCommands(commands.Cog):
             )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_channels = await generate_skipped_channels(guild_dictionary)
+        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,

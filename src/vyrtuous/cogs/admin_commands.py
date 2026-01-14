@@ -24,7 +24,7 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.action import Action
+from vyrtuous.database.actions.alias import Alias
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.server_mute import ServerMute
@@ -120,7 +120,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             role_snowflake = None
             logger.warning(f"{str(e).capitalize()}")
-        alias = Action(
+        alias = Alias(
             alias_name=alias_name,
             alias_type=moderation_type,
             channel_snowflake=channel_obj.id,
@@ -188,7 +188,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             role_snowflake = None
             logger.warning(f"{str(e).capitalize()}")
-        alias = Action(
+        alias = Alias(
             alias_name=alias_name,
             alias_type=moderation_type,
             channel_snowflake=channel_obj.id,
@@ -236,10 +236,8 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(administrator_role.guild_snowflake, {})
-            guild_dictionary[administrator_role.guild_snowflake].setdefault(
-                "role_snowflake", []
-            ).append(administrator_role.role_snowflake)
+            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"channels": {}, "roles": []})
+            guild_dictionary[administrator_role.guild_snowflake]["roles"].append(administrator_role.role_snowflake)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_roles = generate_skipped_roles(guild_dictionary)
@@ -255,13 +253,14 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for role_snowflake in guild_data.get("role_snowflake", []):
+            for role_snowflake in guild_data.get("roles"):
                 role = guild.get_role(role_snowflake)
                 if field_count >= chunk_size:
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(name=role.name, value=role.mention, inline=False)
                 field_count += 1
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -312,10 +311,8 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(administrator_role.guild_snowflake, {})
-            guild_dictionary[administrator_role.guild_snowflake].setdefault(
-                "role_snowflake", []
-            ).append(administrator_role.role_snowflake)
+            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"channels": {}, "roles": []})
+            guild_dictionary[administrator_role.guild_snowflake]["roles"].append(administrator_role.role_snowflake)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_roles = generate_skipped_roles(guild_dictionary)
@@ -331,12 +328,13 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for role_snowflake in guild_data.get("role_snowflake", []):
+            for role_snowflake in guild_data.get("roles"):
                 role = guild.get_role(role_snowflake)
                 embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(name=role.name, value=role.mention, inline=False)
                 field_count += 1
             pages.append(embed)
+
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -648,7 +646,7 @@ class AdminCommands(commands.Cog):
             if view.result == True:
                 match action_type.lower():
                     case "all":
-                        await Action.delete(
+                        await Alias.delete(
                             channel_snowflake=channel_obj.id,
                             guild_snowflake=interaction.guild.id,
                         )
@@ -714,7 +712,7 @@ class AdminCommands(commands.Cog):
                             f"and tracking for {channel_obj.mention}."
                         )
                     case "alias":
-                        await Action.delete(
+                        await Alias.delete(
                             channel_snowflake=channel_obj.id,
                             guild_snowflake=interaction.guild.id,
                         )
@@ -1029,7 +1027,7 @@ class AdminCommands(commands.Cog):
             if view.result == True:
                 match action_type.lower():
                     case "all":
-                        await Action.delete(
+                        await Alias.delete(
                             channel_snowflake=channel_obj.id,
                             guild_snowflake=ctx.guild.id,
                         )
@@ -1094,7 +1092,7 @@ class AdminCommands(commands.Cog):
                             f"roles, room setups and tracking for {channel_obj.mention}."
                         )
                     case "alias":
-                        await Action.delete(
+                        await Alias.delete(
                             channel_snowflake=channel_obj.id,
                             guild_snowflake=ctx.guild.id,
                         )
@@ -2189,7 +2187,7 @@ class AdminCommands(commands.Cog):
                     guild_snowflake=interaction.guild.id,
                     member_snowflake=temporary_room.member_snowflake,
                 )
-            # await Action.delete(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
+            # await Alias.delete(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
             await TemporaryRoom.delete(
                 channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
             )
@@ -2263,7 +2261,7 @@ class AdminCommands(commands.Cog):
                     guild_snowflake=ctx.guild.id,
                     member_snowflake=temporary_room.member_snowflake,
                 )
-            # await Action.delete(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
+            # await Alias.delete(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
             await TemporaryRoom.delete(
                 channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
             )
@@ -2317,7 +2315,7 @@ class AdminCommands(commands.Cog):
         )
         aliases, _ = await resolve_objects(
             ctx_interaction_or_message=interaction,
-            obj=Action,
+            obj=Alias,
             state=state,
             target=target,
         )
@@ -2450,7 +2448,7 @@ class AdminCommands(commands.Cog):
             target=target,
         )
         aliases, _ = await resolve_objects(
-            ctx_interaction_or_message=ctx, obj=Action, state=state, target=target
+            ctx_interaction_or_message=ctx, obj=Alias, state=state, target=target
         )
 
         try:
@@ -3303,7 +3301,7 @@ class AdminCommands(commands.Cog):
         )
         aliases, _ = await resolve_objects(
             ctx_interaction_or_message=interaction,
-            obj=Action,
+            obj=Alias,
             state=state,
             target=target,
         )
@@ -3423,7 +3421,7 @@ class AdminCommands(commands.Cog):
             ctx_interaction_or_message=ctx, obj=VideoRoom, state=state, target=target
         )
         aliases, _ = await resolve_objects(
-            ctx_interaction_or_message=ctx, obj=Action, state=state, target=target
+            ctx_interaction_or_message=ctx, obj=Alias, state=state, target=target
         )
 
         try:
@@ -3534,7 +3532,7 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(interaction)
         channel_obj = None
-        alias = await Action.select(
+        alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=interaction.guild.i
         )
         if not alias:
@@ -3545,7 +3543,7 @@ class AdminCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-        await Action.delete(
+        await Alias.delete(
             alias_name=alias.alias_name, guild_snowflake=interaction.guild.id
         )
         try:
@@ -3586,7 +3584,7 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(ctx)
         channel_obj = None
-        alias = await Action.select(alias_name=alias_name, guild_snowflake=ctx.guild.id)
+        alias = await Alias.select(alias_name=alias_name, guild_snowflake=ctx.guild.id)
         if not alias:
             try:
                 return await state.end(
@@ -3595,7 +3593,7 @@ class AdminCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-        await Action.delete(alias_name=alias.alias_name, guild_snowflake=ctx.guild.id)
+        await Alias.delete(alias_name=alias.alias_name, guild_snowflake=ctx.guild.id)
         try:
             channel_obj = await resolve_channel(ctx, alias.channel_snowflake)
         except Exception as e:

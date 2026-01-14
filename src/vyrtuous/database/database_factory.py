@@ -79,7 +79,6 @@ class DatabaseFactory(object):
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
-            print(f"DELETE FROM {table_name} {where_clause}")
 
     @classmethod
     async def select(cls, **kwargs):
@@ -104,7 +103,6 @@ class DatabaseFactory(object):
             rows = await conn.fetch(
                 f"SELECT * FROM {table_name} {where_clause}", *values
             )
-            print(f"SELECT * FROM {table_name} {where_clause}")
         children = []
         for row in rows:
             row_data = {k: row[k] for k in row.keys() if k in fields}

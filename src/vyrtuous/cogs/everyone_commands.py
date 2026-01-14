@@ -92,42 +92,30 @@ class EveryoneCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator in administrators:
-            guild_dictionary.setdefault(administrator.guild_snowflake, {})
-            guild_dictionary[administrator.guild_snowflake].setdefault(
-                administrator.member_snowflake, []
-            )
-            guild_dictionary[administrator.guild_snowflake][
-                administrator.member_snowflake
-            ].extend(administrator.role_snowflakes)
+            guild_dictionary.setdefault(administrator.guild_snowflake, {"channels": {}, "members": {}})
+            guild_dictionary[administrator.guild_snowflake]["members"][administrator.member_snowflake] = administrator.role_snowflakes
 
-        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
         skipped_roles = await generate_skipped_roles(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
             skipped_roles=skipped_roles,
         )
 
-        for guild_snowflake in guild_dictionary.keys():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for member_snowflake, role_snowflakes in guild_dictionary[
-                guild_snowflake
-            ].items():
+            for member_snowflake, role_snowflakes in guild_data.get("members").items():
                 if field_count >= chunk_size:
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                 member = guild.get_member(member_snowflake)
-                role_mentions = []
-                for role_snowflake in role_snowflakes:
-                    role = guild.get_role(role_snowflake)
-                    role_mentions.append(role.mention)
+                role_mentions = [guild.get_role(role_snowflake).mention for role_snowflake in role_snowflakes if guild.get_role(role_snowflake)]
                 if role_mentions:
                     lines = f"**Roles:** {'\n'.join(role_mentions)}"
                 else:
@@ -198,42 +186,30 @@ class EveryoneCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator in administrators:
-            guild_dictionary.setdefault(administrator.guild_snowflake, {})
-            guild_dictionary[administrator.guild_snowflake].setdefault(
-                administrator.member_snowflake, []
-            )
-            guild_dictionary[administrator.guild_snowflake][
-                administrator.member_snowflake
-            ].extend(administrator.role_snowflakes)
+            guild_dictionary.setdefault(administrator.guild_snowflake, {"channels": {}, "members": {}})
+            guild_dictionary[administrator.guild_snowflake]["members"][administrator.member_snowflake] = administrator.role_snowflakes
 
-        skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = await generate_skipped_members(guild_dictionary)
         skipped_roles = await generate_skipped_roles(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
             skipped_members=skipped_members,
             skipped_roles=skipped_roles,
         )
 
-        for guild_snowflake in guild_dictionary.keys():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for member_snowflake, role_snowflakes in guild_dictionary[
-                guild_snowflake
-            ].items():
+            for member_snowflake, role_snowflakes in guild_data.get("members").items():
                 if field_count >= chunk_size:
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                 member = guild.get_member(member_snowflake)
-                role_mentions = []
-                for role_snowflake in role_snowflakes:
-                    role = guild.get_role(role_snowflake)
-                    role_mentions.append(role.mention)
+                role_mentions = [guild.get_role(role_snowflake).mention for role_snowflake in role_snowflakes if guild.get_role(role_snowflake)]
                 if role_mentions:
                     lines = f"**Roles:** {'\n'.join(role_mentions)}"
                 else:

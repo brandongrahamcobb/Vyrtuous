@@ -83,6 +83,8 @@ async def resolve_where_kwargs(channel_obj, guild_obj, member_obj, role_obj):
         case (None, g, None, r) if g and r:
             kwargs["guild_snowflake"] = g.id
             kwargs["role_snowflake"] = r.id
+        case (None, None, None, None):
+            return {}
         case _:
             raise ValueError
     return kwargs
@@ -223,39 +225,35 @@ def generate_skipped_roles(guild_dictionary: dict) -> dict:
     return skipped_roles
 
 
-def clean_guild_dictionary(
-    guild_dictionary: dict,
-    *,
-    skipped_channels: dict | None = None,
-    skipped_guilds: set | None = None,
-    skipped_members: dict | None = None,
-    skipped_roles: dict | None = None,
-) -> dict:
+def clean_guild_dictionary(guild_dictionary: dict, *, skipped_guilds: set | None = None, skipped_channels: dict | None = None, skipped_members: dict | None = None, skipped_roles: dict | None = None) -> dict:
     cleaned = {}
-    skipped_channels = skipped_channels or {}
     skipped_guilds = skipped_guilds or set()
+    skipped_channels = skipped_channels or {}
     skipped_members = skipped_members or {}
     skipped_roles = skipped_roles or {}
     for guild_snowflake, guild_data in guild_dictionary.items():
         if guild_snowflake in skipped_guilds:
             continue
-        channels = {}
-        for channel_snowflake, members in guild_data.get("channels", {}).items():
-            if channel_snowflake in skipped_channels.get(guild_snowflake, []):
-                continue
-            filtered_members = [
-                member
-                for member in members
-                if member["member_snowflake"]
-                not in skipped_members.get(guild_snowflake, [])
-            ]
-            channels[channel_snowflake] = filtered_members
+        channels = {
+            channel_snowflake: entries
+            for channel_snowflake, entries in guild_data.get("channels", {}).items()
+            if channel_snowflake not in skipped_channels.get(guild_snowflake, [])
+        }
+        members = [
+            member_snowflake
+            for member_snowflake in guild_data.get("members", [])
+            if member_snowflake not in skipped_members.get(guild_snowflake, [])
+        ]
         roles = [
             role
             for role in guild_data.get("roles", [])
             if role not in skipped_roles.get(guild_snowflake, [])
         ]
-        cleaned[guild_snowflake] = {"channels": channels, "roles": roles}
+        cleaned[guild_snowflake] = {
+            "channels": channels,
+            "members": members,
+            "roles": roles,
+        }
     return cleaned
 
 

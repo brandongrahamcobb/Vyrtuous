@@ -27,7 +27,7 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.action import Action
+from vyrtuous.database.actions.alias import Alias
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.server_mute import ServerMute
@@ -102,7 +102,7 @@ class EventListeners(commands.Cog):
             "channel_snowflake": old_id,
             "guild_snowflake": channel.guild.id,
         }
-        await Action.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Alias.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
         await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
         await Cap.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
         await Coordinator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
@@ -427,7 +427,7 @@ class EventListeners(commands.Cog):
         parts = content.split()
         alias_name = parts[0]
         args = parts[1:]
-        alias = await Action.select(
+        alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=message.guild.id
         )
         if not alias:
@@ -461,7 +461,7 @@ class EventListeners(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-        existing_guestroom_alias_event = await Action.select(
+        existing_guestroom_alias_event = await Alias.select(
             alias_name=alias.alias_name,
             alias_type=alias.alias_type,
             channel_snowflake=channel_obj.id,

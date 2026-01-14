@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from collections import defaultdict
+from datetime import datetime
 from typing import Optional
 from vyrtuous.database.actions.action import Action
 
@@ -29,7 +30,8 @@ class Alias(Action):
     UNDO = "alias"
     REQUIRED_INSTANTIATION_ARGS = [
         "alias_name",
-        "alias_type" "channel_snowflake",
+        "alias_type",
+        "channel_snowflake",
         "guild_snowflake",
     ]
     OPTIONAL_ARGS = [
@@ -48,7 +50,9 @@ class Alias(Action):
         alias_type: Optional[str],
         channel_snowflake: Optional[int],
         guild_snowflake: Optional[int],
+        created_at: Optional[datetime] = None,
         role_snowflake: Optional[int] = None,
+        updated_at: Optional[datetime] = None,
     ):
         super().__init__()
         self.alias_cog = self.bot.get_cog("Aliases")
@@ -56,6 +60,7 @@ class Alias(Action):
         self.alias_name = alias_name
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f"<#{channel_snowflake}>"
+        self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.handlers = {
             "ban": self.alias_cog.handle_ban_alias,
@@ -74,6 +79,7 @@ class Alias(Action):
         self.handler = self.handlers[alias_type]
         self.role_snowflake = role_snowflake
         self.role_mention = f"<@&{role_snowflake}>"
+        self.updated_at = updated_at
 
     @property
     def alias_type(self):
