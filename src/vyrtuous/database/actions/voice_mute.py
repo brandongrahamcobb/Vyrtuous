@@ -34,7 +34,6 @@ class VoiceMute(Action):
     ]
     OPTIONAL_ARGS = [
         "created_at",
-        "expired",
         "expires_in",
         "reason",
         "target",

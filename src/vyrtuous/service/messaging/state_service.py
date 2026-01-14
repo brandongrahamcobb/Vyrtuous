@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from typing import Union
 from datetime import datetime, timezone
 import asyncio
+import uuid
 
 from cachetools import TTLCache
 from discord.ext import commands
@@ -93,9 +94,11 @@ class StateService:
         elif warning is not None:
             message_obj = warning
             is_success = False
+            logger.warning(warning)
         elif error is not None:
             message_obj = error
             is_success = False
+            logger.warning(error)
         else:
             message_obj = None
             is_success = True
@@ -270,14 +273,15 @@ class StateService:
             return
         self._reported_users.add(user.id)
         try:
+            reference = str(uuid.uuid4())
             developer_log = DeveloperLog(
                 channel_snowflake=self.message.channel.id,
                 developer_snowflakes=[],
                 guild_snowflake=self.message.guild.id,
+                id=reference,
                 message_snowflake=self.message.id,
             )
-            reference = await developer_log.create()
-            id = reference.id
+            await developer_log.create()
         except discord.Forbidden as e:
             logger.info(f"{str(e).capitalize()}")
             pass
@@ -286,9 +290,9 @@ class StateService:
         online_developer_mentions.append(member.mention)
         if self.ctx_interaction_or_message.guild:
             developers = await Developer.select(
-                self.ctx_interaction_or_message.guild.id
+                guild_snowflake=self.ctx_interaction_or_message.guild.id
             )
-            message = f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {id}"
+            message = f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {reference}"
             for dev in developers:
                 member = self.ctx_interaction_or_message.guild.get_member(
                     dev.member_snowflake

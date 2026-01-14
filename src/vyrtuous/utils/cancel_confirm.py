@@ -92,7 +92,7 @@ class VerifyView(discord.ui.View):
         mention = target.mention if target else "Unknown"
         embed = discord.Embed(
             title="\U000026a0\U0000fe0f Clear Command Confirmation",
-            description=f"**Action**: {action_type}\n**Target**: {mention}",
+            description=f"**Action:** {action_type}\n**Target:** {mention}",
             color=discord.Color.orange(),
         )
         embed.set_footer(text="Please confirm or cancel this action.")

@@ -71,6 +71,7 @@ from vyrtuous.service.scope_service import (
     generate_skipped_channels,
     generate_skipped_guilds,
     generate_skipped_roles,
+    generate_skipped_snowflakes,
     clean_guild_dictionary,
     flush_page,
 )
@@ -236,7 +237,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"channels": {}, "roles": []})
+            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"roles": []})
             guild_dictionary[administrator_role.guild_snowflake]["roles"].append(administrator_role.role_snowflake)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -311,7 +312,7 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"channels": {}, "roles": []})
+            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"roles": []})
             guild_dictionary[administrator_role.guild_snowflake]["roles"].append(administrator_role.role_snowflake)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -2330,35 +2331,28 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for temporary_room in temporary_rooms:
-            guild_id = temporary_room.guild_snowflake
-            channel_id = temporary_room.channel_snowflake
-            guild_dictionary.setdefault(guild_id, {})
-            guild_dictionary[guild_id].setdefault(channel_id, [])
+            guild_dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
+            guild_dictionary[temporary_room.guild_snowflake]['channels'].setdefault(temporary_room.channel_snowflake, [])
             entry = {}
-            guild_dictionary[guild_id][channel_id].append(entry)
+            guild_dictionary[temporary_room.guild_snowflake]['channels'][temporary_room.channel_snowflake].append(entry)
             if aliases:
                 for alias in aliases:
                     if (
-                        alias.guild_snowflake == guild_id
-                        and alias.channel_snowflake == channel_id
+                        alias.guild_snowflake == temporary_room.guild_snowflake
+                        and alias.channel_snowflake == temporary_room.channel_snowflake
                     ):
                         entry.setdefault(alias.alias_type, [])
                         entry[alias.alias_type].append(alias.alias_name)
 
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_channels = generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             current_channel = None
             lines = []
             field_count = 0
@@ -2366,7 +2360,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, channel_data in guild_data.get("channels"):
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
                 if channel_data:
@@ -2405,14 +2399,6 @@ class AdminCommands(commands.Cog):
             pages.append(embed)
 
         if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
             if skipped_channels:
                 pages = generate_skipped_dict_pages(
                     chunk_size=chunk_size,
@@ -2420,6 +2406,14 @@ class AdminCommands(commands.Cog):
                     pages=pages,
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
+                )
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
                 )
 
         await StateService.send_pages(obj=TemporaryRoom, pages=pages, state=state)
@@ -2461,35 +2455,28 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for temporary_room in temporary_rooms:
-            guild_id = temporary_room.guild_snowflake
-            channel_id = temporary_room.channel_snowflake
-            guild_dictionary.setdefault(guild_id, {})
-            guild_dictionary[guild_id].setdefault(channel_id, [])
+            guild_dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
+            guild_dictionary[temporary_room.guild_snowflake]['channels'].setdefault(temporary_room.channel_snowflake, [])
             entry = {}
-            guild_dictionary[guild_id][channel_id].append(entry)
+            guild_dictionary[temporary_room.guild_snowflake]['channels'][temporary_room.channel_snowflake].append(entry)
             if aliases:
                 for alias in aliases:
                     if (
-                        alias.guild_snowflake == guild_id
-                        and alias.channel_snowflake == channel_id
+                        alias.guild_snowflake == temporary_room.guild_snowflake
+                        and alias.channel_snowflake == temporary_room.channel_snowflake
                     ):
                         entry.setdefault(alias.alias_type, [])
                         entry[alias.alias_type].append(alias.alias_name)
 
-        for guild_snowflake in guild_dictionary:
-            guild_dictionary[guild_snowflake] = dict(
-                sorted(guild_dictionary[guild_snowflake].items())
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_channels = generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             current_channel = None
             lines = []
             field_count = 0
@@ -2497,7 +2484,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, channel_data in guild_data.get("channels"):
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
                 if channel_data:
@@ -2536,14 +2523,6 @@ class AdminCommands(commands.Cog):
             pages.append(embed)
 
         if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
             if skipped_channels:
                 pages = generate_skipped_dict_pages(
                     chunk_size=chunk_size,
@@ -2551,6 +2530,14 @@ class AdminCommands(commands.Cog):
                     pages=pages,
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
+                )
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
                 )
 
         await StateService.send_pages(obj=TemporaryRoom, pages=pages, state=state)
@@ -2573,158 +2560,82 @@ class AdminCommands(commands.Cog):
         snowflakes: Optional[str] = None,
     ):
         state = StateService(interaction)
-        action = None
         channel_obj = None
-        channel_mentions, failed_snowflakes, member_mentions = [], [], []
-        enabled = True
+        channel_mentions, failed_snowflakes = [], []
+    
         try:
             channel_obj = await resolve_channel(interaction, channel)
         except Exception as e:
             channel_obj = interaction.channel
             logger.warning(f"{str(e).capitalize()}")
+    
         if scope is None and entry_type is None:
             history = await History.select(
                 channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
             )
-            if history:
-                for entry in history:
-                    if not entry.enabled:
-                        action = "enabled"
-                        enabled = True
-                    else:
-                        action = "disabled"
-                        enabled = False
-                    await History.update_by_channel_enabled_and_guild(
-                        channel_snowflake=channel_obj.id,
-                        enabled=enabled,
-                        guild_snowflake=interaction.guild.id,
-                    )
-                    try:
-                        return await state.end(
-                            success=f"{get_random_emoji()} "
-                            f"Tracking has been {action} in {channel_obj.mention}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-            else:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f "
-                        f"No tracking exists for {channel_obj.mention}."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        elif scope and entry_type:
+            if not history:
+                return await state.end(
+                    warning=f"\U000026a0\U0000fe0f No tracking exists for {channel_obj.mention}."
+                )
+            enabled = not history[0].enabled
+            action = "enabled" if enabled else "disabled"
+            await History.update_by_channel_enabled_and_guild(
+                channel_snowflake=channel_obj.id,
+                enabled=enabled,
+                guild_snowflake=interaction.guild.id,
+            )
+            return await state.end(
+                success=f"{get_random_emoji()} Tracking has been {action} in {channel_obj.mention}."
+            )
+    
+        if scope and entry_type:
             match scope.lower():
-                case "create":
-                    match entry_type:
-                        case "channel":
-                            for snowflake in snowflakes:
-                                try:
-                                    channel = await resolve_channel(
-                                        interaction, snowflake
-                                    )
-                                    channel_mentions.append(channel.mention)
-                                except Exception as e:
-                                    logger.warning(f"{str(e).capitalize()}")
-                                    failed_snowflakes.append(snowflake)
-                                    continue
-                        case "member":
-                            for snowflake in snowflakes:
-                                try:
-                                    member = await resolve_member(
-                                        interaction, snowflake
-                                    )
-                                    member_mentions.append(member.mention)
-                                except Exception as e:
-                                    logger.warning(f"{str(e).capitalize()}")
-                                    failed_snowflakes.append(snowflake)
-                                    continue
-                    old_history = await History.select(
-                        channel_snowflake=channel_obj.id,
-                        guild_snowflake=interaction.guild.id,
-                    )
-                    if old_history:
-                        enabled = old_history[0].enabled
-                    history = History(
-                        channel_snowflake=channel_obj.id,
-                        enabled=enabled,
-                        guild_snowflake=interaction.guild.id,
-                        entry_type=entry_type,
-                        snowflakes=snowflakes,
-                    )
-                    await history.create()
-                    scope = "created"
+                case "create" | "modify":
+                    resolved_channels = []
+                    for snowflake in snowflakes:
+                        try:
+                            ch = await resolve_channel(interaction, snowflake)
+                            resolved_channels.append(ch.id)
+                            channel_mentions.append(ch.mention)
+                        except Exception:
+                            failed_snowflakes.append(snowflake)
+                            continue
+                    if scope.lower() == "create":
+                        history_entry = History(
+                            channel_snowflake=channel_obj.id,
+                            enabled=True,
+                            guild_snowflake=interaction.guild.id,
+                            entry_type=entry_type,
+                            snowflakes=resolved_channels,
+                        )
+                        await history_entry.create()
+                        action = "created"
+                    else:
+                        await History.update_by_channel_guild_and_type(
+                            channel_snowflake=channel_obj.id,
+                            entry_type=entry_type,
+                            guild_snowflake=interaction.guild.id,
+                            snowflakes=resolved_channels,
+                        )
+                        action = "modified"
                 case "delete":
                     await History.delete(
-                        channel_snowflake=channel_obj.id,
-                        guild_snowflake=interaction.guild.id,
+                        channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
                     )
-                    scope = "deleted"
-                case "modify":
-                    match entry_type:
-                        case "channel":
-                            for snowflake in snowflakes:
-                                try:
-                                    channel = await resolve_channel(
-                                        interaction, snowflake
-                                    )
-                                    channel_mentions.append(channel.mention)
-                                except Exception as e:
-                                    logger.warning(f"{str(e).capitalize()}")
-                                    failed_snowflakes.append(snowflake)
-                                    continue
-                        case "member":
-                            for snowflake in snowflakes:
-                                try:
-                                    member = await resolve_member(
-                                        interaction, snowflake
-                                    )
-                                    member_mentions.append(member.mention)
-                                except Exception as e:
-                                    logger.warning(f"{str(e).capitalize()}")
-                                    failed_snowflakes.append(snowflake)
-                                    continue
-                    await History.update_by_channel_guild_and_type(
-                        channel_snowflake=channel_obj.id,
-                        entry_type=entry_type,
-                        guild_snowflake=interaction.guild.id,
-                        snowflakes=snowflakes,
-                    )
-                    scope = "modified"
+                    action = "deleted"
                 case _:
-                    try:
-                        return await state.end(
-                            warning="\U000026a0\U0000fe0f "
-                            "Scope must be one of `create`, `delete` or `modify`."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-        else:
-            try:
-                return await state.end(
-                    warning="\U000026a0\U0000fe0f "
-                    "Scope must be one of `create`, `delete` or `modify`."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(
+                        warning="\U000026a0\U0000fe0f Scope must be one of `create`, `delete` or `modify`."
+                    )
+    
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"Tracking {scope.capitalize()} for {channel_obj.mention}",
+            title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_obj.mention}",
             color=0x00FF00,
         )
         if channel_mentions:
             embed.add_field(
                 name="Processed Channels",
-                value=", ".join(
-                    channel_mention for channel_mention in channel_mentions
-                ),
-                inline=False,
-            )
-        if member_mentions:
-            embed.add_field(
-                name="Processed Members",
-                value=", ".join(member_mention for member_mention in member_mentions),
+                value=", ".join(channel_mentions),
                 inline=False,
             )
         if failed_snowflakes:
@@ -2745,161 +2656,93 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            default=None,
-            description="Tag a channel or include its ID where the messages will be sent.",
+            default=None, description="Tag a channel or include its ID."
         ),
         scope: Optional[str] = commands.parameter(
             default=None, description="create | modify | delete."
         ),
         entry_type: Optional[str] = commands.parameter(
-            default=None, description="all | channel | member."
+            default=None, description="all | channel."
         ),
         *snowflakes: Optional[int],
     ):
         state = StateService(ctx)
-        action = None
         channel_obj = None
-        channel_mentions, failed_snowflakes, member_mentions = [], [], []
-        enabled = True
+        channel_mentions, failed_snowflakes = [], []
+    
         try:
             channel_obj = await resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
             logger.warning(f"{str(e).capitalize()}")
+    
         if scope is None and entry_type is None:
             history = await History.select(
                 channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
             )
-            if history:
-                for entry in history:
-                    if not entry.enabled:
-                        action = "enabled"
-                        enabled = True
-                    else:
-                        action = "disabled"
-                        enabled = False
-                    await History.update_by_channel_enabled_and_guild(
-                        channel_snowflake=channel_obj.id,
-                        enabled=enabled,
-                        guild_snowflake=ctx.guild.id,
-                    )
-                    try:
-                        return await state.end(
-                            success=f"{get_random_emoji()} "
-                            f"Tracking has been {action} in {channel_obj.mention}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-            else:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f "
-                        f"No tracking exists for {channel_obj.mention}."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        elif scope and entry_type:
+            if not history:
+                return await state.end(
+                    warning=f"\U000026a0\U0000fe0f No tracking exists for {channel_obj.mention}."
+                )
+            enabled = not history[0].enabled
+            action = "enabled" if enabled else "disabled"
+            await History.update_by_channel_enabled_and_guild(
+                channel_snowflake=channel_obj.id,
+                enabled=enabled,
+                guild_snowflake=ctx.guild.id,
+            )
+            return await state.end(
+                success=f"{get_random_emoji()} Tracking has been {action} in {channel_obj.mention}."
+            )
+    
+        if scope and entry_type:
             match scope.lower():
-                case "create":
-                    match entry_type:
-                        case "channel":
-                            for snowflake in snowflakes:
-                                try:
-                                    channel = await resolve_channel(ctx, snowflake)
-                                    channel_mentions.append(channel.mention)
-                                except Exception as e:
-                                    failed_snowflakes.append(snowflake)
-                                    logger.warning(f"{str(e).capitalize()}")
-                                    continue
-                        case "member":
-                            for snowflake in snowflakes:
-                                try:
-                                    member = await resolve_member(ctx, snowflake)
-                                    member_mentions.append(member.mention)
-                                except Exception as e:
-                                    failed_snowflakes.append(snowflake)
-                                    logger.warning(f"{str(e).capitalize()}")
-                                    continue
-                    old_history = await History.select(
-                        channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-                    )
-                    if old_history:
-                        enabled = old_history[0].enabled
-                    history = History(
-                        channel_snowflake=channel_obj.id,
-                        enabled=enabled,
-                        guild_snowflake=ctx.guild.id,
-                        entry_type=entry_type,
-                        snowflakes=snowflakes,
-                    )
-                    await history.create()
-                    scope = "created"
+                case "create" | "modify":
+                    resolved_channels = []
+                    for snowflake in snowflakes:
+                        try:
+                            ch = await resolve_channel(ctx, snowflake)
+                            resolved_channels.append(ch.id)
+                            channel_mentions.append(ch.mention)
+                        except Exception:
+                            failed_snowflakes.append(snowflake)
+                            continue
+                    if scope.lower() == "create":
+                        history_entry = History(
+                            channel_snowflake=channel_obj.id,
+                            enabled=True,
+                            guild_snowflake=ctx.guild.id,
+                            entry_type=entry_type,
+                            snowflakes=resolved_channels,
+                        )
+                        await history_entry.create()
+                        action = "created"
+                    else:
+                        await History.update_by_channel_guild_and_type(
+                            channel_snowflake=channel_obj.id,
+                            entry_type=entry_type,
+                            guild_snowflake=ctx.guild.id,
+                            snowflakes=resolved_channels,
+                        )
+                        action = "modified"
                 case "delete":
                     await History.delete(
                         channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
                     )
-                    scope = "deleted"
-                case "modify":
-                    match entry_type:
-                        case "channel":
-                            for snowflake in snowflakes:
-                                try:
-                                    channel = await resolve_channel(ctx, snowflake)
-                                    channel_mentions.append(channel.mention)
-                                except Exception as e:
-                                    logger.warning(f"{str(e).capitalize()}")
-                                    failed_snowflakes.append(snowflake)
-                                    continue
-                        case "member":
-                            for snowflake in snowflakes:
-                                try:
-                                    member = await resolve_member(ctx, snowflake)
-                                    member_mentions.append(member.mention)
-                                except Exception as e:
-                                    failed_snowflakes.append(snowflake)
-                                    logger.warning(f"{str(e).capitalize()}")
-                                    continue
-                    await History.update_by_channel_guild_and_type(
-                        channel_snowflake=channel_obj.id,
-                        entry_type=entry_type,
-                        guild_snowflake=ctx.guild.id,
-                        snowflakes=snowflakes,
-                    )
-                    scope = "modified"
+                    action = "deleted"
                 case _:
-                    try:
-                        return await state.end(
-                            warning="\U000026a0\U0000fe0f "
-                            "Scope must be one of `create``, `delete` or `modify`."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-        else:
-            try:
-                return await state.end(
-                    warning="\U000026a0\U0000fe0f "
-                    "Scope must be one of `create`, `delete` or `modify`."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(
+                        warning="\U000026a0\U0000fe0f Scope must be one of `create`, `delete` or `modify`."
+                    )
+    
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"Tracking {scope.capitalize()} for "
-            f"{channel_obj.mention}",
+            title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_obj.mention}",
             color=0x00FF00,
         )
         if channel_mentions:
             embed.add_field(
                 name="Processed Channels",
-                value=", ".join(
-                    channel_mention for channel_mention in channel_mentions
-                ),
-                inline=False,
-            )
-        if member_mentions:
-            embed.add_field(
-                name="Processed Members",
-                value=", ".join(member_mention for member_mention in member_mentions),
+                value=", ".join(channel_mentions),
                 inline=False,
             )
         if failed_snowflakes:
@@ -2936,101 +2779,68 @@ class AdminCommands(commands.Cog):
             logger.warning(f"{str(e).capitalize()}")
             pass
 
+        try:
+            channel_obj = await resolve_channel(interaction, target)
+        except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
+
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary, skipped_snowflakes = {}, {}
 
         for entry in history:
-            channel_id = entry.channel_snowflake
             guild_id = entry.guild_snowflake
-            guild_dictionary.setdefault(guild_id, {})
-            guild_dictionary[guild_id].setdefault(channel_id, [])
-            entry_dict = {
-                "channels": [],
+            guild_dictionary.setdefault(guild_id, {}).setdefault("channels", {})
+            guild_dictionary[guild_id].setdefault("snowflakes", [])
+            guild_dictionary[guild_id]["snowflakes"].append({
+                "channel_snowflake": entry.channel_snowflake,
+                "snowflakes": entry.snowflakes,
+            })
+            guild_dictionary[guild_id]["channels"][entry.channel_snowflake] = {
                 "enabled": entry.enabled,
-                "entry_snowflakes": entry.snowflakes,
                 "entry_type": entry.entry_type,
-                "members": [],
+                "snowflakes": entry.snowflakes
             }
-            guild_dictionary[guild_id][channel_id].append(entry_dict)
-            if entry_dict["entry_snowflakes"]:
-                guild = self.bot.get_guild(guild_id)
-                if not guild:
-                    continue
-                for snowflake in entry.snowflakes:
-                    channel = guild.get_channel(snowflake)
-                    if channel:
-                        entry_dict["channels"].append(channel.mention)
-                    else:
-                        member = guild.get_member(snowflake)
-                        if member:
-                            entry_dict["members"].append(member.mention)
-                        else:
-                            skipped_snowflakes.append(snowflake)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_snowflakes = generate_skipped_snowflakes(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
+            skipped_snowflakes=skipped_snowflakes
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, entries in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
-                lines = []
-                for entry_data in channel_data:
-                    status = "\u2705" if entry_data["enabled"] else "\u26d4"
-                    match entry_data["entry_type"]:
-                        case "all":
-                            lines.append(f"{status} " f"All Actions: {channel.mention}")
-                        case "channel":
-                            channels_from = ", ".join(
-                                channel_mention
-                                for channel_mention in entry_data.get("channels", [])
-                            )
-                            lines.append(
-                                f"{status} "
-                                f"Channel-specific Actions: "
-                                f"{channel.mention} \n"
-                                f"From: {channels_from}"
-                            )
-                        case "member":
-                            members_from = ", ".join(
-                                member_mention
-                                for member_mention in entry_data.get("members", [])
-                            )
-                            lines.append(
-                                f"{status} "
-                                f"Member-specific Actions: "
-                                f"{channel.mention} \n"
-                                f"From: {members_from}"
-                            )
+                for entry in entries:
+                    status = "\u2705" if entry["enabled"] else "\u26d4"
+                    channel = guild.get_channel(entry['channel_snowflake'])
+                    channel_lines.append(f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}")
+                    if channel_obj:
+                        channel_lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                     field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Channels", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(name="Channels", value="\n".join(lines), inline=False)
+                    if field_count >= chunk_size:
+                        embed.add_field(
+                            name='Information',
+                            value='\n\n'.join(channel_lines),
+                            inline=False
+                        )
+                        embed, field_count = flush_page(embed, pages, title, guild.name)
+                        channel_lines = []
+            if channel_lines:
+                embed.add_field(
+                    name="Information", value="\n".join(channel_lines), inline=False
+                )
             pages.append(embed)
 
         if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
             if skipped_channels:
                 pages = generate_skipped_dict_pages(
                     chunk_size=chunk_size,
@@ -3038,6 +2848,14 @@ class AdminCommands(commands.Cog):
                     pages=pages,
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
+                )
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
                 )
             if skipped_snowflakes:
                 pages = generate_skipped_dict_pages(
@@ -3048,7 +2866,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Snowflakes in Server",
                 )
 
-        await StateService.send_pages(obj=DeveloperLog, pages=pages, state=state)
+        await StateService.send_pages(obj=History, pages=pages, state=state)
 
     # DONE
     @commands.command(name="tracks", help="List history channels.")
@@ -3064,7 +2882,10 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(ctx)
         history, title = await resolve_objects(
-            ctx_interaction_or_message=ctx, obj=History, state=state, target=target
+            ctx_interaction_or_message=ctx,
+            obj=History,
+            state=state,
+            target=target,
         )
 
         try:
@@ -3073,101 +2894,68 @@ class AdminCommands(commands.Cog):
             logger.warning(f"{str(e).capitalize()}")
             pass
 
+        try:
+            channel_obj = await resolve_channel(ctx, target)
+        except Exception as e:
+            logger.warning(f"{str(e).capitalize()}")
+
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary, skipped_snowflakes = {}, {}
 
         for entry in history:
-            channel_id = entry.channel_snowflake
             guild_id = entry.guild_snowflake
-            guild_dictionary.setdefault(guild_id, {})
-            guild_dictionary[guild_id].setdefault(channel_id, [])
-            entry_dict = {
-                "channels": [],
+            guild_dictionary.setdefault(guild_id, {}).setdefault("channels", {})
+            guild_dictionary[guild_id].setdefault("snowflakes", [])
+            guild_dictionary[guild_id]["snowflakes"].append({
+                "channel_snowflake": entry.channel_snowflake,
+                "snowflakes": entry.snowflakes,
+            })
+            guild_dictionary[guild_id]["channels"][entry.channel_snowflake] = {
                 "enabled": entry.enabled,
-                "entry_snowflakes": entry.snowflakes,
                 "entry_type": entry.entry_type,
-                "members": [],
+                "snowflakes": entry.snowflakes
             }
-            guild_dictionary[guild_id][channel_id].append(entry_dict)
-            if entry_dict["entry_snowflakes"]:
-                guild = self.bot.get_guild(guild_id)
-                if not guild:
-                    continue
-                for snowflake in entry.snowflakes:
-                    channel = guild.get_channel(snowflake)
-                    if channel:
-                        entry_dict["channels"].append(channel.mention)
-                    else:
-                        member = guild.get_member(snowflake)
-                        if member:
-                            entry_dict["members"].append(member.mention)
-                        else:
-                            skipped_snowflakes.append(snowflake)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_snowflakes = generate_skipped_snowflakes(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
+            skipped_snowflakes=skipped_snowflakes
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, entries in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
-                lines = []
-                for entry_data in channel_data:
-                    status = "\u2705" if entry_data["enabled"] else "\u26d4"
-                    match entry_data["entry_type"]:
-                        case "all":
-                            lines.append(f"{status} " f"All Actions: {channel.mention}")
-                        case "channel":
-                            channels_from = ", ".join(
-                                channel_mention
-                                for channel_mention in entry_data.get("channels", [])
-                            )
-                            lines.append(
-                                f"{status} "
-                                f"Channel-specific Actions: "
-                                f"{channel.mention} \n"
-                                f"From: {channels_from}"
-                            )
-                        case "member":
-                            members_from = ", ".join(
-                                member_mention
-                                for member_mention in entry_data.get("members", [])
-                            )
-                            lines.append(
-                                f"{status} "
-                                f"Member-specific Actions: "
-                                f"{channel.mention} \n"
-                                f"From: {members_from}"
-                            )
+                for entry in entries:
+                    status = "\u2705" if entry["enabled"] else "\u26d4"
+                    channel = guild.get_channel(entry['channel_snowflake'])
+                    channel_lines.append(f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}")
+                    if channel_obj:
+                        channel_lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                     field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Channels", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(name="Channels", value="\n".join(lines), inline=False)
+                    if field_count >= chunk_size:
+                        embed.add_field(
+                            name='Information',
+                            value='\n\n'.join(channel_lines),
+                            inline=False
+                        )
+                        embed, field_count = flush_page(embed, pages, title, guild.name)
+                        channel_lines = []
+            if channel_lines:
+                embed.add_field(
+                    name="Information", value="\n".join(channel_lines), inline=False
+                )
             pages.append(embed)
 
         if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
             if skipped_channels:
                 pages = generate_skipped_dict_pages(
                     chunk_size=chunk_size,
@@ -3175,6 +2963,14 @@ class AdminCommands(commands.Cog):
                     pages=pages,
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
+                )
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
                 )
             if skipped_snowflakes:
                 pages = generate_skipped_dict_pages(
@@ -3316,17 +3112,15 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for video_room in video_rooms:
-            guild_id = video_room.guild_snowflake
-            channel_id = video_room.channel_snowflake
-            guild_dictionary.setdefault(guild_id, {})
-            guild_dictionary[guild_id].setdefault(channel_id, [])
+            guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
+            guild_dictionary[video_room.guild_snowflake]['channels'].setdefault(video_room.channel_snowflake, [])
             entry = {}
-            guild_dictionary[guild_id][channel_id].append(entry)
+            guild_dictionary[video_room.guild_snowflake]['channels'][video_room.channel_snowflake].append(entry)
             if aliases:
                 for alias in aliases:
                     if (
-                        alias.guild_snowflake == guild_id
-                        and alias.channel_snowflake == channel_id
+                        alias.guild_snowflake == video_room.guild_snowflake
+                        and alias.channel_snowflake == video_room.channel_snowflake
                     ):
                         entry.setdefault(alias.alias_type, [])
                         entry[alias.alias_type].append(alias.alias_name)
@@ -3339,7 +3133,7 @@ class AdminCommands(commands.Cog):
             skipped_guilds=skipped_guilds,
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             current_channel = None
             lines = []
             field_count = 0
@@ -3347,7 +3141,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, channel_data in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
                 if channel_data:
@@ -3386,14 +3180,6 @@ class AdminCommands(commands.Cog):
             pages.append(embed)
 
         if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
             if skipped_channels:
                 pages = generate_skipped_dict_pages(
                     chunk_size=chunk_size,
@@ -3402,7 +3188,14 @@ class AdminCommands(commands.Cog):
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
                 )
-
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
         await StateService.send_pages(obj=VideoRoom, pages=pages, state=state)
 
     # DONE
@@ -3434,17 +3227,15 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for video_room in video_rooms:
-            guild_id = video_room.guild_snowflake
-            channel_id = video_room.channel_snowflake
-            guild_dictionary.setdefault(guild_id, {})
-            guild_dictionary[guild_id].setdefault(channel_id, [])
+            guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
+            guild_dictionary[video_room.guild_snowflake]['channels'].setdefault(video_room.channel_snowflake, [])
             entry = {}
-            guild_dictionary[guild_id][channel_id].append(entry)
+            guild_dictionary[video_room.guild_snowflake]['channels'][video_room.channel_snowflake].append(entry)
             if aliases:
                 for alias in aliases:
                     if (
-                        alias.guild_snowflake == guild_id
-                        and alias.channel_snowflake == channel_id
+                        alias.guild_snowflake == video_room.guild_snowflake
+                        and alias.channel_snowflake == video_room.channel_snowflake
                     ):
                         entry.setdefault(alias.alias_type, [])
                         entry[alias.alias_type].append(alias.alias_name)
@@ -3457,7 +3248,7 @@ class AdminCommands(commands.Cog):
             skipped_guilds=skipped_guilds,
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             current_channel = None
             lines = []
             field_count = 0
@@ -3465,7 +3256,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in channels.items():
+            for channel_snowflake, channel_data in guild_data.get("channels"):
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
                 if channel_data:
@@ -3504,14 +3295,6 @@ class AdminCommands(commands.Cog):
             pages.append(embed)
 
         if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
             if skipped_channels:
                 pages = generate_skipped_dict_pages(
                     chunk_size=chunk_size,
@@ -3519,6 +3302,14 @@ class AdminCommands(commands.Cog):
                     pages=pages,
                     skipped=skipped_channels,
                     title="Skipped Channels in Server",
+                )
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
                 )
 
         await StateService.send_pages(obj=VideoRoom, pages=pages, state=state)
@@ -3618,7 +3409,6 @@ class AdminCommands(commands.Cog):
             return await state.end(success=f"{get_random_emoji()} {msg}")
         except Exception as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
-
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(AdminCommands(bot))

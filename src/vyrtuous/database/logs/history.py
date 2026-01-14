@@ -23,29 +23,54 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.database.database_factory import DatabaseFactory
 from vyrtuous.properties.duration import DurationObject
+from vyrtuous.service.check_service import (
+    role_check_with_specifics
+)
 from vyrtuous.service.messaging.paginator_service import Paginator
 
 
-class History:
+class History(DatabaseFactory):
 
     ACTION_TYPES = ["create", "delete", "modify"]
     ENTRY_TYPES = ["all", "channel", "member"]
+    ACT = None
+    PLURAL = "Logging Channels"
+    SINGULAR = "Logging Channel"
+    UNDO = None
+    REQUIRED_INSTANTIATION_ARGS = [
+        "channel_snowflake",
+        "enabled",
+        "entry_type",
+        "guild_snowflake",
+        "message_snowflake",
+    ]
+    OPTIONAL_ARGS = [
+        "created_at",
+        "snowflakes",
+        "updated_at",
+    ]
+    TABLE_NAME = "history"
 
     def __init__(
         self,
         channel_snowflake: Optional[int],
         enabled: Optional[bool],
-        guild_snowflake: Optional[int],
-        snowflakes: list[int | None],
         entry_type: Optional[str],
+        guild_snowflake: Optional[int],
+        created_at: Optional[datetime] = None,
+        snowflakes: list[int] = None,
+        updated_at:Optional[datetime] = None,
     ):
         self.action: Optional[str]
         self.channel_snowflake = channel_snowflake
+        self.created_at = created_at
         self.enabled = enabled
+        self.entry_type = entry_type
         self.guild_snowflake = guild_snowflake
         self.snowflakes = snowflakes
-        self.entry_type = entry_type
+        self.updated_at = updated_at
 
     @property
     def action(self):
@@ -73,7 +98,6 @@ class History:
         alias,
         channel: Optional[discord.VoiceChannel],
         duration: Optional[str],
-        highest_role: Optional[str],
         is_channel_scope: bool,
         is_modification: bool,
         member: discord.Member,
@@ -84,6 +108,7 @@ class History:
         author_snowflake = None
         expires_at = None
         history = await History.select()
+        highest_role = await role_check_with_specifics(channel_snowflake=channel.id, guild_snowflake=channel.guild.id, member_snowflake=member.id)
         if message:
             for entry in history:
                 channel_obj = bot.get_channel(entry.channel_snowflake)
@@ -309,61 +334,3 @@ class History:
                 target_member_snowflake,
                 reason,
             )
-
-    @classmethod
-    async def save_entry(
-        cls,
-        ctx_interaction_or_message,
-        action_type: Optional[str],
-        channel_snowflake: Optional[int],
-        duration: Optional[str],
-        highest_role: Optional[str],
-        is_modification: bool,
-        member_snowflake: Optional[int],
-        reason: Optional[str],
-    ):
-        author_snowflake = None
-        expires_at = None
-        if isinstance(ctx_interaction_or_message, (commands.Context, discord.Message)):
-            author_snowflake = ctx_interaction_or_message.author.id
-        else:
-            author_snowflake = ctx_interaction_or_message.user.id
-        channel = ctx_interaction_or_message.channel
-        if isinstance(duration, DurationObject):
-            expires_at = datetime.now(timezone.utc) + duration.to_timedelta()
-        elif duration is not None:
-            expires_at = (
-                datetime.now(timezone.utc) + DurationObject(duration).to_timedelta()
-            )
-        else:
-            expires_at = datetime.now(timezone.utc) + DurationObject(0).to_timedelta()
-        channel_members_voice_count = sum(
-            len(channel.members) for channel in channel.guild.voice_channels
-        )
-        guild_members_offline_and_online_member_count = sum(
-            1 for member in channel.guild.members if not member.bot
-        )
-        guild_members_online_count = sum(
-            1
-            for member in channel.guild.members
-            if not member.bot and member.status != discord.Status.offline
-        )
-        guild_members_voice_count = sum(
-            len([member for member in channel.members if not member.bot])
-            for channel in channel.guild.voice_channels
-        )
-        await cls.save(
-            action_type=action_type,
-            channel_members_voice_count=channel_members_voice_count,
-            channel_snowflake=channel_snowflake,
-            executor_member_snowflake=author_snowflake,
-            expires_at=expires_at,
-            guild_members_offline_and_online_member_count=guild_members_offline_and_online_member_count,
-            guild_members_online_count=guild_members_online_count,
-            guild_members_voice_count=guild_members_voice_count,
-            guild_snowflake=channel.guild.id,
-            highest_role=highest_role,
-            is_modification=is_modification,
-            target_member_snowflake=member_snowflake,
-            reason=reason,
-        )

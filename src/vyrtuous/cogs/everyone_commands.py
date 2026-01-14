@@ -96,8 +96,8 @@ class EveryoneCommands(commands.Cog):
             guild_dictionary[administrator.guild_snowflake]["members"][administrator.member_snowflake] = administrator.role_snowflakes
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = await generate_skipped_members(guild_dictionary)
-        skipped_roles = await generate_skipped_roles(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        skipped_roles = generate_skipped_roles(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_guilds=skipped_guilds,
@@ -190,8 +190,8 @@ class EveryoneCommands(commands.Cog):
             guild_dictionary[administrator.guild_snowflake]["members"][administrator.member_snowflake] = administrator.role_snowflakes
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = await generate_skipped_members(guild_dictionary)
-        skipped_roles = await generate_skipped_roles(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        skipped_roles = generate_skipped_roles(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_guilds=skipped_guilds,
@@ -296,7 +296,7 @@ class EveryoneCommands(commands.Cog):
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = await generate_skipped_members(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
@@ -316,7 +316,7 @@ class EveryoneCommands(commands.Cog):
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
                     if not member_obj:
-                        lines.append(f"**User**: {member.mention}")
+                        lines.append(f"**User:** {member.mention}")
                     else:
                         if not thumbnail:
                             embed.set_thumbnail(url=member.display_avatar.url)
@@ -426,7 +426,7 @@ class EveryoneCommands(commands.Cog):
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = await generate_skipped_members(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
@@ -451,7 +451,7 @@ class EveryoneCommands(commands.Cog):
                             embed.set_thumbnail(url=member.display_avatar.url)
                             thumbnail = True
                     else:
-                        lines.append(f"**User**: {member.mention}")
+                        lines.append(f"**User:** {member.mention}")
                 if lines:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -546,7 +546,7 @@ class EveryoneCommands(commands.Cog):
             )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = await generate_skipped_members(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_guilds=skipped_guilds,
@@ -645,7 +645,7 @@ class EveryoneCommands(commands.Cog):
             )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = await generate_skipped_members(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_guilds=skipped_guilds,
@@ -750,7 +750,7 @@ class EveryoneCommands(commands.Cog):
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = await generate_skipped_members(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
@@ -770,7 +770,7 @@ class EveryoneCommands(commands.Cog):
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
                     if not member_obj:
-                        lines.append(f"**User**: {member.mention}")
+                        lines.append(f"**User:** {member.mention}")
                     else:
                         if not thumbnail:
                             embed.set_thumbnail(url=member.display_avatar.url)
@@ -880,7 +880,7 @@ class EveryoneCommands(commands.Cog):
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = await generate_skipped_members(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
@@ -900,7 +900,7 @@ class EveryoneCommands(commands.Cog):
                 for member_data in members:
                     member = guild.get_member(member_data["member_snowflake"])
                     if not member_obj:
-                        lines.append(f"**User**: {member.mention}")
+                        lines.append(f"**User:** {member.mention}")
                     else:
                         if not thumbnail:
                             embed.set_thumbnail(url=member.display_avatar.url)

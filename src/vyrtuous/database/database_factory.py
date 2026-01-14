@@ -76,31 +76,37 @@ class DatabaseFactory(object):
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
 
     @classmethod
-    async def select(cls, **kwargs):
+    async def select(cls, singular=False, **kwargs):
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls, "TABLE_NAME")
-        fields = getattr(cls, "REQUIRED_INSTANTIATION_ARGS") + getattr(
-            cls, "OPTIONAL_ARGS"
-        )
+        table_name = getattr(cls, 'TABLE_NAME')
+        fields = getattr(cls, 'REQUIRED_INSTANTIATION_ARGS') + getattr(cls, 'OPTIONAL_ARGS')
+        virtual_filters = {'expired'}
         for key in kwargs:
-            if key not in fields:
+            if key not in fields and key not in virtual_filters:
                 raise ValueError(f"Invalid argument '{key}' for {cls.__name__}")
         conditions = []
         values = []
-        for field in kwargs:
-            if field == "expired" and kwargs.get("expired") is True:
-                conditions.append("expires_in < NOW()")
-            else:
-                conditions.append(f"{field}=${len(values)+1}")
-                values.append(kwargs[field])
-        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+        for field, value in kwargs.items():
+            if field == 'expired':
+                if value is True:
+                    conditions.append('expires_in IS NOT NULL AND expires_in < NOW()')
+                continue
+            conditions.append(f'{field}=${len(values)+1}')
+            values.append(value)
+        where_clause = 'WHERE ' + ' AND '.join(conditions) if conditions else ''
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT * FROM {table_name} {where_clause}", *values
+                f'SELECT * FROM {table_name} {where_clause}', *values
             )
+        if singular:
+            if not rows:
+                return None
+            row = rows[0]
+            row_data = {k: row[k] for k in fields if k in row}
+            return cls(**row_data)
         children = []
         for row in rows:
-            row_data = {k: row[k] for k in row.keys() if k in fields}
+            row_data = {k: row[k] for k in fields if k in row}
             children.append(cls(**row_data))
         return children
 

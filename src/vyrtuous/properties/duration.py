@@ -69,7 +69,7 @@ class DurationObject:
 
     @property
     def prefix(self) -> str:
-        return self._prefix or "+"
+        return self._prefix
 
     @prefix.setter
     def prefix(self, value: str):
@@ -185,14 +185,15 @@ class DurationObject:
         if s == "0":
             self.number = 0
             self.unit = "h"
-            self.prefix = "+"
+            self._prefix = None
+            self.is_modification = False
             return
         if s[0] in self.PREFIXES:
-            self.prefix = s[0]
+            self._prefix = s[0]
             self.is_modification = True
             s = s[1:]
         else:
-            self.prefix = "+"
+            self._prefix = None
             self.is_modification = False
         num_str = ""
         for char in s:

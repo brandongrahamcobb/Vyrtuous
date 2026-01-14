@@ -32,7 +32,7 @@ class TextMute(Action):
         "guild_snowflake",
         "member_snowflake",
     ]
-    OPTIONAL_ARGS = ["created_at", "expired", "expires_in", "reason", "updated_at"]
+    OPTIONAL_ARGS = ["created_at", "expires_in", "reason", "updated_at"]
     TABLE_NAME = "active_text_mutes"
 
     def __init__(

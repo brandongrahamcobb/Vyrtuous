@@ -20,6 +20,11 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 from vyrtuous.database.actions.action import Action
+from vyrtuous.database.actions.ban import Ban
+from vyrtuous.database.actions.flag import Flag
+from vyrtuous.database.actions.text_mute import TextMute
+from vyrtuous.database.actions.voice_mute import VoiceMute
+from vyrtuous.database.roles.vegan import Vegan
 
 
 class Alias(Action):
@@ -44,6 +49,21 @@ class Alias(Action):
     ]
     TABLE_NAME = "command_aliases"
 
+    _ALIAS_CLASS_MAP = {
+        "ban": Ban,
+        "unban": Ban,
+        "voice_mute": VoiceMute,
+        "unvoice_mute": VoiceMute,
+        "text_mute": TextMute,
+        "untext_mute": TextMute,
+        "role": None,
+        "unrole": None,
+        "flag": Flag,
+        "unflag": Flag,
+        "vegan": Vegan,
+        "carnist": Vegan,
+    }
+
     def __init__(
         self,
         alias_name: Optional[str],
@@ -55,6 +75,7 @@ class Alias(Action):
         updated_at: Optional[datetime] = None,
     ):
         super().__init__()
+        self.alias_class = self._ALIAS_CLASS_MAP.get(alias_type)
         self.alias_cog = self.bot.get_cog("Aliases")
         self.alias_type = alias_type
         self.alias_name = alias_name

@@ -22,7 +22,6 @@ import discord
 from vyrtuous.service.logging_service import logger
 
 async def resolve_channel(
-    self,
     ctx_interaction_or_message,
     channel_str: Optional[Union[int, str, discord.TextChannel, discord.VoiceChannel]],
 ) -> Union[discord.TextChannel, discord.VoiceChannel]:

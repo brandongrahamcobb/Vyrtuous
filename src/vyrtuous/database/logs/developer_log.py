@@ -32,11 +32,11 @@ class DeveloperLog(DatabaseFactory):
         "channel_snowflake",
         "developer_snowflakes",
         "guild_snowflake",
+        "id",
         "message_snowflake",
     ]
     OPTIONAL_ARGS = [
         "created_at",
-        "id",
         "notes",
         "resolved",
         "updated_at",
@@ -48,9 +48,9 @@ class DeveloperLog(DatabaseFactory):
         channel_snowflake: Optional[int],
         developer_snowflakes: list[int],
         guild_snowflake: Optional[int],
+        id: Optional[str],
         message_snowflake: Optional[int],
         created_at: Optional[datetime] = None,
-        id: Optional[str] = None,
         notes: Optional[str] = None,
         resolved: bool = False,
         updated_at: Optional[datetime] = None,

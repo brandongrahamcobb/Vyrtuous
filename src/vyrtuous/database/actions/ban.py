@@ -32,7 +32,7 @@ class Ban(Action):
         "guild_snowflake",
         "member_snowflake",
     ]
-    OPTIONAL_ARGS = ["created_at", "expired", "expires_in", "reason", "updated_at"]
+    OPTIONAL_ARGS = ["created_at", "expires_in", "reason", "updated_at"]
     TABLE_NAME = "active_bans"
 
     def __init__(

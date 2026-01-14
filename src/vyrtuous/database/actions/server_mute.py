@@ -31,7 +31,6 @@ class ServerMute(Action):
     OPTIONAL_ARGS = [
         "channel_snowflake",
         "created_at",
-        "expired",
         "expires_in",
         "reason",
         "updated_at",

@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+from datetime import datetime
 from typing import Optional
 
 from vyrtuous.database.database_factory import DatabaseFactory
@@ -29,7 +29,7 @@ class Cap(DatabaseFactory):
     UNDO = "cap"
     REQUIRED_INSTANTIATION_ARGS = [
         "channel_snowflake",
-        "duration",
+        "duration_seconds",
         "guild_snowflake",
         "moderation_type",
     ]
@@ -42,11 +42,15 @@ class Cap(DatabaseFactory):
     def __init__(
         self,
         channel_snowflake: Optional[int],
-        duration: Optional[int],
+        duration_seconds: Optional[int],
         guild_snowflake: Optional[int],
         moderation_type: Optional[str],
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
     ):
         self.channel_snowflake = channel_snowflake
-        self.duration = duration
+        self.created_at = created_at
+        self.duration = duration_seconds
         self.guild_snowflake = guild_snowflake
         self.moderation_type = moderation_type
+        self.updated_at = updated_at

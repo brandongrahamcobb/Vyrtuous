@@ -1,11 +1,1 @@
-{
-  "folders": [
-    {
-      "path": "./vyrtuous"
-    }
-  ],
-  "settings": {},
-  "files": [
-    "main.py"
-  ]
-}
+{"folders": [{"path": "./vyrtuous"}], "settings": {}, "files": ["main.py"]}

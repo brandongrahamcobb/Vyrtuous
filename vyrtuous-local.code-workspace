@@ -1,16 +1,8 @@
 {
-  "folders": [
-    {
-      "path": "./src"
-    }
-  ],
-  "settings": {
-    "python.defaultInterpreterPath": "/usr/local/bin/python",
-    "files.exclude": {
-      "**/backups": true
+    "folders": [{"path": "./src"}],
+    "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "files.exclude": {"**/backups": true},
+        "search.exclude": {"**/backups": true},
     },
-    "search.exclude": {
-      "**/backups": true
-    }
-  }
 }

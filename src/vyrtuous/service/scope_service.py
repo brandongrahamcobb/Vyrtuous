@@ -67,6 +67,7 @@ def generate_skipped_dict_pages(chunk_size, field_count, pages, skipped, title):
             field_count += 1
         embed.description = "\n".join(lines)
         pages.append(embed)
+    return pages
 
 
 async def resolve_where_kwargs(channel_obj, guild_obj, member_obj, role_obj):
@@ -77,6 +78,10 @@ async def resolve_where_kwargs(channel_obj, guild_obj, member_obj, role_obj):
             kwargs["guild_snowflake"] = g.id
         case (None, g, None, None) if g:
             kwargs["guild_snowflake"] = g.id
+        case (c, g, m, None) if c and g and m:
+            kwargs["channel_snowflake"] = c.id
+            kwargs["guild_snowflake"] = g.id
+            kwargs["member_snowflake"] = m.id
         case (None, g, m, None) if g and m:
             kwargs["guild_snowflake"] = g.id
             kwargs["member_snowflake"] = m.id
@@ -92,7 +97,6 @@ async def resolve_where_kwargs(channel_obj, guild_obj, member_obj, role_obj):
 
 async def resolve_objects(ctx_interaction_or_message, obj, state, target):
     channel_obj, guild_obj, member_obj, role_obj = None, None, None, None
-
     highest_role = await role_check_without_specifics(
         ctx_interaction_or_message=ctx_interaction_or_message
     )
@@ -153,7 +157,6 @@ async def resolve_objects(ctx_interaction_or_message, obj, state, target):
                             return await state.end(
                                 error=f"\u274c {str(e).capitalize()}"
                             )
-
     where_kwargs = await resolve_where_kwargs(
         channel_obj=channel_obj,
         guild_obj=guild_obj,
@@ -161,12 +164,6 @@ async def resolve_objects(ctx_interaction_or_message, obj, state, target):
         role_obj=role_obj,
     )
     objects = await obj.select(**where_kwargs)
-    if not objects:
-        try:
-            msg = f"No {obj.PLURAL} exist for target: {target}."
-            return await state.end(warning=f"\U000026a0\U0000fe0f {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
 
     title = f"{get_random_emoji()} {obj.PLURAL}"
     return objects, title
@@ -224,13 +221,28 @@ def generate_skipped_roles(guild_dictionary: dict) -> dict:
                 skipped_roles.setdefault(guild_snowflake, []).append(role_snowflake)
     return skipped_roles
 
+def generate_skipped_snowflakes(guild_dictionary: dict) -> dict:
+    bot = DiscordBot.get_instance()
+    skipped_snowflakes = {}
+    for guild_snowflake, guild_data in guild_dictionary.items():
+        guild = bot.get_guild(guild_snowflake)
+        if not guild:
+            continue
+        for snowflake in guild_data.get("snowflakes", []):
+            if not guild.get_channel(snowflake):
+                if not guild.get_member(snowflake):
+                    if not guild.get_role(snowflake):
+                        skipped_snowflakes.append(snowflake)
+    return skipped_snowflakes
 
-def clean_guild_dictionary(guild_dictionary: dict, *, skipped_guilds: set | None = None, skipped_channels: dict | None = None, skipped_members: dict | None = None, skipped_roles: dict | None = None) -> dict:
+def clean_guild_dictionary(guild_dictionary: dict, *, skipped_guilds: set | None = None, skipped_channels: dict | None = None, skipped_members: dict | None = None, skipped_messages: dict | None = None, skipped_roles: dict | None = None, skipped_snowflakes: dict | None = None) -> dict:
     cleaned = {}
     skipped_guilds = skipped_guilds or set()
     skipped_channels = skipped_channels or {}
     skipped_members = skipped_members or {}
+    skipped_messages = skipped_messages or {}
     skipped_roles = skipped_roles or {}
+    skipped_snowflakes = skipped_snowflakes or {}
     for guild_snowflake, guild_data in guild_dictionary.items():
         if guild_snowflake in skipped_guilds:
             continue
@@ -239,20 +251,31 @@ def clean_guild_dictionary(guild_dictionary: dict, *, skipped_guilds: set | None
             for channel_snowflake, entries in guild_data.get("channels", {}).items()
             if channel_snowflake not in skipped_channels.get(guild_snowflake, [])
         }
-        members = [
-            member_snowflake
-            for member_snowflake in guild_data.get("members", [])
+        members = {
+            member_snowflake: entries
+            for member_snowflake, entries in guild_data.get("members", {}).items()
             if member_snowflake not in skipped_members.get(guild_snowflake, [])
-        ]
-        roles = [
-            role
-            for role in guild_data.get("roles", [])
-            if role not in skipped_roles.get(guild_snowflake, [])
-        ]
+        }
+        messages = {
+            message_snowflake: entries
+            for message_snowflake, entries in guild_data.get("messages", {}).items()
+            if message_snowflake not in skipped_messages.get(guild_snowflake, [])
+        }
+        roles = {
+            role_snowflake: entries
+            for role_snowflake, entries in guild_data.get("roles", {}).items()
+            if role_snowflake not in skipped_roles.get(guild_snowflake, [])
+        }
+        snowflakes = {
+            snowflake: entries
+            for snowflake, entries in guild_data.get("snowflakes", {}).items()
+            if snowflake not in skipped_snowflakes.get(guild_snowflake, [])
+        }
         cleaned[guild_snowflake] = {
             "channels": channels,
             "members": members,
             "roles": roles,
+            "snowflakes": snowflakes,
         }
     return cleaned
 
