@@ -24,19 +24,6 @@ class DatabaseFactory(object):
     def __init__(self):
         self.bot = DiscordBot.get_instance()
 
-        # if actions:
-        #     for action in actions:
-        #         await History.save_entry(
-        #             ctx_interaction_or_message=ctx_interaction_or_message,
-        #             action_type=cls.UNDO,
-        #             channel_snowflake=channel_snowflake,
-        #             duration=None,
-        #             highest_role=highest_role,
-        #             is_modification=is_modification,
-        #             member_snowflake=action.member_snowflake,
-        #             reason="Clear command"
-        #         )
-
     async def create(self):
         table_name = getattr(self, "TABLE_NAME")
         fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(self, "OPTIONAL_ARGS")

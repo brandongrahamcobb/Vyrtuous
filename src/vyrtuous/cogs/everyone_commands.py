@@ -92,8 +92,11 @@ class EveryoneCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator in administrators:
-            guild_dictionary.setdefault(administrator.guild_snowflake, {"channels": {}, "members": {}})
-            guild_dictionary[administrator.guild_snowflake]["members"][administrator.member_snowflake] = administrator.role_snowflakes
+            guild_dictionary.setdefault(administrator.guild_snowflake, {"members": {}, "roles": {}})
+            guild_dictionary[administrator.guild_snowflake]["members"][administrator.member_snowflake] = {}
+            guild_dictionary[administrator.guild_snowflake]["roles"].setdefault(administrator.role_snowflake, {})
+                "snowflakes": administrator.role_snowflakes
+            }
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
@@ -286,13 +289,17 @@ class EveryoneCommands(commands.Cog):
         thumbnail = False
 
         for coordinator in coordinators:
-            guild_dictionary.setdefault(coordinator.guild_snowflake, {})
-            guild_dictionary[coordinator.guild_snowflake].setdefault(
-                coordinator.channel_snowflake, []
+            guild_dictionary.setdefault(coordinator.guild_snowflake, {"channels": {}, "members": {}})
+            guild_dictionary[coordinator.guild_snowflake]["channels"].setdefault(
+                coordinator.channel_snowflake, {
+                    "member_snowflake": coordinator.member_snowflake
+                }
             )
-            guild_dictionary[coordinator.guild_snowflake][
-                coordinator.channel_snowflake
-            ].append({"member_snowflake": coordinator.member_snowflake})
+            guild_dictionary[coordinator.guild_snowflake]["members"].setdefault(
+                coordinator.member_snowflake, {
+                    "channel_snowflake": coordinator.channel_snowflake
+                }
+            )
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -304,51 +311,33 @@ class EveryoneCommands(commands.Cog):
             skipped_members=skipped_members,
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, members in channels.items():
+            for channel_snowflake, channel_dictionary in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
-                lines = []
-                for member_data in members:
-                    member = guild.get_member(member_data["member_snowflake"])
-                    if not member_obj:
-                        lines.append(f"**User:** {member.mention}")
-                    else:
-                        if not thumbnail:
-                            embed.set_thumbnail(url=member.display_avatar.url)
-                            thumbnail = True
-                field_count += 1
-                if field_count == chunk_size:
-                    if lines:
+                channel_lines.append(f"**Channel:** {channel.mention}")
+                for member_snowflake, member_dictionary in channel_dictionary.items():
+                    member = guild.get_member(member_snowflake)
+                    channel_lines.append(f"**User:** {member.mention}")
+                    if not thumbnail:
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                        thumbnail = True
+                    field_count += 1
+                    if field_count >= chunk_size:
                         embed.add_field(
-                            name=f"Channel: {channel.mention}",
-                            value="\n".join(lines),
-                            inline=False,
+                            name='Information',
+                            value='\n\n'.join(channel_lines),
+                            inline=False
                         )
-                        lines = []
-                    elif channel_lines:
-                        embed.add_field(
-                            name="Channels",
-                            value="\n".join(channel_lines),
-                            inline=False,
-                        )
+                        embed, field_count = flush_page(embed, pages, title, guild.name)
                         channel_lines = []
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                if lines:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                else:
-                    channel_lines.append(channel.mention)
             if channel_lines:
                 embed.add_field(
-                    name="Channels", value="\n".join(channel_lines), inline=False
+                    name="Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 
@@ -416,13 +405,17 @@ class EveryoneCommands(commands.Cog):
         thumbnail = False
 
         for coordinator in coordinators:
-            guild_dictionary.setdefault(coordinator.guild_snowflake, {})
-            guild_dictionary[coordinator.guild_snowflake].setdefault(
-                coordinator.channel_snowflake, []
+            guild_dictionary.setdefault(coordinator.guild_snowflake, {"channels": {}, "members": {}})
+            guild_dictionary[coordinator.guild_snowflake]["channels"].setdefault(
+                coordinator.channel_snowflake, {
+                    "member_snowflake": coordinator.member_snowflake
+                }
             )
-            guild_dictionary[coordinator.guild_snowflake][
-                coordinator.channel_snowflake
-            ].append({"member_snowflake": coordinator.member_snowflake})
+            guild_dictionary[coordinator.guild_snowflake]["members"].setdefault(
+                coordinator.member_snowflake, {
+                    "channel_snowflake": coordinator.channel_snowflake
+                }
+            )
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -434,47 +427,34 @@ class EveryoneCommands(commands.Cog):
             skipped_members=skipped_members,
         )
 
-        for guild_snowflake, channels in guild_dictionary.items():
+        for guild_snowflake, guild_data in guild_dictionary.items():
             channel_lines = []
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, members in channels.items():
+            for channel_snowflake, channel_dictionary in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
-                lines = []
-                for member_data in members:
-                    member = guild.get_member(member_data["member_snowflake"])
-                    if member_obj:
-                        if not thumbnail:
-                            embed.set_thumbnail(url=member.display_avatar.url)
-                            thumbnail = True
-                    else:
-                        lines.append(f"**User:** {member.mention}")
-                if lines:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
+                channel_lines.append(f"**Channel:** {channel.mention}")
+                for member_snowflake, member_dictionary in channel_dictionary.items():
+                    member = guild.get_member(member_snowflake)
+                    channel_lines.append(f"**User:** {member.mention}")
+                    if not thumbnail:
+                        embed.set_thumbnail(url=member.display_avatar.url)
+                        thumbnail = True
                     field_count += 1
-                else:
-                    channel_lines.append(channel.mention)
-                if field_count == chunk_size:
-                    if channel_lines:
+                    if field_count >= chunk_size:
                         embed.add_field(
-                            name="Channels",
-                            value="\n".join(channel_lines),
-                            inline=False,
+                            name='Information',
+                            value='\n\n'.join(channel_lines),
+                            inline=False
                         )
-                        channel_lines.clear()
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                        embed, field_count = flush_page(embed, pages, title, guild.name)
+                        channel_lines = []
             if channel_lines:
                 embed.add_field(
-                    name="Channels",
-                    value="\n".join(channel_lines),
-                    inline=False,
+                    name="Information", value="\n".join(channel_lines), inline=False
                 )
             pages.append(embed)
 

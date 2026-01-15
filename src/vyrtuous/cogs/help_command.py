@@ -26,7 +26,10 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.alias import Alias
-from vyrtuous.service.check_service import role_check_without_specifics
+from vyrtuous.service.check_service import (
+    moderator_predicator,
+    role_check_without_specifics
+)
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -183,6 +186,7 @@ class HelpCommand(commands.Cog):
         name="help", description="Show command information or your available commands."
     )
     @app_commands.describe(command_name="The command to view details for.")
+    @moderator_predicator()
     async def help_app_command(
         self, interaction: discord.Interaction, command_name: Optional[str] = None
     ):
@@ -376,6 +380,7 @@ class HelpCommand(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
 
     @commands.command(name="help")
+    @moderator_predicator()
     async def help_text_command(self, ctx, *, command_name: str = None):
         state = StateService(ctx)
         bot = ctx.bot

@@ -244,9 +244,11 @@ class DevCommands(commands.Cog):
         filter: str = None,
     ):
         state = StateService(interaction)
-        developer_logs = await DeveloperLog.select(id=target)
-        title = f"{get_random_emoji()} Developer Logs"
-        if not developer_logs:
+        try:
+            target_uuid = UUID(str(target))
+            developer_logs = await DeveloperLog.select(id=target_uuid)
+            title = f"{get_random_emoji()} Developer Logs"
+        except (ValueError, TypeError) as e:
             developer_logs, title = await resolve_objects(
                 ctx_interaction_or_message=interaction,
                 obj=DeveloperLog,
@@ -264,18 +266,17 @@ class DevCommands(commands.Cog):
         guild_dictionary = {}
 
         for developer_log in developer_logs:
-            guild_dictionary.setdefault(developer_log.guild_snowflake, {})
-            guild_dictionary[developer_log.guild_snowflake].setdefault("messages", {})
-            guild_dictionary[developer_log.guild_snowflake]["messages"].setdefault(
-                developer_log.message_snowflake, {}
-            )
-            guild_dictionary[developer_log.guild_snowflake]["messages"][developer_log.message_snowflake] = {
+            guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
+            messages = guild_dictionary[developer_log.guild_snowflake]["messages"]
+            messages.setdefault(developer_log.message_snowflake, {
                 "channel_snowflake": developer_log.channel_snowflake,
-                "developer_snowflakes": developer_log.developer_snowflakes,
+                "developer_snowflakes": [],
                 "id": developer_log.id,
-                "notes": developer_log.notes,
+                "notes": [],
                 "resolved": developer_log.resolved,
-            }
+            })
+            messages[developer_log.message_snowflake]["developer_snowflakes"].extend(developer_log.developer_snowflakes)
+            messages[developer_log.message_snowflake]["notes"].append(developer_log.notes)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)
@@ -285,45 +286,38 @@ class DevCommands(commands.Cog):
             skipped_messages=skipped_messages,
         )
 
-        logger.info(guild_dictionary)
-
         for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for message_snowflake, entry in guild_data.get("messages", {}).items():
-                channel_snowflake = entry["channel_snowflake"]
-                channel = self.bot.get_channel(channel_snowflake)
-                show_entry = False
-                if target and str(target) == str(entry["id"]):
-                    show_entry = True
-                elif filter == "resolved" and entry.get("resolved"):
-                    show_entry = True
-                elif filter == "unresolved" and not entry.get("resolved"):
-                    show_entry = True
-                elif filter == "all" or target is None:
-                    show_entry = True
-                if show_entry:
-                    msg = await channel.fetch_message(message_snowflake)
-                    lines.append(f"**Message:** {msg.jump_url}")
-                    lines.append(f"{'\u2705' if entry.get('resolved') else '\u274c'} **Reference:** {entry['id']}")
+            for message_snowflake, entry in guild_data.get('messages', {}).items():
+                channel = self.bot.get_channel(entry['channel_snowflake'])
+                if not channel:
+                    continue
+                if filter == 'resolved' and not entry.get('resolved'):
+                    continue
+                if filter == 'unresolved' and entry.get('resolved'):
+                    continue
+                lines = []
+                msg = await channel.fetch_message(message_snowflake)
+                lines.append(f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}')
+                lines.append(f'**Message:** {msg.jump_url}')
+                if target and str(target) == str(entry['id']):
+                    lines.append(f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}')
+                    lines.append(
+                        f'**Assigned to:** {", ".join(str(d) for d in entry["developer_snowflakes"]) if entry.get("developer_snowflakes") else None}'
+                    )
+                else:
+                    lines.append(f'**Reference:** {entry["id"]}')
                 field_count += 1
                 if field_count >= chunk_size:
-                    embed.add_field(
-                        name=f"**Channel:** {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
+                    embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
             if lines:
-                embed.add_field(
-                    name=f"**Channel:** {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
+                embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
             pages.append(embed)
 
         if is_at_home:
@@ -373,7 +367,6 @@ class DevCommands(commands.Cog):
                 state=state,
                 target=target,
             )
-            
 
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
@@ -385,18 +378,17 @@ class DevCommands(commands.Cog):
         guild_dictionary = {}
 
         for developer_log in developer_logs:
-            guild_dictionary.setdefault(developer_log.guild_snowflake, {})
-            guild_dictionary[developer_log.guild_snowflake].setdefault("messages", {})
-            guild_dictionary[developer_log.guild_snowflake]["messages"].setdefault(
-                developer_log.message_snowflake, {}
-            )
-            guild_dictionary[developer_log.guild_snowflake]["messages"][developer_log.message_snowflake] = {
+            guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
+            messages = guild_dictionary[developer_log.guild_snowflake]["messages"]
+            messages.setdefault(developer_log.message_snowflake, {
                 "channel_snowflake": developer_log.channel_snowflake,
-                "developer_snowflakes": developer_log.developer_snowflakes,
+                "developer_snowflakes": [],
                 "id": developer_log.id,
-                "notes": developer_log.notes,
+                "notes": [],
                 "resolved": developer_log.resolved,
-            }
+            })
+            messages[developer_log.message_snowflake]["developer_snowflakes"].extend(developer_log.developer_snowflakes)
+            messages[developer_log.message_snowflake]["notes"].append(developer_log.notes)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)

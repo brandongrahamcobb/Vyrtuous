@@ -237,8 +237,8 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"roles": []})
-            guild_dictionary[administrator_role.guild_snowflake]["roles"].append(administrator_role.role_snowflake)
+            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"roles": {}})
+            guild_dictionary[administrator_role.guild_snowflake]["roles"][administrator_role.role_snowflake] = {}
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_roles = generate_skipped_roles(guild_dictionary)
@@ -254,7 +254,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for role_snowflake in guild_data.get("roles"):
+            for role_snowflake, entry in guild_data.get("roles").items():
                 role = guild.get_role(role_snowflake)
                 if field_count >= chunk_size:
                     embed, field_count = flush_page(embed, pages, title, guild.name)
@@ -312,8 +312,8 @@ class AdminCommands(commands.Cog):
         guild_dictionary = {}
 
         for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"roles": []})
-            guild_dictionary[administrator_role.guild_snowflake]["roles"].append(administrator_role.role_snowflake)
+            guild_dictionary.setdefault(administrator_role.guild_snowflake, {"roles": {}})
+            guild_dictionary[administrator_role.guild_snowflake]["roles"][administrator_role.role_snowflake] = {}
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_roles = generate_skipped_roles(guild_dictionary)
@@ -329,7 +329,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for role_snowflake in guild_data.get("roles"):
+            for role_snowflake, entry in guild_data.get("roles").items():
                 role = guild.get_role(role_snowflake)
                 embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(name=role.name, value=role.mention, inline=False)
@@ -2332,17 +2332,15 @@ class AdminCommands(commands.Cog):
 
         for temporary_room in temporary_rooms:
             guild_dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
-            guild_dictionary[temporary_room.guild_snowflake]['channels'].setdefault(temporary_room.channel_snowflake, [])
-            entry = {}
-            guild_dictionary[temporary_room.guild_snowflake]['channels'][temporary_room.channel_snowflake].append(entry)
+            guild_dictionary[temporary_room.guild_snowflake]['channels'].setdefault(temporary_room.channel_snowflake, {})
             if aliases:
                 for alias in aliases:
                     if (
                         alias.guild_snowflake == temporary_room.guild_snowflake
                         and alias.channel_snowflake == temporary_room.channel_snowflake
                     ):
-                        entry.setdefault(alias.alias_type, [])
-                        entry[alias.alias_type].append(alias.alias_name)
+                        guild_dictionary[temporary_room.guild_snowflake]['channels'][temporary_room.channel_snowflake].setdefault(alias.alias_type, [])
+                        guild_dictionary[temporary_room.guild_snowflake]['channels'][temporary_room.channel_snowflake][alias.alias_type].append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -2354,21 +2352,18 @@ class AdminCommands(commands.Cog):
 
         for guild_snowflake, guild_data in guild_dictionary.items():
             current_channel = None
-            lines = []
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in guild_data.get("channels"):
+            for channel_snowflake, channel_data in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
-                if channel_data:
-                    for entry in channel_data:
-                        for alias_type, alias_names in entry.items():
-                            channel_lines.append(f"{alias_type}")
-                            for name in alias_names:
-                                channel_lines.append(f"  ↳ {name}")
+                for alias_type, alias_names in channel_data.items():
+                    channel_lines.append(f"{alias_type}")
+                    for name in alias_names:
+                        channel_lines.append(f"  ↳ {name}")
                 if not channel_lines:
                     lines.append("")
                     current_channel = channel
@@ -2456,17 +2451,15 @@ class AdminCommands(commands.Cog):
 
         for temporary_room in temporary_rooms:
             guild_dictionary.setdefault(temporary_room.guild_snowflake, {"channels": {}})
-            guild_dictionary[temporary_room.guild_snowflake]['channels'].setdefault(temporary_room.channel_snowflake, [])
-            entry = {}
-            guild_dictionary[temporary_room.guild_snowflake]['channels'][temporary_room.channel_snowflake].append(entry)
+            guild_dictionary[temporary_room.guild_snowflake]['channels'].setdefault(temporary_room.channel_snowflake, {})
             if aliases:
                 for alias in aliases:
                     if (
                         alias.guild_snowflake == temporary_room.guild_snowflake
                         and alias.channel_snowflake == temporary_room.channel_snowflake
                     ):
-                        entry.setdefault(alias.alias_type, [])
-                        entry[alias.alias_type].append(alias.alias_name)
+                        guild_dictionary[temporary_room.guild_snowflake]['channels'][temporary_room.channel_snowflake].setdefault(alias.alias_type, [])
+                        guild_dictionary[temporary_room.guild_snowflake]['channels'][temporary_room.channel_snowflake][alias.alias_type].append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -2484,15 +2477,13 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in guild_data.get("channels"):
+            for channel_snowflake, channel_data in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
-                if channel_data:
-                    for entry in channel_data:
-                        for alias_type, alias_names in entry.items():
-                            channel_lines.append(f"{alias_type}")
-                            for name in alias_names:
-                                channel_lines.append(f"  ↳ {name}")
+                for alias_type, alias_names in channel_data.items():
+                    channel_lines.append(f"{alias_type}")
+                    for name in alias_names:
+                        channel_lines.append(f"  ↳ {name}")
                 if not channel_lines:
                     lines.append("")
                     current_channel = channel
@@ -2766,7 +2757,7 @@ class AdminCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
-        history, title = await resolve_objects(
+        histories, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=History,
             state=state,
@@ -2787,28 +2778,20 @@ class AdminCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary, skipped_snowflakes = {}, {}
 
-        for entry in history:
-            guild_id = entry.guild_snowflake
-            guild_dictionary.setdefault(guild_id, {}).setdefault("channels", {})
-            guild_dictionary[guild_id].setdefault("snowflakes", [])
-            guild_dictionary[guild_id]["snowflakes"].append({
-                "channel_snowflake": entry.channel_snowflake,
-                "snowflakes": entry.snowflakes,
-            })
-            guild_dictionary[guild_id]["channels"][entry.channel_snowflake] = {
-                "enabled": entry.enabled,
-                "entry_type": entry.entry_type,
-                "snowflakes": entry.snowflakes
+        for history in histories:
+            guild_dictionary.setdefault(history.guild_snowflake, {"channels", {}})
+            guild_dictionary[history.guild_snowflake]["channels"][history.channel_snowflake] = {
+                "enabled": history.enabled,
+                "entry_type": history.entry_type,
+                "snowflakes": history.snowflakes,
             }
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_snowflakes = generate_skipped_snowflakes(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
-            skipped_snowflakes=skipped_snowflakes
         )
 
         for guild_snowflake, guild_data in guild_dictionary.items():
@@ -2857,14 +2840,6 @@ class AdminCommands(commands.Cog):
                     skipped=skipped_guilds,
                     title="Skipped Servers",
                 )
-            if skipped_snowflakes:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_snowflakes,
-                    title="Skipped Snowflakes in Server",
-                )
 
         await StateService.send_pages(obj=History, pages=pages, state=state)
 
@@ -2881,7 +2856,7 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        history, title = await resolve_objects(
+        histories, title = await resolve_objects(
             ctx_interaction_or_message=ctx,
             obj=History,
             state=state,
@@ -2902,28 +2877,20 @@ class AdminCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary, skipped_snowflakes = {}, {}
 
-        for entry in history:
-            guild_id = entry.guild_snowflake
-            guild_dictionary.setdefault(guild_id, {}).setdefault("channels", {})
-            guild_dictionary[guild_id].setdefault("snowflakes", [])
-            guild_dictionary[guild_id]["snowflakes"].append({
-                "channel_snowflake": entry.channel_snowflake,
-                "snowflakes": entry.snowflakes,
-            })
-            guild_dictionary[guild_id]["channels"][entry.channel_snowflake] = {
-                "enabled": entry.enabled,
-                "entry_type": entry.entry_type,
-                "snowflakes": entry.snowflakes
+        for history in histories:
+            guild_dictionary.setdefault(history.guild_snowflake, {"channels", {}})
+            guild_dictionary[history.guild_snowflake]["channels"][history.channel_snowflake] = {
+                "enabled": history.enabled,
+                "entry_type": history.entry_type,
+                "snowflakes": history.snowflakes,
             }
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_snowflakes = generate_skipped_snowflakes(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
             guild_dictionary=guild_dictionary,
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
-            skipped_snowflakes=skipped_snowflakes
         )
 
         for guild_snowflake, guild_data in guild_dictionary.items():
@@ -2971,14 +2938,6 @@ class AdminCommands(commands.Cog):
                     pages=pages,
                     skipped=skipped_guilds,
                     title="Skipped Servers",
-                )
-            if skipped_snowflakes:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_snowflakes,
-                    title="Skipped Snowflakes in Server",
                 )
 
         await StateService.send_pages(obj=History, pages=pages, state=state)
@@ -3113,17 +3072,15 @@ class AdminCommands(commands.Cog):
 
         for video_room in video_rooms:
             guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            guild_dictionary[video_room.guild_snowflake]['channels'].setdefault(video_room.channel_snowflake, [])
-            entry = {}
-            guild_dictionary[video_room.guild_snowflake]['channels'][video_room.channel_snowflake].append(entry)
+            guild_dictionary[video_room.guild_snowflake]['channels'].setdefault(video_room.channel_snowflake, {})
             if aliases:
                 for alias in aliases:
                     if (
                         alias.guild_snowflake == video_room.guild_snowflake
                         and alias.channel_snowflake == video_room.channel_snowflake
                     ):
-                        entry.setdefault(alias.alias_type, [])
-                        entry[alias.alias_type].append(alias.alias_name)
+                        guild_dictionary[video_room.guild_snowflake]['channels'][video_room.channel_snowflake].setdefault(alias.alias_type, [])
+                        guild_dictionary[video_room.guild_snowflake]['channels'][video_room.channel_snowflake][alias.alias_type].append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -3144,12 +3101,10 @@ class AdminCommands(commands.Cog):
             for channel_snowflake, channel_data in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
-                if channel_data:
-                    for entry in channel_data:
-                        for alias_type, alias_names in entry.items():
-                            channel_lines.append(f"{alias_type}")
-                            for name in alias_names:
-                                channel_lines.append(f"  ↳ {name}")
+                for alias_type, alias_names in channel_data.items():
+                    channel_lines.append(f"{alias_type}")
+                    for name in alias_names:
+                        channel_lines.append(f"  ↳ {name}")
                 if not channel_lines:
                     lines.append("")
                     current_channel = channel
@@ -3226,19 +3181,18 @@ class AdminCommands(commands.Cog):
         channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         guild_dictionary = {}
 
+        
         for video_room in video_rooms:
             guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
-            guild_dictionary[video_room.guild_snowflake]['channels'].setdefault(video_room.channel_snowflake, [])
-            entry = {}
-            guild_dictionary[video_room.guild_snowflake]['channels'][video_room.channel_snowflake].append(entry)
+            guild_dictionary[video_room.guild_snowflake]['channels'].setdefault(video_room.channel_snowflake, {})
             if aliases:
                 for alias in aliases:
                     if (
                         alias.guild_snowflake == video_room.guild_snowflake
                         and alias.channel_snowflake == video_room.channel_snowflake
                     ):
-                        entry.setdefault(alias.alias_type, [])
-                        entry[alias.alias_type].append(alias.alias_name)
+                        guild_dictionary[video_room.guild_snowflake]['channels'][video_room.channel_snowflake].setdefault(alias.alias_type, [])
+                        guild_dictionary[video_room.guild_snowflake]['channels'][video_room.channel_snowflake][alias.alias_type].append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -3256,15 +3210,13 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, channel_data in guild_data.get("channels"):
+            for channel_snowflake, channel_data in guild_data.get("channels").items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
-                if channel_data:
-                    for entry in channel_data:
-                        for alias_type, alias_names in entry.items():
-                            channel_lines.append(f"{alias_type}")
-                            for name in alias_names:
-                                channel_lines.append(f"  ↳ {name}")
+                for alias_type, alias_names in channel_data.items():
+                    channel_lines.append(f"{alias_type}")
+                    for name in alias_names:
+                        channel_lines.append(f"  ↳ {name}")
                 if not channel_lines:
                     lines.append("")
                     current_channel = channel

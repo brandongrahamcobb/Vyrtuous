@@ -199,14 +199,12 @@ def generate_skipped_members(guild_dictionary: dict) -> dict:
         guild = bot.get_guild(guild_snowflake)
         if not guild:
             continue
-        for members in guild_data.get("channels", {}).values():
-            for member_data in members:
-                if not guild.get_member(member_data["member_snowflake"]):
-                    skipped_members.setdefault(guild_snowflake, []).append(
-                        member_data["member_snowflake"]
-                    )
+        for member_snowflake in guild_data.get("members", {}):
+            if not guild.get_member(member_snowflake):
+                skipped_members.setdefault(guild_snowflake, []).append(
+                    member_snowflake
+                )
     return skipped_members
-
 
 def generate_skipped_roles(guild_dictionary: dict) -> dict:
     bot = DiscordBot.get_instance()
@@ -215,7 +213,7 @@ def generate_skipped_roles(guild_dictionary: dict) -> dict:
         guild = bot.get_guild(guild_snowflake)
         if not guild:
             continue
-        for role_snowflake in guild_data.get("roles", []):
+        for role_snowflake in guild_data.get("roles", {}):
             if not guild.get_role(role_snowflake):
                 skipped_roles.setdefault(guild_snowflake, []).append(role_snowflake)
     return skipped_roles
@@ -270,6 +268,25 @@ def clean_guild_dictionary(guild_dictionary: dict, *, skipped_guilds: set | None
             for snowflake, entries in guild_data.get("snowflakes", {}).items()
             if snowflake not in skipped_snowflakes.get(guild_snowflake, [])
         }
+        for channel_info in channels.values():
+            member_snowflake = channel_info.get("member_snowflake")
+            if member_snowflake and member_snowflake not in members:
+                channel_info.pop("member_snowflake")
+        for message_info in messages.values():
+            member_snowflake = message_info.get("member_snowflake")
+            if member_snowflake and member_snowflake not in members:
+                message_info.pop("member_snowflake")
+            channel_snowflake = message_info.get("channel_snowflake")
+            if channel_snowflake and channel_snowflake not in channels:
+                message_info.pop("channel_snowflake")
+        for role_info in roles.values():
+            member_snowflake = role_info.get("member_snowflake")
+            if member_snowflake and member_snowflake not in members:
+                role_info.pop("member_snowflake")
+        for member_info in members.values():
+            channel_snowflake = member_info.get("channel_snowflake")
+            if channel_snowflake and channel_snowflake not in channels:
+                member_info.pop("channel_snowflake")
         cleaned[guild_snowflake] = {
             "channels": channels,
             "members": members,
