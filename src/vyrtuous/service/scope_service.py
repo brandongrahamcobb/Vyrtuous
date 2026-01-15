@@ -97,6 +97,7 @@ async def resolve_where_kwargs(channel_obj, guild_obj, member_obj, role_obj):
 
 async def resolve_objects(ctx_interaction_or_message, obj, state, target):
     channel_obj, guild_obj, member_obj, role_obj = None, None, None, None
+    title = f"{get_random_emoji()} {obj.PLURAL}"
     highest_role = await role_check_without_specifics(
         ctx_interaction_or_message=ctx_interaction_or_message
     )
@@ -164,8 +165,6 @@ async def resolve_objects(ctx_interaction_or_message, obj, state, target):
         role_obj=role_obj,
     )
     objects = await obj.select(**where_kwargs)
-
-    title = f"{get_random_emoji()} {obj.PLURAL}"
     return objects, title
 
 
@@ -274,6 +273,7 @@ def clean_guild_dictionary(guild_dictionary: dict, *, skipped_guilds: set | None
         cleaned[guild_snowflake] = {
             "channels": channels,
             "members": members,
+            "messages": messages,
             "roles": roles,
             "snowflakes": snowflakes,
         }

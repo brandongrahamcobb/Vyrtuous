@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from vyrtuous.bot.discord_bot import DiscordBot
-
+from vyrtuous.service.logging_service import logger
 
 class DatabaseFactory(object):
 
@@ -76,7 +76,7 @@ class DatabaseFactory(object):
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
 
     @classmethod
-    async def select(cls, singular=False, **kwargs):
+    async def select(cls, *, singular=False, **kwargs):
         bot = DiscordBot.get_instance()
         table_name = getattr(cls, 'TABLE_NAME')
         fields = getattr(cls, 'REQUIRED_INSTANTIATION_ARGS') + getattr(cls, 'OPTIONAL_ARGS')
