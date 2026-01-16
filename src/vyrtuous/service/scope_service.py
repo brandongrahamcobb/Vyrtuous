@@ -47,9 +47,11 @@ def generate_skipped_set_pages(chunk_size, field_count, pages, skipped, title):
 
 
 def generate_skipped_dict_pages(chunk_size, field_count, pages, skipped, title):
+    bot = DiscordBot.get_instance()
     for guild_snowflake, list in skipped.items():
+        guild = bot.get_guild(guild_snowflake)
         embed = discord.Embed(
-            color=discord.Color.red(), title=f"{title} ({guild_snowflake})"
+            color=discord.Color.red(), title=f"{title} ({guild.name})"
         )
         field_count = 0
         lines = []
@@ -201,10 +203,9 @@ def generate_skipped_members(guild_dictionary: dict) -> dict:
             continue
         for member_snowflake in guild_data.get("members", {}):
             if not guild.get_member(member_snowflake):
-                skipped_members.setdefault(guild_snowflake, []).append(
-                    member_snowflake
-                )
+                skipped_members.setdefault(guild_snowflake, []).append(member_snowflake)
     return skipped_members
+
 
 def generate_skipped_roles(guild_dictionary: dict) -> dict:
     bot = DiscordBot.get_instance()
@@ -217,6 +218,7 @@ def generate_skipped_roles(guild_dictionary: dict) -> dict:
             if not guild.get_role(role_snowflake):
                 skipped_roles.setdefault(guild_snowflake, []).append(role_snowflake)
     return skipped_roles
+
 
 def generate_skipped_snowflakes(guild_dictionary: dict) -> dict:
     bot = DiscordBot.get_instance()
@@ -232,7 +234,17 @@ def generate_skipped_snowflakes(guild_dictionary: dict) -> dict:
                         skipped_snowflakes.append(snowflake)
     return skipped_snowflakes
 
-def clean_guild_dictionary(guild_dictionary: dict, *, skipped_guilds: set | None = None, skipped_channels: dict | None = None, skipped_members: dict | None = None, skipped_messages: dict | None = None, skipped_roles: dict | None = None, skipped_snowflakes: dict | None = None) -> dict:
+
+def clean_guild_dictionary(
+    guild_dictionary: dict,
+    *,
+    skipped_guilds: set | None = None,
+    skipped_channels: dict | None = None,
+    skipped_members: dict | None = None,
+    skipped_messages: dict | None = None,
+    skipped_roles: dict | None = None,
+    skipped_snowflakes: dict | None = None,
+) -> dict:
     cleaned = {}
     skipped_guilds = skipped_guilds or set()
     skipped_channels = skipped_channels or {}

@@ -15,21 +15,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
-from datetime import datetime, timezone
-
 from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.ban import Ban
-from vyrtuous.database.actions.flag import Flag
-from vyrtuous.database.actions.text_mute import TextMute
-from vyrtuous.database.actions.voice_mute import VoiceMute
 from vyrtuous.database.logs.history import History
-from vyrtuous.database.roles.vegan import Vegan
-from vyrtuous.database.settings.cap import Cap
-from vyrtuous.properties.duration import DurationObject
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.resolution.role_service import resolve_role
 from vyrtuous.utils.emojis import get_random_emoji
@@ -112,138 +102,96 @@ class Aliases(commands.Cog):
         self.invincible_members = Invincibility.get_invincible_members()
 
     async def handle_ban_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
+        if not action_information["action_modification"]:
+            ban = action_information["alias_class"](
+                channel_snowflake=action_information["action_channel_snowflake"],
+                expires_in=action_information["action_expires_in"],
+                guild_snowflake=action_information["action_guild_snowflake"],
+                member_snowflake=action_information["action_member_snowflake"],
+                reason=action_information["action_reason"],
+            )
+            await ban.create()
+
         try:
-            bans= None
-            is_channel_scope = False
-            is_modification = False
-            override = False
-
-            reason = "No reason provided."
-            if len(args) > 2:
-                reason = " ".join(args[2:])
-
-            cap_duration = generate_cap_duration(channel_snowflake=channel_obj.id, guild_snowflake=message.guild.id, moderation_type="ban")
-
+            await channel.set_permissions(
+                member, view_channel=False, reason=action_information["action_reason"]
+            )
+        except discord.Forbidden as e:
+            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        if (
+            member.voice
+            and member.voice.channel
+            and member.voice.channel.id == channel.id
+        ):
+            is_channel_scope = True
             try:
-                await channel_obj.set_permissions(
-                    member_obj, view_channel=False, reason=reason
-                )
+                await member.move_to(None, reason=action_information["action_reason"])
             except discord.Forbidden as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-            if (
-                member_obj.voice
-                and member_obj.voice.channel
-                and member_obj.voice.channel.id == channel_obj.id
-            ):
-                is_channel_scope = True
-                try:
-                    await member_obj.move_to(None, reason=reason)
-                except discord.Forbidden as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-
-            await History.send_entry(
-                alias=alias,
-                channel=channel_obj,
-                duration=duration,
-                is_channel_scope=is_channel_scope,
-                is_modification=is_modification,
-                member=member_obj,
-                message=message,
-                reason=reason,
-            )
-
-            embed = discord.Embed(
-                title=f"{get_random_emoji()} "
-                f"{member_obj.display_name} has been Banned",
-                description=(
-                    f"**By:** {message.author.mention}\n"
-                    f"**User:** {member_obj.mention}\n"
-                    f"**Channel:** {channel_obj.mention}\n"
-                    f"**Expires:** {duration}\n"
-                    f"**Reason:** {reason}"
-                ),
-                color=discord.Color.blue(),
-            )
-            embed.set_thumbnail(url=member_obj.display_avatar.url)
-            try:
-                return await state.end(success=embed)
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            raise
-
-    # DONE
-    async def handle_vegan_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
-    ):
-        duration = None
-        is_channel_scope = False
-        is_modification = False
-        reason = "No reason provided."
-
-        vegans = await Vegan.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-        if not vegans[0]:
-            return await state.end(
-                warning=f"\U000026a0\U0000fe0f "
-                f"{member_obj.mention} is already vegan."
-            )
-
-        vegan = Vegan(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-        await vegan.create()
 
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
-            duration=duration,
+            channel=channel,
+            duration=action_information["action_duration"],
             is_channel_scope=is_channel_scope,
-            is_modification=is_modification,
-            member=member_obj,
+            is_modification=action_information["action_modification"],
+            member=member,
             message=message,
-            reason=reason,
+            reason=action_information["action_reason"],
+        )
+
+        embed = discord.Embed(
+            title=f"{get_random_emoji()} " f"{member.display_name} has been Banned",
+            description=(
+                f"**By:** {message.author.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}\n"
+                f"**Expires:** {action_information["action_duration"]}\n"
+                f"**Reason:** {action_information["action_modification"]}"
+            ),
+            color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        try:
+            return await state.end(success=embed)
+        except Exception as e:
+            return await state.end(error=f"\u274c {str(e).capitalize()}")
+
+    # DONE
+    async def handle_vegan_alias(
+        self, alias, action_information, channel, member, message, state
+    ):
+        if not action_information["action_modification"]:
+            vegan = action_information["alias_class"](
+                guild_snowflake=action_information["action_guild_snowflake"],
+                member_snowflake=action_information["action_member_snowflake"],
+            )
+            await vegan.create()
+
+        await History.send_entry(
+            alias=alias,
+            channel=channel,
+            duration=None,
+            is_channel_scope=False,
+            is_modification=action_information["action_modification"],
+            member=member,
+            message=message,
+            reason="No reason provied.",
         )
         embed = discord.Embed(
-            title=f"\U0001f525\U0001f525 {member_obj.display_name} "
+            title=f"\U0001f525\U0001f525 {member.display_name} "
             f"is going Vegan!!!\U0001f525\U0001f525",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}\n"
                 f"**Celebrate!** Stick around and do some activism with us!"
             ),
             color=discord.Color.green(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -251,68 +199,16 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_flag_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
-        duration = None
-        is_channel_scope = False
-        is_modification = False
-        reason = "No reason provided."
-        if len(args) > 1:
-            reason = " ".join(args[1:])
-
-        if is_reason_modification and existing_guestroom_alias_event:
-            is_modification = True
-            modified_reason = " ".join(args[1:]) if len(args) > 1 else ""
-            match is_reason_modification:
-                case "+":
-                    reason = existing_guestroom_alias_event.reason + modified_reason
-                case "=" | "-":
-                    reason = modified_reason
-            set_kwargs = {"reason": reason}
-            where_kwargs = {
-                "channel_snowflake": channel_obj.id,
-                "guild_snowflake": message.guild.id,
-                "member_snowflake": member_obj.id,
-            }
-            await Flag.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        else:
-            if not is_modification:
-                flags = await Flag.select(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=message.guild.id,
-                    member_snowflake=member_obj.id,
-                )
-                if flags:
-                    try:
-                        return await state.end(
-                            warning=f"\U000026a0\U0000fe0f "
-                            f"An existing flag already exists for "
-                            f"{member_obj.mention}. Modify the flag by "
-                            f"putting a single `+`, `-` or `=` "
-                            f"and a reason to update the reason."
-                        )
-                    except Exception as e:
-                        return await state.end(
-                            error=f"\u274c " f"{str(e).capitalize()}"
-                        )
-
-        flag = Flag(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-            reason=reason,
-        )
-        await flag.create()
+        if not action_information["action_modification"]:
+            flag = action_information["alias_class"](
+                channel_snowflake=action_information["action_channel_snowflake"],
+                guild_snowflake=action_information["action_guild_snowflake"],
+                member_snowflake=action_information["action_member_snowflake"],
+                reason=action_information["action_reason"],
+            )
+            await flag.create()
 
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("EventListeners")
@@ -320,26 +216,26 @@ class Aliases(commands.Cog):
 
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
-            duration=duration,
-            is_channel_scope=is_channel_scope,
-            is_modification=is_modification,
-            member=member_obj,
+            channel=channel,
+            duration=action_information["action_duration"],
+            is_channel_scope=False,
+            is_modification=action_information["action_modification"],
+            member=member,
             message=message,
-            reason=reason,
+            reason=action_information["action_reason"],
         )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member_obj.display_name} Flagged",
+            title=f"{get_random_emoji()} " f"{member.display_name} Flagged",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}\n"
-                f"**Reason:** {reason}"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}\n"
+                f"**Reason:** {action_information['action_reason']}"
             ),
             color=discord.Color.red(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -347,23 +243,15 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_role_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
-        duration = None
-        is_channel_scope = False
-        is_modification = False
-        reason = "No reason provided."
-
+        if not action_information["action_modification"]:
+            role = action_information["alias_class"](
+                guild_snowflake=action_information["action_guild_snowflake"],
+                member_snowflake=action_information["action_member_snowflake"],
+                role_snowflake=action_information["action_role_snowflake"],
+            )
+            await role.create()
         try:
             role = await resolve_role(
                 ctx_interaction_or_message=message, role_str=alias.role_snowflake
@@ -378,32 +266,32 @@ class Aliases(commands.Cog):
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
-            await member_obj.add_roles(role, reason="Added role")
+            await member.add_roles(role, reason="Added role")
         except discord.Forbidden as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
-            duration=duration,
-            is_channel_scope=is_channel_scope,
-            is_modification=is_modification,
-            member=member_obj,
+            channel=channel,
+            duration=action_information["action_duration"],
+            is_channel_scope=False,
+            is_modification=False,
+            member=member,
             message=message,
-            reason=reason,
+            reason="No reason provided.",
         )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member_obj.display_name} Roled",
+            title=f"{get_random_emoji()} " f"{member.display_name} Roled",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}\n"
                 f"**Role:** {role.mention}"
             ),
             color=discord.Color.blurple(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -411,21 +299,15 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_text_mute_alias(
-        self,
-        alias,
-        action_information,
-        channel,
-        member,
-        message,
-        state
+        self, alias, action_information, channel, member, message, state
     ):
-        if not action_information['action_modification']:
-            text_mute = action_information['alias_class'](
-                channel_snowflake=action_information['action_channel_snowflake'],
-                expires_in=action_information['action_expires_in'],
-                guild_snowflake=action_information['action_guild_snowflake'],
-                member_snowflake=action_information['action_member_snowflake'],
-                reason=action_information['action_reason'],
+        if not action_information["action_modification"]:
+            text_mute = action_information["alias_class"](
+                channel_snowflake=action_information["action_channel_snowflake"],
+                expires_in=action_information["action_expires_in"],
+                guild_snowflake=action_information["action_guild_snowflake"],
+                member_snowflake=action_information["action_member_snowflake"],
+                reason=action_information["action_reason"],
             )
             await text_mute.create()
 
@@ -434,7 +316,7 @@ class Aliases(commands.Cog):
                 member=member,
                 send_messages=False,
                 add_reactions=False,
-                reason=action_information['action_reason'],
+                reason=action_information["action_reason"],
             )
         except discord.Forbidden as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -442,12 +324,12 @@ class Aliases(commands.Cog):
         await History.send_entry(
             alias=alias,
             channel=channel,
-            duration=action_information['action_duration'],
+            duration=action_information["action_duration"],
             is_channel_scope=False,
-            is_modification=action_information['action_modification'],
+            is_modification=action_information["action_modification"],
             member=member,
             message=message,
-            reason=action_information['action_reason'],
+            reason=action_information["action_reason"],
         )
 
         embed = discord.Embed(
@@ -469,43 +351,42 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_voice_mute_alias(
-        self,
-        alias,
-        action_information,
-        channel,
-        member,
-        message,
-        state
+        self, alias, action_information, channel, member, message, state
     ):
-        if not action_information['action_modification']:
-            voice_mute = action_information['alias_class'](
-                channel_snowflake=action_information['action_channel_snowflake'],
-                expires_in=action_information['action_expires_in'],
-                guild_snowflake=action_information['action_guild_snowflake'],
-                member_snowflake=action_information['action_member_snowflake'],
-                reason=action_information['action_reason'],
-                target='user',
+        if not action_information["action_modification"]:
+            voice_mute = action_information["alias_class"](
+                channel_snowflake=action_information["action_channel_snowflake"],
+                expires_in=action_information["action_expires_in"],
+                guild_snowflake=action_information["action_guild_snowflake"],
+                member_snowflake=action_information["action_member_snowflake"],
+                reason=action_information["action_reason"],
+                target="user",
             )
             await voice_mute.create()
 
         is_channel_scope = False
         if member.voice and member.voice.channel:
-            if member.voice.channel.id == action_information['action_channel_snowflake']:
+            if (
+                member.voice.channel.id
+                == action_information["action_channel_snowflake"]
+            ):
                 is_channel_scope = True
                 try:
-                    await member.edit(mute=True, reason=action_information['action_reason'])
+                    await member.edit(
+                        mute=True, reason=action_information["action_reason"]
+                    )
                 except discord.Forbidden as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         await History.send_entry(
             alias=alias,
             channel=channel,
-            duration=action_information['action_duration'],
+            duration=action_information["action_duration"],
             is_channel_scope=is_channel_scope,
-            is_modification=action_information['action_modification'],
+            is_modification=action_information["action_modification"],
             member=member,
             message=message,
-            reason=action_information['action_reason'],
+            reason=action_information["action_reason"],
         )
 
         embed = discord.Embed(
@@ -528,81 +409,44 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_unban_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
         is_channel_scope = False
 
-        bans = await Ban.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-        if not bans[0]:
-            return await state.end(
-                warning=f"\U000026a0\U0000fe0f "
-                f"{member_obj.mention} is not currently banned "
-                f"in {channel_obj.mention}."
-            )
-        if bans[0].expires_in is None and executor_role == "Moderator":
-            try:
-                return await state.end(
-                    warning="\U000026a0\U0000fe0f "
-                    "Only coordinators and above can undo permanent bans."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-
-        await Ban.delete(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-
         try:
-            await channel_obj.set_permissions(member_obj, overwrite=None)
+            await channel.set_permissions(member, overwrite=None)
         except discord.Forbidden as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
 
-        if member_obj.voice and member_obj.voice.channel:
-            if member_obj.voice.channel.id == channel_obj.id:
+        if member.voice and member.voice.channel:
+            if member.voice.channel.id == channel.id:
                 is_channel_scope = True
                 try:
-                    await member_obj.move_to(None, reason="Unbanned")
+                    await member.move_to(None, reason="Unbanned")
                 except discord.Forbidden as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
+            channel=channel,
             duration=None,
             is_channel_scope=is_channel_scope,
-            is_modification=True,
-            member=member_obj,
+            is_modification=action_information["action_modification"],
+            member=member,
             message=message,
             reason="No reason provided.",
         )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member_obj.display_name} has been Unbanned",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been Unbanned",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}"
             ),
             color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -610,58 +454,31 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_carnist_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
-
-        vegans = await Vegan.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-        if not vegans[0]:
-            return await state.end(
-                warning=f"\U000026a0\U0000fe0f "
-                f"{member_obj.mention} is not currently vegan."
-            )
-        
-        await Vegan.delete(
-            channel_snowflake=channel_obj.id,
-            member_snowflake=member_obj.id,
-            guild_snowflake=message.guild.id,
-        )
 
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
+            channel=channel,
             duration=None,
             is_channel_scope=False,
-            is_modification=True,
-            member=member_obj,
+            is_modification=action_information["action_modification"],
+            member=member,
             message=message,
             reason="No reason provided.",
         )
 
         embed = discord.Embed(
             title=f"\U0001f44e\U0001f44e "
-            f"{member_obj.display_name} is a Carnist \U0001f44e\U0001f44e",
+            f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}"
             ),
             color=discord.Color.red(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -669,68 +486,37 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_unflag_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
-        flags = await Flag.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-        if not flags:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{member_obj.mention} is not currently flagged in "
-                    f"{channel_obj.mention}."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("EventListeners")
         for flag in cog.flags:
-            if flag.channel_snowflake == channel_obj.id:
+            if flag.channel_snowflake == channel.id:
                 cog.flags.remove(flag)
                 break
 
-        await Flag.delete(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
+            channel=channel,
             duration=None,
             is_channel_scope=False,
-            is_modification=True,
-            member=member_obj,
+            is_modification=action_information["action_modification"],
+            member=member,
             message=message,
             reason="No reason provided.",
         )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member_obj.display_name} has been Unflagged",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been Unflagged",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}"
             ),
             color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -738,82 +524,38 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_unmute_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
         is_channel_scope = False
 
-        voice_mutes = await VoiceMute.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-            target="user",
-        )
-        if not voice_mutes:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{member_obj.mention} is not currently voice-muted "
-                    f"in {channel_obj.mention}."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        if voice_mutes[0].expires_in is None:
-            if executor_role == "Moderator":
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f "
-                        "Only coordinators and above can undo "
-                        "permanent voice-mutes."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-
-        await VoiceMute.delete(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-            target="user",
-        )
-
-        if member_obj.voice and member_obj.voice.channel:
+        if member.voice and member.voice.channel:
             try:
                 is_channel_scope = True
-                await member_obj.edit(mute=False)
+                await member.edit(mute=False)
             except discord.Forbidden as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
+            channel=channel,
             duration=None,
             is_channel_scope=is_channel_scope,
-            is_modification=True,
-            member=member_obj,
+            is_modification=action_information["action_modification"],
+            member=member,
             message=message,
             reason="No reason provided.",
         )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member_obj.display_name} has been Unmuted",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been Unmuted",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}"
             ),
             color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -821,17 +563,7 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_unrole_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
         try:
             role = await resolve_role(
@@ -846,42 +578,41 @@ class Aliases(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-        if role not in member_obj.roles:
+        if role not in member.roles:
             try:
                 return await state.end(
                     warning=f"{get_random_emoji()} "
-                    f"{member_obj.mention} does not have {role.mention}."
+                    f"{member.mention} does not have {role.mention}."
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
-            await member_obj.remove_roles(role)
+            await member.remove_roles(role)
         except discord.Forbidden as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
+            channel=channel,
             duration=None,
             is_channel_scope=False,
-            is_modification=True,
-            member=member_obj,
+            is_modification=action_information["action_modification"],
+            member=member,
             message=message,
             reason="No reason provided.",
         )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member_obj.display_name} has been Unroled",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been Unroled",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}\n"
                 f"**Role:** {role.mention}"
             ),
             color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:
@@ -889,76 +620,34 @@ class Aliases(commands.Cog):
 
     # DONE
     async def handle_untextmute_alias(
-        self,
-        alias,
-        args,
-        channel_obj,
-        executor_role,
-        existing_guestroom_alias_event,
-        is_duration_modification,
-        is_reason_modification,
-        member_obj,
-        message,
-        state,
+        self, alias, action_information, channel, member, message, state
     ):
-        text_mute = await TextMute.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-        if not text_mute:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{member_obj.mention} is not currently text-muted "
-                    f"in {channel_obj.mention}."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        if text_mute.expires_in is None:
-            if executor_role == "Moderator":
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f "
-                        "Only coordinators and above can undo "
-                        "permanent text-mutes."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-
-        await TextMute.delete(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
-        )
-
         try:
-            await channel_obj.set_permissions(member=member_obj, send_messages=None)
+            await channel.set_permissions(member=member, send_messages=None)
         except discord.Forbidden as e:
             return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         await History.send_entry(
             alias=alias,
-            channel=channel_obj,
+            channel=channel,
             duration=None,
             is_channel_scope=False,
-            is_modification=True,
-            member=member_obj,
+            is_modification=action_information["action_modification"],
+            member=member,
             message=message,
             reason="No reason provided.",
         )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member_obj.display_name} has been Unmuted",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been Unmuted",
             description=(
                 f"**By:** {message.author.mention}\n"
-                f"**User:** {member_obj.mention}\n"
-                f"**Channel:** {channel_obj.mention}"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}"
             ),
             color=discord.Color.yellow(),
         )
-        embed.set_thumbnail(url=member_obj.display_avatar.url)
+        embed.set_thumbnail(url=member.display_avatar.url)
         try:
             return await state.end(success=embed)
         except Exception as e:

@@ -17,10 +17,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.database.roles.coordinator import Coordinator
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+
 import pytest
+
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+    RESET, YELLOW, RED, GREEN,
+)
+from vyrtuous.utils.emojis import EMOJIS
 
 
 @pytest.mark.asyncio
@@ -36,7 +41,6 @@ async def test_rmute_command(
     bot,
     command: Optional[str],
     guild,
-    needs_message_id,
     not_privileged_author,
     permission,
     prefix: Optional[str],
@@ -44,7 +48,6 @@ async def test_rmute_command(
     ref_channel,
     ref_guild,
     ref_member,
-    should_warn,
     text_channel,
     voice_channel_one,
 ):
@@ -76,7 +79,7 @@ async def test_rmute_command(
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
             assert any(
                 str(channel_value) in content for channel_value in channel_values

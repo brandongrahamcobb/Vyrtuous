@@ -16,29 +16,50 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import builtins
 from contextlib import asynccontextmanager, contextmanager, ExitStack
-from datetime import datetime, timezone
-from discord.ext.commands import Context, view as cmd_view
-from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+import asyncio
+import os
+
+from discord.ext.commands import Context, view as cmd_view
+import asyncpg
+import discord
+import pytest
+import pytest_asyncio
+
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.bot.discord_client import DiscordClient
 from vyrtuous.config import Config
-from vyrtuous.inc.helpers import *
+from vyrtuous.inc.helpers import (
+    ROLE_ID,
+    ROLE_NAME,
+    DISCORD_COGS,
+    VOICE_CHANNEL_ONE_NAME,
+    VOICE_CHANNEL_ONE_ID,
+    VOICE_CHANNEL_TWO_ID,
+    VOICE_CHANNEL_TWO_NAME,
+    MESSAGE_ID,
+    NOT_PRIVILEGED_AUTHOR_ID,
+    PRIVILEGED_AUTHOR_ID,
+    PRIVILEGED_AUTHOR_NAME,
+    NOT_PRIVILEGED_AUTHOR_NAME,
+    TEXT_CHANNEL_ID,
+    TEXT_CHANNEL_NAME,
+    GUILD_ID,
+    GUILD_NAME
+)
 from vyrtuous.database.roles.administrator import Administrator
 from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.developer import Developer
 from vyrtuous.database.roles.moderator import Moderator
-from vyrtuous.utils.permission import PERMISSION_TYPES
 from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.tests.black_box.make_mock_objects import *
-import asyncpg
-import discord
-import os
-import pytest
-import pytest_asyncio
+from vyrtuous.tests.black_box.make_mock_objects import (
+    create_channel,
+    create_guild,
+    create_member,
+    create_message,
+    create_role,
+)
 
 RED = "\033[91m"
 YELLOW = "\033[93m"
@@ -205,7 +226,6 @@ def _normalize_payload(payload):
 @asynccontextmanager
 async def capture(author, channel):
     captured = []
-    send = StateService._send_message
     end = StateService.end
 
     async def _send(
@@ -276,7 +296,6 @@ async def capture(author, channel):
         captured.append({"type": kind, "message": msg})
         return msg
 
-    # channel.send = _send
     StateService._send_message = _send
     channel.send = send
     StateService.end = _end
@@ -288,7 +307,7 @@ async def capture(author, channel):
 
 
 @contextmanager
-def prepare_discord_state(author, bot, channel, content, guild, highest_role):
+def prepare_discord_state(bot, guild, highest_role):
     with ExitStack() as stack:
         stack.enter_context(
             patch(
@@ -310,7 +329,6 @@ def prepare_discord_state(author, bot, channel, content, guild, highest_role):
                 new=AsyncMock(return_value=highest_role),
             )
         )
-        # stack.enter_context(patch.object(bot, "get_channel", side_effect=lambda cid: channel if cid == channel.id else None))
         stack.enter_context(
             patch.object(
                 bot,
@@ -372,7 +390,7 @@ async def prepared_command_handling(
     mock_bot_user = guild.me
     with patch.object(
         bot, "_connection", create=True
-    ) as mock_conn, ExitStack() as stack, prepare_discord_state(
+    ) as mock_conn, ExitStack() as _, prepare_discord_state(
         author, bot, channel, content, guild, highest_role
     ):
         mock_conn.user = mock_bot_user

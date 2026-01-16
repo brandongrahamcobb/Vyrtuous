@@ -17,11 +17,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.database.roles.developer import Developer
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+
 import pytest
+import discord
+
+from vyrtuous.inc.helpers import PRIVILEGED_AUTHOR_ID
+from vyrtuous.database.roles.developer import Developer
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+    RESET, YELLOW, RED, GREEN,
+)
+from vyrtuous.utils.emojis import EMOJIS
 
 
 @pytest.mark.asyncio
@@ -44,7 +51,6 @@ async def test_dish_dlog_dlogs_commands(
     privileged_author,
     prefix: Optional[str],
     command: Optional[str],
-    role_ref,
 ):
     developer = Developer(
         guild_snowflake=guild.id, member_snowflake=privileged_author.id
@@ -52,7 +58,6 @@ async def test_dish_dlog_dlogs_commands(
     await developer.create()
     try:
         voice_channel_one.messages.clear()
-        channel_token = voice_channel_one.mention
         formatted = f"{command}"
         captured = await prepared_command_handling(
             author=privileged_author,

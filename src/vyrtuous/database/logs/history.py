@@ -19,15 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime, timezone
 from typing import Optional
 
-from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.database_factory import DatabaseFactory
 from vyrtuous.properties.duration import DurationObject
-from vyrtuous.service.check_service import (
-    role_check_with_specifics
-)
+from vyrtuous.service.check_service import role_check_with_specifics
 from vyrtuous.service.messaging.paginator_service import Paginator
 
 
@@ -61,7 +58,7 @@ class History(DatabaseFactory):
         guild_snowflake: Optional[int],
         created_at: Optional[datetime] = None,
         snowflakes: list[int] = None,
-        updated_at:Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
     ):
         self.action: Optional[str]
         self.channel_snowflake = channel_snowflake
@@ -108,7 +105,11 @@ class History(DatabaseFactory):
         author_snowflake = None
         expires_at = None
         history = await History.select()
-        highest_role = await role_check_with_specifics(channel_snowflake=channel.id, guild_snowflake=channel.guild.id, member_snowflake=member.id)
+        highest_role = await role_check_with_specifics(
+            channel_snowflake=channel.id,
+            guild_snowflake=channel.guild.id,
+            member_snowflake=member.id,
+        )
         if message:
             for entry in history:
                 channel_obj = bot.get_channel(entry.channel_snowflake)
@@ -135,9 +136,7 @@ class History(DatabaseFactory):
             )
         else:
             expires_at = datetime.now(timezone.utc) + DurationObject(0).to_timedelta()
-        channel_members_voice_count = sum(
-            len(channel.members) for channel in channel.guild.voice_channels
-        )
+        channel_members_voice_count = len(channel.members)
         guild_members_offline_and_online_member_count = sum(
             1 for member in channel.guild.members if not member.bot
         )

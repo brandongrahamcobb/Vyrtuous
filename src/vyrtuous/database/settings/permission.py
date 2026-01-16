@@ -22,12 +22,12 @@ from typing import Optional
 from vyrtuous.database.database_factory import DatabaseFactory
 
 
-class Cap(DatabaseFactory):
+class Permission(DatabaseFactory):
 
-    ACT = "cap"
-    PLURAL = "Caps"
-    SINGULAR = "Cap"
-    UNDO = "cap"
+    ACT = None
+    PLURAL = "Permissions"
+    SINGULAR = "Permission"
+    UNDO = None
     REQUIRED_INSTANTIATION_ARGS = [
         "channel_snowflake",
         "duration_seconds",

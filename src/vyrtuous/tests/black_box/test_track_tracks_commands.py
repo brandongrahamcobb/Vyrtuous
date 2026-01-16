@@ -17,9 +17,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.database.roles.administrator import Administrator
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+)
+from vyrtuous.utils.emojis import EMOJIS
 import pytest
 
 
@@ -55,15 +58,12 @@ async def test_log_logs_mlog_command(
     ref_channel,
     ref_member,
     ref_text,
-    role,
-    should_warn,
     target_type: Optional[str],
     text_channel,
     voice_channel_one,
 ):
     text_channel_values = (text_channel.mention, text_channel.id)
     voice_channel_values = (voice_channel_one.mention, voice_channel_one.id)
-    privileged_author_values = (privileged_author.mention, privileged_author.id)
     not_privileged_author_values = (
         not_privileged_author.mention,
         not_privileged_author.id,
@@ -107,7 +107,7 @@ async def test_log_logs_mlog_command(
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         assert any(emoji in content for emoji in EMOJIS)
         if ref_text:
             assert any(

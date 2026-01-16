@@ -17,12 +17,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.make_mock_objects import *
-from vyrtuous.database.roles.moderator import Moderator
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+
 import pytest
+
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+    RESET, YELLOW, RED, GREEN,
+)
+from vyrtuous.utils.emojis import EMOJIS
 
 
 @pytest.mark.asyncio
@@ -38,9 +41,7 @@ async def test_roleid_command(
     permission,
     prefix: Optional[str],
     privileged_author,
-    should_warn,
     text_channel,
-    voice_channel_one,
 ):
     captured = await prepared_command_handling(
         author=privileged_author,
@@ -65,5 +66,5 @@ async def test_roleid_command(
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         assert any(emoji in content for emoji in EMOJIS)

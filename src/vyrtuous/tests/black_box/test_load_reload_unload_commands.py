@@ -17,11 +17,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.database.roles.developer import Developer
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
-from vyrtuous.tests.black_box.test_suite import *
+
 import pytest
+
+from vyrtuous.inc.helpers import DISCORD_COGS
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+    RESET, YELLOW, RED, GREEN,
+)
+from vyrtuous.utils.emojis import EMOJIS
 
 
 @pytest.mark.asyncio
@@ -38,13 +43,10 @@ import pytest
 async def test_load_reload_unload_command(
     bot,
     command: Optional[str],
-    not_privileged_author,
     permission,
     prefix: Optional[str],
     privileged_author,
-    should_warn,
     text_channel,
-    voice_channel_one,
     guild,
 ):
     formatted = command
@@ -71,11 +73,5 @@ async def test_load_reload_unload_command(
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
-        # if ref_channel:
-        #     assert any(str(channel_value) in content for channel_value in channel_values)
-        # if ref_guild:
-        #     assert any(str(guild_value) in content for guild_value in guild_values)
-        # if ref_member:
-        #     assert any(str(member_value) in content for member_value in member_values)
+        print(f"{GREEN}Success:{RESET} {content}")
         assert any(emoji in content for emoji in EMOJIS)

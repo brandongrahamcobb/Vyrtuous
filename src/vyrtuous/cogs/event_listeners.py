@@ -45,7 +45,6 @@ from vyrtuous.database.settings.cap import Cap
 from vyrtuous.properties.duration import DurationObject
 from vyrtuous.service.check_service import (
     has_equal_or_higher_role,
-    role_check_with_specifics,
     not_bot,
 )
 from vyrtuous.service.logging_service import logger
@@ -93,9 +92,7 @@ class EventListeners(commands.Cog):
                 return
         room = self.deleted_rooms.pop(name, None)
         if not room:
-            room = await TemporaryRoom.select(
-                guild_snowflake=guild.id, room_name=name
-            )
+            room = await TemporaryRoom.select(guild_snowflake=guild.id, room_name=name)
         if room:
             old_id = room.channel_snowflake
         set_kwargs = {"channel_snowflake": channel.id}
@@ -415,8 +412,17 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        args = message.content[len(self.config["discord_command_prefix"]):].strip().split()
-        if not message.guild or not args or not message.content.startswith(self.config["discord_command_prefix"]) or (self.config["release_mode"] and message.author.id == self.bot.user.id):
+        args = (
+            message.content[len(self.config["discord_command_prefix"]) :]
+            .strip()
+            .split()
+        )
+        if (
+            not message.guild
+            or not args
+            or not message.content.startswith(self.config["discord_command_prefix"])
+            or (self.config["release_mode"] and message.author.id == self.bot.user.id)
+        ):
             return
         alias = await Alias.select(
             alias_name=args[0],
@@ -425,18 +431,16 @@ class EventListeners(commands.Cog):
         )
         if not alias:
             return
-        
+
         state = StateService(message)
-        modification_chars = ('=', '+', '-')
+        modification_chars = ("=", "+", "-")
 
         try:
             channel_obj = await resolve_channel(
-                ctx_interaction_or_message=message,
-                channel_str=alias.channel_snowflake
+                ctx_interaction_or_message=message, channel_str=alias.channel_snowflake
             )
             member_obj = await resolve_member(
-                ctx_interaction_or_message=message,
-                member_str=args[1]
+                ctx_interaction_or_message=message, member_str=args[1]
             )
             executor_role = await has_equal_or_higher_role(
                 ctx_interaction_or_message=message,
@@ -446,12 +450,21 @@ class EventListeners(commands.Cog):
                 sender_snowflake=message.author.id,
             )
             not_bot(message, member_snowflake=member_obj.id)
-            action_duration = DurationObject(args[2]) if len(args) > 2 and args[2] not in ('=', '+', '-') else DurationObject("8h")
+            action_duration = (
+                DurationObject(args[2])
+                if len(args) > 2 and args[2] not in ("=", "+", "-")
+                else DurationObject("8h")
+            )
             duration_modification = action_duration.is_modification
             expires_at = datetime.now(timezone.utc) + action_duration.to_timedelta()
             action_expires_in = expires_at - datetime.now(timezone.utc)
-            action_reason = ' '.join(args[3:]) if len(args) > 3 else "No reason provided."
-            reason_modification = action_duration.prefix in modification_chars and action_duration.number is None
+            action_reason = (
+                " ".join(args[3:]) if len(args) > 3 else "No reason provided."
+            )
+            reason_modification = (
+                action_duration.prefix in modification_chars
+                and action_duration.number is None
+            )
         except Exception as e:
             try:
                 return await state.end(
@@ -459,19 +472,37 @@ class EventListeners(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-            
+
         alias_class = alias.alias_class
         action_existing = await alias_class.select(
             channel_snowflake=channel_obj.id,
             guild_snowflake=message.guild.id,
             member_snowflake=member_obj.id,
-            singular=True
+            singular=True,
         )
+        if alias.alias_type == alias_class.UNDO:
+            action_modification = True
+            if not action_existing:
+                try:
+                    return await state.end(
+                        warning=f"\U000026a0\U0000fe0f "
+                        f"No current {alias_class.SINGULAR} for {member_obj.mention} exists in "
+                        f"{channel_obj.mention}."
+                    )
+                except Exception as e:
+                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+            await alias_class.delete(
+                channel_snowflake=channel_obj.id,
+                guild_snowflake=message.guild.id,
+                member_snowflake=member_obj.id,
+            )
+
         action_channel_cap = await generate_cap_duration(
             channel_snowflake=channel_obj.id,
             guild_snowflake=message.guild.id,
-            moderation_type=alias_class.ACT
+            moderation_type=alias_class.ACT,
         )
+
         action_information = {
             "alias_class": alias_class,
             "action_channel_cap": action_channel_cap,
@@ -483,12 +514,17 @@ class EventListeners(commands.Cog):
             "action_expires_in_modification": duration_modification,
             "action_guild_snowflake": message.guild.id,
             "action_member_snowflake": member_obj.id,
-            "action_modification": duration_modification or reason_modification,
+            "action_modification": action_modification
+            or duration_modification
+            or reason_modification,
             "action_reason": action_reason,
             "action_reason_modification": reason_modification,
+            "action_role_snowflake": (
+                alias.role_snowflake if alias.role_snowflake else None
+            ),
         }
-        if action_information['action_duration'].number != 0 and action_existing:
-            if action_information['action_expires_in'].total_seconds() < 0:
+        if action_information["action_duration"].number != 0 and action_existing:
+            if action_information["action_expires_in"].total_seconds() < 0:
                 try:
                     return await state.end(
                         warning="\U000026a0\U0000fe0f "
@@ -496,10 +532,13 @@ class EventListeners(commands.Cog):
                         "the duration below the current time."
                     )
                 except Exception as e:
-                    return await state.end(
-                        error=f"\u274c {str(e).capitalize()}"
-                    )
-        if action_information['action_existing'] and action_information['action_expires_in'].total_seconds() > action_information['action_channel_cap']:
+                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+        if (
+            action_information["action_existing"]
+            and action_information["action_expires_in"].total_seconds()
+            > action_information["action_channel_cap"]
+            or action_information["action_duration"].number == 0
+        ):
             if executor_role == "Moderator":
                 duration_str = DurationObject.from_seconds(action_channel_cap)
                 try:
@@ -509,37 +548,34 @@ class EventListeners(commands.Cog):
                         f"{executor_role} in {channel_obj.mention}."
                     )
                 except Exception as e:
-                    return await state.end(
-                        error=f"\u274c {str(e).capitalize()}"
-                    )
-        
+                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+
         where_kwargs = {
-            "channel_snowflake": action_information['action_channel_snowflake'],
-            "guild_snowflake": action_information['action_guild_snowflake'],
-            "member_snowflake": action_information['action_member_snowflake'],
+            "channel_snowflake": action_information["action_channel_snowflake"],
+            "guild_snowflake": action_information["action_guild_snowflake"],
+            "member_snowflake": action_information["action_member_snowflake"],
         }
-        if action_information['action_modification']:
-            if action_information['action_expires_in_modification']:
+        if action_information["action_modification"]:
+            if action_information["action_expires_in_modification"]:
                 await update_duration(
-                    action_information=action_information,
-                    where_kwargs=where_kwargs
+                    action_information=action_information, where_kwargs=where_kwargs
                 )
-            if action_information['action_reason_modification']:
+            if action_information["action_reason_modification"]:
                 await update_reason(
-                    action_information=action_information,
-                    where_kwargs=where_kwargs
+                    action_information=action_information, where_kwargs=where_kwargs
                 )
-        elif action_information['action_existing'] and not action_information['action_modification']:
+        elif (
+            action_information["action_existing"]
+            and not action_information["action_modification"]
+        ):
             try:
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f "
                     f"An existing {action_information['alias_class'].SINGULAR} already exists for "
-                    f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}"
+                    f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
                 )
             except Exception as e:
-                return await state.end(
-                    error=f"\u274c " f"{str(e).capitalize()}"
-                )
+                return await state.end(error=f"\u274c " f"{str(e).capitalize()}")
 
         await alias.handler(
             alias=alias,
@@ -708,12 +744,17 @@ class EventListeners(commands.Cog):
 async def setup(bot: DiscordBot):
     await bot.add_cog(EventListeners(bot))
 
-async def generate_cap_duration(channel_snowflake: Optional[int], guild_snowflake: Optional[int], moderation_type: Optional[str]):
+
+async def generate_cap_duration(
+    channel_snowflake: Optional[int],
+    guild_snowflake: Optional[int],
+    moderation_type: Optional[str],
+):
     cap = await Cap.select(
         channel_snowflake=channel_snowflake,
         guild_snowflake=guild_snowflake,
         moderation_type=moderation_type,
-        singular=True
+        singular=True,
     )
     if not hasattr(cap, "duration"):
         cap_duration = DurationObject("8h").to_seconds()
@@ -721,34 +762,40 @@ async def generate_cap_duration(channel_snowflake: Optional[int], guild_snowflak
         cap_duration = cap.duration_seconds
     return cap_duration
 
+
 async def update_reason(action_information, where_kwargs):
-    match action_information['action_duration'].prefix:
+    match action_information["action_duration"].prefix:
         case "+":
-            reason = action_information['action_existing'].reason + action_information['action_reason']
+            reason = (
+                action_information["action_existing"].reason
+                + action_information["action_reason"]
+            )
         case "=" | "-":
-            reason = action_information['action_reason']
-    set_kwargs = {
-        "reason": reason
-    }
-    await action_information['alias_class'].update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            reason = action_information["action_reason"]
+    set_kwargs = {"reason": reason}
+    await action_information["alias_class"].update(
+        set_kwargs=set_kwargs, where_kwargs=where_kwargs
+    )
+
 
 async def update_duration(action_information, where_kwargs):
-    match action_information['action_duration'].prefix:
+    match action_information["action_duration"].prefix:
         case "+":
             updated_expires_in = (
-                action_information['action_existing'].expires_in
-                + action_information['action_expires_in']
+                action_information["action_existing"].expires_in
+                + action_information["action_expires_in"]
             )
         case "=":
             updated_expires_in = (
-                datetime.now(timezone.utc) + action_information['action_expires_in'].to_timedelta()
+                datetime.now(timezone.utc)
+                + action_information["action_expires_in"].to_timedelta()
             )
         case "-":
-            updated_expires_in = ( 
-                action_information['action_existing'].expires_in
-                - action_information['action_expires_in']
+            updated_expires_in = (
+                action_information["action_existing"].expires_in
+                - action_information["action_expires_in"]
             )
-    set_kwargs = {
-        "expires_in": updated_expires_in
-    }
-    await action_information['alias_class'].update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+    set_kwargs = {"expires_in": updated_expires_in}
+    await action_information["alias_class"].update(
+        set_kwargs=set_kwargs, where_kwargs=where_kwargs
+    )

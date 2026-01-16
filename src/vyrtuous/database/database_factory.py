@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.logging_service import logger
+
 
 class DatabaseFactory(object):
 
@@ -26,7 +26,9 @@ class DatabaseFactory(object):
 
     async def create(self):
         table_name = getattr(self, "TABLE_NAME")
-        fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(self, "OPTIONAL_ARGS")
+        fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(
+            self, "OPTIONAL_ARGS"
+        )
         insert_fields = [f for f in fields if getattr(self, f, None) is not None]
         if not insert_fields:
             raise ValueError("No fields available to insert")
@@ -65,25 +67,27 @@ class DatabaseFactory(object):
     @classmethod
     async def select(cls, *, singular=False, **kwargs):
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls, 'TABLE_NAME')
-        fields = getattr(cls, 'REQUIRED_INSTANTIATION_ARGS') + getattr(cls, 'OPTIONAL_ARGS')
-        virtual_filters = {'expired'}
+        table_name = getattr(cls, "TABLE_NAME")
+        fields = getattr(cls, "REQUIRED_INSTANTIATION_ARGS") + getattr(
+            cls, "OPTIONAL_ARGS"
+        )
+        virtual_filters = {"expired"}
         for key in kwargs:
             if key not in fields and key not in virtual_filters:
                 raise ValueError(f"Invalid argument '{key}' for {cls.__name__}")
         conditions = []
         values = []
         for field, value in kwargs.items():
-            if field == 'expired':
+            if field == "expired":
                 if value is True:
-                    conditions.append('expires_in IS NOT NULL AND expires_in < NOW()')
+                    conditions.append("expires_in IS NOT NULL AND expires_in < NOW()")
                 continue
-            conditions.append(f'{field}=${len(values)+1}')
+            conditions.append(f"{field}=${len(values)+1}")
             values.append(value)
-        where_clause = 'WHERE ' + ' AND '.join(conditions) if conditions else ''
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
             rows = await conn.fetch(
-                f'SELECT * FROM {table_name} {where_clause}', *values
+                f"SELECT * FROM {table_name} {where_clause}", *values
             )
         if singular:
             if not rows:

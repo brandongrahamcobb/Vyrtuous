@@ -28,7 +28,6 @@ from vyrtuous.properties.snowflake import (
     MemberSnowflake,
 )
 from vyrtuous.service.check_service import (
-    has_equal_or_higher_role,
     not_bot,
     sys_owner_predicator,
 )
@@ -220,13 +219,6 @@ class SystemOwnerCommands(commands.Cog):
         try:
             member_obj = await resolve_member(interaction, member)
             not_bot(interaction, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(
-                interaction,
-                channel_snowflake=interaction.channel.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=interaction.user.id,
-            )
         except Exception as e:
             try:
                 return await state.end(
@@ -234,18 +226,12 @@ class SystemOwnerCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-        developer = await Developer.select(
-            guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-        )
+        developer = await Developer.select(member_snowflake=member_obj.id)
         if developer:
-            await Developer.delete(
-                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-            )
+            await Developer.delete(member_snowflake=member_obj.id)
             action = "revoked"
         else:
-            developer = Developer(
-                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-            )
+            developer = Developer(member_snowflake=member_obj.id)
             await developer.create()
             action = "granted"
         try:
@@ -271,13 +257,6 @@ class SystemOwnerCommands(commands.Cog):
         try:
             member_obj = await resolve_member(ctx, member)
             not_bot(ctx, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(
-                ctx,
-                channel_snowflake=ctx.channel.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=ctx.author.id,
-            )
         except Exception as e:
             try:
                 return await state.end(
@@ -285,18 +264,12 @@ class SystemOwnerCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
-        developer = await Developer.select(
-            guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-        )
+        developer = await Developer.select(member_snowflake=member_obj.id)
         if developer:
-            await Developer.delete(
-                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-            )
+            await Developer.delete(member_snowflake=member_obj.id)
             action = "revoked"
         else:
-            developer = Developer(
-                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-            )
+            developer = Developer(member_snowflake=member_obj.id)
             await developer.create()
             action = "granted"
         try:

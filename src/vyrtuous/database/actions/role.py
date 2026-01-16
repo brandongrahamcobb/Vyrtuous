@@ -1,4 +1,4 @@
-"""cap.py The purpose of this program is to provide the Cap utility class.
+"""flag.py The purpose of this program is to inherit from Action to provide the flag moderation.
 
 Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
@@ -18,40 +18,40 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from typing import Optional
+from vyrtuous.database.actions.action import Action
 
-from vyrtuous.database.database_factory import DatabaseFactory
 
+class Role(Action):
 
-class Cap(DatabaseFactory):
-
-    ACT = "cap"
-    PLURAL = "Caps"
-    SINGULAR = "Cap"
-    UNDO = "cap"
+    ACT = "role"
+    PLURAL = "Roles"
+    SINGULAR = "Role"
+    UNDO = "unrole"
     REQUIRED_INSTANTIATION_ARGS = [
-        "channel_snowflake",
-        "duration_seconds",
         "guild_snowflake",
-        "moderation_type",
+        "member_snowflake",
+        "role_snowflake",
     ]
-    OPTIONAL_ARGS = [
-        "created_at",
-        "updated_at",
-    ]
-    TABLE_NAME = "active_caps"
+    OPTIONAL_ARGS = ["channel_snowflake", "created_at", "updated_at"]
+    TABLE_NAME = "active_flags"
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
-        duration_seconds: Optional[int],
         guild_snowflake: Optional[int],
-        moderation_type: Optional[str],
+        member_snowflake: Optional[int],
+        role_snowflake: Optional[int],
+        channel_snowflake: Optional[int] = None,
         created_at: Optional[datetime] = None,
+        reason: Optional[str] = "No reason provided.",
         updated_at: Optional[datetime] = None,
     ):
+        super().__init__()
         self.channel_snowflake = channel_snowflake
+        self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
         self.created_at = created_at
-        self.duration_seconds = duration_seconds
         self.guild_snowflake = guild_snowflake
-        self.moderation_type = moderation_type
+        self.member_snowflake = member_snowflake
+        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
+        self.reason = reason
+        self.role_snowflake = role_snowflake
         self.updated_at = updated_at

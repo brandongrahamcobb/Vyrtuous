@@ -15,15 +15,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from unittest.mock import AsyncMock
 from datetime import datetime, timezone
+from types import SimpleNamespace
+
 from discord.http import HTTPClient
 from discord.state import ConnectionState
-from types import SimpleNamespace
-from vyrtuous.inc.helpers import *
-import aiohttp
-import asyncio
 import discord
+
+from vyrtuous.inc.helpers import (
+    NOT_PRIVILEGED_AUTHOR_ID,
+    NOT_PRIVILEGED_AUTHOR_NAME
+)
 
 
 def create_state():

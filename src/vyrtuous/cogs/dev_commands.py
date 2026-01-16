@@ -35,7 +35,6 @@ from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
     resolve_objects,
-    generate_skipped_channels,
     generate_skipped_guilds,
     generate_skipped_messages,
     clean_guild_dictionary,
@@ -249,6 +248,7 @@ class DevCommands(commands.Cog):
             developer_logs = await DeveloperLog.select(id=target_uuid)
             title = f"{get_random_emoji()} Developer Logs"
         except (ValueError, TypeError) as e:
+            logger.warning(str(e).capitalize())
             developer_logs, title = await resolve_objects(
                 ctx_interaction_or_message=interaction,
                 obj=DeveloperLog,
@@ -268,15 +268,22 @@ class DevCommands(commands.Cog):
         for developer_log in developer_logs:
             guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
             messages = guild_dictionary[developer_log.guild_snowflake]["messages"]
-            messages.setdefault(developer_log.message_snowflake, {
-                "channel_snowflake": developer_log.channel_snowflake,
-                "developer_snowflakes": [],
-                "id": developer_log.id,
-                "notes": [],
-                "resolved": developer_log.resolved,
-            })
-            messages[developer_log.message_snowflake]["developer_snowflakes"].extend(developer_log.developer_snowflakes)
-            messages[developer_log.message_snowflake]["notes"].append(developer_log.notes)
+            messages.setdefault(
+                developer_log.message_snowflake,
+                {
+                    "channel_snowflake": developer_log.channel_snowflake,
+                    "developer_snowflakes": [],
+                    "id": developer_log.id,
+                    "notes": [],
+                    "resolved": developer_log.resolved,
+                },
+            )
+            messages[developer_log.message_snowflake]["developer_snowflakes"].extend(
+                developer_log.developer_snowflakes
+            )
+            messages[developer_log.message_snowflake]["notes"].append(
+                developer_log.notes
+            )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)
@@ -292,20 +299,24 @@ class DevCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for message_snowflake, entry in guild_data.get('messages', {}).items():
-                channel = self.bot.get_channel(entry['channel_snowflake'])
+            for message_snowflake, entry in guild_data.get("messages", {}).items():
+                channel = self.bot.get_channel(entry["channel_snowflake"])
                 if not channel:
                     continue
-                if filter == 'resolved' and not entry.get('resolved'):
+                if filter == "resolved" and not entry.get("resolved"):
                     continue
-                if filter == 'unresolved' and entry.get('resolved'):
+                if filter == "unresolved" and entry.get("resolved"):
                     continue
                 lines = []
                 msg = await channel.fetch_message(message_snowflake)
-                lines.append(f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}')
-                lines.append(f'**Message:** {msg.jump_url}')
-                if target and str(target) == str(entry['id']):
-                    lines.append(f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}')
+                lines.append(
+                    f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}'
+                )
+                lines.append(f"**Message:** {msg.jump_url}")
+                if target and str(target) == str(entry["id"]):
+                    lines.append(
+                        f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}'
+                    )
                     lines.append(
                         f'**Assigned to:** {", ".join(str(d) for d in entry["developer_snowflakes"]) if entry.get("developer_snowflakes") else None}'
                     )
@@ -313,11 +324,19 @@ class DevCommands(commands.Cog):
                     lines.append(f'**Reference:** {entry["id"]}')
                 field_count += 1
                 if field_count >= chunk_size:
-                    embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
+                    embed.add_field(
+                        name=f"**Channel:** {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
             if lines:
-                embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
+                embed.add_field(
+                    name=f"**Channel:** {channel.mention}",
+                    value="\n".join(lines),
+                    inline=False,
+                )
             pages.append(embed)
 
         if is_at_home:
@@ -361,6 +380,7 @@ class DevCommands(commands.Cog):
             developer_logs = await DeveloperLog.select(id=target_uuid)
             title = f"{get_random_emoji()} Developer Logs"
         except (ValueError, TypeError) as e:
+            logger.warning(str(e).capitalize())
             developer_logs, title = await resolve_objects(
                 ctx_interaction_or_message=ctx,
                 obj=DeveloperLog,
@@ -380,15 +400,22 @@ class DevCommands(commands.Cog):
         for developer_log in developer_logs:
             guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
             messages = guild_dictionary[developer_log.guild_snowflake]["messages"]
-            messages.setdefault(developer_log.message_snowflake, {
-                "channel_snowflake": developer_log.channel_snowflake,
-                "developer_snowflakes": [],
-                "id": developer_log.id,
-                "notes": [],
-                "resolved": developer_log.resolved,
-            })
-            messages[developer_log.message_snowflake]["developer_snowflakes"].extend(developer_log.developer_snowflakes)
-            messages[developer_log.message_snowflake]["notes"].append(developer_log.notes)
+            messages.setdefault(
+                developer_log.message_snowflake,
+                {
+                    "channel_snowflake": developer_log.channel_snowflake,
+                    "developer_snowflakes": [],
+                    "id": developer_log.id,
+                    "notes": [],
+                    "resolved": developer_log.resolved,
+                },
+            )
+            messages[developer_log.message_snowflake]["developer_snowflakes"].extend(
+                developer_log.developer_snowflakes
+            )
+            messages[developer_log.message_snowflake]["notes"].append(
+                developer_log.notes
+            )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)
@@ -404,20 +431,24 @@ class DevCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for message_snowflake, entry in guild_data.get('messages', {}).items():
-                channel = self.bot.get_channel(entry['channel_snowflake'])
+            for message_snowflake, entry in guild_data.get("messages", {}).items():
+                channel = self.bot.get_channel(entry["channel_snowflake"])
                 if not channel:
                     continue
-                if filter == 'resolved' and not entry.get('resolved'):
+                if filter == "resolved" and not entry.get("resolved"):
                     continue
-                if filter == 'unresolved' and entry.get('resolved'):
+                if filter == "unresolved" and entry.get("resolved"):
                     continue
                 lines = []
                 msg = await channel.fetch_message(message_snowflake)
-                lines.append(f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}')
-                lines.append(f'**Message:** {msg.jump_url}')
-                if target and str(target) == str(entry['id']):
-                    lines.append(f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}')
+                lines.append(
+                    f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}'
+                )
+                lines.append(f"**Message:** {msg.jump_url}")
+                if target and str(target) == str(entry["id"]):
+                    lines.append(
+                        f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}'
+                    )
                     lines.append(
                         f'**Assigned to:** {", ".join(str(d) for d in entry["developer_snowflakes"]) if entry.get("developer_snowflakes") else None}'
                     )
@@ -425,11 +456,19 @@ class DevCommands(commands.Cog):
                     lines.append(f'**Reference:** {entry["id"]}')
                 field_count += 1
                 if field_count >= chunk_size:
-                    embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
+                    embed.add_field(
+                        name=f"**Channel:** {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
             if lines:
-                embed.add_field(name=f'**Channel:** {channel.mention}', value='\n'.join(lines), inline=False)
+                embed.add_field(
+                    name=f"**Channel:** {channel.mention}",
+                    value="\n".join(lines),
+                    inline=False,
+                )
             pages.append(embed)
 
         if is_at_home:

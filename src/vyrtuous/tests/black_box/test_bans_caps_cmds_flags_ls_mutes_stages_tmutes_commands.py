@@ -16,11 +16,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.make_mock_objects import *
-from vyrtuous.database.roles.moderator import Moderator
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN, ROLE_ID
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+)
+from vyrtuous.utils.emojis import EMOJIS
 import pytest
 
 
@@ -246,7 +247,7 @@ CAP_SECONDS = parse_duration_seconds("=24h", UNIT_MAP)
 def build_alias_cases(
     LIST_ALIASES,
     LIST_CASES,
-    PREFIXES,
+    # PREFIXES,
     DURATIONS,
     UNIT_MAP,
     REASON,
@@ -255,7 +256,6 @@ def build_alias_cases(
 ):
     cases = []
     durations = sorted(DURATIONS, key=lambda x: int(x))
-    prefixes = ["=", "+", "-"]
     scopes = sorted(SCOPE)
     units = sorted(UNIT_MAP.keys())
 
@@ -400,7 +400,6 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(
     bot,
     cmd: Optional[str],
     guild,
-    # moderation_type,
     not_privileged_author,
     permission,
     prefix: Optional[str],
@@ -444,13 +443,13 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(
     if message_type == "error":
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
-        # print(f"{YELLOW}Warning:{RESET} {content}")
+        print(f"{YELLOW}Warning:{RESET} {content}")
         if should_warn:
             assert True
         else:
             assert False
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
             assert any(
                 str(channel_value) in content for channel_value in channel_values

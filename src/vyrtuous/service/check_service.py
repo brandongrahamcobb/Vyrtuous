@@ -138,7 +138,6 @@ async def is_developer(ctx_interaction_or_message):
     else:
         member_snowflake = None
     developer = await Developer.select(
-        guild_snowflake=ctx_interaction_or_message.guild.id,
         member_snowflake=member_snowflake,
     )
     if developer:
@@ -276,24 +275,6 @@ def moderator_predicator():
     return commands.check(predicate)
 
 
-# async def role_check_without_specifics(ctx_interaction_or_message) -> str:
-#     checks = (
-#         ('System Owner', is_system_owner),
-#         ('Developer', is_developer),
-#         ('Guild Owner', is_guild_owner),
-#         ('Administrator', is_administrator),
-#         ('Coordinator', is_coordinator),
-#         ('Moderator', is_moderator),
-#     )
-#     for role_name, check in checks:
-#         try:
-#             if await check(ctx_interaction_or_message):
-#                 return role_name
-#         except commands.CheckFailure:
-#             continue
-#     return 'Everyone'
-
-
 async def role_check_without_specifics(ctx_interaction_or_message, omit=()) -> str:
     checks = (
         ("System Owner", is_system_owner),
@@ -330,10 +311,8 @@ async def member_is_system_owner(member_snowflake: int) -> bool:
     raise NotSystemOwner
 
 
-async def member_is_developer(guild_snowflake: int, member_snowflake: int) -> bool:
-    developer = await Developer.select(
-        guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-    )
+async def member_is_developer(member_snowflake: int) -> bool:
+    developer = await Developer.select(member_snowflake=member_snowflake)
     if not developer:
         raise NotDeveloper
     return True
@@ -388,9 +367,7 @@ async def has_equal_or_higher_role(
         except NotSystemOwner:
             pass
         try:
-            if await member_is_developer(
-                guild_snowflake=guild_snowflake, member_snowflake=member_sf
-            ):
+            if await member_is_developer(member_snowflake=member_sf):
                 return PERMISSION_TYPES.index("Developer")
         except NotDeveloper:
             pass
@@ -446,23 +423,6 @@ async def has_equal_or_higher_role(
     return PERMISSION_TYPES[sender_rank]
 
 
-# async def is_system_owner_developer_guild_owner_administrator_coordinator_via_channel_member(channel_snowflake: int, guild_snowflake: int, member_snowflake: int) -> str:
-#     checks = (
-#         ('System Owner', lambda: member_is_system_owner(member_snowflake=member_snowflake)),
-#         ('Guild Owner', lambda: member_is_guild_owner(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
-#         ('Developer', lambda: member_is_developer(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
-#         ('Administrator', lambda: member_is_administrator(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)),
-#         ('Coordinator', lambda: member_is_coordinator(channel_snowflake=channel_snowflake, guild_snowflake=guild_snowflake, member_snowflake=member_snowflake))
-#     )
-#     for role_name, check in checks:
-#         try:
-#             if await check():
-#                 return role_name
-#         except (NotSystemOwner, NotGuildOwner, NotDeveloper, NotAdministrator, NotCoordinator):
-#             continue
-#     return 'Everyone'
-
-
 async def role_check_with_specifics(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
 ) -> str:
@@ -473,9 +433,7 @@ async def role_check_with_specifics(
         ),
         (
             "Developer",
-            lambda: member_is_developer(
-                guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-            ),
+            lambda: member_is_developer(member_snowflake=member_snowflake),
         ),
         (
             "Guild Owner",

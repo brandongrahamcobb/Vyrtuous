@@ -48,10 +48,9 @@ CREATE TABLE coordinators (
 
 CREATE TABLE developers (
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (guild_snowflake, member_snowflake)
+    PRIMARY KEY (member_snowflake)
 );
 
 CREATE TABLE administrators (
@@ -66,6 +65,7 @@ CREATE TABLE administrators (
 CREATE TABLE active_server_voice_mutes (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     guild_snowflake BIGINT NOT NULL,
+    expired BOOLEAN GENERATED ALWAYS AS (expires_in IS NOT NULL AND expires_in < NOW()) STORED,
     expires_in TIMESTAMPTZ,
     member_snowflake BIGINT NOT NULL,
     reason TEXT,
@@ -76,6 +76,7 @@ CREATE TABLE active_server_voice_mutes (
 CREATE TABLE active_text_mutes (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    expired BOOLEAN GENERATED ALWAYS AS (expires_in IS NOT NULL AND expires_in < NOW()) STORED,
     expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
@@ -87,6 +88,7 @@ CREATE TABLE active_text_mutes (
 CREATE TABLE active_bans (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    expired BOOLEAN GENERATED ALWAYS AS (expires_in IS NOT NULL AND expires_in < NOW()) STORED,
     expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
@@ -98,6 +100,7 @@ CREATE TABLE active_bans (
 CREATE TABLE active_voice_mutes (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    expired BOOLEAN GENERATED ALWAYS AS (expires_in IS NOT NULL AND expires_in < NOW()) STORED,
     expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
@@ -120,6 +123,7 @@ CREATE TABLE temporary_rooms (
 CREATE TABLE active_stages (
     channel_snowflake BIGINT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    expired BOOLEAN GENERATED ALWAYS AS (expires_in IS NOT NULL AND expires_in < NOW()) STORED,
     expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
@@ -150,6 +154,7 @@ CREATE TABLE vegans (
 CREATE TABLE active_flags (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
+    expired BOOLEAN GENERATED ALWAYS AS (expires_in IS NOT NULL AND expires_in < NOW()) STORED,
     expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,

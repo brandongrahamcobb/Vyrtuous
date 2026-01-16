@@ -16,9 +16,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.database.roles.developer import Developer
-from vyrtuous.tests.black_box.test_suite import *
+from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+)
 import pytest
 
 
@@ -37,7 +39,6 @@ async def test_backup_command(
     privileged_author,
     should_warn,
     text_channel,
-    voice_channel_one,
 ):
     captured = await prepared_command_handling(
         author=privileged_author,
@@ -66,5 +67,5 @@ async def test_backup_command(
         if should_warn:
             assert True
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         assert content.startswith("backup")

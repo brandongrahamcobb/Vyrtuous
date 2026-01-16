@@ -1,3 +1,0 @@
-pyflakes
-coverage
-hypothesis

@@ -16,11 +16,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.database.roles.administrator import Administrator
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+
 import pytest
+
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+    RESET, YELLOW, RED, GREEN,
+)
+from vyrtuous.utils.emojis import EMOJIS
 
 
 @pytest.mark.asyncio
@@ -33,13 +37,11 @@ async def test_rmv_command(
     bot,
     command: Optional[str],
     guild,
-    not_privileged_author,
     permission,
     prefix: Optional[str],
     privileged_author,
     ref_channel_one,
     ref_channel_two,
-    should_warn,
     text_channel,
     voice_channel_one,
     voice_channel_two,
@@ -72,7 +74,7 @@ async def test_rmv_command(
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel_one:
             assert any(
                 str(channel_one_value) in content

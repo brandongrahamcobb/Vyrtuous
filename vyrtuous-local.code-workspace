@@ -1,7 +1,7 @@
 {
-    "folders": [{"path": "./src"}],
+    "folders": [{"path": "./"}],
     "settings": {
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.defaultInterpreterPath": "/Users/spawd/git/python/sandbox/Vyrtuous/.venv//bin/python",
         "files.exclude": {"**/backups": true},
         "search.exclude": {"**/backups": true},
     },

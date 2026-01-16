@@ -27,6 +27,7 @@ from vyrtuous.service.logging_service import logger, setup_logging
 
 import debugpy
 
+
 async def main():
 
     config = Config().get_config()
@@ -39,6 +40,7 @@ async def main():
 
     discord_bot = DiscordBot(config=config, db_pool=db_pool)
     await discord_bot.start(config["vyrtuous_api_key"])
+
 
 if __name__ == "__main__":
     try:

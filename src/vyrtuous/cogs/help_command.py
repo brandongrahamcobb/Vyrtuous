@@ -28,7 +28,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.alias import Alias
 from vyrtuous.service.check_service import (
     moderator_predicator,
-    role_check_without_specifics
+    role_check_without_specifics,
 )
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService

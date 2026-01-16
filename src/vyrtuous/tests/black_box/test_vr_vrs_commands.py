@@ -16,12 +16,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.make_mock_objects import *
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.database.roles.administrator import Administrator
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+
 import pytest
+
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+    RESET, YELLOW, RED, GREEN,
+)
+from vyrtuous.utils.emojis import EMOJIS
 
 
 @pytest.mark.asyncio
@@ -45,14 +48,12 @@ async def test_chown_temp_xtemp_commands(
     bot,
     command: Optional[str],
     guild,
-    not_privileged_author,
     permission,
     prefix: Optional[str],
     privileged_author,
     ref_channel,
     ref_guild,
     should_warn,
-    text_channel,
     voice_channel_one,
 ):
     channel_values = (voice_channel_one.mention, voice_channel_one.id)
@@ -81,13 +82,13 @@ async def test_chown_temp_xtemp_commands(
     if message_type == "error":
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
-        # print(f"{YELLOW}Warning:{RESET} {content}")
+        print(f"{YELLOW}Warning:{RESET} {content}")
         if should_warn:
             assert True
         else:
             assert False
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
             assert any(
                 str(channel_value) in content for channel_value in channel_values

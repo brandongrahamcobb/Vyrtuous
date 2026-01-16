@@ -5,7 +5,13 @@
     "tests"
   ],
   "python-envs.defaultEnvManager": "ms-python.python:system",
-  "python-envs.pythonProjects": [],
+  "python-envs.pythonProjects": [
+    {
+      "path": "",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
+    }
+  ],
   "files.hotExit": "off",
   "workbench.startupEditor": "none",
   "files.openFilesInNewWindow": "off"

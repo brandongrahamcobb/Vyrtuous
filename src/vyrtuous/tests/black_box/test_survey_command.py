@@ -16,11 +16,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import *
-from vyrtuous.tests.black_box.make_mock_objects import *
-from vyrtuous.database.roles.moderator import Moderator
-from vyrtuous.tests.black_box.test_suite import *
-from vyrtuous.utils.emojis import get_random_emoji, EMOJIS
+from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN
+from vyrtuous.tests.black_box.test_suite import (
+    extract_embed_text,
+    prepared_command_handling,
+)
+from vyrtuous.utils.emojis import EMOJIS
 import pytest
 
 
@@ -34,12 +35,10 @@ async def test_survey_command(
     bot,
     command: Optional[str],
     guild,
-    not_privileged_author,
     permission,
     prefix: Optional[str],
     privileged_author,
     ref_channel,
-    should_warn,
     text_channel,
     voice_channel_one,
 ):
@@ -72,7 +71,7 @@ async def test_survey_command(
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
     if message_type == "success":
-        # print(f"{GREEN}Success:{RESET} {content}")
+        print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
             assert any(
                 str(channel_value) in content for channel_value in channel_values

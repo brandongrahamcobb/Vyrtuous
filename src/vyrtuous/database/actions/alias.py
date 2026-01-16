@@ -22,6 +22,7 @@ from typing import Optional
 from vyrtuous.database.actions.action import Action
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.actions.flag import Flag
+from vyrtuous.database.actions.role import Role
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
 from vyrtuous.database.roles.vegan import Vegan
@@ -56,8 +57,8 @@ class Alias(Action):
         "unvoice_mute": VoiceMute,
         "text_mute": TextMute,
         "untext_mute": TextMute,
-        "role": None,
-        "unrole": None,
+        "role": Role,
+        "unrole": Role,
         "flag": Flag,
         "unflag": Flag,
         "vegan": Vegan,
