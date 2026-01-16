@@ -46,7 +46,7 @@ from vyrtuous.inc.helpers import (
     TEXT_CHANNEL_ID,
     TEXT_CHANNEL_NAME,
     GUILD_ID,
-    GUILD_NAME
+    GUILD_NAME,
 )
 from vyrtuous.database.roles.administrator import Administrator
 from vyrtuous.database.roles.coordinator import Coordinator

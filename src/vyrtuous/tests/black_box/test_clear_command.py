@@ -25,7 +25,10 @@ from vyrtuous.database.roles.developer import Developer
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
-    RESET, YELLOW, RED, GREEN,
+    RESET,
+    YELLOW,
+    RED,
+    GREEN,
 )
 from vyrtuous.utils.emojis import EMOJIS
 
@@ -43,9 +46,7 @@ async def test_clear_command(
     prefix: Optional[str],
     command: Optional[str],
 ):
-    developer = Developer(
-        member_snowflake=privileged_author.id
-    )
+    developer = Developer(member_snowflake=privileged_author.id)
     await developer.create()
     try:
         voice_channel_one.messages.clear()

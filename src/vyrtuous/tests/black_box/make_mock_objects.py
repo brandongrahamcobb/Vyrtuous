@@ -22,10 +22,7 @@ from discord.http import HTTPClient
 from discord.state import ConnectionState
 import discord
 
-from vyrtuous.inc.helpers import (
-    NOT_PRIVILEGED_AUTHOR_ID,
-    NOT_PRIVILEGED_AUTHOR_NAME
-)
+from vyrtuous.inc.helpers import NOT_PRIVILEGED_AUTHOR_ID, NOT_PRIVILEGED_AUTHOR_NAME
 
 
 def create_state():

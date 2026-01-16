@@ -22,7 +22,10 @@ import pytest
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
-    RESET, YELLOW, RED, GREEN,
+    RESET,
+    YELLOW,
+    RED,
+    GREEN,
 )
 from vyrtuous.utils.emojis import EMOJIS
 
