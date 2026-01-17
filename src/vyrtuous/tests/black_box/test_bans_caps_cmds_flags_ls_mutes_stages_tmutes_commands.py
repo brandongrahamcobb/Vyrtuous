@@ -18,8 +18,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from typing import Optional
 from vyrtuous.inc.helpers import ROLE_ID
 from vyrtuous.tests.black_box.test_suite import (
+    bot,
+    config,
     extract_embed_text,
+    guild,
+    not_privileged_author,
     prepared_command_handling,
+    prefix,
+    privileged_author,
+    text_channel,
+    voice_channel_one,
     RESET, YELLOW, RED, GREEN
 )
 from vyrtuous.utils.emojis import EMOJIS
@@ -422,7 +430,6 @@ async def test_bans_caps_cmds_flags_ls_mutes_stages_tmutes_commands(
         guild_id=guild.id,
         role_id=ROLE_ID,
     )
-    print(formatted)
     captured = await prepared_command_handling(
         author=privileged_author,
         bot=bot,

@@ -479,6 +479,8 @@ class EventListeners(commands.Cog):
             member_snowflake=member_obj.id,
             singular=True,
         )
+        action_modification = False
+
         if alias.alias_type == alias_class.UNDO:
             action_modification = True
             if not action_existing:
@@ -554,27 +556,25 @@ class EventListeners(commands.Cog):
             "guild_snowflake": action_information["action_guild_snowflake"],
             "member_snowflake": action_information["action_member_snowflake"],
         }
-        if action_information["action_modification"]:
-            if action_information["action_expires_in_modification"]:
-                await update_duration(
-                    action_information=action_information, where_kwargs=where_kwargs
-                )
-            if action_information["action_reason_modification"]:
-                await update_reason(
-                    action_information=action_information, where_kwargs=where_kwargs
-                )
-        elif (
-            action_information["action_existing"]
-            and not action_information["action_modification"]
-        ):
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"An existing {action_information['alias_class'].SINGULAR} already exists for "
-                    f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+        if action_information["action_existing"]:
+            if action_information["action_modification"]:
+                if action_information["action_expires_in_modification"]:
+                    await update_duration(
+                        action_information=action_information, where_kwargs=where_kwargs
+                    )
+                if action_information["action_reason_modification"]:
+                    await update_reason(
+                        action_information=action_information, where_kwargs=where_kwargs
+                    )
+            else:
+                try:
+                    return await state.end(
+                        warning=f"\U000026a0\U0000fe0f "
+                        f"An existing {action_information['alias_class'].SINGULAR} already exists for "
+                        f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
+                    )
+                except Exception as e:
+                    return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         await alias.handler(
             alias=alias,
