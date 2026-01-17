@@ -28,25 +28,25 @@ async def resolve_channel(
 ) -> Union[discord.TextChannel, discord.VoiceChannel]:
     try:
         if isinstance(channel_str, (discord.TextChannel, discord.VoiceChannel)):
-            logger.debug(f"Direct channel: {channel_str.id}")
+            logger.warning(f"Direct channel: {channel_str.id}")
             return channel_str
         if isinstance(channel_str, int):
             c = ctx_interaction_or_message.guild.get_channel(channel_str)
             if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
-                logger.debug(f"Resolved channel by int ID: {c.id}")
+                logger.warning(f"Resolved channel by int ID: {c.id}")
                 return c
         if isinstance(channel_str, str):
             if channel_str.isdigit():
                 cid = int(channel_str)
                 c = ctx_interaction_or_message.guild.get_channel(cid)
                 if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
-                    logger.debug(f"Resolved channel by str ID: {c.id}")
+                    logger.warning(f"Resolved channel by str ID: {c.id}")
                     return c
             elif channel_str.startswith("<#") and channel_str.endswith(">"):
                 cid = int(channel_str[2:-1])
                 c = ctx_interaction_or_message.guild.get_channel(cid)
                 if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
-                    logger.debug(f"Channel mention resolved: {c.id}")
+                    logger.warning(f"Channel mention resolved: {c.id}")
                     return c
     except Exception as e:
         logger.warning(f"Channel resolution error: {str(e).capitalize()}")

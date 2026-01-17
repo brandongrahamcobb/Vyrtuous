@@ -20,6 +20,7 @@ from typing import Optional
 
 import pytest
 
+from vyrtuous.inc.helpers import MESSAGE_ID
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
@@ -44,6 +45,7 @@ async def test_rmute_command(
     bot,
     command: Optional[str],
     guild,
+    needs_message_id,
     not_privileged_author,
     permission,
     prefix: Optional[str],
@@ -51,6 +53,7 @@ async def test_rmute_command(
     ref_channel,
     ref_guild,
     ref_member,
+    should_warn,
     text_channel,
     voice_channel_one,
 ):
@@ -81,6 +84,8 @@ async def test_rmute_command(
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:
@@ -91,4 +96,6 @@ async def test_rmute_command(
             assert any(str(guild_value) in content for guild_value in guild_values)
         if ref_member:
             assert any(str(member_value) in content for member_value in member_values)
+        if needs_message_id:
+            assert MESSAGE_ID in content
         assert any(emoji in content for emoji in EMOJIS)

@@ -21,8 +21,16 @@ import pytest
 
 from vyrtuous.inc.helpers import ROLE_ID, ROLE_NAME
 from vyrtuous.tests.black_box.test_suite import (
+    bot,
+    config,
     extract_embed_text,
+    guild,
+    not_privileged_author,
     prepared_command_handling,
+    prefix,
+    privileged_author,
+    text_channel,
+    voice_channel_one,
     RESET,
     YELLOW,
     RED,
@@ -38,15 +46,15 @@ from vyrtuous.utils.emojis import EMOJIS
         ("Developer", "arole {role_id}", False, False, False, True, False),
         ("Administrator", "aroles {guild_id}", False, True, False, False, False),
         ("Developer", "aroles all", False, False, False, False, False),
-        (None, "admins", False, True, False, False, False),
-        (None, "admins {member_id}", False, True, True, False, False),
+        ("Moderator", "admins", False, True, False, False, False),
+        ("Moderator", "admins {member_id}", False, True, True, False, False),
         ("Administrator", "admins {guild_id}", False, True, False, False, False),
         ("Developer", "admins all", False, False, False, False, False),
         ("Developer", "arole {role_id}", False, False, False, True, False),
         ("Administrator", "aroles {guild_id}", False, True, False, False, True),
         ("Developer", "aroles all", False, False, False, False, True),
-        (None, "admins", False, True, False, False, True),
-        (None, "admins {member_id}", False, True, True, False, True),
+        ("Moderator", "admins", False, True, False, False, True),
+        ("Moderator", "admins {member_id}", False, True, True, False, True),
         ("Administrator", "admins {guild_id}", False, True, False, False, True),
         ("Developer", "admins all", False, False, False, False, True),
         (
@@ -58,8 +66,8 @@ from vyrtuous.utils.emojis import EMOJIS
             False,
             False,
         ),
-        (None, "coords {voice_channel_one_id}", True, True, False, False, False),
-        (None, "coords {member_id}", False, True, True, False, False),
+        ("Moderator", "coords {voice_channel_one_id}", True, True, False, False, False),
+        ("Moderator", "coords {member_id}", False, True, True, False, False),
         ("Administrator", "coords {guild_id}", False, True, False, False, False),
         ("Developer", "coords all", False, False, False, False, False),
         (
@@ -71,19 +79,19 @@ from vyrtuous.utils.emojis import EMOJIS
             False,
             False,
         ),
-        (None, "coords {voice_channel_one_id}", True, True, False, False, True),
-        (None, "coords {member_id}", False, True, True, False, True),
+        ("Moderator", "coords {voice_channel_one_id}", True, True, False, False, True),
+        ("Moderator", "coords {member_id}", False, True, True, False, True),
         ("Administrator", "coords {guild_id}", False, True, False, False, True),
         ("Developer", "coords all", False, False, False, False, True),
-        # ("System Owner", "dev {member_id}", False, True, True, False, False)
-        (None, "devs", False, True, False, False, True),
+        # ("System Owner", "dev {member_id}", False, True, True, False, False),
+        ("Moderator", "devs", False, True, False, False, True),
         ("Administrator", "devs {guild_id}", False, True, False, False, True),
-        (None, "devs {member_id}", False, True, True, False, True),
+        ("Moderator", "devs {member_id}", False, True, True, False, True),
         ("Developer", "devs all", False, False, False, False, True),
-        # ("System Owner", "dev {member_id}", False, True, True, False, False)
-        (None, "devs", False, True, False, False, True),
+        # ("System Owner", "dev {member_id}", False, True, True, False, False),
+        ("Moderator", "devs", False, True, False, False, True),
         ("Administrator", "devs {guild_id}", False, True, False, False, True),
-        (None, "devs {member_id}", False, True, True, False, True),
+        ("Moderator", "devs {member_id}", False, True, True, False, True),
         ("Developer", "devs all", False, False, False, False, True),
         (
             "Administrator",
@@ -94,8 +102,8 @@ from vyrtuous.utils.emojis import EMOJIS
             False,
             False,
         ),
-        (None, "mods {voice_channel_one_id}", True, True, False, False, False),
-        (None, "mods {member_id}", False, True, True, False, False),
+        ("Moderator", "mods {voice_channel_one_id}", True, True, False, False, False),
+        ("Moderator", "mods {member_id}", False, True, True, False, False),
         ("Administrator", "mods {guild_id}", False, True, False, False, False),
         ("Developer", "mods all", False, False, False, False, False),
         (
@@ -107,14 +115,13 @@ from vyrtuous.utils.emojis import EMOJIS
             False,
             False,
         ),
-        (None, "mods {voice_channel_one_id}", True, True, False, False, True),
-        (None, "mods {member_id}", False, True, True, False, True),
-    ],
-    indirect=["permission"],
+        ("Moderator", "mods {voice_channel_one_id}", True, True, False, False, True),
+        ("Moderator", "mods {member_id}", False, True, True, False, True),
+    ]
 )
 async def test_admins_coords_devs_mods_owners_commands(
-    bot,
     command: Optional[str],
+    bot,
     guild,
     not_privileged_author,
     permission,
@@ -122,6 +129,7 @@ async def test_admins_coords_devs_mods_owners_commands(
     prefix: Optional[str],
     ref_channel,
     ref_guild,
+    ref_member,
     ref_role,
     should_warn,
     text_channel,
@@ -134,6 +142,7 @@ async def test_admins_coords_devs_mods_owners_commands(
     )
     guild_values = (guild.id, guild.name)
     role_values = (ROLE_ID, ROLE_NAME)
+    member_values = (not_privileged_author.id, not_privileged_author.name)
     formatted = command.format(
         voice_channel_one_id=voice_channel_one.id,
         guild_id=guild.id,
@@ -176,4 +185,6 @@ async def test_admins_coords_devs_mods_owners_commands(
             assert any(str(guild_value) in content for guild_value in guild_values)
         if ref_role:
             assert any(str(role_value) in content for role_value in role_values)
+        if ref_member:
+            assert any(str(member_value) in content for member_value in member_values)
         assert any(emoji in content for emoji in EMOJIS)

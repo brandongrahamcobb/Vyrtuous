@@ -32,7 +32,6 @@ DISCORD_COGS = [
     "vyrtuous.cogs.coordinator_commands",
     "vyrtuous.cogs.dev_commands",
     "vyrtuous.cogs.event_listeners",
-    "vyrtuous.cogs.everyone_commands",
     "vyrtuous.cogs.guild_owner_commands",
     "vyrtuous.cogs.help_command",
     "vyrtuous.cogs.heartbeat",
@@ -46,7 +45,6 @@ DISCORD_COGS_CLASSES = [
     "CoordinatorCommands",
     "DevCommands",
     "EventListeners",
-    "EveryoneCommands",
     "GuildOwnerCommands",
     "HelpCommand",
     "Heartbeat",
@@ -55,7 +53,7 @@ DISCORD_COGS_CLASSES = [
 ]
 DISCORD_COMMAND_PREFIX = "!"
 #### PATHS
-PATH_TOML = join(DIR_HOME, "git", "python", "Vyrtuous", "pyproject.toml")
+PATH_TOML = join(DIR_HOME, "git", "sandbox", "python", "Vyrtuous", "pyproject.toml")
 PATH_LOG = join(DIR_BASE, "vyrtuous", ".log", "discord.log")
 
 

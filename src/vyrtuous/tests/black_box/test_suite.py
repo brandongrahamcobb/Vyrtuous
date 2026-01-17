@@ -325,6 +325,12 @@ def prepare_discord_state(bot, guild, highest_role):
         )
         stack.enter_context(
             patch(
+                "vyrtuous.service.scope_service.role_check_without_specifics",
+                new=AsyncMock(return_value=highest_role),
+            )
+        )
+        stack.enter_context(
+            patch(
                 "vyrtuous.service.check_service.moderator_predicator",
                 new=AsyncMock(return_value=highest_role),
             )
@@ -345,7 +351,7 @@ def prepare_discord_state(bot, guild, highest_role):
         )
         stack.enter_context(
             patch(
-                "vyrtuous.service.paginator_service.Paginator.start",
+                "vyrtuous.service.messaging.paginator_service.Paginator.start",
                 new_callable=AsyncMock,
             )
         )
@@ -391,7 +397,7 @@ async def prepared_command_handling(
     with patch.object(
         bot, "_connection", create=True
     ) as mock_conn, ExitStack() as _, prepare_discord_state(
-        author, bot, channel, content, guild, highest_role
+        bot, guild, highest_role
     ):
         mock_conn.user = mock_bot_user
         mock_conn.return_value = mock_bot_user
@@ -445,7 +451,7 @@ async def permission(request, voice_channel_one, guild, privileged_author):
         )
     else:
         perm_instance = perm_class(
-            guild_snowflake=guild.id, member_snowflake=privileged_author.id
+            member_snowflake=privileged_author.id
         )
     await perm_instance.create()
     try:

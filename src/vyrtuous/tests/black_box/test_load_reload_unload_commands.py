@@ -50,6 +50,7 @@ async def test_load_reload_unload_command(
     prefix: Optional[str],
     privileged_author,
     text_channel,
+    should_warn,
     guild,
 ):
     formatted = command
@@ -75,6 +76,8 @@ async def test_load_reload_unload_command(
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         assert any(emoji in content for emoji in EMOJIS)

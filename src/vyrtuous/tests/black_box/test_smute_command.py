@@ -49,6 +49,7 @@ async def test_smute_command(
     prefix: Optional[str],
     privileged_author,
     ref_member,
+    should_warn,
     text_channel,
 ):
     member_values = (not_privileged_author.mention, not_privileged_author.id)
@@ -75,6 +76,8 @@ async def test_smute_command(
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         if ref_member:

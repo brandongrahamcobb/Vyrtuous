@@ -36,15 +36,15 @@ from vyrtuous.utils.emojis import EMOJIS
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command,role_ref",
+    "command",
     [
-        (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_ID}", False),
-        (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_ID}", False),
-        ("dlogs unresolved 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58", False),
-        ("dlogs resolved 5cb608e7-7b95-4c22-9bd4-aac414562b10", False),
-        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 overwrite Test", False),
-        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 append test2", False),
-        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 resolve", False),
+        (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_ID}"),
+        (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_ID}"),
+        ("dlogs unresolved 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58"),
+        ("dlogs resolved 5cb608e7-7b95-4c22-9bd4-aac414562b10"),
+        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 overwrite Test"),
+        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 append test2"),
+        ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 resolve"),
     ],
 )
 async def test_dish_dlog_dlogs_commands(
@@ -53,7 +53,7 @@ async def test_dish_dlog_dlogs_commands(
     guild,
     privileged_author,
     prefix: Optional[str],
-    command: Optional[str],
+    command: Optional[str]
 ):
     developer = Developer(
         guild_snowflake=guild.id, member_snowflake=privileged_author.id

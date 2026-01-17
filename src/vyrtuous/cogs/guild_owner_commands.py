@@ -29,24 +29,14 @@ from vyrtuous.properties.snowflake import (
     RoleSnowflake,
 )
 from vyrtuous.service.check_service import (
-    at_home,
     guild_owner_predicator,
     has_equal_or_higher_role,
     not_bot,
 )
-from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.resolution.member_service import resolve_member
 from vyrtuous.service.resolution.role_service import resolve_role
-from vyrtuous.service.scope_service import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    clean_guild_dictionary,
-    flush_page,
-)
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
 
@@ -66,9 +56,7 @@ class GuildOwnerCommands(commands.Cog):
         state = StateService(interaction)
 
         try:
-            role_obj = await resolve_role(
-                ctx_interaction_or_message=interaction, role_str=role
-            )
+            role_obj = await resolve_role(ctx_interaction_or_message=interaction, role_str=role)
         except Exception as e:
             try:
                 return await state.end(
@@ -81,32 +69,8 @@ class GuildOwnerCommands(commands.Cog):
         administrator_roles = await AdministratorRole.select(role_snowflake=role_obj.id)
         title = f"{get_random_emoji()} Administrators and Roles"
 
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
-
-        chunk_size, pages = 7, []
+        chunk_size, field_count, pages = 7, 0, []
         action = None
-        guild_dictionary = {}
-
-        for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(
-                administrator_role.guild_snowflake,
-                {"channels": {}, "roles": []},
-            )
-            guild_dictionary[administrator_role.guild_snowflake]["roles"].append(
-                administrator_role.role_snowflake
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
 
         if administrator_roles:
             for administrator_role in administrator_roles:
@@ -115,6 +79,8 @@ class GuildOwnerCommands(commands.Cog):
                     role_snowflake=administrator_role.role_snowflake,
                 )
             action = "revoked"
+        else:
+            action = "granted"
         for administrator in administrators:
             revoked_members = {}
             member = interaction.guild.get_member(administrator.member_snowflake)
@@ -125,7 +91,6 @@ class GuildOwnerCommands(commands.Cog):
             revoked_members.setdefault(administrator.guild_snowflake, {}).setdefault(
                 role_obj.id, []
             ).append(member)
-            action = "revoked"
         if action != "revoked":
             granted_members = {}
             granted_members.setdefault(role_obj.guild.id, {})[role_obj.id] = []
@@ -142,64 +107,32 @@ class GuildOwnerCommands(commands.Cog):
                     role_snowflakes=role_snowflakes,
                 )
                 await administrator.create()
-            guild_dictionary.setdefault(
-                role_obj.guild.id, {"channels": {}, "roles": []}
-            )
-            guild_dictionary[role_obj.guild.id]["roles"].append(role_obj.id)
             granted_members[role_obj.guild.id][role_obj.id].append(member)
-            action = "granted"
 
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title,
-                description=f"{guild.name}\nRoles {action} `Administrator`.",
-                color=discord.Color.blue(),
-            )
-            for role_snowflake in guild_data.get("roles", []):
-                role = guild.get_role(role_snowflake)
-                members_list = []
-                if action == "revoked":
-                    members_list = revoked_members.get(guild_snowflake, {}).get(
-                        role_snowflake, []
-                    )
-                elif action == "granted":
-                    members_list = granted_members.get(guild_snowflake, {}).get(
-                        role_snowflake, []
-                    )
-                member_mentions = (
-                    ", ".join(m.mention for m in members_list)
-                    if members_list
-                    else "No members"
-                )
-
-                embed, field_count = flush_page(embed, pages, title, guild.name)
-                embed.add_field(
-                    name=f"{role.name} ({len(members_list)})",
-                    value=member_mentions,
-                    inline=False,
-                )
+        embed = discord.Embed(title=title, description=f'`{role_obj.name}` was `{action}`.', color=discord.Color.red() if action == 'revoked' else discord.Color.green())
+        embed.add_field(name='Role ID', value=str(role_obj.id), inline=False)
+        embed.add_field(name='Guild', value=role_obj.guild.name, inline=False)
+        pages.append(embed)
+        members = revoked_members.get(role_obj.guild.id, {}).get(role_obj.id, []) if action == 'revoked' else granted_members.get(role_obj.guild.id, {}).get(role_obj.id, [])
+        chunks = []
+        chunk = []
+        for member in members:
+            chunk.append(member)
+            if len(chunk) == chunk_size:
+                chunks.append(chunk)
+                chunk = []
+        if chunk:
+            chunks.append(chunk)
+        field_count = 1
+        page_number = 1
+        for chunk in chunks:
+            embed = discord.Embed(title=f'Members {action.capitalize()}', color=discord.Color.red() if action == 'revoked' else discord.Color.green())
+            for member in chunk:
+                embed.add_field(name=f'{field_count}. {member}', value=f'{member.mention} ({member.id})', inline=False)
                 field_count += 1
+            embed.set_footer(text=f'Page {page_number}')
             pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
+            page_number += 1
 
         await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
 
@@ -225,32 +158,8 @@ class GuildOwnerCommands(commands.Cog):
         administrator_roles = await AdministratorRole.select(role_snowflake=role_obj.id)
         title = f"{get_random_emoji()} Administrators and Roles"
 
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
-
-        chunk_size, pages = 7, []
+        chunk_size, field_count, pages = 7, 0, []
         action = None
-        guild_dictionary = {}
-
-        for administrator_role in administrator_roles:
-            guild_dictionary.setdefault(
-                administrator_role.guild_snowflake,
-                {"channels": {}, "roles": []},
-            )
-            guild_dictionary[administrator_role.guild_snowflake]["roles"].append(
-                administrator_role.role_snowflake
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
 
         if administrator_roles:
             for administrator_role in administrator_roles:
@@ -259,6 +168,8 @@ class GuildOwnerCommands(commands.Cog):
                     role_snowflake=administrator_role.role_snowflake,
                 )
             action = "revoked"
+        else:
+            action = "granted"
         for administrator in administrators:
             revoked_members = {}
             member = ctx.guild.get_member(administrator.member_snowflake)
@@ -269,7 +180,6 @@ class GuildOwnerCommands(commands.Cog):
             revoked_members.setdefault(administrator.guild_snowflake, {}).setdefault(
                 role_obj.id, []
             ).append(member)
-            action = "revoked"
         if action != "revoked":
             granted_members = {}
             granted_members.setdefault(role_obj.guild.id, {})[role_obj.id] = []
@@ -286,64 +196,32 @@ class GuildOwnerCommands(commands.Cog):
                     role_snowflakes=role_snowflakes,
                 )
                 await administrator.create()
-            guild_dictionary.setdefault(
-                role_obj.guild.id, {"channels": {}, "roles": []}
-            )
-            guild_dictionary[role_obj.guild.id]["roles"].append(role_obj.id)
             granted_members[role_obj.guild.id][role_obj.id].append(member)
-            action = "granted"
 
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title,
-                description=f"{guild.name}\nRoles {action} `Administrator`.",
-                color=discord.Color.blue(),
-            )
-            for role_snowflake in guild_data.get("roles", []):
-                role = guild.get_role(role_snowflake)
-                members_list = []
-                if action == "revoked":
-                    members_list = revoked_members.get(guild_snowflake, {}).get(
-                        role_snowflake, []
-                    )
-                elif action == "granted":
-                    members_list = granted_members.get(guild_snowflake, {}).get(
-                        role_snowflake, []
-                    )
-                member_mentions = (
-                    ", ".join(m.mention for m in members_list)
-                    if members_list
-                    else "No members"
-                )
-
-                embed, field_count = flush_page(embed, pages, title, guild.name)
-                embed.add_field(
-                    name=f"{role.name} ({len(members_list)})",
-                    value=member_mentions,
-                    inline=False,
-                )
+        embed = discord.Embed(title=title, description=f'`{role_obj.name}` was `{action}`.', color=discord.Color.red() if action == 'revoked' else discord.Color.green())
+        embed.add_field(name='Role ID', value=str(role_obj.id), inline=False)
+        embed.add_field(name='Guild', value=role_obj.guild.name, inline=False)
+        pages.append(embed)
+        members = revoked_members.get(role_obj.guild.id, {}).get(role_obj.id, []) if action == 'revoked' else granted_members.get(role_obj.guild.id, {}).get(role_obj.id, [])
+        chunks = []
+        chunk = []
+        for member in members:
+            chunk.append(member)
+            if len(chunk) == chunk_size:
+                chunks.append(chunk)
+                chunk = []
+        if chunk:
+            chunks.append(chunk)
+        field_count = 1
+        page_number = 1
+        for chunk in chunks:
+            embed = discord.Embed(title=f'Members {action.capitalize()}', color=discord.Color.red() if action == 'revoked' else discord.Color.green())
+            for member in chunk:
+                embed.add_field(name=f'{field_count}. {member}', value=f'{member.mention} ({member.id})', inline=False)
                 field_count += 1
+            embed.set_footer(text=f'Page {page_number}')
             pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
+            page_number += 1
 
         await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
 
@@ -373,7 +251,7 @@ class GuildOwnerCommands(commands.Cog):
             )
         except Exception as e:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
             )
         enabled = Invincibility.toggle_enabled()
         if enabled:
@@ -426,7 +304,7 @@ class GuildOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -448,7 +326,7 @@ class GuildOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")

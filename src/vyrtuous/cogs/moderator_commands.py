@@ -91,6 +91,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: str
     ):
         state = StateService(interaction)
+
         administrators, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=Administrator,
@@ -102,16 +103,15 @@ class ModeratorCommands(commands.Cog):
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -147,19 +147,18 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 primary_dictionary = administrators_dictionary.get("administrators", {})
-                secondary_dictionary = primary_dictionary.get("role_snowflakes", {})
                 role_mentions = [
                     guild.get_role(role_snowflake).mention
-                    for role_snowflake in secondary_dictionary
+                    for role_snowflake in primary_dictionary
                     if guild.get_role(role_snowflake)
                 ]
-                if not thumbnail and not member_obj:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                if not thumbnail and member_obj:
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 else:
                     member_line = f"**User:** {member.mention}"
-                if role_mentions:
-                    member_line += "**Roles:** " + "\n".join(role_mentions)
+                    if role_mentions:
+                        member_line += "**Roles:** " + "\n".join(role_mentions)
                 lines.append(member_line)
                 field_count += 1
                 if field_count >= chunk_size:
@@ -208,6 +207,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         administrators, title = await resolve_objects(
             ctx_interaction_or_message=ctx,
             obj=Administrator,
@@ -219,16 +219,15 @@ class ModeratorCommands(commands.Cog):
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -264,20 +263,20 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 primary_dictionary = administrators_dictionary.get("administrators", {})
-                secondary_dictionary = primary_dictionary.get("role_snowflakes", {})
                 role_mentions = [
                     guild.get_role(role_snowflake).mention
-                    for role_snowflake in secondary_dictionary
+                    for role_snowflake in primary_dictionary
                     if guild.get_role(role_snowflake)
                 ]
-                if not thumbnail and not member_obj:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                if not thumbnail and member_obj:
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 else:
                     member_line = f"**User:** {member.mention}"
-                if role_mentions:
-                    member_line += "**Roles:** " + "\n".join(role_mentions)
-                lines.append(member_line)
+                    if role_mentions:
+                        member_line += "**Roles:** " + "\n".join(role_mentions)
+                        lines.append(member_line)
+                print("test")
                 field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(
@@ -290,7 +289,6 @@ class ModeratorCommands(commands.Cog):
                     name="Information", value="\n\n".join(lines), inline=False
                 )
             pages.append(embed)
-
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -308,7 +306,6 @@ class ModeratorCommands(commands.Cog):
                     skipped=skipped_members,
                     title="Skipped Members in Server",
                 )
-
         await StateService.send_pages(obj=Administrator, pages=pages, state=state)
 
     @app_commands.command(name="bans", description="List bans.")
@@ -320,6 +317,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         bans, title = await resolve_objects(
             ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target
         )
@@ -327,17 +325,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -377,7 +374,7 @@ class ModeratorCommands(commands.Cog):
                 if not member_obj:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in ban_dictionary.get(
                     "bans"
@@ -433,6 +430,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         bans, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target
         )
@@ -440,17 +438,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -490,7 +487,7 @@ class ModeratorCommands(commands.Cog):
                 if not member_obj:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in ban_dictionary.get(
                     "bans"
@@ -543,6 +540,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         caps, title = await resolve_objects(
             ctx_interaction_or_message=interaction, obj=Cap, state=state, target=target
         )
@@ -550,8 +548,8 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -637,6 +635,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         caps, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Cap, state=state, target=target
         )
@@ -644,8 +643,8 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -729,6 +728,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         aliases, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=Alias,
@@ -739,8 +739,8 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         guild_dictionary = {}
@@ -825,6 +825,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         aliases, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Alias, state=state, target=target
         )
@@ -832,8 +833,8 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
         guild_dictionary = {}
@@ -921,7 +922,8 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         try:
             channel_obj = await resolve_channel(interaction, channel)
-        except:
+        except Exception as e:
+            logger.warning(str(e).capitalize)
             channel_obj = interaction.channel
         msg = await channel_obj.fetch_message(message)
         if not msg:
@@ -977,16 +979,15 @@ class ModeratorCommands(commands.Cog):
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -1025,7 +1026,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not thumbnail and member_obj:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 else:
                     lines.append(f"**User:** {member.mention}")
@@ -1081,6 +1082,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         coordinators, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Coordinator, state=state, target=target
         )
@@ -1089,16 +1091,15 @@ class ModeratorCommands(commands.Cog):
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -1137,7 +1138,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not thumbnail and member_obj:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 else:
                     lines.append(f"**User:** {member.mention}")
@@ -1198,7 +1199,8 @@ class ModeratorCommands(commands.Cog):
         channel_obj = None
         try:
             channel_obj = await resolve_channel(ctx, channel)
-        except:
+        except Exception as e:
+            logger.warning(str(e).capitalize)
             channel_obj = ctx.channel
         msg = await channel_obj.fetch_message(message)
         if not msg:
@@ -1253,16 +1255,15 @@ class ModeratorCommands(commands.Cog):
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -1298,7 +1299,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not thumbnail and member_obj:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 else:
                     lines.append(f"**User:** {member.mention}")
@@ -1347,6 +1348,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         developers, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Developer, state=state, target=target
         )
@@ -1355,16 +1357,15 @@ class ModeratorCommands(commands.Cog):
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -1399,7 +1400,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not thumbnail and member_obj:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 else:
                     lines.append(f"**User:** {member.mention}")
@@ -1443,6 +1444,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         flags, title = await resolve_objects(
             ctx_interaction_or_message=interaction, obj=Flag, state=state, target=target
         )
@@ -1450,17 +1452,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -1501,7 +1502,7 @@ class ModeratorCommands(commands.Cog):
                 if not member_obj:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in flag_dictionary.get(
                     "flags", {}
@@ -1556,6 +1557,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         flags, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Flag, state=state, target=target
         )
@@ -1563,17 +1565,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -1614,7 +1615,7 @@ class ModeratorCommands(commands.Cog):
                 if not member_obj:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in flag_dictionary.get(
                     "flags", {}
@@ -1665,6 +1666,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         vegans, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=Vegan,
@@ -1675,17 +1677,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -1720,7 +1721,7 @@ class ModeratorCommands(commands.Cog):
                     lines.append(f"**User:** {member.mention}")
                 else:
                     if not thumbnail:
-                        embed.set_thumbnail(url=member.display_avatar.url)
+                        embed.set_thumbnail(url=member_obj.display_avatar.url)
                         thumbnail = True
                 field_count += 1
                 # for channel_snowflake, channel_dictionary in vegan_dictionary.get("vegans", {}).items():
@@ -1769,6 +1770,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         vegans, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Vegan, state=state, target=target
         )
@@ -1776,17 +1778,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -1821,7 +1822,7 @@ class ModeratorCommands(commands.Cog):
                     lines.append(f"**User:** {member.mention}")
                 else:
                     if not thumbnail:
-                        embed.set_thumbnail(url=member.display_avatar.url)
+                        embed.set_thumbnail(url=member_obj.display_avatar.url)
                         thumbnail = True
                 field_count += 1
                 # for channel_snowflake, channel_dictionary in vegan_dictionary.get("vegans").items():
@@ -2100,16 +2101,15 @@ class ModeratorCommands(commands.Cog):
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2148,7 +2148,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not thumbnail and member_obj:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 else:
                     lines.append(f"**User:** {member.mention}")
@@ -2204,6 +2204,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         moderators, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Moderator, state=state, target=target
         )
@@ -2212,18 +2213,17 @@ class ModeratorCommands(commands.Cog):
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
             logger.warning(str(e).capitalize())
-            pass
+            member_obj = None
 
-        chunk_size, field_count, lines, pages = [], 7, 0, [], []
+        chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
 
@@ -2260,7 +2260,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if not thumbnail and member_obj:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 else:
                     lines.append(f"**User:** {member.mention}")
@@ -2282,7 +2282,6 @@ class ModeratorCommands(commands.Cog):
                     name="Information", value="\n".join(lines), inline=False
                 )
             pages.append(embed)
-
         if is_at_home:
             if skipped_guilds:
                 pages = generate_skipped_set_pages(
@@ -2310,6 +2309,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         voice_mutes, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=VoiceMute,
@@ -2320,17 +2320,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -2374,7 +2373,7 @@ class ModeratorCommands(commands.Cog):
                 if not member_obj:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
                     "voice_mutes", {}
@@ -2429,6 +2428,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         voice_mutes, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=VoiceMute, state=state, target=target
         )
@@ -2436,17 +2436,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -2490,7 +2489,7 @@ class ModeratorCommands(commands.Cog):
                 if not member_obj:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
                     "voice_mutes", {}
@@ -2543,17 +2542,16 @@ class ModeratorCommands(commands.Cog):
         channel: AppChannelSnowflake,
     ):
         state = StateService(interaction)
-        channel_obj = None
-        member_obj = None
+        
         try:
             channel_obj = await resolve_channel(interaction, channel)
         except Exception as e:
             channel_obj = interaction.channel
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
         try:
             member_obj = await resolve_member(interaction, member)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
             try:
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f Could not resolve a valid member `{member}`."
@@ -2563,7 +2561,7 @@ class ModeratorCommands(commands.Cog):
         try:
             not_bot(interaction, member_snowflake=member_obj.id)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
             try:
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f You are not authorized to affect {interaction.guild.me.mention}."
@@ -2631,11 +2629,11 @@ class ModeratorCommands(commands.Cog):
             channel_obj = await resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
         try:
             member_obj = await resolve_member(ctx, member)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
             try:
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f Could not resolve a valid member `{member}`."
@@ -2646,7 +2644,7 @@ class ModeratorCommands(commands.Cog):
             not_bot(ctx, member_snowflake=member_obj.id)
         except Exception as e:
             try:
-                logger.warning(f"{str(e).capitalize()}")
+                logger.warning(str(e).capitalize())
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f You are not authorized to affect {ctx.guild.me.mention}."
                 )
@@ -2748,6 +2746,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         stages, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=Stage,
@@ -2758,8 +2757,8 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2847,6 +2846,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         stages, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Stage, state=state, target=target
         )
@@ -2854,8 +2854,8 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -3369,37 +3369,37 @@ class ModeratorCommands(commands.Cog):
             try:
                 if await member_is_system_owner(member.id):
                     system_owners.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_developer(interaction.guild.id, member.id):
                     developers.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_guild_owner(interaction.guild.id, member.id):
                     guild_owners.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_administrator(interaction.guild.id, member.id):
                     administrators.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_coordinator(
                     channel_obj.id, interaction.guild.id, member.id
                 ):
                     coordinators.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_moderator(
                     channel_obj.id, interaction.guild.id, member.id
                 ):
                     moderators.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
         system_owners_chunks = [
             system_owners[i : i + chunk_size]
             for i in range(0, len(system_owners), chunk_size)
@@ -3499,33 +3499,33 @@ class ModeratorCommands(commands.Cog):
             try:
                 if await member_is_system_owner(member.id):
                     system_owners.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_developer(ctx.guild.id, member.id):
                     developers.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_guild_owner(ctx.guild.id, member.id):
                     guild_owners.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_administrator(ctx.guild.id, member.id):
                     administrators.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_coordinator(channel_obj.id, ctx.guild.id, member.id):
                     coordinators.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_moderator(channel_obj.id, ctx.guild.id, member.id):
                     moderators.append(member)
-            except commands.CheckFailure:
-                pass
+            except commands.CheckFailure as e:
+                logger.warning(str(e).capitalize())
         system_owners_chunks = [
             system_owners[i : i + chunk_size]
             for i in range(0, len(system_owners), chunk_size)
@@ -3602,6 +3602,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         text_mutes, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=TextMute,
@@ -3612,17 +3613,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=interaction, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -3666,7 +3666,7 @@ class ModeratorCommands(commands.Cog):
                 if not member_obj:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in text_mute_dictionary.get(
                     "text_mutes", {}
@@ -3722,6 +3722,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         text_mutes, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=TextMute, state=state, target=target
         )
@@ -3729,17 +3730,16 @@ class ModeratorCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
-        member_obj = None
         try:
             member_obj = await resolve_member(
                 ctx_interaction_or_message=ctx, member_str=target
             )
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            member_obj = None
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         thumbnail = False
@@ -3783,7 +3783,7 @@ class ModeratorCommands(commands.Cog):
                 if not member_obj:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=member.display_avatar.url)
+                    embed.set_thumbnail(url=member_obj.display_avatar.url)
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in text_mute_dictionary.get(
                     "text_mutes", {}

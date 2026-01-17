@@ -109,7 +109,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -118,7 +118,7 @@ class AdminCommands(commands.Cog):
             role_snowflake = role_obj.id
         except Exception as e:
             role_snowflake = None
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
         alias = Alias(
             alias_name=alias_name,
             alias_type=moderation_type,
@@ -186,7 +186,7 @@ class AdminCommands(commands.Cog):
             role_snowflake = role_obj.id
         except Exception as e:
             role_snowflake = None
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
         alias = Alias(
             alias_name=alias_name,
             alias_type=moderation_type,
@@ -218,6 +218,7 @@ class AdminCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         administrator_roles, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=AdministratorRole,
@@ -228,8 +229,8 @@ class AdminCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
@@ -238,9 +239,9 @@ class AdminCommands(commands.Cog):
             guild_dictionary.setdefault(
                 administrator_role.guild_snowflake, {"roles": {}}
             )
-            guild_dictionary[administrator_role.guild_snowflake]["roles"][
-                administrator_role.role_snowflake
-            ] = {}
+            guild_dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
+                administrator_role.role_snowflake, {}
+            )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_roles = generate_skipped_roles(guild_dictionary)
@@ -297,6 +298,7 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         administrator_roles, title = await resolve_objects(
             ctx_interaction_or_message=ctx,
             obj=AdministratorRole,
@@ -307,8 +309,8 @@ class AdminCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
@@ -317,9 +319,9 @@ class AdminCommands(commands.Cog):
             guild_dictionary.setdefault(
                 administrator_role.guild_snowflake, {"roles": {}}
             )
-            guild_dictionary[administrator_role.guild_snowflake]["roles"][
-                administrator_role.role_snowflake
-            ] = {}
+            guild_dictionary[administrator_role.guild_snowflake]["roles"].setdefault(
+                administrator_role.role_snowflake, {}
+            )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_roles = generate_skipped_roles(guild_dictionary)
@@ -329,13 +331,14 @@ class AdminCommands(commands.Cog):
             skipped_roles=skipped_roles,
         )
 
+
         for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for role_snowflake, entry in guild_data.get("roles").items():
+            for role_snowflake, role_dict in guild_data.get("roles").items():
                 role = guild.get_role(role_snowflake)
                 embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(name=role.name, value=role.mention, inline=False)
@@ -359,7 +362,6 @@ class AdminCommands(commands.Cog):
                     skipped=skipped_roles,
                     title="Skipped Roles in Server",
                 )
-
         await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
 
     @app_commands.command(name="cap", description="Cap alias duration for mods.")
@@ -384,7 +386,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -455,7 +457,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -517,7 +519,7 @@ class AdminCommands(commands.Cog):
         self, interaction, channel: AppChannelSnowflake, member: AppMemberSnowflake
     ):
         state = StateService(interaction)
-        channel_obj, member_obj = None, None
+
         try:
             channel_obj = await resolve_channel(interaction, channel)
             member_obj = await resolve_member(interaction, member)
@@ -525,7 +527,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -559,7 +561,7 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        channel_obj, member_obj = None, None
+        
         try:
             channel_obj = await resolve_channel(ctx, channel)
             member_obj = await resolve_member(ctx, member)
@@ -567,7 +569,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -597,7 +599,6 @@ class AdminCommands(commands.Cog):
         self, interaction: discord.Interaction, target: str, action_type: str
     ):
         state = StateService(interaction)
-        channel_obj, member_obj = None, None
         is_modification = True
         target = "user"
         if not action_type:
@@ -611,9 +612,11 @@ class AdminCommands(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             channel_obj = await resolve_channel(interaction, target)
+            member_obj = None
         except Exception as e:
             try:
-                logger.warning(f"{str(e).capitalize()}")
+                logger.warning(str(e).capitalize())
+                channel_obj = None
                 member_obj = await resolve_member(interaction, target)
                 highest_role = await has_equal_or_higher_role(
                     interaction,
@@ -650,7 +653,7 @@ class AdminCommands(commands.Cog):
             await interaction.response.send_message(embed=embed, view=view)
             await view.wait()
             state = StateService(interaction)
-            if view.result == True:
+            if view.result:
                 match action_type.lower():
                     case "all":
                         await Alias.delete(
@@ -829,7 +832,7 @@ class AdminCommands(commands.Cog):
             await interaction.response.send_message(embed=embed, view=view)
             await view.wait()
             state = StateService(interaction)
-            if view.result == True:
+            if view.result:
                 match action_type.lower():
                     case "all":
                         await Ban.clear_by_guild_highest_role_member_and_modification(
@@ -978,7 +981,7 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        channel_obj, member_obj = None, None
+
         is_modification = True
         target = "user"
         if not action_type:
@@ -992,9 +995,11 @@ class AdminCommands(commands.Cog):
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             channel_obj = await resolve_channel(ctx, target)
+            member_obj = None
         except Exception as e:
             try:
-                logger.warning(f"{str(e).capitalize()}")
+                logger.warning(str(e).capitalize())
+                channel_obj = None
                 member_obj = await resolve_member(ctx, target)
                 highest_role = await has_equal_or_higher_role(
                     ctx,
@@ -1031,7 +1036,7 @@ class AdminCommands(commands.Cog):
             await ctx.send(embed=embed, view=view)
             await view.wait()
             state = StateService(ctx)
-            if view.result == True:
+            if view.result:
                 match action_type.lower():
                     case "all":
                         await Alias.delete(
@@ -1208,7 +1213,7 @@ class AdminCommands(commands.Cog):
             await ctx.send(embed=embed, view=view)
             await view.wait()
             state = StateService(ctx)
-            if view.result == True:
+            if view.result:
                 match action_type.lower():
                     case "all":
                         await Ban.clear_by_guild_highest_role_member_and_modification(
@@ -1353,12 +1358,12 @@ class AdminCommands(commands.Cog):
         channel: AppChannelSnowflake,
     ):
         state = StateService(interaction)
-        channel_obj, member_obj = None, None
+
         try:
             channel_obj = await resolve_channel(interaction, channel)
         except Exception as e:
             channel_obj = interaction.channel
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
             await self.message_service.send_message(
                 interaction,
                 content=f"\U000026a0\U0000fe0f Defaulting to {channel_obj.mention}.",
@@ -1376,7 +1381,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1423,12 +1428,12 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        channel_obj, member_obj = None, None
+        
         try:
             channel_obj = await resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
             await self.message_service.send_message(
                 ctx,
                 content=f"\U000026a0\U0000fe0f Defaulting to {channel_obj.mention}.",
@@ -1446,7 +1451,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1517,7 +1522,7 @@ class AdminCommands(commands.Cog):
                     )
                 ]
             except Exception as e:
-                logger.info(f"{str(e).capitalize()}")
+                logger.info(str(e).capitalize())
                 bot = DiscordBot.get_instance()
                 guild_obj = bot.get_guild(int(target))
                 if not guild_obj:
@@ -1683,7 +1688,7 @@ class AdminCommands(commands.Cog):
             target_channel_obj = await resolve_channel(ctx, target_channel)
         except Exception as e:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
             )
         for member in source_channel_obj.members:
             try:
@@ -1742,14 +1747,14 @@ class AdminCommands(commands.Cog):
         reason: Optional[str] = "No reason provided",
     ):
         state = StateService(interaction)
-        member_obj = None
+        
         try:
             member_obj = await resolve_member(interaction, member)
             not_bot(interaction, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1773,7 +1778,7 @@ class AdminCommands(commands.Cog):
             try:
                 await member_obj.edit(mute=should_be_muted)
             except discord.Forbidden as e:
-                return await state.end(error=f"\u274c " f"{str(e).capitalize()}")
+                return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             return await state.end(
                 success=f"{get_random_emoji()} "
@@ -1798,14 +1803,14 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        member_obj = None
+
         try:
             member_obj = await resolve_member(ctx, member)
             not_bot(ctx, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -1864,7 +1869,7 @@ class AdminCommands(commands.Cog):
             channel_obj = await resolve_channel(interaction, channel)
         except Exception as e:
             channel_obj = interaction.channel
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
         stage = await Stage.select(
             channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
         )
@@ -2028,7 +2033,7 @@ class AdminCommands(commands.Cog):
             channel_obj = await resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
         stage = await Stage.select(
             channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
         )
@@ -2178,8 +2183,7 @@ class AdminCommands(commands.Cog):
         owner: AppMemberSnowflake,
     ):
         state = StateService(interaction)
-        action = None
-        channel_obj, member_obj = None, None
+        
         try:
             channel_obj = await resolve_channel(interaction, channel)
         except Exception as e:
@@ -2189,9 +2193,12 @@ class AdminCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        action = None
         temporary_room = await TemporaryRoom.select(
             channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
         )
+
         if temporary_room:
             if temporary_room.member_snowflake:
                 await Moderator.delete(
@@ -2210,7 +2217,7 @@ class AdminCommands(commands.Cog):
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -2228,6 +2235,7 @@ class AdminCommands(commands.Cog):
             )
             await temporary_room.create()
             action = "created"
+
         try:
             return await state.end(
                 success=f"{get_random_emoji()} "
@@ -2252,20 +2260,22 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        action = None
-        channel_obj, member_obj = None, None
+        
         try:
             channel_obj = await resolve_channel(ctx, channel)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
+            
+        action = None
         temporary_room = await TemporaryRoom.select(
             channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
         )
+
         if temporary_room:
             if temporary_room.member_snowflake:
                 await Moderator.delete(
@@ -2284,7 +2294,7 @@ class AdminCommands(commands.Cog):
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -2319,6 +2329,7 @@ class AdminCommands(commands.Cog):
         self, interaction: discord.Interaction, target: str = None
     ):
         state = StateService(interaction)
+
         temporary_rooms, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=TemporaryRoom,
@@ -2335,8 +2346,8 @@ class AdminCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2446,6 +2457,7 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+        
         temporary_rooms, title = await resolve_objects(
             ctx_interaction_or_message=ctx,
             obj=TemporaryRoom,
@@ -2459,8 +2471,8 @@ class AdminCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2578,7 +2590,7 @@ class AdminCommands(commands.Cog):
             channel_obj = await resolve_channel(interaction, channel)
         except Exception as e:
             channel_obj = interaction.channel
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
 
         if scope is None and entry_type is None:
             history = await History.select(
@@ -2686,7 +2698,7 @@ class AdminCommands(commands.Cog):
             channel_obj = await resolve_channel(ctx, channel)
         except Exception as e:
             channel_obj = ctx.channel
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
 
         if scope is None and entry_type is None:
             history = await History.select(
@@ -2778,6 +2790,7 @@ class AdminCommands(commands.Cog):
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         state = StateService(interaction)
+
         histories, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=History,
@@ -2788,13 +2801,13 @@ class AdminCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         try:
             channel_obj = await resolve_channel(interaction, target)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2881,6 +2894,7 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         histories, title = await resolve_objects(
             ctx_interaction_or_message=ctx,
             obj=History,
@@ -2891,13 +2905,13 @@ class AdminCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         try:
             channel_obj = await resolve_channel(ctx, target)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
+            logger.warning(str(e).capitalize())
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2979,20 +2993,22 @@ class AdminCommands(commands.Cog):
         self, interaction: discord.Interaction, channel: AppChannelSnowflake
     ):
         state = StateService(interaction)
-        action = None
-        channel_obj = None
+
         try:
             channel_obj = await resolve_channel(interaction, channel)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
+
+        action = None
         video_room = await VideoRoom.select(
             channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
         )
+
         if video_room:
             action = "removed"
             VideoRoom.video_rooms = [
@@ -3010,6 +3026,7 @@ class AdminCommands(commands.Cog):
             await video_room.create()
             VideoRoom.video_rooms.append(video_room)
             action = "created"
+
         try:
             return await state.end(
                 success=f"{get_random_emoji()} "
@@ -3028,20 +3045,22 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        action = None
-        channel_obj = None
+
         try:
             channel_obj = await resolve_channel(ctx, channel)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
+            
+        action = None
         video_room = await VideoRoom.select(
             channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
         )
+        
         if video_room:
             action = "removed"
             VideoRoom.video_rooms = [
@@ -3059,6 +3078,7 @@ class AdminCommands(commands.Cog):
             await video_room.create()
             VideoRoom.video_rooms.append(video_room)
             action = "created"
+
         try:
             return await state.end(
                 success=f"{get_random_emoji()} "
@@ -3077,6 +3097,7 @@ class AdminCommands(commands.Cog):
         self, interaction: discord.Interaction, target: str = None
     ):
         state = StateService(interaction)
+
         video_rooms, title = await resolve_objects(
             ctx_interaction_or_message=interaction,
             obj=VideoRoom,
@@ -3093,8 +3114,8 @@ class AdminCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -3196,6 +3217,7 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         video_rooms, title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=VideoRoom, state=state, target=target
         )
@@ -3206,8 +3228,8 @@ class AdminCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -3374,7 +3396,7 @@ class AdminCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")

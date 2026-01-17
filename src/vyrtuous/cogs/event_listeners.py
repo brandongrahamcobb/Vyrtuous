@@ -79,8 +79,7 @@ class EventListeners(commands.Cog):
                         reason="Enforce default video-only status",
                     )
                 except discord.Forbidden as e:
-                    logger.warning(f"{str(e).capitalize()}")
-                    pass
+                    logger.warning(str(e).capitalize())
         self.flags = await Flag.select()
 
     @commands.Cog.listener()
@@ -236,12 +235,12 @@ class EventListeners(commands.Cog):
                     try:
                         await member.edit(mute=True, reason="Server mute is active.")
                     except discord.Forbidden as e:
-                        logger.debug(
+                        logger.warning(
                             f"No permission to "
                             f"edit mute for {member.display_name}. {str(e).capitalize()}"
                         )
                     except discord.HTTPException as e:
-                        logger.debug(
+                        logger.warning(
                             f"Failed to edit mute for "
                             f"{member.display_name}: "
                             f"{str(e).capitalize()}"
@@ -266,7 +265,7 @@ class EventListeners(commands.Cog):
                     )
                     embed.set_thumbnail(url=member.display_avatar.url)
                     await after.channel.send(embed=embed)
-                elif should_be_muted == False:
+                elif not should_be_muted:
                     expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
                     voice_mute = VoiceMute(
                         channel_snowflake=after.channel.id,
@@ -291,7 +290,7 @@ class EventListeners(commands.Cog):
                         message=None,
                         reason="Right-click voice-mute.",
                     )
-            if before.mute and not after.mute and before.channel == after.channel:
+            elif before.mute and not after.mute and before.channel == after.channel:
                 await VoiceMute.delete(
                     channel_snowflake=before.channel.id,
                     guild_snowflake=before.channel.guild.id,
@@ -320,12 +319,12 @@ class EventListeners(commands.Cog):
                         f"in {after.channel.name}",
                     )
                 except discord.Forbidden as e:
-                    logger.debug(
+                    logger.warning(
                         f"No permission to edit "
                         f"mute for {member.display_name}. {str(e).capitalize()}"
                     )
                 except discord.HTTPException as e:
-                    logger.debug(
+                    logger.warning(
                         f"Failed to edit mute for "
                         f"{member.display_name}: {str(e).capitalize()}"
                     )
@@ -339,18 +338,18 @@ class EventListeners(commands.Cog):
     #                    if explicit_deny_roles:
     #                        try:
     #                            await member.move_to(after_channel)
-    #                            await logger.debug(
+    #                            await logger.warning(
     #                                f"🔇 Auto-muted {member.mention} in **{after_channel.name}** "
     #                                f"due to explicit speak deny from roles: "
     #                                f"{', '.join(r.name for r in explicit_deny_roles)}"
     #                            )
     #                        except Exception as e:
-    #                            logger.debug(
+    #                            logger.warning(
     #                                f"⚠ Failed to auto-mute {member.mention} in "
     #                                f"**{after_channel.name}** — `{str(e).capitalize()}`"
     #                            )
     #                        except discord.HTTPException as e:
-    #                            logger.debug(f'Failed to mute {member.display_name}: {str(e).capitalize()}')
+    #                            logger.warning(f'Failed to mute {member.display_name}: {str(e).capitalize()}')
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -575,7 +574,7 @@ class EventListeners(commands.Cog):
                     f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c " f"{str(e).capitalize()}")
+                return await state.end(error=f"\u274c {str(e).capitalize()}")
 
         await alias.handler(
             alias=alias,

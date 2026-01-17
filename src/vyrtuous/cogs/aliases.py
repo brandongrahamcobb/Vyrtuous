@@ -259,7 +259,7 @@ class Aliases(commands.Cog):
             )
         except Exception as e:
             try:
-                logger.warning(f"{str(e).capitalize()}")
+                logger.warning(str(e).capitalize())
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f "
                     f"Role `{alias.role_snowflake}` was not found."
@@ -572,7 +572,7 @@ class Aliases(commands.Cog):
             )
         except Exception as e:
             try:
-                logger.warning(f"{str(e).capitalize()}")
+                logger.warning(str(e).capitalize())
                 return await state.end(
                     warning=f"\U000026a0\U0000fe0f "
                     f"Role `{alias.role_snowflake}` was not found."

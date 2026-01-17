@@ -63,6 +63,7 @@ async def test_stage_mstage_command(
     ref_channel,
     ref_member,
     text_channel,
+    should_warn,
     voice_channel_one,
 ):
     channel_values = (voice_channel_one.mention, voice_channel_one.id)
@@ -94,6 +95,8 @@ async def test_stage_mstage_command(
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:

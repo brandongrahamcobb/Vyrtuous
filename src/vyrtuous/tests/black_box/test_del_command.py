@@ -17,11 +17,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN
+from vyrtuous.inc.helpers import MESSAGE_ID
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
-    MESSAGE_ID,
+    RESET, YELLOW, RED, GREEN
 )
 from vyrtuous.utils.emojis import EMOJIS
 import pytest
@@ -47,6 +47,7 @@ async def test_del_command(
     ref_channel,
     ref_guild,
     ref_member,
+    should_warn,
     text_channel,
     voice_channel_one,
     guild,

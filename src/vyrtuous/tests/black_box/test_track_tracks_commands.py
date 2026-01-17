@@ -17,10 +17,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
+    RESET, YELLOW, RED, GREEN
 )
 from vyrtuous.utils.emojis import EMOJIS
 import pytest
@@ -46,7 +46,7 @@ import pytest
     ],
     indirect=["permission"],
 )
-async def test_log_logs_mlog_command(
+async def test_track_tracks_command(
     action: Optional[str],
     bot,
     command: Optional[str],
@@ -58,6 +58,7 @@ async def test_log_logs_mlog_command(
     ref_channel,
     ref_member,
     ref_text,
+    should_warn,
     target_type: Optional[str],
     text_channel,
     voice_channel_one,
@@ -106,6 +107,8 @@ async def test_log_logs_mlog_command(
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         assert any(emoji in content for emoji in EMOJIS)

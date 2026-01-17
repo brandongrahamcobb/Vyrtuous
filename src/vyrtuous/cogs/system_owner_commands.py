@@ -85,8 +85,7 @@ class SystemOwnerCommands(commands.Cog):
                         )
                     except Exception as e:
                         link = "Unknown message"
-                        logger.warning(f"{str(e).capitalize()}")
-                        pass
+                        logger.warning(str(e).capitalize())
                 if developer.member_snowflake in developer_log.developer_snowflakes:
                     await developer_log.unassign(member_snowflake=member_obj.id)
                     try:
@@ -102,8 +101,7 @@ class SystemOwnerCommands(commands.Cog):
                             f"{get_random_emoji()} Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}"
                         )
                     except Exception as e:
-                        logger.warning(f"{str(e).capitalize()}")
-                        pass
+                        logger.warning(str(e).capitalize())
                     try:
                         return await state.end(
                             success=f"{get_random_emoji()} Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
@@ -166,8 +164,7 @@ class SystemOwnerCommands(commands.Cog):
                         )
                     except Exception as e:
                         link = "Unknown message"
-                        logger.warning(f"{str(e).capitalize()}")
-                        pass
+                        logger.warning(str(e).capitalize())
                 if developer.member_snowflake in developer_log.developer_snowflakes:
                     await developer_log.unassign(member_snowflake=member_obj.id)
                     try:
@@ -183,8 +180,7 @@ class SystemOwnerCommands(commands.Cog):
                             f"{get_random_emoji()} Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}"
                         )
                     except Exception as e:
-                        logger.warning(f"{str(e).capitalize()}")
-                        pass
+                        logger.warning(str(e).capitalize())
                     try:
                         return await state.end(
                             success=f"{get_random_emoji()} Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
@@ -214,10 +210,9 @@ class SystemOwnerCommands(commands.Cog):
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
         state = StateService(interaction)
-        action = None
-        member_obj = None
+        
         try:
-            member_obj = await resolve_member(interaction, member)
+            member_obj = await resolve_member(ctx_interaction_or_message=interaction, member_str=member)
             not_bot(interaction, member_snowflake=member_obj.id)
         except Exception as e:
             try:
@@ -226,7 +221,10 @@ class SystemOwnerCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
+            
+        action = None
         developer = await Developer.select(member_snowflake=member_obj.id)
+
         if developer:
             await Developer.delete(member_snowflake=member_obj.id)
             action = "revoked"
@@ -234,6 +232,7 @@ class SystemOwnerCommands(commands.Cog):
             developer = Developer(member_snowflake=member_obj.id)
             await developer.create()
             action = "granted"
+
         try:
             return await state.end(
                 success=f"{get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}."
@@ -252,10 +251,9 @@ class SystemOwnerCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        action = None
-        member_obj = None
+
         try:
-            member_obj = await resolve_member(ctx, member)
+            member_obj = await resolve_member(ctx_interaction_or_message=ctx, member_str=member)
             not_bot(ctx, member_snowflake=member_obj.id)
         except Exception as e:
             try:
@@ -264,7 +262,10 @@ class SystemOwnerCommands(commands.Cog):
                 )
             except Exception as e:
                 return await state.end(error=f"\u274c {str(e).capitalize()}")
+            
+        action = None
         developer = await Developer.select(member_snowflake=member_obj.id)
+
         if developer:
             await Developer.delete(member_snowflake=member_obj.id)
             action = "revoked"
@@ -272,6 +273,7 @@ class SystemOwnerCommands(commands.Cog):
             developer = Developer(member_snowflake=member_obj.id)
             await developer.create()
             action = "granted"
+
         try:
             return await state.end(
                 success=f"{get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}."

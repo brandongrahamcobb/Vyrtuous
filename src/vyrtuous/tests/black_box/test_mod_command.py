@@ -65,6 +65,7 @@ async def test_mod_command(
     ref_channel,
     ref_guild,
     ref_member,
+    should_warn,
     text_channel,
     voice_channel_one,
 ):
@@ -97,6 +98,8 @@ async def test_mod_command(
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:

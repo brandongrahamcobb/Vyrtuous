@@ -61,7 +61,7 @@ class DevCommands(commands.Cog):
             db.execute_backup()
         except Exception as e:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
             )
         try:
             return await state.end(success=discord.File(db.file_name))
@@ -79,7 +79,7 @@ class DevCommands(commands.Cog):
             db.execute_backup()
         except Exception as e:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
             )
         try:
             return await state.end(success=discord.File(db.file_name))
@@ -165,7 +165,7 @@ class DevCommands(commands.Cog):
                     f"Issue not found. Received: {reference}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c " f"{str(e).capitalize()}")
+                return await state.end(error=f"\u274c {str(e).capitalize()}")
         if action and action.lower() == "resolve":
             await developer_log.resolve()
             detail = (
@@ -243,6 +243,7 @@ class DevCommands(commands.Cog):
         filter: str = None,
     ):
         state = StateService(interaction)
+
         try:
             target_uuid = UUID(str(target))
             developer_logs = await DeveloperLog.select(id=target_uuid)
@@ -259,8 +260,8 @@ class DevCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=interaction)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -375,6 +376,7 @@ class DevCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         try:
             target_uuid = UUID(str(target))
             developer_logs = await DeveloperLog.select(id=target_uuid)
@@ -391,8 +393,8 @@ class DevCommands(commands.Cog):
         try:
             is_at_home = at_home(ctx_interaction_or_message=ctx)
         except Exception as e:
-            logger.warning(f"{str(e).capitalize()}")
-            pass
+            logger.warning(str(e).capitalize())
+            is_at_home = False
 
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -642,7 +644,7 @@ class DevCommands(commands.Cog):
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")
@@ -693,7 +695,7 @@ class DevCommands(commands.Cog):
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f " f"{str(e).capitalize()}"
+                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
                     )
                 except Exception as e:
                     return await state.end(error=f"\u274c {str(e).capitalize()}")

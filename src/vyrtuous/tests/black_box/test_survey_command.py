@@ -16,10 +16,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
+    RESET, YELLOW, RED, GREEN
 )
 from vyrtuous.utils.emojis import EMOJIS
 import pytest
@@ -39,6 +39,7 @@ async def test_survey_command(
     prefix: Optional[str],
     privileged_author,
     ref_channel,
+    should_warn,
     text_channel,
     voice_channel_one,
 ):
@@ -70,6 +71,8 @@ async def test_survey_command(
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         if ref_channel:

@@ -44,6 +44,7 @@ async def test_roleid_command(
     permission,
     prefix: Optional[str],
     privileged_author,
+    should_warn,
     text_channel,
 ):
     captured = await prepared_command_handling(
@@ -68,6 +69,8 @@ async def test_roleid_command(
         print(f"{RED}Error:{RESET} {content}")
     if message_type == "warning":
         print(f"{YELLOW}Warning:{RESET} {content}")
+        if should_warn:
+            assert True
     if message_type == "success":
         print(f"{GREEN}Success:{RESET} {content}")
         assert any(emoji in content for emoji in EMOJIS)

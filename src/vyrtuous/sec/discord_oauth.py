@@ -83,7 +83,7 @@ def setup_discord_routes(app, discord_oauth):
     @app.route("/discord_authorize")
     async def discord_authorize():
         auth_url = discord_oauth.get_authorization_url()
-        logger.debug(f"Redirecting to Discord OAuth URL: {auth_url}")
+        logger.warning(f"Redirecting to Discord OAuth URL: {auth_url}")
         return redirect(auth_url)
 
     @app.route("/discord_callback")
@@ -92,7 +92,7 @@ def setup_discord_routes(app, discord_oauth):
         if not code:
             logger.error("Missing Discord authorization code in callback.")
             return "Missing authorization code", 400
-        logger.debug(f"Discord authorization code received: {code}")
+        logger.warning(f"Discord authorization code received: {code}")
         success = await discord_oauth.exchange_token(code)
         if not success:
             return "Discord token exchange failed.", 400

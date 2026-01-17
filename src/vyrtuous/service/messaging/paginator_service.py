@@ -20,6 +20,7 @@ import asyncio
 
 import discord
 
+from vyrtuous.service.logging_service import logger
 
 class Paginator:
 
@@ -85,14 +86,14 @@ class Paginator:
             except asyncio.TimeoutError:
                 try:
                     await self.message.clear_reactions()
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(str(e).capitalize())
                 break
             await self.handle_reaction(reaction)
             try:
                 await self.message.remove_reaction(reaction.emoji, user)
-            except:
-                pass
+            except Exception as e:
+                logger.warning(str(e).capitalize())
 
     async def handle_reaction(self, reaction):
         async with self._reaction_lock:

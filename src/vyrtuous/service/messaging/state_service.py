@@ -221,14 +221,14 @@ class StateService:
             except asyncio.TimeoutError:
                 try:
                     await self.message.clear_reactions()
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(str(e).capitalize())
                 break
             await self._handle_reaction(reaction, user)
             try:
                 await self.message.remove_reaction(reaction.emoji, user)
-            except:
-                pass
+            except Exception as e:
+                logger.warning(str(e).capitalize())
 
     async def _handle_reaction(self, reaction, user=None):
         action = self.STATE_EMOJIS[str(reaction.emoji)]
@@ -260,8 +260,7 @@ class StateService:
             try:
                 await user.send(embed=embed)
             except discord.Forbidden as e:
-                logger.info(f"{str(e).capitalize()}")
-                pass
+                logger.info(str(e).capitalize())
 
     async def report_issue(self, user):
         reference = None
@@ -269,8 +268,7 @@ class StateService:
             try:
                 await user.send("You already reported this message.")
             except discord.Forbidden as e:
-                logger.info(f"{str(e).capitalize()}")
-                pass
+                logger.info(str(e).capitalize())
             return
         self._reported_users.add(user.id)
         try:
@@ -284,8 +282,7 @@ class StateService:
             )
             await developer_log.create()
         except discord.Forbidden as e:
-            logger.info(f"{str(e).capitalize()}")
-            pass
+            logger.info(str(e).capitalize())
         online_developer_mentions = []
         member = self.bot.get_user(self.config["discord_owner_id"])
         online_developer_mentions.append(member.mention)
@@ -316,7 +313,7 @@ class StateService:
             try:
                 return await state.end(success=pages)
             except Exception as e:
-                logger.info(f"{str(e).capitalize()}")
+                logger.info(str(e).capitalize())
                 try:
                     return await state.end(
                         warning="\U000026a0\U0000fe0f Embed size is too large. Limit the scope."

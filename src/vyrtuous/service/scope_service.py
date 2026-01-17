@@ -75,6 +75,14 @@ def generate_skipped_dict_pages(chunk_size, field_count, pages, skipped, title):
 async def resolve_where_kwargs(channel_obj, guild_obj, member_obj, role_obj):
     kwargs = {}
     match (channel_obj, guild_obj, member_obj, role_obj):
+        case (c, None, None, None) if c:
+            kwargs["channel_snowflake"] = c.id
+        case (None, g, None, None) if g:
+            kwargs["guild_snowflake"] = g.id
+        case (None, None, m, None) if m:
+            kwargs["member_snowflake"] = m.id
+        case (None, None, None, r) if r:
+            kwargs["role_snowflake"] = r.id
         case (c, g, None, None) if c and g:
             kwargs["channel_snowflake"] = c.id
             kwargs["guild_snowflake"] = g.id
@@ -87,6 +95,8 @@ async def resolve_where_kwargs(channel_obj, guild_obj, member_obj, role_obj):
         case (None, g, m, None) if g and m:
             kwargs["guild_snowflake"] = g.id
             kwargs["member_snowflake"] = m.id
+        case (c, None, None, None) if c:
+            kwargs["channel_snowflake"] = c.id
         case (None, g, None, r) if g and r:
             kwargs["guild_snowflake"] = g.id
             kwargs["role_snowflake"] = r.id
@@ -120,14 +130,14 @@ async def resolve_objects(ctx_interaction_or_message, obj, state, target):
                 channel_str=target,
             )
         except Exception as e:
-            logger.info(f"{str(e).capitalize()}")
+            logger.info(str(e).capitalize())
             try:
                 member_obj = await resolve_member(
                     ctx_interaction_or_message=ctx_interaction_or_message,
                     member_str=target,
                 )
             except Exception as e:
-                logger.info(f"{str(e).capitalize()}")
+                logger.info(str(e).capitalize())
                 bot = DiscordBot.get_instance()
                 guild_obj = bot.get_guild(int(target))
                 if not guild_obj:
@@ -137,7 +147,7 @@ async def resolve_objects(ctx_interaction_or_message, obj, state, target):
                             role_str=target,
                         )
                     except Exception as e:
-                        logger.info(f"{str(e).capitalize()}")
+                        logger.info(str(e).capitalize())
                         try:
                             return await state.end(
                                 warning=f"\U000026a0\U0000fe0f "
@@ -280,25 +290,6 @@ def clean_guild_dictionary(
             for snowflake, entries in guild_data.get("snowflakes", {}).items()
             if snowflake not in skipped_snowflakes.get(guild_snowflake, [])
         }
-        for channel_info in channels.values():
-            member_snowflake = channel_info.get("member_snowflake")
-            if member_snowflake and member_snowflake not in members:
-                channel_info.pop("member_snowflake")
-        for message_info in messages.values():
-            member_snowflake = message_info.get("member_snowflake")
-            if member_snowflake and member_snowflake not in members:
-                message_info.pop("member_snowflake")
-            channel_snowflake = message_info.get("channel_snowflake")
-            if channel_snowflake and channel_snowflake not in channels:
-                message_info.pop("channel_snowflake")
-        for role_info in roles.values():
-            member_snowflake = role_info.get("member_snowflake")
-            if member_snowflake and member_snowflake not in members:
-                role_info.pop("member_snowflake")
-        for member_info in members.values():
-            channel_snowflake = member_info.get("channel_snowflake")
-            if channel_snowflake and channel_snowflake not in channels:
-                member_info.pop("channel_snowflake")
         cleaned[guild_snowflake] = {
             "channels": channels,
             "members": members,

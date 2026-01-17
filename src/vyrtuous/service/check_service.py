@@ -25,23 +25,24 @@ from vyrtuous.database.roles.administrator import Administrator
 from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.developer import Developer
 from vyrtuous.database.roles.moderator import Moderator
+from vyrtuous.service.logging_service import logger
 from vyrtuous.utils.permission import PERMISSION_TYPES
 
 
 class NotCoordinator(commands.CheckFailure):
-    def __init__(self, message="You are not a coordinator in the requested channel."):
+    def __init__(self, message="You are not a coordinator in this channel and cannot do this."):
         super().__init__(message)
 
 
 class NotAdministrator(commands.CheckFailure):
     def __init__(
-        self, message="You are not an administrator in the requested channel."
+        self, message="You are not an administrator and cannot do this."
     ):
         super().__init__(message)
 
 
 class NotModerator(commands.CheckFailure):
-    def __init__(self, message="You are not a moderator in the requested channel."):
+    def __init__(self, message="You are not a moderator in this channel and cannot do this."):
         super().__init__(message)
 
 
@@ -56,12 +57,12 @@ class NotSystemOwner(commands.CheckFailure):
 
 
 class NotDeveloper(commands.CheckFailure):
-    def __init__(self, message="You are not a developer in this server."):
+    def __init__(self, message="You are not a developer and cannot do this."):
         super().__init__(message)
 
 
 class NotAtHome(commands.CheckFailure):
-    def __init__(self, message="You are not in the home Discord!."):
+    def __init__(self, message="You are not in the home server and cannot do this.."):
         super().__init__(message)
 
 
@@ -364,27 +365,27 @@ async def has_equal_or_higher_role(
         try:
             if await member_is_system_owner(member_snowflake=member_sf):
                 return PERMISSION_TYPES.index("System Owner")
-        except NotSystemOwner:
-            pass
+        except NotSystemOwner as e:
+            logger.warning(str(e).capitalize())
         try:
             if await member_is_developer(member_snowflake=member_sf):
                 return PERMISSION_TYPES.index("Developer")
-        except NotDeveloper:
-            pass
+        except NotDeveloper as e:
+            logger.warning(str(e).capitalize())
         try:
             if await member_is_guild_owner(
                 guild_snowflake=guild_snowflake, member_snowflake=member_sf
             ):
                 return PERMISSION_TYPES.index("Guild Owner")
-        except NotGuildOwner:
-            pass
+        except NotGuildOwner as e:
+            logger.warning(str(e).capitalize())
         try:
             if await member_is_administrator(
                 guild_snowflake=guild_snowflake, member_snowflake=member_sf
             ):
                 return PERMISSION_TYPES.index("Administrator")
-        except NotAdministrator:
-            pass
+        except NotAdministrator as e:
+            logger.warning(str(e).capitalize())
         if channel_snowflake:
             try:
                 if await member_is_coordinator(
@@ -393,8 +394,8 @@ async def has_equal_or_higher_role(
                     member_snowflake=member_sf,
                 ):
                     return PERMISSION_TYPES.index("Coordinator")
-            except NotCoordinator:
-                pass
+            except NotCoordinator as e:
+                logger.warning(str(e).capitalize())
             try:
                 if await member_is_moderator(
                     channel_snowflake=channel_snowflake,
@@ -402,8 +403,8 @@ async def has_equal_or_higher_role(
                     member_snowflake=member_sf,
                 ):
                     return PERMISSION_TYPES.index("Moderator")
-            except NotModerator:
-                pass
+            except NotModerator as e:
+                logger.warning(str(e).capitalize())
         return PERMISSION_TYPES.index("Everyone")
 
     sender_rank = await get_highest_role(sender_snowflake)

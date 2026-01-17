@@ -16,10 +16,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN, ROLE_ID
+from vyrtuous.inc.helpers import ROLE_ID
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
+    RESET, YELLOW, RED, GREEN
 )
 from vyrtuous.utils.emojis import EMOJIS
 import pytest
@@ -247,7 +248,7 @@ CAP_SECONDS = parse_duration_seconds("=24h", UNIT_MAP)
 def build_alias_cases(
     LIST_ALIASES,
     LIST_CASES,
-    # PREFIXES,
+    PREFIXES, 
     DURATIONS,
     UNIT_MAP,
     REASON,

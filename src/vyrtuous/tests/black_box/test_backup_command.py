@@ -16,10 +16,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import Optional
-from vyrtuous.inc.helpers import RESET, YELLOW, RED, GREEN
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
+    RESET, YELLOW, RED, GREEN
 )
 import pytest
 
