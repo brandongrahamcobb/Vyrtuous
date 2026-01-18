@@ -198,15 +198,15 @@ class HelpCommand(commands.Cog):
             if not kind:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Command or alias `{command_name}` not found."
+                        warning=f"Command or alias `{command_name}` not found."
                     )
                 except Exception as e:
                     try:
                         return await state.end(
-                            warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                            warning=str(e).capitalize()
                         )
                     except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
+                        return await state.end(error=str(e).capitalize())
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -259,11 +259,11 @@ class HelpCommand(commands.Cog):
                         except Exception as e:
                             try:
                                 return await state.end(
-                                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                                    warning=str(e).capitalize()
                                 )
                             except Exception as e:
                                 return await state.end(
-                                    error=f"\u274c {str(e).capitalize()}"
+                                    error=str(e).capitalize()
                                 )
             if kind == "alias":
                 alias = obj
@@ -271,16 +271,16 @@ class HelpCommand(commands.Cog):
                 if not help_lines:
                     try:
                         return await state.end(
-                            warning=f"\U000026a0\U0000fe0f No help available for `{alias.alias_name}`."
+                            warning=f"No help available for `{alias.alias_name}`."
                         )
                     except Exception as e:
                         try:
                             return await state.end(
-                                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                                warning=str(e).capitalize()
                             )
                         except Exception as e:
                             return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
+                                error=str(e).capitalize()
                             )
                 embed = discord.Embed(
                     title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
@@ -297,10 +297,10 @@ class HelpCommand(commands.Cog):
                 except Exception as e:
                     try:
                         return await state.end(
-                            warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                            warning=str(e).capitalize()
                         )
                     except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
+                        return await state.end(error=str(e).capitalize())
         all_commands = await self.get_available_commands(bot, interaction)
         permission_groups = await self.group_commands_by_permission(
             bot, interaction, all_commands
@@ -365,19 +365,19 @@ class HelpCommand(commands.Cog):
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                        warning=str(e).capitalize()
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         try:
             return await state.end(success=pages)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     @commands.command(name="help")
     @moderator_predicator()
@@ -390,15 +390,15 @@ class HelpCommand(commands.Cog):
             if not kind:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Command or alias `{command_name}` not found."
+                        warning=f"Command or alias `{command_name}` not found."
                     )
                 except Exception as e:
                     try:
                         return await state.end(
-                            warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                            warning=str(e).capitalize()
                         )
                     except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
+                        return await state.end(error=str(e).capitalize())
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -451,11 +451,11 @@ class HelpCommand(commands.Cog):
                         except Exception as e:
                             try:
                                 return await state.end(
-                                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                                    warning=str(e).capitalize()
                                 )
                             except Exception as e:
                                 return await state.end(
-                                    error=f"\u274c {str(e).capitalize()}"
+                                    error=str(e).capitalize()
                                 )
             if kind == "alias":
                 alias = obj
@@ -463,16 +463,16 @@ class HelpCommand(commands.Cog):
                 if not help_lines:
                     try:
                         return await state.end(
-                            warning=f"\U000026a0\U0000fe0f No help available for `{alias.alias_name}`."
+                            warning=f"No help available for `{alias.alias_name}`."
                         )
                     except Exception as e:
                         try:
                             return await state.end(
-                                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                                warning=str(e).capitalize()
                             )
                         except Exception as e:
                             return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
+                                error=str(e).capitalize()
                             )
                 embed = discord.Embed(
                     title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
@@ -489,10 +489,10 @@ class HelpCommand(commands.Cog):
                 except Exception as e:
                     try:
                         return await state.end(
-                            warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                            warning=str(e).capitalize()
                         )
                     except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
+                        return await state.end(error=str(e).capitalize())
         all_commands = await self.get_available_commands(bot, ctx)
         permission_groups = await self.group_commands_by_permission(
             bot, ctx, all_commands
@@ -556,19 +556,19 @@ class HelpCommand(commands.Cog):
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                        warning=str(e).capitalize()
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         try:
             return await state.end(success=pages)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
 
 async def setup(bot: DiscordBot):

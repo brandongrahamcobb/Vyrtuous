@@ -50,8 +50,6 @@ from vyrtuous.service.check_service import (
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.service.resolution.channel_service import resolve_channel
-from vyrtuous.service.resolution.member_service import resolve_member
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
 
@@ -467,10 +465,10 @@ class EventListeners(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
         alias_class = alias.alias_class
         action_existing = await alias_class.select(
@@ -486,12 +484,11 @@ class EventListeners(commands.Cog):
             if not action_existing:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f "
-                        f"No current {alias_class.SINGULAR} for {member_obj.mention} exists in "
+                        warning=f"No current {alias_class.SINGULAR} for {member_obj.mention} exists in "
                         f"{channel_obj.mention}."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
             await alias_class.delete(
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=message.guild.id,
@@ -533,7 +530,7 @@ class EventListeners(commands.Cog):
                         "the duration below the current time."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         if (
             action_information["action_existing"]
             and action_information["action_expires_in"].total_seconds()
@@ -544,12 +541,11 @@ class EventListeners(commands.Cog):
                 duration_str = DurationObject.from_seconds(action_channel_cap)
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f "
-                        f"Cannot set the {alias_class.SINGULAR} beyond {duration_str} as a "
+                        warning=f"Cannot set the {alias_class.SINGULAR} beyond {duration_str} as a "
                         f"{executor_role} in {channel_obj.mention}."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
 
         where_kwargs = {
             "channel_snowflake": action_information["action_channel_snowflake"],
@@ -569,12 +565,11 @@ class EventListeners(commands.Cog):
             else:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f "
-                        f"An existing {action_information['alias_class'].SINGULAR} already exists for "
+                        warning=f"An existing {action_information['alias_class'].SINGULAR} already exists for "
                         f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
 
         await alias.handler(
             alias=alias,
@@ -604,9 +599,9 @@ class EventListeners(commands.Cog):
                     return await state.end(error=f"\U000026a0\U0000fe0f {error}")
         except Exception as e:
             try:
-                return await state.end(warning=f"\U000026a0\U0000fe0f {str(e)}")
+                return await state.end(warning=f"{str(e)}")
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
@@ -621,9 +616,9 @@ class EventListeners(commands.Cog):
                     return await state.end(error=f"\U000026a0\U0000fe0f {error}")
         except Exception as e:
             try:
-                return await state.end(warning=f"\U000026a0\U0000fe0f {str(e)}")
+                return await state.end(warning=f"{str(e)}")
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     #    @commands.Cog.listener()
     #    async def on_command(self, ctx):

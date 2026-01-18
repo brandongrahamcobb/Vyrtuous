@@ -380,10 +380,39 @@ def create_channel(
     )(state=create_state(), guild=guild, data=data)
 
 
-def create_role(guild=None, id=None, name=None, members=None):
-    return SimpleNamespace(
-        guild=guild, id=id, name=name, members=members, mention=f"<@&{id}>"
-    )
+def create_role(guild=None, id=None, name=None, members=None, object_role=discord.Role):
+    data = {
+        "id": id,
+        "name": name,
+        "color": 0,
+        "hoist": False,
+        "position": 0,
+        "permissions": 0,
+        "managed": False,
+        "mentionable": False,
+        "guild_id": getattr(guild, "id", None),
+    }
+
+    def mention(self):
+        return f"<@&{self.id}"
+
+    return type(
+        "MockRole",
+        (object_role,),
+        {
+            "guild": guild,
+            "id": id,
+            "name": name,
+            "members": members or [],
+            "mention": f"<@&{id}>",
+            "is_default": False,
+            "color": 0,
+            "position": 0,
+            "permissions": 0,
+            "managed": False,
+            "mentionable": False,
+        },
+    )(state=guild._state, guild=guild, data=data)
 
     # channels = {}
     # for cid, (name, channel_type) in channel_defs.items():

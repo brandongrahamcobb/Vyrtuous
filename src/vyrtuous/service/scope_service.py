@@ -20,7 +20,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.check_service import role_check_without_specifics
-from vyrtuous.service.resolution.channel_service import resolve_channel
+from vyrtuous.service.resolution.discord_object_service import resolve_channel
 from vyrtuous.service.resolution.member_service import resolve_member
 from vyrtuous.service.resolution.role_service import resolve_role
 from vyrtuous.service.logging_service import logger
@@ -70,114 +70,6 @@ def generate_skipped_dict_pages(chunk_size, field_count, pages, skipped, title):
         embed.description = "\n".join(lines)
         pages.append(embed)
     return pages
-
-
-async def resolve_where_kwargs(channel_obj, guild_obj, member_obj, role_obj):
-    kwargs = {}
-    match (channel_obj, guild_obj, member_obj, role_obj):
-        case (c, None, None, None) if c:
-            kwargs["channel_snowflake"] = c.id
-        case (None, g, None, None) if g:
-            kwargs["guild_snowflake"] = g.id
-        case (None, None, m, None) if m:
-            kwargs["member_snowflake"] = m.id
-        case (None, None, None, r) if r:
-            kwargs["role_snowflake"] = r.id
-        case (c, g, None, None) if c and g:
-            kwargs["channel_snowflake"] = c.id
-            kwargs["guild_snowflake"] = g.id
-        case (None, g, None, None) if g:
-            kwargs["guild_snowflake"] = g.id
-        case (c, g, m, None) if c and g and m:
-            kwargs["channel_snowflake"] = c.id
-            kwargs["guild_snowflake"] = g.id
-            kwargs["member_snowflake"] = m.id
-        case (None, g, m, None) if g and m:
-            kwargs["guild_snowflake"] = g.id
-            kwargs["member_snowflake"] = m.id
-        case (c, None, None, None) if c:
-            kwargs["channel_snowflake"] = c.id
-        case (None, g, None, r) if g and r:
-            kwargs["guild_snowflake"] = g.id
-            kwargs["role_snowflake"] = r.id
-        case (None, None, None, None):
-            return {}
-        case _:
-            raise ValueError
-    return kwargs
-
-
-async def resolve_objects(ctx_interaction_or_message, obj, state, target):
-    channel_obj, guild_obj, member_obj, role_obj = None, None, None, None
-    title = f"{get_random_emoji()} {obj.PLURAL}"
-    highest_role = await role_check_without_specifics(
-        ctx_interaction_or_message=ctx_interaction_or_message
-    )
-    if target and target.lower() == "all":
-        if highest_role not in ("System Owner", "Developer"):
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"You are not authorized to list {obj.PLURAL.lower()} "
-                    f"across all servers."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-    elif target:
-        try:
-            channel_obj = await resolve_channel(
-                ctx_interaction_or_message=ctx_interaction_or_message,
-                channel_str=target,
-            )
-        except Exception as e:
-            logger.info(str(e).capitalize())
-            try:
-                member_obj = await resolve_member(
-                    ctx_interaction_or_message=ctx_interaction_or_message,
-                    member_str=target,
-                )
-            except Exception as e:
-                logger.info(str(e).capitalize())
-                bot = DiscordBot.get_instance()
-                guild_obj = bot.get_guild(int(target))
-                if not guild_obj:
-                    try:
-                        role_obj = await resolve_role(
-                            ctx_interaction_or_message=ctx_interaction_or_message,
-                            role_str=target,
-                        )
-                    except Exception as e:
-                        logger.info(str(e).capitalize())
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"Scope must be one of: `all`, channel ID/mention, "
-                                f"member ID/mention, role ID/mention, server ID or empty. Received: {target}."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-                else:
-                    if highest_role in ("Coordinator", "Moderator", "Everyone"):
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"You are not authorized to list {obj.PLURAL.lower()} "
-                                f"for specific servers."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-    where_kwargs = await resolve_where_kwargs(
-        channel_obj=channel_obj,
-        guild_obj=guild_obj,
-        member_obj=member_obj,
-        role_obj=role_obj,
-    )
-    objects = await obj.select(**where_kwargs)
-    return objects, title
 
 
 def generate_skipped_guilds(guild_dictionary: dict) -> set:

@@ -41,8 +41,6 @@ from vyrtuous.service.check_service import (
 )
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.service.resolution.channel_service import resolve_channel
-from vyrtuous.service.resolution.member_service import resolve_member
 from vyrtuous.utils.emojis import get_random_emoji
 
 
@@ -94,10 +92,10 @@ class CoordinatorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
             
         action = None
         moderator = await Moderator.select(
@@ -124,12 +122,11 @@ class CoordinatorCommands(commands.Cog):
 
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Moderator access for {member_obj.mention} has been "
+                success=f"Moderator access for {member_obj.mention} has been "
                 f"{action} in {channel_obj.mention}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="mod", help="Grant/revoke mods.")
@@ -172,10 +169,10 @@ class CoordinatorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         action = None
         moderator = await Moderator.select(
             channel_snowflake=channel_obj.id,
@@ -204,12 +201,11 @@ class CoordinatorCommands(commands.Cog):
 
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Moderator access for {member_obj.mention} has been "
+                success=f"Moderator access for {member_obj.mention} has been "
                 f"{action} in {channel_obj.mention}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="rmute", description="Room mute (except yourself).")
@@ -231,10 +227,10 @@ class CoordinatorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         for member in channel_obj.members:
             if member.id == interaction.user.id:
                 continue
@@ -312,10 +308,10 @@ class CoordinatorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         for member in channel_obj.members:
             if member.id == ctx.author.id:
                 continue
@@ -387,10 +383,10 @@ class CoordinatorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         for member in channel_obj.members:
             voice_mute = await VoiceMute.select(
                 channel_snowflake=channel_obj.id,
@@ -458,7 +454,7 @@ class CoordinatorCommands(commands.Cog):
             )
         except Exception as e:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                warning=str(e).capitalize()
             )
         for member in channel_obj.members:
             voice_mute = await VoiceMute.select(

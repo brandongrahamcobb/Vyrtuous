@@ -21,8 +21,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.logs.history import History
-from vyrtuous.service.logging_service import logger
-from vyrtuous.service.resolution.role_service import resolve_role
+
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
 
@@ -120,7 +119,7 @@ class Aliases(commands.Cog):
                 member, view_channel=False, reason=action_information["action_reason"]
             )
         except discord.Forbidden as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
         if (
             member.voice
             and member.voice.channel
@@ -130,7 +129,7 @@ class Aliases(commands.Cog):
             try:
                 await member.move_to(None, reason=action_information["action_reason"])
             except discord.Forbidden as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
         await History.send_entry(
             alias=alias,
@@ -155,10 +154,8 @@ class Aliases(commands.Cog):
             color=discord.Color.blue(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+       
+        return await state.end(success=embed)
 
     # DONE
     async def handle_vegan_alias(
@@ -193,10 +190,8 @@ class Aliases(commands.Cog):
             color=discord.Color.green(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_flag_alias(
@@ -237,39 +232,29 @@ class Aliases(commands.Cog):
             color=discord.Color.red(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_role_alias(
         self, alias, action_information, channel, member, message, state
     ):
         if not action_information["action_modification"]:
-            role = action_information["alias_class"](
+            role_obj = action_information["alias_class"](
                 guild_snowflake=action_information["action_guild_snowflake"],
                 member_snowflake=action_information["action_member_snowflake"],
                 role_snowflake=action_information["action_role_snowflake"],
             )
-            await role.create()
-        try:
-            role = await resolve_role(
-                ctx_interaction_or_message=message, role_str=alias.role_snowflake
+            await role_obj.create()
+        role = message.guild.get_role(alias.role_snowflake)
+        if not role:
+            return await state.end(
+                warning=f"Role `{alias.role_snowflake}` was not found."
             )
-        except Exception as e:
-            try:
-                logger.warning(str(e).capitalize())
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"Role `{alias.role_snowflake}` was not found."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
         try:
             await member.add_roles(role, reason="Added role")
         except discord.Forbidden as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
         await History.send_entry(
             alias=alias,
@@ -293,10 +278,8 @@ class Aliases(commands.Cog):
             color=discord.Color.blurple(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_text_mute_alias(
@@ -314,13 +297,13 @@ class Aliases(commands.Cog):
 
         try:
             await channel.set_permissions(
-                member=member,
+                target=member,
                 send_messages=False,
                 add_reactions=False,
                 reason=action_information["action_reason"],
             )
         except discord.Forbidden as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
         await History.send_entry(
             alias=alias,
@@ -345,10 +328,8 @@ class Aliases(commands.Cog):
             color=discord.Color.green(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_voice_mute_alias(
@@ -377,7 +358,7 @@ class Aliases(commands.Cog):
                         mute=True, reason=action_information["action_reason"]
                     )
                 except discord.Forbidden as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
 
         await History.send_entry(
             alias=alias,
@@ -403,10 +384,8 @@ class Aliases(commands.Cog):
             color=discord.Color.green(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_unban_alias(
@@ -417,7 +396,7 @@ class Aliases(commands.Cog):
         try:
             await channel.set_permissions(member, overwrite=None)
         except discord.Forbidden as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
         if member.voice and member.voice.channel:
             if member.voice.channel.id == channel.id:
@@ -425,7 +404,7 @@ class Aliases(commands.Cog):
                 try:
                     await member.move_to(None, reason="Unbanned")
                 except discord.Forbidden as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
 
         await History.send_entry(
             alias=alias,
@@ -448,10 +427,8 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_carnist_alias(
@@ -480,10 +457,8 @@ class Aliases(commands.Cog):
             color=discord.Color.red(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_unflag_alias(
@@ -518,10 +493,8 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_unmute_alias(
@@ -534,7 +507,7 @@ class Aliases(commands.Cog):
                 is_channel_scope = True
                 await member.edit(mute=False)
             except discord.Forbidden as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
         await History.send_entry(
             alias=alias,
@@ -557,28 +530,18 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_unrole_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        try:
-            role = await resolve_role(
-                ctx_interaction_or_message=message, role_str=alias.role_snowflake
+        role = message.guild.get_role(alias.role_snowflake)
+        if not role:
+            return await state.end(
+                warning=f"Role `{alias.role_snowflake}` was not found."
             )
-        except Exception as e:
-            try:
-                logger.warning(str(e).capitalize())
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"Role `{alias.role_snowflake}` was not found."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
         if role not in member.roles:
             try:
                 return await state.end(
@@ -586,11 +549,11 @@ class Aliases(commands.Cog):
                     f"{member.mention} does not have {role.mention}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await member.remove_roles(role)
         except discord.Forbidden as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
         await History.send_entry(
             alias=alias,
@@ -614,19 +577,17 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     async def handle_untextmute_alias(
         self, alias, action_information, channel, member, message, state
     ):
         try:
-            await channel.set_permissions(member=member, send_messages=None)
+            await channel.set_permissions(target=member, send_messages=None)
         except discord.Forbidden as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
         await History.send_entry(
             alias=alias,
@@ -649,10 +610,8 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
 
 async def setup(bot: DiscordBot):

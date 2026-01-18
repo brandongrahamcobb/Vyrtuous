@@ -58,8 +58,6 @@ from vyrtuous.service.check_service import (
     role_check_without_specifics,
 )
 from vyrtuous.service.logging_service import logger
-from vyrtuous.service.resolution.channel_service import resolve_channel
-from vyrtuous.service.resolution.member_service import resolve_member
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.scope_service import (
@@ -771,19 +769,18 @@ class ModeratorCommands(commands.Cog):
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
-                for entry in dictionary["aliases"]:
-                    for alias_type, alias_names in entry.items():
-                        channel_lines.append(f"{alias_type}")
-                        for name in alias_names:
-                            channel_lines.append(f"  ↳ {name}")
-                    if len(lines) >= chunk_size:
-                        embed.add_field(
-                            name=f"Channel: {channel.mention}",
-                            value="\n".join(lines),
-                            inline=False,
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
+                for alias_type, alias_names in dictionary["aliases"].items():
+                    channel_lines.append(f"{alias_type}")
+                    for name in alias_names:
+                        channel_lines.append(f"  ↳ {name}")
+                if len(lines) >= chunk_size:
+                    embed.add_field(
+                        name=f"Channel: {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -865,19 +862,18 @@ class ModeratorCommands(commands.Cog):
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 channel_lines = []
-                for entry in dictionary["aliases"]:
-                    for alias_type, alias_names in entry.items():
-                        channel_lines.append(f"{alias_type}")
-                        for name in alias_names:
-                            channel_lines.append(f"  ↳ {name}")
-                    if len(lines) >= chunk_size:
-                        embed.add_field(
-                            name=f"Channel: {channel.mention}",
-                            value="\n".join(lines),
-                            inline=False,
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
+                for alias_type, alias_names in dictionary["aliases"].items():
+                    channel_lines.append(f"{alias_type}")
+                    for name in alias_names:
+                        channel_lines.append(f"  ↳ {name}")
+                if len(lines) >= chunk_size:
+                    embed.add_field(
+                        name=f"Channel: {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
             if lines:
                 embed.add_field(
                     name=f"Channel: {channel.mention}",
@@ -929,10 +925,10 @@ class ModeratorCommands(commands.Cog):
         if not msg:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f Message `{message}` does not exist."
+                    warning=f"Message `{message}` does not exist."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await has_equal_or_higher_role(
                 interaction,
@@ -944,20 +940,20 @@ class ModeratorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await msg.delete()
         except discord.Forbidden as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} Message `{message}` deleted successfully."
+                success=f"Message `{message}` deleted successfully."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     @app_commands.command(name="coords", description="Lists coords.")
     @app_commands.describe(
@@ -1206,10 +1202,10 @@ class ModeratorCommands(commands.Cog):
         if not msg:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f Message `{message}` does not exist."
+                    warning=f"Message `{message}` does not exist."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await has_equal_or_higher_role(
                 ctx,
@@ -1221,20 +1217,20 @@ class ModeratorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await msg.delete()
         except discord.Forbidden as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} Message `{message}` deleted successfully."
+                success=f"Message `{message}` deleted successfully."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="devs", description="List devs.")
@@ -1884,10 +1880,10 @@ class ModeratorCommands(commands.Cog):
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                        warning=str(e).capitalize()
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
             is_owner = old_room.member_snowflake == interaction.user.id
             highest_role = await role_check_without_specifics(interaction)
             if (
@@ -1900,7 +1896,7 @@ class ModeratorCommands(commands.Cog):
                         warning="\U000026a0\U0000fe0f Only owners, developers and administrators can migrate rooms."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
             set_kwargs = {"channel_snowflake": channel_obj.id}
             temp_where_kwargs = {
                 "channel_snowflake": old_room.channel_snowflake,
@@ -1957,16 +1953,16 @@ class ModeratorCommands(commands.Cog):
             )
             try:
                 return await state.end(
-                    success=f"{get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention}."
+                    success=f"Temporary room `{old_name}` migrated to {channel_obj.mention}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f No temporary rooms found called `{old_name}` in {interaction.guild.name}."
+                warning=f"No temporary rooms found called `{old_name}` in {interaction.guild.name}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(
@@ -1996,10 +1992,10 @@ class ModeratorCommands(commands.Cog):
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                        warning=str(e).capitalize()
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
             is_owner = old_room.member_snowflake == ctx.author.id
             highest_role = await role_check_without_specifics(ctx)
             if (
@@ -2012,7 +2008,7 @@ class ModeratorCommands(commands.Cog):
                         warning="\U000026a0\U0000fe0f Only owners, developers and administrators can migrate rooms."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
             set_kwargs = {"channel_snowflake": channel_obj.id}
             temp_where_kwargs = {
                 "channel_snowflake": old_room.channel_snowflake,
@@ -2069,16 +2065,16 @@ class ModeratorCommands(commands.Cog):
             )
             try:
                 return await state.end(
-                    success=f"{get_random_emoji()} Temporary room `{old_name}` migrated to {channel_obj.mention}."
+                    success=f"Temporary room `{old_name}` migrated to {channel_obj.mention}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f No temporary rooms found called `{old_name}` in {ctx.guild.name}."
+                warning=f"No temporary rooms found called `{old_name}` in {ctx.guild.name}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="mods", description="Lists mods.")
@@ -2554,20 +2550,20 @@ class ModeratorCommands(commands.Cog):
             logger.warning(str(e).capitalize())
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f Could not resolve a valid member `{member}`."
+                    warning=f"Could not resolve a valid member `{member}`."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             not_bot(interaction, member_snowflake=member_obj.id)
         except Exception as e:
             logger.warning(str(e).capitalize())
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f You are not authorized to affect {interaction.guild.me.mention}."
+                    warning=f"You are not authorized to affect {interaction.guild.me.mention}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await has_equal_or_higher_role(
                 interaction,
@@ -2579,35 +2575,35 @@ class ModeratorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         stage = await Stage.select(
             channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
         )
         if not stage:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No active stage found in {channel_obj.mention}."
+                    warning=f"No active stage found in {channel_obj.mention}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await member_obj.edit(mute=not member_obj.voice.mute)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} {member_obj.mention} has been {'muted' if member_obj.voice.mute else 'unmuted'}."
+                success=f"{member_obj.mention} has been {'muted' if member_obj.voice.mute else 'unmuted'}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="mstage", help="Stage mute/unmute.")
@@ -2636,20 +2632,20 @@ class ModeratorCommands(commands.Cog):
             logger.warning(str(e).capitalize())
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f Could not resolve a valid member `{member}`."
+                    warning=f"Could not resolve a valid member `{member}`."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             not_bot(ctx, member_snowflake=member_obj.id)
         except Exception as e:
             try:
                 logger.warning(str(e).capitalize())
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f You are not authorized to affect {ctx.guild.me.mention}."
+                    warning=f"You are not authorized to affect {ctx.guild.me.mention}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await has_equal_or_higher_role(
                 ctx,
@@ -2661,35 +2657,35 @@ class ModeratorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         stage = await Stage.select(
             channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
         )
         if not stage:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No active stage found in {channel_obj.mention}."
+                    warning=f"No active stage found in {channel_obj.mention}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             await member_obj.edit(mute=not member_obj.voice.mute)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} {member_obj.mention} has been {'muted' if member_obj.voice.mute else 'unmuted'}."
+                success=f"{member_obj.mention} has been {'muted' if member_obj.voice.mute else 'unmuted'}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="roleid", description="Get role by name.")
@@ -2703,17 +2699,17 @@ class ModeratorCommands(commands.Cog):
         if role:
             try:
                 return await state.end(
-                    success=f"{get_random_emoji()} Role `{role.name}` has ID `{role.id}`."
+                    success=f"Role `{role.name}` has ID `{role.id}`."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         else:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No role named `{role_name}` found in this server."
+                    warning=f"No role named `{role_name}` found in this server."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="roleid", help="Get role by name.")
@@ -2724,17 +2720,17 @@ class ModeratorCommands(commands.Cog):
         if role:
             try:
                 return await state.end(
-                    success=f"{get_random_emoji()} Role `{role.name}` has ID `{role.id}`."
+                    success=f"Role `{role.name}` has ID `{role.id}`."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         else:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No role named `{role_name}` found in this server."
+                    warning=f"No role named `{role_name}` found in this server."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="stages", description="List stages.")
@@ -2952,10 +2948,10 @@ class ModeratorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}."
+                    warning=f"{str(e).capitalize()}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
         bans, ban_title = await resolve_objects(
             ctx_interaction_or_message=interaction, obj=Ban, state=state, target=target
@@ -3161,10 +3157,10 @@ class ModeratorCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}."
+                    warning=f"{str(e).capitalize()}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
         bans, ban_title = await resolve_objects(
             ctx_interaction_or_message=ctx, obj=Ban, state=state, target=target
@@ -3458,14 +3454,14 @@ class ModeratorCommands(commands.Cog):
                         warning="\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         else:
             try:
                 return await state.end(
                     warning="\U000026a0\U0000fe0f No authorized roles found."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="survey", help="Get all.")
@@ -3583,14 +3579,14 @@ class ModeratorCommands(commands.Cog):
                         warning="\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         else:
             try:
                 return await state.end(
                     warning="\U000026a0\U0000fe0f No authorized roles found."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="tmutes", description="List text-mutes.")

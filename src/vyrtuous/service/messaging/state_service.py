@@ -31,6 +31,7 @@ from vyrtuous.database.roles.developer import Developer
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.paginator_service import Paginator
 from vyrtuous.service.logging_service import logger
+from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.time_to_complete import TimeToComplete
 
 cache = TTLCache(maxsize=500, ttl=8 * 60 * 60)
@@ -90,14 +91,14 @@ class StateService:
         allowed_mentions=discord.AllowedMentions.none(),
     ):
         if success is not None:
-            message_obj = success
+            message_obj = f"{get_random_emoji()} {success}"
             is_success = True
         elif warning is not None:
-            message_obj = warning
+            message_obj = f"\u26a0\ufe0f {warning}"
             is_success = False
             logger.warning(warning)
         elif error is not None:
-            message_obj = error
+            message_obj = f"\u274c {error}"
             is_success = False
             logger.warning(error)
         else:
@@ -319,11 +320,11 @@ class StateService:
                         warning="\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         else:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No {obj.PLURAL.lower()} found."
+                    warning=f"No {obj.PLURAL.lower()} found."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())

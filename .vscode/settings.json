@@ -1,10 +1,10 @@
 {
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
-  "python.testing.pytestArgs": [
-    "tests"
-  ],
   "python-envs.defaultEnvManager": "ms-python.python:system",
+  "python.testing.pytestArgs": [
+    "src/vyrtuous/tests"
+  ],
   "python-envs.pythonProjects": [
     {
       "path": "",

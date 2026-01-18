@@ -35,8 +35,7 @@ from vyrtuous.service.check_service import (
 )
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.service.resolution.member_service import resolve_member
-from vyrtuous.service.resolution.role_service import resolve_role
+
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
 
@@ -60,10 +59,10 @@ class GuildOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
         administrators = await Administrator.select(role_snowflakes=[role_obj.id])
         administrator_roles = await AdministratorRole.select(role_snowflake=role_obj.id)
@@ -149,10 +148,10 @@ class GuildOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
         administrators = await Administrator.select(role_snowflakes=[role_obj.id])
         administrator_roles = await AdministratorRole.select(role_snowflake=role_obj.id)
@@ -251,7 +250,7 @@ class GuildOwnerCommands(commands.Cog):
             )
         except Exception as e:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                warning=str(e).capitalize()
             )
         enabled = Invincibility.toggle_enabled()
         if enabled:
@@ -267,14 +266,14 @@ class GuildOwnerCommands(commands.Cog):
             Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
             msg = f"Invincibility has been disabled for {member_obj.mention}"
         try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
+            return await state.end(success=msg)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="hero", help="Grant/revoke invincibility.")
@@ -304,10 +303,10 @@ class GuildOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         enabled = Invincibility.toggle_enabled()
         if enabled:
             Invincibility.add_invincible_member(member_snowflake=member_obj.id)
@@ -322,14 +321,14 @@ class GuildOwnerCommands(commands.Cog):
             Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
             msg = f"Invincibility has been disabled for {member_obj.mention}"
         try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
+            return await state.end(success=msg)
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
 
 async def setup(bot: DiscordBot):

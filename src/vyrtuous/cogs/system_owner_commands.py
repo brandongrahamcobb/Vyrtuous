@@ -34,7 +34,6 @@ from vyrtuous.service.check_service import (
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.service.resolution.member_service import resolve_member
 from vyrtuous.utils.emojis import get_random_emoji
 
 
@@ -64,10 +63,10 @@ class SystemOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                await state.end(error=f"\u274c {str(e).capitalize()}")
+                await state.end(error=str(e).capitalize())
         developer = await Developer.select(
             guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
         )
@@ -81,7 +80,7 @@ class SystemOwnerCommands(commands.Cog):
                 except discord.NotFound:
                     try:
                         return await state.end(
-                            warning=f"\U000026a0\U0000fe0f Message reference not found: {reference}."
+                            warning=f"Message reference not found: {reference}."
                         )
                     except Exception as e:
                         link = "Unknown message"
@@ -90,10 +89,10 @@ class SystemOwnerCommands(commands.Cog):
                     await developer_log.unassign(member_snowflake=member_obj.id)
                     try:
                         return await state.end(
-                            success=f"{get_random_emoji()} Developer {member_obj.mention} unassigned for issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
+                            success=f"Developer {member_obj.mention} unassigned for issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
                         )
                     except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
+                        return await state.end(error=str(e).capitalize())
                 else:
                     await developer_log.assign(member_snowflake=member_obj.id)
                     try:
@@ -104,24 +103,24 @@ class SystemOwnerCommands(commands.Cog):
                         logger.warning(str(e).capitalize())
                     try:
                         return await state.end(
-                            success=f"{get_random_emoji()} Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
+                            success=f"Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
                         )
                     except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
+                        return await state.end(error=str(e).capitalize())
             else:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Unresolved issue not found for reference: {reference}."
+                        warning=f"Unresolved issue not found for reference: {reference}."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         else:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f Developer not found for {interaction.guild.name}."
+                    warning=f"Developer not found for {interaction.guild.name}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="adev", help="Assign developer.")
@@ -143,10 +142,10 @@ class SystemOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                await state.end(error=f"\u274c {str(e).capitalize()}")
+                await state.end(error=str(e).capitalize())
         developer = await Developer.select(
             guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
         )
@@ -160,7 +159,7 @@ class SystemOwnerCommands(commands.Cog):
                 except discord.NotFound:
                     try:
                         return await state.end(
-                            warning=f"\U000026a0\U0000fe0f Message reference not found: {reference}."
+                            warning=f"Message reference not found: {reference}."
                         )
                     except Exception as e:
                         link = "Unknown message"
@@ -169,10 +168,10 @@ class SystemOwnerCommands(commands.Cog):
                     await developer_log.unassign(member_snowflake=member_obj.id)
                     try:
                         return await state.end(
-                            success=f"{get_random_emoji()} Developer {member_obj.mention} unassigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
+                            success=f"Developer {member_obj.mention} unassigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
                         )
                     except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
+                        return await state.end(error=str(e).capitalize())
                 else:
                     await developer_log.assign(member_snowflake=member_obj.id)
                     try:
@@ -183,24 +182,24 @@ class SystemOwnerCommands(commands.Cog):
                         logger.warning(str(e).capitalize())
                     try:
                         return await state.end(
-                            success=f"{get_random_emoji()} Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
+                            success=f"Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
                         )
                     except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
+                        return await state.end(error=str(e).capitalize())
             else:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f Unresolved issue not found for reference: {reference}."
+                        warning=f"Unresolved issue not found for reference: {reference}."
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         else:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f Developer not found for {ctx.guild.name}."
+                    warning=f"Developer not found for {ctx.guild.name}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="dev", description="Grant/revoke devs.")
@@ -217,10 +216,10 @@ class SystemOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
             
         action = None
         developer = await Developer.select(member_snowflake=member_obj.id)
@@ -235,10 +234,10 @@ class SystemOwnerCommands(commands.Cog):
 
         try:
             return await state.end(
-                success=f"{get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}."
+                success=f"Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="dev", help="Grant/revoke devs.")
@@ -258,10 +257,10 @@ class SystemOwnerCommands(commands.Cog):
         except Exception as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=str(e).capitalize()
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
             
         action = None
         developer = await Developer.select(member_snowflake=member_obj.id)
@@ -276,10 +275,10 @@ class SystemOwnerCommands(commands.Cog):
 
         try:
             return await state.end(
-                success=f"{get_random_emoji()} Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}."
+                success=f"Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
 
 async def setup(bot: DiscordBot):

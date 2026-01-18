@@ -61,12 +61,12 @@ class DevCommands(commands.Cog):
             db.execute_backup()
         except Exception as e:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                warning=str(e).capitalize()
             )
         try:
             return await state.end(success=discord.File(db.file_name))
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="backup", help="DB backup.")
@@ -79,12 +79,12 @@ class DevCommands(commands.Cog):
             db.execute_backup()
         except Exception as e:
             return await state.end(
-                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                warning=str(e).capitalize()
             )
         try:
             return await state.end(success=discord.File(db.file_name))
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     @app_commands.command(name="cogs", description="Lists cogs.")
     @developer_predicator()
@@ -111,7 +111,7 @@ class DevCommands(commands.Cog):
         try:
             return await state.end(success=embed)
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     @commands.command(name="cogs", help="Lists cogs.")
     @developer_predicator()
@@ -138,7 +138,7 @@ class DevCommands(commands.Cog):
         try:
             return await state.end(success=embed)
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     @app_commands.command(
         name="dlog", description="Resolve or update the notes on an issue by reference."
@@ -161,11 +161,10 @@ class DevCommands(commands.Cog):
         if not developer_log:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"Issue not found. Received: {reference}."
+                    warning=f"Issue not found. Received: {reference}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         if action and action.lower() == "resolve":
             await developer_log.resolve()
             detail = (
@@ -183,7 +182,7 @@ class DevCommands(commands.Cog):
                 success=f"\U000026a0\U0000fe0f " f"You successfully {detail}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     @commands.command(
         name="dlog", help="Resolve or update the notes on an issue by reference"
@@ -209,11 +208,10 @@ class DevCommands(commands.Cog):
         if not developer_log:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"Issue not found. Received: {reference}."
+                    warning=f"Issue not found. Received: {reference}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         if action and action.lower() == "resolve":
             await developer_log.resolve()
             detail = "resolved the issue"
@@ -228,7 +226,7 @@ class DevCommands(commands.Cog):
                 success=f"\U000026a0\U0000fe0f " f"You successfully {detail}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     @app_commands.command(name="dlogs", description="List issues.")
     @app_commands.describe(
@@ -506,17 +504,16 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{e.__class__.__name__}: {str(e).capitalize()}"
+                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} " f"Successfully loaded {module}."
+                success=f"Successfully loaded {module}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(
@@ -530,17 +527,16 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{e.__class__.__name__}: {str(e).capitalize()}"
+                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} " f"Successfully loaded {module}."
+                success=f"Successfully loaded {module}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="ping", description="Ping me!")
@@ -548,9 +544,9 @@ class DevCommands(commands.Cog):
     async def ping_app_command(self, interaction: discord.Interaction):
         state = StateService(interaction)
         try:
-            return await state.end(success=f"{get_random_emoji()} " f"Pong!")
+            return await state.end(success=f"Pong!")
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="ping", help="Ping me!")
@@ -558,9 +554,9 @@ class DevCommands(commands.Cog):
     async def ping_text_command(self, ctx: commands.Context):
         state = StateService(ctx)
         try:
-            return await state.end(success=f"{get_random_emoji()} " f"Pong!")
+            return await state.end(success=f"Pong!")
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(
@@ -576,17 +572,16 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{e.__class__.__name__}: {str(e).capitalize()}"
+                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} " f"Successfully reloaded {module}."
+                success=f"Successfully reloaded {module}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(
@@ -600,17 +595,16 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{e.__class__.__name__}: {str(e).capitalize()}"
+                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} " f"Successfully reloaded {module}."
+                success=f"Successfully reloaded {module}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(name="sync", description="Sync app commands.")
@@ -640,14 +634,14 @@ class DevCommands(commands.Cog):
                     msg = f"Synced {len(synced)} " f"commands globally."
                 else:
                     msg = f"Synced {len(synced)} " f"commands to the current server."
-                return await state.end(success=f"{get_random_emoji()} " f"{msg}")
+                return await state.end(success=msg)
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                        warning=str(e).capitalize()
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         ret = 0
         for guild in guilds:
             try:
@@ -658,11 +652,10 @@ class DevCommands(commands.Cog):
                 ret += 1
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Synced the tree to {ret}/{len(guilds)}."
+                success=f"Synced the tree to {ret}/{len(guilds)}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(name="sync", help="Sync app commands.")
@@ -691,14 +684,14 @@ class DevCommands(commands.Cog):
                     msg = f"Synced {len(synced)} commands globally."
                 else:
                     msg = f"Synced {len(synced)} commands to the " f"current server."
-                return await state.end(success=f"{get_random_emoji()} " f"{msg}")
+                return await state.end(success=msg)
             except Exception as e:
                 try:
                     return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                        warning=str(e).capitalize()
                     )
                 except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                    return await state.end(error=str(e).capitalize())
         ret = 0
         for guild in guilds:
             try:
@@ -709,11 +702,10 @@ class DevCommands(commands.Cog):
                 ret += 1
         try:
             return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Synced the tree to {ret}/{len(guilds)}."
+                success=f"Synced the tree to {ret}/{len(guilds)}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @app_commands.command(
@@ -728,17 +720,16 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{e.__class__.__name__}: {str(e).capitalize()}"
+                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} " f"Successfully unloaded {module}."
+                success=f"Successfully unloaded {module}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
     # DONE
     @commands.command(
@@ -752,17 +743,16 @@ class DevCommands(commands.Cog):
         except commands.ExtensionError as e:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"{e.__class__.__name__}: {str(e).capitalize()}"
+                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         try:
             return await state.end(
-                success=f"{get_random_emoji()} " f"Successfully unloaded {module}."
+                success=f"Successfully unloaded {module}."
             )
         except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(error=str(e).capitalize())
 
 
 async def setup(bot: DiscordBot):

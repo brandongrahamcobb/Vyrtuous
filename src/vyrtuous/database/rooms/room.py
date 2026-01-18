@@ -16,8 +16,44 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from vyrtuous.database.actions.alias import Alias
+from vyrtuous.database.actions.ban import Ban
+from vyrtuous.database.actions.flag import Flag
+from vyrtuous.database.actions.text_mute import TextMute
+from vyrtuous.database.actions.voice_mute import VoiceMute
+from vyrtuous.database.logs.history import History
+from vyrtuous.database.roles.coordinator import Coordinator
+from vyrtuous.database.roles.moderator import Moderator
+from vyrtuous.database.roles.vegan import Vegan
+from vyrtuous.database.rooms.stage import Stage
+from vyrtuous.database.rooms.temporary_room import TemporaryRoom
+from vyrtuous.database.rooms.video_room import VideoRoom
 from vyrtuous.database.database_factory import DatabaseFactory
 
+member_relevant_objects_dict = {
+    Ban.SINGULAR: Ban,
+    Coordinator.SINGULAR: Coordinator,
+    Flag.SINGULAR: Flag,
+    Moderator.SINGULAR: Moderator,
+    TextMute.SINGULAR: TextMute,
+    Vegan.SINGULAR: Vegan,
+    VoiceMute.SINGULAR: VoiceMute
+}
+
+room_relevant_objects_dict = {
+    Alias.SINGULAR: Alias,
+    Ban.SINGULAR: Ban,
+    Coordinator.SINGULAR: Coordinator,
+    Flag.SINGULAR: Flag,
+    History.SINGULAR: History,
+    Moderator.SINGULAR: Moderator,
+    TemporaryRoom.SINGULAR: TemporaryRoom,
+    TextMute.SINGULAR: TextMute,
+    Vegan.SINGULAR: Vegan,
+    VideoRoom.SINGULAR: VideoRoom,
+    VoiceMute.SINGULAR: VoiceMute,
+    Stage.SINGULAR: Stage
+}
 
 class Room(DatabaseFactory):
     pass

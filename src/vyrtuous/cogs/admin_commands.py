@@ -36,6 +36,7 @@ from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.rooms.stage import Stage
+from vyrtuous.database.rooms.room import member_relevant_objects_dict, room_relevant_objects_dict
 from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.rooms.video_room import VideoRoom
 from vyrtuous.database.settings.cap import Cap
@@ -60,9 +61,7 @@ from vyrtuous.service.check_service import (
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.service.resolution.channel_service import resolve_channel
-from vyrtuous.service.resolution.member_service import resolve_member
-from vyrtuous.service.resolution.role_service import resolve_role
+
 from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
@@ -103,45 +102,45 @@ class AdminCommands(commands.Cog):
         role: AppRoleSnowflake = None,
     ):
         state = StateService(interaction)
-        channel_obj, role_obj = None, None
+        do = DiscordObject(source=interaction)
+
+        channel_dict = await do.determine_from_target(target=channel)
+        kwargs = channel_dict['columns']
         try:
-            channel_obj = await resolve_channel(interaction, channel)
-        except Exception as e:
+            role_dict = await do.determine_from_target(target=role)
+        except DiscordObjectNotFound as e:
+            logger.warning(str(e).capitalize())
+        else:
+            kwargs.update(role_dict['columns'])
+
+        alias = await Alias.select(alias_name=alias_name, guild_snowflake=interaction.guild.id)
+        if alias:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
+                    warning=f"Alias `{alias.alias_name}` already exists in {interaction.guild.name}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        try:
-            role_obj = await resolve_role(interaction, role)
-            role_snowflake = role_obj.id
-        except Exception as e:
-            role_snowflake = None
-            logger.warning(str(e).capitalize())
+                return await state.end(error=str(e).capitalize())
+
         alias = Alias(
             alias_name=alias_name,
             alias_type=moderation_type,
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=interaction.guild.id,
-            role_snowflake=role_snowflake,
+            **kwargs
         )
         await alias.create()
-        if role_snowflake:
+
+        if role_dict:
             msg = (
                 f"Alias `{alias_name}` of type `{moderation_type}` "
-                f"created successfully for channel {channel_obj.mention} "
-                f"and role {role_obj.mention}."
+                f"created successfully for channel {channel_dict['mention']} "
+                f"and role {role_dict['mention']}."
             )
         else:
             msg = (
                 f"Alias `{alias_name}`  of type `{moderation_type}` "
-                f"created successfully for channel {channel_obj.mention}."
+                f"created successfully for channel {channel_dict['mention']}."
             )
-        try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        return await state.end(success=msg)
 
     # DONE
     @commands.command(
@@ -171,45 +170,45 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        channel_obj, role_obj = None, None
+
+        do = DiscordObject(source=ctx)
+        channel_dict = do.determine_from_target(target=channel)
+        kwargs = channel_dict['columns']
         try:
-            channel_obj = await resolve_channel(ctx, channel)
-        except Exception as e:
+            role_dict = await do.determine_from_target(target=role)
+        except DiscordObjectNotFound as e:
+            logger.warning(str(e).capitalize())
+        else:
+            kwargs.update(role_dict['columns'])
+
+        alias = await Alias.select(alias_name=alias_name, guild_snowflake=ctx.guild.id)
+        if alias:
             try:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f " f" {str(e).capitalize()}"
+                    warning=f"Alias `{alias.alias_name}` already exists in {ctx.guild.name}."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        try:
-            role_obj = await resolve_role(ctx, role)
-            role_snowflake = role_obj.id
-        except Exception as e:
-            role_snowflake = None
-            logger.warning(str(e).capitalize())
+                return await state.end(error=str(e).capitalize())
+
         alias = Alias(
             alias_name=alias_name,
             alias_type=moderation_type,
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=ctx.guild.id,
-            role_snowflake=role_snowflake,
+            **kwargs
         )
         await alias.create()
-        if role_snowflake:
+
+        if role_dict:
             msg = (
                 f"Alias `{alias_name}` of type `{moderation_type}` "
-                f"created successfully for channel {channel_obj.mention} "
-                f"and role {role_obj.mention}."
+                f"created successfully for channel {channel_dict['mention']} "
+                f"and role {role_dict['mention']}."
             )
         else:
             msg = (
                 f"Alias `{alias_name}`  of type `{moderation_type}` "
-                f"created successfully for channel {channel_obj.mention}."
+                f"created successfully for channel {channel_dict['mention']}."
             )
-        try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        return await state.end(success=msg)
 
     @app_commands.command(name="aroles", description="Administrator roles.")
     @app_commands.describe(target="Specify one of: 'all', server ID or empty.")
@@ -217,23 +216,19 @@ class AdminCommands(commands.Cog):
     async def list_administrator_roles_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = StateService(interaction)
-
-        administrator_roles, title = await resolve_objects(
-            ctx_interaction_or_message=interaction,
-            obj=AdministratorRole,
-            state=state,
-            target=target,
-        )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
+        title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
+
+        state = StateService(interaction)
+
+        is_at_home = at_home(ctx_interaction_or_message=interaction)
+
+        do = DiscordObject(source=interaction)
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        administrator_roles = await AdministratorRole.select(**kwargs)
 
         for administrator_role in administrator_roles:
             guild_dictionary.setdefault(
@@ -257,7 +252,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for role_snowflake, entry in guild_data.get("roles").items():
+            for role_snowflake, entry in guild_data.get("roles", {}).items():
                 role = guild.get_role(role_snowflake)
                 if field_count >= chunk_size:
                     embed, field_count = flush_page(embed, pages, title, guild.name)
@@ -297,23 +292,19 @@ class AdminCommands(commands.Cog):
             "channel ID/mention, server ID or empty.",
         ),
     ):
-        state = StateService(ctx)
-
-        administrator_roles, title = await resolve_objects(
-            ctx_interaction_or_message=ctx,
-            obj=AdministratorRole,
-            state=state,
-            target=target,
-        )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
+        title = f"{get_random_emoji()} {AdministratorRole.PLURAL}"
+
+        state = StateService(ctx)
+
+        is_at_home = at_home(ctx_interaction_or_message=ctx)
+
+        do = DiscordObject(source=ctx)
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        administrator_roles = await AdministratorRole.select(**kwargs)
 
         for administrator_role in administrator_roles:
             guild_dictionary.setdefault(
@@ -331,14 +322,13 @@ class AdminCommands(commands.Cog):
             skipped_roles=skipped_roles,
         )
 
-
         for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for role_snowflake, role_dict in guild_data.get("roles").items():
+            for role_snowflake, role_dict in guild_data.get("roles", {}).items():
                 role = guild.get_role(role_snowflake)
                 embed, field_count = flush_page(embed, pages, title, guild.name)
                 embed.add_field(name=role.name, value=role.mention, inline=False)
@@ -362,6 +352,7 @@ class AdminCommands(commands.Cog):
                     skipped=skipped_roles,
                     title="Skipped Roles in Server",
                 )
+
         await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
 
     @app_commands.command(name="cap", description="Cap alias duration for mods.")
@@ -379,60 +370,40 @@ class AdminCommands(commands.Cog):
         hours: int,
     ):
         state = StateService(interaction)
-        channel_obj = None
+
         seconds = int(hours) * 3600
-        try:
-            channel_obj = await resolve_channel(interaction, channel)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        cap = await Cap.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=interaction.guild.id,
-            moderation_type=moderation_type,
-        )
-        if cap and hours:
-            set_kwargs = {"duration": seconds}
-            where_kwargs = {
-                "channel_snowflake": channel_obj.id,
-                "guild_snowflake": interaction.guild.id,
-            }
-            await Cap.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            msg = f"Cap `{moderation_type}` modified for {channel_obj.mention}."
+
+        do = DiscordObject(source=interaction)
+        channel_dict = do.determine_from_target(target=channel)
+
+        kwargs = channel_dict['columns']
+        kwargs.update("moderation_type", moderation_type)
+
+        cap = await Cap.select(**kwargs)
+        if cap and seconds:
+            await Cap.update(
+                set_kwargs={"duration_seconds": seconds},
+                where_kwargs=kwargs
+            )
+            msg = f"Cap `{moderation_type}` modified for {channel_dict['mention']}."
         elif cap:
-            await Cap.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                moderation_type=moderation_type,
-            )
+            await Cap.delete(**kwargs)
             try:
                 return await state.end(
-                    success=f"{get_random_emoji()} "
-                    f"Cap of type {moderation_type} "
-                    f"and channel {channel_obj.mention} deleted successfully."
+                    success=f"Cap of type {moderation_type} "
+                    f"and channel {channel_dict['mention']} deleted successfully."
                 )
             except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
         else:
-            cap = Cap(
-                channel_snowflake=channel_obj.id,
-                duration=seconds,
-                guild_snowflake=interaction.guild.id,
-                moderation_type=moderation_type,
-            )
+            kwargs.update("duration_seconds", seconds)
+            cap = Cap(**kwargs)
             await cap.create()
             msg = (
                 f"Cap `{moderation_type}` created for "
-                f"{channel_obj.mention} successfully."
+                f"{channel_dict['mention']} successfully."
             )
-        try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        return await state.end(success=msg)
 
     # DONE
     @commands.command(name="cap", help="Cap alias duration for mods.")
@@ -450,61 +421,37 @@ class AdminCommands(commands.Cog):
         hours: int = commands.parameter(default=24, description="# of hours"),
     ):
         state = StateService(ctx)
-        channel_obj = None
-        seconds = int(hours) * 3600
-        try:
-            channel_obj = await resolve_channel(ctx, channel)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        cap = await Cap.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=ctx.guild.id,
-            moderation_type=moderation_type,
-        )
 
-        if cap and hours:
-            set_kwargs = {"duration": seconds}
-            where_kwargs = {
-                "channel_snowflake": channel_obj.id,
-                "guild_snowflake": ctx.guild.id,
-            }
-            await Cap.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            msg = f"Cap `{moderation_type}` modified for {channel_obj.mention}."
+        seconds = int(hours) * 3600
+
+        do = DiscordObject(source=ctx)
+        channel_dict = do.determine_from_target(target=channel)
+
+        kwargs = channel_dict['columns']
+        kwargs.update("moderation_type", moderation_type)
+
+        cap = await Cap.select(**kwargs)
+        if cap and seconds:
+            await Cap.update(
+                set_kwargs={"duration_seconds": seconds},
+                where_kwargs=kwargs
+            )
+            msg = f"Cap `{moderation_type}` modified for {channel_dict['mention']}."
         elif cap:
-            await Cap.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                moderation_type=moderation_type,
+            await Cap.delete(**kwargs)
+            return await state.end(
+                success=f"Cap of type {moderation_type} "
+                f"and channel {channel_dict['mention']} deleted successfully."
             )
-            try:
-                return await state.end(
-                    success=f"{get_random_emoji()} "
-                    f"Cap of type {moderation_type} "
-                    f"and channel {channel_obj.mention} deleted successfully."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
         else:
-            cap = Cap(
-                channel_snowflake=channel_obj.id,
-                duration=seconds,
-                guild_snowflake=ctx.guild.id,
-                moderation_type=moderation_type,
-            )
+            kwargs.update("duration_seconds", seconds)
+            cap = Cap(**kwargs)
             await cap.create()
             msg = (
                 f"Cap `{moderation_type}` created for "
-                f"{channel_obj.mention} successfully."
+                f"{channel_dict['mention']} successfully."
             )
-        try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        return await state.end(success=msg)
 
     # DONE
     @app_commands.command(
@@ -519,31 +466,22 @@ class AdminCommands(commands.Cog):
         self, interaction, channel: AppChannelSnowflake, member: AppMemberSnowflake
     ):
         state = StateService(interaction)
+        do = DiscordObject(source=interaction)
+        
+        channel_dict = do.determine_from_target(target=channel)
+        member_dict = do.determine_from_target(target=member)
+        not_bot(interaction, member_snowflake=member_dict['object'].id)
+        
+        kwargs = {}
+        kwargs.update(channel_dict['columns'])
+        kwargs.update(member_dict['columns'])
 
-        try:
-            channel_obj = await resolve_channel(interaction, channel)
-            member_obj = await resolve_member(interaction, member)
-            not_bot(interaction, member_snowflake=member_obj.id)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        await TemporaryRoom.update_owner(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=interaction.guild.id,
-            member_snowflake=member_obj.id,
+        await TemporaryRoom.update_owner(**kwargs)
+        
+        return await state.end(
+            success=f"Temporary room {channel_dict['object'].mention} ownership "
+            f"transferred to {member_dict['object'].mention}."
         )
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Temporary room {channel_obj.mention} ownership "
-                f"transferred to {member_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
 
     # DONE
     @commands.command(
@@ -561,31 +499,22 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+        do = DiscordObject(source=ctx)
         
-        try:
-            channel_obj = await resolve_channel(ctx, channel)
-            member_obj = await resolve_member(ctx, member)
-            not_bot(ctx, member_snowflake=member_obj.id)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        await TemporaryRoom.update_owner(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=member_obj.id,
+        channel_dict = do.determine_from_target(target=channel)
+        member_dict = do.determine_from_target(target=member)
+        not_bot(ctx, member_snowflake=member_dict['object'].id)
+        
+        kwargs = {}
+        kwargs.update(channel_dict['columns'])
+        kwargs.update(member_dict['columns'])
+
+        await TemporaryRoom.update_owner(**kwargs)
+        
+        return await state.end(
+            success=f"Temporary room {channel_dict['object'].mention} ownership "
+            f"transferred to {member_dict['object'].mention}."
         )
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Temporary room {channel_obj.mention} ownership "
-                f"transferred to {member_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
 
     # DONE
     @app_commands.command(name="clear", description="Reset channel/member.")
@@ -598,371 +527,70 @@ class AdminCommands(commands.Cog):
     async def clear_channel_access_app_command(
         self, interaction: discord.Interaction, target: str, action_type: str
     ):
-        state = StateService(interaction)
-        is_modification = True
-        target = "user"
-        if not action_type:
+        do = DiscordObject(source=interaction)
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        if object_dict['object_type'] == discord.Member:
+            
+            view = VerifyView(
+                action_type=action_type,
+                author_snowflake=interaction.user.id,
+                **kwargs
+            )
+            embed = view.build_embed(action_type=view.action_type, target=view.target)
+            await interaction.response.send_message(embed=embed, view=view)
+            await view.wait()
+
+            state = StateService(interaction)
+            
+            if view.result:
+                if action_type == "all":
+                    for m_obj in member_relevant_objects_dict.values():
+                        m_obj.delete(**kwargs)
+                    msg = (
+                        f"Deleted all associated moderation actions and "
+                        f"roles for {object_dict['object'].mention}."
+                    )
+                for singular, m_obj in member_relevant_objects_dict.items():
+                    if action_type.lower() == singular:
+                        m_obj.delete(**kwargs)
+                        msg = f"Deleted all associated {m_obj.PLURAL} on {object_dict['object'].mention}."
+
+        elif object_dict['object_type'] == discord.VoiceChannel:
             try:
-                return await state.end(
-                    warning="\U000026a0\U0000fe0f "
-                    "You must specify either `alias`, `all`, `ban`, `coord`, "
-                    "`flag`, `mod`, `temp`, `tmute`, `vegan` or `vmute` or `vr`."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        try:
-            channel_obj = await resolve_channel(interaction, target)
-            member_obj = None
-        except Exception as e:
-            try:
-                logger.warning(str(e).capitalize())
-                channel_obj = None
-                member_obj = await resolve_member(interaction, target)
-                highest_role = await has_equal_or_higher_role(
+                await guild_owner_check(
                     interaction,
-                    channel_snowflake=interaction.channel.id,
-                    guild_snowflake=interaction.guild.id,
-                    member_snowflake=member_obj.id,
-                    sender_snowflake=interaction.user.id,
+                    guild_snowflake=interaction.guild.id
                 )
-            except Exception as e:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        highest_role = await role_check_without_specifics(interaction)
-        if channel_obj:
-            if highest_role not in ("System Owner", "Developer", "Guild Owner"):
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f "
-                        "You must be a system owner, a developer "
-                        "or guild owner to delete channel associations."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+            except NotGuildOwner() as e:
+                logger.warning(str(e).capitalize())
+
             view = VerifyView(
                 action_type=action_type,
                 author_snowflake=interaction.user.id,
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
+                **kwargs
             )
             embed = view.build_embed(action_type=view.action_type, target=view.target)
             await interaction.response.send_message(embed=embed, view=view)
             await view.wait()
+
             state = StateService(interaction)
+
             if view.result:
-                match action_type.lower():
-                    case "all":
-                        await Alias.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        await Ban.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        await Coordinator.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        await Flag.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        await History.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        await Moderator.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        await TemporaryRoom.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        await TextMute.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        await Vegan.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            s_modification=is_modification,
-                            target=target,
-                        )
-                        await VideoRoom.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        msg = (
-                            f"Deleted all associated aliases, "
-                            "moderation actions, roles, room setups "
-                            f"and tracking for {channel_obj.mention}."
-                        )
-                    case "alias":
-                        await Alias.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        msg = (
-                            f"Deleted all associated aliases in {channel_obj.mention}."
-                        )
-                    case "ban":
-                        await Ban.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        msg = f"Deleted all associated bans in {channel_obj.mention}."
-                    case "coord":
-                        await Coordinator.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        msg = (
-                            f"Deleted all associated coordinators "
-                            f"in {channel_obj.mention}."
-                        )
-                    case "flag":
-                        await Flag.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        msg = f"Deleted all associated flags in {channel_obj.mention}."
-                    case "mod":
-                        await Moderator.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        msg = f"Deleted all associated moderators in {channel_obj.mention}."
-                    case "temp":
-                        await TemporaryRoom.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        msg = (
-                            f"Deleted the associated temporary channel "
-                            f"for {channel_obj.mention}."
-                        )
-                    case "tmute":
-                        await TextMute.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        msg = f"Deleted all associated text-mutes in {channel_obj.mention}."
-                    case "track":
-                        await History.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        msg = f"Deleted all associated text-mutes in {channel_obj.mention}."
-                    case "vegan":
-                        await Vegan.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        msg = f"Deleted all associated new vegans in {channel_obj.mention}."
-                    case "vmute":
-                        await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(
-                            ctx_interaction_or_message=interaction,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            target=target,
-                        )
-                        msg = f"Deleted all associated voice-mutes in {channel_obj.mention}."
-                    case "vr":
-                        await VideoRoom.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=interaction.guild.id,
-                        )
-                        msg = f"Deleted the associated video room in {channel_obj.mention}."
-                    case _:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"{action_type} is an unknown action type."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-        elif member_obj:
-            view = VerifyView(
-                action_type=action_type,
-                author_snowflake=interaction.user.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            embed = view.build_embed(action_type=view.action_type, target=view.target)
-            await interaction.response.send_message(embed=embed, view=view)
-            await view.wait()
-            state = StateService(interaction)
-            if view.result:
-                match action_type.lower():
-                    case "all":
-                        await Ban.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        await Coordinator.delete(
-                            guild_snowflake=interaction.guild.id,
-                            member_snowflake=member_obj.id,
-                        )
-                        await Flag.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        await Moderator.delete(
-                            guild_snowflake=interaction.guild.id,
-                            member_snowflake=member_obj.id,
-                        )
-                        await TextMute.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        await Vegan.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        await VoiceMute.clear_by_member_guild_highest_role_modification_and_target(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                            target=target,
-                        )
-                        msg = (
-                            f"Deleted all associated moderation actions and "
-                            f"roles for {member_obj.mention}."
-                        )
-                    case "ban":
-                        await Ban.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated bans on {member_obj.mention}."
-                    case "coord":
-                        await Coordinator.delete(
-                            guild_snowflake=interaction.guild.id,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated coordinator channels for {member_obj.mention}."
-                    case "flag":
-                        await Flag.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated flags on {member_obj.mention}."
-                    case "mod":
-                        await Moderator.delete(
-                            guild_snowflake=interaction.guild.id,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated moderator channels for {member_obj.mention}."
-                    case "tmute":
-                        await TextMute.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated text-mutes on {member_obj.mention}."
-                    case "vegan":
-                        await Vegan.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated vegan channels on {member_obj.mention}."
-                    case "vmute":
-                        await VoiceMute.clear_by_guild_highest_role_member_modification_and_target(
-                            ctx_interaction_or_message=interaction,
-                            guild_snowflake=interaction.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                            target=target,
-                        )
-                        msg = f"Deleted all associated voice-mutes on {member_obj.mention}."
-                    case _:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f {action_type} "
-                                "is an unknown action type."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-        else:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No associated records "
-                    f"found for target: {target}."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+                if action_type == "all":
+                    for r_obj in room_relevant_objects_dict.values():
+                        r_obj.delete(**kwargs)
+                    msg = (
+                        f"Deleted all associated moderation actions and "
+                        f"roles in {object_dict['object'].mention}."
+                    )
+                for singular, r_obj in room_relevant_objects_dict.items():
+                    if action_type.lower() == singular:
+                        r_obj.delete(**kwargs)
+                        msg = f"Deleted all associated {r_obj.PLURAL} in {object_dict['object'].mention}."
+            
+        return await state.end(success=msg)
 
     # DONE
     @commands.command(name="clear", help="Reset channel/member.")
@@ -980,369 +608,70 @@ class AdminCommands(commands.Cog):
             "flag`, `mod`, `temp`, `tmute`, `track`, `vegan`, `vmute` or `vr`.",
         ),
     ):
-        state = StateService(ctx)
+        do = DiscordObject(source=ctx)
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
 
-        is_modification = True
-        target = "user"
-        if not action_type:
+        if object_dict['object_type'] == discord.Member:
+            
+            view = VerifyView(
+                action_type=action_type,
+                author_snowflake=ctx.user.id,
+                **kwargs
+            )
+            embed = view.build_embed(action_type=view.action_type, target=view.target)
+            await ctx.reply(embed=embed, view=view)
+            await view.wait()
+
+            state = StateService(ctx)
+            
+            if view.result:
+                if action_type == "all":
+                    for m_obj in member_relevant_objects_dict.values():
+                        m_obj.delete(**kwargs)
+                    msg = (
+                        f"Deleted all associated moderation actions and "
+                        f"roles for {object_dict['mention']}."
+                    )
+                for singular, m_obj in member_relevant_objects_dict.items():
+                    if action_type.lower() == singular:
+                        m_obj.delete(**kwargs)
+                        msg = f"Deleted all associated {m_obj.PLURAL} on {object_dict['mention']}."
+
+        elif object_dict['object_type'] == discord.VoiceChannel:
             try:
-                return await state.end(
-                    warning="\U000026a0\U0000fe0f "
-                    "You must specify either `alias`, `all`, `ban`, `coord`, "
-                    "`flag`, `mod`, `temp`, `tmute`, `vegan` or `vmute` or `vr`."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        try:
-            channel_obj = await resolve_channel(ctx, target)
-            member_obj = None
-        except Exception as e:
-            try:
-                logger.warning(str(e).capitalize())
-                channel_obj = None
-                member_obj = await resolve_member(ctx, target)
-                highest_role = await has_equal_or_higher_role(
+                await guild_owner_check(
                     ctx,
-                    channel_snowflake=ctx.channel.id,
-                    guild_snowflake=ctx.guild.id,
-                    member_snowflake=member_obj.id,
-                    sender_snowflake=ctx.author.id,
+                    guild_snowflake=ctx.guild.id
                 )
-            except Exception as e:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        highest_role = await role_check_without_specifics(ctx)
-        if channel_obj:
-            if highest_role not in ("System Owner", "Developer", "Guild Owner"):
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f "
-                        "You must be a system owner, a developer or guild owner "
-                        "to delete channel associations."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+            except NotGuildOwner() as e:
+                logger.warning(str(e).capitalize())
+
             view = VerifyView(
                 action_type=action_type,
-                author_snowflake=ctx.author.id,
-                guild_snowflake=ctx.guild.id,
-                channel_snowflake=channel_obj.id,
+                author_snowflake=ctx.user.id,
+                **kwargs
             )
             embed = view.build_embed(action_type=view.action_type, target=view.target)
-            await ctx.send(embed=embed, view=view)
+            await ctx.reply(embed=embed, view=view)
             await view.wait()
+
             state = StateService(ctx)
+
             if view.result:
-                match action_type.lower():
-                    case "all":
-                        await Alias.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        await Ban.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        await Coordinator.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        await Flag.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        await History.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        await Moderator.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        await TemporaryRoom.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        await TextMute.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        await Vegan.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            target=target,
-                        )
-                        await VideoRoom.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        msg = (
-                            f"Deleted all associated aliases, moderation actions, "
-                            f"roles, room setups and tracking for {channel_obj.mention}."
-                        )
-                    case "alias":
-                        await Alias.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        msg = (
-                            f"Deleted all associated aliases in {channel_obj.mention}."
-                        )
-                    case "ban":
-                        await Ban.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        msg = f"Deleted all associated bans in {channel_obj.mention}."
-                    case "coord":
-                        await Coordinator.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        msg = f"Deleted all associated coordinators in {channel_obj.mention}."
-                    case "flag":
-                        await Flag.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        msg = f"Deleted all associated flags in {channel_obj.mention}."
-                    case "mod":
-                        await Moderator.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        msg = f"Deleted all associated moderators in {channel_obj.mention}."
-                    case "temp":
-                        await TemporaryRoom.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        msg = (
-                            f"Deleted the associated temporary channel for "
-                            f"{channel_obj.mention}."
-                        )
-                    case "tmute":
-                        await TextMute.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        msg = f"Deleted all associated text-mutes in {channel_obj.mention}."
-                    case "track":
-                        await History.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        msg = (
-                            f"Deleted all associated tracking in {channel_obj.mention}."
-                        )
-                    case "vegan":
-                        await Vegan.clear_by_channel_guild_highest_role_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                        )
-                        msg = f"Deleted all associated new vegans in {channel_obj.mention}."
-                    case "vmute":
-                        await VoiceMute.clear_by_channel_guild_highest_role_modification_and_target(
-                            ctx_interaction_or_message=ctx,
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            target=target,
-                        )
-                        msg = f"Deleted all associated voice-mutes in {channel_obj.mention}."
-                    case "vr":
-                        await VideoRoom.delete(
-                            channel_snowflake=channel_obj.id,
-                            guild_snowflake=ctx.guild.id,
-                        )
-                        msg = f"Deleted the associated video room in {channel_obj.mention}."
-                    case _:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"{action_type} is an unknown action type."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-        elif member_obj:
-            view = VerifyView(
-                action_type=action_type,
-                author_snowflake=ctx.author.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            embed = view.build_embed(action_type=view.action_type, target=view.target)
-            await ctx.send(embed=embed, view=view)
-            await view.wait()
-            state = StateService(ctx)
-            if view.result:
-                match action_type.lower():
-                    case "all":
-                        await Ban.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        await Coordinator.delete(
-                            guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-                        )
-                        await Flag.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        await Moderator.delete(
-                            guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-                        )
-                        await TextMute.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        await Vegan.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        await VoiceMute.clear_by_guild_highest_role_member_modification_and_target(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                            target=target,
-                        )
-                        msg = (
-                            f"Deleted all associated moderation actions and roles "
-                            f"for {member_obj.mention}."
-                        )
-                    case "ban":
-                        await Ban.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated bans on {member_obj.mention}."
-                    case "coord":
-                        await Coordinator.delete(
-                            guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-                        )
-                        msg = (
-                            f"Deleted all associated coordinator channels "
-                            f"for {member_obj.mention}."
-                        )
-                    case "flag":
-                        await Flag.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated flags on {member_obj.mention}."
-                    case "mod":
-                        await Moderator.delete(
-                            guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-                        )
-                        msg = f"Deleted all associated moderator channels for {member_obj.mention}."
-                    case "tmute":
-                        await TextMute.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated text-mutes on {member_obj.mention}."
-                    case "vegan":
-                        await Vegan.clear_by_guild_highest_role_member_and_modification(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                        )
-                        msg = f"Deleted all associated vegan channels on {member_obj.mention}."
-                    case "vmute":
-                        await VoiceMute.clear_by_guild_highest_role_member_modification_and_target(
-                            ctx_interaction_or_message=ctx,
-                            guild_snowflake=ctx.guild.id,
-                            highest_role=highest_role,
-                            is_modification=is_modification,
-                            member_snowflake=member_obj.id,
-                            target=target,
-                        )
-                        msg = f"Deleted all associated voice-mutes on {member_obj.mention}."
-                    case _:
-                        try:
-                            return await state.end(
-                                warning=f"\U000026a0\U0000fe0f "
-                                f"{action_type} is an unknown action type."
-                            )
-                        except Exception as e:
-                            return await state.end(
-                                error=f"\u274c {str(e).capitalize()}"
-                            )
-        else:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No "
-                    f"associated records found for target: {target}."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+                if action_type == "all":
+                    for r_obj in room_relevant_objects_dict.values():
+                        r_obj.delete(**kwargs)
+                    msg = (
+                        f"Deleted all associated moderation actions and "
+                        f"roles in {object_dict['mention']}."
+                    )
+                for singular, r_obj in room_relevant_objects_dict.items():
+                    if action_type.lower() == singular:
+                        r_obj.delete(**kwargs)
+                        msg = f"Deleted all associated {r_obj.PLURAL} in {object_dict['mention']}."
+            
+        return await state.end(success=msg)
 
     # DONE
     @app_commands.command(name="coord", description="Grant/revoke coords.")
@@ -1359,60 +688,28 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(interaction)
 
-        try:
-            channel_obj = await resolve_channel(interaction, channel)
-        except Exception as e:
-            channel_obj = interaction.channel
-            logger.warning(str(e).capitalize())
-            await self.message_service.send_message(
-                interaction,
-                content=f"\U000026a0\U0000fe0f Defaulting to {channel_obj.mention}.",
-            )
-        try:
-            member_obj = await resolve_member(interaction, member)
-            not_bot(interaction, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(
-                ctx_interaction_or_message=interaction,
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=interaction.user.id,
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        coordinator = await Coordinator.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=interaction.guild.id,
-            member_snowflake=member_obj.id,
-        )
+        do = DiscordObject(source=interaction)
+        channel_dict = do.determine_from_target(target=channel)
+        member_dict = do.determine_from_target(target=member)
+        kwargs = {}
+        kwargs.update(channel_dict['columns'])
+        kwargs.update(member_dict['columns'])
+
+        not_bot(interaction, member_snowflake=member_dict['columns']['member_snowflake'])
+
+        coordinator = await Coordinator.select(**kwargs)
         if coordinator:
-            await Coordinator.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.channel.id,
-                member_snowflake=member_obj.id,
-            )
+            await Coordinator.delete(**kwargs)
             action = "revoked"
         else:
-            coordinator = Coordinator(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
+            coordinator = Coordinator(**kwargs)
             await coordinator.create()
             action = "granted"
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Coordinator access has been {action} for {member_obj.mention} "
-                f"in {channel_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+
+        return await state.end(
+            success=f"Coordinator access has been {action} for {member_dict['mention']} "
+            f"in {channel_dict['mention']}."
+        )
 
     # DONE
     @commands.command(name="coord", help="Grant/revoke coords.")
@@ -1428,61 +725,29 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        
-        try:
-            channel_obj = await resolve_channel(ctx, channel)
-        except Exception as e:
-            channel_obj = ctx.channel
-            logger.warning(str(e).capitalize())
-            await self.message_service.send_message(
-                ctx,
-                content=f"\U000026a0\U0000fe0f Defaulting to {channel_obj.mention}.",
-            )
-        try:
-            member_obj = await resolve_member(ctx, member)
-            not_bot(ctx, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(
-                ctx_interaction_or_message=ctx,
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=ctx.author.id,
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        coordinator = await Coordinator.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=member_obj.id,
-        )
+
+        do = DiscordObject(source=ctx)
+        channel_dict = do.determine_from_target(target=channel)
+        member_dict = do.determine_from_target(target=member)
+        kwargs = {}
+        kwargs.update(channel_dict['columns'])
+        kwargs.update(member_dict['columns'])
+
+        not_bot(ctx, member_snowflake=member_dict['columns']['member_snowflake'])
+
+        coordinator = await Coordinator.select(**kwargs)
         if coordinator:
-            await Coordinator.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
+            await Coordinator.delete(**kwargs)
             action = "revoked"
         else:
-            coordinator = Coordinator(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
+            coordinator = Coordinator(**kwargs)
             await coordinator.create()
             action = "granted"
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Coordinator access has been {action} for {member_obj.mention} "
-                f"in {channel_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+            
+        return await state.end(
+            success=f"Coordinator access has been {action} for {member_dict['mention']} "
+            f"in {channel_dict['mention']}."
+        )
 
     # @app_commands.command(name='pc', description='View permissions.')
     # @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
@@ -1498,49 +763,22 @@ class AdminCommands(commands.Cog):
             "ID/mention, server ID or empty.",
         ),
     ):
-        state = StateService(ctx)
-        title = f"{get_random_emoji()} Permissions"
-        highest_role = await role_check_without_specifics(
-            ctx_interaction_or_message=ctx
-        )
-        if target and target.lower() == "all":
-            if highest_role not in ("System Owner", "Developer"):
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f "
-                        "You are not authorized to list permissions "
-                        "across all servers."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        elif target:
-            try:
-                channel_objs = [
-                    await resolve_channel(
-                        ctx_interaction_or_message=ctx,
-                        channel_str=target,
-                    )
-                ]
-            except Exception as e:
-                logger.info(str(e).capitalize())
-                bot = DiscordBot.get_instance()
-                guild_obj = bot.get_guild(int(target))
-                if not guild_obj:
-                    try:
-                        return await state.end(
-                            warning=f"\U000026a0\U0000fe0f "
-                            f"Scope must be one of: `all`, channel ID/mention, "
-                            f"server ID or empty. Received: {target}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=f"\u274c {str(e).capitalize()}")
-                else:
-                    channel_objs = guild_obj.channels
-        else:
-            channel_objs = [ctx.channel]
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        title = f"{get_random_emoji()} {self.bot.user.display_name} Permissions"
+
+        state = StateService(ctx)
+        
+        do = DiscordObject(source=ctx)
+        object_dict = do.determine_from_target(target=target)
+        
+        if target and target.lower() == "all":
+            await developer_check(ctx_interaction_or_message=ctx)
+            channel_objs = [channel_obj for guild in self.bot.guilds for channel_obj in guild.channels]
+        elif object_dict['object_type'] == discord.Guild:
+            channel_objs = object_dict['object'].channels
+        elif object_dict['object_type'] in (discord.StageChannel, discord.TextChannel, discord.VoiceChannel):
+            channel_objs = [object_dict['object']]
 
         for channel in channel_objs:
             permissions = channel.permissions_for(self.bot.me)
@@ -1583,25 +821,8 @@ class AdminCommands(commands.Cog):
                     name="Information", value="\n".join(lines), inline=False
                 )
             pages.append(embed)
-
-        if pages:
-            try:
-                return await state.end(success=pages)
-            except Exception as e:
-                try:
-                    logger.warning(str(e).capitalize())
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-        else:
-            try:
-                return await state.end(
-                    warning="\U000026a0\U0000fe0f Vyrtuous has all permission."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        await StateService.send_pages(obj=PermissionRole, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="rmv", description="VC move.")
@@ -1616,33 +837,32 @@ class AdminCommands(commands.Cog):
         source_channel: AppChannelSnowflake,
         target_channel: AppChannelSnowflake,
     ):
-        state = StateService(interaction)
         failed, moved = [], []
-        try:
-            source_channel_obj = await resolve_channel(interaction, source_channel)
-            target_channel_obj = await resolve_channel(interaction, target_channel)
-        except Exception as e:
-            return await state.end(
-                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-            )
-        for member in source_channel_obj.members:
+        state = StateService(interaction)
+
+        do = DiscordObject(source=interaction)
+
+        source_channel_dict = do.determine_from_target(target=source_channel)
+        target_channel_dict = do.determine_from_target(target=target_channel)
+        
+        for member in source_channel_dict['object'].members:
             try:
-                await member.move_to(target_channel_obj)
+                await member.move_to(target_channel_dict['object'])
                 moved.append(member)
             except discord.Forbidden as e:
                 failed.append(member)
                 logger.warning(
                     f"Unable to move member "
                     f"{member.display_name} ({member.id}) from channel "
-                    f"{source_channel_obj.name} ({source_channel}) to channel "
-                    f"{target_channel_obj.name} ({target_channel}) in guild "
+                    f"{source_channel_dict['name']} ({source_channel}) to channel "
+                    f"{target_channel_dict['name']} ({target_channel}) in guild "
                     f"{interaction.guild.name} ({interaction.guild.id}). "
                     f"{str(e).capitalize()}"
                 )
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
-            f"Moved {source_channel_obj.mention} to "
-            f"{target_channel_obj.mention}",
+            f"Moved {source_channel_dict['mention']} to "
+            f"{target_channel_dict['mention']}",
             color=discord.Color.green(),
         )
         if moved:
@@ -1660,13 +880,11 @@ class AdminCommands(commands.Cog):
                 inline=False,
             )
         embed.set_footer(
-            text=f"Moved from {source_channel_obj.mention} "
-            f"to {target_channel_obj.mention}"
+            text=f"Moved from {source_channel_dict['mention']} "
+            f"to {target_channel_dict['mention']}"
         )
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     @commands.command(name="rmv", help="VC move.")
@@ -1681,33 +899,32 @@ class AdminCommands(commands.Cog):
             default=None, description="Tag a channel or include its ID"
         ),
     ):
-        state = StateService(ctx)
         failed, moved = [], []
-        try:
-            source_channel_obj = await resolve_channel(ctx, source_channel)
-            target_channel_obj = await resolve_channel(ctx, target_channel)
-        except Exception as e:
-            return await state.end(
-                warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-            )
-        for member in source_channel_obj.members:
+        state = StateService(ctx)
+
+        do = DiscordObject(source=ctx)
+
+        source_channel_dict = do.determine_from_target(target=source_channel)
+        target_channel_dict = do.determine_from_target(target=target_channel)
+        
+        for member in source_channel_dict['object'].members:
             try:
-                await member.move_to(target_channel_obj)
+                await member.move_to(target_channel_dict['object'])
                 moved.append(member)
             except discord.Forbidden as e:
                 failed.append(member)
                 logger.warning(
                     f"Unable to move member "
                     f"{member.display_name} ({member.id}) from channel "
-                    f"{source_channel_obj.name} ({source_channel}) to channel "
-                    f"{target_channel_obj.name} ({target_channel}) in guild "
+                    f"{source_channel_dict['name']} ({source_channel}) to channel "
+                    f"{target_channel_dict['name']} ({target_channel}) in guild "
                     f"{ctx.guild.name} ({ctx.guild.id}). "
                     f"{str(e).capitalize()}"
                 )
         embed = discord.Embed(
-            title=f"{get_random_emoji()} Moved "
-            f"{source_channel_obj.mention} to "
-            f"{target_channel_obj.mention}.",
+            title=f"{get_random_emoji()} "
+            f"Moved {source_channel_dict['mention']} to "
+            f"{target_channel_dict['mention']}",
             color=discord.Color.green(),
         )
         if moved:
@@ -1725,13 +942,11 @@ class AdminCommands(commands.Cog):
                 inline=False,
             )
         embed.set_footer(
-            text=f"Moved from {source_channel_obj.mention} "
-            f"to {target_channel_obj.mention}"
+            text=f"Moved from {source_channel_dict['mention']} "
+            f"to {target_channel_dict['mention']}"
         )
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     @app_commands.command(name="smute", description="Server mute/server unmute.")
@@ -1748,44 +963,35 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(interaction)
         
-        try:
-            member_obj = await resolve_member(interaction, member)
-            not_bot(interaction, member_snowflake=member_obj.id)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        server_mute = await ServerMute.select(member_snowflake=member_obj.id)
+        do = DiscordObject(source=interaction)
+
+        member_dict = do.determine_from_target(target=member)
+        not_bot(interaction, member_snowflake=member_dict['columns']['member_snowflake'])
+        
+        kwargs = member_dict['columns']
+        server_mute = await ServerMute.select(**kwargs)
         if not server_mute:
             server_mute = ServerMute(
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
+                **kwargs,
                 reason=reason,
             )
             await server_mute.create()
             action = "muted"
             should_be_muted = True
         else:
-            await ServerMute.delete(
-                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-            )
+            await ServerMute.delete(**kwargs)
             action = "unmuted"
             should_be_muted = False
-        if member_obj.voice and member_obj.voice.channel:
+
+        if member_dict['object'].voice and member_dict['object'].voice.channel:
             try:
-                await member_obj.edit(mute=should_be_muted)
+                await member_dict['object'].edit(mute=should_be_muted)
             except discord.Forbidden as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Successfully server {action} {member_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
+        
+        return await state.end(
+            success=f"Successfully server {action} {member_dict['mention']}."
+        )
 
     # DONE
     @commands.command(name="smute", help="Server mute/server unmute.")
@@ -1803,45 +1009,36 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+        
+        do = DiscordObject(source=ctx)
 
-        try:
-            member_obj = await resolve_member(ctx, member)
-            not_bot(ctx, member_snowflake=member_obj.id)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        server_mute = await ServerMute.select(member_snowflake=member_obj.id)
+        member_dict = do.determine_from_target(target=member)
+        not_bot(ctx, member_snowflake=member_dict['columns']['member_snowflake'])
+        
+        kwargs = member_dict['columns']
+        server_mute = await ServerMute.select(**kwargs)
         if not server_mute:
             server_mute = ServerMute(
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
+                **kwargs,
                 reason=reason,
             )
             await server_mute.create()
             action = "muted"
             should_be_muted = True
         else:
-            await ServerMute.delete(
-                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-            )
+            await ServerMute.delete(**kwargs)
             action = "unmuted"
             should_be_muted = False
-        if member_obj.voice and member_obj.voice.channel:
+
+        if member_dict['object'].voice and member_dict['object'].voice.channel:
             try:
-                await member_obj.edit(mute=should_be_muted)
+                await member_dict['object'].edit(mute=should_be_muted)
             except discord.Forbidden as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Successfully server {action} {member_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(error=str(e).capitalize())
+        
+        return await state.end(
+            success=f"Successfully server {action} {member_dict['mention']}."
+        )
 
     # DONE
     @app_commands.command(name="stage", description="Start/stop stage.")
@@ -1856,43 +1053,35 @@ class AdminCommands(commands.Cog):
         channel: AppChannelSnowflake,
         duration: AppDuration = DurationObject("1h"),
     ):
-        state = StateService(interaction)
-        channel_obj = None
+        failed = pages = skipped = succeeded = []
         is_modification = False
-        failed, skipped, succeeded = [], [], []
-        pages = []
+
+        state = StateService(interaction)
+        do = DiscordObject(source=interaction)
+
+        channel_dict = do.determine_from_target(target=channel)
+
         if not isinstance(duration, DurationObject):
             duration = DurationObject(duration)
         if duration.is_modification:
             is_modification = True
-        try:
-            channel_obj = await resolve_channel(interaction, channel)
-        except Exception as e:
-            channel_obj = interaction.channel
-            logger.warning(str(e).capitalize())
-        stage = await Stage.select(
-            channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
-        )
+
+        kwargs = channel_dict['columns']
+
+        stage = await Stage.select(**kwargs)
         if is_modification and stage:
             delta = duration.expires_in - datetime.now(timezone.utc)
             if delta.total_seconds() < 0:
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f "
-                        "You are not authorized to decrease the duration "
-                        "below the current time."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(
+                    warning="\U000026a0\U0000fe0f "
+                    "You are not authorized to decrease the duration "
+                    "below the current time."
+                )
             if stage:
                 set_kwargs = {"expires_in": duration.expired_in}
-                where_kwargs = {
-                    "channel_snowflake": channel_obj.id,
-                    "guild_snowflake": interaction.guild.id,
-                }
-                await Stage.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                await Stage.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
                 description_lines = [
-                    f"**Channel:** {channel_obj.mention}",
+                    f"**Channel:** {channel_dict['mention']}",
                     f"**Expires:** {duration}",
                 ]
                 embed = discord.Embed(
@@ -1901,20 +1090,16 @@ class AdminCommands(commands.Cog):
                     color=discord.Color.blurple(),
                 )
         elif stage:
-            title = f"{get_random_emoji()} " f"Stage Ended in {channel_obj.mention}"
-            await Stage.delete(
-                channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
-            )
-            for member in channel_obj.members:
+            title = f"{get_random_emoji()} Stage Ended in {channel_dict['mention']}"
+            await Stage.delete(**kwargs)
+            for member in channel_dict['object'].members:
                 await VoiceMute.delete(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=interaction.guild.id,
+                    **kwargs,
                     member_snowflake=member.id,
                     target="room",
                 )
                 voice_mute = await VoiceMute.select(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=interaction.guild.id,
+                    **kwargs,
                     member_snowflake=member.id,
                     target="user",
                 )
@@ -1929,13 +1114,13 @@ class AdminCommands(commands.Cog):
                         logger.warning(
                             f"Unable to undo voice-mute "
                             f"for member {member.display_name} ({member.id}) in "
-                            f"channel {channel_obj.name} ({channel_obj.id}) in "
+                            f"channel {channel_dict['name']} ({channel_dict['columns']['channel_snowflake']}) in "
                             f"guild {interaction.guild.name} ({interaction.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
                         failed.append(member)
             description_lines = [
-                f"**Channel:** {channel_obj.mention}",
+                f"**Channel:** {channel_dict['mention']}",
                 f"**Unmuted:** {len(succeeded)} users",
             ]
             if failed:
@@ -1948,17 +1133,14 @@ class AdminCommands(commands.Cog):
             pages.append(embed)
         else:
             stage = Stage(
-                channel_snowflake=channel_obj.id,
+                **kwargs,
                 expires_in=duration.expires_in,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=interaction.user.id,
             )
             await stage.create()
-            for member in channel_obj.members:
+            for member in channel_dict['object'].members:
                 if (
-                    await role_check_with_specifics(
-                        channel_snowflake=channel_obj.id,
-                        guild_snowflake=interaction.guild.id,
+                    await coordinator_check(
+                        **kwargs,
                         member_snowflake=member.id,
                     )
                     or member.id == interaction.user.id
@@ -1966,29 +1148,28 @@ class AdminCommands(commands.Cog):
                     skipped.append(member)
                     continue
                 voice_mute = await VoiceMute(
-                    channel_snowflake=channel_obj.id,
+                    **kwargs,
                     expires_in=duration.expires_in,
-                    guild_snowflake=interaction.guild.id,
                     member_snowflake=member.id,
                     target="room",
                     reason="Stage mute",
                 )
                 await voice_mute.create()
                 try:
-                    if member.voice and member.voice.channel.id == channel_obj.id:
+                    if member.voice and member.voice.channel.id == channel_dict['columns']['channel_snowflake']:
                         await member.edit(mute=True)
                     succeeded.append(member)
                 except Exception as e:
                     logger.warning(
                         f"Unable to voice-mute "
                         f"member {member.display_name} ({member.id}) "
-                        f"in channel {channel_obj.name} ({channel_obj.id}) "
+                        f"in channel {channel_dict['name']} ({channel_dict['columns']['channel_snowflake']}) "
                         f"in guild {interaction.guild.name} ({interaction.guild.id}). "
                         f"{str(e).capitalize()}"
                     )
                     failed.append(member)
             description_lines = [
-                f"**Channel:** {channel_obj.mention}",
+                f"**Channel:** {channel_dict['mention']}",
                 f"**Expires:** {duration}",
                 f"**Muted:** {len(succeeded)} users",
                 f"**Skipped:** {len(skipped)}",
@@ -1997,7 +1178,7 @@ class AdminCommands(commands.Cog):
                 description_lines.append(f"**Failed:** {len(failed)}")
             embed = discord.Embed(
                 description="\n".join(description_lines),
-                title=f"{get_random_emoji()} Stage Created in {channel_obj.name}",
+                title=f"{get_random_emoji()} Stage Created in {channel_dict['name']}",
                 color=discord.Color.blurple(),
             )
             pages.append(embed)
@@ -2020,43 +1201,35 @@ class AdminCommands(commands.Cog):
             "0 - permanent / 24h - default",
         ),
     ):
-        state = StateService(ctx)
-        channel_obj = None
+        failed = pages = skipped = succeeded = []
         is_modification = False
-        failed, skipped, succeeded = [], [], []
-        pages = []
+
+        state = StateService(ctx)
+        do = DiscordObject(source=ctx)
+
+        channel_dict = do.determine_from_target(target=channel)
+        kwargs = channel_dict['columns']
+
         if not isinstance(duration, DurationObject):
             duration = DurationObject(duration)
         if duration.is_modification:
             is_modification = True
-        try:
-            channel_obj = await resolve_channel(ctx, channel)
-        except Exception as e:
-            channel_obj = ctx.channel
-            logger.warning(str(e).capitalize())
-        stage = await Stage.select(
-            channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-        )
+
+        stage = await Stage.select(**kwargs)
         if is_modification and stage:
             delta = duration.expires_in - datetime.now(timezone.utc)
             if delta.total_seconds() < 0:
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f "
-                        "You are not authorized to decrease the duration "
-                        "below the current time."
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
+                return await state.end(
+                    warning="\U000026a0\U0000fe0f "
+                    "You are not authorized to decrease the duration "
+                    "below the current time."
+                )
             if stage:
-                set_kwargs = {"expires_in": duration.expires_in}
-                where_kwargs = {
-                    "channel_snowflake": channel_obj.id,
-                    "guild_snowflake": ctx.guild.id,
-                }
-                await Stage.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                set_kwargs = {"expires_in": duration.expired_in}
+                await Stage.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
                 description_lines = [
-                    f"**Channel:** {channel_obj.mention}" f"**Expires:** {duration}",
+                    f"**Channel:** {channel_dict['mention']}",
+                    f"**Expires:** {duration}",
                 ]
                 embed = discord.Embed(
                     description="\n".join(description_lines),
@@ -2064,20 +1237,16 @@ class AdminCommands(commands.Cog):
                     color=discord.Color.blurple(),
                 )
         elif stage:
-            title = f"{get_random_emoji()} " f"Stage Ended in {channel_obj.mention}"
-            await Stage.delete(
-                channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-            )
-            for member in channel_obj.members:
+            title = f"{get_random_emoji()} Stage Ended in {channel_dict['mention']}"
+            await Stage.delete(**kwargs)
+            for member in channel_dict["object"].members:
                 await VoiceMute.delete(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=ctx.guild.id,
+                    **kwargs,
                     member_snowflake=member.id,
                     target="room",
                 )
                 voice_mute = await VoiceMute.select(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=ctx.guild.id,
+                    **kwargs,
                     member_snowflake=member.id,
                     target="user",
                 )
@@ -2090,15 +1259,15 @@ class AdminCommands(commands.Cog):
                         succeeded.append(member)
                     except discord.Forbidden as e:
                         logger.warning(
-                            f"Unable to undo voice-mute for "
-                            f"member {member.display_name} ({member.id}) "
-                            f"in channel {channel_obj.name} ({channel_obj.id}) "
-                            f"in guild {ctx.guild.name} ({ctx.guild.id}). "
+                            f"Unable to undo voice-mute "
+                            f"for member {member.display_name} ({member.id}) in "
+                            f"channel {channel_dict['name']} ({channel_dict['columns']['channel_snowflake']}) in "
+                            f"guild {ctx.guild.name} ({ctx.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
                         failed.append(member)
             description_lines = [
-                f"**Channel:** {channel_obj.mention}",
+                f"**Channel:** {channel_dict['mention']}",
                 f"**Unmuted:** {len(succeeded)} users",
             ]
             if failed:
@@ -2111,47 +1280,43 @@ class AdminCommands(commands.Cog):
             pages.append(embed)
         else:
             stage = Stage(
-                channel_snowflake=channel_obj.id,
+                **kwargs,
                 expires_in=duration.expires_in,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=ctx.author.id,
             )
             await stage.create()
-            for member in channel_obj.members:
+            for member in channel_dict["object"].members:
                 if (
-                    await role_check_with_specifics(
-                        channel_snowflake=channel_obj.id,
-                        guild_snowflake=ctx.guild.id,
+                    await coordinator_check(
+                        **kwargs,
                         member_snowflake=member.id,
                     )
-                    or member.id == ctx.author.id
+                    or member.id == ctx.user.id
                 ):
                     skipped.append(member)
                     continue
                 voice_mute = await VoiceMute(
-                    channel_snowflake=channel_obj.id,
+                    **kwargs,
                     expires_in=duration.expires_in,
-                    guild_snowflake=ctx.guild.id,
                     member_snowflake=member.id,
                     target="room",
                     reason="Stage mute",
                 )
                 await voice_mute.create()
                 try:
-                    if member.voice and member.voice.channel.id == channel_obj.id:
+                    if member.voice and member.voice.channel.id == channel_dict['columns']['channel_snowflake']:
                         await member.edit(mute=True)
                     succeeded.append(member)
                 except Exception as e:
                     logger.warning(
                         f"Unable to voice-mute "
-                        f"for member {member.display_name} ({member.id}) "
-                        f"in channel {channel_obj.name} ({channel_obj.id}) "
+                        f"member {member.display_name} ({member.id}) "
+                        f"in channel {channel_dict['name']} ({channel_dict['columns']['channel_snowflake']}) "
                         f"in guild {ctx.guild.name} ({ctx.guild.id}). "
                         f"{str(e).capitalize()}"
                     )
                     failed.append(member)
             description_lines = [
-                f"**Channel:** {channel_obj.mention}",
+                f"**Channel:** {channel_dict['mention']}",
                 f"**Expires:** {duration}",
                 f"**Muted:** {len(succeeded)} users",
                 f"**Skipped:** {len(skipped)}",
@@ -2160,7 +1325,7 @@ class AdminCommands(commands.Cog):
                 description_lines.append(f"**Failed:** {len(failed)}")
             embed = discord.Embed(
                 description="\n".join(description_lines),
-                title=f"{get_random_emoji()} " f"Stage Created in {channel_obj.name}",
+                title=f"{get_random_emoji()} Stage Created in {channel_dict['name']}",
                 color=discord.Color.blurple(),
             )
             pages.append(embed)
@@ -2182,67 +1347,39 @@ class AdminCommands(commands.Cog):
         channel: AppChannelSnowflake,
         owner: AppMemberSnowflake,
     ):
-        state = StateService(interaction)
-        
-        try:
-            channel_obj = await resolve_channel(interaction, channel)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        
         action = None
-        temporary_room = await TemporaryRoom.select(
-            channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
-        )
 
+        state = StateService(interaction)
+        do = DiscordObject(source=interaction)
+
+        channel_dict = do.determine_from_target(target=channel)
+        member_dict = do.determine_from_target(target=owner)
+        
+        kwargs = {}
+        kwargs.update(channel_dict['columns'])
+
+        temporary_room = await TemporaryRoom.select(**kwargs)
+        kwargs.update(member_dict['columns'])
         if temporary_room:
             if temporary_room.member_snowflake:
                 await Moderator.delete(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=interaction.guild.id,
-                    member_snowflake=temporary_room.member_snowflake,
+                    **kwargs
                 )
-            # await Alias.delete(channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id)
-            await TemporaryRoom.delete(
-                channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
-            )
+            await TemporaryRoom.delete(**kwargs)
             action = "removed"
         else:
-            try:
-                member_obj = await resolve_member(interaction, owner)
-            except Exception as e:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-            moderator = Moderator(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
+            moderator = Moderator(**kwargs)
             await moderator.create()
             temporary_room = TemporaryRoom(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-                room_name=channel_obj.name,
+                **kwargs,
+                room_name=channel_dict['name'],
             )
             await temporary_room.create()
             action = "created"
 
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Temporary room {action} in {channel_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        return await state.end(
+            success=f"Temporary room {action} in {channel_dict['mention']}."
+        )
 
     # DONE
     @commands.command(
@@ -2259,66 +1396,39 @@ class AdminCommands(commands.Cog):
             default=None, description="Tag a member or include their Discord ID"
         ),
     ):
-        state = StateService(ctx)
-        
-        try:
-            channel_obj = await resolve_channel(ctx, channel)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-            
         action = None
-        temporary_room = await TemporaryRoom.select(
-            channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-        )
 
+        state = StateService(ctx)
+        do = DiscordObject(source=ctx)
+
+        channel_dict = do.determine_from_target(target=channel)
+        member_dict = do.determine_from_target(target=owner)
+        
+        kwargs = {}
+        kwargs.update(channel_dict['columns'])
+
+        temporary_room = await TemporaryRoom.select(**kwargs)
+        kwargs.update(member_dict['columns'])
         if temporary_room:
             if temporary_room.member_snowflake:
                 await Moderator.delete(
-                    channel_snowflake=channel_obj.id,
-                    guild_snowflake=ctx.guild.id,
-                    member_snowflake=temporary_room.member_snowflake,
+                    **kwargs
                 )
-            # await Alias.delete(channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id)
-            await TemporaryRoom.delete(
-                channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-            )
+            await TemporaryRoom.delete(**kwargs)
             action = "removed"
         else:
-            try:
-                member_obj = await resolve_member(ctx, owner)
-            except Exception as e:
-                try:
-                    return await state.end(
-                        warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                    )
-                except Exception as e:
-                    return await state.end(error=f"\u274c {str(e).capitalize()}")
-            moderator = Moderator(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
+            moderator = Moderator(**kwargs)
             await moderator.create()
             temporary_room = TemporaryRoom(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-                room_name=channel_obj.name,
+                **kwargs,
+                room_name=channel_dict['name'],
             )
             await temporary_room.create()
             action = "created"
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Temporary room has been {action} in {channel_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+
+        return await state.end(
+            success=f"Temporary room {action} in {channel_dict['mention']}."
+        )
 
     # DONE
     @app_commands.command(
@@ -2328,30 +1438,21 @@ class AdminCommands(commands.Cog):
     async def list_temp_rooms_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        state = StateService(interaction)
-
-        temporary_rooms, title = await resolve_objects(
-            ctx_interaction_or_message=interaction,
-            obj=TemporaryRoom,
-            state=state,
-            target=target,
-        )
-        aliases, _ = await resolve_objects(
-            ctx_interaction_or_message=interaction,
-            obj=Alias,
-            state=state,
-            target=target,
-        )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        title = f'{get_random_emoji()} {TemporaryRoom.PLURAL}'
+        is_at_home = at_home(ctx_interaction_or_message=interaction)
 
+        state = StateService(interaction)
+
+        do = DiscordObject(source=interaction)
+
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        aliases = Alias.select(**kwargs)
+        temporary_rooms = TemporaryRoom.select(**kwargs)
+        
         for temporary_room in temporary_rooms:
             guild_dictionary.setdefault(
                 temporary_room.guild_snowflake, {"channels": {}}
@@ -2456,27 +1557,21 @@ class AdminCommands(commands.Cog):
             "server ID or empty.",
         ),
     ):
-        state = StateService(ctx)
-        
-        temporary_rooms, title = await resolve_objects(
-            ctx_interaction_or_message=ctx,
-            obj=TemporaryRoom,
-            state=state,
-            target=target,
-        )
-        aliases, _ = await resolve_objects(
-            ctx_interaction_or_message=ctx, obj=Alias, state=state, target=target
-        )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        title = f'{get_random_emoji()} {TemporaryRoom.PLURAL}'
+        is_at_home = at_home(ctx_interaction_or_message=ctx)
 
+        state = StateService(ctx)
+
+        do = DiscordObject(source=ctx)
+
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        aliases = Alias.select(**kwargs)
+        temporary_rooms = TemporaryRoom.select(**kwargs)
+        
         for temporary_room in temporary_rooms:
             guild_dictionary.setdefault(
                 temporary_room.guild_snowflake, {"channels": {}}
@@ -2582,33 +1677,30 @@ class AdminCommands(commands.Cog):
         entry_type: Optional[str] = None,
         snowflakes: Optional[str] = None,
     ):
-        state = StateService(interaction)
-        channel_obj = None
-        channel_mentions, failed_snowflakes = [], []
+        channel_mentions = failed_snowflakes = []
 
-        try:
-            channel_obj = await resolve_channel(interaction, channel)
-        except Exception as e:
-            channel_obj = interaction.channel
-            logger.warning(str(e).capitalize())
+        state = StateService(interaction)
+
+        do = DiscordObject(source=interaction)
+
+        channel_dict = do.determine_from_target(target=channel)
+        kwargs = channel_dict['columns']
 
         if scope is None and entry_type is None:
-            history = await History.select(
-                channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
-            )
+            history = await History.select(**kwargs)
             if not history:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No tracking exists for {channel_obj.mention}."
+                    warning=f"No tracking exists for {channel_dict['mention']}."
                 )
             enabled = not history[0].enabled
             action = "enabled" if enabled else "disabled"
             await History.update_by_channel_enabled_and_guild(
-                channel_snowflake=channel_obj.id,
+                channel_snowflake=channel_dict['columns']['channel_snowflake'],
                 enabled=enabled,
                 guild_snowflake=interaction.guild.id,
             )
             return await state.end(
-                success=f"{get_random_emoji()} Tracking has been {action} in {channel_obj.mention}."
+                success=f"Tracking has been {action} in {channel_dict['mention']}."
             )
 
         if scope and entry_type:
@@ -2617,17 +1709,16 @@ class AdminCommands(commands.Cog):
                     resolved_channels = []
                     for snowflake in snowflakes:
                         try:
-                            ch = await resolve_channel(interaction, snowflake)
-                            resolved_channels.append(ch.id)
-                            channel_mentions.append(ch.mention)
+                            channel_dict = do.determine_from_target(target=channel)
+                            resolved_channels.append(channel_dict['columns']['channel_snowflake'])
+                            channel_mentions.append(channel_dict['mention'])
                         except Exception:
                             failed_snowflakes.append(snowflake)
                             continue
                     if scope.lower() == "create":
                         history_entry = History(
-                            channel_snowflake=channel_obj.id,
+                            **kwargs,
                             enabled=True,
-                            guild_snowflake=interaction.guild.id,
                             entry_type=entry_type,
                             snowflakes=resolved_channels,
                         )
@@ -2635,17 +1726,13 @@ class AdminCommands(commands.Cog):
                         action = "created"
                     else:
                         await History.update_by_channel_guild_and_type(
-                            channel_snowflake=channel_obj.id,
+                            **kwargs,
                             entry_type=entry_type,
-                            guild_snowflake=interaction.guild.id,
                             snowflakes=resolved_channels,
                         )
                         action = "modified"
                 case "delete":
-                    await History.delete(
-                        channel_snowflake=channel_obj.id,
-                        guild_snowflake=interaction.guild.id,
-                    )
+                    await History.delete(**kwargs)
                     action = "deleted"
                 case _:
                     return await state.end(
@@ -2653,7 +1740,7 @@ class AdminCommands(commands.Cog):
                     )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_obj.mention}",
+            title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_dict['mention']}",
             color=0x00FF00,
         )
         if channel_mentions:
@@ -2668,10 +1755,8 @@ class AdminCommands(commands.Cog):
                 value=", ".join(str(s) for s in failed_snowflakes),
                 inline=False,
             )
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     @commands.command(name="track", help="Setup tracking.")
@@ -2690,33 +1775,30 @@ class AdminCommands(commands.Cog):
         ),
         *snowflakes: Optional[int],
     ):
-        state = StateService(ctx)
-        channel_obj = None
-        channel_mentions, failed_snowflakes = [], []
+        channel_mentions = failed_snowflakes = []
 
-        try:
-            channel_obj = await resolve_channel(ctx, channel)
-        except Exception as e:
-            channel_obj = ctx.channel
-            logger.warning(str(e).capitalize())
+        state = StateService(ctx)
+
+        do = DiscordObject(source=ctx)
+
+        channel_dict = do.determine_from_target(target=channel)
+        kwargs = channel_dict['columns']
 
         if scope is None and entry_type is None:
-            history = await History.select(
-                channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-            )
+            history = await History.select(**kwargs)
             if not history:
                 return await state.end(
-                    warning=f"\U000026a0\U0000fe0f No tracking exists for {channel_obj.mention}."
+                    warning=f"No tracking exists for {channel_dict['mention']}."
                 )
             enabled = not history[0].enabled
             action = "enabled" if enabled else "disabled"
             await History.update_by_channel_enabled_and_guild(
-                channel_snowflake=channel_obj.id,
+                channel_snowflake=channel_dict['columns']['channel_snowflake'],
                 enabled=enabled,
                 guild_snowflake=ctx.guild.id,
             )
             return await state.end(
-                success=f"{get_random_emoji()} Tracking has been {action} in {channel_obj.mention}."
+                success=f"Tracking has been {action} in {channel_dict['mention']}."
             )
 
         if scope and entry_type:
@@ -2725,17 +1807,16 @@ class AdminCommands(commands.Cog):
                     resolved_channels = []
                     for snowflake in snowflakes:
                         try:
-                            ch = await resolve_channel(ctx, snowflake)
-                            resolved_channels.append(ch.id)
-                            channel_mentions.append(ch.mention)
+                            channel_dict = do.determine_from_target(target=channel)
+                            resolved_channels.append(channel_dict['columns']['channel_snowflake'])
+                            channel_mentions.append(channel_dict['mention'])
                         except Exception:
                             failed_snowflakes.append(snowflake)
                             continue
                     if scope.lower() == "create":
                         history_entry = History(
-                            channel_snowflake=channel_obj.id,
+                            **kwargs,
                             enabled=True,
-                            guild_snowflake=ctx.guild.id,
                             entry_type=entry_type,
                             snowflakes=resolved_channels,
                         )
@@ -2743,16 +1824,13 @@ class AdminCommands(commands.Cog):
                         action = "created"
                     else:
                         await History.update_by_channel_guild_and_type(
-                            channel_snowflake=channel_obj.id,
+                            **kwargs,
                             entry_type=entry_type,
-                            guild_snowflake=ctx.guild.id,
                             snowflakes=resolved_channels,
                         )
                         action = "modified"
                 case "delete":
-                    await History.delete(
-                        channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-                    )
+                    await History.delete(**kwargs)
                     action = "deleted"
                 case _:
                     return await state.end(
@@ -2760,7 +1838,7 @@ class AdminCommands(commands.Cog):
                     )
 
         embed = discord.Embed(
-            title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_obj.mention}",
+            title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_dict['mention']}",
             color=0x00FF00,
         )
         if channel_mentions:
@@ -2775,10 +1853,8 @@ class AdminCommands(commands.Cog):
                 value=", ".join(str(s) for s in failed_snowflakes),
                 inline=False,
             )
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=embed)
 
     # DONE
     @app_commands.command(name="tracks", description="List history channels.")
@@ -2789,28 +1865,19 @@ class AdminCommands(commands.Cog):
     async def list_tracking_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = StateService(interaction)
-
-        histories, title = await resolve_objects(
-            ctx_interaction_or_message=interaction,
-            obj=History,
-            state=state,
-            target=target,
-        )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
-        try:
-            channel_obj = await resolve_channel(interaction, target)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        is_at_home = at_home(ctx_interaction_or_message=interaction)
+        title = f'{get_random_emoji} {History.PLURAL}'
+
+        state = StateService(interaction)
+
+        do = DiscordObject(source=interaction)
+
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        histories = await History.select(**kwargs)
 
         for history in histories:
             guild_dictionary.setdefault(history.guild_snowflake, {"channels", {}})
@@ -2836,7 +1903,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, entries in guild_data.get("channels").items():
+            for channel_snowflake, entries in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 for entry in entries:
                     status = "\u2705" if entry["enabled"] else "\u26d4"
@@ -2844,7 +1911,7 @@ class AdminCommands(commands.Cog):
                     lines.append(
                         f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
                     )
-                    if channel_obj:
+                    if object_dict['type'] in (discord.StageChannel, discord.TextChannel, discord.VoiceChannel):
                         lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -2893,28 +1960,19 @@ class AdminCommands(commands.Cog):
             description="Specify one of: `all`, channel ID/mention, server ID or empty.",
         ),
     ):
-        state = StateService(ctx)
-
-        histories, title = await resolve_objects(
-            ctx_interaction_or_message=ctx,
-            obj=History,
-            state=state,
-            target=target,
-        )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
-        try:
-            channel_obj = await resolve_channel(ctx, target)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        is_at_home = at_home(ctx_interaction_or_message=ctx)
+        title = f'{get_random_emoji} {History.PLURAL}'
+
+        state = StateService(ctx)
+
+        do = DiscordObject(source=ctx)
+
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        histories = await History.select(**kwargs)
 
         for history in histories:
             guild_dictionary.setdefault(history.guild_snowflake, {"channels", {}})
@@ -2940,7 +1998,7 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, entries in guild_data.get("channels").items():
+            for channel_snowflake, entries in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 for entry in entries:
                     status = "\u2705" if entry["enabled"] else "\u26d4"
@@ -2948,7 +2006,7 @@ class AdminCommands(commands.Cog):
                     lines.append(
                         f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
                     )
-                    if channel_obj:
+                    if object_dict['type'] in (discord.StageChannel, discord.TextChannel, discord.VoiceChannel):
                         lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -2992,22 +2050,16 @@ class AdminCommands(commands.Cog):
     async def toggle_video_room_app_command(
         self, interaction: discord.Interaction, channel: AppChannelSnowflake
     ):
+        action = None
+
         state = StateService(interaction)
 
-        try:
-            channel_obj = await resolve_channel(interaction, channel)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+        do = DiscordObject(source=interaction)
 
-        action = None
-        video_room = await VideoRoom.select(
-            channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
-        )
+        channel_dict = do.determine_from_target(target=channel)
+        kwargs = channel_dict['columns']        
+
+        video_room = await VideoRoom.select(**kwargs)
 
         if video_room:
             action = "removed"
@@ -3016,24 +2068,16 @@ class AdminCommands(commands.Cog):
                 for vr in VideoRoom.video_rooms
                 if vr.channel_snowflake != video_room.channel_snowflake
             ]
-            await VideoRoom.delete(
-                channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
-            )
+            await VideoRoom.delete(**kwargs)
         else:
-            video_room = VideoRoom(
-                channel_snowflake=channel_obj.id, guild_snowflake=interaction.guild.id
-            )
+            video_room = VideoRoom(**kwargs)
             await video_room.create()
             VideoRoom.video_rooms.append(video_room)
             action = "created"
 
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Video-only room {action} in {channel_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        return await state.end(
+            success=f"Video-only room {action} in {channel_dict['mention']}."
+        )
 
     @commands.command(name="vr", help="Start/stop video-only room.")
     @administrator_predicator()
@@ -3044,23 +2088,17 @@ class AdminCommands(commands.Cog):
             default=None, description="Tag a channel or include the ID"
         ),
     ):
+        action = None
+
         state = StateService(ctx)
 
-        try:
-            channel_obj = await resolve_channel(ctx, channel)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-            
-        action = None
-        video_room = await VideoRoom.select(
-            channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-        )
-        
+        do = DiscordObject(source=ctx)
+
+        channel_dict = do.determine_from_target(target=channel)
+        kwargs = channel_dict['columns']        
+
+        video_room = await VideoRoom.select(**kwargs)
+
         if video_room:
             action = "removed"
             VideoRoom.video_rooms = [
@@ -3068,24 +2106,16 @@ class AdminCommands(commands.Cog):
                 for vr in VideoRoom.video_rooms
                 if vr.channel_snowflake != video_room.channel_snowflake
             ]
-            await VideoRoom.delete(
-                channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-            )
+            await VideoRoom.delete(**kwargs)
         else:
-            video_room = VideoRoom(
-                channel_snowflake=channel_obj.id, guild_snowflake=ctx.guild.id
-            )
+            video_room = VideoRoom(**kwargs)
             await video_room.create()
             VideoRoom.video_rooms.append(video_room)
             action = "created"
 
-        try:
-            return await state.end(
-                success=f"{get_random_emoji()} "
-                f"Video-only room {action} in {channel_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        return await state.end(
+            success=f"Video-only room {action} in {channel_dict['mention']}."
+        )
 
     # DONE
     @app_commands.command(name="vrs", description="List video rooms.")
@@ -3095,30 +2125,21 @@ class AdminCommands(commands.Cog):
     @administrator_predicator()
     async def list_video_rooms_app_command(
         self, interaction: discord.Interaction, target: str = None
-    ):
-        state = StateService(interaction)
-
-        video_rooms, title = await resolve_objects(
-            ctx_interaction_or_message=interaction,
-            obj=VideoRoom,
-            state=state,
-            target=target,
-        )
-        aliases, _ = await resolve_objects(
-            ctx_interaction_or_message=interaction,
-            obj=Alias,
-            state=state,
-            target=target,
-        )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
+    ):        
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        title = f'{get_random_emoji()} {VideoRoom.PLURAL}'
+        is_at_home = at_home(ctx_interaction_or_message=interaction)
+
+        state = StateService(interaction)
+
+        do = DiscordObject(source=interaction)
+
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        aliases = Alias.select(**kwargs)
+        video_rooms = VideoRoom.select(**kwargs)
 
         for video_room in video_rooms:
             guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
@@ -3203,6 +2224,7 @@ class AdminCommands(commands.Cog):
                     skipped=skipped_guilds,
                     title="Skipped Servers",
                 )
+
         await StateService.send_pages(obj=VideoRoom, pages=pages, state=state)
 
     # DONE
@@ -3216,23 +2238,20 @@ class AdminCommands(commands.Cog):
             default=None, description="Include `all`, channel or server ID."
         ),
     ):
-        state = StateService(ctx)
-
-        video_rooms, title = await resolve_objects(
-            ctx_interaction_or_message=ctx, obj=VideoRoom, state=state, target=target
-        )
-        aliases, _ = await resolve_objects(
-            ctx_interaction_or_message=ctx, obj=Alias, state=state, target=target
-        )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        title = f'{get_random_emoji()} {VideoRoom.PLURAL}'
+        is_at_home = at_home(ctx_interaction_or_message=ctx)
+
+        state = StateService(ctx)
+
+        do = DiscordObject(source=ctx)
+
+        object_dict = do.determine_from_target(target=target)
+        kwargs = object_dict['columns']
+
+        aliases = Alias.select(**kwargs)
+        video_rooms = VideoRoom.select(**kwargs)
 
         for video_room in video_rooms:
             guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
@@ -3328,46 +2347,37 @@ class AdminCommands(commands.Cog):
         self, interaction: discord.Interaction, alias_name: str
     ):
         state = StateService(interaction)
-        channel_obj = None
-        alias = await Alias.select(
-            alias_name=alias_name, guild_snowflake=interaction.guild.i
-        )
+
+        do = DiscordObject(source=interaction)
+
+        kwargs = {
+            "alias_name": alias_name,
+            "guild_snowflake": interaction.guild.id
+        }
+
+        alias = await Alias.select(**kwargs)
         if not alias:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"No aliases found for `{alias_name}`."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        await Alias.delete(
-            alias_name=alias.alias_name, guild_snowflake=interaction.guild.id
-        )
-        try:
-            channel_obj = await resolve_channel(interaction, alias.channel_snowflake)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(
+                warning=f"No aliases found for `{alias_name}`."
+            )
+        await Alias.delete(**kwargs)
+
+        channel_dict = do.determine_from_target(target=alias.channel_snowflake)
+
         if alias.role_snowflake:
             msg = (
                 f"Alias `{alias.alias_name}` of type "
-                f"`{alias.alias_type}` for channel {channel_obj.mention} "
+                f"`{alias.alias_type}` for channel {channel_dict['mention']} "
                 f" and role {alias.role_mention} deleted successfully."
             )
         else:
             msg = (
                 f"Alias `{alias.alias_name}` of type "
-                f"`{alias.alias_type}` for channel {channel_obj.mention} "
+                f"`{alias.alias_type}` for channel {channel_dict['mention']} "
                 f"deleted successfully."
             )
-        try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=msg)
 
     # DONE
     @commands.command(name="xalias", help="Delete alias.")
@@ -3380,41 +2390,37 @@ class AdminCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        channel_obj = None
-        alias = await Alias.select(alias_name=alias_name, guild_snowflake=ctx.guild.id)
+
+        do = DiscordObject(source=ctx)
+
+        kwargs = {
+            "alias_name": alias_name,
+            "guild_snowflake": ctx.guild.id
+        }
+
+        alias = await Alias.select(**kwargs)
         if not alias:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f "
-                    f"No aliases found for `{alias_name}`."
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
-        await Alias.delete(alias_name=alias.alias_name, guild_snowflake=ctx.guild.id)
-        try:
-            channel_obj = await resolve_channel(ctx, alias.channel_snowflake)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=f"\U000026a0\U0000fe0f {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=f"\u274c {str(e).capitalize()}")
+            return await state.end(
+                warning=f"No aliases found for `{alias_name}`."
+            )
+        await Alias.delete(**kwargs)
+
+        channel_dict = do.determine_from_target(target=alias.channel_snowflake)
+
         if alias.role_snowflake:
             msg = (
-                f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
-                f"for channel {channel_obj.mention} "
-                f"and role {alias.role_mention} deleted successfully."
+                f"Alias `{alias.alias_name}` of type "
+                f"`{alias.alias_type}` for channel {channel_dict['mention']} "
+                f" and role {alias.role_mention} deleted successfully."
             )
         else:
             msg = (
-                f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
-                f"for channel {channel_obj.mention} deleted successfully."
+                f"Alias `{alias.alias_name}` of type "
+                f"`{alias.alias_type}` for channel {channel_dict['mention']} "
+                f"deleted successfully."
             )
-        try:
-            return await state.end(success=f"{get_random_emoji()} {msg}")
-        except Exception as e:
-            return await state.end(error=f"\u274c {str(e).capitalize()}")
+        
+        return await state.end(success=msg)
 
 
 async def setup(bot: DiscordBot):

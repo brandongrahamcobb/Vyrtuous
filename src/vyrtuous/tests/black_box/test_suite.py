@@ -378,7 +378,7 @@ async def command(bot, ctx):
 async def on_message(bot, message):
     bot.loop = asyncio.get_running_loop()
     bot.dispatch("message", message)
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.05)
 
 
 async def prepared_command_handling(
