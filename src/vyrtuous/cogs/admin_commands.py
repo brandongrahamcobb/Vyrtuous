@@ -119,12 +119,9 @@ class AdminCommands(commands.Cog):
             alias_name=alias_name, guild_snowflake=interaction.guild.id
         )
         if alias:
-            try:
-                return await state.end(
-                    warning=f"Alias `{alias.alias_name}` already exists in {interaction.guild.name}."
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(
+                warning=f"Alias `{alias.alias_name}` already exists in {interaction.guild.name}."
+            )
 
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
@@ -183,12 +180,9 @@ class AdminCommands(commands.Cog):
 
         alias = await Alias.select(alias_name=alias_name, guild_snowflake=ctx.guild.id)
         if alias:
-            try:
-                return await state.end(
-                    warning=f"Alias `{alias.alias_name}` already exists in {ctx.guild.name}."
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(
+                warning=f"Alias `{alias.alias_name}` already exists in {ctx.guild.name}."
+            )
 
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
@@ -383,13 +377,10 @@ class AdminCommands(commands.Cog):
             msg = f"Cap `{moderation_type}` modified for {channel_dict['mention']}."
         elif cap:
             await Cap.delete(**kwargs)
-            try:
-                return await state.end(
-                    success=f"Cap of type {moderation_type} "
-                    f"and channel {channel_dict['mention']} deleted successfully."
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(
+                success=f"Cap of type {moderation_type} "
+                f"and channel {channel_dict['mention']} deleted successfully."
+            )
         else:
             kwargs.update("duration_seconds", seconds)
             cap = Cap(**kwargs)
@@ -1053,8 +1044,7 @@ class AdminCommands(commands.Cog):
             delta = duration.expires_in - datetime.now(timezone.utc)
             if delta.total_seconds() < 0:
                 return await state.end(
-                    warning="\U000026a0\U0000fe0f "
-                    "You are not authorized to decrease the duration "
+                    warning="You are not authorized to decrease the duration "
                     "below the current time."
                 )
             if stage:
@@ -1200,8 +1190,7 @@ class AdminCommands(commands.Cog):
             delta = duration.expires_in - datetime.now(timezone.utc)
             if delta.total_seconds() < 0:
                 return await state.end(
-                    warning="\U000026a0\U0000fe0f "
-                    "You are not authorized to decrease the duration "
+                    warning="You are not authorized to decrease the duration "
                     "below the current time."
                 )
             if stage:
@@ -1811,7 +1800,7 @@ class AdminCommands(commands.Cog):
                     action = "deleted"
                 case _:
                     return await state.end(
-                        warning="\U000026a0\U0000fe0f Scope must be one of `create`, `delete` or `modify`."
+                        warning="Scope must be one of `create`, `delete` or `modify`."
                     )
 
         embed = discord.Embed(

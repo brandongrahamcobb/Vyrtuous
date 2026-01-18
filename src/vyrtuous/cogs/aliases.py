@@ -543,13 +543,10 @@ class Aliases(commands.Cog):
                 warning=f"Role `{alias.role_snowflake}` was not found."
             )
         if role not in member.roles:
-            try:
-                return await state.end(
-                    warning=f"{get_random_emoji()} "
-                    f"{member.mention} does not have {role.mention}."
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(
+                warning=f"{get_random_emoji()} "
+                f"{member.mention} does not have {role.mention}."
+            )
         try:
             await member.remove_roles(role)
         except discord.Forbidden as e:

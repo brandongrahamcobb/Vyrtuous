@@ -303,14 +303,8 @@ class StateService:
                 return await state.end(success=pages)
             except Exception as e:
                 logger.info(str(e).capitalize())
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f Embed size is too large. Limit the scope."
-                    )
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
+                return await state.end(
+                    warning="Embed size is too large. Limit the scope."
+                )
         else:
-            try:
-                return await state.end(warning=f"No {obj.PLURAL.lower()} found.")
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(warning=f"No {obj.PLURAL.lower()} found.")
