@@ -18,11 +18,25 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 import pytest
 
-from vyrtuous.inc.helpers import GUILD_ID, MESSAGE_ID, PRIVILEGED_AUTHOR_ID, ROLE_ID, TEXT_CHANNEL_ID
+from vyrtuous.inc.helpers import (
+    GUILD_ID,
+    MESSAGE_ID,
+    PRIVILEGED_AUTHOR_ID,
+    ROLE_ID,
+    TEXT_CHANNEL_ID,
+)
 from vyrtuous.tests.black_box.make_mock_objects import create_message
-from vyrtuous.tests.black_box.test_suite import bot, guild, prepare_context, privileged_author, role, text_channel
+from vyrtuous.tests.black_box.test_suite import (
+    bot,
+    guild,
+    prepare_context,
+    privileged_author,
+    role,
+    text_channel,
+)
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.resolution.discord_object_service import determine_target_type
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -33,11 +47,13 @@ from vyrtuous.service.resolution.discord_object_service import determine_target_
         # (discord.Guild, {"guild_snowflake": GUILD_ID}),
         # (discord.Member, {"member_mention": f'<@{PRIVILEGED_AUTHOR_ID}>'}),
         # (discord.Member, {"member_snowflake": PRIVILEGED_AUTHOR_ID}),
-        (discord.Role, {"role_mention": f'<@&{ROLE_ID}>'}),
-        (discord.Role, {"role_snowflake": ROLE_ID})
-    ]
+        (discord.Role, {"role_mention": f"<@&{ROLE_ID}>"}),
+        (discord.Role, {"role_snowflake": ROLE_ID}),
+    ],
 )
-async def test_resolve_target(bot, dictionary, discord_object_type, guild, privileged_author, role, text_channel):
+async def test_resolve_target(
+    bot, dictionary, discord_object_type, guild, privileged_author, role, text_channel
+):
     bot.get_guild = lambda guild_id: guild if guild_id == GUILD_ID else None
     # guild.get_role = lambda role_id: role if role_id == ROLE_ID else None
 
@@ -51,6 +67,6 @@ async def test_resolve_target(bot, dictionary, discord_object_type, guild, privi
         id=MESSAGE_ID,
     )
     for key, value in dictionary.items():
-        ctx = await prepare_context(bot, message, '!')
+        ctx = await prepare_context(bot, message, "!")
         obj = await determine_target_type(ctx, value)
         assert isinstance(obj, discord_object_type)

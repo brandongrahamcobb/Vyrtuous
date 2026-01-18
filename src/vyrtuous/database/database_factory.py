@@ -35,11 +35,14 @@ class DatabaseFactory(object):
         placeholders = ", ".join(f"${i+1}" for i in range(len(insert_fields)))
         values = [getattr(self, f) for f in insert_fields]
         async with self.bot.db_pool.acquire() as conn:
-            await conn.execute(f"""
+            await conn.execute(
+                f"""
                 INSERT INTO {table_name} ({', '.join(insert_fields)})
                 VALUES ({placeholders})
                 ON CONFLICT DO NOTHING
-            """, *values)
+            """,
+                *values,
+            )
 
     @classmethod
     async def delete(cls, **kwargs):
@@ -128,8 +131,11 @@ class DatabaseFactory(object):
             where_kwargs[field] for field in where_fields
         ]
         async with bot.db_pool.acquire() as conn:
-            await conn.execute(f"""
+            await conn.execute(
+                f"""
                 UPDATE {table_name}
                 SET {', '.join(assignments)}
                 WHERE {' AND '.join(conditions)}
-            """, *values)
+            """,
+                *values,
+            )

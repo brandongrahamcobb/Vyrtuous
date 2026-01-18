@@ -30,9 +30,7 @@ class MessageService:
 
     async def send_message(
         self,
-        ctx_interaction_or_message: Union[
-            commands.Context, discord.Interaction, discord.Message
-        ],
+        source: Union[commands.Context, discord.Interaction, discord.Message],
         *,
         content: str = None,
         file: discord.File = None,
@@ -40,20 +38,16 @@ class MessageService:
         allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(),
         ephemeral: bool = None
     ):
-        if isinstance(ctx_interaction_or_message, commands.Context):
+        if isinstance(source, commands.Context):
             can_send = (
-                ctx_interaction_or_message.guild
-                and isinstance(
-                    ctx_interaction_or_message.channel, discord.abc.GuildChannel
-                )
-                and ctx_interaction_or_message.channel.permissions_for(
-                    ctx_interaction_or_message.guild.me
-                ).send_messages
+                source.guild
+                and isinstance(source.channel, discord.abc.GuildChannel)
+                and source.channel.permissions_for(source.guild.me).send_messages
             )
             if can_send:
                 try:
                     return await self._send_message(
-                        lambda **kw: ctx_interaction_or_message.reply(**kw),
+                        lambda **kw: source.reply(**kw),
                         content=content,
                         file=file,
                         embed=embed,
@@ -62,7 +56,7 @@ class MessageService:
                 except discord.HTTPException as e:
                     if getattr(e, "code", None) == 50035:
                         return await self._send_message(
-                            lambda **kw: ctx_interaction_or_message.send(**kw),
+                            lambda **kw: source.send(**kw),
                             content=content,
                             file=file,
                             embed=embed,
@@ -72,20 +66,18 @@ class MessageService:
                         raise
             else:
                 return await self.send_dm(
-                    ctx_interaction_or_message.author,
+                    source.author,
                     content=content,
                     file=file,
                     embed=embed,
                     allowed_mentions=allowed_mentions,
                 )
-        elif isinstance(ctx_interaction_or_message, discord.Interaction):
+        elif isinstance(source, discord.Interaction):
             if ephemeral is None:
                 ephemeral = True
-            if ctx_interaction_or_message.response.is_done():
+            if source.response.is_done():
                 return await self._send_message(
-                    lambda **kw: ctx_interaction_or_message.followup.send(
-                        **kw, ephemeral=ephemeral
-                    ),
+                    lambda **kw: source.followup.send(**kw, ephemeral=ephemeral),
                     content=content,
                     file=file,
                     embed=embed,
@@ -93,7 +85,7 @@ class MessageService:
                 )
             else:
                 await self._send_message(
-                    lambda **kw: ctx_interaction_or_message.response.send_message(
+                    lambda **kw: source.response.send_message(
                         **kw, ephemeral=ephemeral
                     ),
                     content=content,
@@ -101,10 +93,10 @@ class MessageService:
                     embed=embed,
                     allowed_mentions=allowed_mentions,
                 )
-                return await ctx_interaction_or_message.original_response()
-        elif isinstance(ctx_interaction_or_message, discord.Message):
+                return await source.original_response()
+        elif isinstance(source, discord.Message):
             return await self._send_message(
-                lambda **kw: ctx_interaction_or_message.reply(**kw),
+                lambda **kw: source.reply(**kw),
                 content=content,
                 file=file,
                 embed=embed,

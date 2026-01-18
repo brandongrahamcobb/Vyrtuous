@@ -52,6 +52,7 @@ class VideoRoom(Room):
         guild_snowflake: Optional[int],
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
+        **kwargs,
     ):
         super().__init__()
         self.channel_mention = f"<#{channel_snowflake}>"

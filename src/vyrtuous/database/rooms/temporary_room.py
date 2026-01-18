@@ -48,6 +48,7 @@ class TemporaryRoom(Room):
         room_name: Optional[str],
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
+        **kwargs,
     ):
         super().__init__()
         self.channel_mention = f"<#{channel_snowflake}>"

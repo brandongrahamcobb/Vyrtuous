@@ -37,10 +37,10 @@ from vyrtuous.service.logging_service import logger
 from vyrtuous.service.check_service import (
     coordinator_predicator,
     has_equal_or_higher_role,
-    not_bot,
 )
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.discord_object_service import DiscordObject
 from vyrtuous.utils.emojis import get_random_emoji
 
 
@@ -63,70 +63,34 @@ class CoordinatorCommands(commands.Cog):
         member: AppMemberSnowflake,
         channel: AppChannelSnowflake,
     ):
-        state = StateService(interaction)
-        try:
-            channel_obj = await resolve_channel(
-                ctx_interaction_or_message=interaction, channel_str=channel
-            )
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            channel_obj = interaction.channel
-            await self.message_service.send_message(
-                interaction,
-                content=f"\U000026a0\U0000fe0f Defaulting to {channel_obj.mention}.",
-            )
-        try:
-            member_obj = await resolve_member(
-                ctx_interaction_or_message=interaction, member_str=member
-            )
-            not_bot(
-                ctx_interaction_or_message=interaction, member_snowflake=member_obj.id
-            )
-            await has_equal_or_higher_role(
-                ctx_interaction_or_message=interaction,
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=interaction.user.id,
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-            
         action = None
-        moderator = await Moderator.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=interaction.guild.id,
-            member_snowflake=member_obj.id,
+
+        state = StateService(interaction)
+
+        do = DiscordObject(source=interaction)
+
+        channel_dict = await do.determine_from_target(target=channel)
+        member_dict = await do.determine_from_target(target=member)
+        kwargs = {}
+        kwargs.update(channel_dict["columns"])
+        kwargs.update(member_dict["columns"])
+        await has_equal_or_higher_role(
+            source=interaction, sender_snowflake=interaction.user.id, **kwargs
         )
 
+        moderator = await Moderator.select(**kwargs)
         if moderator:
-            await Moderator.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
+            await Moderator.delete(**kwargs)
             action = "revoked"
         else:
-            moderator = Moderator(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-            )
+            moderator = Moderator(**kwargs)
             await moderator.create()
             action = "granted"
 
-        try:
-            return await state.end(
-                success=f"Moderator access for {member_obj.mention} has been "
-                f"{action} in {channel_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(
+            success=f"Moderator access for {member_dict['mention']} has been "
+            f"{action} in {channel_dict['mention']}."
+        )
 
     # DONE
     @commands.command(name="mod", help="Grant/revoke mods.")
@@ -141,71 +105,35 @@ class CoordinatorCommands(commands.Cog):
             default=None, description="Tag a channel or include its ID"
         ),
     ):
+        action = None
+
         state = StateService(ctx)
 
-        try:
-            channel_obj = await resolve_channel(
-                ctx_interaction_or_message=ctx, channel_str=channel
-            )
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            channel_obj = ctx.channel
-            await self.message_service.send_message(
-                ctx_interaction_or_message=ctx,
-                content=f"\U000026a0\U0000fe0f Defaulting to {channel_obj.mention}.",
-            )
-        try:
-            member_obj = await resolve_member(
-                ctx_interaction_or_message=ctx, member_str=member
-            )
-            not_bot(ctx, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(
-                ctx_interaction_or_message=ctx,
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=ctx.author.id,
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        action = None
-        moderator = await Moderator.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=ctx.guild.id,
-            member_snowflake=member_obj.id,
+        do = DiscordObject(source=ctx)
+
+        channel_dict = await do.determine_from_target(target=channel)
+        member_dict = await do.determine_from_target(target=member)
+        kwargs = {}
+        kwargs.update(channel_dict["columns"])
+        kwargs.update(member_dict["columns"])
+
+        await has_equal_or_higher_role(
+            source=ctx, sender_snowflake=ctx.author.id, **kwargs
         )
 
+        moderator = await Moderator.select(**kwargs)
         if moderator:
-            await Moderator.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
+            await Moderator.delete(**kwargs)
             action = "revoked"
         else:
-            moderator = Moderator(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            try:
-                await moderator.create()
-            except Exception as e:
-                print(e)
+            moderator = Moderator(**kwargs)
+            await moderator.create()
             action = "granted"
 
-        try:
-            return await state.end(
-                success=f"Moderator access for {member_obj.mention} has been "
-                f"{action} in {channel_obj.mention}."
-            )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(
+            success=f"Moderator access for {member_dict['mention']} has been "
+            f"{action} in {channel_dict['mention']}."
+        )
 
     # DONE
     @app_commands.command(name="rmute", description="Room mute (except yourself).")
@@ -217,61 +145,53 @@ class CoordinatorCommands(commands.Cog):
         channel: AppChannelSnowflake,
         reason: Optional[str] = "No reason provided.",
     ):
+        muted_members = pages = skipped_members = failed_members = []
+
         state = StateService(interaction)
-        channel_obj = None
-        muted_members, pages, skipped_members, failed_members = [], [], [], []
-        try:
-            channel_obj = await resolve_channel(
-                ctx_interaction_or_message=interaction, channel_str=channel
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        for member in channel_obj.members:
+
+        do = DiscordObject(source=interaction)
+
+        channel_dict = await do.determine_from_target(target=channel)
+        kwargs = channel_dict["columns"]
+
+        for member in channel_dict["object"].members:
             if member.id == interaction.user.id:
                 continue
             voice_mute = await VoiceMute.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member.id,
+                **kwargs,
                 target="user",
             )
             if voice_mute:
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_obj.id:
+                if member.voice.channel.id == channel_dict["id"]:
                     try:
                         await member.edit(mute=True)
                     except Exception as e:
                         logger.warning(
                             f"Unable to voice-mute member "
                             f"{member.display_name} ({member.id}) in channel "
-                            f"{channel_obj.name} ({channel_obj.id}) in guild "
+                            f"{channel_dict['name']} ({channel_dict['id']}) in guild "
                             f"{interaction.guild.name} ({interaction.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
             voice_mute = VoiceMute(
-                channel_snowflake=channel_obj.id,
                 expires_in=expires_in,
-                guild_snowflake=interaction.guild.id,
                 member_snowflake=member.id,
                 reason=reason,
                 target="user",
+                **kwargs,
             )
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_obj.mention}",
+            f"**Channel:** {channel_dict['mention']}",
             f"**Muted:** {len(muted_members)} users",
             f"**Failed:** {len(failed_members)} users",
-            f'**Skipped:** {len(channel_obj.members) \
+            f'**Skipped:** {len(channel_dict['object'].members) \
                 - len(muted_members) \
                 - len(failed_members)
             }',
@@ -298,61 +218,53 @@ class CoordinatorCommands(commands.Cog):
             default="No reason provided.", description="Specify a reason."
         ),
     ):
+        muted_members = pages = skipped_members = failed_members = []
+
         state = StateService(ctx)
-        channel_obj = None
-        muted_members, pages, skipped_members, failed_members = [], [], [], []
-        try:
-            channel_obj = await resolve_channel(
-                ctx_interaction_or_message=ctx, channel_str=channel
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        for member in channel_obj.members:
+
+        do = DiscordObject(source=ctx)
+
+        channel_dict = await do.determine_from_target(target=channel)
+        kwargs = channel_dict["columns"]
+
+        for member in channel_dict["object"].members:
             if member.id == ctx.author.id:
                 continue
             voice_mute = await VoiceMute.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member.id,
+                **kwargs,
                 target="user",
             )
             if voice_mute:
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_obj.id:
+                if member.voice.channel.id == channel_dict["id"]:
                     try:
                         await member.edit(mute=True)
                     except Exception as e:
                         logger.warning(
                             f"Unable to voice-mute member "
                             f"{member.display_name} ({member.id}) in channel "
-                            f"{channel_obj.name} ({channel_obj.id}) in guild "
+                            f"{channel_dict['name']} ({channel_dict['id']}) in guild "
                             f"{ctx.guild.name} ({ctx.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
             expires_in = datetime.now(timezone.utc) + timedelta(hours=1)
             voice_mute = VoiceMute(
-                channel_snowflake=channel_obj.id,
                 expires_in=expires_in,
-                guild_snowflake=ctx.guild.id,
                 member_snowflake=member.id,
                 reason=reason,
                 target="user",
+                **kwargs,
             )
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_obj.mention}",
+            f"**Channel:** {channel_dict['mention']}",
             f"**Muted:** {len(muted_members)} users",
             f"**Failed:** {len(failed_members)} users",
-            f'**Skipped:** {len(channel_obj.members) \
+            f'**Skipped:** {len(channel_dict['object'].members) \
                 - len(muted_members) \
                 - len(failed_members)
             }',
@@ -373,55 +285,41 @@ class CoordinatorCommands(commands.Cog):
     async def room_unmute_app_command(
         self, interaction: discord.Interaction, channel: AppChannelSnowflake
     ):
+        failed_members = pages = skipped_members = unmuted_members = []
+
         state = StateService(interaction)
-        channel_obj = None
-        failed_members, pages, skipped_members, unmuted_members = [], [], [], []
-        try:
-            channel_obj = await resolve_channel(
-                ctx_interaction_or_message=interaction, channel_str=channel
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        for member in channel_obj.members:
-            voice_mute = await VoiceMute.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member.id,
-                target="user",
-            )
+
+        do = DiscordObject(source=interaction)
+
+        channel_dict = await do.determine_from_target(target=channel)
+        kwargs = channel_dict["columns"]
+
+        for member in channel_dict["object"].members:
+            voice_mute = await VoiceMute.select(target="user", **kwargs)
             if not voice_mute:
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_obj.id:
+                if member.voice.channel.id == channel_dict["id"]:
                     try:
                         await member.edit(mute=False)
                     except Exception as e:
                         logger.warning(
                             f"Unable to undo voice-mute "
                             f"for member {member.display_name} ({member.id}) "
-                            f"in channel {channel_obj.name} ({channel_obj.id}) "
+                            f"in channel {channel_dict['name']} ({channel_dict['id']}) "
                             f"in guild {interaction.guild.name} "
                             f"({interaction.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
-            await VoiceMute.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=interaction.guild.id,
-                target="user",
-            )
+            await VoiceMute.delete(target="user", **kwargs)
             unmuted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_obj.mention}",
+            f"**Channel:** {channel_dict['mention']}",
             f"**Unmuted:** {len(unmuted_members)} users",
             f"**Failed:** {len(failed_members)} users",
-            f'**Skipped:** {len(channel_obj.members) \
+            f'**Skipped:** {len(channel_dict['object'].members) \
                 - len(unmuted_members) \
                 - len(failed_members)
             }',
@@ -445,51 +343,41 @@ class CoordinatorCommands(commands.Cog):
             default=None, description="Tag a channel or include its ID"
         ),
     ):
+        failed_members = pages = skipped_members = unmuted_members = []
+
         state = StateService(ctx)
-        channel_obj = None
-        failed_members, pages, skipped_members, unmuted_members = [], [], [], []
-        try:
-            channel_obj = await resolve_channel(
-                ctx_interaction_or_message=ctx, channel_str=channel
-            )
-        except Exception as e:
-            return await state.end(
-                warning=str(e).capitalize()
-            )
-        for member in channel_obj.members:
-            voice_mute = await VoiceMute.select(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member.id,
-                target="user",
-            )
+
+        do = DiscordObject(source=ctx)
+
+        channel_dict = await do.determine_from_target(target=channel)
+        kwargs = channel_dict["columns"]
+
+        for member in channel_dict["object"].members:
+            voice_mute = await VoiceMute.select(target="user", **kwargs)
             if not voice_mute:
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_obj.id:
+                if member.voice.channel.id == channel_dict["id"]:
                     try:
                         await member.edit(mute=False)
                     except Exception as e:
                         logger.warning(
-                            "Unable to voice-mute member "
-                            f"{member.display_name} ({member.id}) in channel "
-                            f"{channel_obj.name} ({channel_obj.id}) in guild "
-                            f"{ctx.guild.name} ({ctx.guild.id}). "
+                            f"Unable to undo voice-mute "
+                            f"for member {member.display_name} ({member.id}) "
+                            f"in channel {channel_dict['name']} ({channel_dict['id']}) "
+                            f"in guild {ctx.guild.name} "
+                            f"({ctx.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
                         failed_members.append(member)
-            await VoiceMute.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=ctx.guild.id,
-                target="user",
-            )
+            await VoiceMute.delete(target="user", **kwargs)
             unmuted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_obj.mention}",
+            f"**Channel:** {channel_dict['mention']}",
             f"**Unmuted:** {len(unmuted_members)} users",
             f"**Failed:** {len(failed_members)} users",
-            f'**Skipped:** {len(channel_obj.members) \
+            f'**Skipped:** {len(channel_dict['object'].members) \
                 - len(unmuted_members) \
                 - len(failed_members)
             }',

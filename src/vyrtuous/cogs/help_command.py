@@ -27,6 +27,7 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.alias import Alias
 from vyrtuous.service.check_service import (
+    resolve_highest_permission_role,
     moderator_predicator,
     role_check_without_specifics,
 )
@@ -77,7 +78,7 @@ class HelpCommand(commands.Cog):
         self, bot, ctx_or_interaction
     ) -> list[commands.Command]:
         available = []
-        user_highest = await role_check_without_specifics(ctx_or_interaction)
+        user_highest = await resolve_highest_permission_role(source=ctx_or_interaction)
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
@@ -94,11 +95,11 @@ class HelpCommand(commands.Cog):
     async def get_command_permission_level(self, bot, command):
         if not hasattr(command, "checks") or not command.checks:
             return "Everyone"
-        for check in command.checks:
-            if hasattr(check, "__wrapped__"):
-                func = check.__wrapped__
+        for verify in command.checks:
+            if hasattr(verify, "__wrapped__"):
+                func = verify.__wrapped__
             else:
-                func = check
+                func = verify
             if hasattr(func, "_permission_level"):
                 return func._permission_level
         return "Everyone"
@@ -202,9 +203,7 @@ class HelpCommand(commands.Cog):
                     )
                 except Exception as e:
                     try:
-                        return await state.end(
-                            warning=str(e).capitalize()
-                        )
+                        return await state.end(warning=str(e).capitalize())
                     except Exception as e:
                         return await state.end(error=str(e).capitalize())
             if kind == "command":
@@ -258,13 +257,9 @@ class HelpCommand(commands.Cog):
                             return await state.end(success=embed)
                         except Exception as e:
                             try:
-                                return await state.end(
-                                    warning=str(e).capitalize()
-                                )
+                                return await state.end(warning=str(e).capitalize())
                             except Exception as e:
-                                return await state.end(
-                                    error=str(e).capitalize()
-                                )
+                                return await state.end(error=str(e).capitalize())
             if kind == "alias":
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
@@ -275,13 +270,9 @@ class HelpCommand(commands.Cog):
                         )
                     except Exception as e:
                         try:
-                            return await state.end(
-                                warning=str(e).capitalize()
-                            )
+                            return await state.end(warning=str(e).capitalize())
                         except Exception as e:
-                            return await state.end(
-                                error=str(e).capitalize()
-                            )
+                            return await state.end(error=str(e).capitalize())
                 embed = discord.Embed(
                     title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
                     description=f"Alias for **{alias.alias_type}**",
@@ -296,9 +287,7 @@ class HelpCommand(commands.Cog):
                     return await state.end(success=embed)
                 except Exception as e:
                     try:
-                        return await state.end(
-                            warning=str(e).capitalize()
-                        )
+                        return await state.end(warning=str(e).capitalize())
                     except Exception as e:
                         return await state.end(error=str(e).capitalize())
         all_commands = await self.get_available_commands(bot, interaction)
@@ -323,7 +312,7 @@ class HelpCommand(commands.Cog):
                 perm_alias_map[perm_level_for_alias].append(
                     f"**{alias.alias_name}** – {short_desc}"
                 )
-        user_highest = await role_check_without_specifics(interaction)
+        user_highest = await resolve_highest_permission_role(source=interaction)
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
             if PERMISSION_TYPES.index(perm_level) > user_index:
@@ -364,18 +353,14 @@ class HelpCommand(commands.Cog):
                 )
             except Exception as e:
                 try:
-                    return await state.end(
-                        warning=str(e).capitalize()
-                    )
+                    return await state.end(warning=str(e).capitalize())
                 except Exception as e:
                     return await state.end(error=str(e).capitalize())
         try:
             return await state.end(success=pages)
         except Exception as e:
             try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
+                return await state.end(warning=str(e).capitalize())
             except Exception as e:
                 return await state.end(error=str(e).capitalize())
 
@@ -394,9 +379,7 @@ class HelpCommand(commands.Cog):
                     )
                 except Exception as e:
                     try:
-                        return await state.end(
-                            warning=str(e).capitalize()
-                        )
+                        return await state.end(warning=str(e).capitalize())
                     except Exception as e:
                         return await state.end(error=str(e).capitalize())
             if kind == "command":
@@ -450,13 +433,9 @@ class HelpCommand(commands.Cog):
                             return await state.end(success=embed)
                         except Exception as e:
                             try:
-                                return await state.end(
-                                    warning=str(e).capitalize()
-                                )
+                                return await state.end(warning=str(e).capitalize())
                             except Exception as e:
-                                return await state.end(
-                                    error=str(e).capitalize()
-                                )
+                                return await state.end(error=str(e).capitalize())
             if kind == "alias":
                 alias = obj
                 help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
@@ -467,13 +446,9 @@ class HelpCommand(commands.Cog):
                         )
                     except Exception as e:
                         try:
-                            return await state.end(
-                                warning=str(e).capitalize()
-                            )
+                            return await state.end(warning=str(e).capitalize())
                         except Exception as e:
-                            return await state.end(
-                                error=str(e).capitalize()
-                            )
+                            return await state.end(error=str(e).capitalize())
                 embed = discord.Embed(
                     title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
                     description=f"Alias for **{alias.alias_type}**",
@@ -488,9 +463,7 @@ class HelpCommand(commands.Cog):
                     return await state.end(success=embed)
                 except Exception as e:
                     try:
-                        return await state.end(
-                            warning=str(e).capitalize()
-                        )
+                        return await state.end(warning=str(e).capitalize())
                     except Exception as e:
                         return await state.end(error=str(e).capitalize())
         all_commands = await self.get_available_commands(bot, ctx)
@@ -555,18 +528,14 @@ class HelpCommand(commands.Cog):
                 )
             except Exception as e:
                 try:
-                    return await state.end(
-                        warning=str(e).capitalize()
-                    )
+                    return await state.end(warning=str(e).capitalize())
                 except Exception as e:
                     return await state.end(error=str(e).capitalize())
         try:
             return await state.end(success=pages)
         except Exception as e:
             try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
+                return await state.end(warning=str(e).capitalize())
             except Exception as e:
                 return await state.end(error=str(e).capitalize())
 

@@ -28,13 +28,11 @@ from vyrtuous.database.database import Database
 from vyrtuous.database.logs.developer_log import DeveloperLog
 from vyrtuous.inc.helpers import DISCORD_COGS_CLASSES
 from vyrtuous.service.check_service import at_home, developer_predicator
-from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
-    resolve_objects,
     generate_skipped_guilds,
     generate_skipped_messages,
     clean_guild_dictionary,
@@ -60,9 +58,7 @@ class DevCommands(commands.Cog):
             db.create_backup_directory()
             db.execute_backup()
         except Exception as e:
-            return await state.end(
-                warning=str(e).capitalize()
-            )
+            return await state.end(warning=str(e).capitalize())
         try:
             return await state.end(success=discord.File(db.file_name))
         except Exception as e:
@@ -78,9 +74,7 @@ class DevCommands(commands.Cog):
             db.create_backup_directory()
             db.execute_backup()
         except Exception as e:
-            return await state.end(
-                warning=str(e).capitalize()
-            )
+            return await state.end(warning=str(e).capitalize())
         try:
             return await state.end(success=discord.File(db.file_name))
         except Exception as e:
@@ -157,14 +151,10 @@ class DevCommands(commands.Cog):
         notes: Optional[str] = None,
     ):
         state = StateService(ctx)
+
         developer_log = await DeveloperLog.select(id=reference, resolved=False)
         if not developer_log:
-            try:
-                return await state.end(
-                    warning=f"Issue not found. Received: {reference}."
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(warning=f"Issue not found. Received: {reference}.")
         if action and action.lower() == "resolve":
             await developer_log.resolve()
             detail = (
@@ -177,12 +167,9 @@ class DevCommands(commands.Cog):
         elif action and action.lower() == "overwrite":
             await developer_log.overwrite(notes)
             detail = "overwrote the previous notes."
-        try:
-            return await state.end(
-                success=f"\U000026a0\U0000fe0f " f"You successfully {detail}."
-            )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(
+            success=f"\U000026a0\U0000fe0f " f"You successfully {detail}."
+        )
 
     @commands.command(
         name="dlog", help="Resolve or update the notes on an issue by reference"
@@ -204,14 +191,10 @@ class DevCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
+
         developer_log = await DeveloperLog.select(id=reference, resolved=False)
         if not developer_log:
-            try:
-                return await state.end(
-                    warning=f"Issue not found. Received: {reference}."
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(warning=f"Issue not found. Received: {reference}.")
         if action and action.lower() == "resolve":
             await developer_log.resolve()
             detail = "resolved the issue"
@@ -221,12 +204,9 @@ class DevCommands(commands.Cog):
         elif action and action.lower() == "overwrite":
             await developer_log.overwrite(notes)
             detail = "overwrote the previous notes"
-        try:
-            return await state.end(
-                success=f"\U000026a0\U0000fe0f " f"You successfully {detail}."
-            )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(
+            success=f"\U000026a0\U0000fe0f " f"You successfully {detail}."
+        )
 
     @app_commands.command(name="dlogs", description="List issues.")
     @app_commands.describe(
@@ -240,29 +220,15 @@ class DevCommands(commands.Cog):
         target: str = None,
         filter: str = None,
     ):
-        state = StateService(interaction)
-
-        try:
-            target_uuid = UUID(str(target))
-            developer_logs = await DeveloperLog.select(id=target_uuid)
-            title = f"{get_random_emoji()} Developer Logs"
-        except (ValueError, TypeError) as e:
-            logger.warning(str(e).capitalize())
-            developer_logs, title = await resolve_objects(
-                ctx_interaction_or_message=interaction,
-                obj=DeveloperLog,
-                state=state,
-                target=target,
-            )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=interaction)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        is_at_home = at_home(ctx_interaction_or_message=interaction)
+        target_uuid = UUID(str(target))
+        title = f"{get_random_emoji()} Developer Logs"
+
+        state = StateService(interaction)
+
+        developer_logs = await DeveloperLog.select(id=target_uuid)
 
         for developer_log in developer_logs:
             guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
@@ -373,29 +339,15 @@ class DevCommands(commands.Cog):
             description="Optionally specify `resolved` or `unresolved`.",
         ),
     ):
-        state = StateService(ctx)
-
-        try:
-            target_uuid = UUID(str(target))
-            developer_logs = await DeveloperLog.select(id=target_uuid)
-            title = f"{get_random_emoji()} Developer Logs"
-        except (ValueError, TypeError) as e:
-            logger.warning(str(e).capitalize())
-            developer_logs, title = await resolve_objects(
-                ctx_interaction_or_message=ctx,
-                obj=DeveloperLog,
-                state=state,
-                target=target,
-            )
-
-        try:
-            is_at_home = at_home(ctx_interaction_or_message=ctx)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        is_at_home = at_home(ctx_interaction_or_message=ctx)
+        target_uuid = UUID(str(target))
+        title = f"{get_random_emoji()} Developer Logs"
+
+        state = StateService(ctx)
+
+        developer_logs = await DeveloperLog.select(id=target_uuid)
 
         for developer_log in developer_logs:
             guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
@@ -502,18 +454,10 @@ class DevCommands(commands.Cog):
         try:
             await interaction.client.load_extension(module)
         except commands.ExtensionError as e:
-            try:
-                return await state.end(
-                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        try:
             return await state.end(
-                success=f"Successfully loaded {module}."
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=f"Successfully loaded {module}.")
 
     # DONE
     @commands.command(
@@ -525,38 +469,24 @@ class DevCommands(commands.Cog):
         try:
             await self.bot.load_extension(module)
         except commands.ExtensionError as e:
-            try:
-                return await state.end(
-                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        try:
             return await state.end(
-                success=f"Successfully loaded {module}."
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=f"Successfully loaded {module}.")
 
     # DONE
     @app_commands.command(name="ping", description="Ping me!")
     @developer_predicator()
     async def ping_app_command(self, interaction: discord.Interaction):
         state = StateService(interaction)
-        try:
-            return await state.end(success=f"Pong!")
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success="Pong!")
 
     # DONE
     @commands.command(name="ping", help="Ping me!")
     @developer_predicator()
     async def ping_text_command(self, ctx: commands.Context):
         state = StateService(ctx)
-        try:
-            return await state.end(success=f"Pong!")
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success="Pong!")
 
     # DONE
     @app_commands.command(
@@ -570,18 +500,10 @@ class DevCommands(commands.Cog):
         try:
             await interaction.client.reload_extension(module)
         except commands.ExtensionError as e:
-            try:
-                return await state.end(
-                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        try:
             return await state.end(
-                success=f"Successfully reloaded {module}."
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=f"Successfully reloaded {module}.")
 
     # DONE
     @commands.command(
@@ -593,18 +515,10 @@ class DevCommands(commands.Cog):
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
-            try:
-                return await state.end(
-                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        try:
             return await state.end(
-                success=f"Successfully reloaded {module}."
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=f"Successfully reloaded {module}.")
 
     # DONE
     @app_commands.command(name="sync", description="Sync app commands.")
@@ -636,12 +550,7 @@ class DevCommands(commands.Cog):
                     msg = f"Synced {len(synced)} " f"commands to the current server."
                 return await state.end(success=msg)
             except Exception as e:
-                try:
-                    return await state.end(
-                        warning=str(e).capitalize()
-                    )
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
+                return await state.end(warning=str(e).capitalize())
         ret = 0
         for guild in guilds:
             try:
@@ -650,12 +559,7 @@ class DevCommands(commands.Cog):
                 pass
             else:
                 ret += 1
-        try:
-            return await state.end(
-                success=f"Synced the tree to {ret}/{len(guilds)}."
-            )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
 
     # DONE
     @commands.command(name="sync", help="Sync app commands.")
@@ -686,12 +590,7 @@ class DevCommands(commands.Cog):
                     msg = f"Synced {len(synced)} commands to the " f"current server."
                 return await state.end(success=msg)
             except Exception as e:
-                try:
-                    return await state.end(
-                        warning=str(e).capitalize()
-                    )
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
+                return await state.end(warning=str(e).capitalize())
         ret = 0
         for guild in guilds:
             try:
@@ -700,12 +599,7 @@ class DevCommands(commands.Cog):
                 pass
             else:
                 ret += 1
-        try:
-            return await state.end(
-                success=f"Synced the tree to {ret}/{len(guilds)}."
-            )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=f"Synced the tree to {ret}/{len(guilds)}.")
 
     # DONE
     @app_commands.command(
@@ -718,18 +612,10 @@ class DevCommands(commands.Cog):
         try:
             await interaction.client.unload_extension(module)
         except commands.ExtensionError as e:
-            try:
-                return await state.end(
-                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        try:
             return await state.end(
-                success=f"Successfully unloaded {module}."
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=f"Successfully unloaded {module}.")
 
     # DONE
     @commands.command(
@@ -741,18 +627,10 @@ class DevCommands(commands.Cog):
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
-            try:
-                return await state.end(
-                    warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-        try:
             return await state.end(
-                success=f"Successfully unloaded {module}."
+                warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=f"Successfully unloaded {module}.")
 
 
 async def setup(bot: DiscordBot):

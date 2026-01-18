@@ -396,9 +396,7 @@ async def prepared_command_handling(
     mock_bot_user = guild.me
     with patch.object(
         bot, "_connection", create=True
-    ) as mock_conn, ExitStack() as _, prepare_discord_state(
-        bot, guild, highest_role
-    ):
+    ) as mock_conn, ExitStack() as _, prepare_discord_state(bot, guild, highest_role):
         mock_conn.user = mock_bot_user
         mock_conn.return_value = mock_bot_user
         ctx = await prepare_context(bot, message, prefix)
@@ -450,9 +448,7 @@ async def permission(request, voice_channel_one, guild, privileged_author):
             role_snowflakes=[ROLE_ID],
         )
     else:
-        perm_instance = perm_class(
-            member_snowflake=privileged_author.id
-        )
+        perm_instance = perm_class(member_snowflake=privileged_author.id)
     await perm_instance.create()
     try:
         yield perm_instance

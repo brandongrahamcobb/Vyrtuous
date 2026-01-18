@@ -30,11 +30,10 @@ from vyrtuous.properties.snowflake import (
 )
 from vyrtuous.service.check_service import (
     guild_owner_predicator,
-    has_equal_or_higher_role,
-    not_bot,
 )
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.discord_object_service import DiscordObject
 
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
@@ -52,67 +51,63 @@ class GuildOwnerCommands(commands.Cog):
     async def grant_administrator_by_role_app_command(
         self, interaction: discord.Interaction, role: AppRoleSnowflake
     ):
-        state = StateService(interaction)
-
-        try:
-            role_obj = await resolve_role(ctx_interaction_or_message=interaction, role_str=role)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-
-        administrators = await Administrator.select(role_snowflakes=[role_obj.id])
-        administrator_roles = await AdministratorRole.select(role_snowflake=role_obj.id)
+        action = None
+        chunk_size, field_count, pages = 7, 0, []
         title = f"{get_random_emoji()} Administrators and Roles"
 
-        chunk_size, field_count, pages = 7, 0, []
-        action = None
+        state = StateService(source=interaction)
+        do = DiscordObject(source=interaction)
+
+        role_dict = await do.determine_from_target(target=role)
+        kwargs = role_dict["columns"]
+
+        administrators = await Administrator.select(role_snowflakes=[role_dict["id"]])
+        administrator_roles = await AdministratorRole.select(
+            role_snowflake=role_dict["id"]
+        )
 
         if administrator_roles:
             for administrator_role in administrator_roles:
-                await AdministratorRole.delete(
-                    guild_snowflake=administrator_role.guild_snowflake,
-                    role_snowflake=administrator_role.role_snowflake,
-                )
+                await AdministratorRole.delete(**kwargs)
             action = "revoked"
         else:
             action = "granted"
+
         for administrator in administrators:
             revoked_members = {}
             member = interaction.guild.get_member(administrator.member_snowflake)
-            await Administrator.delete(
-                guild_snowflake=administrator.guild_snowflake,
-                member_snowflake=administrator.member_snowflake,
-            )
+            await Administrator.delete(**kwargs)
             revoked_members.setdefault(administrator.guild_snowflake, {}).setdefault(
-                role_obj.id, []
+                role_dict["id"], []
             ).append(member)
         if action != "revoked":
             granted_members = {}
-            granted_members.setdefault(role_obj.guild.id, {})[role_obj.id] = []
-            administrator_role = AdministratorRole(
-                guild_snowflake=role_obj.guild.id,
-                role_snowflake=role_obj.id,
-            )
+            granted_members.setdefault(interaction.guild.id, {})[role_dict["id"]] = []
+            administrator_role = AdministratorRole(**kwargs)
             await administrator_role.create()
-            role_snowflakes = [role_obj.id]
-            for member in role_obj.members:
+            role_snowflakes = [role_dict["id"]]
+            for member in role_dict["object"].members:
                 administrator = Administrator(
-                    guild_snowflake=role_obj.guild.id,
+                    guild_snowflake=interaction.guild.id,
                     member_snowflake=member.id,
                     role_snowflakes=role_snowflakes,
                 )
                 await administrator.create()
-            granted_members[role_obj.guild.id][role_obj.id].append(member)
+            granted_members[interaction.guild.id][role_dict["id"]].append(member)
 
-        embed = discord.Embed(title=title, description=f'`{role_obj.name}` was `{action}`.', color=discord.Color.red() if action == 'revoked' else discord.Color.green())
-        embed.add_field(name='Role ID', value=str(role_obj.id), inline=False)
-        embed.add_field(name='Guild', value=role_obj.guild.name, inline=False)
+        embed = discord.Embed(
+            title=title,
+            description=f"`{role_dict['name']}` was `{action}`.",
+            color=discord.Color.red() if action == "revoked" else discord.Color.green(),
+        )
+        embed.add_field(name="Role ID", value=str(role_dict["id"]), inline=False)
+        embed.add_field(name="Guild", value=interaction.guild.name, inline=False)
         pages.append(embed)
-        members = revoked_members.get(role_obj.guild.id, {}).get(role_obj.id, []) if action == 'revoked' else granted_members.get(role_obj.guild.id, {}).get(role_obj.id, [])
+        members = (
+            revoked_members.get(interaction.guild.id, {}).get(role_dict["id"], [])
+            if action == "revoked"
+            else granted_members.get(interaction.guild.id, {}).get(role_dict["id"], [])
+        )
         chunks = []
         chunk = []
         for member in members:
@@ -125,11 +120,22 @@ class GuildOwnerCommands(commands.Cog):
         field_count = 1
         page_number = 1
         for chunk in chunks:
-            embed = discord.Embed(title=f'Members {action.capitalize()}', color=discord.Color.red() if action == 'revoked' else discord.Color.green())
+            embed = discord.Embed(
+                title=f"Members {action.capitalize()}",
+                color=(
+                    discord.Color.red()
+                    if action == "revoked"
+                    else discord.Color.green()
+                ),
+            )
             for member in chunk:
-                embed.add_field(name=f'{field_count}. {member}', value=f'{member.mention} ({member.id})', inline=False)
+                embed.add_field(
+                    name=f"{field_count}. {member}",
+                    value=f"{member.mention} ({member.id})",
+                    inline=False,
+                )
                 field_count += 1
-            embed.set_footer(text=f'Page {page_number}')
+            embed.set_footer(text=f"Page {page_number}")
             pages.append(embed)
             page_number += 1
 
@@ -141,67 +147,63 @@ class GuildOwnerCommands(commands.Cog):
     async def grant_administrator_by_role_text_command(
         self, ctx: commands.Context, role: RoleSnowflake
     ):
-        state = StateService(ctx)
-
-        try:
-            role_obj = await resolve_role(ctx_interaction_or_message=ctx, role_str=role)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-
-        administrators = await Administrator.select(role_snowflakes=[role_obj.id])
-        administrator_roles = await AdministratorRole.select(role_snowflake=role_obj.id)
+        action = None
+        chunk_size, field_count, pages = 7, 0, []
         title = f"{get_random_emoji()} Administrators and Roles"
 
-        chunk_size, field_count, pages = 7, 0, []
-        action = None
+        state = StateService(source=ctx)
+        do = DiscordObject(source=ctx)
+
+        role_dict = await do.determine_from_target(target=role)
+        kwargs = role_dict["columns"]
+
+        administrators = await Administrator.select(role_snowflakes=[role_dict["id"]])
+        administrator_roles = await AdministratorRole.select(
+            role_snowflake=role_dict["id"]
+        )
 
         if administrator_roles:
             for administrator_role in administrator_roles:
-                await AdministratorRole.delete(
-                    guild_snowflake=administrator_role.guild_snowflake,
-                    role_snowflake=administrator_role.role_snowflake,
-                )
+                await AdministratorRole.delete(**kwargs)
             action = "revoked"
         else:
             action = "granted"
+
         for administrator in administrators:
             revoked_members = {}
             member = ctx.guild.get_member(administrator.member_snowflake)
-            await Administrator.delete(
-                guild_snowflake=administrator.guild_snowflake,
-                member_snowflake=administrator.member_snowflake,
-            )
+            await Administrator.delete(**kwargs)
             revoked_members.setdefault(administrator.guild_snowflake, {}).setdefault(
-                role_obj.id, []
+                role_dict["id"], []
             ).append(member)
         if action != "revoked":
             granted_members = {}
-            granted_members.setdefault(role_obj.guild.id, {})[role_obj.id] = []
-            administrator_role = AdministratorRole(
-                guild_snowflake=role_obj.guild.id,
-                role_snowflake=role_obj.id,
-            )
+            granted_members.setdefault(ctx.guild.id, {})[role_dict["id"]] = []
+            administrator_role = AdministratorRole(**kwargs)
             await administrator_role.create()
-            role_snowflakes = [role_obj.id]
-            for member in role_obj.members:
+            role_snowflakes = [role_dict["id"]]
+            for member in role_dict["object"].members:
                 administrator = Administrator(
-                    guild_snowflake=role_obj.guild.id,
+                    guild_snowflake=ctx.guild.id,
                     member_snowflake=member.id,
                     role_snowflakes=role_snowflakes,
                 )
                 await administrator.create()
-            granted_members[role_obj.guild.id][role_obj.id].append(member)
+            granted_members[ctx.guild.id][role_dict["id"]].append(member)
 
-        embed = discord.Embed(title=title, description=f'`{role_obj.name}` was `{action}`.', color=discord.Color.red() if action == 'revoked' else discord.Color.green())
-        embed.add_field(name='Role ID', value=str(role_obj.id), inline=False)
-        embed.add_field(name='Guild', value=role_obj.guild.name, inline=False)
+        embed = discord.Embed(
+            title=title,
+            description=f"`{role_dict['name']}` was `{action}`.",
+            color=discord.Color.red() if action == "revoked" else discord.Color.green(),
+        )
+        embed.add_field(name="Role ID", value=str(role_dict["id"]), inline=False)
+        embed.add_field(name="Guild", value=ctx.guild.name, inline=False)
         pages.append(embed)
-        members = revoked_members.get(role_obj.guild.id, {}).get(role_obj.id, []) if action == 'revoked' else granted_members.get(role_obj.guild.id, {}).get(role_obj.id, [])
+        members = (
+            revoked_members.get(ctx.guild.id, {}).get(role_dict["id"], [])
+            if action == "revoked"
+            else granted_members.get(ctx.guild.id, {}).get(role_dict["id"], [])
+        )
         chunks = []
         chunk = []
         for member in members:
@@ -214,11 +216,22 @@ class GuildOwnerCommands(commands.Cog):
         field_count = 1
         page_number = 1
         for chunk in chunks:
-            embed = discord.Embed(title=f'Members {action.capitalize()}', color=discord.Color.red() if action == 'revoked' else discord.Color.green())
+            embed = discord.Embed(
+                title=f"Members {action.capitalize()}",
+                color=(
+                    discord.Color.red()
+                    if action == "revoked"
+                    else discord.Color.green()
+                ),
+            )
             for member in chunk:
-                embed.add_field(name=f'{field_count}. {member}', value=f'{member.mention} ({member.id})', inline=False)
+                embed.add_field(
+                    name=f"{field_count}. {member}",
+                    value=f"{member.mention} ({member.id})",
+                    inline=False,
+                )
                 field_count += 1
-            embed.set_footer(text=f'Page {page_number}')
+            embed.set_footer(text=f"Page {page_number}")
             pages.append(embed)
             page_number += 1
 
@@ -231,49 +244,26 @@ class GuildOwnerCommands(commands.Cog):
     async def invincibility_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
-        state = StateService(interaction)
-        enabled = None
-        member_obj = None
-        try:
-            member_obj = await resolve_member(
-                ctx_interaction_or_message=interaction, member_str=member
-            )
-            not_bot(
-                ctx_interaction_or_message=interaction, member_snowflake=member_obj.id
-            )
-            await has_equal_or_higher_role(
-                ctx_interaction_or_message=interaction,
-                channel_snowflake=interaction.channel.id,
-                guild_snowflake=interaction.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=interaction.user.id,
-            )
-        except Exception as e:
-            return await state.end(
-                warning=str(e).capitalize()
-            )
+        state = StateService(source=interaction)
+
+        do = DiscordObject(source=interaction)
+
+        member_dict = await do.determine_from_target(target=member)
+        kwargs = member_dict["columns"]
+
         enabled = Invincibility.toggle_enabled()
         if enabled:
-            Invincibility.add_invincible_member(member_snowflake=member_obj.id)
-            await Invincibility.unrestrict(
-                guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-            )
+            Invincibility.add_invincible_member(**kwargs)
+            await Invincibility.unrestrict(**kwargs)
             msg = (
                 f"All moderation events have been forgiven "
-                f"and invincibility has been enabled for {member_obj.mention}."
+                f"and invincibility has been enabled for {member_dict['mention']}."
             )
         else:
-            Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
-            msg = f"Invincibility has been disabled for {member_obj.mention}"
-        try:
-            return await state.end(success=msg)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            Invincibility.remove_invincible_member(**kwargs)
+            msg = f"Invincibility has been disabled for {member_dict['mention']}"
+
+        return await state.end(success=msg)
 
     # DONE
     @commands.command(name="hero", help="Grant/revoke invincibility.")
@@ -285,50 +275,26 @@ class GuildOwnerCommands(commands.Cog):
             description="Tag a member or include their ID"
         ),
     ):
-        state = StateService(ctx)
-        enabled = None
-        member_obj = None
-        try:
-            member_obj = await resolve_member(
-                ctx_interaction_or_message=ctx, member_str=member
-            )
-            not_bot(ctx_interaction_or_message=ctx, member_snowflake=member_obj.id)
-            await has_equal_or_higher_role(
-                ctx_interaction_or_message=ctx,
-                channel_snowflake=ctx.channel.id,
-                guild_snowflake=ctx.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=ctx.author.id,
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+        state = StateService(source=ctx)
+
+        do = DiscordObject(source=ctx)
+
+        member_dict = await do.determine_from_target(target=member)
+        kwargs = member_dict["columns"]
+
         enabled = Invincibility.toggle_enabled()
         if enabled:
-            Invincibility.add_invincible_member(member_snowflake=member_obj.id)
-            await Invincibility.unrestrict(
-                guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-            )
+            Invincibility.add_invincible_member(**kwargs)
+            await Invincibility.unrestrict(**kwargs)
             msg = (
                 f"All moderation events have been forgiven "
-                f"and invincibility has been enabled for {member_obj.mention}."
+                f"and invincibility has been enabled for {member_dict['mention']}."
             )
         else:
-            Invincibility.remove_invincible_member(member_snowflake=member_obj.id)
-            msg = f"Invincibility has been disabled for {member_obj.mention}"
-        try:
-            return await state.end(success=msg)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            Invincibility.remove_invincible_member(**kwargs)
+            msg = f"Invincibility has been disabled for {member_dict['mention']}"
+
+        return await state.end(success=msg)
 
 
 async def setup(bot: DiscordBot):

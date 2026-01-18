@@ -45,7 +45,6 @@ from vyrtuous.database.settings.cap import Cap
 from vyrtuous.properties.duration import DurationObject
 from vyrtuous.service.check_service import (
     has_equal_or_higher_role,
-    not_bot,
 )
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
@@ -409,6 +408,7 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
+        modification_chars = ("=", "+", "-")
         args = (
             message.content[len(self.config["discord_command_prefix"]) :]
             .strip()
@@ -430,45 +430,29 @@ class EventListeners(commands.Cog):
             return
 
         state = StateService(message)
-        modification_chars = ("=", "+", "-")
 
-        try:
-            channel_obj = await resolve_channel(
-                ctx_interaction_or_message=message, channel_str=alias.channel_snowflake
-            )
-            member_obj = await resolve_member(
-                ctx_interaction_or_message=message, member_str=args[1]
-            )
-            executor_role = await has_equal_or_higher_role(
-                ctx_interaction_or_message=message,
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=message.guild.id,
-                member_snowflake=member_obj.id,
-                sender_snowflake=message.author.id,
-            )
-            not_bot(message, member_snowflake=member_obj.id)
-            action_duration = (
-                DurationObject(args[2])
-                if len(args) > 2 and args[2] not in ("=", "+", "-")
-                else DurationObject("8h")
-            )
-            duration_modification = action_duration.is_modification
-            expires_at = datetime.now(timezone.utc) + action_duration.to_timedelta()
-            action_expires_in = expires_at - datetime.now(timezone.utc)
-            action_reason = (
-                " ".join(args[3:]) if len(args) > 3 else "No reason provided."
-            )
-            reason_modification = (
-                action_duration.prefix in modification_chars
-                and action_duration.number is None
-            )
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+        channel_obj = await message.guild.get_channel(alias.channel_snowflake)
+        member_obj = await message.guild.get_member(args[1])
+        executor_role = await has_equal_or_higher_role(
+            source=message,
+            channel_snowflake=channel_obj.id,
+            guild_snowflake=message.guild.id,
+            member_snowflake=member_obj.id,
+            sender_snowflake=message.author.id,
+        )
+        action_duration = (
+            DurationObject(args[2])
+            if len(args) > 2 and args[2] not in ("=", "+", "-")
+            else DurationObject("8h")
+        )
+        duration_modification = action_duration.is_modification
+        expires_at = datetime.now(timezone.utc) + action_duration.to_timedelta()
+        action_expires_in = expires_at - datetime.now(timezone.utc)
+        action_reason = " ".join(args[3:]) if len(args) > 3 else "No reason provided."
+        reason_modification = (
+            action_duration.prefix in modification_chars
+            and action_duration.number is None
+        )
 
         alias_class = alias.alias_class
         action_existing = await alias_class.select(
@@ -523,14 +507,11 @@ class EventListeners(commands.Cog):
         }
         if action_information["action_duration"].number != 0 and action_existing:
             if action_information["action_expires_in"].total_seconds() < 0:
-                try:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f "
-                        "You are not authorized to decrease "
-                        "the duration below the current time."
-                    )
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
+                return await state.end(
+                    warning="\U000026a0\U0000fe0f "
+                    "You are not authorized to decrease "
+                    "the duration below the current time."
+                )
         if (
             action_information["action_existing"]
             and action_information["action_expires_in"].total_seconds()
@@ -539,13 +520,10 @@ class EventListeners(commands.Cog):
         ):
             if executor_role == "Moderator":
                 duration_str = DurationObject.from_seconds(action_channel_cap)
-                try:
-                    return await state.end(
-                        warning=f"Cannot set the {alias_class.SINGULAR} beyond {duration_str} as a "
-                        f"{executor_role} in {channel_obj.mention}."
-                    )
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
+                return await state.end(
+                    warning=f"Cannot set the {alias_class.SINGULAR} beyond {duration_str} as a "
+                    f"{executor_role} in {channel_obj.mention}."
+                )
 
         where_kwargs = {
             "channel_snowflake": action_information["action_channel_snowflake"],
@@ -563,13 +541,10 @@ class EventListeners(commands.Cog):
                         action_information=action_information, where_kwargs=where_kwargs
                     )
             else:
-                try:
-                    return await state.end(
-                        warning=f"An existing {action_information['alias_class'].SINGULAR} already exists for "
-                        f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
-                    )
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
+                return await state.end(
+                    warning=f"An existing {action_information['alias_class'].SINGULAR} already exists for "
+                    f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
+                )
 
         await alias.handler(
             alias=alias,
@@ -583,42 +558,30 @@ class EventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         state = StateService(ctx)
-        try:
-            match type(error):
-                case commands.BadArgument:
-                    return await state.end(error=f"\U000026a0\U0000fe0f{error}")
-                case commands.CheckFailure:
-                    return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-                case commands.MissingRequiredArgument:
-                    missing = error.param.name
-                    return await state.end(
-                        error=f"\U000026a0\U0000fe0f "
-                        f"Missing required argument: `{missing}`"
-                    )
-                case ValueError():
-                    return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-        except Exception as e:
-            try:
-                return await state.end(warning=f"{str(e)}")
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+        match type(error):
+            case commands.BadArgument:
+                return await state.end(error=f"\U000026a0\U0000fe0f{error}")
+            case commands.CheckFailure:
+                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
+            case commands.MissingRequiredArgument:
+                missing = error.param.name
+                return await state.end(
+                    error=f"\U000026a0\U0000fe0f "
+                    f"Missing required argument: `{missing}`"
+                )
+            case ValueError():
+                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
 
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
         state = StateService(interaction)
-        try:
-            match type(error):
-                case app_commands.BadArgument:
-                    return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-                case app_commands.CheckFailure:
-                    return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-                case ValueError():
-                    return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-        except Exception as e:
-            try:
-                return await state.end(warning=f"{str(e)}")
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+        match type(error):
+            case app_commands.BadArgument:
+                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
+            case app_commands.CheckFailure:
+                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
+            case ValueError():
+                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
 
     #    @commands.Cog.listener()
     #    async def on_command(self, ctx):

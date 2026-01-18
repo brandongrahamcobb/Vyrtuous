@@ -52,6 +52,7 @@ class VoiceMute(Action):
         reason: Optional[str] = "No reason provided.",
         target: Optional[str] = "user",
         updated_at: Optional[datetime] = None,
+        **kwargs,
     ):
         super().__init__()
         self.channel_snowflake = channel_snowflake

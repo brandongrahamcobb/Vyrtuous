@@ -28,7 +28,10 @@ from vyrtuous.tests.black_box.test_suite import (
     privileged_author,
     text_channel,
     voice_channel_one,
-    RESET, YELLOW, RED, GREEN
+    RESET,
+    YELLOW,
+    RED,
+    GREEN,
 )
 from vyrtuous.utils.emojis import EMOJIS
 import pytest
@@ -256,7 +259,7 @@ CAP_SECONDS = parse_duration_seconds("=24h", UNIT_MAP)
 def build_alias_cases(
     LIST_ALIASES,
     LIST_CASES,
-    PREFIXES, 
+    PREFIXES,
     DURATIONS,
     UNIT_MAP,
     REASON,

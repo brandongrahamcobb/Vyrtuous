@@ -117,7 +117,7 @@ from vyrtuous.utils.emojis import EMOJIS
         ),
         ("Moderator", "mods {voice_channel_one_id}", True, True, False, False, True),
         ("Moderator", "mods {member_id}", False, True, True, False, True),
-    ]
+    ],
 )
 async def test_admins_coords_devs_mods_owners_commands(
     command: Optional[str],

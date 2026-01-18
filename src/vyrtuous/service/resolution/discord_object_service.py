@@ -22,13 +22,18 @@ from typing import Optional, Union
 from discord.ext import commands
 import discord
 
+from vyrtuous.service.check_service import resolve_highest_permission_role
 from vyrtuous.service.logging_service import logger
+from vyrtuous.utils.permission import PERMISSION_TYPES
+
 
 def determine_from_target(source, target) -> dict:
     if isinstance(source, commands.Context):
         do = DiscordObject(ctx=source)
+        author = source.author
     elif isinstance(source, discord.Interaction):
         do = DiscordObject(interaction=source)
+        author = source.user
     try:
         channel = do.resolve_channel(target)
     except GuildChannelNotFound as e:
@@ -37,37 +42,43 @@ def determine_from_target(source, target) -> dict:
         return {
             "columns": {
                 "channel_snowflake": channel.id,
-                "guild_snowflake": channel.guild.id
+                "guild_snowflake": channel.guild.id,
             },
+            "id": channel.id,
             "mention": channel.mention,
             "name": channel.name,
             "type": type(channel),
-            "object": channel
+            "object": channel,
         }
     try:
         member = do.resolve_member(target)
     except GuildMemberNotFound as e:
         logger.warning(e)
     else:
+        if member == source.guild.me:
+            raise TargetIsBot()
+        await has_equal_or_lower_role(
+            source=source, member_snowflake=member.id, sender_snowflake=author.id
+        )
         return {
             "columns": {
                 "member_snowflake": member.id,
-                "guild_snowflake": member.guild.id
+                "guild_snowflake": member.guild.id,
             },
+            "id": member.id,
             "mention": member.mention,
             "name": member.display_name,
             "type": type(member),
-            "object": member
+            "object": member,
         }
     guild = source.bot.get_guild(target)
     if guild:
         return {
-            "columns": {
-                "guild_snowflake": guild.id
-            },
+            "columns": {"guild_snowflake": guild.id},
+            "id": guild.id,
             "name": guild.name,
             "type": type(guild),
-            "object": guild
+            "object": guild,
         }
     try:
         role = do.resolve_role(target)
@@ -75,50 +86,100 @@ def determine_from_target(source, target) -> dict:
         logger.warning(e)
     else:
         return {
-            "columns": {
-                "guild_snowflake": role.guild.id,
-                "role_snowflake": role.id
-            },
+            "columns": {"guild_snowflake": role.guild.id, "role_snowflake": role.id},
+            "id": role.id,
             "mention": role.mention,
             "name": role.name,
             "type": type(role),
-            "object": role
+            "object": role,
         }
     raise DiscordObjectNotFound()
 
-class DiscordObjectNotFound(Exception):
 
+async def has_equal_or_lower_role(
+    source, member_snowflake: int, sender_snowflake: int
+) -> bool:
+    kwargs = {
+        "channel_snowflake": source.channel.id,
+        "guild_snowflake": source.guild.id,
+        "member_snowflake": sender_snowflake,
+    }
+    sender_rank = await resolve_highest_permission_role(**kwargs)
+
+    kwargs.update({"member_snowflake": member_snowflake})
+    target_kwargs = kwargs
+    target_rank = await resolve_highest_permission_role(**target_kwargs)
+
+    if sender_rank <= target_rank:
+        raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])
+
+    return False
+
+
+class DiscordObjectNotFound(Exception):
     "Returns an error of a channel, guild, member or role is not found."
+
 
 class DiscordSourceNotFound(Exception):
 
     def __init__(self):
-        super().__init__("Unable to resolve a valid Discord object due to missing ctx (commands.Context) or interaction (discord.Interaction).")
+        super().__init__(
+            "Unable to resolve a valid Discord object due to missing ctx (commands.Context) or interaction (discord.Interaction)."
+        )
+
 
 class GuildChannelNotFound(DiscordObjectNotFound):
 
     def __init__(self, target: str):
-        super().__init__(f"Unable to resolve a valid Discord guild channel with the provided context and target ({target}).")
+        super().__init__(
+            f"Unable to resolve a valid Discord guild channel with the provided context and target ({target})."
+        )
+
 
 class GuildMemberNotFound(DiscordObjectNotFound):
 
     def __init__(self, target: str):
-        super().__init__(f"Unable to resolve a valid Discord guild member with the provided context and target ({target}).")
+        super().__init__(
+            f"Unable to resolve a valid Discord guild member with the provided context and target ({target})."
+        )
+
 
 class GuildRoleNotFound(DiscordObjectNotFound):
 
     def __init__(self, target: str):
-        super().__init__(f"Unable to resolve a valid Discord guild role with the provided context and target ({target}).")
+        super().__init__(
+            f"Unable to resolve a valid Discord guild role with the provided context and target ({target})."
+        )
+
+
+class TargetIsBot(commands.CheckFailure):
+    def __init__(
+        self, source: Union[commands.Context, discord.Interaction, discord.Message]
+    ):
+        super().__init__(
+            message="You cannot execute actions on {source.guild.me.mention}."
+        )
+
+
+class HasEqualOrLowerRole(commands.CheckFailure):
+    def __init__(self, target_rank=str):
+        super().__init__(
+            message=f"You may not execute this command on this `{PERMISSION_TYPES[target_rank]}` because they have equal or higher role than you in this channel/server."
+        )
+
 
 class DiscordObject:
 
-    def __init__(self, *, ctx: commands.Context = None, interaction: discord.Interaction = None):
+    def __init__(
+        self, *, ctx: commands.Context = None, interaction: discord.Interaction = None
+    ):
         if (ctx is None) == (interaction is None):
             raise DiscordSourceNotFound()
         self._source = ctx or interaction
 
     def resolve_channel(
-        self, target: Optional[Union[int, str]],
+        self,
+        target: Optional[Union[int, str]],
     ) -> Union[discord.TextChannel, discord.VoiceChannel]:
         c_id = None
         if isinstance(target, int):

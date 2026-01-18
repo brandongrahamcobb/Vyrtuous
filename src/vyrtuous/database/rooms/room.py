@@ -37,7 +37,7 @@ member_relevant_objects_dict = {
     Moderator.SINGULAR: Moderator,
     TextMute.SINGULAR: TextMute,
     Vegan.SINGULAR: Vegan,
-    VoiceMute.SINGULAR: VoiceMute
+    VoiceMute.SINGULAR: VoiceMute,
 }
 
 room_relevant_objects_dict = {
@@ -52,8 +52,9 @@ room_relevant_objects_dict = {
     Vegan.SINGULAR: Vegan,
     VideoRoom.SINGULAR: VideoRoom,
     VoiceMute.SINGULAR: VoiceMute,
-    Stage.SINGULAR: Stage
+    Stage.SINGULAR: Stage,
 }
+
 
 class Room(DatabaseFactory):
     pass

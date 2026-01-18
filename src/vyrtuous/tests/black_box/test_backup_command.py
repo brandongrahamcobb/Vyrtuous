@@ -19,7 +19,10 @@ from typing import Optional
 from vyrtuous.tests.black_box.test_suite import (
     extract_embed_text,
     prepared_command_handling,
-    RESET, YELLOW, RED, GREEN
+    RESET,
+    YELLOW,
+    RED,
+    GREEN,
 )
 import pytest
 

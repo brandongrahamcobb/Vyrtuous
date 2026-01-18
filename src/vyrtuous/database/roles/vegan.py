@@ -38,6 +38,7 @@ class Vegan(PermissionRole):
         member_snowflake: Optional[int],
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
+        **kwargs
     ):
         super().__init__()
         self.created_at = created_at

@@ -45,6 +45,7 @@ class TextMute(Action):
         expires_in: Optional[datetime] = None,
         reason: Optional[str] = "No reason provided.",
         updated_at: Optional[datetime] = None,
+        **kwargs,
     ):
         super().__init__()
         self.channel_snowflake = channel_snowflake

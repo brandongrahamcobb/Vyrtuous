@@ -19,12 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.check_service import role_check_without_specifics
-from vyrtuous.service.resolution.discord_object_service import resolve_channel
-from vyrtuous.service.resolution.member_service import resolve_member
-from vyrtuous.service.resolution.role_service import resolve_role
-from vyrtuous.service.logging_service import logger
-from vyrtuous.utils.emojis import get_random_emoji
 
 
 def generate_skipped_set_pages(chunk_size, field_count, pages, skipped, title):

@@ -28,12 +28,12 @@ from vyrtuous.properties.snowflake import (
     MemberSnowflake,
 )
 from vyrtuous.service.check_service import (
-    not_bot,
     sys_owner_predicator,
 )
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.discord_object_service import DiscordObject
 from vyrtuous.utils.emojis import get_random_emoji
 
 
@@ -57,70 +57,44 @@ class SystemOwnerCommands(commands.Cog):
         member: AppMemberSnowflake,
     ):
         state = StateService(interaction)
-        member_obj = None
-        try:
-            member_obj = await resolve_member(interaction, member)
-        except Exception as e:
+        do = DiscordObject(source=interaction)
+
+        member_dict = await do.determine_from_target(target=member)
+        kwargs = member_dict["columns"]
+
+        developer = await Developer.select(**kwargs)
+
+        developer_log = await DeveloperLog.select(id=reference, resolved=False)
+        if developer_log:
+            channel = self.bot.get_channel(developer_log.channel_snowflake)
             try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                await state.end(error=str(e).capitalize())
-        developer = await Developer.select(
-            guild_snowflake=interaction.guild.id, member_snowflake=member_obj.id
-        )
-        if developer:
-            developer_log = await DeveloperLog.select(id=reference, resolved=False)
-            if developer_log:
-                channel = self.bot.get_channel(developer_log.channel_snowflake)
-                try:
-                    msg = await channel.fetch_message(developer_log.message_snowflake)
-                    link = msg.jump_url
-                except discord.NotFound:
-                    try:
-                        return await state.end(
-                            warning=f"Message reference not found: {reference}."
-                        )
-                    except Exception as e:
-                        link = "Unknown message"
-                        logger.warning(str(e).capitalize())
-                if developer.member_snowflake in developer_log.developer_snowflakes:
-                    await developer_log.unassign(member_snowflake=member_obj.id)
-                    try:
-                        return await state.end(
-                            success=f"Developer {member_obj.mention} unassigned for issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=str(e).capitalize())
-                else:
-                    await developer_log.assign(member_snowflake=member_obj.id)
-                    try:
-                        await member_obj.send(
-                            f"{get_random_emoji()} Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}"
-                        )
-                    except Exception as e:
-                        logger.warning(str(e).capitalize())
-                    try:
-                        return await state.end(
-                            success=f"Developer {member_obj.mention} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=str(e).capitalize())
-            else:
+                msg = await channel.fetch_message(developer_log.message_snowflake)
+                link = msg.jump_url
+            except discord.NotFound:
                 try:
                     return await state.end(
-                        warning=f"Unresolved issue not found for reference: {reference}."
+                        warning=f"Message reference not found: {reference}."
                     )
                 except Exception as e:
-                    return await state.end(error=str(e).capitalize())
-        else:
-            try:
+                    link = "Unknown message"
+                    logger.warning(str(e).capitalize())
+            if developer.member_snowflake in developer_log.developer_snowflakes:
+                await developer_log.unassign(member_snowflake=member_dict["id"])
                 return await state.end(
-                    warning=f"Developer not found for {interaction.guild.name}."
+                    success=f"Developer {member_dict['mention']} unassigned for issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
                 )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            else:
+                await developer_log.assign(member_snowflake=member_dict["id"])
+                await state.end(
+                    success=f"Developer {member_dict['mention']} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}."
+                )
+                return await member_dict["object"].send(
+                    f"{get_random_emoji()} Developer {member_dict['mention']} assigned to issue by {interaction.user.mention}: {link}\n**Notes:** {developer_log.notes}"
+                )
+        else:
+            return await state.end(
+                warning=f"Unresolved issue not found for reference: {reference}."
+            )
 
     # DONE
     @commands.command(name="adev", help="Assign developer.")
@@ -136,70 +110,44 @@ class SystemOwnerCommands(commands.Cog):
         ),
     ):
         state = StateService(ctx)
-        member_obj = None
-        try:
-            member_obj = await resolve_member(ctx, member)
-        except Exception as e:
+        do = DiscordObject(source=ctx)
+
+        member_dict = await do.determine_from_target(target=member)
+        kwargs = member_dict["columns"]
+
+        developer = await Developer.select(**kwargs)
+
+        developer_log = await DeveloperLog.select(id=reference, resolved=False)
+        if developer_log:
+            channel = self.bot.get_channel(developer_log.channel_snowflake)
             try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                await state.end(error=str(e).capitalize())
-        developer = await Developer.select(
-            guild_snowflake=ctx.guild.id, member_snowflake=member_obj.id
-        )
-        if developer:
-            developer_log = await DeveloperLog.select(id=reference, resolved=False)
-            if developer_log:
-                channel = self.bot.get_channel(developer_log.channel_snowflake)
-                try:
-                    msg = await channel.fetch_message(developer_log.message_snowflake)
-                    link = msg.jump_url
-                except discord.NotFound:
-                    try:
-                        return await state.end(
-                            warning=f"Message reference not found: {reference}."
-                        )
-                    except Exception as e:
-                        link = "Unknown message"
-                        logger.warning(str(e).capitalize())
-                if developer.member_snowflake in developer_log.developer_snowflakes:
-                    await developer_log.unassign(member_snowflake=member_obj.id)
-                    try:
-                        return await state.end(
-                            success=f"Developer {member_obj.mention} unassigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=str(e).capitalize())
-                else:
-                    await developer_log.assign(member_snowflake=member_obj.id)
-                    try:
-                        await member_obj.send(
-                            f"{get_random_emoji()} Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}"
-                        )
-                    except Exception as e:
-                        logger.warning(str(e).capitalize())
-                    try:
-                        return await state.end(
-                            success=f"Developer {member_obj.mention} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
-                        )
-                    except Exception as e:
-                        return await state.end(error=str(e).capitalize())
-            else:
+                msg = await channel.fetch_message(developer_log.message_snowflake)
+                link = msg.jump_url
+            except discord.NotFound:
                 try:
                     return await state.end(
-                        warning=f"Unresolved issue not found for reference: {reference}."
+                        warning=f"Message reference not found: {reference}."
                     )
                 except Exception as e:
-                    return await state.end(error=str(e).capitalize())
-        else:
-            try:
+                    link = "Unknown message"
+                    logger.warning(str(e).capitalize())
+            if developer.member_snowflake in developer_log.developer_snowflakes:
+                await developer_log.unassign(member_snowflake=member_dict["id"])
                 return await state.end(
-                    warning=f"Developer not found for {ctx.guild.name}."
+                    success=f"Developer {member_dict['mention']} unassigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
                 )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            else:
+                await developer_log.assign(member_snowflake=member_dict["id"])
+                await state.end(
+                    success=f"Developer {member_dict['mention']} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}."
+                )
+                return await member_dict["object"].send(
+                    f"{get_random_emoji()} Developer {member_dict['mention']} assigned for issue by {ctx.author.mention}: {link}\n**Notes:** {developer_log.notes}"
+                )
+        else:
+            return await state.end(
+                warning=f"Unresolved issue not found for reference: {reference}."
+            )
 
     # DONE
     @app_commands.command(name="dev", description="Grant/revoke devs.")
@@ -208,36 +156,26 @@ class SystemOwnerCommands(commands.Cog):
     async def create_developer_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
-        state = StateService(interaction)
-        
-        try:
-            member_obj = await resolve_member(ctx_interaction_or_message=interaction, member_str=member)
-            not_bot(interaction, member_snowflake=member_obj.id)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-            
         action = None
-        developer = await Developer.select(member_snowflake=member_obj.id)
+        state = StateService(interaction)
+        do = DiscordObject(source=interaction)
+
+        member_dict = await do.determine_from_target(target=member)
+        kwargs = member_dict["columns"]
+
+        developer = await Developer.select(**kwargs)
 
         if developer:
-            await Developer.delete(member_snowflake=member_obj.id)
+            await Developer.delete(**kwargs)
             action = "revoked"
         else:
-            developer = Developer(member_snowflake=member_obj.id)
+            developer = Developer(**kwargs)
             await developer.create()
             action = "granted"
 
-        try:
-            return await state.end(
-                success=f"Developer access for {member_obj.mention} has been {action} in {interaction.guild.name}."
-            )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(
+            success=f"Developer access for {member_dict['mention']} has been {action} in {interaction.guild.name}."
+        )
 
     # DONE
     @commands.command(name="dev", help="Grant/revoke devs.")
@@ -249,36 +187,26 @@ class SystemOwnerCommands(commands.Cog):
             default=None, description="Tag a member or include their ID"
         ),
     ):
-        state = StateService(ctx)
-
-        try:
-            member_obj = await resolve_member(ctx_interaction_or_message=ctx, member_str=member)
-            not_bot(ctx, member_snowflake=member_obj.id)
-        except Exception as e:
-            try:
-                return await state.end(
-                    warning=str(e).capitalize()
-                )
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
-            
         action = None
-        developer = await Developer.select(member_snowflake=member_obj.id)
+        state = StateService(ctx)
+        do = DiscordObject(source=ctx)
+
+        member_dict = await do.determine_from_target(target=member)
+        kwargs = member_dict["columns"]
+
+        developer = await Developer.select(**kwargs)
 
         if developer:
-            await Developer.delete(member_snowflake=member_obj.id)
+            await Developer.delete(**kwargs)
             action = "revoked"
         else:
-            developer = Developer(member_snowflake=member_obj.id)
+            developer = Developer(**kwargs)
             await developer.create()
             action = "granted"
 
-        try:
-            return await state.end(
-                success=f"Developer access for {member_obj.mention} has been {action} in {ctx.guild.name}."
-            )
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(
+            success=f"Developer access for {member_dict['mention']} has been {action} in {ctx.guild.name}."
+        )
 
 
 async def setup(bot: DiscordBot):

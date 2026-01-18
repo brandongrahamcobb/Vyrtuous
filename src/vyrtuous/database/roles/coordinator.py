@@ -42,6 +42,7 @@ class Coordinator(PermissionRole):
         member_snowflake: Optional[int],
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
+        **kwargs,
     ):
         super().__init__()
         self.channel_snowflake = channel_snowflake

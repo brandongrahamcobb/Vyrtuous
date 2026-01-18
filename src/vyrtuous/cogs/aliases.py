@@ -154,7 +154,7 @@ class Aliases(commands.Cog):
             color=discord.Color.blue(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-       
+
         return await state.end(success=embed)
 
     # DONE
@@ -190,7 +190,7 @@ class Aliases(commands.Cog):
             color=discord.Color.green(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -232,7 +232,7 @@ class Aliases(commands.Cog):
             color=discord.Color.red(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -278,7 +278,7 @@ class Aliases(commands.Cog):
             color=discord.Color.blurple(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -328,7 +328,7 @@ class Aliases(commands.Cog):
             color=discord.Color.green(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -384,7 +384,7 @@ class Aliases(commands.Cog):
             color=discord.Color.green(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -427,7 +427,7 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -457,7 +457,7 @@ class Aliases(commands.Cog):
             color=discord.Color.red(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -493,7 +493,7 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -530,7 +530,7 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -577,7 +577,7 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
     # DONE
@@ -610,7 +610,7 @@ class Aliases(commands.Cog):
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
-        
+
         return await state.end(success=embed)
 
 

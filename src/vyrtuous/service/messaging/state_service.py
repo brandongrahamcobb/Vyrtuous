@@ -50,34 +50,32 @@ class StateService:
 
     def __init__(
         self,
-        ctx_interaction_or_message: Union[
-            commands.Context, discord.Interaction, discord.Message
-        ],
+        source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
         self.bot = DiscordBot.get_instance()
         self.config = self.bot.config
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.counter = TimeToComplete()
-        self.ctx_interaction_or_message = ctx_interaction_or_message
+        self.source = source
         self._reported_users = set()
         self.is_ephemeral = False
-        self.start_time = self._get_start_time(ctx_interaction_or_message)
+        self.start_time = self._get_start_time(source)
         self.message = None
         self.paginator = None
-        if isinstance(ctx_interaction_or_message, commands.Context):
-            self.submitter_id = ctx_interaction_or_message.author.id
-        elif isinstance(ctx_interaction_or_message, discord.Interaction):
-            self.submitter_id = ctx_interaction_or_message.user.id
-        elif isinstance(ctx_interaction_or_message, discord.Message):
-            self.submitter_id = ctx_interaction_or_message.author.id
+        if isinstance(source, commands.Context):
+            self.submitter_id = source.author.id
+        elif isinstance(source, discord.Interaction):
+            self.submitter_id = source.user.id
+        elif isinstance(source, discord.Message):
+            self.submitter_id = source.author.id
 
-    def _get_start_time(self, ctx_interaction_or_message):
-        if isinstance(ctx_interaction_or_message, commands.Context):
-            return ctx_interaction_or_message.message.created_at
-        elif isinstance(ctx_interaction_or_message, discord.Interaction):
+    def _get_start_time(self, source):
+        if isinstance(source, commands.Context):
+            return source.message.created_at
+        elif isinstance(source, discord.Interaction):
             return discord.utils.utcnow()
-        elif isinstance(ctx_interaction_or_message, discord.Message):
-            return ctx_interaction_or_message.created_at
+        elif isinstance(source, discord.Message):
+            return source.created_at
         else:
             raise TypeError("Expected Context, Interaction, or Message")
 
@@ -122,7 +120,7 @@ class StateService:
         if isinstance(message_obj, list) and message_obj:
             self.paginator = Paginator(
                 bot=self.bot,
-                channel_ctx_interaction_or_message=self.ctx_interaction_or_message,
+                channel_source=self.source,
                 pages=message_obj,
             )
             self.message = await self.paginator.start()
@@ -174,23 +172,17 @@ class StateService:
         }
         if file is not None:
             kwargs["file"] = file
-        if (
-            isinstance(self.ctx_interaction_or_message, discord.Interaction)
-            and not paginated
-        ):
-            if not self.ctx_interaction_or_message.response.is_done():
-                await self.ctx_interaction_or_message.response.defer(ephemeral=True)
+        if isinstance(self.source, discord.Interaction) and not paginated:
+            if not self.source.response.is_done():
+                await self.source.response.defer(ephemeral=True)
                 self.is_ephemeral = True
-            return await self.ctx_interaction_or_message.followup.send(**kwargs)
-        elif (
-            isinstance(self.ctx_interaction_or_message, discord.Interaction)
-            and paginated
-        ):
-            if not self.ctx_interaction_or_message.response.is_done():
-                await self.ctx_interaction_or_message.response.defer()
-            return await self.ctx_interaction_or_message.followup.send(**kwargs)
+            return await self.source.followup.send(**kwargs)
+        elif isinstance(self.source, discord.Interaction) and paginated:
+            if not self.source.response.is_done():
+                await self.source.response.defer()
+            return await self.source.followup.send(**kwargs)
         else:
-            return await self.ctx_interaction_or_message.channel.send(**kwargs)
+            return await self.source.channel.send(**kwargs)
 
     async def _add_reactions(self, show_error_emoji: bool, paginated: bool):
         if not self.message or self.is_ephemeral:
@@ -206,7 +198,7 @@ class StateService:
         self.bot.loop.create_task(self._wait_for_reactions())
 
     async def _wait_for_reactions(self):
-        def check(reaction, user):
+        def look(reaction, user):
             return (
                 reaction.message.id == self.message.id
                 and str(reaction.emoji) in self.STATE_EMOJIS
@@ -217,7 +209,7 @@ class StateService:
         while True:
             try:
                 reaction, user = await self.bot.wait_for(
-                    "reaction_add", timeout=30.0, check=check
+                    "reaction_add", timeout=30.0, check=look
                 )
             except asyncio.TimeoutError:
                 try:
@@ -253,8 +245,8 @@ class StateService:
         embed.add_field(name="Health", value=self.health_type, inline=True)
         embed.add_field(name="Speed", value=f"{self.elapsed:.2f} sec.", inline=True)
         embed.add_field(name="Success", value=str(self.success), inline=True)
-        if isinstance(self.ctx_interaction_or_message, discord.Interaction):
-            await self.ctx_interaction_or_message.followup.send(
+        if isinstance(self.source, discord.Interaction):
+            await self.source.followup.send(
                 f"{user.mention}, here is the info", embed=embed, ephemeral=True
             )
         else:
@@ -287,15 +279,11 @@ class StateService:
         online_developer_mentions = []
         member = self.bot.get_user(self.config["discord_owner_id"])
         online_developer_mentions.append(member.mention)
-        if self.ctx_interaction_or_message.guild:
-            developers = await Developer.select(
-                guild_snowflake=self.ctx_interaction_or_message.guild.id
-            )
+        if self.source.guild:
+            developers = await Developer.select(guild_snowflake=self.source.guild.id)
             message = f"Issue reported by {user.name}!\n**Message:** {self.message.jump_url}\n**Reference:** {reference}"
             for dev in developers:
-                member = self.ctx_interaction_or_message.guild.get_member(
-                    dev.member_snowflake
-                )
+                member = self.source.guild.get_member(dev.member_snowflake)
                 if member and member.status != discord.Status.offline:
                     online_developer_mentions.append(member.mention)
                     try:
@@ -323,8 +311,6 @@ class StateService:
                     return await state.end(error=str(e).capitalize())
         else:
             try:
-                return await state.end(
-                    warning=f"No {obj.PLURAL.lower()} found."
-                )
+                return await state.end(warning=f"No {obj.PLURAL.lower()} found.")
             except Exception as e:
                 return await state.end(error=str(e).capitalize())

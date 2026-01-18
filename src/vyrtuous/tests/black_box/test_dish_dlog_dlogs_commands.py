@@ -53,7 +53,7 @@ async def test_dish_dlog_dlogs_commands(
     guild,
     privileged_author,
     prefix: Optional[str],
-    command: Optional[str]
+    command: Optional[str],
 ):
     developer = Developer(
         guild_snowflake=guild.id, member_snowflake=privileged_author.id

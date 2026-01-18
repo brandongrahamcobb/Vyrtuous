@@ -72,6 +72,7 @@ class AdministratorRole(PermissionRole):
         role_snowflake: list[int | None],
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
+        **kwargs,
     ):
         super().__init__()
         self.created_at = created_at

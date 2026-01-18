@@ -74,6 +74,7 @@ class Alias(Action):
         created_at: Optional[datetime] = None,
         role_snowflake: Optional[int] = None,
         updated_at: Optional[datetime] = None,
+        **kwargs,
     ):
         super().__init__()
         self.alias_class = self._ALIAS_CLASS_MAP.get(alias_type)

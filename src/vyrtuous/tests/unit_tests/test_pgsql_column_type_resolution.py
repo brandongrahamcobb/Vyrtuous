@@ -9,11 +9,13 @@ from pglast.ast import ColumnDef, Constraint, CreateStmt
 
 from vyrtuous.database.database import Database
 
+
 class NoDataFoundError(asyncpg.NoDataFoundError):
 
     def __init__(self, statement: str):
         self.statement = statement
         super().__init__(f"No rows found for statement: {self.statement}.")
+
 
 async def main():
     db_pool = await Database().database_init()
@@ -83,27 +85,35 @@ async def main():
         ORDER BY c.ordinal_position;
     """
 
-
     async def test_main():
         try:
-            ttn_list = await test_query_table_names(db_pool=db_pool, statement=select_table_names_statement)
-            tsql_dict = await test_pgsql_column_type_resolution(db_pool=db_pool, table_names=ttn_list, statement=select_table_attributes_statement)
+            ttn_list = await test_query_table_names(
+                db_pool=db_pool, statement=select_table_names_statement
+            )
+            tsql_dict = await test_pgsql_column_type_resolution(
+                db_pool=db_pool,
+                table_names=ttn_list,
+                statement=select_table_attributes_statement,
+            )
             for table_name, table_dict in tsql_dict.items():
                 pk_columns = set()
                 for column_name, column_data in table_dict.items():
-                    if column_data['is_primary_key']:
+                    if column_data["is_primary_key"]:
                         pk_columns.add(column_name)
-                print(f"""
+                print(
+                    f"""
                     TABLE: {table_name}\n
                     COLUMNS: {', '.join(tsql_dict[table_name].keys())}\n
                     PRIMARY_KEYS: ({', '.join(pk_columns)})
-                """)
+                """
+                )
             psql_dict = test_parse_sql()
             assert psql_dict == tsql_dict
         except Exception as e:
             return print(str(e).capitalize())
-    
+
     await test_main()
+
 
 def test_parse_sql():
     with open("tests/unit_tests/0001-init.sql", "r") as f:
@@ -118,7 +128,7 @@ def test_parse_sql():
             sql_dict.setdefault(tn, {})
             pk_columns = set()
             for elt in stmt.tableElts:
-                if isinstance(elt, Constraint) and elt.contype == 'CONSTR_PRIMARY':
+                if isinstance(elt, Constraint) and elt.contype == "CONSTR_PRIMARY":
                     for key in elt.keys:
                         pk_columns.add(key.val)
             for elt in stmt.tableElts:
@@ -126,38 +136,47 @@ def test_parse_sql():
                     continue
                 cn = elt.colname
                 sql_dict[tn].setdefault(cn, {})
-                dt = ' '.join((p.val if hasattr(p, 'val') else str(p)) for p in elt.typeName.names)
+                dt = " ".join(
+                    (p.val if hasattr(p, "val") else str(p)) for p in elt.typeName.names
+                )
                 match dt:
-                    case 'smallint' | 'integer' | 'bigint':
+                    case "smallint" | "integer" | "bigint":
                         sql_dict[tn][cn][dt] = int
-                    case 'real' | 'double precision' | 'numeric':
+                    case "real" | "double precision" | "numeric":
                         sql_dict[tn][cn][dt] = float
-                    case 'character varying' | 'character' | 'text':
+                    case "character varying" | "character" | "text":
                         sql_dict[tn][cn][dt] = str
-                    case 'boolean':
+                    case "boolean":
                         sql_dict[tn][cn][dt] = bool
-                    case 'date':
+                    case "date":
                         sql_dict[tn][cn][dt] = date
-                    case 'timestamp without time zone' | 'timestamp with time zone':
+                    case "timestamp without time zone" | "timestamp with time zone":
                         sql_dict[tn][cn][dt] = datetime
-                    case 'time without time zone' | 'time with time zone':
+                    case "time without time zone" | "time with time zone":
                         sql_dict[tn][cn][dt] = time
-                    case 'interval':
+                    case "interval":
                         sql_dict[tn][cn][dt] = timedelta
-                    case 'uuid':
+                    case "uuid":
                         sql_dict[tn][cn][dt] = UUID
-                    case 'json' | 'jsonb':
+                    case "json" | "jsonb":
                         sql_dict[tn][cn][dt] = dict
-                    case 'bytea':
+                    case "bytea":
                         sql_dict[tn][cn][dt] = bytes
                     case _:
                         sql_dict[tn][cn][dt] = object
-                sql_dict[tn][cn]['column_default'] = elt.raw_default
-                sql_dict[tn][cn]['is_primary_key'] = cn in pk_columns or any(c.contype == 'CONSTR_PRIMARY' for c in elt.constraints or [])
-                sql_dict[tn][cn]['is_nullable'] = not any(c.contype == 'CONSTR_NOTNULL' for c in elt.constraints or [])
+                sql_dict[tn][cn]["column_default"] = elt.raw_default
+                sql_dict[tn][cn]["is_primary_key"] = cn in pk_columns or any(
+                    c.contype == "CONSTR_PRIMARY" for c in elt.constraints or []
+                )
+                sql_dict[tn][cn]["is_nullable"] = not any(
+                    c.contype == "CONSTR_NOTNULL" for c in elt.constraints or []
+                )
         return sql_dict
 
-async def test_pgsql_column_type_resolution(db_pool: asyncpg.Pool, statement: str, table_names: list[str]):
+
+async def test_pgsql_column_type_resolution(
+    db_pool: asyncpg.Pool, statement: str, table_names: list[str]
+):
     sql_dict = {}
     for tn in table_names:
         try:
@@ -172,53 +191,54 @@ async def test_pgsql_column_type_resolution(db_pool: asyncpg.Pool, statement: st
 
         for row in rows:
 
-            cn = row['column_name']
+            cn = row["column_name"]
             sql_dict[tn].setdefault(cn, {})
 
-            cd = row['column_default']
+            cd = row["column_default"]
             if cd is None:
-                sql_dict[tn][cn]['column_default'] = None
+                sql_dict[tn][cn]["column_default"] = None
             elif cd.startswith("'") and "'::" in cd:
-                sql_dict[tn][cn]['column_default'] = cd.split("'")[1]
+                sql_dict[tn][cn]["column_default"] = cd.split("'")[1]
             else:
-                sql_dict[tn][cn]['column_default'] = cd
+                sql_dict[tn][cn]["column_default"] = cd
 
-            dt = row['data_type']
+            dt = row["data_type"]
             match dt:
-                case 'smallint' | 'integer' | 'bigint':
+                case "smallint" | "integer" | "bigint":
                     sql_dict[tn][cn][dt] = int
-                case 'real' | 'double precision' | 'numeric':
+                case "real" | "double precision" | "numeric":
                     sql_dict[tn][cn][dt] = float
-                case 'character varying' | 'character' | 'text':
+                case "character varying" | "character" | "text":
                     sql_dict[tn][cn][dt] = str
-                case 'boolean':
+                case "boolean":
                     sql_dict[tn][cn][dt] = bool
-                case 'date':
+                case "date":
                     sql_dict[tn][cn][dt] = date
-                case 'timestamp without time zone' | 'timestamp with time zone':
+                case "timestamp without time zone" | "timestamp with time zone":
                     sql_dict[tn][cn][dt] = datetime
-                case 'time without time zone' | 'time with time zone':
+                case "time without time zone" | "time with time zone":
                     sql_dict[tn][cn][dt] = time
-                case 'interval':
+                case "interval":
                     sql_dict[tn][cn][dt] = timedelta
-                case 'uuid':
+                case "uuid":
                     sql_dict[tn][cn][dt] = UUID
-                case 'json' | 'jsonb':
+                case "json" | "jsonb":
                     sql_dict[tn][cn][dt] = dict
-                case 'bytea':
+                case "bytea":
                     sql_dict[tn][cn][dt] = bytes
-                case 'ARRAY':
+                case "ARRAY":
                     sql_dict[tn][cn][dt] = list
-                case 'USER-DEFINED':
+                case "USER-DEFINED":
                     sql_dict[tn][cn][dt] = str
                 case _:
                     sql_dict[tn][cn][dt] = object
 
-            is_pk = row['is_primary_key']
-            sql_dict[tn][cn]['is_primary_key'] = is_pk
-            is_nullable = row['is_nullable']
-            sql_dict[tn][cn]['is_nullable'] = bool(is_nullable)
+            is_pk = row["is_primary_key"]
+            sql_dict[tn][cn]["is_primary_key"] = is_pk
+            is_nullable = row["is_nullable"]
+            sql_dict[tn][cn]["is_nullable"] = bool(is_nullable)
     return sql_dict
+
 
 async def query_table_names(db_pool: asyncpg.Pool, statement: str) -> list[str]:
     table_names = set()
@@ -229,11 +249,12 @@ async def query_table_names(db_pool: asyncpg.Pool, statement: str) -> list[str]:
         raise e
     if rows:
         for row in rows:
-            table_names.add(row['table_name'])
+            table_names.add(row["table_name"])
     else:
         raise NoDataFoundError()
     return sorted(list(table_names))
-    
+
+
 async def test_query_table_names(db_pool: asyncpg.Pool, statement: str):
     try:
         tn_list = await query_table_names(db_pool=db_pool, statement=statement)
@@ -241,6 +262,7 @@ async def test_query_table_names(db_pool: asyncpg.Pool, statement: str):
         return tn_list
     except Exception as e:
         raise e
-    
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
     asyncio.run(main())

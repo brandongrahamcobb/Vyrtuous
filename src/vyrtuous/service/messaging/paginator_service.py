@@ -22,15 +22,14 @@ import discord
 
 from vyrtuous.service.logging_service import logger
 
+
 class Paginator:
 
     NAV_EMOJIS = {"\u2b05\ufe0f": -1, "\u27a1\ufe0f": 1}
 
-    def __init__(
-        self, bot, channel_ctx_interaction_or_message, pages, state=None, *, timeout=60
-    ):
+    def __init__(self, bot, channel_source, pages, state=None, *, timeout=60):
         self.bot = bot
-        self.channel_ctx_interaction_or_message = channel_ctx_interaction_or_message
+        self.channel_source = channel_source
         self.pages = pages
         self.state = state
         self.current_page = 0
@@ -40,22 +39,14 @@ class Paginator:
 
     async def start(self):
         embed = self.get_current_embed()
-        if isinstance(self.channel_ctx_interaction_or_message, discord.Interaction):
-            if not self.channel_ctx_interaction_or_message.response.is_done():
-                await self.channel_ctx_interaction_or_message.response.send_message(
-                    embed=embed
-                )
-            self.message = (
-                await self.channel_ctx_interaction_or_message.original_response()
-            )
-        elif isinstance(self.channel_ctx_interaction_or_message, discord.Message):
-            self.message = await self.channel_ctx_interaction_or_message.reply(
-                embed=embed
-            )
+        if isinstance(self.channel_source, discord.Interaction):
+            if not self.channel_source.response.is_done():
+                await self.channel_source.response.send_message(embed=embed)
+            self.message = await self.channel_source.original_response()
+        elif isinstance(self.channel_source, discord.Message):
+            self.message = await self.channel_source.reply(embed=embed)
         else:
-            self.message = await self.channel_ctx_interaction_or_message.send(
-                embed=embed
-            )
+            self.message = await self.channel_source.send(embed=embed)
         for emoji in self.NAV_EMOJIS:
             await self.message.add_reaction(emoji)
         self.bot.loop.create_task(self.wait_for_reactions())
@@ -66,12 +57,12 @@ class Paginator:
         total_pages = len(self.pages)
         label = "page"
         embed.set_footer(
-            text=f"{label} {self.current_page + 1}/{total_pages} • {self.channel_ctx_interaction_or_message.guild.name}"
+            text=f"{label} {self.current_page + 1}/{total_pages} • {self.channel_source.guild.name}"
         )
         return embed
 
     async def wait_for_reactions(self):
-        def check(reaction, user):
+        def look(reaction, user):
             return (
                 reaction.message.id == self.message.id
                 and str(reaction.emoji) in self.NAV_EMOJIS
@@ -81,7 +72,7 @@ class Paginator:
         while True:
             try:
                 reaction, user = await self.bot.wait_for(
-                    "reaction_add", timeout=self.timeout, check=check
+                    "reaction_add", timeout=self.timeout, check=look
                 )
             except asyncio.TimeoutError:
                 try:
