@@ -19,7 +19,7 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.mock_discord_bot import bot
+from vyrtuous.tests.integration.conftest import bot
 from vyrtuous.tests.integration.test_suite import send_message
 
 NOT_PRIVILEGED_AUTHOR_ID = 10000000000000002
