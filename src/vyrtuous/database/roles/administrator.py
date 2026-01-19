@@ -60,7 +60,7 @@ def administrator_predicator():
             except commands.CheckFailure:
                 continue
         raise commands.CheckFailure(
-            "You are not a system owner, developer, guild owner or administrator in this server."
+            "You are not a sysadmin, developer, guild owner or administrator in this server."
         )
     predicate._permission_level = "Administrator"
     return commands.check(predicate)

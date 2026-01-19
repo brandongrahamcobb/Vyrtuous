@@ -48,7 +48,7 @@ def guild_owner_predicator():
             except commands.CheckFailure:
                 continue
         raise commands.CheckFailure(
-            "You are not a system owner, developer or guild owner in this server."
+            "You are not a sysadmin, developer or guild owner in this server."
         )
     predicate._permission_level = "Guild Owner"
     return commands.check(predicate)

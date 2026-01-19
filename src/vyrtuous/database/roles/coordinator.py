@@ -73,7 +73,7 @@ def coordinator_predicator():
             except commands.CheckFailure:
                 continue
         raise commands.CheckFailure(
-            "You are not a system owner, developer, guild owner, administrator or coordinator in this channel."
+            "You are not a sysadmin, developer, guild owner, administrator or coordinator in this channel."
         )
     predicate._permission_level = "Coordinator"
     return commands.check(predicate)
