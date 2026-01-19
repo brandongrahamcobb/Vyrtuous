@@ -1,6 +1,6 @@
 """admin_commands.py A discord.py cog containing administrative commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,10 +28,10 @@ from vyrtuous.database.actions.alias import Alias
 from vyrtuous.database.actions.server_mute import ServerMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
 from vyrtuous.database.logs.history import History
-from vyrtuous.database.roles.administrator import AdministratorRole
+from vyrtuous.database.roles.administrator import AdministratorRole, administrator_predicator
 from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.moderator import Moderator
-from vyrtuous.database.roles.permission_role import PermissionRole
+from vyrtuous.database.roles.guild_owner import NotGuildOwner
 from vyrtuous.database.rooms.stage import Stage
 from vyrtuous.service.scope_service import (
     member_relevant_objects_dict,
@@ -51,12 +51,10 @@ from vyrtuous.properties.snowflake import (
     RoleSnowflake,
 )
 from vyrtuous.service.check_service import (
-    administrator_predicator,
-    at_home,
     check,
     has_equal_or_lower_role,
-    NotGuildOwner,
 )
+from vyrtuous.service.at_home import at_home
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -797,7 +795,10 @@ class AdminCommands(commands.Cog):
                 )
             pages.append(embed)
 
-        await StateService.send_pages(obj=PermissionRole, pages=pages, state=state)
+        if pages:
+            return await state.end(success=pages)
+        else:
+            return await state.end(warning="No permissions found.")
 
     # DONE
     @app_commands.command(name="rmv", description="VC move.")

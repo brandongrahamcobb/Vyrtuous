@@ -1,6 +1,6 @@
 """help_command.py A discord.py cog containing a custom help command for the Vyrtuous bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,10 +26,8 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.alias import Alias
-from vyrtuous.service.check_service import (
-    moderator_predicator,
-)
-from vyrtuous.service.resolution.discord_object_service import resolve_highest_permission_role
+from vyrtuous.database.roles.moderator import moderator_predicator
+from vyrtuous.database.roles.role import resolve_highest_role
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -45,7 +43,7 @@ class HelpCommand(commands.Cog):
         self.bot.db_pool = bot.db_pool
         self.message_service = MessageService(self.bot, self.bot.db_pool)
         self.permission_page_title_pairs = [
-            ("System Owner", "`System Owner` inherits `Developer`."),
+            ("SysAdmin", "`SysAdmin` inherits `Developer`."),
             ("Developer", "`Developer` inherits `Guild Owner`."),
             ("Guild Owner", "`Guild Owner` inherits `Administrator`."),
             ("Administrator", "`Administrator` inherits `Coordinator`."),
@@ -74,12 +72,9 @@ class HelpCommand(commands.Cog):
             return lines
 
     async def get_available_commands(
-        self, bot, member_snowflake
+        self, bot, user_highest
     ) -> list[commands.Command]:
         available = []
-        user_highest = await resolve_highest_permission_role(
-            member_snowflake=member_snowflake
-        )
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
@@ -107,7 +102,7 @@ class HelpCommand(commands.Cog):
 
     def get_permission_color(self, perm_level):
         colors = {
-            "System Owner": discord.Color.dark_red(),
+            "SysAdmin": discord.Color.dark_red(),
             "Developer": discord.Color.red(),
             "Guild Owner": discord.Color.purple(),
             "Administrator": discord.Color.blue(),
@@ -264,7 +259,12 @@ class HelpCommand(commands.Cog):
                     inline=False,
                 )
                 return await state.end(success=embed)
-        all_commands = await self.get_available_commands(bot, interaction.user.id)
+        user_highest = await resolve_highest_role(
+            channel_snowflake=interaction.channel.id,
+            guild_snowflake=interaction.guild.id,
+            member_snowflake=interaction.user.id
+        )
+        all_commands = await self.get_available_commands(bot=bot, user_highest=user_highest)
         permission_groups = await self.group_commands_by_permission(
             bot, interaction, all_commands
         )
@@ -286,9 +286,6 @@ class HelpCommand(commands.Cog):
                 perm_alias_map[perm_level_for_alias].append(
                     f"**{alias.alias_name}** – {short_desc}"
                 )
-        user_highest = await resolve_highest_permission_role(
-            member_snowflake=interaction.user.id
-        )
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
             if PERMISSION_TYPES.index(perm_level) > user_index:
@@ -406,7 +403,12 @@ class HelpCommand(commands.Cog):
                     inline=False,
                 )
                 return await state.end(success=embed)
-        all_commands = await self.get_available_commands(bot, ctx.author.id)
+        user_highest = await resolve_highest_role(
+            channel_snowflake=ctx.channel.id,
+            guild_snowflake=ctx.guild.id,
+            member_snowflake=ctx.author.id
+        )
+        all_commands = await self.get_available_commands(bot=bot, user_highest=user_highest)
         permission_groups = await self.group_commands_by_permission(
             bot, ctx, all_commands
         )
@@ -427,9 +429,6 @@ class HelpCommand(commands.Cog):
                 perm_alias_map[perm_level_for_alias].append(
                     f"**{alias.alias_name}** – {short_desc}"
                 )
-        user_highest = await resolve_highest_permission_role(
-            member_snowflake=ctx.author.id
-        )
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
             if PERMISSION_TYPES.index(perm_level) > user_index:

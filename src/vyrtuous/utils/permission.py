@@ -1,6 +1,6 @@
 """permission.py The purpose of this program is to provide the Permission utility class.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ PERMISSION_TYPES = [
     "Administrator",
     "Guild Owner",
     "Developer",
-    "System Owner",
+    "SysAdmin",
 ]
 TARGET_PERMISSIONS = (
     "add_reactions",

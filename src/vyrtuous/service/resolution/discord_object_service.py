@@ -1,6 +1,6 @@
 """discord_object_service.py The purpose of this program is to provide the DiscordObject module.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,70 +23,8 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.check_service import (
-    NotAdministrator,
-    NotCoordinator,
-    NotDeveloper,
-    NotGuildOwner,
-    NotModerator,
-    NotSystemOwner,
-    member_is_administrator,
-    member_is_coordinator,
-    member_is_developer,
-    member_is_guild_owner,
-    member_is_moderator,
-    member_is_system_owner,
-)
+
 from vyrtuous.service.logging_service import logger
-
-async def resolve_highest_permission_role(
-    member_snowflake: int, channel_snowflake=None, guild_snowflake=None
-):
-    try:
-        if await member_is_system_owner(member_snowflake=member_snowflake):
-            return "System Owner"
-    except NotSystemOwner as e:
-        logger.warning(str(e).capitalize())
-    try:
-        if await member_is_developer(member_snowflake=member_snowflake):
-            return "Developer"
-    except NotDeveloper as e:
-        logger.warning(str(e).capitalize())
-    try:
-        if await member_is_guild_owner(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-        ):
-            return "Guild Owner"
-    except NotGuildOwner as e:
-        logger.warning(str(e).capitalize())
-    try:
-        if await member_is_administrator(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-        ):
-            return "Administrator"
-    except NotAdministrator as e:
-        logger.warning(str(e).capitalize())
-    if channel_snowflake:
-        try:
-            if await member_is_coordinator(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member_snowflake,
-            ):
-                return "Coordinator"
-        except NotCoordinator as e:
-            logger.warning(str(e).capitalize())
-        try:
-            if await member_is_moderator(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member_snowflake,
-            ):
-                return "Moderator"
-        except NotModerator as e:
-            logger.warning(str(e).capitalize())
-    return "Everyone"
-
 
 class DiscordObjectNotFound(commands.CheckFailure):
     "Returns an error if a channel, guild, member or role is not found."
@@ -134,13 +72,6 @@ class TargetIsBot(commands.CheckFailure):
     ):
         super().__init__(
             message="You cannot execute actions on {source.guild.me.mention}."
-        )
-
-
-class HasEqualOrLowerRole(commands.CheckFailure):
-    def __init__(self, target_rank=str):
-        super().__init__(
-            message=f"You may not execute this command on this `{target_rank}` because they have equal or higher role than you in this channel/server."
         )
 
 

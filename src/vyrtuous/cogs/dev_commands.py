@@ -1,6 +1,6 @@
 """dev_commands.py A discord.py cog containing developer commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,9 +25,10 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.database import Database
+from vyrtuous.database.roles.developer import developer_predicator
 from vyrtuous.database.logs.developer_log import DeveloperLog
 from vyrtuous.inc.helpers import DISCORD_COGS_CLASSES
-from vyrtuous.service.check_service import at_home, developer_predicator
+from vyrtuous.service.at_home import at_home
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.scope_service import (

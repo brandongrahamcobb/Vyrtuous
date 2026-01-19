@@ -1,6 +1,6 @@
 """event_listeners.py A discord.py cog containing event listeners for the Vyrtuous bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,11 +43,9 @@ from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.rooms.video_room import VideoRoom
 from vyrtuous.database.settings.cap import Cap
 from vyrtuous.properties.duration import DurationObject
-from vyrtuous.service.resolution.discord_object_service import (
-    DiscordObjectNotFound,
-    resolve_highest_permission_role
-)
+from vyrtuous.service.resolution.discord_object_service import DiscordObjectNotFound
 
+from vyrtuous.service.check_service import check
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -208,7 +206,7 @@ class EventListeners(commands.Cog):
             allowed = False
         if not allowed:
             return
-        # member_permission_role = await role_check_with_specifics(after.channel, member)
+        # member_role = await role_check_with_specifics(after.channel, member)
 
         target = "user"
         # if after.channel:
@@ -219,7 +217,7 @@ class EventListeners(commands.Cog):
         #     stage.send_stage_ask_to_speak_message(join_log=self.join_log, member=member)
         # else:
         #     target = 'user'
-        # if stage and (member.id not in temporary_stage_coordinator_ids) and (member_permission_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
+        # if stage and (member.id not in temporary_stage_coordinator_ids) and (member_role in ('Moderator', 'Everyone')) and (before.channel != after.channel):
         #      expires_in = stage.expires_in
         #      await conn.execute('''
         #          INSERT INTO active_voice_mutes (guild_id, discord_snowflake, channel_id, expires_in, target, room_name)
@@ -436,7 +434,7 @@ class EventListeners(commands.Cog):
         channel_obj = message.guild.get_channel(alias.channel_snowflake)
         member_obj = message.guild.get_member(args[1])
         print(member_obj)
-        executor_role = resolve_highest_permission_role(
+        executor_role = check(
             source=message,
             channel_snowflake=channel_obj.id,
             guild_snowflake=message.guild.id,

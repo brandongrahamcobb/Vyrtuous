@@ -1,6 +1,6 @@
 """history.py A utility module for managing and history of messages in the Vyrtuous Discord bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.database_factory import DatabaseFactory
 from vyrtuous.properties.duration import DurationObject
-from vyrtuous.service.resolution.discord_object_service import resolve_highest_permission_role
+from vyrtuous.database.roles.role import resolve_highest_role
 from vyrtuous.service.messaging.paginator_service import Paginator
 
 
@@ -105,7 +105,7 @@ class History(DatabaseFactory):
         author_snowflake = None
         expires_at = None
         history = await History.select()
-        highest_role = await resolve_highest_permission_role(
+        highest_role = await resolve_highest_role(
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
             member_snowflake=member.id,

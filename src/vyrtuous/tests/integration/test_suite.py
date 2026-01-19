@@ -1,6 +1,6 @@
 """test_suite.py The purpose of this program is to provide the shared test variables for tests using Discord objects.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

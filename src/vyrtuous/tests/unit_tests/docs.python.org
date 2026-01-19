@@ -1,3 +1,0 @@
-test docs  "python.testing.pytestArgs": [
-    "tests"
-  ],

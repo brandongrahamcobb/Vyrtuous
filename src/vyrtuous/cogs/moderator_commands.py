@@ -1,6 +1,6 @@
 """moderator_commands.py A discord.py cog containing moderator commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,11 +29,12 @@ from vyrtuous.database.settings.cap import Cap
 from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.database.roles.administrator import Administrator
-from vyrtuous.database.roles.coordinator import Coordinator
-from vyrtuous.database.roles.developer import Developer
-from vyrtuous.database.roles.moderator import Moderator
-from vyrtuous.database.roles.permission_role import PermissionRole
+from vyrtuous.database.roles.administrator import Administrator, is_administrator
+from vyrtuous.database.roles.coordinator import Coordinator, is_coordinator
+from vyrtuous.database.roles.developer import Developer, is_developer
+from vyrtuous.database.roles.guild_owner import is_guild_owner
+from vyrtuous.database.roles.moderator import Moderator, is_moderator, moderator_predicator
+from vyrtuous.database.roles.sysadmin import is_sysadmin
 from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.rooms.stage import Stage
 from vyrtuous.database.rooms.temporary_room import TemporaryRoom
@@ -45,17 +46,10 @@ from vyrtuous.properties.snowflake import (
     ChannelSnowflake,
     MemberSnowflake,
 )
+from vyrtuous.service.at_home import at_home
 from vyrtuous.service.check_service import (
-    at_home,
     check,
-    has_equal_or_lower_role,
-    member_is_administrator,
-    member_is_coordinator,
-    member_is_developer,
-    member_is_guild_owner,
-    member_is_moderator,
-    member_is_system_owner,
-    moderator_predicator,
+    has_equal_or_lower_role
 )
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
@@ -2635,7 +2629,7 @@ class ModeratorCommands(commands.Cog):
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
-        for obj in objects:
+        for obj in objects_list:
             channel = guild.get_channel(obj.channel_snowflake)
             entries = [f"**User:** {member_dict['mention']}"]
             line = entries[0]
@@ -2677,7 +2671,7 @@ class ModeratorCommands(commands.Cog):
         self, interaction: discord.Interaction, channel: AppChannelSnowflake
     ):
         chunk_size, pages = 7, []
-        system_owners = developers = guild_owners = administrators = coordinators = (
+        sysadmins = developers = guild_owners = administrators = coordinators = (
             moderators
         ) = []
 
@@ -2688,42 +2682,42 @@ class ModeratorCommands(commands.Cog):
 
         for member in channel_dict.get("object", None).members:
             try:
-                if await member_is_system_owner(member.id):
-                    system_owners.append(member)
+                if await is_sysadmin(member.id):
+                    sysadmins.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_developer(interaction.guild.id, member.id):
+                if await is_developer(interaction.guild.id, member.id):
                     developers.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_guild_owner(interaction.guild.id, member.id):
+                if await is_guild_owner(interaction.guild.id, member.id):
                     guild_owners.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_administrator(interaction.guild.id, member.id):
+                if await is_administrator(interaction.guild.id, member.id):
                     administrators.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_coordinator(
+                if await is_coordinator(
                     channel_dict.get("id", None), interaction.guild.id, member.id
                 ):
                     coordinators.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_moderator(
+                if await is_moderator(
                     channel_dict.get("id", None), interaction.guild.id, member.id
                 ):
                     moderators.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
-        system_owners_chunks = [
-            system_owners[i : i + chunk_size]
-            for i in range(0, len(system_owners), chunk_size)
+        sysadmins_chunks = [
+            sysadmins[i : i + chunk_size]
+            for i in range(0, len(sysadmins), chunk_size)
         ]
         guild_owners_chunks = [
             guild_owners[i : i + chunk_size]
@@ -2746,7 +2740,7 @@ class ModeratorCommands(commands.Cog):
             for i in range(0, len(moderators), chunk_size)
         ]
         roles_chunks = [
-            ("System Owners", system_owners, system_owners_chunks),
+            ("SysAdmins", sysadmins, sysadmins_chunks),
             ("Developers", developers, developers_chunks),
             ("Guild Owners", guild_owners, guild_owners_chunks),
             ("Administrators", administrators, administrators_chunks),
@@ -2769,7 +2763,10 @@ class ModeratorCommands(commands.Cog):
                 )
             pages.append(embed)
 
-        await StateService.send_pages(obj=PermissionRole, pages=pages, state=state)
+        if pages:
+            return await state.end(success=pages)
+        else:
+            return await state.end(warning="No permissions found.")
 
     # DONE
     @commands.command(name="survey", help="Get all.")
@@ -2782,7 +2779,7 @@ class ModeratorCommands(commands.Cog):
         ),
     ):
         chunk_size, pages = 7, []
-        system_owners = developers = guild_owners = administrators = coordinators = (
+        sysadmins = developers = guild_owners = administrators = coordinators = (
             moderators
         ) = []
 
@@ -2793,42 +2790,42 @@ class ModeratorCommands(commands.Cog):
 
         for member in channel_dict.get("object", None).members:
             try:
-                if await member_is_system_owner(member.id):
-                    system_owners.append(member)
+                if await is_sysadmin(member.id):
+                    sysadmins.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_developer(ctx.guild.id, member.id):
+                if await is_developer(ctx.guild.id, member.id):
                     developers.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_guild_owner(ctx.guild.id, member.id):
+                if await is_guild_owner(ctx.guild.id, member.id):
                     guild_owners.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_administrator(ctx.guild.id, member.id):
+                if await is_administrator(ctx.guild.id, member.id):
                     administrators.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_coordinator(
+                if await is_coordinator(
                     channel_dict.get("id", None), ctx.guild.id, member.id
                 ):
                     coordinators.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await member_is_moderator(
+                if await is_moderator(
                     channel_dict.get("id", None), ctx.guild.id, member.id
                 ):
                     moderators.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
-        system_owners_chunks = [
-            system_owners[i : i + chunk_size]
-            for i in range(0, len(system_owners), chunk_size)
+        sysadmins_chunks = [
+            sysadmins[i : i + chunk_size]
+            for i in range(0, len(sysadmins), chunk_size)
         ]
         guild_owners_chunks = [
             guild_owners[i : i + chunk_size]
@@ -2851,7 +2848,7 @@ class ModeratorCommands(commands.Cog):
             for i in range(0, len(moderators), chunk_size)
         ]
         roles_chunks = [
-            ("System Owners", system_owners, system_owners_chunks),
+            ("SysAdmins", sysadmins, sysadmins_chunks),
             ("Developers", developers, developers_chunks),
             ("Guild Owners", guild_owners, guild_owners_chunks),
             ("Administrators", administrators, administrators_chunks),
@@ -2874,7 +2871,10 @@ class ModeratorCommands(commands.Cog):
                 )
             pages.append(embed)
 
-        await StateService.send_pages(obj=PermissionRole, pages=pages, state=state)
+        if pages:
+            return await state.end(success=pages)
+        else:
+            return await state.end(warning="No permissions found.")
 
     # DONE
     @app_commands.command(name="tmutes", description="List text-mutes.")

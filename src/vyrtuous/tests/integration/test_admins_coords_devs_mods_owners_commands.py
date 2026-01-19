@@ -1,5 +1,6 @@
-"""test_chown_temp_temps_xtemp_commands.py The purpose of this program is to black box test the temporary room commands.
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+"""test_command.py The purpose of this program is to be the introductory integration test for Vyrtuous.
+
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +20,6 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.conftest import bot
 from vyrtuous.tests.integration.test_suite import send_message
 
 NOT_PRIVILEGED_AUTHOR_ID = 10000000000000002

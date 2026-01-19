@@ -1,6 +1,6 @@
 # """test_clear_command.py The purpose of this program is to black box clear command which wipes all actions in a channel or for a member.
 
-# Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+# Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

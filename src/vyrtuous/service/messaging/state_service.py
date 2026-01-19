@@ -1,6 +1,6 @@
 """state.py A utility module for managing the failure, warning and success messages along with statistics about the bot's responses.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

@@ -1,6 +1,6 @@
 """coordinator_commands.py A discord.py cog containing coordinator commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.database.roles.coordinator import coordinator_predicator
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.actions.voice_mute import VoiceMute
@@ -35,7 +36,6 @@ from vyrtuous.properties.snowflake import (
 )
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.check_service import (
-    coordinator_predicator,
     has_equal_or_lower_role,
 )
 from vyrtuous.service.messaging.message_service import MessageService

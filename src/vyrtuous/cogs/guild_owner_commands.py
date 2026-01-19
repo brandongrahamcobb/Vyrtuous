@@ -1,6 +1,6 @@
 """guild_owner_commands.py A discord.py cog containing guild owner commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,14 +22,12 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
+from vyrtuous.database.roles.guild_owner import guild_owner_predicator
 from vyrtuous.properties.snowflake import (
     AppMemberSnowflake,
     AppRoleSnowflake,
     MemberSnowflake,
     RoleSnowflake,
-)
-from vyrtuous.service.check_service import (
-    guild_owner_predicator,
 )
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService

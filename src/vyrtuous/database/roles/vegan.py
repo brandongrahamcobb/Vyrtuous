@@ -1,6 +1,6 @@
-"""vegan.py The purpose of this program is to inherit from the PermissionRole to provide the vegan role.
+"""vegan.py The purpose of this program is to inherit from the DatabaseFactory to provide the vegan role.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,10 +19,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime
 from typing import Optional
 
-from vyrtuous.database.roles.permission_role import PermissionRole
+from vyrtuous.database.database_factory import DatabaseFactory
 
 
-class Vegan(PermissionRole):
+class Vegan(DatabaseFactory):
 
     ACT = "vegan"
     PLURAL = "Vegans"

@@ -1,5 +1,5 @@
 # """test_cstage_mstage_xstage_commands.py The purpose of this program is to black box test the stage related commands.
-# Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+# Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

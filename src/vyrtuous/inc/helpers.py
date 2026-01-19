@@ -1,6 +1,6 @@
 """helpers.py The purpose of this program is to provide generic parameters.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ DISCORD_COGS = [
     "vyrtuous.cogs.heartbeat",
     "vyrtuous.cogs.moderator_commands",
     "vyrtuous.cogs.scheduled_tasks",
-    "vyrtuous.cogs.system_owner_commands",
+    "vyrtuous.cogs.sysadmin_commands",
 ]
 DISCORD_COGS_CLASSES = [
     "AdminCommands",
@@ -49,7 +49,8 @@ DISCORD_COGS_CLASSES = [
     "HelpCommand",
     "Heartbeat",
     "ModeratorCommands",
-    "ScheduledTasks" "SystemOwnerCommands",
+    "ScheduledTasks",
+    "SysAdminCommands",
 ]
 DISCORD_COMMAND_PREFIX = "!"
 #### PATHS

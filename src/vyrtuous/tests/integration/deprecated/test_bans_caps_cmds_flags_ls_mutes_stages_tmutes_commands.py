@@ -1,5 +1,5 @@
 # """test_chown_temp_temps_xtemp_commands.py The purpose of this program is to black box test the temporary room commands.
-# Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+# Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -98,18 +98,18 @@
 #             undo=False,
 #             alias="testban",
 #             alias_type="ban",
-#             all_list_permission_role="Developer",
-#             list_permission_role="Administrator",
-#             alias_permission_role="Moderator",
+#             all_list_role="Developer",
+#             list_role="Administrator",
+#             alias_role="Moderator",
 #             timed=True,
 #         ),
 #         dict(
 #             undo=True,
 #             alias="testunban",
 #             alias_type="unban",
-#             all_list_permission_role="Developer",
-#             list_permission_role="Administrator",
-#             alias_permission_role="Moderator",
+#             all_list_role="Developer",
+#             list_role="Administrator",
+#             alias_role="Moderator",
 #             timed=False,
 #         ),
 #     ],
@@ -118,18 +118,18 @@
 #     #         undo=False,
 #     #         alias="testflag",
 #     #         alias_type="flag",
-#     #         all_list_permission_role="Developer",
-#     #         list_permission_role="Administrator",
-#     #         alias_permission_role="Moderator",
+#     #         all_list_role="Developer",
+#     #         list_role="Administrator",
+#     #         alias_role="Moderator",
 #     #         timed=False,
 #     #     ),
 #     #     dict(
 #     #         undo=True,
 #     #         alias="testunflag",
 #     #         alias_type="unflag",
-#     #         all_list_permission_role="Developer",
-#     #         list_permission_role="Administrator",
-#     #         alias_permission_role="Moderator",
+#     #         all_list_role="Developer",
+#     #         list_role="Administrator",
+#     #         alias_role="Moderator",
 #     #         timed=False,
 #     #     ),
 #     # ],
@@ -138,18 +138,18 @@
 #     #         undo=False,
 #     #         alias="testv",
 #     #         alias_type="vegan",
-#     #         all_list_permission_role="Developer",
-#     #         list_permission_role="Administrator",
-#     #         alias_permission_role="Moderator",
+#     #         all_list_role="Developer",
+#     #         list_role="Administrator",
+#     #         alias_role="Moderator",
 #     #         timed=False,
 #     #     ),
 #     #     dict(
 #     #         undo=True,
 #     #         alias="testc",
 #     #         alias_type="carnist",
-#     #         all_list_permission_role="Developer",
-#     #         list_permission_role="Administrator",
-#     #         alias_permission_role="Moderator",
+#     #         all_list_role="Developer",
+#     #         list_role="Administrator",
+#     #         alias_role="Moderator",
 #     #         timed=False,
 #     #     ),
 #     # ],
@@ -158,18 +158,18 @@
 #     #         undo=False,
 #     #         alias="testvm",
 #     #         alias_type="vmute",
-#     #         all_list_permission_role="Developer",
-#     #         list_permission_role="Administrator",
-#     #         alias_permission_role="Moderator",
+#     #         all_list_role="Developer",
+#     #         list_role="Administrator",
+#     #         alias_role="Moderator",
 #     #         timed=True,
 #     #     ),
 #     #     dict(
 #     #         undo=True,
 #     #         alias="testunvm",
 #     #         alias_type="unvmute",
-#     #         all_list_permission_role="Developer",
-#     #         list_permission_role="Administrator",
-#     #         alias_permission_role="Moderator",
+#     #         all_list_role="Developer",
+#     #         list_role="Administrator",
+#     #         alias_role="Moderator",
 #     #     ),
 #     # ],
 #     # "tmutes": [
@@ -177,18 +177,18 @@
 #     #         undo=False,
 #     #         alias="testtm",
 #     #         alias_type="tmute",
-#     #         all_list_permission_role="Developer",
-#     #         list_permission_role="Administrator",
-#     #         alias_permission_role="Moderator",
+#     #         all_list_role="Developer",
+#     #         list_role="Administrator",
+#     #         alias_role="Moderator",
 #     #         timed=True,
 #     #     ),
 #     #     dict(
 #     #         undo=True,
 #     #         alias="testuntm",
 #     #         alias_type="untmute",
-#     #         all_list_permission_role="Developer",
-#     #         list_permission_role="Administrator",
-#     #         alias_permission_role="Moderator",
+#     #         all_list_role="Developer",
+#     #         list_role="Administrator",
+#     #         alias_role="Moderator",
 #     #         timed=False,
 #     #     ),
 #     # ],
@@ -197,31 +197,31 @@
 #     # "cmds": dict(
 #     #     command=None,
 #     #     list_command="cmds",
-#     #     all_list_permission_role="Developer",
-#     #     list_permission_role="Moderator",
-#     #     command_permission_role=None,
+#     #     all_list_role="Developer",
+#     #     list_role="Moderator",
+#     #     command_role=None,
 #     # ),
 #     # "stages": dict(
 #     #     command="stage",
 #     #     list_command="stages",
-#     #     all_list_permission_role="Developer",
-#     #     list_permission_role="Moderator",
-#     #     command_permission_role="Administrator",
+#     #     all_list_role="Developer",
+#     #     list_role="Moderator",
+#     #     command_role="Administrator",
 #     # ),
 #     # "temps": dict(
 #     #     command="temp",
 #     #     list_command="temps",
-#     #     all_list_permission_role="Developer",
-#     #     list_permission_role="Moderator",
-#     #     command_permission_role="Administrator",
+#     #     all_list_role="Developer",
+#     #     list_role="Moderator",
+#     #     command_role="Administrator",
 #     # ),
 #     # "vrs": dict(
 #     #     command="vr",
 #     #     list_command="vrs",
 #     #     alias_type="vrs",
-#     #     all_list_permission_role="Developer",
-#     #     list_permission_role="Moderator",
-#     #     command_permission_role="Administrator",
+#     #     all_list_role="Developer",
+#     #     list_role="Moderator",
+#     #     command_role="Administrator",
 #     # ),
 # }
 # MINUTE_UNITS = {"m", "min", "mins", "minute", "minutes"}
@@ -231,16 +231,16 @@
 #     dict(
 #         alias="testrole",
 #         alias_type="role",
-#         all_list_permission_role="Developer",
-#         list_permission_role="Administrator",
-#         alias_permission_role="Coordinator",
+#         all_list_role="Developer",
+#         list_role="Administrator",
+#         alias_role="Coordinator",
 #     ),
 #     dict(
 #         alias="testunrole",
 #         alias_type="unrole",
-#         all_list_permission_role="Developer",
-#         list_permission_role="Administrator",
-#         alias_permission_role="Coordinator",
+#         all_list_role="Developer",
+#         list_role="Administrator",
+#         alias_role="Coordinator",
 #     ),
 # ]
 # ROLE_ALIAS_SETUP = ROLE_ALIAS_SETUP
@@ -293,14 +293,14 @@
 #             voice_channel_one_id="{voice_channel_one_id}",
 #         )
 #         add_case(
-#             cmd, alias["alias_permission_role"], True, False, False, False, "setup"
+#             cmd, alias["alias_role"], True, False, False, False, "setup"
 #         )
 
 #     def apply_alias(alias, undo_alias):
 #         if not alias.get("timed"):
 #             cmd = f"{alias['alias']} {{member_id}} {REASON}"
 #             add_case(
-#                 cmd, alias["alias_permission_role"], True, False, True, False, "apply"
+#                 cmd, alias["alias_role"], True, False, True, False, "apply"
 #             )
 #             return
 #         prefixes = ["=", "+", "-"]
@@ -312,7 +312,7 @@
 #                     cmd = f"{alias['alias']} {{member_id}} {p}{d}{u} {REASON}"
 #                     add_case(
 #                         cmd,
-#                         alias["alias_permission_role"],
+#                         alias["alias_role"],
 #                         True,
 #                         False,
 #                         True,
@@ -323,7 +323,7 @@
 #                         undo_cmd = f"{undo_alias['alias']} {{member_id}}"
 #                         add_case(
 #                             undo_cmd,
-#                             undo_alias["alias_permission_role"],
+#                             undo_alias["alias_role"],
 #                             True,
 #                             False,
 #                             True,
@@ -346,7 +346,7 @@
 
 #     def undo_alias(alias):
 #         cmd = f"{alias['alias']} {{member_id}}"
-#         add_case(cmd, alias["alias_permission_role"], True, False, True, False, "undo")
+#         add_case(cmd, alias["alias_role"], True, False, True, False, "undo")
 
 #     for list_name, aliases in LIST_ALIASES.items():
 #         normal = next(a for a in aliases if not a["undo"])
@@ -355,17 +355,17 @@
 #         setup_alias(undo)
 #         apply_alias(normal, undo)
 #         permission = (
-#             LIST_CASES[list_name]["list_permission_role"]
+#             LIST_CASES[list_name]["list_role"]
 #             if list_name in LIST_CASES
-#             else normal["list_permission_role"]
+#             else normal["list_role"]
 #         )
 #         list_permutations(list_name, normal["alias_type"], permission, True)
 
 #         undo_alias(undo)
 #         permission = (
-#             LIST_CASES[list_name]["list_permission_role"]
+#             LIST_CASES[list_name]["list_role"]
 #             if list_name in LIST_CASES
-#             else normal["list_permission_role"]
+#             else normal["list_role"]
 #         )
 #         list_permutations(list_name, normal["alias_type"], permission, True)
 

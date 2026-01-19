@@ -1,6 +1,6 @@
 """action.py The purpose of this program is to be a child of DatabaseFactory and the parent to all moderation actions.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

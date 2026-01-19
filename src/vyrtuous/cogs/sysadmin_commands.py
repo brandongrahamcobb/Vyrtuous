@@ -1,6 +1,6 @@
-"""system_owner_commands.py A discord.py cog containing system owner commands for the Vyrtuous bot.
+"""sysadmin_commands.py A discord.py cog containing sysadmin commands for the Vyrtuous bot.
 
-Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -23,12 +23,10 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.logs.developer_log import DeveloperLog
 from vyrtuous.database.roles.developer import Developer
+from vyrtuous.database.roles.sysadmin import sysadmin_predicator
 from vyrtuous.properties.snowflake import (
     AppMemberSnowflake,
     MemberSnowflake,
-)
-from vyrtuous.service.check_service import (
-    sys_owner_predicator,
 )
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
@@ -37,7 +35,7 @@ from vyrtuous.service.resolution.discord_object_service import DiscordObject
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class SystemOwnerCommands(commands.Cog):
+class SysAdminCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
@@ -49,7 +47,7 @@ class SystemOwnerCommands(commands.Cog):
         reference="Include an issue reference ID",
         member="Tag a member or include their ID",
     )
-    @sys_owner_predicator()
+    @sysadmin_predicator()
     async def toggle_issue_to_developer_app_command(
         self,
         interaction: discord.Interaction,
@@ -98,7 +96,7 @@ class SystemOwnerCommands(commands.Cog):
 
     # DONE
     @commands.command(name="assign", help="Assign developer.")
-    @sys_owner_predicator()
+    @sysadmin_predicator()
     async def toggle_issue_to_developer_text_command(
         self,
         ctx: commands.Context,
@@ -152,7 +150,7 @@ class SystemOwnerCommands(commands.Cog):
     # DONE
     @app_commands.command(name="dev", description="Grant/revoke devs.")
     @app_commands.describe(member="Tag a member or include their ID")
-    @sys_owner_predicator()
+    @sysadmin_predicator()
     async def create_developer_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
@@ -180,7 +178,7 @@ class SystemOwnerCommands(commands.Cog):
 
     # DONE
     @commands.command(name="dev", help="Grant/revoke devs.")
-    @sys_owner_predicator()
+    @sysadmin_predicator()
     async def create_developer_text_command(
         self,
         ctx: commands.Context,
@@ -212,4 +210,4 @@ class SystemOwnerCommands(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(SystemOwnerCommands(bot))
+    await bot.add_cog(SysAdminCommands(bot))
