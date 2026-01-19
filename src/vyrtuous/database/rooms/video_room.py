@@ -93,7 +93,7 @@ class VideoRoom(Room):
         bot = DiscordBot.get_instance()
         channel = bot.get_channel(channel_snowflake)
         now = datetime.now(timezone.utc)
-        last_trigger = cls.cooldowns.get(member_snowflake)
+        last_trigger = cls.cooldowns.get(member_snowflake, None)
         if last_trigger and now - last_trigger < cls.COOLDOWN:
             return
         cls.cooldowns[member_snowflake] = now

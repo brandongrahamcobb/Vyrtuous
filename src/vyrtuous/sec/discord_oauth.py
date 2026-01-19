@@ -68,7 +68,7 @@ class DiscordOAuth:
             logger.error(f"Discord token exchange failed: {token_data}")
             return False
         self.access_token = token_data["access_token"]
-        self.refresh_token = token_data.get("refresh_token")
+        self.refresh_token = token_data.get("refresh_token", None)
         self.expires_in = datetime.utcnow() + datetime.timedelta(
             seconds=token_data["expires_in"]
         )
@@ -88,7 +88,7 @@ def setup_discord_routes(app, discord_oauth):
 
     @app.route("/discord_callback")
     async def discord_callback():
-        code = request.args.get("code")
+        code = request.args.get("code", None)
         if not code:
             logger.error("Missing Discord authorization code in callback.")
             return "Missing authorization code", 400

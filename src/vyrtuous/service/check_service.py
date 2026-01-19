@@ -75,7 +75,7 @@ def at_home(
     bot = DiscordBot.get_instance()
     if source.guild.id == int(bot.config["discord_testing_guild_snowflake"]):
         return True
-    raise NotAtHome()
+    return False
 
 
 async def is_moderator(
@@ -390,50 +390,25 @@ async def member_is_moderator(
     return True
 
 
-async def resolve_highest_permission_role(
-    member_snowflake: int, channel_snowflake=None, guild_snowflake=None
-):
-    try:
-        if await member_is_system_owner(member_snowflake=member_snowflake):
-            return PERMISSION_TYPES.index("System Owner")
-    except NotSystemOwner as e:
-        logger.warning(str(e).capitalize())
-    try:
-        if await member_is_developer(member_snowflake=member_snowflake):
-            return PERMISSION_TYPES.index("Developer")
-    except NotDeveloper as e:
-        logger.warning(str(e).capitalize())
-    try:
-        if await member_is_guild_owner(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-        ):
-            return PERMISSION_TYPES.index("Guild Owner")
-    except NotGuildOwner as e:
-        logger.warning(str(e).capitalize())
-    try:
-        if await member_is_administrator(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-        ):
-            return PERMISSION_TYPES.index("Administrator")
-    except NotAdministrator as e:
-        logger.warning(str(e).capitalize())
-    if channel_snowflake:
-        try:
-            if await member_is_coordinator(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member_snowflake,
-            ):
-                return PERMISSION_TYPES.index("Coordinator")
-        except NotCoordinator as e:
-            logger.warning(str(e).capitalize())
-        try:
-            if await member_is_moderator(
-                channel_snowflake=channel_snowflake,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member_snowflake,
-            ):
-                return PERMISSION_TYPES.index("Moderator")
-        except NotModerator as e:
-            logger.warning(str(e).capitalize())
-    return PERMISSION_TYPES.index("Everyone")
+async def has_equal_or_lower_role(
+    source, member_snowflake: int, sender_snowflake: int
+) -> bool:
+    kwargs = {
+        "channel_snowflake": source.channel.id,
+        "guild_snowflake": source.guild.id,
+        "member_snowflake": sender_snowflake,
+    }
+    sender_name = await resolve_highest_permission_role(**kwargs)
+    sender_rank = PERMISSION_TYPES.index(sender_name)
+
+    kwargs.update({"member_snowflake": member_snowflake})
+    target_kwargs = kwargs
+    target_name = await resolve_highest_permission_role(**target_kwargs)
+    target_rank = PERMISSION_TYPES.index(target_name)
+
+    if sender_rank <= target_rank:
+        raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])
+
+    return False
+
+

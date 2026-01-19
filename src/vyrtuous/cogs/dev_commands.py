@@ -52,38 +52,32 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def app_backup(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(interaction)
+        state = StateService(source=interaction)
         db = Database(directory="/app/backups")
         try:
             db.create_backup_directory()
             db.execute_backup()
-        except Exception as e:
+        except RuntimeError as e:
             return await state.end(warning=str(e).capitalize())
-        try:
-            return await state.end(success=discord.File(db.file_name))
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=discord.File(db.file_name))
 
     # DONE
     @commands.command(name="backup", help="DB backup.")
     @developer_predicator()
     async def text_backup(self, ctx: commands.Context):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
         db = Database(directory="/app/backups")
         try:
             db.create_backup_directory()
             db.execute_backup()
-        except Exception as e:
+        except RuntimeError as e:
             return await state.end(warning=str(e).capitalize())
-        try:
-            return await state.end(success=discord.File(db.file_name))
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=discord.File(db.file_name))
 
     @app_commands.command(name="cogs", description="Lists cogs.")
     @developer_predicator()
     async def list_cogs_app_command(self, interaction: discord.Interaction):
-        state = StateService(interaction)
+        state = StateService(source=interaction)
         loaded, not_loaded = [], []
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"Cogs for {interaction.guild.me.name}",
@@ -102,15 +96,12 @@ class DevCommands(commands.Cog):
             )
         if not loaded and not not_loaded:
             embed.add_field(name="No cogs available.", inline=False)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=embed)
 
     @commands.command(name="cogs", help="Lists cogs.")
     @developer_predicator()
     async def list_cogs_text_command(self, ctx: commands.Context):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
         loaded, not_loaded = [], []
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"Cogs for {ctx.guild.me.name}",
@@ -129,10 +120,7 @@ class DevCommands(commands.Cog):
             )
         if not loaded and not not_loaded:
             embed.add_field(name="No cogs available.", inline=False)
-        try:
-            return await state.end(success=embed)
-        except Exception as e:
-            return await state.end(error=str(e).capitalize())
+        return await state.end(success=embed)
 
     @app_commands.command(
         name="dlog", description="Resolve or update the notes on an issue by reference."
@@ -150,7 +138,7 @@ class DevCommands(commands.Cog):
         action: str,
         notes: Optional[str] = None,
     ):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
 
         developer_log = await DeveloperLog.select(id=reference, resolved=False)
         if not developer_log:
@@ -179,10 +167,9 @@ class DevCommands(commands.Cog):
         self,
         ctx: commands.Context,
         reference: str = commands.parameter(
-            default=None, description="Specify the developer log reference ID."
+            description="Specify the developer log reference ID."
         ),
         action: str = commands.parameter(
-            default="append",
             description="Specify one of: `resolve` or `append` or `overwrite`.",
         ),
         *,
@@ -190,7 +177,7 @@ class DevCommands(commands.Cog):
             default=None, description="Optionally specify notes."
         ),
     ):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
 
         developer_log = await DeveloperLog.select(id=reference, resolved=False)
         if not developer_log:
@@ -222,11 +209,11 @@ class DevCommands(commands.Cog):
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
-        is_at_home = at_home(ctx_interaction_or_message=interaction)
+        is_at_home = at_home(source=interaction)
         target_uuid = UUID(str(target))
         title = f"{get_random_emoji()} Developer Logs"
 
-        state = StateService(interaction)
+        state = StateService(source=interaction)
 
         developer_logs = await DeveloperLog.select(id=target_uuid)
 
@@ -329,11 +316,10 @@ class DevCommands(commands.Cog):
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Optional[str] = commands.parameter(
-            default=None,
             description="Specify one of: `all`, server ID or UUID.",
         ),
+        *,
         filter: Optional[str] = commands.parameter(
             default=None,
             description="Optionally specify `resolved` or `unresolved`.",
@@ -341,11 +327,11 @@ class DevCommands(commands.Cog):
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
-        is_at_home = at_home(ctx_interaction_or_message=ctx)
+        is_at_home = at_home(source=ctx)
         target_uuid = UUID(str(target))
         title = f"{get_random_emoji()} Developer Logs"
 
-        state = StateService(ctx)
+        state = StateService(source=ctx)
 
         developer_logs = await DeveloperLog.select(id=target_uuid)
 
@@ -450,7 +436,7 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def load_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(interaction)
+        state = StateService(source=interaction)
         try:
             await interaction.client.load_extension(module)
         except commands.ExtensionError as e:
@@ -465,7 +451,7 @@ class DevCommands(commands.Cog):
     )
     @developer_predicator()
     async def load_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
         try:
             await self.bot.load_extension(module)
         except commands.ExtensionError as e:
@@ -478,14 +464,14 @@ class DevCommands(commands.Cog):
     @app_commands.command(name="ping", description="Ping me!")
     @developer_predicator()
     async def ping_app_command(self, interaction: discord.Interaction):
-        state = StateService(interaction)
+        state = StateService(source=interaction)
         return await state.end(success="Pong!")
 
     # DONE
     @commands.command(name="ping", help="Ping me!")
     @developer_predicator()
     async def ping_text_command(self, ctx: commands.Context):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
         return await state.end(success="Pong!")
 
     # DONE
@@ -496,7 +482,7 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def reload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(interaction)
+        state = StateService(source=interaction)
         try:
             await interaction.client.reload_extension(module)
         except commands.ExtensionError as e:
@@ -511,7 +497,7 @@ class DevCommands(commands.Cog):
     )
     @developer_predicator()
     async def reload_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:
@@ -529,7 +515,7 @@ class DevCommands(commands.Cog):
         spec: Optional[Literal["~", "*", "^"]] = None,
     ):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(interaction)
+        state = StateService(source=interaction)
         guilds = interaction.client.guilds
         synced = []
         if not guilds:
@@ -570,7 +556,7 @@ class DevCommands(commands.Cog):
         guilds: commands.Greedy[discord.Object],
         spec: Optional[Literal["~", "*", "^"]] = None,
     ):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
         synced = []
         if not guilds:
             if spec == "~":
@@ -608,7 +594,7 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def unload_app_command(self, interaction: discord.Interaction, module: str):
         await interaction.response.defer(ephemeral=True)
-        state = StateService(interaction)
+        state = StateService(source=interaction)
         try:
             await interaction.client.unload_extension(module)
         except commands.ExtensionError as e:
@@ -623,7 +609,7 @@ class DevCommands(commands.Cog):
     )
     @developer_predicator()
     async def unload_text_command(self, ctx: commands.Context, *, module: str):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
         try:
             await self.bot.reload_extension(module)
         except commands.ExtensionError as e:

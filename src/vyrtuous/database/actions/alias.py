@@ -77,7 +77,7 @@ class Alias(Action):
         **kwargs,
     ):
         super().__init__()
-        self.alias_class = self._ALIAS_CLASS_MAP.get(alias_type)
+        self.alias_class = self._ALIAS_CLASS_MAP.get(alias_type, None)
         self.alias_cog = self.bot.get_cog("Aliases")
         self.alias_type = alias_type
         self.alias_name = alias_name

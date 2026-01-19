@@ -27,10 +27,9 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.alias import Alias
 from vyrtuous.service.check_service import (
-    resolve_highest_permission_role,
     moderator_predicator,
-    role_check_without_specifics,
 )
+from vyrtuous.service.resolution.discord_object_service import resolve_highest_permission_role
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -65,7 +64,7 @@ class HelpCommand(commands.Cog):
             for alias in aliases:
                 grouped[alias.alias_type].append(alias.alias_name)
             for alias_type, alias_names in grouped.items():
-                help_lines = self.aliases_cog.alias_help.get(alias_type)
+                help_lines = self.aliases_cog.alias_help.get(alias_type, None)
                 if not help_lines:
                     continue
                 for alias_name in alias_names:
@@ -75,10 +74,12 @@ class HelpCommand(commands.Cog):
             return lines
 
     async def get_available_commands(
-        self, bot, ctx_or_interaction
+        self, bot, member_snowflake
     ) -> list[commands.Command]:
         available = []
-        user_highest = await resolve_highest_permission_role(source=ctx_or_interaction)
+        user_highest = await resolve_highest_permission_role(
+            member_snowflake=member_snowflake
+        )
         for command in bot.commands:
             try:
                 perm_level = await self.get_command_permission_level(bot, command)
@@ -116,9 +117,7 @@ class HelpCommand(commands.Cog):
         }
         return colors.get(perm_level, discord.Color.greyple())
 
-    async def group_commands_by_permission(
-        self, bot, ctx_or_interaction, commands_list
-    ):
+    async def group_commands_by_permission(self, bot, source, commands_list):
         permission_groups = {level: [] for level in PERMISSION_TYPES}
         for command in commands_list:
             perm_level = await self.get_command_permission_level(bot, command)
@@ -128,14 +127,14 @@ class HelpCommand(commands.Cog):
                 permission_groups["Everyone"].append(command)
         return permission_groups
 
-    async def resolve_command_or_alias(self, ctx_or_interaction, name: str):
+    async def resolve_command_or_alias(self, source, name: str):
         cmd = self.bot.get_command(name.lower())
         if cmd:
             return ("command", cmd)
         alias = await Alias.select(
-            alias_name=name.lower(), guild_snowflake=ctx_or_interaction.guild.id
+            alias_name=name.lower(), guild_snowflake=source.guild.id
         )
-        if alias and alias.guild_snowflake == ctx_or_interaction.guild.id:
+        if alias and alias.guild_snowflake == source.guild.id:
             return ("alias", alias)
         return (None, None)
 
@@ -161,10 +160,10 @@ class HelpCommand(commands.Cog):
             func = func.__wrapped__
         return func
 
-    async def get_permission_filtered_aliases(self, ctx_or_interaction):
+    async def get_permission_filtered_aliases(self, source):
         aliases = await Alias.select(
-            channel_snowflake=ctx_or_interaction.channel.id,
-            guild_snowflake=ctx_or_interaction.guild.id,
+            channel_snowflake=source.channel.id,
+            guild_snowflake=source.guild.id,
         )
         if aliases:
             grouped = defaultdict(list)
@@ -191,21 +190,15 @@ class HelpCommand(commands.Cog):
     async def help_app_command(
         self, interaction: discord.Interaction, command_name: Optional[str] = None
     ):
-        state = StateService(interaction)
+        state = StateService(source=interaction)
         bot = interaction.client
         pages, param_details, parameters = [], [], []
         if command_name:
             kind, obj = await self.resolve_command_or_alias(interaction, command_name)
             if not kind:
-                try:
-                    return await state.end(
-                        warning=f"Command or alias `{command_name}` not found."
-                    )
-                except Exception as e:
-                    try:
-                        return await state.end(warning=str(e).capitalize())
-                    except Exception as e:
-                        return await state.end(error=str(e).capitalize())
+                return await state.end(
+                    warning=f"Command or alias `{command_name}` not found."
+                )
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -253,26 +246,13 @@ class HelpCommand(commands.Cog):
                             value="\n".join(param_details),
                             inline=False,
                         )
-                        try:
-                            return await state.end(success=embed)
-                        except Exception as e:
-                            try:
-                                return await state.end(warning=str(e).capitalize())
-                            except Exception as e:
-                                return await state.end(error=str(e).capitalize())
-            if kind == "alias":
+                        return await state.end(success=embed)
                 alias = obj
-                help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
+                help_lines = self.aliases_cog.alias_help.get(alias.alias_type, None)
                 if not help_lines:
-                    try:
-                        return await state.end(
-                            warning=f"No help available for `{alias.alias_name}`."
-                        )
-                    except Exception as e:
-                        try:
-                            return await state.end(warning=str(e).capitalize())
-                        except Exception as e:
-                            return await state.end(error=str(e).capitalize())
+                    return await state.end(
+                        warning=f"No help available for `{alias.alias_name}`."
+                    )
                 embed = discord.Embed(
                     title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
                     description=f"Alias for **{alias.alias_type}**",
@@ -283,14 +263,8 @@ class HelpCommand(commands.Cog):
                     value="\n".join(f"• {line}" for line in help_lines),
                     inline=False,
                 )
-                try:
-                    return await state.end(success=embed)
-                except Exception as e:
-                    try:
-                        return await state.end(warning=str(e).capitalize())
-                    except Exception as e:
-                        return await state.end(error=str(e).capitalize())
-        all_commands = await self.get_available_commands(bot, interaction)
+                return await state.end(success=embed)
+        all_commands = await self.get_available_commands(bot, interaction.user.id)
         permission_groups = await self.group_commands_by_permission(
             bot, interaction, all_commands
         )
@@ -312,7 +286,9 @@ class HelpCommand(commands.Cog):
                 perm_alias_map[perm_level_for_alias].append(
                     f"**{alias.alias_name}** – {short_desc}"
                 )
-        user_highest = await resolve_highest_permission_role(source=interaction)
+        user_highest = await resolve_highest_permission_role(
+            member_snowflake=interaction.user.id
+        )
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
             if PERMISSION_TYPES.index(perm_level) > user_index:
@@ -347,41 +323,23 @@ class HelpCommand(commands.Cog):
                 embed.add_field(name="Aliases", value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            try:
-                return await state.end(
-                    warning="\U000026a0\U0000fe0f No commands available to you."
-                )
-            except Exception as e:
-                try:
-                    return await state.end(warning=str(e).capitalize())
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            try:
-                return await state.end(warning=str(e).capitalize())
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(
+                warning="\U000026a0\U0000fe0f No commands available to you."
+            )
+        return await state.end(success=pages)
 
     @commands.command(name="help")
     @moderator_predicator()
     async def help_text_command(self, ctx, *, command_name: str = None):
-        state = StateService(ctx)
+        state = StateService(source=ctx)
         bot = ctx.bot
         pages, param_details, parameters = [], [], []
         if command_name:
             kind, obj = await self.resolve_command_or_alias(ctx, command_name)
             if not kind:
-                try:
-                    return await state.end(
-                        warning=f"Command or alias `{command_name}` not found."
-                    )
-                except Exception as e:
-                    try:
-                        return await state.end(warning=str(e).capitalize())
-                    except Exception as e:
-                        return await state.end(error=str(e).capitalize())
+                return await state.end(
+                    warning=f"Command or alias `{command_name}` not found."
+                )
             if kind == "command":
                 cmd = obj
                 embed = discord.Embed(
@@ -429,26 +387,14 @@ class HelpCommand(commands.Cog):
                             value="\n".join(param_details),
                             inline=False,
                         )
-                        try:
-                            return await state.end(success=embed)
-                        except Exception as e:
-                            try:
-                                return await state.end(warning=str(e).capitalize())
-                            except Exception as e:
-                                return await state.end(error=str(e).capitalize())
+                        return await state.end(success=embed)
             if kind == "alias":
                 alias = obj
-                help_lines = self.aliases_cog.alias_help.get(alias.alias_type)
+                help_lines = self.aliases_cog.alias_help.get(alias.alias_type, None)
                 if not help_lines:
-                    try:
-                        return await state.end(
-                            warning=f"No help available for `{alias.alias_name}`."
-                        )
-                    except Exception as e:
-                        try:
-                            return await state.end(warning=str(e).capitalize())
-                        except Exception as e:
-                            return await state.end(error=str(e).capitalize())
+                    return await state.end(
+                        warning=f"No help available for `{alias.alias_name}`."
+                    )
                 embed = discord.Embed(
                     title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
                     description=f"Alias for **{alias.alias_type}**",
@@ -459,14 +405,8 @@ class HelpCommand(commands.Cog):
                     value="\n".join(f"• {line}" for line in help_lines),
                     inline=False,
                 )
-                try:
-                    return await state.end(success=embed)
-                except Exception as e:
-                    try:
-                        return await state.end(warning=str(e).capitalize())
-                    except Exception as e:
-                        return await state.end(error=str(e).capitalize())
-        all_commands = await self.get_available_commands(bot, ctx)
+                return await state.end(success=embed)
+        all_commands = await self.get_available_commands(bot, ctx.author.id)
         permission_groups = await self.group_commands_by_permission(
             bot, ctx, all_commands
         )
@@ -487,7 +427,9 @@ class HelpCommand(commands.Cog):
                 perm_alias_map[perm_level_for_alias].append(
                     f"**{alias.alias_name}** – {short_desc}"
                 )
-        user_highest = await role_check_without_specifics(ctx)
+        user_highest = await resolve_highest_permission_role(
+            member_snowflake=ctx.author.id
+        )
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
             if PERMISSION_TYPES.index(perm_level) > user_index:
@@ -522,22 +464,8 @@ class HelpCommand(commands.Cog):
                 embed.add_field(name="Aliases", value=aliases_text, inline=False)
             pages.append(embed)
         if not pages:
-            try:
-                return await state.end(
-                    warning="\U000026a0\U0000fe0f No commands available to you."
-                )
-            except Exception as e:
-                try:
-                    return await state.end(warning=str(e).capitalize())
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
-        try:
-            return await state.end(success=pages)
-        except Exception as e:
-            try:
-                return await state.end(warning=str(e).capitalize())
-            except Exception as e:
-                return await state.end(error=str(e).capitalize())
+            return await state.end(warning="No commands available to you.")
+        return await state.end(success=pages)
 
 
 async def setup(bot: DiscordBot):

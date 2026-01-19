@@ -1,0 +1,83 @@
+
+import discord
+
+from vyrtuous.tests.integration.mock_discord_bot import MockBot
+from vyrtuous.tests.integration.mock_discord_state import MockState
+
+GUILD_ID = 10000000000000500
+GUILD_NAME = "Guild Name"
+GUILD_DATA = {
+    "id": GUILD_ID,
+    "name": GUILD_NAME,
+    "icon": None,
+    "splash": None,
+    "discovery_splash": None,
+    "owner_id": 154749533429956608,
+    "region": None,
+    "afk_channel_id": None,
+    "afk_timeout": 300,
+    "widget_enabled": False,
+    "widget_channel_id": None,
+    "verification_level": 0,
+    "default_message_notifications": 0,
+    "explicit_content_filter": 0,
+    "roles": [],
+    "emojis": [],
+    "features": [],
+    "mfa_level": 0,
+    "application_id": None,
+    "system_channel_id": None,
+    "system_channel_flags": 0,
+    "rules_channel_id": None,
+    "joined_at": "2025-01-01T00:00:00.000000+00:00",
+    "large": False,
+    "member_count": 0,
+    "voice_states": {},
+    "members": [],
+    "channels": [],
+    "presences": {},
+    "max_presences": None,
+    "max_members": None,
+    "vanity_url_code": None,
+    "description": None,
+    "banner": None,
+    "premium_tier": 0,
+    "premium_subscription_count": 0,
+    "preferred_locale": "en-US",
+    "public_updates_channel_id": None,
+    "max_video_channel_users": 25,
+    "approximate_member_count": None,
+    "approximate_presence_count": None,
+    "nsfw_level": 0,
+}
+
+class MockGuild(discord.Guild):
+
+    def __init__(self, bot: MockBot, channels, members, roles, state: MockState, **overrides):
+        data = GUILD_DATA.copy()
+        data.update(overrides)
+        super().__init__(data=data, state=state)
+        self._channels = channels
+        self._members = members
+        self._roles = roles
+
+    def get_channel(self, channel_snowflake):
+        if channel_snowflake is None:
+            return None
+        for channel in self._channels:
+            if channel.id == channel_snowflake:
+                return channel
+
+    def get_member(self, member_snowflake):
+        if member_snowflake is None:
+            return None
+        for member in self._members:
+            if member.id == member_snowflake:
+                return member
+
+    def get_role(self, role_snowflake):
+        if role_snowflake is None:
+            return None
+        for role in self._roles:
+            if role.id == role_snowflake:
+                return role

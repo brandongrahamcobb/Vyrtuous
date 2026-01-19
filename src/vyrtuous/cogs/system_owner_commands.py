@@ -44,7 +44,7 @@ class SystemOwnerCommands(commands.Cog):
         self.message_service = MessageService(self.bot, self.bot.db_pool)
 
     # DONE
-    @app_commands.command(name="adev", description="Assign developer.")
+    @app_commands.command(name="assign", description="Assign developer.")
     @app_commands.describe(
         reference="Include an issue reference ID",
         member="Tag a member or include their ID",
@@ -56,8 +56,8 @@ class SystemOwnerCommands(commands.Cog):
         reference: str,
         member: AppMemberSnowflake,
     ):
-        state = StateService(interaction)
-        do = DiscordObject(source=interaction)
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         member_dict = await do.determine_from_target(target=member)
         kwargs = member_dict["columns"]
@@ -97,20 +97,20 @@ class SystemOwnerCommands(commands.Cog):
             )
 
     # DONE
-    @commands.command(name="adev", help="Assign developer.")
+    @commands.command(name="assign", help="Assign developer.")
     @sys_owner_predicator()
     async def toggle_issue_to_developer_text_command(
         self,
         ctx: commands.Context,
         reference: str = commands.parameter(
-            default=None, description="Include an issue reference ID"
+            description="Include an issue reference ID"
         ),
         member: MemberSnowflake = commands.parameter(
-            default=None, description="Tag a member or include their ID"
+            description="Tag a member or include their ID"
         ),
     ):
-        state = StateService(ctx)
-        do = DiscordObject(source=ctx)
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         member_dict = await do.determine_from_target(target=member)
         kwargs = member_dict["columns"]
@@ -157,8 +157,9 @@ class SystemOwnerCommands(commands.Cog):
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
         action = None
-        state = StateService(interaction)
-        do = DiscordObject(source=interaction)
+
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         member_dict = await do.determine_from_target(target=member)
         kwargs = member_dict["columns"]
@@ -184,12 +185,13 @@ class SystemOwnerCommands(commands.Cog):
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(
-            default=None, description="Tag a member or include their ID"
+            description="Tag a member or include their ID"
         ),
     ):
         action = None
-        state = StateService(ctx)
-        do = DiscordObject(source=ctx)
+
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         member_dict = await do.determine_from_target(target=member)
         kwargs = member_dict["columns"]

@@ -35,7 +35,7 @@ from vyrtuous.tests.black_box.test_suite import (
     text_channel,
 )
 from vyrtuous.service.logging_service import logger
-from vyrtuous.service.resolution.discord_object_service import determine_target_type
+from vyrtuous.service.resolution.discord_object_service import DiscordObject
 
 
 @pytest.mark.asyncio
@@ -68,5 +68,6 @@ async def test_resolve_target(
     )
     for key, value in dictionary.items():
         ctx = await prepare_context(bot, message, "!")
-        obj = await determine_target_type(ctx, value)
+        do = DiscordObject(source=ctx)
+        obj = await do.determine_from_target(ctx, value)
         assert isinstance(obj, discord_object_type)

@@ -210,7 +210,7 @@ class DurationObject:
         if not s:
             self.unit = "h"
         else:
-            unit = self.UNIT_MAP.get(s)
+            unit = self.UNIT_MAP.get(s, None)
             if not unit:
                 for known in self.UNIT_MAP.keys():
                     if s.startswith(known):

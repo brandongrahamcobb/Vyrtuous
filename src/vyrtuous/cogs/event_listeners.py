@@ -43,9 +43,11 @@ from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.rooms.video_room import VideoRoom
 from vyrtuous.database.settings.cap import Cap
 from vyrtuous.properties.duration import DurationObject
-from vyrtuous.service.check_service import (
-    has_equal_or_higher_role,
+from vyrtuous.service.resolution.discord_object_service import (
+    DiscordObjectNotFound,
+    resolve_highest_permission_role
 )
+
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -431,9 +433,10 @@ class EventListeners(commands.Cog):
 
         state = StateService(message)
 
-        channel_obj = await message.guild.get_channel(alias.channel_snowflake)
-        member_obj = await message.guild.get_member(args[1])
-        executor_role = await has_equal_or_higher_role(
+        channel_obj = message.guild.get_channel(alias.channel_snowflake)
+        member_obj = message.guild.get_member(args[1])
+        print(member_obj)
+        executor_role = resolve_highest_permission_role(
             source=message,
             channel_snowflake=channel_obj.id,
             guild_snowflake=message.guild.id,
@@ -466,13 +469,10 @@ class EventListeners(commands.Cog):
         if alias.alias_type == alias_class.UNDO:
             action_modification = True
             if not action_existing:
-                try:
-                    return await state.end(
-                        warning=f"No current {alias_class.SINGULAR} for {member_obj.mention} exists in "
-                        f"{channel_obj.mention}."
-                    )
-                except Exception as e:
-                    return await state.end(error=str(e).capitalize())
+                return await state.end(
+                    warning=f"No current {alias_class.SINGULAR} for {member_obj.mention} exists in "
+                    f"{channel_obj.mention}."
+                )
             await alias_class.delete(
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=message.guild.id,
@@ -508,8 +508,7 @@ class EventListeners(commands.Cog):
         if action_information["action_duration"].number != 0 and action_existing:
             if action_information["action_expires_in"].total_seconds() < 0:
                 return await state.end(
-                    warning="\U000026a0\U0000fe0f "
-                    "You are not authorized to decrease "
+                    warning="You are not authorized to decrease "
                     "the duration below the current time."
                 )
         if (
@@ -524,7 +523,6 @@ class EventListeners(commands.Cog):
                     warning=f"Cannot set the {alias_class.SINGULAR} beyond {duration_str} as a "
                     f"{executor_role} in {channel_obj.mention}."
                 )
-
         where_kwargs = {
             "channel_snowflake": action_information["action_channel_snowflake"],
             "guild_snowflake": action_information["action_guild_snowflake"],
@@ -557,31 +555,24 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        state = StateService(ctx)
-        match type(error):
-            case commands.BadArgument:
-                return await state.end(error=f"\U000026a0\U0000fe0f{error}")
-            case commands.CheckFailure:
-                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-            case commands.MissingRequiredArgument:
-                missing = error.param.name
-                return await state.end(
-                    error=f"\U000026a0\U0000fe0f "
-                    f"Missing required argument: `{missing}`"
-                )
-            case ValueError():
-                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
+        state = StateService(source=ctx)
+        if isinstance(error, commands.BadArgument):
+            return await state.end(error=str(error))
+        elif isinstance(error, commands.CheckFailure):
+            return await state.end(error=str(error))
+        elif isinstance(error, commands.MissingRequiredArgument):
+            missing = error.param.name
+            return await state.end(error=f"Missing required argument: `{missing}`")
 
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
-        state = StateService(interaction)
-        match type(error):
-            case app_commands.BadArgument:
-                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-            case app_commands.CheckFailure:
-                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
-            case ValueError():
-                return await state.end(error=f"\U000026a0\U0000fe0f {error}")
+        state = StateService(source=interaction)
+        if isinstance(error, app_commands.BadArgument):
+            return await state.end(error=str(error))
+        elif isinstance(error, app_commands.CheckFailure):
+            return await state.end(error=str(error))
+        elif isinstance(error, DiscordObjectNotFound()):
+            return await state.end(error=str(error))
 
     #    @commands.Cog.listener()
     #    async def on_command(self, ctx):

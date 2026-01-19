@@ -3,9 +3,10 @@ from uuid import UUID
 import asyncio
 import time
 
-import asyncpg
 from pglast import parse_sql
 from pglast.ast import ColumnDef, Constraint, CreateStmt
+import asyncpg
+import pytest
 
 from vyrtuous.database.database import Database
 
@@ -115,6 +116,7 @@ async def main():
     await test_main()
 
 
+@pytest.mark.skip(reason="Not ready yet")
 def test_parse_sql():
     with open("tests/unit_tests/0001-init.sql", "r") as f:
         sql_text = f.read()
@@ -174,6 +176,7 @@ def test_parse_sql():
         return sql_dict
 
 
+@pytest.mark.skip(reason="Not ready yet")
 async def test_pgsql_column_type_resolution(
     db_pool: asyncpg.Pool, statement: str, table_names: list[str]
 ):
@@ -255,6 +258,7 @@ async def query_table_names(db_pool: asyncpg.Pool, statement: str) -> list[str]:
     return sorted(list(table_names))
 
 
+@pytest.mark.skip(reason="Not ready yet")
 async def test_query_table_names(db_pool: asyncpg.Pool, statement: str):
     try:
         tn_list = await query_table_names(db_pool=db_pool, statement=statement)

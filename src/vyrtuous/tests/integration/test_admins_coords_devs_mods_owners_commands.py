@@ -1,5 +1,4 @@
-"""room.py The purpose of this program is to inherit from the DatabaseFactory to provide a parent to room classes.
-
+"""test_chown_temp_temps_xtemp_commands.py The purpose of this program is to black box test the temporary room commands.
 Copyright (C) 2025  https://gitlab.com/vyrtuous/vyrtuous
 
 This program is free software: you can redistribute it and/or modify
@@ -16,8 +15,22 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from vyrtuous.database.database_factory import DatabaseFactory
+from typing import Optional
 
+import pytest
 
-class Room(DatabaseFactory):
-    pass
+from vyrtuous.tests.integration.mock_discord_bot import bot
+from vyrtuous.tests.integration.test_suite import send_message
+
+NOT_PRIVILEGED_AUTHOR_ID = 10000000000000002
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "command",
+    [
+        ("!admins"),
+    ],
+)
+async def test_admins_coords_devs_mods_owners_commands(bot, command: Optional[str]):
+    captured = await send_message(bot=bot, content="!admins")
+    print(captured.content)

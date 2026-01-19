@@ -48,6 +48,7 @@ from vyrtuous.properties.snowflake import (
 from vyrtuous.service.check_service import (
     at_home,
     check,
+    has_equal_or_lower_role,
     member_is_administrator,
     member_is_coordinator,
     member_is_developer,
@@ -58,12 +59,12 @@ from vyrtuous.service.check_service import (
 )
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.scope_service import member_relevant_objects_dict
 from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.resolution.discord_object_service import DiscordObject
 from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
-    resolve_objects,
     generate_skipped_channels,
     generate_skipped_guilds,
     generate_skipped_members,
@@ -82,7 +83,7 @@ class ModeratorCommands(commands.Cog):
 
     @app_commands.command(name="admins", description="Lists admins.")
     @app_commands.describe(
-        target="Specify one of: `all`, channel ID/mention, " "server ID or empty."
+        target="Specify one of: `all`, channel ID/mention, " "or server ID."
     )
     @moderator_predicator()
     async def list_administrators_app_command(
@@ -91,13 +92,13 @@ class ModeratorCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = "{get_random_emoji()} {Administrator.PLURAL}"
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
         administrators = await Administrator.select(**kwargs)
@@ -137,8 +138,10 @@ class ModeratorCommands(commands.Cog):
                     for role_snowflake in primary_dictionary
                     if guild.get_role(role_snowflake)
                 ]
-                if not thumbnail and object_dict["type"] == discord.Member:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                if not thumbnail and object_dict.get("type", None) == discord.Member:
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 else:
                     member_line = f"**User:** {member.mention}"
@@ -186,25 +189,23 @@ class ModeratorCommands(commands.Cog):
         ctx: commands.Context,
         *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: `all`, "
-            "channel ID/mention, server ID or empty.",
+            description="Specify one of: `all`, " "channel ID/mention or server ID.",
         ),
     ):
+        print("test")
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = "{get_random_emoji()} {Administrator.PLURAL}"
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
         administrators = await Administrator.select(**kwargs)
-
         for administrator in administrators:
             guild_dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
             guild_dictionary[administrator.guild_snowflake]["members"].setdefault(
@@ -240,15 +241,16 @@ class ModeratorCommands(commands.Cog):
                     for role_snowflake in primary_dictionary
                     if guild.get_role(role_snowflake)
                 ]
-                if not thumbnail and object_dict["type"] == discord.Member:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                if not thumbnail and object_dict.get("type", None) == discord.Member:
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 else:
                     member_line = f"**User:** {member.mention}"
                     if role_mentions:
                         member_line += "**Roles:** " + "\n".join(role_mentions)
                         lines.append(member_line)
-                print("test")
                 field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(
@@ -283,7 +285,7 @@ class ModeratorCommands(commands.Cog):
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, server ID or empty."
+        target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     @moderator_predicator()
     async def list_bans_app_command(
@@ -292,16 +294,16 @@ class ModeratorCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = "{get_random_emoji()} {Ban.PLURAL}"
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Ban.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        bans = Ban.select(**kwargs)
+        bans = await Ban.select(**kwargs)
 
         for ban in bans:
             guild_dictionary.setdefault(ban.guild_snowflake, {"members": {}})
@@ -334,10 +336,12 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, ban_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not object_dict["type"] != discord.Member:
+                if not object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in ban_dictionary.get(
                     "bans"
@@ -345,7 +349,7 @@ class ModeratorCommands(commands.Cog):
                     channel = guild.get_channel(channel_snowflake)
                     lines.append(f"**Channel:** {channel.mention}")
                     lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
-                    if object_dict["type"] == discord.Member:
+                    if object_dict.get("type", None) == discord.Member:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -386,25 +390,24 @@ class ModeratorCommands(commands.Cog):
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
+        print("test")
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = "{get_random_emoji()} {Ban.PLURAL}"
+        title = f"{get_random_emoji()} {Ban.PLURAL} ({target})"
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        bans = Ban.select(**kwargs)
+        bans = await Ban.select(**kwargs)
 
         for ban in bans:
             guild_dictionary.setdefault(ban.guild_snowflake, {"members": {}})
@@ -437,10 +440,12 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, ban_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in ban_dictionary.get(
                     "bans"
@@ -448,7 +453,7 @@ class ModeratorCommands(commands.Cog):
                     channel = guild.get_channel(channel_snowflake)
                     lines.append(f"**Channel:** {channel.mention}")
                     lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
-                    if object_dict["type"] == discord.Member:
+                    if object_dict.get("type", None) == discord.Member:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -487,7 +492,7 @@ class ModeratorCommands(commands.Cog):
     @app_commands.command(name="caps", description="List caps.")
     @moderator_predicator()
     @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, server ID or empty."
+        target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     async def list_caps_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
@@ -498,12 +503,12 @@ class ModeratorCommands(commands.Cog):
         title = f"{get_random_emoji()} {Cap.PLURAL}"
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        caps = Cap.select(**kwargs)
+        caps = await Cap.select(**kwargs)
         for cap in caps:
             guild_dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
             guild_dictionary[cap.guild_snowflake]["channels"].setdefault(
@@ -578,10 +583,8 @@ class ModeratorCommands(commands.Cog):
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
@@ -590,12 +593,12 @@ class ModeratorCommands(commands.Cog):
         title = f"{get_random_emoji()} {Cap.PLURAL}"
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        caps = Cap.select(**kwargs)
+        caps = await Cap.select(**kwargs)
 
         for cap in caps:
             guild_dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
@@ -669,29 +672,24 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name="cmds", description="List aliases.")
     @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, server ID or empty."
+        target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     @moderator_predicator()
     async def list_commands_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = StateService(source=interaction)
-
-        aliases, title = await resolve_objects(
-            source=interaction,
-            obj=Alias,
-            state=state,
-            target=target,
-        )
-
-        try:
-            is_at_home = at_home(source=interaction)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
-        channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
+        chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        is_at_home = at_home(source=interaction)
+        title = f"{get_random_emoji()} Command Aliases"
+
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+
+        object_dict = await do.determine_from_target(target=target)
+        kwargs = object_dict["columns"]
+
+        aliases = await Alias.select(**kwargs)
 
         for alias in aliases:
             guild_dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
@@ -765,26 +763,22 @@ class ModeratorCommands(commands.Cog):
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
-
-        aliases, title = await resolve_objects(
-            source=ctx, obj=Alias, state=state, target=target
-        )
-
-        try:
-            is_at_home = at_home(source=ctx)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
-        channel_lines, chunk_size, field_count, lines, pages = [], 7, 0, [], []
+        chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        is_at_home = at_home(source=ctx)
+        title = f"{get_random_emoji()} Command Aliases"
+
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
+
+        object_dict = await do.determine_from_target(target=target)
+        kwargs = object_dict["columns"]
+
+        aliases = await Alias.select(**kwargs)
 
         for alias in aliases:
             guild_dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
@@ -854,7 +848,7 @@ class ModeratorCommands(commands.Cog):
 
     @app_commands.command(name="coords", description="Lists coords.")
     @app_commands.describe(
-        target="Specify one of: `all`, channel ID/mention, server ID or empty."
+        target="Specify one of: `all`, channel ID/mention, or server ID."
     )
     @moderator_predicator()
     async def list_coordinators_app_command(
@@ -863,16 +857,16 @@ class ModeratorCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Coordinator.PLURAL}"
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Coordinator.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        coordinators = Coordinator.select(**kwargs)
+        coordinators = await Coordinator.select(**kwargs)
 
         for coordinator in coordinators:
             guild_dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
@@ -906,11 +900,13 @@ class ModeratorCommands(commands.Cog):
                 "members"
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in coordinator_dictionary.get(
                     "coordinators"
@@ -956,25 +952,23 @@ class ModeratorCommands(commands.Cog):
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: `all`, channel ID/mention, server ID or empty.",
+            description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Coordinator.PLURAL}"
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Coordinator.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        coordinators = Coordinator.select(**kwargs)
+        coordinators = await Coordinator.select(**kwargs)
 
         for coordinator in coordinators:
             guild_dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
@@ -1008,11 +1002,13 @@ class ModeratorCommands(commands.Cog):
                 "members"
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in coordinator_dictionary.get(
                     "coordinators"
@@ -1054,9 +1050,7 @@ class ModeratorCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name="del", description="Delete message.")
-    @app_commands.describe(
-        message="Message ID", channel="Tag a channel or include its ID"
-    )
+    @app_commands.describe(message="Message ID")
     @moderator_predicator()
     async def delete_message_app_command(
         self, interaction: discord.Interaction, message: AppMessageSnowflake
@@ -1080,9 +1074,7 @@ class ModeratorCommands(commands.Cog):
     async def delete_message_text_command(
         self,
         ctx: commands.Context,
-        message: MessageSnowflake = commands.parameter(
-            default=None, description="Message snowflake"
-        ),
+        message: MessageSnowflake = commands.parameter(description="Message snowflake"),
     ):
         state = StateService(source=ctx)
 
@@ -1099,7 +1091,7 @@ class ModeratorCommands(commands.Cog):
 
     # DONE
     @app_commands.command(name="devs", description="List devs.")
-    @app_commands.describe(target="Specify one of: 'all', server ID or empty.")
+    @app_commands.describe(target="Specify one of: 'all', or server ID.")
     @moderator_predicator()
     async def list_developers_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
@@ -1107,16 +1099,16 @@ class ModeratorCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Developer.PLURAL}"
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        developers = Developer.select(**kwargs)
+        developers = await Developer.select(**kwargs)
 
         for developer in developers:
             guild_dictionary.setdefault(developer.guild_snowflake, {"members": {}})
@@ -1147,11 +1139,13 @@ class ModeratorCommands(commands.Cog):
                 "members"
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 if field_count >= chunk_size:
                     embed.add_field(
@@ -1193,22 +1187,22 @@ class ModeratorCommands(commands.Cog):
         ctx: commands.Context,
         *,
         target: Optional[str] = commands.parameter(
-            default=None, description="'all', a specific server or user mention/ID"
+            description="'all', a specific server or user mention/ID"
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Developer.PLURAL}"
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        developers = Developer.select(**kwargs)
+        developers = await Developer.select(**kwargs)
 
         for developer in developers:
             guild_dictionary.setdefault(developer.guild_snowflake, {"members": {}})
@@ -1239,11 +1233,13 @@ class ModeratorCommands(commands.Cog):
                 "members"
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 if field_count >= chunk_size:
                     embed.add_field(
@@ -1286,16 +1282,16 @@ class ModeratorCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Flag.PLURAL}"
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Flag.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        flags = Flag.select(**kwargs)
+        flags = await Flag.select(**kwargs)
 
         for flag in flags:
             guild_dictionary.setdefault(flag.guild_snowflake, {"members": {}})
@@ -1329,17 +1325,19 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, flag_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not object_dict["type"] != discord.Member:
+                if not object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in flag_dictionary.get(
                     "flags", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
                     lines.append(f"**Channel:** {channel.mention}")
-                    if object_dict["type"] == discord.Member:
+                    if object_dict.get("type", None) == discord.Member:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -1380,25 +1378,23 @@ class ModeratorCommands(commands.Cog):
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Flag.PLURAL}"
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Flag.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        flags = Flag.select(**kwargs)
+        flags = await Flag.select(**kwargs)
 
         for flag in flags:
             guild_dictionary.setdefault(flag.guild_snowflake, {"members": {}})
@@ -1432,17 +1428,19 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, flag_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not object_dict["type"] != discord.Member:
+                if not object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in flag_dictionary.get(
                     "flags", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
                     lines.append(f"**Channel:** {channel.mention}")
-                    if object_dict["type"] == discord.Member:
+                    if object_dict.get("type", None) == discord.Member:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -1480,24 +1478,25 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name="ls", description="List new vegans.")
     @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty."
+        target="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID."
     )
+    @moderator_predicator()
     async def list_new_vegans_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Vegan.PLURAL}"
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Vegan.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        vegans = Vegan.select(**kwargs)
+        vegans = await Vegan.select(**kwargs)
 
         for vegan in vegans:
             guild_dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
@@ -1524,12 +1523,12 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, vegan_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not object_dict["type"] != discord.Member:
+                if not object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                 else:
                     if not thumbnail:
                         embed.set_thumbnail(
-                            url=object_dict["object"].display_avatar.url
+                            url=object_dict.get("object", None).display_avatar.url
                         )
                         thumbnail = True
                 field_count += 1
@@ -1567,28 +1566,28 @@ class ModeratorCommands(commands.Cog):
 
     # DONE
     @commands.command(name="ls", help="List new vegans.")
+    @moderator_predicator()
     async def list_new_vegans_text_command(
         self,
         ctx: commands.Context,
         *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Vegan.PLURAL}"
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Vegan.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        vegans = Vegan.select(**kwargs)
+        vegans = await Vegan.select(**kwargs)
 
         for vegan in vegans:
             guild_dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
@@ -1615,12 +1614,12 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, vegan_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                 else:
                     if not thumbnail:
                         embed.set_thumbnail(
-                            url=object_dict["object"].display_avatar.url
+                            url=object_dict.get("object", None).display_avatar.url
                         )
                         thumbnail = True
                 field_count += 1
@@ -1671,7 +1670,7 @@ class ModeratorCommands(commands.Cog):
         channel: AppChannelSnowflake,
     ):
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         old_room = await TemporaryRoom.select(
             guild_snowflake=interaction.guild.id, room_name=old_name
@@ -1680,7 +1679,7 @@ class ModeratorCommands(commands.Cog):
             channel_dict = await do.determine_from_target(target=channel)
             is_owner = old_room.member_snowflake == interaction.user.id
             await check(source=interaction, lowest_role="Administrator") or is_owner
-            set_kwargs = {"channel_snowflake": channel_dict["id"]}
+            set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
             temp_where_kwargs = {
                 "channel_snowflake": old_room.channel_snowflake,
                 "guild_snowflake": interaction.guild.id,
@@ -1751,15 +1750,13 @@ class ModeratorCommands(commands.Cog):
     async def migrate_temp_room_text_command(
         self,
         ctx: commands.Context,
-        old_name: str = commands.parameter(
-            default=None, description="Provide a channel name"
-        ),
+        old_name: str = commands.parameter(description="Provide a channel name"),
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
     ):
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         old_room = await TemporaryRoom.select(
             guild_snowflake=ctx.guild.id, room_name=old_name
@@ -1768,7 +1765,7 @@ class ModeratorCommands(commands.Cog):
             channel_dict = await do.determine_from_target(target=channel)
             is_owner = old_room.member_snowflake == ctx.author.id
             await check(source=ctx, lowest_role="Administrator") or is_owner
-            set_kwargs = {"channel_snowflake": channel_dict["id"]}
+            set_kwargs = {"channel_snowflake": channel_dict.get("id", None)}
             temp_where_kwargs = {
                 "channel_snowflake": old_room.channel_snowflake,
                 "guild_snowflake": ctx.guild.id,
@@ -1833,7 +1830,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name="mods", description="Lists mods.")
     @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, server ID or empty."
+        target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     @moderator_predicator()
     async def list_moderators_app_command(
@@ -1842,16 +1839,16 @@ class ModeratorCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Moderator.PLURAL}"
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Moderator.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        moderators = Moderator.select(**kwargs)
+        moderators = await Moderator.select(**kwargs)
 
         for moderator in moderators:
             guild_dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
@@ -1885,11 +1882,13 @@ class ModeratorCommands(commands.Cog):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in member_dictionary.get(
                     "moderators", {}
@@ -1935,25 +1934,23 @@ class ModeratorCommands(commands.Cog):
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {Moderator.PLURAL}"
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {Moderator.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        moderators = Moderator.select(**kwargs)
+        moderators = await Moderator.select(**kwargs)
 
         for moderator in moderators:
             guild_dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
@@ -1987,11 +1984,13 @@ class ModeratorCommands(commands.Cog):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in member_dictionary.get(
                     "moderators", {}
@@ -2039,16 +2038,16 @@ class ModeratorCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {VoiceMute.PLURAL}"
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {VoiceMute.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        voice_mutes = VoiceMute.select(target="user", **kwargs)
+        voice_mutes = await VoiceMute.select(target="user", **kwargs)
 
         for voice_mute in voice_mutes:
             guild_dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
@@ -2085,11 +2084,13 @@ class ModeratorCommands(commands.Cog):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
                     "voice_mutes", {}
@@ -2097,7 +2098,7 @@ class ModeratorCommands(commands.Cog):
                     channel = guild.get_channel(channel_snowflake)
                     lines.append(f"**Channel:** {channel.mention}")
                     lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
-                    if object_dict["type"] == discord.Member:
+                    if object_dict.get("type", None) == discord.Member:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -2139,23 +2140,22 @@ class ModeratorCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
-        title = f"{get_random_emoji()} {VoiceMute.PLURAL}"
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
+        title = f"{get_random_emoji()} {VoiceMute.PLURAL} {f'for {object_dict.get('name', None)}' if object_dict.get("type", None) == discord.Member else ''}"
         kwargs = object_dict["columns"]
 
-        voice_mutes = VoiceMute.select(target="user", **kwargs)
+        voice_mutes = await VoiceMute.select(target="user", **kwargs)
 
         for voice_mute in voice_mutes:
             guild_dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
@@ -2192,11 +2192,13 @@ class ModeratorCommands(commands.Cog):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
                     "voice_mutes", {}
@@ -2204,7 +2206,7 @@ class ModeratorCommands(commands.Cog):
                     channel = guild.get_channel(channel_snowflake)
                     lines.append(f"**Channel:** {channel.mention}")
                     lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
-                    if object_dict["type"] == discord.Member:
+                    if object_dict.get("type", None) == discord.Member:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -2249,10 +2251,15 @@ class ModeratorCommands(commands.Cog):
         channel: AppChannelSnowflake,
     ):
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
+        await has_equal_or_lower_role(
+            source=interaction,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=interaction.user.id,
+        )
         kwargs = channel_dict["columns"]
 
         stage = await Stage.select(**kwargs)
@@ -2261,7 +2268,9 @@ class ModeratorCommands(commands.Cog):
                 warning=f"No active stage found in {channel_dict['mention']}."
             )
         try:
-            await member_dict["object"].edit(mute=not member_dict["object"].voice.mute)
+            await member_dict.get("object", None).edit(
+                mute=not member_dict.get("object", None).voice.mute
+            )
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
@@ -2272,17 +2281,22 @@ class ModeratorCommands(commands.Cog):
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(
-            default=None, description="Tag a member or include their ID"
+            description="Tag a member or include their ID"
         ),
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include it's ID"
+            description="Tag a channel or include its ID."
         ),
     ):
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
+        await has_equal_or_lower_role(
+            source=ctx,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=ctx.author.id,
+        )
         kwargs = channel_dict["columns"]
 
         stage = await Stage.select(**kwargs)
@@ -2291,7 +2305,9 @@ class ModeratorCommands(commands.Cog):
                 warning=f"No active stage found in {channel_dict['mention']}."
             )
         try:
-            await member_dict["object"].edit(mute=not member_dict["object"].voice.mute)
+            await member_dict.get("object", None).edit(
+                mute=not member_dict.get("object", None).voice.mute
+            )
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
@@ -2327,29 +2343,24 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name="stages", description="List stages.")
     @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, server ID or empty."
+        target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     @moderator_predicator()
     async def list_stages_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
-        state = StateService(source=interaction)
-
-        stages, title = await resolve_objects(
-            source=interaction,
-            obj=Stage,
-            state=state,
-            target=target,
-        )
-
-        try:
-            is_at_home = at_home(source=interaction)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        is_at_home = at_home(source=interaction)
+        title = f"{get_random_emoji()} Stages"
+
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+
+        object_dict = await do.determine_from_target(target=target)
+        kwargs = object_dict["columns"]
+
+        stages = await Stage.select(**kwargs)
 
         for stage in stages:
             guild_dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
@@ -2429,24 +2440,21 @@ class ModeratorCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        state = StateService(source=ctx)
-
-        stages, title = await resolve_objects(
-            source=ctx, obj=Stage, state=state, target=target
-        )
-
-        try:
-            is_at_home = at_home(source=ctx)
-        except Exception as e:
-            logger.warning(str(e).capitalize())
-            is_at_home = False
-
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
+        is_at_home = at_home(source=ctx)
+        title = f"{get_random_emoji()} Stages"
+
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
+
+        object_dict = await do.determine_from_target(target=target)
+        kwargs = object_dict["columns"]
+
+        stages = await Stage.select(**kwargs)
 
         for stage in stages:
             guild_dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
@@ -2532,23 +2540,31 @@ class ModeratorCommands(commands.Cog):
         target: Optional[str] = None,
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
+        objects_list = []
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         member_dict = await do.determine_from_target(target=member)
+        await has_equal_or_lower_role(
+            source=interaction,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=interaction.user.id,
+        )
         kwargs = member_dict["columns"]
-        object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {object_dict['object'].PLURAL}"
 
-        objects = object_dict["object"].select(**kwargs)
+        title = f"{get_random_emoji()} Summary for {member_dict.get('name', None)}"
+        for name, object in member_relevant_objects_dict.items():
+            if target and target.lower() == name or target.lower() == "all":
+                objects = object.select(**kwargs)
+                objects_list = [*objects]
 
         guild = self.bot.get_guild(interaction.guild.id)
 
         embed = discord.Embed(
             title=title, description=guild.name, color=discord.Color.blue()
         )
-        for obj in objects:
+        for obj in objects_list:
             channel = guild.get_channel(obj.channel_snowflake)
             entries = [f"**User:** {member_dict['mention']}"]
             line = entries[0]
@@ -2566,7 +2582,9 @@ class ModeratorCommands(commands.Cog):
                     value="\n".join(lines),
                     inline=False,
                 )
-                embed.set_thumbnail(url=member_dict["object"].display_avatar.url)
+                embed.set_thumbnail(
+                    url=member_dict.get("object", None).display_avatar.url
+                )
                 embed, field_count = flush_page(embed, pages, title, guild.name)
                 lines = []
         if lines:
@@ -2575,7 +2593,7 @@ class ModeratorCommands(commands.Cog):
                 value="\n".join(lines),
                 inline=False,
             )
-            embed.set_thumbnail(url=member_dict["object"].display_avatar.url)
+            embed.set_thumbnail(url=member_dict.get("object", None).display_avatar.url)
             pages.append(embed)
             lines = []
 
@@ -2587,24 +2605,30 @@ class ModeratorCommands(commands.Cog):
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(
-            default=None, description="Specify a member ID/mention."
+            description="Specify a member ID/mention."
         ),
-        *,
         target: Optional[str] = commands.parameter(
-            default=None, description="Specify 'all' or a channel ID/mention."
+            description="Specify 'all' or a channel ID/mention."
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         member_dict = await do.determine_from_target(target=member)
+        await has_equal_or_lower_role(
+            source=ctx,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=ctx.author.id,
+        )
         kwargs = member_dict["columns"]
-        object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {object_dict['object'].PLURAL}"
 
-        objects = object_dict["object"].select(**kwargs)
+        title = f"{get_random_emoji()} Summary for {member_dict.get('name', None)}"
+        for name, object in member_relevant_objects_dict.items():
+            if target and target.lower() == name or target.lower() == "all":
+                objects = object.select(**kwargs)
+                objects_list = [*objects]
 
         guild = self.bot.get_guild(ctx.guild.id)
 
@@ -2629,7 +2653,9 @@ class ModeratorCommands(commands.Cog):
                     value="\n".join(lines),
                     inline=False,
                 )
-                embed.set_thumbnail(url=member_dict["object"].display_avatar.url)
+                embed.set_thumbnail(
+                    url=member_dict.get("object", None).display_avatar.url
+                )
                 embed, field_count = flush_page(embed, pages, title, guild.name)
                 lines = []
         if lines:
@@ -2638,7 +2664,7 @@ class ModeratorCommands(commands.Cog):
                 value="\n".join(lines),
                 inline=False,
             )
-            embed.set_thumbnail(url=member_dict["object"].display_avatar.url)
+            embed.set_thumbnail(url=member_dict.get("object", None).display_avatar.url)
             pages.append(embed)
             lines = []
 
@@ -2656,11 +2682,11 @@ class ModeratorCommands(commands.Cog):
         ) = []
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         channel_dict = await do.determine_from_target(target=channel)
 
-        for member in channel_dict["object"].members:
+        for member in channel_dict.get("object", None).members:
             try:
                 if await member_is_system_owner(member.id):
                     system_owners.append(member)
@@ -2683,14 +2709,14 @@ class ModeratorCommands(commands.Cog):
                 logger.warning(str(e).capitalize())
             try:
                 if await member_is_coordinator(
-                    channel_dict["id"], interaction.guild.id, member.id
+                    channel_dict.get("id", None), interaction.guild.id, member.id
                 ):
                     coordinators.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
                 if await member_is_moderator(
-                    channel_dict["id"], interaction.guild.id, member.id
+                    channel_dict.get("id", None), interaction.guild.id, member.id
                 ):
                     moderators.append(member)
             except commands.CheckFailure as e:
@@ -2730,8 +2756,8 @@ class ModeratorCommands(commands.Cog):
         max_pages = max(len(c[2]) for c in roles_chunks)
         for page in range(max_pages):
             embed = discord.Embed(
-                title=f"{get_random_emoji()} Survey results for {channel_dict['name']}",
-                description=f"Total surveyed: {len(channel_dict['object'].members)}",
+                title=f"{get_random_emoji()} Survey results for {channel_dict.get('name', None)}",
+                description=f"Total surveyed: {len(channel_dict.get('object', None).members)}",
                 color=discord.Color.blurple(),
             )
             for role_name, role_list, chunks in roles_chunks:
@@ -2751,9 +2777,8 @@ class ModeratorCommands(commands.Cog):
     async def stage_survey_text_command(
         self,
         ctx: commands.Context,
-        *,
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
     ):
         chunk_size, pages = 7, []
@@ -2762,11 +2787,11 @@ class ModeratorCommands(commands.Cog):
         ) = []
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         channel_dict = await do.determine_from_target(target=channel)
 
-        for member in channel_dict["object"].members:
+        for member in channel_dict.get("object", None).members:
             try:
                 if await member_is_system_owner(member.id):
                     system_owners.append(member)
@@ -2789,14 +2814,14 @@ class ModeratorCommands(commands.Cog):
                 logger.warning(str(e).capitalize())
             try:
                 if await member_is_coordinator(
-                    channel_dict["id"], ctx.guild.id, member.id
+                    channel_dict.get("id", None), ctx.guild.id, member.id
                 ):
                     coordinators.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
                 if await member_is_moderator(
-                    channel_dict["id"], ctx.guild.id, member.id
+                    channel_dict.get("id", None), ctx.guild.id, member.id
                 ):
                     moderators.append(member)
             except commands.CheckFailure as e:
@@ -2836,8 +2861,8 @@ class ModeratorCommands(commands.Cog):
         max_pages = max(len(c[2]) for c in roles_chunks)
         for page in range(max_pages):
             embed = discord.Embed(
-                title=f"{get_random_emoji()} Survey results for {channel_dict['name']}",
-                description=f"Total surveyed: {len(channel_dict['object'].members)}",
+                title=f"{get_random_emoji()} Survey results for {channel_dict.get('name', None)}",
+                description=f"Total surveyed: {len(channel_dict.get('object', None).members)}",
                 color=discord.Color.blurple(),
             )
             for role_name, role_list, chunks in roles_chunks:
@@ -2854,7 +2879,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @app_commands.command(name="tmutes", description="List text-mutes.")
     @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, member ID/mention, server ID or empty."
+        target="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID."
     )
     @moderator_predicator()
     async def list_text_mutes_app_command(
@@ -2867,12 +2892,12 @@ class ModeratorCommands(commands.Cog):
         is_at_home = at_home(source=interaction)
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        text_mutes = TextMute.select(**kwargs)
+        text_mutes = await TextMute.select(**kwargs)
 
         for text_mute in text_mutes:
             guild_dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
@@ -2909,11 +2934,13 @@ class ModeratorCommands(commands.Cog):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in text_mute_dictionary.get(
                     "text_mutes", {}
@@ -2921,7 +2948,7 @@ class ModeratorCommands(commands.Cog):
                     channel = guild.get_channel(channel_snowflake)
                     lines.append(f"**Channel:** {channel.mention}")
                     lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
-                    if object_dict["type"] == discord.Member:
+                    if object_dict.get("type", None) == discord.Member:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -2962,10 +2989,8 @@ class ModeratorCommands(commands.Cog):
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
-        *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', channel ID/mention, server ID or empty.",
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
@@ -2975,12 +3000,12 @@ class ModeratorCommands(commands.Cog):
         is_at_home = at_home(source=ctx)
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        text_mutes = TextMute.select(**kwargs)
+        text_mutes = await TextMute.select(**kwargs)
 
         for text_mute in text_mutes:
             guild_dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
@@ -3017,11 +3042,13 @@ class ModeratorCommands(commands.Cog):
                 "members", {}
             ).items():
                 member = guild.get_member(member_snowflake)
-                if object_dict["type"] != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.mention}")
                     field_count += 1
                 elif not thumbnail:
-                    embed.set_thumbnail(url=object_dict["object"].display_avatar.url)
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
                     thumbnail = True
                 for channel_snowflake, channel_dictionary in text_mute_dictionary.get(
                     "text_mutes", {}
@@ -3029,7 +3056,7 @@ class ModeratorCommands(commands.Cog):
                     channel = guild.get_channel(channel_snowflake)
                     lines.append(f"**Channel:** {channel.mention}")
                     lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
-                    if object_dict["type"] == discord.Member:
+                    if object_dict.get("type", None) == discord.Member:
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:

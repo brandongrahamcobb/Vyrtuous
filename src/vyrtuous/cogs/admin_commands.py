@@ -33,7 +33,7 @@ from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.roles.permission_role import PermissionRole
 from vyrtuous.database.rooms.stage import Stage
-from vyrtuous.database.rooms.room import (
+from vyrtuous.service.scope_service import (
     member_relevant_objects_dict,
     room_relevant_objects_dict,
 )
@@ -54,6 +54,7 @@ from vyrtuous.service.check_service import (
     administrator_predicator,
     at_home,
     check,
+    has_equal_or_lower_role,
     NotGuildOwner,
 )
 from vyrtuous.service.logging_service import logger
@@ -91,7 +92,7 @@ class AdminCommands(commands.Cog):
         alias_name="Alias/Pseudonym",
         moderation_type="One of: vegan, carnist, vmute, unvmute,"
         "ban, unban, flag, unflag, tmute, untmute, role, unrole",
-        channel="Tag a channel or include its ID",
+        channel="Tag a channel or include its ID.",
         role="Role ID (only for role/unrole)",
     )
     async def create_alias_app_command(
@@ -104,7 +105,7 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
@@ -150,16 +151,13 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         moderation_type: ModerationType = commands.parameter(
-            default=None,
             description="One of: `vegan`, `carnist`, `vmute`, "
             "`unvmute`, `ban`, `unban`, `flag`, "
             "`unflag`, `tmute`, `untmute`, `role`, `unrole`",
         ),
-        alias_name: str = commands.parameter(
-            default=None, description="Alias/Pseudonym"
-        ),
+        alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
         *,
         role: Optional[RoleSnowflake] = commands.parameter(
@@ -168,8 +166,8 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
-        channel_dict = do.determine_from_target(target=channel)
+        do = DiscordObject(ctx=ctx)
+        channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
         try:
             role_dict = await do.determine_from_target(target=role)
@@ -201,10 +199,10 @@ class AdminCommands(commands.Cog):
         return await state.end(success=msg)
 
     @app_commands.command(name="aroles", description="Administrator roles.")
-    @app_commands.describe(target="Specify one of: 'all', server ID or empty.")
+    @app_commands.describe(target="Specify one of: 'all', or server ID.")
     @administrator_predicator()
     async def list_administrator_roles_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str
     ):
         chunk_size, field_count, pages = 7, 0, []
         guild_dictionary = {}
@@ -214,8 +212,8 @@ class AdminCommands(commands.Cog):
 
         is_at_home = at_home(source=interaction)
 
-        do = DiscordObject(source=interaction)
-        object_dict = do.determine_from_target(target=target)
+        do = DiscordObject(interaction=interaction)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
         administrator_roles = await AdministratorRole.select(**kwargs)
@@ -276,10 +274,8 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: 'all', "
-            "channel ID/mention, server ID or empty.",
+        target: str = commands.parameter(
+            description="Specify one of: 'all', " "channel ID/mention, or server ID.",
         ),
     ):
         chunk_size, field_count, pages = 7, 0, []
@@ -290,9 +286,10 @@ class AdminCommands(commands.Cog):
 
         is_at_home = at_home(source=ctx)
 
-        do = DiscordObject(source=ctx)
-        object_dict = do.determine_from_target(target=target)
+        do = DiscordObject(ctx=ctx)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
+        logger.info(kwargs)
 
         administrator_roles = await AdministratorRole.select(**kwargs)
 
@@ -348,7 +345,7 @@ class AdminCommands(commands.Cog):
     @app_commands.command(name="cap", description="Cap alias duration for mods.")
     @administrator_predicator()
     @app_commands.describe(
-        channel="Tag a channel or include its ID",
+        channel="Tag a channel or include its ID.",
         moderation_type="One of: `mute`, `ban`, `tmute`",
         hours="(+|-)duration(m|h|d), 0=permanent, default=24h",
     )
@@ -363,8 +360,8 @@ class AdminCommands(commands.Cog):
 
         seconds = int(hours) * 3600
 
-        do = DiscordObject(source=interaction)
-        channel_dict = do.determine_from_target(target=channel)
+        do = DiscordObject(interaction=interaction)
+        channel_dict = await do.determine_from_target(target=channel)
 
         kwargs = channel_dict["columns"]
         kwargs.update("moderation_type", moderation_type)
@@ -398,10 +395,10 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
         moderation_type: ModerationType = commands.parameter(
-            default=None, description="One of: `mute`, `ban`, `tmute`"
+            description="One of: `mute`, `ban`, `tmute`"
         ),
         *,
         hours: int = commands.parameter(default=24, description="# of hours"),
@@ -410,8 +407,8 @@ class AdminCommands(commands.Cog):
 
         seconds = int(hours) * 3600
 
-        do = DiscordObject(source=ctx)
-        channel_dict = do.determine_from_target(target=channel)
+        do = DiscordObject(ctx=ctx)
+        channel_dict = await do.determine_from_target(target=channel)
 
         kwargs = channel_dict["columns"]
         kwargs.update("moderation_type", moderation_type)
@@ -444,17 +441,17 @@ class AdminCommands(commands.Cog):
     )
     @app_commands.describe(
         member="Tag a user or provide their ID",
-        channel="Tag a channel or provide it's ID",
+        channel="Tag a channel or provide its ID.",
     )
     @administrator_predicator()
     async def change_temp_room_owner_app_command(
         self, interaction, channel: AppChannelSnowflake, member: AppMemberSnowflake
     ):
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        channel_dict = do.determine_from_target(target=channel)
-        member_dict = do.determine_from_target(target=member)
+        channel_dict = await do.determine_from_target(target=channel)
+        member_dict = await do.determine_from_target(target=member)
 
         kwargs = {}
         kwargs.update(channel_dict["columns"])
@@ -463,8 +460,8 @@ class AdminCommands(commands.Cog):
         await TemporaryRoom.update_owner(**kwargs)
 
         return await state.end(
-            success=f"Temporary room {channel_dict['object'].mention} ownership "
-            f"transferred to {member_dict['object'].mention}."
+            success=f"Temporary room {channel_dict.get('object', None).mention} ownership "
+            f"transferred to {member_dict.get('object', None).mention}."
         )
 
     # DONE
@@ -476,17 +473,17 @@ class AdminCommands(commands.Cog):
         self,
         ctx,
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or provide it's ID"
+            description="Tag a channel or provide its ID."
         ),
         member: MemberSnowflake = commands.parameter(
-            default=None, description="Tag a user or provide their ID"
+            description="Tag a user or provide their ID"
         ),
     ):
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        channel_dict = do.determine_from_target(target=channel)
-        member_dict = do.determine_from_target(target=member)
+        channel_dict = await do.determine_from_target(target=channel)
+        member_dict = await do.determine_from_target(target=member)
 
         kwargs = {}
         kwargs.update(channel_dict["columns"])
@@ -495,8 +492,8 @@ class AdminCommands(commands.Cog):
         await TemporaryRoom.update_owner(**kwargs)
 
         return await state.end(
-            success=f"Temporary room {channel_dict['object'].mention} ownership "
-            f"transferred to {member_dict['object'].mention}."
+            success=f"Temporary room {channel_dict.get('object', None).mention} ownership "
+            f"transferred to {member_dict.get('object', None).mention}."
         )
 
     # DONE
@@ -510,8 +507,8 @@ class AdminCommands(commands.Cog):
     async def clear_channel_access_app_command(
         self, interaction: discord.Interaction, target: str, action_type: str
     ):
-        do = DiscordObject(source=interaction)
-        object_dict = do.determine_from_target(target=target)
+        do = DiscordObject(interaction=interaction)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
         if object_dict["object_type"] == discord.Member:
@@ -531,12 +528,12 @@ class AdminCommands(commands.Cog):
                         m_obj.delete(**kwargs)
                     msg = (
                         f"Deleted all associated moderation actions and "
-                        f"roles for {object_dict['object'].mention}."
+                        f"roles for {object_dict.get('object', None).mention}."
                     )
                 for singular, m_obj in member_relevant_objects_dict.items():
                     if action_type.lower() == singular:
                         m_obj.delete(**kwargs)
-                        msg = f"Deleted all associated {m_obj.PLURAL} on {object_dict['object'].mention}."
+                        msg = f"Deleted all associated {m_obj.PLURAL} on {object_dict.get('object', None).mention}."
 
         elif object_dict["object_type"] == discord.VoiceChannel:
             try:
@@ -559,12 +556,12 @@ class AdminCommands(commands.Cog):
                         r_obj.delete(**kwargs)
                     msg = (
                         f"Deleted all associated moderation actions and "
-                        f"roles in {object_dict['object'].mention}."
+                        f"roles in {object_dict.get('object', None).mention}."
                     )
                 for singular, r_obj in room_relevant_objects_dict.items():
                     if action_type.lower() == singular:
                         r_obj.delete(**kwargs)
-                        msg = f"Deleted all associated {r_obj.PLURAL} in {object_dict['object'].mention}."
+                        msg = f"Deleted all associated {r_obj.PLURAL} in {object_dict.get('object', None).mention}."
 
         return await state.end(success=msg)
 
@@ -575,17 +572,16 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: str = commands.parameter(
-            default=None, description="Tag a channel, a member or include the ID"
+            description="Tag a channel, a member or include the ID"
         ),
         *,
         action_type: Optional[str] = commands.parameter(
-            default=None,
             description="Specify one of: `alias`, `all`, `ban`, `coord`, "
             "flag`, `mod`, `temp`, `tmute`, `track`, `vegan`, `vmute` or `vr`.",
         ),
     ):
-        do = DiscordObject(source=ctx)
-        object_dict = do.determine_from_target(target=target)
+        do = DiscordObject(ctx=ctx)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
         if object_dict["object_type"] == discord.Member:
@@ -646,7 +642,7 @@ class AdminCommands(commands.Cog):
     @app_commands.command(name="coord", description="Grant/revoke coords.")
     @app_commands.describe(
         member="Tag a member or include their ID",
-        channel="Tag a channel or include its ID",
+        channel="Tag a channel or include its ID.",
     )
     @administrator_predicator()
     async def create_coordinator_app_command(
@@ -657,9 +653,14 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
-        channel_dict = do.determine_from_target(target=channel)
-        member_dict = do.determine_from_target(target=member)
+        do = DiscordObject(interaction=interaction)
+        channel_dict = await do.determine_from_target(target=channel)
+        member_dict = await do.determine_from_target(target=member)
+        await has_equal_or_lower_role(
+            source=interaction,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=interaction.user.id,
+        )
         kwargs = {}
         kwargs.update(channel_dict["columns"])
         kwargs.update(member_dict["columns"])
@@ -685,17 +686,20 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(
-            default=None, description="Tag a member or include their ID"
+            description="Tag a member or include their ID"
         ),
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
     ):
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
-        channel_dict = do.determine_from_target(target=channel)
-        member_dict = do.determine_from_target(target=member)
+        do = DiscordObject(ctx=ctx)
+        channel_dict = await do.determine_from_target(target=channel)
+        member_dict = await do.determine_from_target(target=member)
+        await has_equal_or_lower_role(
+            source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.user.id
+        )
         kwargs = {}
         kwargs.update(channel_dict["columns"])
         kwargs.update(member_dict["columns"])
@@ -715,7 +719,7 @@ class AdminCommands(commands.Cog):
         )
 
     # @app_commands.command(name='pc', description='View permissions.')
-    # @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, server ID or empty.")
+    # @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, or server ID.")
 
     @commands.command(name="pc", help="View permissions.")
     @administrator_predicator()
@@ -723,9 +727,7 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: str = commands.parameter(
-            default=None,
-            description="Specify one of: `all`, channel "
-            "ID/mention, server ID or empty.",
+            description="Specify one of: `all`, channel " "ID/mention or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
@@ -734,8 +736,8 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
-        object_dict = do.determine_from_target(target=target)
+        do = DiscordObject(ctx=ctx)
+        object_dict = await do.determine_from_target(target=target)
 
         if target and target.lower() == "all":
             await check(source=ctx, lowest_role="Developer")
@@ -745,13 +747,13 @@ class AdminCommands(commands.Cog):
                 for channel_obj in guild.channels
             ]
         elif object_dict["object_type"] == discord.Guild:
-            channel_objs = object_dict["object"].channels
+            channel_objs = object_dict.get("object", None).channels
         elif object_dict["object_type"] in (
             discord.StageChannel,
             discord.TextChannel,
             discord.VoiceChannel,
         ):
-            channel_objs = [object_dict["object"]]
+            channel_objs = [object_dict.get("object", None)]
 
         for channel in channel_objs:
             permissions = channel.permissions_for(self.bot.me)
@@ -800,8 +802,8 @@ class AdminCommands(commands.Cog):
     # DONE
     @app_commands.command(name="rmv", description="VC move.")
     @app_commands.describe(
-        source_channel="Tag the source channel or include its ID",
-        target_channel="Tag the target channel or include its ID",
+        source_channel="Tag the source channel or include its ID.",
+        target_channel="Tag the target channel or include its ID.",
     )
     @administrator_predicator()
     async def room_move_all_app_command(
@@ -813,22 +815,22 @@ class AdminCommands(commands.Cog):
         failed, moved = [], []
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        source_channel_dict = do.determine_from_target(target=source_channel)
-        target_channel_dict = do.determine_from_target(target=target_channel)
+        source_channel_dict = await do.determine_from_target(target=source_channel)
+        target_channel_dict = await do.determine_from_target(target=target_channel)
 
-        for member in source_channel_dict["object"].members:
+        for member in source_channel_dict.get("object", None).members:
             try:
-                await member.move_to(target_channel_dict["object"])
+                await member.move_to(target_channel_dict.get("object", None))
                 moved.append(member)
             except discord.Forbidden as e:
                 failed.append(member)
                 logger.warning(
                     f"Unable to move member "
                     f"{member.display_name} ({member.id}) from channel "
-                    f"{source_channel_dict['name']} ({source_channel}) to channel "
-                    f"{target_channel_dict['name']} ({target_channel}) in guild "
+                    f"{source_channel_dict.get('name', None)} ({source_channel}) to channel "
+                    f"{target_channel_dict.get('name', None)} ({target_channel}) in guild "
                     f"{interaction.guild.name} ({interaction.guild.id}). "
                     f"{str(e).capitalize()}"
                 )
@@ -866,31 +868,31 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         source_channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
         target_channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
     ):
         failed, moved = [], []
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        source_channel_dict = do.determine_from_target(target=source_channel)
-        target_channel_dict = do.determine_from_target(target=target_channel)
+        source_channel_dict = await do.determine_from_target(target=source_channel)
+        target_channel_dict = await do.determine_from_target(target=target_channel)
 
-        for member in source_channel_dict["object"].members:
+        for member in source_channel_dict.get("object", None).members:
             try:
-                await member.move_to(target_channel_dict["object"])
+                await member.move_to(target_channel_dict.get("object", None))
                 moved.append(member)
             except discord.Forbidden as e:
                 failed.append(member)
                 logger.warning(
                     f"Unable to move member "
                     f"{member.display_name} ({member.id}) from channel "
-                    f"{source_channel_dict['name']} ({source_channel}) to channel "
-                    f"{target_channel_dict['name']} ({target_channel}) in guild "
+                    f"{source_channel_dict.get('name', None)} ({source_channel}) to channel "
+                    f"{target_channel_dict.get('name', None)} ({target_channel}) in guild "
                     f"{ctx.guild.name} ({ctx.guild.id}). "
                     f"{str(e).capitalize()}"
                 )
@@ -936,9 +938,14 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        member_dict = do.determine_from_target(target=member)
+        member_dict = await do.determine_from_target(target=member)
+        await has_equal_or_lower_role(
+            source=interaction,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=interaction.user.id,
+        )
         kwargs = member_dict["columns"]
 
         server_mute = await ServerMute.select(**kwargs)
@@ -955,9 +962,12 @@ class AdminCommands(commands.Cog):
             action = "unmuted"
             should_be_muted = False
 
-        if member_dict["object"].voice and member_dict["object"].voice.channel:
+        if (
+            member_dict.get("object", None).voice
+            and member_dict.get("object", None).voice.channel
+        ):
             try:
-                await member_dict["object"].edit(mute=should_be_muted)
+                await member_dict.get("object", None).edit(mute=should_be_muted)
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
 
@@ -972,7 +982,7 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(
-            default=None, description="Tag a member or include their ID"
+            description="Tag a member or include their ID"
         ),
         *,
         reason: Optional[str] = commands.parameter(
@@ -982,9 +992,12 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        member_dict = do.determine_from_target(target=member)
+        member_dict = await do.determine_from_target(target=member)
+        await has_equal_or_lower_role(
+            source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.user.id
+        )
         kwargs = member_dict["columns"]
 
         server_mute = await ServerMute.select(**kwargs)
@@ -1001,9 +1014,12 @@ class AdminCommands(commands.Cog):
             action = "unmuted"
             should_be_muted = False
 
-        if member_dict["object"].voice and member_dict["object"].voice.channel:
+        if (
+            member_dict.get("object", None).voice
+            and member_dict.get("object", None).voice.channel
+        ):
             try:
-                await member_dict["object"].edit(mute=should_be_muted)
+                await member_dict.get("object", None).edit(mute=should_be_muted)
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
 
@@ -1028,9 +1044,9 @@ class AdminCommands(commands.Cog):
         is_modification = False
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        channel_dict = do.determine_from_target(target=channel)
+        channel_dict = await do.determine_from_target(target=channel)
 
         if not isinstance(duration, DurationObject):
             duration = DurationObject(duration)
@@ -1062,7 +1078,7 @@ class AdminCommands(commands.Cog):
         elif stage:
             title = f"{get_random_emoji()} Stage Ended in {channel_dict['mention']}"
             await Stage.delete(**kwargs)
-            for member in channel_dict["object"].members:
+            for member in channel_dict.get("object", None).members:
                 await VoiceMute.delete(
                     **kwargs,
                     member_snowflake=member.id,
@@ -1084,7 +1100,7 @@ class AdminCommands(commands.Cog):
                         logger.warning(
                             f"Unable to undo voice-mute "
                             f"for member {member.display_name} ({member.id}) in "
-                            f"channel {channel_dict['name']} ({channel_dict['id']}) in "
+                            f"channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in "
                             f"guild {interaction.guild.name} ({interaction.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
@@ -1107,7 +1123,7 @@ class AdminCommands(commands.Cog):
                 expires_in=duration.expires_in,
             )
             await stage.create()
-            for member in channel_dict["object"].members:
+            for member in channel_dict.get("object", None).members:
                 if (
                     await check(
                         source=interaction,
@@ -1126,14 +1142,16 @@ class AdminCommands(commands.Cog):
                 )
                 await voice_mute.create()
                 try:
-                    if member.voice and member.voice.channel.id == channel_dict["id"]:
+                    if member.voice and member.voice.channel.id == channel_dict.get(
+                        "id", None
+                    ):
                         await member.edit(mute=True)
                     succeeded.append(member)
                 except Exception as e:
                     logger.warning(
                         f"Unable to voice-mute "
                         f"member {member.display_name} ({member.id}) "
-                        f"in channel {channel_dict['name']} ({channel_dict['id']}) "
+                        f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
                         f"in guild {interaction.guild.name} ({interaction.guild.id}). "
                         f"{str(e).capitalize()}"
                     )
@@ -1148,7 +1166,7 @@ class AdminCommands(commands.Cog):
                 description_lines.append(f"**Failed:** {len(failed)}")
             embed = discord.Embed(
                 description="\n".join(description_lines),
-                title=f"{get_random_emoji()} Stage Created in {channel_dict['name']}",
+                title=f"{get_random_emoji()} Stage Created in {channel_dict.get('name', None)}",
                 color=discord.Color.blurple(),
             )
             pages.append(embed)
@@ -1162,7 +1180,7 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
         *,
         duration: Duration = commands.parameter(
@@ -1175,9 +1193,9 @@ class AdminCommands(commands.Cog):
         is_modification = False
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        channel_dict = do.determine_from_target(target=channel)
+        channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
         if not isinstance(duration, DurationObject):
@@ -1208,7 +1226,7 @@ class AdminCommands(commands.Cog):
         elif stage:
             title = f"{get_random_emoji()} Stage Ended in {channel_dict['mention']}"
             await Stage.delete(**kwargs)
-            for member in channel_dict["object"].members:
+            for member in channel_dict.get("object", None).members:
                 await VoiceMute.delete(
                     **kwargs,
                     member_snowflake=member.id,
@@ -1230,7 +1248,7 @@ class AdminCommands(commands.Cog):
                         logger.warning(
                             f"Unable to undo voice-mute "
                             f"for member {member.display_name} ({member.id}) in "
-                            f"channel {channel_dict['name']} ({channel_dict['id']}) in "
+                            f"channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) in "
                             f"guild {ctx.guild.name} ({ctx.guild.id}). "
                             f"{str(e).capitalize()}"
                         )
@@ -1253,7 +1271,7 @@ class AdminCommands(commands.Cog):
                 expires_in=duration.expires_in,
             )
             await stage.create()
-            for member in channel_dict["object"].members:
+            for member in channel_dict.get("object", None).members:
                 if (
                     await check(
                         source=ctx,
@@ -1273,14 +1291,16 @@ class AdminCommands(commands.Cog):
                 )
                 await voice_mute.create()
                 try:
-                    if member.voice and member.voice.channel.id == channel_dict["id"]:
+                    if member.voice and member.voice.channel.id == channel_dict.get(
+                        "id", None
+                    ):
                         await member.edit(mute=True)
                     succeeded.append(member)
                 except Exception as e:
                     logger.warning(
                         f"Unable to voice-mute "
                         f"member {member.display_name} ({member.id}) "
-                        f"in channel {channel_dict['name']} ({channel_dict['id']}) "
+                        f"in channel {channel_dict.get('name', None)} ({channel_dict.get('id', None)}) "
                         f"in guild {ctx.guild.name} ({ctx.guild.id}). "
                         f"{str(e).capitalize()}"
                     )
@@ -1295,7 +1315,7 @@ class AdminCommands(commands.Cog):
                 description_lines.append(f"**Failed:** {len(failed)}")
             embed = discord.Embed(
                 description="\n".join(description_lines),
-                title=f"{get_random_emoji()} Stage Created in {channel_dict['name']}",
+                title=f"{get_random_emoji()} Stage Created in {channel_dict.get('name', None)}",
                 color=discord.Color.blurple(),
             )
             pages.append(embed)
@@ -1307,7 +1327,7 @@ class AdminCommands(commands.Cog):
         name="temp", description="Toggle a temporary room and assign an owner."
     )
     @app_commands.describe(
-        channel="Tag a channel or include its ID",
+        channel="Tag a channel or include its ID.",
         owner="Tag a member or include their ID",
     )
     @administrator_predicator()
@@ -1320,22 +1340,23 @@ class AdminCommands(commands.Cog):
         action = None
 
         state = StateService(source=interaction)
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        channel_dict = do.determine_from_target(target=channel)
-        member_dict = do.determine_from_target(target=owner)
+        channel_dict = await do.determine_from_target(target=channel)
 
         kwargs = {}
         kwargs.update(channel_dict["columns"])
 
         temporary_room = await TemporaryRoom.select(**kwargs)
-        kwargs.update(member_dict["columns"])
         if temporary_room:
             if temporary_room.member_snowflake:
+                kwargs.update({"member_snowflake": temporary_room.member_snowflake})
                 await Moderator.delete(**kwargs)
             await TemporaryRoom.delete(**kwargs)
             action = "removed"
         else:
+            member_dict = await do.determine_from_target(target=owner)
+            kwargs.update(member_dict["columns"])
             moderator = Moderator(**kwargs)
             await moderator.create()
             temporary_room = TemporaryRoom(
@@ -1358,8 +1379,9 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID"
+            description="Tag a channel or include its ID."
         ),
+        *,
         owner: MemberSnowflake = commands.parameter(
             default=None, description="Tag a member or include their Discord ID"
         ),
@@ -1367,22 +1389,23 @@ class AdminCommands(commands.Cog):
         action = None
 
         state = StateService(source=ctx)
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        channel_dict = do.determine_from_target(target=channel)
-        member_dict = do.determine_from_target(target=owner)
+        channel_dict = await do.determine_from_target(target=channel)
 
         kwargs = {}
         kwargs.update(channel_dict["columns"])
 
         temporary_room = await TemporaryRoom.select(**kwargs)
-        kwargs.update(member_dict["columns"])
         if temporary_room:
             if temporary_room.member_snowflake:
+                kwargs.update({"member_snowflake": temporary_room.member_snowflake})
                 await Moderator.delete(**kwargs)
             await TemporaryRoom.delete(**kwargs)
             action = "removed"
         else:
+            member_dict = await do.determine_from_target(target=owner)
+            kwargs.update(member_dict["columns"])
             moderator = Moderator(**kwargs)
             await moderator.create()
             temporary_room = TemporaryRoom(
@@ -1411,13 +1434,13 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        object_dict = do.determine_from_target(target=target)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        aliases = Alias.select(**kwargs)
-        temporary_rooms = TemporaryRoom.select(**kwargs)
+        aliases = await Alias.select(**kwargs)
+        temporary_rooms = await TemporaryRoom.select(**kwargs)
 
         for temporary_room in temporary_rooms:
             guild_dictionary.setdefault(
@@ -1518,9 +1541,7 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: `all`, channel ID/mention, "
-            "server ID or empty.",
+            description="Specify one of: `all`, channel ID/mention, " "or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
@@ -1530,13 +1551,13 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        object_dict = do.determine_from_target(target=target)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        aliases = Alias.select(**kwargs)
-        temporary_rooms = TemporaryRoom.select(**kwargs)
+        aliases = await Alias.select(**kwargs)
+        temporary_rooms = await TemporaryRoom.select(**kwargs)
 
         for temporary_room in temporary_rooms:
             guild_dictionary.setdefault(
@@ -1647,9 +1668,9 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        channel_dict = do.determine_from_target(target=channel)
+        channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
         if scope is None and entry_type is None:
@@ -1661,7 +1682,7 @@ class AdminCommands(commands.Cog):
             enabled = not history[0].enabled
             action = "enabled" if enabled else "disabled"
             await History.update_by_channel_enabled_and_guild(
-                channel_snowflake=channel_dict["id"],
+                channel_snowflake=channel_dict.get("id", None),
                 enabled=enabled,
                 guild_snowflake=interaction.guild.id,
             )
@@ -1675,9 +1696,11 @@ class AdminCommands(commands.Cog):
                     resolved_channels = []
                     for snowflake in snowflakes:
                         try:
-                            channel_dict = do.determine_from_target(target=channel)
-                            resolved_channels.append(channel_dict["id"])
-                            channel_mentions.append(channel_dict["mention"])
+                            channel_dict = await do.determine_from_target(
+                                target=channel
+                            )
+                            resolved_channels.append(channel_dict.get("id", None))
+                            channel_mentions.append(channel_dict.get("mention", None))
                         except Exception:
                             failed_snowflakes.append(snowflake)
                             continue
@@ -1731,23 +1754,21 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include its ID."
+            description="Tag a channel or include its ID."
         ),
         scope: Optional[str] = commands.parameter(
-            default=None, description="create | modify | delete."
+            description="create | modify | delete."
         ),
-        entry_type: Optional[str] = commands.parameter(
-            default=None, description="all | channel."
-        ),
+        entry_type: Optional[str] = commands.parameter(description="all | channel."),
         *snowflakes: Optional[int],
     ):
         channel_mentions = failed_snowflakes = []
 
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        channel_dict = do.determine_from_target(target=channel)
+        channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
         if scope is None and entry_type is None:
@@ -1759,7 +1780,7 @@ class AdminCommands(commands.Cog):
             enabled = not history[0].enabled
             action = "enabled" if enabled else "disabled"
             await History.update_by_channel_enabled_and_guild(
-                channel_snowflake=channel_dict["id"],
+                channel_snowflake=channel_dict.get("id", None),
                 enabled=enabled,
                 guild_snowflake=ctx.guild.id,
             )
@@ -1773,9 +1794,11 @@ class AdminCommands(commands.Cog):
                     resolved_channels = []
                     for snowflake in snowflakes:
                         try:
-                            channel_dict = do.determine_from_target(target=channel)
-                            resolved_channels.append(channel_dict["id"])
-                            channel_mentions.append(channel_dict["mention"])
+                            channel_dict = await do.determine_from_target(
+                                target=channel
+                            )
+                            resolved_channels.append(channel_dict.get("id", None))
+                            channel_mentions.append(channel_dict.get("mention", None))
                         except Exception:
                             failed_snowflakes.append(snowflake)
                             continue
@@ -1825,7 +1848,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @app_commands.command(name="tracks", description="List history channels.")
     @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, server ID or empty."
+        target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     @administrator_predicator()
     async def list_tracking_app_command(
@@ -1838,9 +1861,9 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        object_dict = do.determine_from_target(target=target)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
         histories = await History.select(**kwargs)
@@ -1877,7 +1900,7 @@ class AdminCommands(commands.Cog):
                     lines.append(
                         f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
                     )
-                    if object_dict["type"] in (
+                    if object_dict.get("type", None) in (
                         discord.StageChannel,
                         discord.TextChannel,
                         discord.VoiceChannel,
@@ -1926,8 +1949,7 @@ class AdminCommands(commands.Cog):
         ctx: commands.Context,
         *,
         target: Optional[str] = commands.parameter(
-            default=None,
-            description="Specify one of: `all`, channel ID/mention, server ID or empty.",
+            description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
@@ -1937,9 +1959,9 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        object_dict = do.determine_from_target(target=target)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
         histories = await History.select(**kwargs)
@@ -1976,7 +1998,7 @@ class AdminCommands(commands.Cog):
                     lines.append(
                         f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
                     )
-                    if object_dict["type"] in (
+                    if object_dict.get("type", None) in (
                         discord.StageChannel,
                         discord.TextChannel,
                         discord.VoiceChannel,
@@ -2028,9 +2050,9 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        channel_dict = do.determine_from_target(target=channel)
+        channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
         video_room = await VideoRoom.select(**kwargs)
@@ -2059,16 +2081,16 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
-            default=None, description="Tag a channel or include the ID"
+            description="Tag a channel or include the ID"
         ),
     ):
         action = None
 
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        channel_dict = do.determine_from_target(target=channel)
+        channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
         video_room = await VideoRoom.select(**kwargs)
@@ -2094,7 +2116,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @app_commands.command(name="vrs", description="List video rooms.")
     @app_commands.describe(
-        target="Specify one of: `all`, channel ID/mention, server ID or empty."
+        target="Specify one of: `all`, channel ID/mention, or server ID."
     )
     @administrator_predicator()
     async def list_video_rooms_app_command(
@@ -2107,13 +2129,13 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
-        object_dict = do.determine_from_target(target=target)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        aliases = Alias.select(**kwargs)
-        video_rooms = VideoRoom.select(**kwargs)
+        aliases = await Alias.select(**kwargs)
+        video_rooms = await VideoRoom.select(**kwargs)
 
         for video_room in video_rooms:
             guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
@@ -2209,7 +2231,7 @@ class AdminCommands(commands.Cog):
         ctx: commands.Context,
         *,
         target: Optional[str] = commands.parameter(
-            default=None, description="Include `all`, channel or server ID."
+            description="Include `all`, channel or server ID."
         ),
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
@@ -2219,13 +2241,13 @@ class AdminCommands(commands.Cog):
 
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
-        object_dict = do.determine_from_target(target=target)
+        object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        aliases = Alias.select(**kwargs)
-        video_rooms = VideoRoom.select(**kwargs)
+        aliases = await Alias.select(**kwargs)
+        video_rooms = await VideoRoom.select(**kwargs)
 
         for video_room in video_rooms:
             guild_dictionary.setdefault(video_room.guild_snowflake, {"channels": {}})
@@ -2322,7 +2344,7 @@ class AdminCommands(commands.Cog):
     ):
         state = StateService(source=interaction)
 
-        do = DiscordObject(source=interaction)
+        do = DiscordObject(interaction=interaction)
 
         kwargs = {"alias_name": alias_name, "guild_snowflake": interaction.guild.id}
 
@@ -2331,7 +2353,7 @@ class AdminCommands(commands.Cog):
             return await state.end(warning=f"No aliases found for `{alias_name}`.")
         await Alias.delete(**kwargs)
 
-        channel_dict = do.determine_from_target(target=alias.channel_snowflake)
+        channel_dict = await do.determine_from_target(target=alias.channel_snowflake)
 
         if alias.role_snowflake:
             msg = (
@@ -2354,13 +2376,11 @@ class AdminCommands(commands.Cog):
     async def delete_alias_text_command(
         self,
         ctx: commands.Context,
-        alias_name: str = commands.parameter(
-            default=None, description="Include an alias name"
-        ),
+        alias_name: str = commands.parameter(description="Include an alias name"),
     ):
         state = StateService(source=ctx)
 
-        do = DiscordObject(source=ctx)
+        do = DiscordObject(ctx=ctx)
 
         kwargs = {"alias_name": alias_name, "guild_snowflake": ctx.guild.id}
 
@@ -2369,7 +2389,7 @@ class AdminCommands(commands.Cog):
             return await state.end(warning=f"No aliases found for `{alias_name}`.")
         await Alias.delete(**kwargs)
 
-        channel_dict = do.determine_from_target(target=alias.channel_snowflake)
+        channel_dict = await do.determine_from_target(target=alias.channel_snowflake)
 
         if alias.role_snowflake:
             msg = (

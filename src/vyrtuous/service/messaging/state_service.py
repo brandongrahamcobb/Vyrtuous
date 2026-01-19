@@ -89,14 +89,14 @@ class StateService:
         allowed_mentions=discord.AllowedMentions.none(),
     ):
         if success is not None:
-            message_obj = f"{get_random_emoji()} {success}"
+            message_obj = success
             is_success = True
         elif warning is not None:
-            message_obj = f"\u26a0\ufe0f {warning}"
+            message_obj = warning
             is_success = False
             logger.warning(warning)
         elif error is not None:
-            message_obj = f"\u274c {error}"
+            message_obj = error
             is_success = False
             logger.warning(error)
         else:
@@ -134,7 +134,12 @@ class StateService:
             return self.message
         content = embed = file = None
         if isinstance(message_obj, str):
-            content = message_obj
+            if success:
+                content = f"{get_random_emoji()} {success}"
+            if warning:
+                content = f"\u26a0\ufe0f {warning}"
+            if error:
+                content = f"\u274c {error}"
         elif isinstance(message_obj, discord.Embed):
             embed = message_obj
         elif isinstance(message_obj, discord.File):
@@ -231,7 +236,7 @@ class StateService:
             await self.report_issue(user)
 
     async def show_info(self, user):
-        color = self.COLOR_MAP.get(self.health_type)
+        color = self.COLOR_MAP.get(self.health_type, "0xED4245")
         embed = discord.Embed(
             title="Information Statistics",
             color=color,

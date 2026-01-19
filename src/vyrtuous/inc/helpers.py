@@ -60,26 +60,3 @@ PATH_LOG = join(DIR_BASE, "vyrtuous", ".log", "discord.log")
 def make_mock_snowflake(seed):
     return 10_000_000_000_000_000 + seed
 
-
-PRIVILEGED_AUTHOR_ID = make_mock_snowflake(1)
-PRIVILEGED_AUTHOR_NAME = "BlackBox"
-
-NOT_PRIVILEGED_AUTHOR_ID = make_mock_snowflake(2)
-NOT_PRIVILEGED_AUTHOR_NAME = "WhiteBox"
-
-TEXT_CHANNEL_ID = make_mock_snowflake(10)
-TEXT_CHANNEL_NAME = "text-channel"
-
-VOICE_CHANNEL_ONE_ID = make_mock_snowflake(11)
-VOICE_CHANNEL_ONE_NAME = "Voice Channel 1"
-
-VOICE_CHANNEL_TWO_ID = make_mock_snowflake(12)
-VOICE_CHANNEL_TWO_NAME = "Voice Channel 2"
-
-MESSAGE_ID = make_mock_snowflake(100)
-
-ROLE_ID = make_mock_snowflake(200)
-ROLE_NAME = "Role"
-
-GUILD_ID = make_mock_snowflake(500)
-GUILD_NAME = "Guild"
