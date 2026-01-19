@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 import discord
 
 from vyrtuous.tests.integration.mock_discord_member import MockMember
@@ -82,11 +83,12 @@ MESSAGE_DATA = {
     "flags": 0,
 }
 
+
 class MockMessage(discord.Message):
 
     def __init__(self, author: MockMember, channel, state: MockState, **overrides):
         data = MESSAGE_DATA.copy()
-        data['author']['id'] = author.id
+        data["author"]["id"] = author.id
         data.update(overrides)
         super().__init__(channel=channel, data=data, state=state)
 

@@ -15,10 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from discord.ext import commands
-import discord
 
-from vyrtuous.database.database_factory import DatabaseFactory
 from vyrtuous.database.roles.administrator import NotAdministrator, is_administrator
 from vyrtuous.database.roles.coordinator import NotCoordinator, is_coordinator
 from vyrtuous.database.roles.developer import NotDeveloper, is_developer
@@ -75,4 +72,3 @@ async def resolve_highest_role(
         except NotModerator as e:
             logger.warning(str(e).capitalize())
     return "Everyone"
-

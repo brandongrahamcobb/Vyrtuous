@@ -33,7 +33,11 @@ from vyrtuous.database.roles.administrator import Administrator, is_administrato
 from vyrtuous.database.roles.coordinator import Coordinator, is_coordinator
 from vyrtuous.database.roles.developer import Developer, is_developer
 from vyrtuous.database.roles.guild_owner import is_guild_owner
-from vyrtuous.database.roles.moderator import Moderator, is_moderator, moderator_predicator
+from vyrtuous.database.roles.moderator import (
+    Moderator,
+    is_moderator,
+    moderator_predicator,
+)
 from vyrtuous.database.roles.sysadmin import is_sysadmin
 from vyrtuous.database.roles.vegan import Vegan
 from vyrtuous.database.rooms.stage import Stage
@@ -47,10 +51,7 @@ from vyrtuous.properties.snowflake import (
     MemberSnowflake,
 )
 from vyrtuous.service.at_home import at_home
-from vyrtuous.service.check_service import (
-    check,
-    has_equal_or_lower_role
-)
+from vyrtuous.service.check_service import check, has_equal_or_lower_role
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.scope_service import member_relevant_objects_dict
@@ -2716,8 +2717,7 @@ class ModeratorCommands(commands.Cog):
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
         sysadmins_chunks = [
-            sysadmins[i : i + chunk_size]
-            for i in range(0, len(sysadmins), chunk_size)
+            sysadmins[i : i + chunk_size] for i in range(0, len(sysadmins), chunk_size)
         ]
         guild_owners_chunks = [
             guild_owners[i : i + chunk_size]
@@ -2824,8 +2824,7 @@ class ModeratorCommands(commands.Cog):
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
         sysadmins_chunks = [
-            sysadmins[i : i + chunk_size]
-            for i in range(0, len(sysadmins), chunk_size)
+            sysadmins[i : i + chunk_size] for i in range(0, len(sysadmins), chunk_size)
         ]
         guild_owners_chunks = [
             guild_owners[i : i + chunk_size]

@@ -5,6 +5,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 
+
 class NotAtHome(commands.CheckFailure):
     def __init__(self, message="You are not in the home server and cannot do this."):
         super().__init__(message)

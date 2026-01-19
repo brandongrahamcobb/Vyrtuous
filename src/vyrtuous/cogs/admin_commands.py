@@ -28,7 +28,10 @@ from vyrtuous.database.actions.alias import Alias
 from vyrtuous.database.actions.server_mute import ServerMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
 from vyrtuous.database.logs.history import History
-from vyrtuous.database.roles.administrator import AdministratorRole, administrator_predicator
+from vyrtuous.database.roles.administrator import (
+    AdministratorRole,
+    administrator_predicator,
+)
 from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.roles.guild_owner import NotGuildOwner

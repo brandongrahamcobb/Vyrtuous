@@ -1,6 +1,7 @@
 from discord.ext import commands
 import discord
 
+
 def get_member_snowflake(source):
     if isinstance(source, discord.Interaction):
         member_snowflake = source.user.id

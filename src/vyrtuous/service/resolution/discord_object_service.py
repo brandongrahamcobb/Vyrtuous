@@ -26,13 +26,16 @@ from vyrtuous.bot.discord_bot import DiscordBot
 
 from vyrtuous.service.logging_service import logger
 
+
 class DiscordObjectNotFound(commands.CheckFailure):
     "Returns an error if a channel, guild, member or role is not found."
+
     def __init__(self, message: str = None, target: str = None):
         super().__init__(
-            message=message or
-            f"Unable to resolve a valid channel, guild, member or role for target (`{target}`)."
+            message=message
+            or f"Unable to resolve a valid channel, guild, member or role for target (`{target}`)."
         )
+
 
 class DiscordSourceNotFound(commands.CheckFailure):
 
@@ -152,7 +155,10 @@ class DiscordObject:
         else:
             return {
                 "author_snowflake": author.id,
-                "columns": {"guild_snowflake": role.guild.id, "role_snowflake": role.id},
+                "columns": {
+                    "guild_snowflake": role.guild.id,
+                    "role_snowflake": role.id,
+                },
                 "id": role.id,
                 "mention": role.mention,
                 "name": role.name,

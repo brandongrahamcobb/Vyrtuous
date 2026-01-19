@@ -24,15 +24,18 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.service.member_snowflake import get_member_snowflake
 
+
 class NotSysAdmin(commands.CheckFailure):
     def __init__(self, message="You are not the sysadmin and cannot do this."):
         super().__init__(message)
+
 
 async def is_sysadmin_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
     member_snowflake = get_member_snowflake(source=source)
     return is_sysadmin(member_snowflake)
+
 
 def sysadmin_predicator():
     async def predicate(
@@ -41,8 +44,10 @@ def sysadmin_predicator():
         if await is_sysadmin_wrapper(source):
             return True
         raise commands.CheckFailure("You are not a sysadmin.")
+
     predicate._permission_level = "SysAdmin"
     return commands.check(predicate)
+
 
 def is_sysadmin(member_snowflake: int) -> bool:
     bot = DiscordBot.get_instance()

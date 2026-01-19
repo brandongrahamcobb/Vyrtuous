@@ -71,9 +71,7 @@ class HelpCommand(commands.Cog):
                         lines.append(f"• {line}")
             return lines
 
-    async def get_available_commands(
-        self, bot, user_highest
-    ) -> list[commands.Command]:
+    async def get_available_commands(self, bot, user_highest) -> list[commands.Command]:
         available = []
         for command in bot.commands:
             try:
@@ -262,9 +260,11 @@ class HelpCommand(commands.Cog):
         user_highest = await resolve_highest_role(
             channel_snowflake=interaction.channel.id,
             guild_snowflake=interaction.guild.id,
-            member_snowflake=interaction.user.id
+            member_snowflake=interaction.user.id,
         )
-        all_commands = await self.get_available_commands(bot=bot, user_highest=user_highest)
+        all_commands = await self.get_available_commands(
+            bot=bot, user_highest=user_highest
+        )
         permission_groups = await self.group_commands_by_permission(
             bot, interaction, all_commands
         )
@@ -406,9 +406,11 @@ class HelpCommand(commands.Cog):
         user_highest = await resolve_highest_role(
             channel_snowflake=ctx.channel.id,
             guild_snowflake=ctx.guild.id,
-            member_snowflake=ctx.author.id
+            member_snowflake=ctx.author.id,
         )
-        all_commands = await self.get_available_commands(bot=bot, user_highest=user_highest)
+        all_commands = await self.get_available_commands(
+            bot=bot, user_highest=user_highest
+        )
         permission_groups = await self.group_commands_by_permission(
             bot, ctx, all_commands
         )

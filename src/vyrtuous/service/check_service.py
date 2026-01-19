@@ -21,7 +21,7 @@ from typing import Union
 from discord.ext import commands
 import discord
 
-from vyrtuous.database.roles.administrator import  is_administrator
+from vyrtuous.database.roles.administrator import is_administrator
 from vyrtuous.database.roles.coordinator import is_coordinator_wrapper
 from vyrtuous.database.roles.developer import is_developer
 from vyrtuous.database.roles.guild_owner import is_guild_owner
@@ -30,11 +30,13 @@ from vyrtuous.database.roles.sysadmin import is_sysadmin
 from vyrtuous.utils.permission import PERMISSION_TYPES
 from vyrtuous.database.roles.role import resolve_highest_role
 
+
 class HasEqualOrLowerRole(commands.CheckFailure):
     def __init__(self, target_rank=str):
         super().__init__(
             message=f"You may not execute this command on this `{target_rank}` because they have equal or higher role than you in this channel/server."
         )
+
 
 async def check(
     source: Union[commands.Context, discord.Interaction, discord.Message],
@@ -61,10 +63,11 @@ async def check(
             passed_lowest = True
     return "Everyone"
 
+
 async def has_equal_or_lower_role(
     source: Union[commands.Context, discord.Interaction, discord.Message],
     member_snowflake: int,
-    sender_snowflake: int
+    sender_snowflake: int,
 ) -> bool:
     kwargs = {
         "channel_snowflake": source.channel.id,

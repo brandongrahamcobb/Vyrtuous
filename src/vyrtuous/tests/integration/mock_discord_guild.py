@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 import discord
 
 from vyrtuous.tests.integration.mock_discord_bot import MockBot
@@ -67,9 +68,12 @@ GUILD_DATA = {
     "nsfw_level": 0,
 }
 
+
 class MockGuild(discord.Guild):
 
-    def __init__(self, bot: MockBot, channels, members, roles, state: MockState, **overrides):
+    def __init__(
+        self, bot: MockBot, channels, members, roles, state: MockState, **overrides
+    ):
         data = GUILD_DATA.copy()
         data.update(overrides)
         super().__init__(data=data, state=state)

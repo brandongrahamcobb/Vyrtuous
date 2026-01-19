@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from types import SimpleNamespace
 
 import discord
@@ -35,8 +36,9 @@ CHANNEL_DATA = {
     "topic": "",
     "rate_limit_per_user": 0,
     "parent_id": None,
-    "guild_id": GUILD_ID
+    "guild_id": GUILD_ID,
 }
+
 
 class MockChannel(discord.TextChannel):
 
@@ -61,7 +63,9 @@ class MockChannel(discord.TextChannel):
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
 
-    async def send(self, author=None, bot=None, content=None, embed=None, file=None, **kwargs):
+    async def send(
+        self, author=None, bot=None, content=None, embed=None, file=None, **kwargs
+    ):
         msg = MockMessage(
             author=self.guild.me,
             channel=self,
@@ -69,7 +73,7 @@ class MockChannel(discord.TextChannel):
             embed=embed,
             file=file,
             guild=self.guild,
-            state=self._state
+            state=self._state,
         )
         self._messages.append(msg)
         return msg

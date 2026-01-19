@@ -26,15 +26,18 @@ from vyrtuous.database.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.database.database_factory import DatabaseFactory
 from vyrtuous.service.member_snowflake import get_member_snowflake
 
+
 class NotDeveloper(commands.CheckFailure):
     def __init__(self, message="You are not a developer and cannot do this."):
         super().__init__(message)
+
 
 async def is_developer_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
     member_snowflake = get_member_snowflake(source=source)
     return await is_developer(member_snowflake)
+
 
 def developer_predicator():
     async def predicate(
@@ -47,14 +50,17 @@ def developer_predicator():
             except commands.CheckFailure:
                 continue
         raise commands.CheckFailure("You are not a sysadmin or developer.")
+
     predicate._permission_level = "Developer"
     return commands.check(predicate)
+
 
 async def is_developer(member_snowflake: int) -> bool:
     developer = await Developer.select(member_snowflake=member_snowflake)
     if not developer:
         raise NotDeveloper
     return True
+
 
 class Developer(DatabaseFactory):
 

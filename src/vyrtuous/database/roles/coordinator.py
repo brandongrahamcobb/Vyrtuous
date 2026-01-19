@@ -28,14 +28,16 @@ from vyrtuous.database.roles.guild_owner import is_guild_owner_wrapper
 from vyrtuous.database.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.service.member_snowflake import get_member_snowflake
 
+
 class NotCoordinator(commands.CheckFailure):
     def __init__(
         self, message="You are not a coordinator in this channel and cannot do this."
     ):
         super().__init__(message)
 
+
 async def is_coordinator_wrapper(
-    source: Union[commands.Context, discord.Interaction, discord.Message]
+    source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
     member_snowflake = get_member_snowflake(source=source)
     return await is_coordinator(
@@ -43,6 +45,7 @@ async def is_coordinator_wrapper(
         guild_snowflake=source.guild.id,
         member_snowflake=member_snowflake,
     )
+
 
 async def is_coordinator(
     channel_snowflake: int, guild_snowflake: int, member_snowflake: int
@@ -55,6 +58,7 @@ async def is_coordinator(
     if not coordinator:
         raise NotCoordinator
     return True
+
 
 def coordinator_predicator():
     async def predicate(
@@ -75,8 +79,10 @@ def coordinator_predicator():
         raise commands.CheckFailure(
             "You are not a sysadmin, developer, guild owner, administrator or coordinator in this channel."
         )
+
     predicate._permission_level = "Coordinator"
     return commands.check(predicate)
+
 
 class Coordinator(DatabaseFactory):
 

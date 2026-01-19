@@ -34,28 +34,46 @@ YELLOW = "\033[93m"
 GREEN = "\033[92m"
 RESET = "\033[0m"
 
+
 @asynccontextmanager
 async def capture(channel):
     before = list(channel._messages)
     yield
     after = channel._messages
-    new_messages = after[len(before):]
+    new_messages = after[len(before) :]
     channel._captured = new_messages
+
 
 async def send_message(bot, content: str = None):
     state = MockState()
     guild = MockGuild(bot=bot, channels=[], members=[], roles=[], state=state)
     channel = MockChannel(bot=bot, guild=guild, state=state)
     guild._channels.append(channel)
-    author = MockMember(bot=bot, guild=guild, id=NOT_PRIVILEGED_AUTHOR_ID, is_bot=False, name=NOT_PRIVILEGED_AUTHOR_NAME, state=state)
-    better_author = MockMember(bot=bot, guild=guild, id=PRIVILEGED_AUTHOR_ID, is_bot=True, name=PRIVILEGED_AUTHOR_NAME, state=state)
+    author = MockMember(
+        bot=bot,
+        guild=guild,
+        id=NOT_PRIVILEGED_AUTHOR_ID,
+        is_bot=False,
+        name=NOT_PRIVILEGED_AUTHOR_NAME,
+        state=state,
+    )
+    better_author = MockMember(
+        bot=bot,
+        guild=guild,
+        id=PRIVILEGED_AUTHOR_ID,
+        is_bot=True,
+        name=PRIVILEGED_AUTHOR_NAME,
+        state=state,
+    )
     guild._members.append(better_author)
     state.user = better_author
     bot._connection = state
     bot._state = state
-    msg = MockMessage(author=author, channel=channel, content=content, guild=guild, state=state)
+    msg = MockMessage(
+        author=author, channel=channel, content=content, guild=guild, state=state
+    )
     async with capture(channel):
         bot.loop = asyncio.get_running_loop()
-        bot.dispatch('message', msg)
+        bot.dispatch("message", msg)
         await bot.process_commands(msg)
     return channel._captured[-1]

@@ -28,9 +28,11 @@ from vyrtuous.database.roles.guild_owner import is_guild_owner_wrapper
 from vyrtuous.database.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.service.member_snowflake import get_member_snowflake
 
+
 class NotAdministrator(commands.CheckFailure):
     def __init__(self, message="You are not an administrator and cannot do this."):
         super().__init__(message)
+
 
 async def is_administrator_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
@@ -41,6 +43,7 @@ async def is_administrator_wrapper(
         member_snowflake=member_snowflake,
     )
 
+
 async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
     administrator = await Administrator.select(
         guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
@@ -49,11 +52,17 @@ async def is_administrator(guild_snowflake: int, member_snowflake: int) -> bool:
         raise NotAdministrator
     return True
 
+
 def administrator_predicator():
     async def predicate(
         source: Union[commands.Context, discord.Interaction, discord.Message],
     ):
-        for verify in (is_sysadmin_wrapper, is_developer_wrapper, is_guild_owner_wrapper, is_administrator_wrapper):
+        for verify in (
+            is_sysadmin_wrapper,
+            is_developer_wrapper,
+            is_guild_owner_wrapper,
+            is_administrator_wrapper,
+        ):
             try:
                 if await verify(source):
                     return True
@@ -62,8 +71,10 @@ def administrator_predicator():
         raise commands.CheckFailure(
             "You are not a sysadmin, developer, guild owner or administrator in this server."
         )
+
     predicate._permission_level = "Administrator"
     return commands.check(predicate)
+
 
 class Administrator(DatabaseFactory):
 

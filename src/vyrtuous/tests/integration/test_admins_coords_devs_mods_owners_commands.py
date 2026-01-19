@@ -24,6 +24,7 @@ from vyrtuous.tests.integration.test_suite import send_message
 
 NOT_PRIVILEGED_AUTHOR_ID = 10000000000000002
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command",
@@ -31,6 +32,9 @@ NOT_PRIVILEGED_AUTHOR_ID = 10000000000000002
         ("!admins 10000000000000001"),
     ],
 )
-async def test_admins_coords_devs_mods_owners_commands(bot, command: Optional[str]):
+async def test_admins(bot, command: Optional[str]):
+    """
+    List members who are registered in the PostgresSQL databaseadministrator
+    """
     captured = await send_message(bot=bot, content="!admins")
     print(captured.content)

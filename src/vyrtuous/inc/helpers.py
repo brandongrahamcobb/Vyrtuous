@@ -60,4 +60,3 @@ PATH_LOG = join(DIR_BASE, "vyrtuous", ".log", "discord.log")
 
 def make_mock_snowflake(seed):
     return 10_000_000_000_000_000 + seed
-
