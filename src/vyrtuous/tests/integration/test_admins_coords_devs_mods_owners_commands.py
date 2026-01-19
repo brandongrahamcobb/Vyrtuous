@@ -28,7 +28,7 @@ NOT_PRIVILEGED_AUTHOR_ID = 10000000000000002
 @pytest.mark.parametrize(
     "command",
     [
-        ("!admins"),
+        ("!admins 10000000000000001"),
     ],
 )
 async def test_admins_coords_devs_mods_owners_commands(bot, command: Optional[str]):

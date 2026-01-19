@@ -34,7 +34,7 @@ async def is_developer_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
     member_snowflake = get_member_snowflake(source=source)
-    return is_developer(member_snowflake)
+    return await is_developer(member_snowflake)
 
 def developer_predicator():
     async def predicate(

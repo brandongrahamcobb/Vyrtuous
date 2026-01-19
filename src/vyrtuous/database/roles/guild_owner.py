@@ -35,7 +35,7 @@ async def is_guild_owner_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
     member_snowflake = get_member_snowflake(source=source)
-    return is_guild_owner(guild_snowflake=source.guild.id, member_snowflake=member_snowflake)
+    return await is_guild_owner(guild_snowflake=source.guild.id, member_snowflake=member_snowflake)
 
 def guild_owner_predicator():
     async def predicate(

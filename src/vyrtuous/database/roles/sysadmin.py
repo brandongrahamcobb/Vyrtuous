@@ -44,7 +44,7 @@ def sysadmin_predicator():
     predicate._permission_level = "SysAdmin"
     return commands.check(predicate)
 
-async def is_sysadmin(member_snowflake: int) -> bool:
+def is_sysadmin(member_snowflake: int) -> bool:
     bot = DiscordBot.get_instance()
     if int(bot.config["discord_owner_id"]) == member_snowflake:
         return True

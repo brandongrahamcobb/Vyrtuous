@@ -36,7 +36,7 @@ async def is_administrator_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
     member_snowflake = get_member_snowflake(source=source)
-    return is_administrator(
+    return await is_administrator(
         guild_snowflake=source.guild.id,
         member_snowflake=member_snowflake,
     )

@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from contextlib import asynccontextmanager
 import asyncio
-import pytest
 
 from vyrtuous.tests.integration.mock_discord_channel import MockChannel
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
@@ -54,14 +53,9 @@ async def send_message(bot, content: str = None):
     state.user = better_author
     bot._connection = state
     bot._state = state
-    # mock_bot_user = guild.me
-    # with patch.object(bot, "_connection", create=True) as mock_conn:
-    #     mock_conn.user = mock_bot_user
-
     msg = MockMessage(author=author, channel=channel, content=content, guild=guild, state=state)
     async with capture(channel):
         bot.loop = asyncio.get_running_loop()
-        print(msg)
         bot.dispatch('message', msg)
         await bot.process_commands(msg)
     return channel._captured[-1]
