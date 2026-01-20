@@ -219,13 +219,11 @@ class DevCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         try:
             target_uuid = UUID(str(target))
-            kwargs = {
-                "id": target_uuid
-            }
+            kwargs = {"id": target_uuid}
         except Exception as e:
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
-            kwargs = object_dict['columns']
+            kwargs = object_dict["columns"]
 
         developer_logs = await DeveloperLog.select(**kwargs)
 
@@ -346,13 +344,11 @@ class DevCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         try:
             target_uuid = UUID(str(target))
-            kwargs = {
-                "id": target_uuid
-            }
+            kwargs = {"id": target_uuid}
         except Exception as e:
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
-            kwargs = object_dict['columns']
+            kwargs = object_dict["columns"]
 
         developer_logs = await DeveloperLog.select(**kwargs)
 

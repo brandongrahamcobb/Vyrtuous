@@ -22,6 +22,7 @@ import pytest
 
 from vyrtuous.tests.integration.test_suite import send_message
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command",

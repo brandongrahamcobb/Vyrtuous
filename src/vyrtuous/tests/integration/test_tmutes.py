@@ -80,7 +80,7 @@ async def test_text_mutes(bot, command: Optional[str]):
     formatted = command.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE,
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE
+        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

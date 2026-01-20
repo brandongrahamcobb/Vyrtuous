@@ -177,13 +177,15 @@ class AdminCommands(commands.Cog):
         else:
             kwargs.update(role_dict["columns"])
 
-        alias = await Alias.select(alias_name=alias_name, guild_snowflake=ctx.guild.id, singular=True)
+        alias = await Alias.select(
+            alias_name=alias_name, guild_snowflake=ctx.guild.id, singular=True
+        )
 
         if alias:
             return await state.end(
                 warning=f"Alias `{alias.alias_name}` already exists in {ctx.guild.name}."
             )
-        
+
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
         if role:
@@ -700,7 +702,9 @@ class AdminCommands(commands.Cog):
         member_dict = await do.determine_from_target(target=member)
         try:
             await has_equal_or_lower_role(
-                source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.author.id
+                source=ctx,
+                member_snowflake=member_dict["id"],
+                sender_snowflake=ctx.author.id,
             )
         except Exception as e:
             print(e)
@@ -997,7 +1001,9 @@ class AdminCommands(commands.Cog):
 
         member_dict = await do.determine_from_target(target=member)
         await has_equal_or_lower_role(
-            source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.author.id
+            source=ctx,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=ctx.author.id,
         )
         kwargs = member_dict["columns"]
 
@@ -2353,7 +2359,9 @@ class AdminCommands(commands.Cog):
             return await state.end(warning=f"No aliases found for `{alias_name}`.")
         await Alias.delete(**kwargs)
 
-        channel_dict = await do.determine_from_target(target=str(alias.channel_snowflake))
+        channel_dict = await do.determine_from_target(
+            target=str(alias.channel_snowflake)
+        )
         if hasattr(alias, "role_snowflake"):
             msg = (
                 f"Alias `{alias.alias_name}` of type "
@@ -2388,7 +2396,9 @@ class AdminCommands(commands.Cog):
             return await state.end(warning=f"No aliases found for `{alias_name}`.")
         await Alias.delete(**kwargs)
 
-        channel_dict = await do.determine_from_target(target=str(alias.channel_snowflake))
+        channel_dict = await do.determine_from_target(
+            target=str(alias.channel_snowflake)
+        )
         if hasattr(alias, "role_snowflake"):
             msg = (
                 f"Alias `{alias.alias_name}` of type "

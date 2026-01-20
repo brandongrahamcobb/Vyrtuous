@@ -26,6 +26,7 @@ GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 UUID = "7c772534-9528-4c3d-a065-ad3e29f754f8"
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command",
@@ -94,7 +95,7 @@ async def test_cogs(bot, command: Optional[str]):
     formatted = command.format(
         guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        uuid=UUID
+        uuid=UUID,
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured

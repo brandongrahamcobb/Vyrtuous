@@ -66,8 +66,7 @@ async def test_streams(bot, command: Optional[str]):
     [{emoji} Streaming Channels for Channel1]
     """
     formatted = command.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE
+        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

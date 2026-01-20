@@ -15,8 +15,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import asyncio
-import os
 
 import asyncpg
 import pytest
@@ -29,6 +27,7 @@ from vyrtuous.tests.integration.mock_database import dsn
 
 
 NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE = 10000000000000002
+
 
 @pytest.fixture
 def cf(monkeypatch):

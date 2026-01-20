@@ -55,8 +55,7 @@ async def test_aroles(bot, command: Optional[str]):
     [{emoji} Administrator Roles\n Guild1]
     """
     formatted = command.format(
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE
+        member_snowflake=DUMMY_MEMBER_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

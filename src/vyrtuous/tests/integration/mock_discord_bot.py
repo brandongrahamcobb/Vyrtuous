@@ -36,11 +36,11 @@ class MockBot(commands.Bot):
     @classmethod
     def get_instance(cls):
         return cls()
-    
+
     def get_guild(self, target: int):
         for guild in self._guilds:
             if target == guild.id:
-               return guild
+                return guild
 
     async def setup_hook(self):
         for cog in DISCORD_COGS:

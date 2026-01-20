@@ -101,7 +101,7 @@ class MockGuild(discord.Guild):
         for role in self._roles:
             if role.id == role_snowflake:
                 return role
-    
+
     @property
     def channels(self):
         return self._channels

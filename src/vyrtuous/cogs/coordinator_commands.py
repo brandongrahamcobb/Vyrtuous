@@ -116,7 +116,9 @@ class CoordinatorCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
         await has_equal_or_lower_role(
-            source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.author.id
+            source=ctx,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=ctx.author.id,
         )
         kwargs = {}
         kwargs.update(channel_dict["columns"])

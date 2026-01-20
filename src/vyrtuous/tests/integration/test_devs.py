@@ -66,8 +66,7 @@ async def test_devs(bot, command: Optional[str]):
     [{emoji} Developers for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE
+        member_snowflake=DUMMY_MEMBER_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

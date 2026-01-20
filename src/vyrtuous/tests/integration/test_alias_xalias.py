@@ -25,6 +25,7 @@ from vyrtuous.tests.integration.test_suite import send_message
 ROLE_SNOWFLAKE = 10000000000000200
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command",
@@ -52,7 +53,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
         ("!alias role testrole {channel_snowflake} {role_snowflake}"),
         ("!xalias role testrole"),
         ("!alias unrole testunrole {channel_snowflake} {role_snowflake}"),
-        ("!xalias unrole testunrole")
+        ("!xalias unrole testunrole"),
     ],
 )
 async def test_cogs(bot, command: Optional[str]):
@@ -77,8 +78,7 @@ async def test_cogs(bot, command: Optional[str]):
     [{emoji} Alias `testban` deleted]
     """
     formatted = command.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
-        role_snowflake=ROLE_SNOWFLAKE
+        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE, role_snowflake=ROLE_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content
