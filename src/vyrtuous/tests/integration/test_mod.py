@@ -1,4 +1,4 @@
-"""test_mod.py The purpose of this program is to be the integration test for the mod promotion command for Vyrtuous.
+"""test_mod.py The purpose of this program is to be the integration test for the mod demotion/promotion command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -36,7 +36,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 )
 async def test_mod(bot, command: Optional[str]):
     """
-    Promote a member to 'Moderator' by registering them in the PostgresSQL database
+    Promote or demote a member with 'Moderator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'moderators'.
 
     Parameters

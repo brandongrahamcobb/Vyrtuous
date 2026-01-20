@@ -15,11 +15,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+from typing import Dict, Tuple
 
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.ban import Ban
+from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
 from vyrtuous.service.logging_service import logger
@@ -28,25 +30,20 @@ from vyrtuous.service.logging_service import logger
 class Invincibility:
 
     state: bool = False
-    invincible_members = set()
+    invincible_members: Dict[Tuple[int, int], bool] = {}
 
     @classmethod
     async def unrestrict(cls, guild_snowflake, member_snowflake):
-        target = "user"
         bot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         member = guild.get_member(member_snowflake)
-        bans = await Ban.select(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-        )
-        text_mutes = await TextMute.select(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-        )
-        voice_mutes = await VoiceMute.select_member_and_target(
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
-            target="user",
-        )
+        kwargs = {
+            "guild_snowflake": guild_snowflake,
+            "member_snowflake": member_snowflake
+        }
+        bans = await Ban.select(**kwargs)
+        text_mutes = await TextMute.select(**kwargs)
+        voice_mutes = await VoiceMute.select(**kwargs)
         if bans:
             for ban in bans:
                 channel = guild.get_channel(ban.channel_snowflake)
@@ -72,29 +69,22 @@ class Invincibility:
                 channel = guild.get_channel(voice_mute.channel_snowflake)
                 if channel and member.voice and member.voice.mute:
                     await member.edit(mute=False)
-        await Ban.delete(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-        )
-        await TextMute.delete(
-            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
-        )
-        await VoiceMute.delete(
-            guild_snowflake=guild_snowflake,
-            member_snowflake=member_snowflake,
-            target=target,
-        )
+        await Ban.delete(**kwargs)
+        await Flag.delete(**kwargs)
+        await TextMute.delete(**kwargs)
+        await VoiceMute.delete(**kwargs)
 
     @classmethod
-    def add_invincible_member(cls, member_snowflake: int):
-        cls.invincible_members.add(member_snowflake)
+    def add_invincible_member(cls, guild_snowflake: int, member_snowflake: int):
+        cls.invincible_members[(guild_snowflake, member_snowflake)] = True
 
     @classmethod
     def get_invincible_members(cls):
         return cls.invincible_members
 
     @classmethod
-    def remove_invincible_member(cls, member_snowflake: int):
-        cls.invincible_members.discard(member_snowflake)
+    def remove_invincible_member(cls, guild_snowflake: int, member_snowflake: int):
+        cls.invincible_members.pop((guild_snowflake, member_snowflake), None)
 
     @classmethod
     def toggle_enabled(cls):

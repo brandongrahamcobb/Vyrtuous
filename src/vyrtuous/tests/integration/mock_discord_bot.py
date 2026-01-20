@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from discord.ext import commands
 import asyncpg
@@ -35,7 +35,7 @@ class MockBot(commands.Bot):
         self._guilds = []
         self._tree = AsyncMock()
         self._tree.sync = AsyncMock()
-        self._tree.add_command = AsyncMock()
+        self._tree.add_command = Mock()
         self._tree.remove_command = AsyncMock()
         self._tree.copy_global_to = AsyncMock()
         super().__init__(command_prefix="!", help_command=None, intents=intents)

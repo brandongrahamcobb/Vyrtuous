@@ -1,4 +1,4 @@
-"""test_coord.py The purpose of this program is to be the integration test for the coord promotion command for Vyrtuous.
+"""test_coord.py The purpose of this program is to be the integration test for the coord demotion/promotion command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -37,7 +37,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 )
 async def test_coord(bot, command: Optional[str]):
     """
-    Promote a member to 'Coordinator' by registering them in the PostgresSQL database
+    Promote or demote a member with 'Coordinator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'coordinators'.
 
     Parameters

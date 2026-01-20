@@ -1,4 +1,4 @@
-"""test_dev.py The purpose of this program is to be the integration test for the dev demotion/promotion command for Vyrtuous.
+"""test_hero.py The purpose of this program is to be the integration test for the hero promotion command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -29,29 +29,28 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 @pytest.mark.parametrize(
     "command",
     [
-        ("!dev {member_snowflake}"),
-        ("!dev <@{member_snowflake}>"),
+        ("!hero {member_snowflake}"),
+        ("!hero <@{member_snowflake}>"),
     ],
 )
-async def test_dev(bot, command: Optional[str]):
+async def test_hero(bot, command: Optional[str]):
     """
-    Promote or demote a member with 'Developer' by registering them in the PostgresSQL database
-    'vyrtuous' in the table 'developers'.
+    Promote or demote member to 'Hero' in memory (lost on reload).
 
     Parameters
     ----------
     member_snowflake : int | str, optional
-        Mention or snowflake of a member who is an developer
+        Mention or snowflake of a member who is will be or is a hero
         in any of the guilds Vyrtuous has access inside.
 
     Examples
     --------
 
-    >>> !dev <@10000000000000003>
-    [{emoji} Developer granted for Member1]
+    >>> !hero <@10000000000000003>
+    [{emoji} Invincibility granted for Member1]
 
-    >>> !dev 10000000000000003
-    [{emoji} Developer granted for Member1]
+    >>> !hero 10000000000000003
+    [{emoji} Invincibility granted for Member1]
     """
     formatted = command.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
