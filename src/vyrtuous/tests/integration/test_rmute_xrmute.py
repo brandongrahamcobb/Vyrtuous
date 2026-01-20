@@ -1,4 +1,4 @@
-"""test_cogs.py The purpose of this program is to be the integration test for the cogs list command for Vyrtuous.
+"""test_rmute_xrmute.py The purpose of this program is to be the integration test for the rmute and xrmute commands for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

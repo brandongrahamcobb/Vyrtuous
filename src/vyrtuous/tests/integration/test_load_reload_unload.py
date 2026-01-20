@@ -1,4 +1,4 @@
-"""test_sync.py The purpose of this program is to be the integration test for the sync list command for Vyrtuous.
+"""test_load_reload_unload.py The purpose of this program is to be the integration test for the load, reload, and unload cog commands for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -27,35 +27,34 @@ from vyrtuous.tests.integration.test_suite import send_message
 @pytest.mark.parametrize(
     "command",
     [
-        ("!sync"),
-        ("!sync *"),
-        ("!sync ^"),
-        ("!sync ~"),
+        ("!unload {cog}"),
+        ("!load {cog}"),
+        ("!reload {cog}"),
     ],
 )
-async def test_sync(bot, command: Optional[str]):
+async def test_load_reload_unload(bot, command: Optional[str]):
     """
-    Syncs app commands.
+    Load, reload or unload cogs.
 
     Parameters
     ----------
-    spec
-        Syncs app commands globally (None), syncs to the current guild (~),
-        syncs to from global to the current guild (*), cleans and syncs to the current guild (^)
+    cog
+        The cog file path starting with vyrtuous.cogs.*
 
     Examples
     --------
-    >>> !sync
-    [{emoji} Synced # commands globally]
+    >>> !load vyrtuous.cogs.scheduled_tasks
+    [{emoji} Loaded ScheduledTasks]
 
-    >>> !sync *
-    [{emoji} Synced # commands to the current guild]
+    >>> !reload vyrtuous.cogs.scheduled_tasks
+    [{emoji} Reloaded ScheduledTasks]
 
-    >>> !sync ~
-    [{emoji} Synced # commands to the current guild]
+    >>> !unload vyrtuous.cogs.scheduled_tasks
+    [{emoji} Unloaded ScheduledTasks]
 
-    >>> !sync ^
-    [{emoji} Synced 0 commands to the current guild]
     """
-    captured = await send_message(bot=bot, content=command)
+    formatted = command.format(
+        cog="vyrtuous.cogs.scheduled_tasks"
+    )
+    captured = await send_message(bot=bot, content=formatted)
     assert captured
