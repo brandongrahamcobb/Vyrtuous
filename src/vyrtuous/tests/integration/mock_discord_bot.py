@@ -16,6 +16,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from unittest.mock import AsyncMock
+
 from discord.ext import commands
 import asyncpg
 import discord
@@ -31,6 +33,11 @@ class MockBot(commands.Bot):
         self.config = config
         self.db_pool = db_pool
         self._guilds = []
+        self._tree = AsyncMock()
+        self._tree.sync = AsyncMock()
+        self._tree.add_command = AsyncMock()
+        self._tree.remove_command = AsyncMock()
+        self._tree.copy_global_to = AsyncMock()
         super().__init__(command_prefix="!", help_command=None, intents=intents)
 
     @classmethod
@@ -46,3 +53,7 @@ class MockBot(commands.Bot):
         for cog in DISCORD_COGS:
             if cog != "vyrtuous.cogs.scheduled_tasks":
                 await self.load_extension(cog)
+
+    @property
+    def tree(self):
+        return self._tree
