@@ -28,11 +28,11 @@ from vyrtuous.tests.integration.mock_discord_bot import MockBot
 from vyrtuous.tests.integration.mock_database import dsn
 
 
-NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
+NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE = 10000000000000002
 
 @pytest.fixture
 def cf(monkeypatch):
-    monkeypatch.setenv("DISCORD_OWNER_ID", str(NOT_PRIVILEGED_AUTHOR_SNOWFLAKE))
+    monkeypatch.setenv("DISCORD_OWNER_ID", str(NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE))
     cf = Config().get_config()
     yield cf
 

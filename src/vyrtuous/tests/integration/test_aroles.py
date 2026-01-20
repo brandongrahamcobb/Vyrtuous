@@ -23,7 +23,7 @@ import pytest
 from vyrtuous.tests.integration.test_suite import send_message
 
 GUILD_SNOWFLAKE = 10000000000000500
-NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
+DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 
 @pytest.mark.asyncio
@@ -55,7 +55,7 @@ async def test_aroles(bot, command: Optional[str]):
     [{emoji} Administrator Roles\n Guild1]
     """
     formatted = command.format(
-        member_snowflake=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,
+        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)

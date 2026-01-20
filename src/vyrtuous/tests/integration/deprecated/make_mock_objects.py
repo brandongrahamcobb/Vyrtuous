@@ -22,7 +22,7 @@
 # from discord.state import ConnectionState
 # import discord
 
-# from vyrtuous.inc.helpers import NOT_PRIVILEGED_AUTHOR_SNOWFLAKE, NOT_PRIVILEGED_AUTHOR_NAME
+# from vyrtuous.inc.helpers import NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE, NOT_PRIVILEGED_AUTHOR_NAME_ONE
 
 
 # def create_state():
@@ -44,12 +44,12 @@
 #     data = {
 #         "user": {
 #             "id": id,  # member's user ID
-#             "username": NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,  # username
+#             "username": NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE,  # username
 #             "discriminator": "1234",  # discriminator
 #             "avatar": None,  # avatar hash
 #             "bot": False,  # whether the user is a bot
 #         },
-#         "nick": NOT_PRIVILEGED_AUTHOR_NAME,  # nickname in the guild
+#         "nick": NOT_PRIVILEGED_AUTHOR_NAME_ONE,  # nickname in the guild
 #         "roles": [],  # list of role IDs
 #         "joined_at": "2025-01-01T00:00:00.000000+00:00",  # ISO timestamp
 #         "premium_since": None,  # boosting start date

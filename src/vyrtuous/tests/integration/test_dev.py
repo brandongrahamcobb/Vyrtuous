@@ -1,4 +1,4 @@
-"""test_devs.py The purpose of this program is to be the integration test for the devs list command for Vyrtuous.
+"""test_dev.py The purpose of this program is to be the integration test for the dev promotion command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -22,7 +22,6 @@ import pytest
 
 from vyrtuous.tests.integration.test_suite import send_message
 
-GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 
@@ -30,44 +29,32 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 @pytest.mark.parametrize(
     "command",
     [
-        ("!devs all"),
-        ("!devs {guild_snowflake}"),
-        ("!devs {member_snowflake}"),
-        ("!devs <@{member_snowflake}>"),
+        ("!dev {member_snowflake}"),
+        ("!dev <@{member_snowflake}>"),
     ],
 )
-async def test_devs(bot, command: Optional[str]):
+async def test_dev(bot, command: Optional[str]):
     """
-    List members who are registered in the PostgresSQL database
+    Promote a member to 'Developer' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'developers'.
 
     Parameters
     ----------
-    all : str, optional
-        Generic showing all developers in all guilds
-    guild_snowflake : int | str, optional
-        Snowflake of a guild where developers are present.
     member_snowflake : int | str, optional
         Mention or snowflake of a member who is an developer
         in any of the guilds Vyrtuous has access inside.
 
     Examples
     --------
-    >>> !devs "all"
-    [{emoji} Developers\n Guild1\n Guild2]
 
-    >>> !devs 10000000000000500
-    [{emoji} Developers\n Guild1]
+    >>> !dev <@10000000000000002>
+    [{emoji} Developer granted for Member1]
 
-    >>> !devs <@10000000000000002>
-    [{emoji} Developers for Member1\n Guild1\n Guild2]
-
-    >>> !devs 10000000000000002
-    [{emoji} Developers for Member1\n Guild1\n Guild2]
+    >>> !dev 10000000000000002
+    [{emoji} Developer granted for Member1]
     """
     formatted = command.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

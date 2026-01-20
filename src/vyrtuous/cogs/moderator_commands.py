@@ -2681,7 +2681,7 @@ class ModeratorCommands(commands.Cog):
 
         for member in channel_dict.get("object", None).members:
             try:
-                if await is_sysadmin(member.id):
+                if is_sysadmin(member.id):
                     sysadmins.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
@@ -2788,7 +2788,7 @@ class ModeratorCommands(commands.Cog):
 
         for member in channel_dict.get("object", None).members:
             try:
-                if await is_sysadmin(member.id):
+                if is_sysadmin(member.id):
                     sysadmins.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())

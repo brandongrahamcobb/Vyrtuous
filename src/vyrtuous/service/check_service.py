@@ -76,7 +76,6 @@ async def has_equal_or_lower_role(
     }
     sender_name = await resolve_highest_role(**kwargs)
     sender_rank = PERMISSION_TYPES.index(sender_name)
-
     kwargs.update({"member_snowflake": member_snowflake})
     target_kwargs = kwargs
     target_name = await resolve_highest_role(**target_kwargs)

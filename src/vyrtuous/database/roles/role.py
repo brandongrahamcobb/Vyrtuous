@@ -29,7 +29,7 @@ async def resolve_highest_role(
     member_snowflake: int, channel_snowflake=None, guild_snowflake=None
 ):
     try:
-        if await is_sysadmin(member_snowflake=member_snowflake):
+        if is_sysadmin(member_snowflake=member_snowflake):
             return "SysAdmin"
     except NotSysAdmin as e:
         logger.warning(str(e).capitalize())

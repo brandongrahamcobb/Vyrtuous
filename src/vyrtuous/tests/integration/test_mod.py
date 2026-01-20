@@ -1,4 +1,4 @@
-"""test_mods.py The purpose of this program is to be the integration test for the mods list command for Vyrtuous.
+"""test_mod.py The purpose of this program is to be the integration test for the mod promotion command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -22,7 +22,6 @@ import pytest
 
 from vyrtuous.tests.integration.test_suite import send_message
 
-GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
@@ -31,55 +30,35 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 @pytest.mark.parametrize(
     "command",
     [
-        ("!mods all"),
-        ("!mods {channel_snowflake}"),
-        ("!mods <#{channel_snowflake}>"),
-        ("!mods {guild_snowflake}"),
-        ("!mods {member_snowflake}"),
-        ("!mods <@{member_snowflake}>"),
+        ("!mod {member_snowflake} {channel_snowflake}"),
+        ("!mod <@{member_snowflake}> <#{channel_snowflake}>"),
     ],
 )
-async def test_mods(bot, command: Optional[str]):
+async def test_mod(bot, command: Optional[str]):
     """
-    List members who are registered in the PostgresSQL database
+    Promote a member to 'Moderator' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'moderators'.
 
     Parameters
     ----------
-    all : str, optional
-        Generic showing all moderators in all guilds
     channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with moderators
+        Mention or snowflake of a channel with modorators
         in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int | str, optional
-        Snowflake of a guild where moderators are present.
     member_snowflake : int | str, optional
         Mention or snowflake of a member who is an moderator
         in any of the guilds Vyrtuous has access inside.
 
     Examples
     --------
-    >>> !mods "all"
-    [{emoji} Moderators\n Guild1\n Guild2]
 
-    >>> !mods <#10000000000000010>
-    [{emoji} Moderators for Channel1\n Member1\n Member2]
+    >>> !mod <@10000000000000002> <@10000000000000002>
+    [{emoji} Moderator granted for Member1]
 
-    >>> !mods 10000000000000010
-    [{emoji} Moderators for Channel1\n Member1\n Member2]
-
-    >>> !mods 10000000000000500
-    [{emoji} Moderators\n Guild1]
-
-    >>> !mods <@10000000000000002>
-    [{emoji} Moderators for Member1\n Guild1\n Guild2]
-
-    >>> !mods 10000000000000002
-    [{emoji} Moderators for Member1\n Guild1\n Guild2]
+    >>> !mod 10000000000000002 10000000000000002
+    [{emoji} Moderator granted for Member1]
     """
     formatted = command.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     captured = await send_message(bot=bot, content=formatted)

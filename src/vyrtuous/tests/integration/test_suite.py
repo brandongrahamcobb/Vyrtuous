@@ -28,8 +28,10 @@ from vyrtuous.tests.integration.mock_discord_state import MockState
 
 PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000001
 PRIVILEGED_AUTHOR_NAME = "Privileged Author Name"
-NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
-NOT_PRIVILEGED_AUTHOR_NAME = "Not Privileged Author Name"
+NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE = 10000000000000002
+NOT_PRIVILEGED_AUTHOR_NAME_ONE = "Not Privileged Author Name One"
+DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
+DUMMY_MEMBER_NAME = "Not Privileged Author Name Two"
 RED = "\033[91m"
 YELLOW = "\033[93m"
 GREEN = "\033[92m"
@@ -56,12 +58,20 @@ async def send_message(bot, content: str = None):
     author = MockMember(
         bot=bot,
         guild=guild,
-        id=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,
+        id=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE,
         is_bot=False,
-        name=NOT_PRIVILEGED_AUTHOR_NAME,
+        name=NOT_PRIVILEGED_AUTHOR_NAME_ONE,
         state=state,
     )
-    better_author = MockMember(
+    dummy = MockMember(
+        bot=bot,
+        guild=guild,
+        id=DUMMY_MEMBER_SNOWFLAKE,
+        is_bot=False,
+        name=DUMMY_MEMBER_NAME,
+        state=state,
+    )
+    bot_member = MockMember(
         bot=bot,
         guild=guild,
         id=PRIVILEGED_AUTHOR_SNOWFLAKE,
@@ -70,10 +80,11 @@ async def send_message(bot, content: str = None):
         state=state,
     )
     guild._members.append(author)
-    guild._members.append(better_author)
-    state.user = better_author
+    guild._members.append(dummy)
+    guild._members.append(bot_member)
+    state.user = bot_member
     bot._connection = state
-    bot.me = better_author
+    bot.me = bot_member
     bot._state = state
     msg = MockMessage(
         author=author, channel=channel, content=content, guild=guild, state=state

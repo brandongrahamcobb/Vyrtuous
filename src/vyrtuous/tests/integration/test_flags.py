@@ -23,7 +23,7 @@ import pytest
 from vyrtuous.tests.integration.test_suite import send_message
 
 GUILD_SNOWFLAKE = 10000000000000500
-NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
+DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 
@@ -80,7 +80,7 @@ async def test_flags(bot, command: Optional[str]):
     formatted = command.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE,
-        member_snowflake=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,
+        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

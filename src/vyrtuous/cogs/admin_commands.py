@@ -698,13 +698,15 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
-            source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.user.id
-        )
+        try:
+            await has_equal_or_lower_role(
+                source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.author.id
+            )
+        except Exception as e:
+            print(e)
         kwargs = {}
         kwargs.update(channel_dict["columns"])
         kwargs.update(member_dict["columns"])
-
         coordinator = await Coordinator.select(**kwargs)
         if coordinator:
             await Coordinator.delete(**kwargs)
@@ -995,7 +997,7 @@ class AdminCommands(commands.Cog):
 
         member_dict = await do.determine_from_target(target=member)
         await has_equal_or_lower_role(
-            source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.user.id
+            source=ctx, member_snowflake=member_dict["id"], sender_snowflake=ctx.author.id
         )
         kwargs = member_dict["columns"]
 
