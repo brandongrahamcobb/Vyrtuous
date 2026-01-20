@@ -68,6 +68,8 @@ async def test_alias_xalias(bot, command: Optional[str]):
         flag, unflag, vegan, carnist, tmute, untmute, role and unrole.
     alias_name
         The name of the alias.
+    role_snowflake
+        The snowflake or mention of a role
 
     Examples
     --------
