@@ -23,7 +23,6 @@ import pytest
 from vyrtuous.tests.integration.test_suite import send_message
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
-DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 

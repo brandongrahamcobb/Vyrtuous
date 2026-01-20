@@ -93,5 +93,8 @@ async def send_message(bot, content: str = None):
     async with capture(channel):
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
-        await bot.process_commands(msg)
+        try:
+            await bot.process_commands(msg)
+        except:
+            await bot.on_message(msg)
     return channel._captured[-1]

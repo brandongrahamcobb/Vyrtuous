@@ -45,7 +45,7 @@ from vyrtuous.database.settings.streaming import Streaming
 from vyrtuous.properties.duration import DurationObject
 from vyrtuous.service.resolution.discord_object_service import DiscordObjectNotFound
 
-from vyrtuous.service.check_service import check
+from vyrtuous.service.check_service import has_equal_or_lower_role
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -428,15 +428,11 @@ class EventListeners(commands.Cog):
         )
         if not alias:
             return
-
         state = StateService(message)
-
         channel_obj = message.guild.get_channel(alias.channel_snowflake)
         member_obj = message.guild.get_member(args[1])
-        executor_role = check(
+        executor_role = await has_equal_or_lower_role(
             source=message,
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
             member_snowflake=member_obj.id,
             sender_snowflake=message.author.id,
         )
@@ -446,8 +442,8 @@ class EventListeners(commands.Cog):
             else DurationObject("8h")
         )
         duration_modification = action_duration.is_modification
-        expires_at = datetime.now(timezone.utc) + action_duration.to_timedelta()
-        action_expires_in = expires_at - datetime.now(timezone.utc)
+        action_expires_in = datetime.now(timezone.utc) + action_duration.to_timedelta()
+        expires_in_timedelta = action_expires_in - datetime.now(timezone.utc)
         action_reason = " ".join(args[3:]) if len(args) > 3 else "No reason provided."
         reason_modification = (
             action_duration.prefix in modification_chars
@@ -503,14 +499,14 @@ class EventListeners(commands.Cog):
             ),
         }
         if action_information["action_duration"].number != 0 and action_existing:
-            if action_information["action_expires_in"].total_seconds() < 0:
+            if expires_in_timedelta.total_seconds() < 0:
                 return await state.end(
                     warning="You are not authorized to decrease "
                     "the duration below the current time."
                 )
         if (
             action_information["action_existing"]
-            and action_information["action_expires_in"].total_seconds()
+            and expires_in_timedelta.total_seconds()
             > action_information["action_channel_cap"]
             or action_information["action_duration"].number == 0
         ):

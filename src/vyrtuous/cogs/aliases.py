@@ -113,13 +113,13 @@ class Aliases(commands.Cog):
                 reason=action_information["action_reason"],
             )
             await ban.create()
-
         try:
             await channel.set_permissions(
                 member, view_channel=False, reason=action_information["action_reason"]
             )
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
+        is_channel_scope = False
         if (
             member.voice
             and member.voice.channel
@@ -130,7 +130,6 @@ class Aliases(commands.Cog):
                 await member.move_to(None, reason=action_information["action_reason"])
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
-
         await Streaming.send_entry(
             alias=alias,
             channel=channel,
@@ -359,7 +358,6 @@ class Aliases(commands.Cog):
                     )
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
-
         await Streaming.send_entry(
             alias=alias,
             channel=channel,

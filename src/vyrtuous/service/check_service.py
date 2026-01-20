@@ -84,4 +84,4 @@ async def has_equal_or_lower_role(
     if sender_rank <= target_rank:
         raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])
 
-    return False
+    return sender_name

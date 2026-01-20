@@ -26,7 +26,7 @@ from vyrtuous.service.logging_service import logger
 
 
 async def resolve_highest_role(
-    member_snowflake: int, channel_snowflake=None, guild_snowflake=None
+    channel_snowflake: int = None, member_snowflake: int = None, guild_snowflake: int = None
 ):
     try:
         if is_sysadmin(member_snowflake=member_snowflake):
