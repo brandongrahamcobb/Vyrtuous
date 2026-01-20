@@ -139,9 +139,9 @@ class ModeratorCommands(commands.Cog):
                     )
                     thumbnail = True
                 else:
-                    member_line = f"**User:** {member.mention}"
+                    member_line = f"**User:** {member.display_name} {member.mention} "
                     if role_mentions:
-                        member_line += "**Roles:** " + "\n".join(role_mentions)
+                        member_line += "\n**Roles:** " + "\n".join(role_mentions)
                 lines.append(member_line)
                 field_count += 1
                 if field_count >= chunk_size:
@@ -187,7 +187,6 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: `all`, " "channel ID/mention or server ID.",
         ),
     ):
-        print("test")
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
@@ -242,9 +241,9 @@ class ModeratorCommands(commands.Cog):
                     )
                     thumbnail = True
                 else:
-                    member_line = f"**User:** {member.mention}"
+                    member_line = f"**User:** {member.display_name} {member.mention}"
                     if role_mentions:
-                        member_line += "**Roles:** " + "\n".join(role_mentions)
+                        member_line += "\n**Roles:** " + "\n".join(role_mentions)
                         lines.append(member_line)
                 field_count += 1
                 if field_count >= chunk_size:
@@ -332,7 +331,7 @@ class ModeratorCommands(commands.Cog):
             for member_snowflake, ban_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
                 if not object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
@@ -389,7 +388,6 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
-        print("test")
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         thumbnail = False
@@ -436,7 +434,7 @@ class ModeratorCommands(commands.Cog):
             for member_snowflake, ban_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
@@ -896,7 +894,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -998,7 +996,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -1135,7 +1133,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -1229,7 +1227,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -1321,7 +1319,7 @@ class ModeratorCommands(commands.Cog):
             for member_snowflake, flag_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
                 if not object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
@@ -1424,7 +1422,7 @@ class ModeratorCommands(commands.Cog):
             for member_snowflake, flag_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
                 if not object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
@@ -1500,7 +1498,7 @@ class ModeratorCommands(commands.Cog):
             )
             guild_dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
                 "vegans"
-            ].setdefault("placeholder", {})
+            ].setdefault({"placeholder": {}})
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
@@ -1519,7 +1517,7 @@ class ModeratorCommands(commands.Cog):
             for member_snowflake, vegan_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
                 if not object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 else:
                     if not thumbnail:
                         embed.set_thumbnail(
@@ -1591,7 +1589,7 @@ class ModeratorCommands(commands.Cog):
             )
             guild_dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
                 "vegans"
-            ].setdefault("placeholder", {})
+            ].setdefault({"placeholder": {}})
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_members = generate_skipped_members(guild_dictionary)
@@ -1610,7 +1608,7 @@ class ModeratorCommands(commands.Cog):
             for member_snowflake, vegan_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                 else:
                     if not thumbnail:
                         embed.set_thumbnail(
@@ -1878,7 +1876,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -1980,7 +1978,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -2080,7 +2078,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -2188,7 +2186,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -2364,7 +2362,7 @@ class ModeratorCommands(commands.Cog):
             )
             guild_dictionary[stage.guild_snowflake]["channels"][
                 stage.channel_snowflake
-            ].setdefault("stages", {})
+            ].setdefault({"stages": {}})
             guild_dictionary[stage.guild_snowflake]["channels"][
                 stage.channel_snowflake
             ]["stages"].update(
@@ -2458,7 +2456,7 @@ class ModeratorCommands(commands.Cog):
             )
             guild_dictionary[stage.guild_snowflake]["channels"][
                 stage.channel_snowflake
-            ].setdefault("stages", {})
+            ].setdefault({"stages": {}})
             guild_dictionary[stage.guild_snowflake]["channels"][
                 stage.channel_snowflake
             ]["stages"].update(
@@ -2934,7 +2932,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -3042,7 +3040,7 @@ class ModeratorCommands(commands.Cog):
             ).items():
                 member = guild.get_member(member_snowflake)
                 if object_dict.get("type", None) != discord.Member:
-                    lines.append(f"**User:** {member.mention}")
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
                     field_count += 1
                 elif not thumbnail:
                     embed.set_thumbnail(

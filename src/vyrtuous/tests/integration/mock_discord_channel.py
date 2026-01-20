@@ -24,11 +24,11 @@ from vyrtuous.tests.integration.mock_discord_guild import MockGuild
 from vyrtuous.tests.integration.mock_discord_message import MockMessage
 from vyrtuous.tests.integration.mock_discord_state import MockState
 
-GUILD_ID = 10000000000000500
-TEXT_CHANNEL_ID = 10000000000000010
+GUILD_SNOWFLAKE = 10000000000000500
+TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 TEXT_CHANNEL_NAME = "text-channel"
 CHANNEL_DATA = {
-    "id": TEXT_CHANNEL_ID,
+    "id": TEXT_CHANNEL_SNOWFLAKE,
     "name": TEXT_CHANNEL_NAME,
     "type": discord.TextChannel,
     "position": 0,
@@ -36,7 +36,7 @@ CHANNEL_DATA = {
     "topic": "",
     "rate_limit_per_user": 0,
     "parent_id": None,
-    "guild_id": GUILD_ID,
+    "guild_id": GUILD_SNOWFLAKE,
 }
 
 

@@ -30,12 +30,19 @@ class MockBot(commands.Bot):
         intents = discord.Intents.all()
         self.config = config
         self.db_pool = db_pool
+        self._guilds = []
         super().__init__(command_prefix="!", help_command=None, intents=intents)
 
     @classmethod
     def get_instance(cls):
         return cls()
+    
+    def get_guild(self, target: int):
+        for guild in self._guilds:
+            if target == guild.id:
+               return guild
 
     async def setup_hook(self):
         for cog in DISCORD_COGS:
-            await self.load_extension(cog)
+            if cog != "vyrtuous.cogs.scheduled_tasks":
+                await self.load_extension(cog)

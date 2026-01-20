@@ -20,7 +20,7 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.logs.history import History
+from vyrtuous.database.settings.streaming import Streaming
 
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
@@ -131,7 +131,7 @@ class Aliases(commands.Cog):
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=action_information["action_duration"],
@@ -168,7 +168,7 @@ class Aliases(commands.Cog):
             )
             await vegan.create()
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=None,
@@ -210,7 +210,7 @@ class Aliases(commands.Cog):
         cog = bot.get_cog("EventListeners")
         cog.flags.append(flag)
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=action_information["action_duration"],
@@ -256,7 +256,7 @@ class Aliases(commands.Cog):
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=action_information["action_duration"],
@@ -305,7 +305,7 @@ class Aliases(commands.Cog):
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=action_information["action_duration"],
@@ -360,7 +360,7 @@ class Aliases(commands.Cog):
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=action_information["action_duration"],
@@ -406,7 +406,7 @@ class Aliases(commands.Cog):
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=None,
@@ -435,7 +435,7 @@ class Aliases(commands.Cog):
         self, alias, action_information, channel, member, message, state
     ):
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=None,
@@ -472,7 +472,7 @@ class Aliases(commands.Cog):
                 cog.flags.remove(flag)
                 break
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=None,
@@ -509,7 +509,7 @@ class Aliases(commands.Cog):
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=None,
@@ -552,7 +552,7 @@ class Aliases(commands.Cog):
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=None,
@@ -586,7 +586,7 @@ class Aliases(commands.Cog):
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
-        await History.send_entry(
+        await Streaming.send_entry(
             alias=alias,
             channel=channel,
             duration=None,

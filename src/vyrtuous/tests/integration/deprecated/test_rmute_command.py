@@ -20,7 +20,7 @@
 
 # import pytest
 
-# from vyrtuous.inc.helpers import MESSAGE_ID
+# from vyrtuous.inc.helpers import MESSAGE_SNOWFLAKE
 # from vyrtuous.tests.black_box.test_suite import (
 #     extract_embed_text,
 #     prepared_command_handling,
@@ -97,5 +97,5 @@
 #         if ref_member:
 #             assert any(str(member_value) in content for member_value in member_values)
 #         if needs_message_id:
-#             assert MESSAGE_ID in content
+#             assert MESSAGE_SNOWFLAKE in content
 #         assert any(emoji in content for emoji in EMOJIS)

@@ -41,21 +41,6 @@ class Config:
             "discord_testing_guild_snowflake": int(
                 os.environ["DISCORD_TESTING_GUILD_ID"]
             ),
-            "discord_testing_first_channel_snowflake": int(
-                os.environ["DISCORD_TESTING_FIRST_CHANNEL_SNOWFLAKE"]
-            ),
-            "discord_testing_second_channel_snowflake": int(
-                os.environ["DISCORD_TESTING_SECOND_CHANNEL_SNOWFLAKE"]
-            ),
-            "discord_testing_text_channel_snowflake": int(
-                os.environ["DISCORD_TESTING_TEXT_CHANNEL_SNOWFLAKE"]
-            ),
-            "discord_testing_self_member_snowflake": int(
-                os.environ["DISCORD_TESTING_SELF_MEMBER_SNOWFLAKE"]
-            ),
-            "discord_testing_dummy_member_snowflake": int(
-                os.environ["DISCORD_TESTING_DUMMY_MEMBER_SNOWFLAKE"]
-            ),
             "logging_level": os.environ["LOGGING_LEVEL"],
         }
         _config["release_mode"] = os.environ.get("RELEASE_MODE").lower() in (

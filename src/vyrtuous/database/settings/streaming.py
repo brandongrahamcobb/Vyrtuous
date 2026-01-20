@@ -1,4 +1,4 @@
-"""history.py A utility module for managing and history of messages in the Vyrtuous Discord bot.
+"""streaming.py A utility module for managing and streaming of messages in the Vyrtuous Discord bot.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -23,18 +23,19 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.database_factory import DatabaseFactory
-from vyrtuous.properties.duration import DurationObject
+from vyrtuous.database.logs.data import Data
 from vyrtuous.database.roles.role import resolve_highest_role
+from vyrtuous.properties.duration import DurationObject
 from vyrtuous.service.messaging.paginator_service import Paginator
 
 
-class History(DatabaseFactory):
+class Streaming(DatabaseFactory):
 
     ACTION_TYPES = ["create", "delete", "modify"]
     ENTRY_TYPES = ["all", "channel", "member"]
     ACT = None
-    PLURAL = "Logging Channels"
-    SINGULAR = "Logging Channel"
+    PLURAL = "Streaming Channels"
+    SINGULAR = "Streaming Channel"
     UNDO = None
     REQUIRED_INSTANTIATION_ARGS = [
         "channel_snowflake",
@@ -48,7 +49,7 @@ class History(DatabaseFactory):
         "snowflakes",
         "updated_at",
     ]
-    TABLE_NAME = "history"
+    TABLE_NAME = "streaming"
 
     def __init__(
         self,
@@ -104,17 +105,17 @@ class History(DatabaseFactory):
         bot = DiscordBot.get_instance()
         author_snowflake = None
         expires_at = None
-        history = await History.select()
+        streaming = await Streaming.select()
         highest_role = await resolve_highest_role(
             channel_snowflake=channel.id,
             guild_snowflake=channel.guild.id,
             member_snowflake=member.id,
         )
         if message:
-            for entry in history:
-                channel_obj = bot.get_channel(entry.channel_snowflake)
+            for stream in streaming:
+                channel_obj = bot.get_channel(stream.channel_snowflake)
                 if channel_obj:
-                    pages = cls.build_history_embeds(
+                    pages = cls.build_streaming_embeds(
                         alias=alias,
                         channel=channel_obj,
                         duration=duration,
@@ -149,7 +150,7 @@ class History(DatabaseFactory):
             len([member for member in channel.members if not member.bot])
             for channel in channel.guild.voice_channels
         )
-        await cls.save(
+        await Data.save(
             action_type=alias.alias_type,
             channel_members_voice_count=channel_members_voice_count,
             channel_snowflake=channel.id,
@@ -166,7 +167,7 @@ class History(DatabaseFactory):
         )
 
     @classmethod
-    def build_history_embeds(
+    def build_streaming_embeds(
         cls,
         alias,
         channel,
@@ -294,42 +295,3 @@ class History(DatabaseFactory):
                     )
                     embeds.append(reason_embed)
         return embeds
-
-    @classmethod
-    async def save(
-        cls,
-        action_type: Optional[str],
-        channel_members_voice_count: Optional[int],
-        channel_snowflake: Optional[int],
-        executor_member_snowflake: Optional[int],
-        expires_at: Optional[datetime],
-        guild_members_offline_and_online_member_count: Optional[int],
-        guild_members_online_count: Optional[int],
-        guild_members_voice_count: Optional[int],
-        guild_snowflake: Optional[int],
-        highest_role: Optional[str],
-        is_modification: bool,
-        target_member_snowflake: Optional[int],
-        reason: Optional[str],
-    ):
-        bot = DiscordBot.get_instance()
-        async with bot.db_pool.acquire() as conn:
-            await conn.execute(
-                """
-                    INSERT INTO moderation_logs (action_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                """,
-                action_type,
-                channel_members_voice_count,
-                channel_snowflake,
-                executor_member_snowflake,
-                expires_at,
-                guild_members_offline_and_online_member_count,
-                guild_members_online_count,
-                guild_members_voice_count,
-                guild_snowflake,
-                highest_role,
-                is_modification,
-                target_member_snowflake,
-                reason,
-            )

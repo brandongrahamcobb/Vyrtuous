@@ -27,7 +27,6 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.alias import Alias
 from vyrtuous.database.actions.server_mute import ServerMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.database.logs.history import History
 from vyrtuous.database.roles.administrator import (
     AdministratorRole,
     administrator_predicator,
@@ -43,6 +42,7 @@ from vyrtuous.service.scope_service import (
 from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.rooms.video_room import VideoRoom
 from vyrtuous.database.settings.cap import Cap
+from vyrtuous.database.settings.streaming import Streaming
 from vyrtuous.properties.duration import AppDuration, Duration, DurationObject
 from vyrtuous.properties.moderation_type import AppModerationType, ModerationType
 from vyrtuous.properties.snowflake import (
@@ -502,7 +502,7 @@ class AdminCommands(commands.Cog):
     @app_commands.describe(
         target="Tag a channel/member or include the ID",
         action_type="Specify one of: `alias`, `all`, `ban`, "
-        "`coord`, `flag`, `mod`, `temp`, `tmute`, `track`, `vegan`, `vmute` or `vr`.",
+        "`coord`, `flag`, `mod`, `temp`, `tmute`, `stream`, `vegan`, `vmute` or `vr`.",
     )
     @administrator_predicator()
     async def clear_channel_access_app_command(
@@ -578,7 +578,7 @@ class AdminCommands(commands.Cog):
         *,
         action_type: Optional[str] = commands.parameter(
             description="Specify one of: `alias`, `all`, `ban`, `coord`, "
-            "flag`, `mod`, `temp`, `tmute`, `track`, `vegan`, `vmute` or `vr`.",
+            "flag`, `mod`, `temp`, `tmute`, `stream`, `vegan`, `vmute` or `vr`.",
         ),
     ):
         do = DiscordObject(ctx=ctx)
@@ -765,7 +765,7 @@ class AdminCommands(commands.Cog):
             if not missing:
                 continue
             guild_dictionary.setdefault(channel.guild.id, {})
-            guild_dictionary[channel.guild.id].setdefault("channels", {})
+            guild_dictionary[channel.guild.id].setdefault({"channels": {}})
             guild_dictionary[channel.guild.id]["channels"].setdefault(channel.id, {})
             guild_dictionary[channel.guild.id]["channels"][channel.id].update(
                 {"Missing Permissions": missing}
@@ -1652,15 +1652,15 @@ class AdminCommands(commands.Cog):
         await StateService.send_pages(obj=TemporaryRoom, pages=pages, state=state)
 
     # DONE
-    @app_commands.command(name="track", description="Setup tracking.")
+    @app_commands.command(name="stream", description="Setup streaming.")
     @app_commands.describe(
         channel="Tag a channel or include its ID where the messages will be sent.",
         scope="create | modify | delete.",
         entry_type="all | channel | general.",
-        snowflakes="Optional list of channel/member IDs to be tracked.",
+        snowflakes="Optional list of channel/member IDs to push events from.",
     )
     @administrator_predicator()
-    async def modify_tracking_app_command(
+    async def modify_streaming_app_command(
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
@@ -1678,20 +1678,20 @@ class AdminCommands(commands.Cog):
         kwargs = channel_dict["columns"]
 
         if scope is None and entry_type is None:
-            history = await History.select(**kwargs)
-            if not history:
+            stream = await Streaming.select(**kwargs)
+            if not steam:
                 return await state.end(
-                    warning=f"No tracking exists for {channel_dict['mention']}."
+                    warning=f"No streaming exists for {channel_dict['mention']}."
                 )
-            enabled = not history[0].enabled
+            enabled = not stream[0].enabled
             action = "enabled" if enabled else "disabled"
-            await History.update_by_channel_enabled_and_guild(
+            await Streaming.update(
                 channel_snowflake=channel_dict.get("id", None),
                 enabled=enabled,
                 guild_snowflake=interaction.guild.id,
             )
             return await state.end(
-                success=f"Tracking has been {action} in {channel_dict['mention']}."
+                success=f"Streaming has been {action} in {channel_dict['mention']}."
             )
 
         if scope and entry_type:
@@ -1709,23 +1709,23 @@ class AdminCommands(commands.Cog):
                             failed_snowflakes.append(snowflake)
                             continue
                     if scope.lower() == "create":
-                        history_entry = History(
+                        stream = Streaming(
                             **kwargs,
                             enabled=True,
                             entry_type=entry_type,
                             snowflakes=resolved_channels,
                         )
-                        await history_entry.create()
+                        await stream.create()
                         action = "created"
                     else:
-                        await History.update_by_channel_guild_and_type(
+                        await Streaming.update(
                             **kwargs,
                             entry_type=entry_type,
                             snowflakes=resolved_channels,
                         )
                         action = "modified"
                 case "delete":
-                    await History.delete(**kwargs)
+                    await Streaming.delete(**kwargs)
                     action = "deleted"
                 case _:
                     return await state.end(
@@ -1752,9 +1752,9 @@ class AdminCommands(commands.Cog):
         return await state.end(success=embed)
 
     # DONE
-    @commands.command(name="track", help="Setup tracking.")
+    @commands.command(name="stream", help="Setup streaming.")
     @administrator_predicator()
-    async def modify_tracking_text_command(
+    async def modify_streaming_text_command(
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
@@ -1776,20 +1776,20 @@ class AdminCommands(commands.Cog):
         kwargs = channel_dict["columns"]
 
         if scope is None and entry_type is None:
-            history = await History.select(**kwargs)
-            if not history:
+            stream = await Streaming.select(**kwargs)
+            if not stream:
                 return await state.end(
-                    warning=f"No tracking exists for {channel_dict['mention']}."
+                    warning=f"No streaming exists for {channel_dict['mention']}."
                 )
-            enabled = not history[0].enabled
+            enabled = not stream[0].enabled
             action = "enabled" if enabled else "disabled"
-            await History.update_by_channel_enabled_and_guild(
+            await Streaming.update(
                 channel_snowflake=channel_dict.get("id", None),
                 enabled=enabled,
                 guild_snowflake=ctx.guild.id,
             )
             return await state.end(
-                success=f"Tracking has been {action} in {channel_dict['mention']}."
+                success=f"Streaming has been {action} in {channel_dict['mention']}."
             )
 
         if scope and entry_type:
@@ -1807,23 +1807,23 @@ class AdminCommands(commands.Cog):
                             failed_snowflakes.append(snowflake)
                             continue
                     if scope.lower() == "create":
-                        history_entry = History(
+                        stream = Streaming(
                             **kwargs,
                             enabled=True,
                             entry_type=entry_type,
                             snowflakes=resolved_channels,
                         )
-                        await history_entry.create()
+                        await stream.create()
                         action = "created"
                     else:
-                        await History.update_by_channel_guild_and_type(
+                        await Streaming.update(
                             **kwargs,
                             entry_type=entry_type,
                             snowflakes=resolved_channels,
                         )
                         action = "modified"
                 case "delete":
-                    await History.delete(**kwargs)
+                    await Streaming.delete(**kwargs)
                     action = "deleted"
                 case _:
                     return await state.end(
@@ -1850,18 +1850,18 @@ class AdminCommands(commands.Cog):
         return await state.end(success=embed)
 
     # DONE
-    @app_commands.command(name="tracks", description="List history channels.")
+    @app_commands.command(name="streams", description="List streaming routes.")
     @app_commands.describe(
         target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     @administrator_predicator()
-    async def list_tracking_app_command(
+    async def list_streaming_app_command(
         self, interaction: discord.Interaction, target: Optional[str] = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         is_at_home = at_home(source=interaction)
-        title = f"{get_random_emoji} {History.PLURAL}"
+        title = f"{get_random_emoji} {Streaming.PLURAL}"
 
         state = StateService(source=interaction)
 
@@ -1870,16 +1870,16 @@ class AdminCommands(commands.Cog):
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        histories = await History.select(**kwargs)
+        streaming = await Streaming.select(**kwargs)
 
-        for history in histories:
-            guild_dictionary.setdefault(history.guild_snowflake, {"channels", {}})
-            guild_dictionary[history.guild_snowflake]["channels"][
-                history.channel_snowflake
+        for stream in streaming:
+            guild_dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
+            guild_dictionary[stream.guild_snowflake]["channels"][
+                stream.channel_snowflake
             ] = {
-                "enabled": history.enabled,
-                "entry_type": history.entry_type,
-                "snowflakes": history.snowflakes,
+                "enabled": stream.enabled,
+                "entry_type": stream.entry_type,
+                "snowflakes": stream.snowflakes,
             }
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
@@ -1943,12 +1943,12 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(obj=History, pages=pages, state=state)
+        await StateService.send_pages(obj=Streaming, pages=pages, state=state)
 
     # DONE
-    @commands.command(name="tracks", help="List history channels.")
+    @commands.command(name="streams", help="List streaming routes.")
     @administrator_predicator()
-    async def list_tracking_text_command(
+    async def list_streaming_text_command(
         self,
         ctx: commands.Context,
         *,
@@ -1959,7 +1959,7 @@ class AdminCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         is_at_home = at_home(source=ctx)
-        title = f"{get_random_emoji} {History.PLURAL}"
+        title = f"{get_random_emoji} {Streaming.PLURAL}"
 
         state = StateService(source=ctx)
 
@@ -1968,18 +1968,17 @@ class AdminCommands(commands.Cog):
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        histories = await History.select(**kwargs)
+        streaming = await Streaming.select(**kwargs)
 
-        for history in histories:
-            guild_dictionary.setdefault(history.guild_snowflake, {"channels", {}})
-            guild_dictionary[history.guild_snowflake]["channels"][
-                history.channel_snowflake
+        for stream in streaming:
+            guild_dictionary.setdefault(stream.guild_snowflake, {"channels": {}})
+            guild_dictionary[stream.guild_snowflake]["channels"][
+                stream.channel_snowflake
             ] = {
-                "enabled": history.enabled,
-                "entry_type": history.entry_type,
-                "snowflakes": history.snowflakes,
+                "enabled": stream.enabled,
+                "entry_type": stream.entry_type,
+                "snowflakes": stream.snowflakes,
             }
-
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         guild_dictionary = clean_guild_dictionary(
@@ -2041,7 +2040,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(obj=History, pages=pages, state=state)
+        await StateService.send_pages(obj=Streaming, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="vr", description="Start/stop video-only room.")

@@ -28,3 +28,4 @@ DROP TABLE role_permissions;
 DROP TABLE moderation_logs_old;
 DROP TABLE log_channels;
 DROP TABLE active_caps_old;
+ALTER TABLE history RENAME TO streaming;

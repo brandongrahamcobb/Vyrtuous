@@ -1,0 +1,50 @@
+"""data.py The purpose of this program is to manage statistics of Vyrtuous.
+
+Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+from datetime import datetime
+from typing import Optional
+
+from vyrtuous.bot.discord_bot import DiscordBot
+
+class Data:
+
+    @classmethod
+    async def save(
+        cls,
+        action_type: Optional[str],
+        channel_members_voice_count: Optional[int],
+        channel_snowflake: Optional[int],
+        executor_member_snowflake: Optional[int],
+        expires_at: Optional[datetime],
+        guild_members_offline_and_online_member_count: Optional[int],
+        guild_members_online_count: Optional[int],
+        guild_members_voice_count: Optional[int],
+        guild_snowflake: Optional[int],
+        highest_role: Optional[str],
+        is_modification: bool,
+        target_member_snowflake: Optional[int],
+        reason: Optional[str],
+    ):
+        bot = DiscordBot.get_instance()
+        async with bot.db_pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO moderation_logs (action_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake, expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count, guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            """, action_type, channel_members_voice_count, channel_snowflake, executor_member_snowflake,
+            expires_at, guild_members_offline_and_online_member_count, guild_members_online_count, guild_members_voice_count,
+            guild_snowflake, highest_role, is_modification, target_member_snowflake, reason)

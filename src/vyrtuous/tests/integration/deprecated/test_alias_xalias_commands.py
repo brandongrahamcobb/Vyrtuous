@@ -61,7 +61,7 @@
 #         role_value = role.mention if role_ref else role.name
 #         voice_channel_one.messages.clear()
 #         if channel_ref and role_ref and command == "alias":
-#             formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id} {ROLE_ID}"
+#             formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id} {ROLE_SNOWFLAKE}"
 #         elif channel_ref and command == "alias":
 #             formatted = f"{command} {alias_type} {alias_name} {voice_channel_one.id}"
 #         else:

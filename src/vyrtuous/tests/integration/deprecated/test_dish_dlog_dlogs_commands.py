@@ -21,7 +21,7 @@
 # import pytest
 # import discord
 
-# from vyrtuous.inc.helpers import PRIVILEGED_AUTHOR_ID
+# from vyrtuous.inc.helpers import PRIVILEGED_AUTHOR_SNOWFLAKE
 # from vyrtuous.database.roles.developer import Developer
 # from vyrtuous.tests.black_box.test_suite import (
 #     extract_embed_text,
@@ -38,8 +38,8 @@
 # @pytest.mark.parametrize(
 #     "command",
 #     [
-#         (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_ID}"),
-#         (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_ID}"),
+#         (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_SNOWFLAKE}"),
+#         (f"dish 5cb608e7-7b95-4c22-9bd4-aac414562b10 {PRIVILEGED_AUTHOR_SNOWFLAKE}"),
 #         ("dlogs unresolved 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58"),
 #         ("dlogs resolved 5cb608e7-7b95-4c22-9bd4-aac414562b10"),
 #         ("dlog 4588f2ca-1a03-4b6d-beb9-b88cbc8b2b58 overwrite Test"),

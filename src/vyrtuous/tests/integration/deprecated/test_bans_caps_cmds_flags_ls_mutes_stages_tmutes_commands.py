@@ -16,7 +16,7 @@
 # """
 
 # from typing import Optional
-# from vyrtuous.inc.helpers import ROLE_ID
+# from vyrtuous.inc.helpers import ROLE_SNOWFLAKE
 # from vyrtuous.tests.black_box.test_suite import (
 #     bot,
 #     config,
@@ -432,7 +432,7 @@
 #         voice_channel_one_mention=voice_channel_one.mention,
 #         member_id=not_privileged_author.id,
 #         guild_id=guild.id,
-#         role_id=ROLE_ID,
+#         role_id=ROLE_SNOWFLAKE,
 #     )
 #     # print(formatted)
 #     captured = await prepared_command_handling(

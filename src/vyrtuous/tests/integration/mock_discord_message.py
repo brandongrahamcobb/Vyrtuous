@@ -21,17 +21,17 @@ import discord
 from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_state import MockState
 
-GUILD_ID = 10000000000000500
-PRIVILEGED_AUTHOR_ID = 10000000000000001
+GUILD_SNOWFLAKE = 10000000000000500
+PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000001
 PRIVILEGED_AUTHOR_NAME = "Privileged Author Name"
-MESSAGE_ID = 10000000000000100
-TEXT_CHANNEL_ID = 10000000000000010
+MESSAGE_SNOWFLAKE = 10000000000000100
+TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 MESSAGE_DATA = {
-    "id": MESSAGE_ID,
-    "channel_id": TEXT_CHANNEL_ID,
-    "guild_id": GUILD_ID,
+    "id": MESSAGE_SNOWFLAKE,
+    "channel_id": TEXT_CHANNEL_SNOWFLAKE,
+    "guild_id": GUILD_SNOWFLAKE,
     "author": {
-        "id": PRIVILEGED_AUTHOR_ID,
+        "id": PRIVILEGED_AUTHOR_SNOWFLAKE,
         "username": PRIVILEGED_AUTHOR_NAME,
         "discriminator": "1234",
         "avatar": None,
@@ -76,8 +76,8 @@ MESSAGE_DATA = {
     },
     "message_reference": {
         "message_id": 123,
-        "channel_id": TEXT_CHANNEL_ID,
-        "guild_id": GUILD_ID,
+        "channel_id": TEXT_CHANNEL_SNOWFLAKE,
+        "guild_id": GUILD_SNOWFLAKE,
         "type": 0,
     },
     "flags": 0,

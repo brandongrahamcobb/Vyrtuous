@@ -74,7 +74,7 @@ class TargetIsBot(commands.CheckFailure):
         self, source: Union[commands.Context, discord.Interaction, discord.Message]
     ):
         super().__init__(
-            message="You cannot execute actions on {source.guild.me.mention}."
+            message=f"You cannot execute actions on {source.guild.me.mention}."
         )
 
 

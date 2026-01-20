@@ -34,7 +34,6 @@ from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.server_mute import ServerMute
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.database.logs.history import History
 from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
 from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.moderator import Moderator
@@ -42,6 +41,7 @@ from vyrtuous.database.rooms.stage import Stage
 from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.rooms.video_room import VideoRoom
 from vyrtuous.database.settings.cap import Cap
+from vyrtuous.database.settings.streaming import Streaming
 from vyrtuous.properties.duration import DurationObject
 from vyrtuous.service.resolution.discord_object_service import DiscordObjectNotFound
 
@@ -225,7 +225,7 @@ class EventListeners(commands.Cog):
         #          ON CONFLICT (guild_id, discord_snowflake, channel_id, room_name, target)
         #          DO UPDATE SET expires_in = EXCLUDED.expires_in
         #      ''', member.guild.id, member.id, after.channel.id, expires_in, after.channel.name)
-        server_mute = await ServerMute.select(member.id)
+        server_mute = await ServerMute.select(member_snowflake=member.id)
         if server_mute:
             if member.guild.id == server_mute.guild_snowflake:
                 if not after.mute:
@@ -276,7 +276,7 @@ class EventListeners(commands.Cog):
                     should_be_muted = True
                     alias = SimpleNamespace(alias_type="voice_mute")
                     duration = DurationObject("1h")
-                    await History.send_entry(
+                    await Streaming.send_entry(
                         alias=alias,
                         channel=after.channel,
                         duration=duration,
@@ -297,7 +297,7 @@ class EventListeners(commands.Cog):
                 should_be_muted = False
                 alias = SimpleNamespace(alias_type="unvoice_mute")
                 duration = DurationObject("0")
-                await History.send_entry(
+                await Streaming.send_entry(
                     alias=alias,
                     channel=after.channel,
                     duration=duration,
@@ -433,7 +433,6 @@ class EventListeners(commands.Cog):
 
         channel_obj = message.guild.get_channel(alias.channel_snowflake)
         member_obj = message.guild.get_member(args[1])
-        print(member_obj)
         executor_role = check(
             source=message,
             channel_snowflake=channel_obj.id,

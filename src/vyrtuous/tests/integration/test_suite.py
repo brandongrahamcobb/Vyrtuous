@@ -25,9 +25,9 @@ from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_message import MockMessage
 from vyrtuous.tests.integration.mock_discord_state import MockState
 
-PRIVILEGED_AUTHOR_ID = 10000000000000001
+PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000001
 PRIVILEGED_AUTHOR_NAME = "Privileged Author Name"
-NOT_PRIVILEGED_AUTHOR_ID = 10000000000000002
+NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
 NOT_PRIVILEGED_AUTHOR_NAME = "Not Privileged Author Name"
 RED = "\033[91m"
 YELLOW = "\033[93m"
@@ -47,12 +47,13 @@ async def capture(channel):
 async def send_message(bot, content: str = None):
     state = MockState()
     guild = MockGuild(bot=bot, channels=[], members=[], roles=[], state=state)
+    bot._guilds.append(guild)
     channel = MockChannel(bot=bot, guild=guild, state=state)
     guild._channels.append(channel)
     author = MockMember(
         bot=bot,
         guild=guild,
-        id=NOT_PRIVILEGED_AUTHOR_ID,
+        id=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,
         is_bot=False,
         name=NOT_PRIVILEGED_AUTHOR_NAME,
         state=state,
@@ -60,11 +61,12 @@ async def send_message(bot, content: str = None):
     better_author = MockMember(
         bot=bot,
         guild=guild,
-        id=PRIVILEGED_AUTHOR_ID,
+        id=PRIVILEGED_AUTHOR_SNOWFLAKE,
         is_bot=True,
         name=PRIVILEGED_AUTHOR_NAME,
         state=state,
     )
+    guild._members.append(author)
     guild._members.append(better_author)
     state.user = better_author
     bot._connection = state

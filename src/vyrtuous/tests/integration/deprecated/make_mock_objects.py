@@ -22,7 +22,7 @@
 # from discord.state import ConnectionState
 # import discord
 
-# from vyrtuous.inc.helpers import NOT_PRIVILEGED_AUTHOR_ID, NOT_PRIVILEGED_AUTHOR_NAME
+# from vyrtuous.inc.helpers import NOT_PRIVILEGED_AUTHOR_SNOWFLAKE, NOT_PRIVILEGED_AUTHOR_NAME
 
 
 # def create_state():
@@ -44,7 +44,7 @@
 #     data = {
 #         "user": {
 #             "id": id,  # member's user ID
-#             "username": NOT_PRIVILEGED_AUTHOR_ID,  # username
+#             "username": NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,  # username
 #             "discriminator": "1234",  # discriminator
 #             "avatar": None,  # avatar hash
 #             "bot": False,  # whether the user is a bot

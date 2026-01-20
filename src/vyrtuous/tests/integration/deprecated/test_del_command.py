@@ -17,7 +17,7 @@
 # """
 
 # from typing import Optional
-# from vyrtuous.inc.helpers import MESSAGE_ID
+# from vyrtuous.inc.helpers import MESSAGE_SNOWFLAKE
 # from vyrtuous.tests.black_box.test_suite import (
 #     extract_embed_text,
 #     prepared_command_handling,
@@ -60,7 +60,7 @@
 #     member_values = (not_privileged_author.mention, not_privileged_author.id)
 
 #     if needs_message_id:
-#         formatted = command.format(message_id=MESSAGE_ID)
+#         formatted = command.format(message_id=MESSAGE_SNOWFLAKE)
 #         captured = await prepared_command_handling(
 #             author=privileged_author,
 #             bot=bot,
