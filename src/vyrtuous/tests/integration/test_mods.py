@@ -71,10 +71,10 @@ async def test_mods(bot, command: Optional[str]):
     >>> !mods 10000000000000500
     [{emoji} Moderators\n Guild1]
 
-    >>> !mods <@10000000000000002>
+    >>> !mods <@10000000000000003>
     [{emoji} Moderators for Member1\n Guild1\n Guild2]
 
-    >>> !mods 10000000000000002
+    >>> !mods 10000000000000003
     [{emoji} Moderators for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(

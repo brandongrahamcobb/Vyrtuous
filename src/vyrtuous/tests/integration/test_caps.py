@@ -59,10 +59,10 @@ async def test_caps(bot, command: Optional[str]):
     >>> !caps 10000000000000500
     [{emoji} Caps\n Guild1]
 
-    >>> !caps <@10000000000000002>
+    >>> !caps <@10000000000000010>
     [{emoji} Caps for Channel1]
 
-    >>> !caps 10000000000000002
+    >>> !caps 10000000000000010
     [{emoji} Caps for Channel1]
     """
     formatted = command.format(

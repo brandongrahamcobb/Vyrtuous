@@ -59,10 +59,10 @@ async def test_admins(bot, command: Optional[str]):
     >>> !admins 10000000000000500
     [{emoji} Administrators\n Guild1]
 
-    >>> !admins <@10000000000000002>
+    >>> !admins <@10000000000000003>
     [{emoji} Administrators for Member1\n Guild1\n Guild2]
 
-    >>> !admins 10000000000000002
+    >>> !admins 10000000000000003
     [{emoji} Administrators for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(

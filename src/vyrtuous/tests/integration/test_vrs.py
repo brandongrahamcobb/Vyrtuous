@@ -59,10 +59,10 @@ async def test_vrs(bot, command: Optional[str]):
     >>> !vrs 10000000000000500
     [{emoji} Video Rooms\n Guild1]
 
-    >>> !vrs <@10000000000000002>
+    >>> !vrs <@10000000000000010>
     [{emoji} Video Rooms for Channel1]
 
-    >>> !vrs 10000000000000002
+    >>> !vrs 10000000000000010
     [{emoji} Video Rooms for Channel1]
     """
     formatted = command.format(

@@ -52,10 +52,10 @@ async def test_coord(bot, command: Optional[str]):
     Examples
     --------
 
-    >>> !coord <@10000000000000002> <@10000000000000002>
+    >>> !coord <@10000000000000003> <@10000000000000010>
     [{emoji} Coordinator granted for Member1]
 
-    >>> !coord 10000000000000002 10000000000000002
+    >>> !coord 10000000000000003 10000000000000010
     [{emoji} Coordinator granted for Member1]
     """
     formatted = command.format(

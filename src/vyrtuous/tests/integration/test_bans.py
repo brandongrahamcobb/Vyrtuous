@@ -71,10 +71,10 @@ async def test_bans(bot, command: Optional[str]):
     >>> !bans 10000000000000500
     [{emoji} Bans\n Guild1]
 
-    >>> !bans <@10000000000000002>
+    >>> !bans <@10000000000000003>
     [{emoji} Bans for Member1\n Guild1\n Guild2]
 
-    >>> !bans 10000000000000002
+    >>> !bans 10000000000000003
     [{emoji} Bans for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(

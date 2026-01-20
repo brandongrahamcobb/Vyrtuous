@@ -59,10 +59,10 @@ async def test_devs(bot, command: Optional[str]):
     >>> !devs 10000000000000500
     [{emoji} Developers\n Guild1]
 
-    >>> !devs <@10000000000000002>
+    >>> !devs <@10000000000000003>
     [{emoji} Developers for Member1\n Guild1\n Guild2]
 
-    >>> !devs 10000000000000002
+    >>> !devs 10000000000000003
     [{emoji} Developers for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(

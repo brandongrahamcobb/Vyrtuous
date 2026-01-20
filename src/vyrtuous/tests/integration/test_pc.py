@@ -58,10 +58,10 @@ async def test_pc(bot, command: Optional[str]):
     >>> !pc 10000000000000500
     [{emoji} Permissions\n Guild1]
 
-    >>> !pc <@10000000000000002>
+    >>> !pc <@10000000000000010>
     [{emoji} Permissions for Channel1]
 
-    >>> !pc 10000000000000002
+    >>> !pc 10000000000000010
     [{emoji} Permissions for Channel1]
     """
     formatted = command.format(

@@ -1,4 +1,4 @@
-"""test_mod.py The purpose of this program is to be the integration test for the mod promotion command for Vyrtuous.
+"""test_cogs.py The purpose of this program is to be the integration test for the cogs list command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -22,7 +22,7 @@ import pytest
 
 from vyrtuous.tests.integration.test_suite import send_message
 
-DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
+ROLE_SNOWFLAKE = 10000000000000200
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 
@@ -30,36 +30,40 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 @pytest.mark.parametrize(
     "command",
     [
-        ("!mod {member_snowflake} {channel_snowflake}"),
-        ("!mod <@{member_snowflake}> <#{channel_snowflake}>"),
+        ("!rmute {channel_snowflake}"),
+        ("!xrmute {channel_snowflake}"),
+        ("!rmute <#{channel_snowflake}>"),
+        ("!xrmute <#{channel_snowflake}>"),
     ],
 )
-async def test_mod(bot, command: Optional[str]):
+async def test_rmute_xrmute(bot, command: Optional[str]):
     """
-    Promote a member to 'Moderator' by registering them in the PostgresSQL database
-    'vyrtuous' in the table 'moderators'.
+    Voice-mute a whole room and undo it by adding and removing
+    entries in the PostgreSQL database 'vyrtuous' in the table
+    'active_voice_mutes'.
 
     Parameters
     ----------
     channel_snowflake : int | str, optional
-        Mention or snowflake of a channel with modorators
-        in any of the guilds Vyrtuous has access inside.
-    member_snowflake : int | str, optional
-        Mention or snowflake of a member who is an moderator
+        Mention or snowflake of a channel
         in any of the guilds Vyrtuous has access inside.
 
     Examples
     --------
+    >>> !rmute 10000000000000010
+    [{emoji} Room Muted\n Member1\n Member2]
 
-    >>> !mod <@10000000000000003> <@10000000000000010>
-    [{emoji} Moderator granted for Member1]
+    >>> !xrmute 10000000000000010
+    [{emoji} Room Unmuted\n Member1\n Member2]
 
-    >>> !mod 10000000000000003 10000000000000010
-    [{emoji} Moderator granted for Member1]
+    >>> !rmute <#10000000000000010>
+    [{emoji} Room Muted\n Member1\n Member2]
+
+    >>> !xrmute <#10000000000000010>
+    [{emoji} Room Unmuted\n Member1\n Member2]
     """
     formatted = command.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
-        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

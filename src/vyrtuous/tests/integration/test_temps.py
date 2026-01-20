@@ -59,10 +59,10 @@ async def test_temps(bot, command: Optional[str]):
     >>> !temps 10000000000000500
     [{emoji} Temporary Rooms\n Guild1]
 
-    >>> !temps <@10000000000000002>
+    >>> !temps <@10000000000000010>
     [{emoji} Temporary Rooms for Channel1]
 
-    >>> !temps 10000000000000002
+    >>> !temps 10000000000000010
     [{emoji} Temporary Rooms for Channel1]
     """
     formatted = command.format(

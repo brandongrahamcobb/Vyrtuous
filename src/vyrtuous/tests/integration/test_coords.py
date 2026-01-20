@@ -71,10 +71,10 @@ async def test_coords(bot, command: Optional[str]):
     >>> !coords 10000000000000500
     [{emoji} Coordinators\n Guild1]
 
-    >>> !coords <@10000000000000002>
+    >>> !coords <@10000000000000003>
     [{emoji} Coordinators for Member1\n Guild1\n Guild2]
 
-    >>> !coords 10000000000000002
+    >>> !coords 10000000000000003
     [{emoji} Coordinators for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(

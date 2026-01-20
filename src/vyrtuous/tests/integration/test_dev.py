@@ -47,10 +47,10 @@ async def test_dev(bot, command: Optional[str]):
     Examples
     --------
 
-    >>> !dev <@10000000000000002>
+    >>> !dev <@10000000000000003>
     [{emoji} Developer granted for Member1]
 
-    >>> !dev 10000000000000002
+    >>> !dev 10000000000000003
     [{emoji} Developer granted for Member1]
     """
     formatted = command.format(

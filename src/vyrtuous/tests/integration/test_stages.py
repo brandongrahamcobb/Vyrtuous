@@ -59,10 +59,10 @@ async def test_stages(bot, command: Optional[str]):
     >>> !stages 10000000000000500
     [{emoji} Stages\n Guild1]
 
-    >>> !stages <@10000000000000002>
+    >>> !stages <@10000000000000010>
     [{emoji} Stages for Channel1]
 
-    >>> !stages 10000000000000002
+    >>> !stages 10000000000000010
     [{emoji} Stages for Channel1]
     """
     formatted = command.format(

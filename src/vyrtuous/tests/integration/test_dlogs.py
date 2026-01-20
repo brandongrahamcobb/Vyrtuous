@@ -42,7 +42,7 @@ UUID = "7c772534-9528-4c3d-a065-ad3e29f754f8"
         ("!dlogs {guild_snowflake} unresolved"),
     ],
 )
-async def test_cogs(bot, command: Optional[str]):
+async def test_dlogs(bot, command: Optional[str]):
     """
     List developer issues which are registered in the PostgresSQL database
     'vyrtuous' in the table 'developer_logs'.

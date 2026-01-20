@@ -79,6 +79,7 @@ async def send_message(bot, content: str = None):
         name=PRIVILEGED_AUTHOR_NAME,
         state=state,
     )
+    channel._members.append(dummy)
     guild._members.append(author)
     guild._members.append(dummy)
     guild._members.append(bot_member)

@@ -59,10 +59,10 @@ async def test_cmds(bot, command: Optional[str]):
     >>> !cmds 10000000000000500
     [{emoji} Aliases\n Guild1]
 
-    >>> !cmds <@10000000000000002>
+    >>> !cmds <@10000000000000010>
     [{emoji} Aliases for Channel1]
 
-    >>> !cmds 10000000000000002
+    >>> !cmds 10000000000000010
     [{emoji} Aliases for Channel1]
     """
     formatted = command.format(

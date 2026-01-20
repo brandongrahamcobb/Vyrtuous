@@ -71,10 +71,10 @@ async def test_text_mutes(bot, command: Optional[str]):
     >>> !tmutes 10000000000000500
     [{emoji} Text-Mutes\n Guild1]
 
-    >>> !tmutes <@10000000000000002>
+    >>> !tmutes <@10000000000000003>
     [{emoji} Text-Mutes for Member1\n Guild1\n Guild2]
 
-    >>> !tmutes 10000000000000002
+    >>> !tmutes 10000000000000003
     [{emoji} Text-Mutes for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(

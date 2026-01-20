@@ -223,7 +223,6 @@ class CoordinatorCommands(commands.Cog):
         ),
     ):
         muted_members = pages = skipped_members = failed_members = []
-
         state = StateService(source=ctx)
 
         do = DiscordObject(ctx=ctx)

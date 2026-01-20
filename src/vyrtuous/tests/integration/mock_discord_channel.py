@@ -46,6 +46,7 @@ class MockChannel(discord.TextChannel):
         data = CHANNEL_DATA.copy()
         data.update(overrides)
         super().__init__(data=data, guild=guild, state=state)
+        self._members = []
         self._messages = []
         self._state = state
 
@@ -81,3 +82,7 @@ class MockChannel(discord.TextChannel):
     async def set_permissions(self, target, **overwrites):
         self.overwrites[target.id] = overwrites
         return True
+
+    @property
+    def members(self):
+        return self._members

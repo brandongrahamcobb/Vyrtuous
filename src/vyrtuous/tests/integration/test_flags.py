@@ -71,10 +71,10 @@ async def test_flags(bot, command: Optional[str]):
     >>> !flags 10000000000000500
     [{emoji} Flags\n Guild1]
 
-    >>> !flags <@10000000000000002>
+    >>> !flags <@10000000000000003>
     [{emoji} Flags for Member1\n Guild1\n Guild2]
 
-    >>> !flags 10000000000000002
+    >>> !flags 10000000000000003
     [{emoji} Flags for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(

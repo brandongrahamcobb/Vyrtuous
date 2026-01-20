@@ -59,10 +59,10 @@ async def test_streams(bot, command: Optional[str]):
     >>> !streams 10000000000000500
     [{emoji} Streaming Channels\n Guild1]
 
-    >>> !streams <@10000000000000002>
+    >>> !streams <@10000000000000010>
     [{emoji} Streaming Channels for Channel1]
 
-    >>> !streams 10000000000000002
+    >>> !streams 10000000000000010
     [{emoji} Streaming Channels for Channel1]
     """
     formatted = command.format(
