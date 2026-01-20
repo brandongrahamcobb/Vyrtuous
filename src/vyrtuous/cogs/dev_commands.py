@@ -29,8 +29,10 @@ from vyrtuous.database.roles.developer import developer_predicator
 from vyrtuous.database.logs.developer_log import DeveloperLog
 from vyrtuous.inc.helpers import DISCORD_COGS_CLASSES
 from vyrtuous.service.at_home import at_home
+from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.discord_object_service import DiscordObject
 from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
@@ -211,12 +213,21 @@ class DevCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         is_at_home = at_home(source=interaction)
-        target_uuid = UUID(str(target))
         title = f"{get_random_emoji()} Developer Logs"
 
         state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+        try:
+            target_uuid = UUID(str(target))
+            kwargs = {
+                "id": target_uuid
+            }
+        except Exception as e:
+            logger.warning(str(e).capitalize())
+            object_dict = await do.determine_from_target(target=target)
+            kwargs = object_dict['columns']
 
-        developer_logs = await DeveloperLog.select(id=target_uuid)
+        developer_logs = await DeveloperLog.select(**kwargs)
 
         for developer_log in developer_logs:
             guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
@@ -329,12 +340,21 @@ class DevCommands(commands.Cog):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
         is_at_home = at_home(source=ctx)
-        target_uuid = UUID(str(target))
         title = f"{get_random_emoji()} Developer Logs"
 
         state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
+        try:
+            target_uuid = UUID(str(target))
+            kwargs = {
+                "id": target_uuid
+            }
+        except Exception as e:
+            logger.warning(str(e).capitalize())
+            object_dict = await do.determine_from_target(target=target)
+            kwargs = object_dict['columns']
 
-        developer_logs = await DeveloperLog.select(id=target_uuid)
+        developer_logs = await DeveloperLog.select(**kwargs)
 
         for developer_log in developer_logs:
             guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})

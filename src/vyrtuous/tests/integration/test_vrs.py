@@ -32,12 +32,13 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
     [
         ("!vrs all"),
         ("!vrs {channel_snowflake}"),
+        ("!vrs <#{channel_snowflake}>"),
         ("!vrs {guild_snowflake}"),
     ],
 )
 async def test_vrs(bot, command: Optional[str]):
     """
-    List members who are registered in the PostgresSQL database
+    List channels which are registered in the PostgresSQL database
     'vyrtuous' in the table 'video_rooms'.
 
     Parameters
@@ -47,7 +48,7 @@ async def test_vrs(bot, command: Optional[str]):
     channel_snowflake : int | str, optional
         Mention or snowflake of a channel with vrs
         in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int, optional
+    guild_snowflake : int | str, optional
         Snowflake of a guild where video rooms are present.
 
     Examples

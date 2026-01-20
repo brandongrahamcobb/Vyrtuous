@@ -32,6 +32,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
     [
         ("!streams all"),
         ("!streams {channel_snowflake}"),
+        ("!streams <#{channel_snowflake}>"),
         ("!streams {guild_snowflake}"),
     ],
 )
@@ -47,7 +48,7 @@ async def test_streams(bot, command: Optional[str]):
     channel_snowflake : int | str, optional
         Mention or snowflake of a channel with streams
         in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int, optional
+    guild_snowflake : int | str, optional
         Snowflake of a guild where streams are present.
 
     Examples

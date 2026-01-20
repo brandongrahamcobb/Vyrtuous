@@ -91,6 +91,7 @@ class MockMessage(discord.Message):
         data["author"]["id"] = author.id
         data.update(overrides)
         super().__init__(channel=channel, data=data, state=state)
+        self.embeds = data.get("embeds", [])
 
     async def add_reaction(self, emoji):
         self.reactions.append(emoji)

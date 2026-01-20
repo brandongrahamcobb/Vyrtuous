@@ -32,12 +32,13 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
     [
         ("!temps all"),
         ("!temps {channel_snowflake}"),
+        ("!temps <#{channel_snowflake}>"),
         ("!temps {guild_snowflake}"),
     ],
 )
 async def test_temps(bot, command: Optional[str]):
     """
-    List members who are registered in the PostgresSQL database
+    List channels which are registered in the PostgresSQL database
     'vyrtuous' in the table 'temporary_rooms'.
 
     Parameters
@@ -47,7 +48,7 @@ async def test_temps(bot, command: Optional[str]):
     channel_snowflake : int | str, optional
         Mention or snowflake of a channel with temps
         in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int, optional
+    guild_snowflake : int | str, optional
         Snowflake of a guild where temporary rooms are present.
 
     Examples

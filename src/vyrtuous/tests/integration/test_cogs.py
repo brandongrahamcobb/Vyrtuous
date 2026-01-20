@@ -1,4 +1,4 @@
-"""mock_discord_state.py The purpose of this program is to support integration testing for Vyrtuous.
+"""test_cogs.py The purpose of this program is to be the integration test for the cogs list command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -16,28 +16,32 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import asyncio
+from typing import Optional
 
-from discord.http import HTTPClient
-from discord.state import ConnectionState
+import pytest
 
+from vyrtuous.tests.integration.test_suite import send_message
 
-class MockState(ConnectionState):
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "command",
+    [
+        ("!cogs"),
+    ],
+)
+async def test_cogs(bot, command: Optional[str]):
+    """
+    List cogs loaded by 'Vyrtuous'.
 
-    def dispatch(event, *args):
-        return None
+    Parameters
+    ----------
+    None
+        Generic showing all cogs
 
-    handlers = {}
-    hooks = {}
-    http = HTTPClient(dispatch)
-    http._global_over = asyncio.Event()
-    http._global_over.set()
-
-    def __init__(self):
-        super().__init__(
-            dispatch=self.dispatch,
-            handlers=self.handlers,
-            hooks=self.hooks,
-            http=self.http,
-        )
-        self.channels = {}
+    Examples
+    --------
+    >>> !cogs
+    [{emoji} Cogs\n Cog1\n Cog2]
+    """
+    captured = await send_message(bot=bot, content=command)
+    assert captured

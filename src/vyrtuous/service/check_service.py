@@ -21,12 +21,12 @@ from typing import Union
 from discord.ext import commands
 import discord
 
-from vyrtuous.database.roles.administrator import is_administrator
+from vyrtuous.database.roles.administrator import is_administrator_wrapper
 from vyrtuous.database.roles.coordinator import is_coordinator_wrapper
-from vyrtuous.database.roles.developer import is_developer
-from vyrtuous.database.roles.guild_owner import is_guild_owner
+from vyrtuous.database.roles.developer import is_developer_wrapper
+from vyrtuous.database.roles.guild_owner import is_guild_owner_wrapper
 from vyrtuous.database.roles.moderator import is_moderator_wrapper
-from vyrtuous.database.roles.sysadmin import is_sysadmin
+from vyrtuous.database.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.utils.permission import PERMISSION_TYPES
 from vyrtuous.database.roles.role import resolve_highest_role
 
@@ -44,12 +44,12 @@ async def check(
     member_snowflake: int = None,
 ) -> str:
     verifications = (
-        ("SysAdmin", is_sysadmin),
-        ("Developer", is_developer),
-        ("Guild Owner", is_guild_owner),
-        ("Administrator", is_administrator),
-        ("Coordinator", lambda s: is_coordinator_wrapper(s, member_snowflake)),
-        ("Moderator", lambda s: is_moderator_wrapper(s, member_snowflake)),
+        ("SysAdmin", is_sysadmin_wrapper),
+        ("Developer", is_developer_wrapper),
+        ("Guild Owner", is_guild_owner_wrapper),
+        ("Administrator", is_administrator_wrapper),
+        ("Coordinator", is_coordinator_wrapper),
+        ("Moderator", is_moderator_wrapper),
     )
     passed_lowest = False
     for role_name, verify in verifications:

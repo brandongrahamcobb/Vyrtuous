@@ -32,12 +32,13 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
     [
         ("!caps all"),
         ("!caps {channel_snowflake}"),
+        ("!caps <#{channel_snowflake}>"),
         ("!caps {guild_snowflake}"),
     ],
 )
 async def test_caps(bot, command: Optional[str]):
     """
-    List members who are registered in the PostgresSQL database
+    List caps in the PostgresSQL database
     'vyrtuous' in the table 'active_caps'.
 
     Parameters
@@ -47,7 +48,7 @@ async def test_caps(bot, command: Optional[str]):
     channel_snowflake : int | str, optional
         Mention or snowflake of a channel with caps
         in any of the guilds Vyrtuous has access inside.
-    guild_snowflake : int, optional
+    guild_snowflake : int | str, optional
         Snowflake of a guild where caps are present.
 
     Examples

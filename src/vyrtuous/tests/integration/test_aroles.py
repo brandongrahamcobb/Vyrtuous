@@ -36,14 +36,14 @@ NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
 )
 async def test_aroles(bot, command: Optional[str]):
     """
-    List members who are registered in the PostgresSQL database
+    List roles registered in the PostgresSQL database
     'vyrtuous' in the table 'administrator roles'.
 
     Parameters
     ----------
     all : str, optional
         Generic showing all administrator roles in all guilds
-    guild_snowflake : int, optional
+    guild_snowflake : int | str, optional
         Snowflake of a guild where administrator roles are present.
 
     Examples

@@ -165,6 +165,7 @@ class AdminCommands(commands.Cog):
             default=None, description="Role ID (only for role/unrole)"
         ),
     ):
+        print("test")
         state = StateService(source=ctx)
 
         do = DiscordObject(ctx=ctx)
@@ -512,7 +513,7 @@ class AdminCommands(commands.Cog):
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        if object_dict["object_type"] == discord.Member:
+        if object_dict["type"] == discord.Member:
 
             view = VerifyView(
                 action_type=action_type, author_snowflake=interaction.user.id, **kwargs
@@ -536,7 +537,7 @@ class AdminCommands(commands.Cog):
                         m_obj.delete(**kwargs)
                         msg = f"Deleted all associated {m_obj.PLURAL} on {object_dict.get('object', None).mention}."
 
-        elif object_dict["object_type"] == discord.VoiceChannel:
+        elif object_dict["type"] == discord.VoiceChannel:
             try:
                 await check(source=interaction, lowest_role="Guild Owner")
             except NotGuildOwner() as e:
@@ -585,7 +586,7 @@ class AdminCommands(commands.Cog):
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
 
-        if object_dict["object_type"] == discord.Member:
+        if object_dict["type"] == discord.Member:
 
             view = VerifyView(
                 action_type=action_type, author_snowflake=ctx.author.id, **kwargs
@@ -609,7 +610,7 @@ class AdminCommands(commands.Cog):
                         m_obj.delete(**kwargs)
                         msg = f"Deleted all associated {m_obj.PLURAL} on {object_dict['mention']}."
 
-        elif object_dict["object_type"] == discord.VoiceChannel:
+        elif object_dict["type"] == discord.VoiceChannel:
             try:
                 await check(source=ctx, lowest_role="Guild Owner")
             except NotGuildOwner() as e:
@@ -747,28 +748,23 @@ class AdminCommands(commands.Cog):
                 for guild in self.bot.guilds
                 for channel_obj in guild.channels
             ]
-        elif object_dict["object_type"] == discord.Guild:
+        elif hasattr(object_dict["object"], "channels"):
             channel_objs = object_dict.get("object", None).channels
-        elif object_dict["object_type"] in (
-            discord.StageChannel,
-            discord.TextChannel,
-            discord.VoiceChannel,
-        ):
+        else:
             channel_objs = [object_dict.get("object", None)]
 
         for channel in channel_objs:
             permissions = channel.permissions_for(self.bot.me)
             missing = []
             for permission in TARGET_PERMISSIONS:
-                if not getattr(permissions, permission):
+                if not hasattr(permissions, permission):
                     missing.append(permission)
             if not missing:
                 continue
-            guild_dictionary.setdefault(channel.guild.id, {})
-            guild_dictionary[channel.guild.id].setdefault({"channels": {}})
+            guild_dictionary.setdefault(channel.guild.id, {"channels": {}})
             guild_dictionary[channel.guild.id]["channels"].setdefault(channel.id, {})
             guild_dictionary[channel.guild.id]["channels"][channel.id].update(
-                {"Missing Permissions": missing}
+                {"permissions": missing}
             )
 
         for guild_snowflake, guild_data in guild_dictionary.items():

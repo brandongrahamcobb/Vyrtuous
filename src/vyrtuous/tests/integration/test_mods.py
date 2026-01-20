@@ -24,6 +24,7 @@ from vyrtuous.tests.integration.test_suite import send_message
 
 GUILD_SNOWFLAKE = 10000000000000500
 NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
+TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 
 @pytest.mark.asyncio
@@ -31,8 +32,11 @@ NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
     "command",
     [
         ("!mods all"),
-        ("!mods {member_snowflake}"),
+        ("!mods {channel_snowflake}"),
+        ("!mods <#{channel_snowflake}>"),
         ("!mods {guild_snowflake}"),
+        ("!mods {member_snowflake}"),
+        ("!mods <@{member_snowflake}>"),
     ],
 )
 async def test_mods(bot, command: Optional[str]):
@@ -44,7 +48,10 @@ async def test_mods(bot, command: Optional[str]):
     ----------
     all : str, optional
         Generic showing all moderators in all guilds
-    guild_snowflake : int, optional
+    channel_snowflake : int | str, optional
+        Mention or snowflake of a channel with moderators
+        in any of the guilds Vyrtuous has access inside.
+    guild_snowflake : int | str, optional
         Snowflake of a guild where moderators are present.
     member_snowflake : int | str, optional
         Mention or snowflake of a member who is an moderator
@@ -54,6 +61,12 @@ async def test_mods(bot, command: Optional[str]):
     --------
     >>> !mods "all"
     [{emoji} Moderators\n Guild1\n Guild2]
+
+    >>> !mods <#10000000000000010>
+    [{emoji} Moderators for Channel1\n Member1\n Member2]
+
+    >>> !mods 10000000000000010
+    [{emoji} Moderators for Channel1\n Member1\n Member2]
 
     >>> !mods 10000000000000500
     [{emoji} Moderators\n Guild1]
@@ -65,8 +78,9 @@ async def test_mods(bot, command: Optional[str]):
     [{emoji} Moderators for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(
+        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

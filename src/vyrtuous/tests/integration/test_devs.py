@@ -31,8 +31,9 @@ NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
     "command",
     [
         ("!devs all"),
-        ("!devs {member_snowflake}"),
         ("!devs {guild_snowflake}"),
+        ("!devs {member_snowflake}"),
+        ("!devs <@{member_snowflake}>"),
     ],
 )
 async def test_devs(bot, command: Optional[str]):
@@ -44,7 +45,7 @@ async def test_devs(bot, command: Optional[str]):
     ----------
     all : str, optional
         Generic showing all developers in all guilds
-    guild_snowflake : int, optional
+    guild_snowflake : int | str, optional
         Snowflake of a guild where developers are present.
     member_snowflake : int | str, optional
         Mention or snowflake of a member who is an developer

@@ -24,6 +24,7 @@ from vyrtuous.tests.integration.test_suite import send_message
 
 GUILD_SNOWFLAKE = 10000000000000500
 NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
+TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 
 @pytest.mark.asyncio
@@ -31,8 +32,9 @@ NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
     "command",
     [
         ("!coords all"),
-        ("!coords {member_snowflake}"),
         ("!coords {guild_snowflake}"),
+        ("!coords {member_snowflake}"),
+        ("!coords <@{member_snowflake}>"),
     ],
 )
 async def test_coords(bot, command: Optional[str]):
@@ -44,7 +46,10 @@ async def test_coords(bot, command: Optional[str]):
     ----------
     all : str, optional
         Generic showing all coordinators in all guilds
-    guild_snowflake : int, optional
+    channel_snowflake : int | str, optional
+        Mention or snowflake of a channel with coordinators
+        in any of the guilds Vyrtuous has access inside.
+    guild_snowflake : int | str, optional
         Snowflake of a guild where coordinators are present.
     member_snowflake : int | str, optional
         Mention or snowflake of a member who is an coordinator
@@ -54,6 +59,12 @@ async def test_coords(bot, command: Optional[str]):
     --------
     >>> !coords "all"
     [{emoji} Coordinators\n Guild1\n Guild2]
+
+    >>> !coords <#10000000000000010>
+    [{emoji} Coordinators for Channel1\n Member1\n Member2]
+
+    >>> !coords 10000000000000010
+    [{emoji} Coordinators for Channel1\n Member1\n Member2]
 
     >>> !coords 10000000000000500
     [{emoji} Coordinators\n Guild1]
@@ -65,8 +76,9 @@ async def test_coords(bot, command: Optional[str]):
     [{emoji} Coordinators for Member1\n Guild1\n Guild2]
     """
     formatted = command.format(
+        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,
-        guild_snowflake=GUILD_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

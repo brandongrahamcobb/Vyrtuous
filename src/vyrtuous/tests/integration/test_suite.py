@@ -70,6 +70,7 @@ async def send_message(bot, content: str = None):
     guild._members.append(better_author)
     state.user = better_author
     bot._connection = state
+    bot.me = better_author
     bot._state = state
     msg = MockMessage(
         author=author, channel=channel, content=content, guild=guild, state=state

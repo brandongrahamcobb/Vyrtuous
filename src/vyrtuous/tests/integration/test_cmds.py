@@ -1,4 +1,4 @@
-"""test_admins.py The purpose of this program is to be the integration test for the admins list command for Vyrtuous.
+"""test_cmds.py The purpose of this program is to be the integration test for the cmds list command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -23,50 +23,50 @@ import pytest
 from vyrtuous.tests.integration.test_suite import send_message
 
 GUILD_SNOWFLAKE = 10000000000000500
-NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
+TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command",
     [
-        ("!admins all"),
-        ("!admins {guild_snowflake}"),
-        ("!admins {member_snowflake}"),
-        ("!admins <@{member_snowflake}>"),
+        ("!cmds all"),
+        ("!cmds {channel_snowflake}"),
+        ("!cmds <#{channel_snowflake}>"),
+        ("!cmds {guild_snowflake}"),
     ],
 )
-async def test_admins(bot, command: Optional[str]):
+async def test_cmds(bot, command: Optional[str]):
     """
-    List members who are registered in the PostgresSQL database
-    'vyrtuous' in the table 'administrators'.
+    List channels which are registered in the PostgresSQL database
+    'vyrtuous' in the table 'command_aliases'.
 
     Parameters
     ----------
     all : str, optional
-        Generic showing all administrators in all guilds
-    guild_snowflake : int | str, optional
-        Snowflake of a guild where administrators are present.
-    member_snowflake : int | str, optional
-        Mention or snowflake of a member who is an administrator
+        Generic showing all command aliases in all guilds
+    channel_snowflake : int | str, optional
+        Mention or snowflake of a channel with command aliases
         in any of the guilds Vyrtuous has access inside.
+    guild_snowflake : int | str, optional
+        Snowflake of a guild where command aliases are present.
 
     Examples
     --------
-    >>> !admins "all"
-    [{emoji} Administrators\n Guild1\n Guild2]
+    >>> !cmds "all"
+    [{emoji} Aliases\n Guild1\n Guild2]
 
-    >>> !admins 10000000000000500
-    [{emoji} Administrators\n Guild1]
+    >>> !cmds 10000000000000500
+    [{emoji} Aliases\n Guild1]
 
-    >>> !admins <@10000000000000002>
-    [{emoji} Administrators for Member1\n Guild1\n Guild2]
+    >>> !cmds <@10000000000000002>
+    [{emoji} Aliases for Channel1]
 
-    >>> !admins 10000000000000002
-    [{emoji} Administrators for Member1\n Guild1\n Guild2]
+    >>> !cmds 10000000000000002
+    [{emoji} Aliases for Channel1]
     """
     formatted = command.format(
-        member_snowflake=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,
+        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
