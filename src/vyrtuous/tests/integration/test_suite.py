@@ -23,6 +23,7 @@ from vyrtuous.tests.integration.mock_discord_channel import MockChannel
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
 from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_message import MockMessage
+from vyrtuous.tests.integration.mock_discord_role import MockRole
 from vyrtuous.tests.integration.mock_discord_state import MockState
 
 PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000001
@@ -47,6 +48,8 @@ async def capture(channel):
 async def send_message(bot, content: str = None):
     state = MockState()
     guild = MockGuild(bot=bot, channels=[], members=[], roles=[], state=state)
+    role = MockRole(guild=guild, state=state)
+    guild._roles.append(role)
     bot._guilds.append(guild)
     channel = MockChannel(bot=bot, guild=guild, state=state)
     guild._channels.append(channel)

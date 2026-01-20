@@ -22,6 +22,7 @@ import pytest
 
 from vyrtuous.tests.integration.test_suite import send_message
 
+ROLE_SNOWFLAKE = 10000000000000200
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
@@ -30,27 +31,27 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
     [
         ("!alias ban testban {channel_snowflake}"),
         ("!xalias testban"),
-        ("!alias unban testunban"),
+        ("!alias unban testunban {channel_snowflake}"),
         ("!xalias testunban"),
-        ("!alias voice_mute testmute"),
+        ("!alias vmute testmute {channel_snowflake}"),
         ("!xalias testmute"),
-        ("!alias unvoice_mute testunmute"),
+        ("!alias unvmute testunmute {channel_snowflake}"),
         ("!xalias testunmute"),
-        ("!alias flag testflag"),
+        ("!alias flag testflag {channel_snowflake}"),
         ("!xalias testflag"),
-        ("!alias unflag testunflag"),
+        ("!alias unflag testunflag {channel_snowflake}"),
         ("!xalias testunflag"),
-        ("!alias vegan testvegan"),
+        ("!alias vegan testvegan {channel_snowflake}"),
         ("!xalias testvegan"),
-        ("!alias carnist testcarnist"),
+        ("!alias carnist testcarnist {channel_snowflake}"),
         ("!xalias testcarnist"),
-        ("!alias tmute testtmute"),
+        ("!alias tmute testtmute {channel_snowflake}"),
         ("!xalias testtmute"),
-        ("!alias untmute testuntmute"),
+        ("!alias untmute testuntmute {channel_snowflake}"),
         ("!xalias testuntmute"),
-        ("!alias role testrole"),
+        ("!alias role testrole {channel_snowflake} {role_snowflake}"),
         ("!xalias role testrole"),
-        ("!alias unrole testunrole"),
+        ("!alias unrole testunrole {channel_snowflake} {role_snowflake}"),
         ("!xalias unrole testunrole")
     ],
 )
@@ -76,7 +77,8 @@ async def test_cogs(bot, command: Optional[str]):
     [{emoji} Alias `testban` deleted]
     """
     formatted = command.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE
+        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        role_snowflake=ROLE_SNOWFLAKE
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

@@ -112,13 +112,13 @@ class AdminCommands(commands.Cog):
         kwargs = channel_dict["columns"]
         try:
             role_dict = await do.determine_from_target(target=role)
-        except DiscordObjectNotFound as e:
+        except (DiscordObjectNotFound, TypeError) as e:
             logger.warning(str(e).capitalize())
         else:
             kwargs.update(role_dict["columns"])
 
         alias = await Alias.select(
-            alias_name=alias_name, guild_snowflake=interaction.guild.id
+            alias_name=alias_name, guild_snowflake=interaction.guild.id, singular=True
         )
         if alias:
             return await state.end(
@@ -128,7 +128,7 @@ class AdminCommands(commands.Cog):
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
 
-        if role_dict:
+        if role:
             msg = (
                 f"Alias `{alias_name}` of type `{moderation_type}` "
                 f"created successfully for channel {channel_dict['mention']} "
@@ -165,7 +165,6 @@ class AdminCommands(commands.Cog):
             default=None, description="Role ID (only for role/unrole)"
         ),
     ):
-        print("test")
         state = StateService(source=ctx)
 
         do = DiscordObject(ctx=ctx)
@@ -173,21 +172,21 @@ class AdminCommands(commands.Cog):
         kwargs = channel_dict["columns"]
         try:
             role_dict = await do.determine_from_target(target=role)
-        except DiscordObjectNotFound as e:
+        except (DiscordObjectNotFound, TypeError) as e:
             logger.warning(str(e).capitalize())
         else:
             kwargs.update(role_dict["columns"])
 
-        alias = await Alias.select(alias_name=alias_name, guild_snowflake=ctx.guild.id)
+        alias = await Alias.select(alias_name=alias_name, guild_snowflake=ctx.guild.id, singular=True)
+
         if alias:
             return await state.end(
                 warning=f"Alias `{alias.alias_name}` already exists in {ctx.guild.name}."
             )
-
+        
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
-
-        if role_dict:
+        if role:
             msg = (
                 f"Alias `{alias_name}` of type `{moderation_type}` "
                 f"created successfully for channel {channel_dict['mention']} "
@@ -1675,7 +1674,7 @@ class AdminCommands(commands.Cog):
 
         if scope is None and entry_type is None:
             stream = await Streaming.select(**kwargs)
-            if not steam:
+            if not stream:
                 return await state.end(
                     warning=f"No streaming exists for {channel_dict['mention']}."
                 )
@@ -2352,9 +2351,8 @@ class AdminCommands(commands.Cog):
             return await state.end(warning=f"No aliases found for `{alias_name}`.")
         await Alias.delete(**kwargs)
 
-        channel_dict = await do.determine_from_target(target=alias.channel_snowflake)
-
-        if alias.role_snowflake:
+        channel_dict = await do.determine_from_target(target=str(alias.channel_snowflake))
+        if hasattr(alias, "role_snowflake"):
             msg = (
                 f"Alias `{alias.alias_name}` of type "
                 f"`{alias.alias_type}` for channel {channel_dict['mention']} "
@@ -2383,14 +2381,13 @@ class AdminCommands(commands.Cog):
 
         kwargs = {"alias_name": alias_name, "guild_snowflake": ctx.guild.id}
 
-        alias = await Alias.select(**kwargs)
+        alias = await Alias.select(singular=True, **kwargs)
         if not alias:
             return await state.end(warning=f"No aliases found for `{alias_name}`.")
         await Alias.delete(**kwargs)
 
-        channel_dict = await do.determine_from_target(target=alias.channel_snowflake)
-
-        if alias.role_snowflake:
+        channel_dict = await do.determine_from_target(target=str(alias.channel_snowflake))
+        if hasattr(alias, "role_snowflake"):
             msg = (
                 f"Alias `{alias.alias_name}` of type "
                 f"`{alias.alias_type}` for channel {channel_dict['mention']} "

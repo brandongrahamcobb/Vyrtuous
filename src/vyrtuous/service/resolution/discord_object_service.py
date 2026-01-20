@@ -89,6 +89,8 @@ class DiscordObject:
         self._source = ctx or interaction
 
     async def determine_from_target(self, target) -> dict:
+        if target is None:
+            raise TypeError()
         if isinstance(self._source, commands.Context):
             do = DiscordObject(ctx=self._source)
             author = self._source.author
