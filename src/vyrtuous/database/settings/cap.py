@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime
 from typing import Optional
 
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.database_factory import DatabaseFactory
 
 
@@ -49,6 +50,7 @@ class Cap(DatabaseFactory):
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):
+        self.bot = DiscordBot.get_instance()
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.duration_seconds = duration_seconds

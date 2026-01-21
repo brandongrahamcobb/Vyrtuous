@@ -369,7 +369,7 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
 
         kwargs = channel_dict["columns"]
-        kwargs.update("moderation_type", moderation_type)
+        kwargs.update({"moderation_type": moderation_type})
 
         cap = await Cap.select(**kwargs)
         if cap and seconds:
@@ -384,13 +384,14 @@ class AdminCommands(commands.Cog):
                 f"and channel {channel_dict['mention']} deleted successfully."
             )
         else:
-            kwargs.update("duration_seconds", seconds)
+            kwargs.update({"duration_seconds": seconds})
             cap = Cap(**kwargs)
             await cap.create()
             msg = (
                 f"Cap `{moderation_type}` created for "
                 f"{channel_dict['mention']} successfully."
             )
+
         return await state.end(success=msg)
 
     # DONE
@@ -416,7 +417,7 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
 
         kwargs = channel_dict["columns"]
-        kwargs.update("moderation_type", moderation_type)
+        kwargs.update({"moderation_type": moderation_type})
 
         cap = await Cap.select(**kwargs)
         if cap and seconds:
@@ -431,7 +432,7 @@ class AdminCommands(commands.Cog):
                 f"and channel {channel_dict['mention']} deleted successfully."
             )
         else:
-            kwargs.update("duration_seconds", seconds)
+            kwargs.update({"duration_seconds": seconds})
             cap = Cap(**kwargs)
             await cap.create()
             msg = (
