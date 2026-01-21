@@ -2686,7 +2686,7 @@ class ModeratorCommands(commands.Cog):
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await is_developer(interaction.guild.id, member.id):
+                if await is_developer(member.id):
                     developers.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
@@ -2785,7 +2785,6 @@ class ModeratorCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
 
         channel_dict = await do.determine_from_target(target=channel)
-
         for member in channel_dict.get("object", None).members:
             try:
                 if is_sysadmin(member.id):
@@ -2793,7 +2792,7 @@ class ModeratorCommands(commands.Cog):
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
             try:
-                if await is_developer(ctx.guild.id, member.id):
+                if await is_developer(member.id):
                     developers.append(member)
             except commands.CheckFailure as e:
                 logger.warning(str(e).capitalize())
