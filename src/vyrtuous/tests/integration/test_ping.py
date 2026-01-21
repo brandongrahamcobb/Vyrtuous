@@ -1,4 +1,4 @@
-"""test_backup.py The purpose of this program is to be the integration test for the backup command for Vyrtuous.
+"""test_ping.py The purpose of this program is to be the integration test for the ping command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -27,10 +27,10 @@ from vyrtuous.tests.integration.test_suite import send_message
 @pytest.mark.parametrize(
     "command",
     [
-        ("!backup"),
+        ("!ping"),
     ],
 )
-async def test_backup(bot, command: Optional[str]):
+async def test_ping(bot, command: Optional[str]):
     """
     Backup the database 'vyrtuous'.
 
@@ -41,8 +41,8 @@ async def test_backup(bot, command: Optional[str]):
 
     Examples
     --------
-    >>> !backup
-    [{emoji} {file}]
+    >>> !ping
+    [{emoji} Pong!]
     """
     captured = await send_message(bot=bot, content=command)
     assert captured
