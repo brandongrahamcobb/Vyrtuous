@@ -62,6 +62,7 @@ class Streaming(DatabaseFactory):
         updated_at: Optional[datetime] = None,
     ):
         self.action: str
+        self.bot = DiscordBot.get_instance()
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.enabled = enabled

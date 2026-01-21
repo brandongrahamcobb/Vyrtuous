@@ -1657,7 +1657,7 @@ class AdminCommands(commands.Cog):
     @app_commands.command(name="stream", description="Setup streaming.")
     @app_commands.describe(
         channel="Tag a channel or include its ID where the messages will be sent.",
-        scope="create | modify | delete.",
+        action="create | modify | delete.",
         entry_type="all | channel | general.",
         snowflakes="Optional list of channel/member IDs to push events from.",
     )
@@ -1666,7 +1666,7 @@ class AdminCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
-        scope: str = None,
+        action: str = None,
         entry_type: str = None,
         snowflakes: str = None,
     ):
@@ -1679,7 +1679,7 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
-        if scope is None and entry_type is None:
+        if action is None and entry_type is None:
             stream = await Streaming.select(**kwargs)
             if not stream:
                 return await state.end(
@@ -1687,6 +1687,12 @@ class AdminCommands(commands.Cog):
                 )
             enabled = not stream[0].enabled
             action = "enabled" if enabled else "disabled"
+            where_kwargs = {
+                "channel_snowflake": kwargs["channel_snowflake"],
+                "entry_type": entry_type,
+                "guild_snowflake": interaction.guild.id,
+            }
+            set_kwargs = {"enabled": enabled}
             await Streaming.update(
                 channel_snowflake=channel_dict.get("id", None),
                 enabled=enabled,
@@ -1696,44 +1702,52 @@ class AdminCommands(commands.Cog):
                 success=f"Streaming has been {action} in {channel_dict['mention']}."
             )
 
-        if scope and entry_type:
-            match scope.lower():
-                case "create" | "modify":
-                    resolved_channels = []
-                    for snowflake in snowflakes:
-                        try:
-                            channel_dict = await do.determine_from_target(
-                                target=channel
+        try:
+            if action and entry_type:
+                match action.lower():
+                    case "create" | "modify":
+                        resolved_channels = []
+                        for snowflake in snowflakes:
+                            try:
+                                channel_dict = await do.determine_from_target(
+                                    target=channel
+                                )
+                                resolved_channels.append(channel_dict.get("id", None))
+                                channel_mentions.append(
+                                    channel_dict.get("mention", None)
+                                )
+                            except Exception:
+                                failed_snowflakes.append(snowflake)
+                                continue
+                        if action.lower() == "create":
+                            stream = Streaming(
+                                **kwargs,
+                                enabled=True,
+                                entry_type=entry_type,
+                                snowflakes=resolved_channels,
                             )
-                            resolved_channels.append(channel_dict.get("id", None))
-                            channel_mentions.append(channel_dict.get("mention", None))
-                        except Exception:
-                            failed_snowflakes.append(snowflake)
-                            continue
-                    if scope.lower() == "create":
-                        stream = Streaming(
-                            **kwargs,
-                            enabled=True,
-                            entry_type=entry_type,
-                            snowflakes=resolved_channels,
+                            await stream.create()
+                            action = "created"
+                        else:
+                            where_kwargs = {
+                                "channel_snowflake": kwargs["channel_snowflake"],
+                                "entry_type": entry_type,
+                                "guild_snowflake": interaction.guild.id,
+                            }
+                            set_kwargs = {"snowflakes": resolved_channels}
+                            await Streaming.update(
+                                set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                            )
+                            action = "modified"
+                    case "delete":
+                        await Streaming.delete(**kwargs)
+                        action = "deleted"
+                    case _:
+                        return await state.end(
+                            warning="Scope must be one of `create`, `delete` or `modify`."
                         )
-                        await stream.create()
-                        action = "created"
-                    else:
-                        await Streaming.update(
-                            **kwargs,
-                            entry_type=entry_type,
-                            snowflakes=resolved_channels,
-                        )
-                        action = "modified"
-                case "delete":
-                    await Streaming.delete(**kwargs)
-                    action = "deleted"
-                case _:
-                    return await state.end(
-                        warning="\U000026a0\U0000fe0f Scope must be one of `create`, `delete` or `modify`."
-                    )
-
+        except Exception as e:
+            print(e)
         embed = discord.Embed(
             title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_dict['mention']}",
             color=0x00FF00,
@@ -1762,7 +1776,7 @@ class AdminCommands(commands.Cog):
         channel: ChannelSnowflake = commands.parameter(
             description="Tag a channel or include its ID."
         ),
-        scope: str = commands.parameter(description="create | modify | delete."),
+        action: str = commands.parameter(description="create | modify | delete."),
         entry_type: str = commands.parameter(description="all | channel."),
         *snowflakes: Optional[int],
     ):
@@ -1775,7 +1789,7 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
-        if scope is None and entry_type is None:
+        if action is None and entry_type is None:
             stream = await Streaming.select(**kwargs)
             if not stream:
                 return await state.end(
@@ -1783,6 +1797,12 @@ class AdminCommands(commands.Cog):
                 )
             enabled = not stream[0].enabled
             action = "enabled" if enabled else "disabled"
+            where_kwargs = {
+                "channel_snowflake": kwargs["channel_snowflake"],
+                "entry_type": entry_type,
+                "guild_snowflake": ctx.guild.id,
+            }
+            set_kwargs = {"enabled": enabled}
             await Streaming.update(
                 channel_snowflake=channel_dict.get("id", None),
                 enabled=enabled,
@@ -1792,8 +1812,8 @@ class AdminCommands(commands.Cog):
                 success=f"Streaming has been {action} in {channel_dict['mention']}."
             )
 
-        if scope and entry_type:
-            match scope.lower():
+        if action and entry_type:
+            match action.lower():
                 case "create" | "modify":
                     resolved_channels = []
                     for snowflake in snowflakes:
@@ -1806,20 +1826,25 @@ class AdminCommands(commands.Cog):
                         except Exception:
                             failed_snowflakes.append(snowflake)
                             continue
-                    if scope.lower() == "create":
+                    if action.lower() == "create":
                         stream = Streaming(
                             **kwargs,
                             enabled=True,
                             entry_type=entry_type,
                             snowflakes=resolved_channels,
                         )
+
                         await stream.create()
                         action = "created"
                     else:
+                        where_kwargs = {
+                            "channel_snowflake": kwargs["channel_snowflake"],
+                            "entry_type": entry_type,
+                            "guild_snowflake": ctx.guild.id,
+                        }
+                        set_kwargs = {"snowflakes": resolved_channels}
                         await Streaming.update(
-                            **kwargs,
-                            entry_type=entry_type,
-                            snowflakes=resolved_channels,
+                            set_kwargs=set_kwargs, where_kwargs=where_kwargs
                         )
                         action = "modified"
                 case "delete":
@@ -1829,7 +1854,6 @@ class AdminCommands(commands.Cog):
                     return await state.end(
                         warning="Scope must be one of `create`, `delete` or `modify`."
                     )
-
         embed = discord.Embed(
             title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_dict['mention']}",
             color=0x00FF00,

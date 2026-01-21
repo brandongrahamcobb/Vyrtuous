@@ -39,7 +39,7 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 async def test_streams(bot, command: Optional[str]):
     """
     List members who are registered in the PostgresSQL database
-    'vyrtuous' in the table 'active_streams'.
+    'vyrtuous' in the table 'streaming'.
 
     Parameters
     ----------

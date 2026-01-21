@@ -47,11 +47,13 @@ async def test_rmv(bot, command: Optional[str]):
 
     Examples
     --------
-    >>> !!rmv 1000000000000010 1000000000000011 
+    >>> !!rmv 1000000000000010 1000000000000011
     [{emoji} Members moved succesfully to Voice Channel One\n Member1\b Member2]
 
     """
-    formatted = command.format(source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
-        target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
+    formatted = command.format(
+        source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+    )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content
