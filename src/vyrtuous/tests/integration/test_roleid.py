@@ -47,8 +47,6 @@ async def test_roleid(bot, command: Optional[str]):
     [{emoji} Role `role` has the id `10000000000000200`]
 
     """
-    formatted = command.format(
-        role_snowflake=ROLE_SNOWFLAKE
-    )
+    formatted = command.format(role_snowflake=ROLE_SNOWFLAKE)
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

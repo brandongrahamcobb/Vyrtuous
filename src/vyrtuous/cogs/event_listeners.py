@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 from types import SimpleNamespace
 import asyncio
 import time
@@ -295,7 +294,7 @@ class EventListeners(commands.Cog):
                     target=target,
                 )
                 should_be_muted = False
-                alias = SimpleNamespace(alias_type="unvoice_mute")
+                alias = SimpleNamespace(alias_type="unvmute")
                 duration = DurationObject("0")
                 await Streaming.send_entry(
                     alias=alias,
@@ -428,9 +427,9 @@ class EventListeners(commands.Cog):
         )
         if not alias:
             return
-        state = StateService(message)
+        state = StateService(source=message)
         channel_obj = message.guild.get_channel(alias.channel_snowflake)
-        member_obj = message.guild.get_member(args[1])
+        member_obj = message.guild.get_member(int(args[1]))
         executor_role = await has_equal_or_lower_role(
             source=message,
             member_snowflake=member_obj.id,
@@ -451,10 +450,16 @@ class EventListeners(commands.Cog):
         )
 
         alias_class = alias.alias_class
+        kwargs = {}
+        primary_keys = await alias_class.primary_keys()
+        if "channel_snowflake" in primary_keys:
+            kwargs.update({"channel_snowflake": channel_obj.id})
+        if "guild_snowflake" in primary_keys:
+            kwargs.update({"guild_snowflake": message.guild.id})
+        if "member_snowflake" in primary_keys:
+            kwargs.update({"member_snowflake": member_obj.id})
         action_existing = await alias_class.select(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            member_snowflake=member_obj.id,
+            **kwargs,
             singular=True,
         )
         action_modification = False
@@ -477,7 +482,6 @@ class EventListeners(commands.Cog):
             guild_snowflake=message.guild.id,
             moderation_type=alias_class.ACT,
         )
-
         action_information = {
             "alias_class": alias_class,
             "action_channel_cap": action_channel_cap,
@@ -501,7 +505,7 @@ class EventListeners(commands.Cog):
         if action_information["action_duration"].number != 0 and action_existing:
             if expires_in_timedelta.total_seconds() < 0:
                 return await state.end(
-                    warning="You are not authorized to decrease "
+                    warning="Member is not authorized to decrease "
                     "the duration below the current time."
                 )
         if (
@@ -536,7 +540,6 @@ class EventListeners(commands.Cog):
                     warning=f"An existing {action_information['alias_class'].SINGULAR} already exists for "
                     f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
                 )
-
         await alias.handler(
             alias=alias,
             action_information=action_information,
@@ -687,9 +690,9 @@ async def setup(bot: DiscordBot):
 
 
 async def generate_cap_duration(
-    channel_snowflake: Optional[int],
-    guild_snowflake: Optional[int],
-    moderation_type: Optional[str],
+    channel_snowflake: int,
+    guild_snowflake: int,
+    moderation_type: str,
 ):
     cap = await Cap.select(
         channel_snowflake=channel_snowflake,

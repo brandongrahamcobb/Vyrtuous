@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime
-from typing import Optional
 import os
 import subprocess
 
@@ -27,15 +26,15 @@ import asyncpg
 class Database:
 
     def __init__(self, *, directory=None):
-        self.database: Optional[str] = os.getenv("POSTGRES_DB")
+        self.database: str = os.getenv("POSTGRES_DB")
         self.directory = directory if directory else os.getenv("DB_DIRECTORY")
-        self.host: Optional[str] = os.getenv("POSTGRES_HOST")
-        self.password: Optional[str] = os.getenv("POSTGRES_PASSWORD")
+        self.host: str = os.getenv("POSTGRES_HOST")
+        self.password: str = os.getenv("POSTGRES_PASSWORD")
         self.timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        self.file_name: Optional[str] = os.path.join(
+        self.file_name: str = os.path.join(
             self.directory, f"backup_{self.timestamp}.sql"
         )
-        self.user: Optional[str] = os.getenv("POSTGRES_USER")
+        self.user: str = os.getenv("POSTGRES_USER")
 
     def create_backup_directory(self):
         os.makedirs(self.directory, exist_ok=True)

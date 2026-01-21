@@ -16,14 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from datetime import datetime, timezone
 import discord
 
 from vyrtuous.tests.integration.mock_discord_member import MockMember
 from vyrtuous.tests.integration.mock_discord_state import MockState
 
 GUILD_SNOWFLAKE = 10000000000000500
-PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000001
-PRIVILEGED_AUTHOR_NAME = "Privileged Author Name"
+NOT_PRIVILEGED_AUTHOR_SNOWFLAKE = 10000000000000002
+NOT_PRIVILEGED_AUTHOR_NAME = "Not Privileged Author Name One"
 MESSAGE_SNOWFLAKE = 10000000000000100
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 MESSAGE_DATA = {
@@ -31,8 +32,8 @@ MESSAGE_DATA = {
     "channel_id": TEXT_CHANNEL_SNOWFLAKE,
     "guild_id": GUILD_SNOWFLAKE,
     "author": {
-        "id": PRIVILEGED_AUTHOR_SNOWFLAKE,
-        "username": PRIVILEGED_AUTHOR_NAME,
+        "id": NOT_PRIVILEGED_AUTHOR_SNOWFLAKE,
+        "username": NOT_PRIVILEGED_AUTHOR_NAME,
         "discriminator": "1234",
         "avatar": None,
         "bot": False,
@@ -51,6 +52,7 @@ MESSAGE_DATA = {
         "communication_disabled_until": None,
     },
     "content": "",
+    "created_at": datetime.now(timezone.utc),
     "timestamp": "2025-01-04T12:00:00.000000+00:00",
     "edited_timestamp": None,
     "tts": False,
@@ -59,6 +61,7 @@ MESSAGE_DATA = {
     "mention_roles": [],
     "attachments": [],
     "embeds": [],
+    "embed": None,
     "reactions": [],
     "pinned": False,
     "webhook_id": None,

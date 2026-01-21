@@ -48,10 +48,8 @@ from vyrtuous.properties.moderation_type import AppModerationType, ModerationTyp
 from vyrtuous.properties.snowflake import (
     AppChannelSnowflake,
     AppMemberSnowflake,
-    AppRoleSnowflake,
     ChannelSnowflake,
     MemberSnowflake,
-    RoleSnowflake,
 )
 from vyrtuous.service.check_service import (
     check,
@@ -93,33 +91,46 @@ class AdminCommands(commands.Cog):
         alias_name="Alias/Pseudonym",
         moderation_type="One of: vegan, carnist, vmute, unvmute,"
         "ban, unban, flag, unflag, tmute, untmute, role, unrole",
-        channel="Tag a channel or include its ID.",
-        role="Role ID (only for role/unrole)",
+        target="Tag a channel, role or include the ID.",
     )
     async def create_alias_app_command(
         self,
         interaction: discord.Interaction,
         moderation_type: AppModerationType,
-        alias_name: Optional[str],
-        channel: AppChannelSnowflake,
-        role: AppRoleSnowflake = None,
+        alias_name: str,
+        target: str,
     ):
+        msg = ""
         state = StateService(source=interaction)
 
         do = DiscordObject(interaction=interaction)
-
-        channel_dict = await do.determine_from_target(target=channel)
-        kwargs = channel_dict["columns"]
+        kwargs = {}
         try:
-            role_dict = await do.determine_from_target(target=role)
+            channel_dict = await do.determine_from_target(target=target)
         except (DiscordObjectNotFound, TypeError) as e:
             logger.warning(str(e).capitalize())
         else:
-            kwargs.update(role_dict["columns"])
-
+            kwargs.update(channel_dict["columns"])
+            msg = (
+                f"Alias `{alias_name}`  of type `{moderation_type}` "
+                f"created successfully for channel {channel_dict['mention']}."
+            )
+        if not kwargs:
+            try:
+                role_dict = await do.determine_from_target(target=target)
+            except (DiscordObjectNotFound, TypeError) as e:
+                logger.warning(str(e).capitalize())
+            else:
+                kwargs.update(role_dict["columns"])
+                msg = (
+                    f"Alias `{alias_name}` of type `{moderation_type}` "
+                    f"created successfully"
+                    f"for role {role_dict['mention']}."
+                )
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=interaction.guild.id, singular=True
         )
+
         if alias:
             return await state.end(
                 warning=f"Alias `{alias.alias_name}` already exists in {interaction.guild.name}."
@@ -128,17 +139,6 @@ class AdminCommands(commands.Cog):
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
 
-        if role:
-            msg = (
-                f"Alias `{alias_name}` of type `{moderation_type}` "
-                f"created successfully for channel {channel_dict['mention']} "
-                f"and role {role_dict['mention']}."
-            )
-        else:
-            msg = (
-                f"Alias `{alias_name}`  of type `{moderation_type}` "
-                f"created successfully for channel {channel_dict['mention']}."
-            )
         return await state.end(success=msg)
 
     # DONE
@@ -156,27 +156,39 @@ class AdminCommands(commands.Cog):
             "`unvmute`, `ban`, `unban`, `flag`, "
             "`unflag`, `tmute`, `untmute`, `role`, `unrole`",
         ),
-        alias_name: str = commands.parameter(description="Alias/Pseudonym"),
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or include its ID."
-        ),
         *,
-        role: Optional[RoleSnowflake] = commands.parameter(
-            default=None, description="Role ID (only for role/unrole)"
+        alias_name: str = commands.parameter(description="Alias/Pseudonym"),
+        target: str = commands.parameter(
+            description="Tag a channel, role or include the ID."
         ),
     ):
+        msg = ""
         state = StateService(source=ctx)
 
         do = DiscordObject(ctx=ctx)
-        channel_dict = await do.determine_from_target(target=channel)
-        kwargs = channel_dict["columns"]
+        kwargs = {}
         try:
-            role_dict = await do.determine_from_target(target=role)
+            channel_dict = await do.determine_from_target(target=target)
         except (DiscordObjectNotFound, TypeError) as e:
             logger.warning(str(e).capitalize())
         else:
-            kwargs.update(role_dict["columns"])
-
+            kwargs.update(channel_dict["columns"])
+            msg = (
+                f"Alias `{alias_name}`  of type `{moderation_type}` "
+                f"created successfully for channel {channel_dict['mention']}."
+            )
+        if not kwargs:
+            try:
+                role_dict = await do.determine_from_target(target=target)
+            except (DiscordObjectNotFound, TypeError) as e:
+                logger.warning(str(e).capitalize())
+            else:
+                kwargs.update(role_dict["columns"])
+                msg = (
+                    f"Alias `{alias_name}` of type `{moderation_type}` "
+                    f"created successfully"
+                    f"for role {role_dict['mention']}."
+                )
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=ctx.guild.id, singular=True
         )
@@ -188,17 +200,7 @@ class AdminCommands(commands.Cog):
 
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
-        if role:
-            msg = (
-                f"Alias `{alias_name}` of type `{moderation_type}` "
-                f"created successfully for channel {channel_dict['mention']} "
-                f"and role {role_dict['mention']}."
-            )
-        else:
-            msg = (
-                f"Alias `{alias_name}`  of type `{moderation_type}` "
-                f"created successfully for channel {channel_dict['mention']}."
-            )
+
         return await state.end(success=msg)
 
     @app_commands.command(name="aroles", description="Administrator roles.")
@@ -700,14 +702,11 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        try:
-            await has_equal_or_lower_role(
-                source=ctx,
-                member_snowflake=member_dict["id"],
-                sender_snowflake=ctx.author.id,
-            )
-        except Exception as e:
-            print(e)
+        await has_equal_or_lower_role(
+            source=ctx,
+            member_snowflake=member_dict["id"],
+            sender_snowflake=ctx.author.id,
+        )
         kwargs = {}
         kwargs.update(channel_dict["columns"])
         kwargs.update(member_dict["columns"])
@@ -939,7 +938,7 @@ class AdminCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: AppMemberSnowflake,
-        reason: Optional[str] = "No reason provided",
+        reason: str = "No reason provided",
     ):
         state = StateService(source=interaction)
 
@@ -1067,7 +1066,7 @@ class AdminCommands(commands.Cog):
             delta = duration.expires_in - datetime.now(timezone.utc)
             if delta.total_seconds() < 0:
                 return await state.end(
-                    warning="You are not authorized to decrease the duration "
+                    warning="Member is not authorized to decrease the duration "
                     "below the current time."
                 )
             if stage:
@@ -1215,7 +1214,7 @@ class AdminCommands(commands.Cog):
             delta = duration.expires_in - datetime.now(timezone.utc)
             if delta.total_seconds() < 0:
                 return await state.end(
-                    warning="You are not authorized to decrease the duration "
+                    warning="Member is not authorized to decrease the duration "
                     "below the current time."
                 )
             if stage:
@@ -1547,7 +1546,7 @@ class AdminCommands(commands.Cog):
     async def list_temp_rooms_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: `all`, channel ID/mention, " "or server ID.",
         ),
     ):
@@ -1667,9 +1666,9 @@ class AdminCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
-        scope: Optional[str] = None,
-        entry_type: Optional[str] = None,
-        snowflakes: Optional[str] = None,
+        scope: str = None,
+        entry_type: str = None,
+        snowflakes: str = None,
     ):
         channel_mentions = failed_snowflakes = []
 
@@ -1763,10 +1762,8 @@ class AdminCommands(commands.Cog):
         channel: ChannelSnowflake = commands.parameter(
             description="Tag a channel or include its ID."
         ),
-        scope: Optional[str] = commands.parameter(
-            description="create | modify | delete."
-        ),
-        entry_type: Optional[str] = commands.parameter(description="all | channel."),
+        scope: str = commands.parameter(description="create | modify | delete."),
+        entry_type: str = commands.parameter(description="all | channel."),
         *snowflakes: Optional[int],
     ):
         channel_mentions = failed_snowflakes = []
@@ -1859,7 +1856,7 @@ class AdminCommands(commands.Cog):
     )
     @administrator_predicator()
     async def list_streaming_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}

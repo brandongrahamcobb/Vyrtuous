@@ -64,9 +64,7 @@ class MockChannel(discord.TextChannel):
     def permissions_for(self, member):
         return SimpleNamespace(send_messages=True)
 
-    async def send(
-        self, author=None, bot=None, content=None, embed=None, file=None, **kwargs
-    ):
+    async def send(self, content=None, embed=None, file=None, **kwargs):
         msg = MockMessage(
             author=self.guild.me,
             channel=self,

@@ -45,22 +45,22 @@ class Aliases(commands.Cog):
                 "**reason** (Optional): Reason for flagging the user",
             ],
             "unflag": ["**member** (Required): Tag a member or include their ID"],
-            "voice_mute": [
+            "vmute": [
                 "**member** (Required): Tag a member or include their ID",
                 "**duration** (Optional): (+|-)duration(m|h|d)\n"
                 "0 = permanent / 24h = default\n`+` to append, "
                 "`-` to delete, `=` to overwrite reason",
                 "**reason** (Optional): Reason (required for 7 days or more)",
             ],
-            "unvoice_mute": ["**member** (Required): Tag a member or include their ID"],
-            "text_mute": [
+            "unvmute": ["**member** (Required): Tag a member or include their ID"],
+            "tmute": [
                 "**member** (Required): Tag a member or include their ID",
                 "**duration** (Required): (+|-)duration(m|h|d)\n"
                 "0 = permanent / 24h = default\n`+` to append, "
                 "`-` to delete, `=` to overwrite reason",
                 "**reason** (Required): Reason (required for 7 days or more)",
             ],
-            "untext_mute": ["**member** (Required): Tag a member or include their ID"],
+            "untmute": ["**member** (Required): Tag a member or include their ID"],
             "role": [
                 "**member** (Required): Tag a member or include their ID",
                 "**role** (Required): Role to assign",
@@ -77,10 +77,10 @@ class Aliases(commands.Cog):
             "unban": "Unbans a user from the server.",
             "flag": "Flags a user for moderation review.",
             "unflag": "Removes a flag from a user.",
-            "voice_mute": "Mutes a user in voice channels.",
-            "unvoice_mute": "Unmutes a user in voice channels.",
-            "text_mute": "Mutes a user in text channels.",
-            "untext_mute": "Unmutes a user in text channels.",
+            "vmute": "Mutes a user in voice channels.",
+            "unvmute": "Unmutes a user in voice channels.",
+            "tmute": "Mutes a user in text channels.",
+            "untmute": "Unmutes a user in text channels.",
             "role": "Assigns a role to a user.",
             "unrole": "Removes a role from a user.",
         }
@@ -89,10 +89,10 @@ class Aliases(commands.Cog):
             "vegan": "Moderator",
             "carnist": "Moderator",
             "unban": "Moderator",
-            "voice_mute": "Moderator",
-            "unvoice_mute": "Moderator",
-            "text_mute": "Moderator",
-            "untext_mute": "Moderator",
+            "vmute": "Moderator",
+            "unvmute": "Moderator",
+            "tmute": "Moderator",
+            "untmute": "Moderator",
             "flag": "Moderator",
             "unflag": "Moderator",
             "role": "Coordinator",
@@ -148,7 +148,7 @@ class Aliases(commands.Cog):
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
                 f"**Expires:** {action_information["action_duration"]}\n"
-                f"**Reason:** {action_information["action_modification"]}"
+                f"**Reason:** {action_information["action_reason"]}"
             ),
             color=discord.Color.blue(),
         )

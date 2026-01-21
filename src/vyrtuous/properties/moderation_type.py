@@ -31,15 +31,6 @@ class ModerationTypeObject:
 
     @moderation_type.setter
     def moderation_type(self, value: str):
-        match value:
-            case "tmute":
-                value = "text_mute"
-            case "vmute":
-                value = "voice_mute"
-            case "untmute":
-                value = "untext_mute"
-            case "unvmute":
-                value = "unvoice_mute"
         self._moderation_type = value
 
     def __str__(self):

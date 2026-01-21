@@ -48,8 +48,8 @@ class VideoRoom(Room):
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
-        guild_snowflake: Optional[int],
+        channel_snowflake: int,
+        guild_snowflake: int,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         **kwargs,

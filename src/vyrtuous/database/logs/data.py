@@ -27,19 +27,19 @@ class Data:
     @classmethod
     async def save(
         cls,
-        action_type: Optional[str],
-        channel_members_voice_count: Optional[int],
-        channel_snowflake: Optional[int],
-        executor_member_snowflake: Optional[int],
+        action_type: str,
+        channel_members_voice_count: int,
+        channel_snowflake: int,
+        executor_member_snowflake: int,
         expires_at: Optional[datetime],
-        guild_members_offline_and_online_member_count: Optional[int],
-        guild_members_online_count: Optional[int],
-        guild_members_voice_count: Optional[int],
-        guild_snowflake: Optional[int],
-        highest_role: Optional[str],
+        guild_members_offline_and_online_member_count: int,
+        guild_members_online_count: int,
+        guild_members_voice_count: int,
+        guild_snowflake: int,
+        highest_role: str,
         is_modification: bool,
-        target_member_snowflake: Optional[int],
-        reason: Optional[str],
+        target_member_snowflake: int,
+        reason: str,
     ):
         bot = DiscordBot.get_instance()
         async with bot.db_pool.acquire() as conn:

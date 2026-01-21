@@ -28,7 +28,10 @@ from vyrtuous.service.member_snowflake import get_member_snowflake
 
 
 class NotGuildOwner(commands.CheckFailure):
-    def __init__(self, message="You are not the guild owner and cannot do this."):
+    def __init__(
+        self,
+        message="Member is not a sysadmin, developer or guild owner in this server.",
+    ):
         super().__init__(message)
 
 
@@ -56,7 +59,7 @@ def guild_owner_predicator():
             except commands.CheckFailure:
                 continue
         raise commands.CheckFailure(
-            "You are not a sysadmin, developer or guild owner in this server."
+            "Member is not a sysadmin, developer or guild owner in this server."
         )
 
     predicate._permission_level = "Guild Owner"

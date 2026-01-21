@@ -29,3 +29,32 @@ DROP TABLE moderation_logs_old;
 DROP TABLE log_channels;
 DROP TABLE active_caps_old;
 ALTER TABLE history RENAME TO streaming;
+BEGIN;
+
+UPDATE command_aliases
+SET alias_type = CASE alias_type
+    WHEN 'voice_mute' THEN 'vmute'
+    WHEN 'unvoice_mute' THEN 'unvmute'
+    WHEN 'text_mute' THEN 'tmute'
+    WHEN 'untext_mute' THEN 'untmute'
+    ELSE alias_type
+END;
+
+COMMIT;
+
+BEGIN;
+
+ALTER TABLE command_aliases
+DROP CONSTRAINT command_aliases_alias_type_check;
+
+ALTER TABLE command_aliases
+ADD CONSTRAINT command_aliases_alias_type_check
+CHECK (alias_type IN (
+    'vegan','carnist','vmute','unvmute','ban','unban','flag','unflag','tmute','untmute','role','unrole'
+));
+
+COMMIT;
+ALTER TABLE vegans
+DROP CONSTRAINT vegans_pkey,
+DROP COLUMN channel_snowflake,
+ADD PRIMARY KEY (guild_snowflake, member_snowflake);

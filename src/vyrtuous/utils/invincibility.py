@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from typing import Dict, Tuple
 
 import discord
@@ -39,7 +40,7 @@ class Invincibility:
         member = guild.get_member(member_snowflake)
         kwargs = {
             "guild_snowflake": guild_snowflake,
-            "member_snowflake": member_snowflake
+            "member_snowflake": member_snowflake,
         }
         bans = await Ban.select(**kwargs)
         text_mutes = await TextMute.select(**kwargs)

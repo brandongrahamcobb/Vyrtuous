@@ -49,9 +49,9 @@ class Stage(Room):
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
+        channel_snowflake: int,
         expires_in: Optional[datetime],
-        guild_snowflake: Optional[int],
+        guild_snowflake: int,
         reason: Optional[str] = "No reason provided.",
         target: Optional[str] = "room",
         created_at: Optional[datetime] = None,

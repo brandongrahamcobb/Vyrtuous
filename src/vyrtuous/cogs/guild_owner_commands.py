@@ -312,10 +312,7 @@ class GuildOwnerCommands(commands.Cog):
                 f"and invincibility has been enabled for {member_dict['mention']}."
             )
         else:
-            try:
-                Invincibility.remove_invincible_member(**kwargs)
-            except Exception as e:
-                print(e)
+            Invincibility.remove_invincible_member(**kwargs)
             msg = f"Invincibility has been disabled for {member_dict['mention']}"
 
         return await state.end(success=msg)

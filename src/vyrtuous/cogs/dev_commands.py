@@ -139,7 +139,7 @@ class DevCommands(commands.Cog):
         ctx: commands.Context,
         reference: str,
         action: str,
-        notes: Optional[str] = None,
+        notes: str = None,
     ):
         state = StateService(source=ctx)
 
@@ -326,7 +326,7 @@ class DevCommands(commands.Cog):
     async def list_developer_logs_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: `all`, server ID or UUID.",
         ),
         *,

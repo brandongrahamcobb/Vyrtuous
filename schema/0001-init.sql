@@ -207,3 +207,10 @@ CREATE TABLE video_rooms (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake)
 );
+CREATE TABLE dummy (
+    channel_snowflake BIGINT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    guild_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);

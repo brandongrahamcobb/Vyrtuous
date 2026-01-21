@@ -42,7 +42,7 @@ class DurationObject:
     def __init__(self, duration: str):
         self._duration: str = ""
         self._prefix: Optional[str] = None
-        self._number: Optional[int] = None
+        self._number: int = None
         self._unit: Optional[str] = None
         self._base: Optional[datetime] = None
         self.is_modification: bool = None

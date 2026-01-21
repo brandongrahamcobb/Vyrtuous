@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from collections import defaultdict
-from typing import Optional
 import inspect
 
 from discord import app_commands
@@ -53,7 +52,7 @@ class HelpCommand(commands.Cog):
         ]
 
     async def get_channel_alias_help(
-        self, channel_snowflake: Optional[int], guild_snowflake: Optional[int]
+        self, channel_snowflake: int, guild_snowflake: int
     ) -> list[str]:
         lines = []
         aliases = await Alias.select(guild_snowflake=guild_snowflake)
@@ -181,7 +180,7 @@ class HelpCommand(commands.Cog):
     @app_commands.describe(command_name="The command to view details for.")
     @moderator_predicator()
     async def help_app_command(
-        self, interaction: discord.Interaction, command_name: Optional[str] = None
+        self, interaction: discord.Interaction, command_name: str = None
     ):
         state = StateService(source=interaction)
         bot = interaction.client

@@ -53,8 +53,6 @@ async def test_load_reload_unload(bot, command: Optional[str]):
     [{emoji} Unloaded ScheduledTasks]
 
     """
-    formatted = command.format(
-        cog="vyrtuous.cogs.scheduled_tasks"
-    )
+    formatted = command.format(cog="vyrtuous.cogs.scheduled_tasks")
     captured = await send_message(bot=bot, content=formatted)
     assert captured

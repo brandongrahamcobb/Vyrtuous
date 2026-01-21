@@ -53,15 +53,15 @@ class Streaming(DatabaseFactory):
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
+        channel_snowflake: int,
         enabled: Optional[bool],
-        entry_type: Optional[str],
-        guild_snowflake: Optional[int],
+        entry_type: str,
+        guild_snowflake: int,
         created_at: Optional[datetime] = None,
         snowflakes: list[int] = None,
         updated_at: Optional[datetime] = None,
     ):
-        self.action: Optional[str]
+        self.action: str
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.enabled = enabled
@@ -75,7 +75,7 @@ class Streaming(DatabaseFactory):
         self._action
 
     @action.setter
-    def action(self, action: Optional[str]):
+    def action(self, action: str):
         if action not in self.ACTION_TYPES:
             raise ValueError("Invalid action.")
         self._action = action
@@ -85,7 +85,7 @@ class Streaming(DatabaseFactory):
         return self._entry_type
 
     @entry_type.setter
-    def entry_type(self, entry_type: Optional[str]):
+    def entry_type(self, entry_type: str):
         if entry_type not in self.ENTRY_TYPES:
             raise ValueError("Invalid entry type.")
         self._entry_type = entry_type
@@ -95,12 +95,12 @@ class Streaming(DatabaseFactory):
         cls,
         alias,
         channel: Optional[discord.VoiceChannel],
-        duration: Optional[str],
+        duration: str,
         is_channel_scope: bool,
         is_modification: bool,
         member: discord.Member,
         message,
-        reason: Optional[str],
+        reason: str,
     ):
         bot = DiscordBot.get_instance()
         author_snowflake = None
@@ -207,13 +207,13 @@ class Streaming(DatabaseFactory):
             else:
                 title = "🚩 User Flagged"
             action = "flagged"
-        elif alias.alias_type == "text_mute":
+        elif alias.alias_type == "tmute":
             if is_modification:
                 title = "🔄 Text Mute Modified"
             else:
                 title = "📝 User Text Muted"
             action = "text muted"
-        elif alias.alias_type == "voice_mute":
+        elif alias.alias_type == "vmute":
             if is_modification:
                 title = "🔄 Voice Mute Modified"
             else:
@@ -225,10 +225,10 @@ class Streaming(DatabaseFactory):
         elif alias.alias_type == "unflag":
             title = "⏮️ User Unflagged"
             action = "unflagged"
-        elif alias.alias_type == "untext_mute":
+        elif alias.alias_type == "untmute":
             title = "⏮️ User Text-Mute Removed"
             action = "untext-muted"
-        elif alias.alias_type == "unvoice_mute":
+        elif alias.alias_type == "unvmute":
             title = "⏮️ User Voice-Mute Removed"
             action = "unvoice-muted"
         else:

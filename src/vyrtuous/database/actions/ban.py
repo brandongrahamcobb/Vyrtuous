@@ -37,9 +37,9 @@ class Ban(Action):
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
-        guild_snowflake: Optional[int],
-        member_snowflake: Optional[int],
+        channel_snowflake: int,
+        guild_snowflake: int,
+        member_snowflake: int,
         created_at: Optional[datetime] = None,
         expired: bool = False,
         expires_in: Optional[datetime] = None,

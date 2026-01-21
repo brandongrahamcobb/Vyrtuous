@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from discord import app_commands
 from discord.ext import commands
@@ -146,7 +145,7 @@ class CoordinatorCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
-        reason: Optional[str] = "No reason provided.",
+        reason: str = "No reason provided.",
     ):
         muted_members = pages = skipped_members = failed_members = []
 

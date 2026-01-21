@@ -159,7 +159,7 @@ CREATE TABLE active_flags (
 
 CREATE TABLE command_aliases (
     alias_type        TEXT NOT NULL CHECK (alias_type IN (
-        'vegan', 'carnist', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'
+        'vegan', 'carnist', 'vmute', 'unvmute', 'ban', 'unban', 'flag', 'unflag', 'tmute', 'untmute', 'role', 'unrole'
     )),
     alias_name        TEXT NOT NULL,
     channel_snowflake BIGINT DEFAULT -1,

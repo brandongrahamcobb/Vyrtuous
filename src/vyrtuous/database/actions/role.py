@@ -33,16 +33,15 @@ class Role(Action):
         "role_snowflake",
     ]
     OPTIONAL_ARGS = ["channel_snowflake", "created_at", "updated_at"]
-    TABLE_NAME = "active_flags"
+    TABLE_NAME = "dummy"
 
     def __init__(
         self,
-        guild_snowflake: Optional[int],
-        member_snowflake: Optional[int],
-        role_snowflake: Optional[int],
+        guild_snowflake: int,
+        member_snowflake: int,
+        role_snowflake: int,
         channel_snowflake: Optional[int] = None,
         created_at: Optional[datetime] = None,
-        reason: Optional[str] = "No reason provided.",
         updated_at: Optional[datetime] = None,
         **kwargs,
     ):
@@ -52,7 +51,5 @@ class Role(Action):
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake
-        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
-        self.reason = reason
         self.role_snowflake = role_snowflake
         self.updated_at = updated_at

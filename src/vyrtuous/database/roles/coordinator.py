@@ -31,7 +31,8 @@ from vyrtuous.service.member_snowflake import get_member_snowflake
 
 class NotCoordinator(commands.CheckFailure):
     def __init__(
-        self, message="You are not a coordinator in this channel and cannot do this."
+        self,
+        message="Member is not a sysadmin, developer, guild owner, administrator or coordinator in this channel.",
     ):
         super().__init__(message)
 
@@ -77,7 +78,7 @@ def coordinator_predicator():
             except commands.CheckFailure:
                 continue
         raise commands.CheckFailure(
-            "You are not a sysadmin, developer, guild owner, administrator or coordinator in this channel."
+            "Member is not a sysadmin, developer, guild owner, administrator or coordinator in this channel."
         )
 
     predicate._permission_level = "Coordinator"
@@ -100,9 +101,9 @@ class Coordinator(DatabaseFactory):
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
-        guild_snowflake: Optional[int],
-        member_snowflake: Optional[int],
+        channel_snowflake: int,
+        guild_snowflake: int,
+        member_snowflake: int,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         **kwargs,

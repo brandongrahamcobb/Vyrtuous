@@ -34,8 +34,8 @@ class Vegan(DatabaseFactory):
 
     def __init__(
         self,
-        guild_snowflake: Optional[int],
-        member_snowflake: Optional[int],
+        guild_snowflake: int,
+        member_snowflake: int,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         **kwargs

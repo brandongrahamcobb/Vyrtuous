@@ -21,8 +21,8 @@ from uuid import UUID
 import asyncio
 import time
 
-from pglast import parse_sql
-from pglast.ast import ColumnDef, Constraint, CreateStmt
+# from pglast import parse_sql
+# from pglast.ast import ColumnDef, Constraint, CreateStmt
 import asyncpg
 import pytest
 
@@ -103,6 +103,28 @@ async def main():
           AND c.table_name = $1
         ORDER BY c.ordinal_position;
     """
+    statement = """
+        SELECT kcu.column_name
+          FROM information_schema.table_constraints tc
+          JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name
+           AND tc.table_schema = kcu.table_schema
+          WHERE tc.constraint_type = 'PRIMARY KEY'
+            AND tc.table_schema = 'public'
+            AND tc.table_name = $1
+          ORDER BY kcu.ordinal_position;
+    """
+
+    async def test_sql(table_name="vegans"):
+        try:
+            kwargs = []
+            async with db_pool.acquire() as conn:
+                rows = await conn.fetch(statement, table_name)
+            for row in rows:
+                kwargs.append(row["column_name"])
+            print(kwargs)
+        except Exception as e:
+            print(e)
 
     async def test_main():
         try:
@@ -114,24 +136,25 @@ async def main():
                 table_names=ttn_list,
                 statement=select_table_attributes_statement,
             )
-            for table_name, table_dict in tsql_dict.items():
-                pk_columns = set()
-                for column_name, column_data in table_dict.items():
-                    if column_data["is_primary_key"]:
-                        pk_columns.add(column_name)
-                print(
-                    f"""
-                    TABLE: {table_name}\n
-                    COLUMNS: {', '.join(tsql_dict[table_name].keys())}\n
-                    PRIMARY_KEYS: ({', '.join(pk_columns)})
-                """
-                )
-            psql_dict = test_parse_sql()
-            assert psql_dict == tsql_dict
+            print(tsql_dict.values())
+            # for table_name, table_dict in tsql_dict.items():
+            #     pk_columns = set()
+            #     for column_name, column_data in table_dict.items():
+            #         if column_data["is_primary_key"]:
+            #             pk_columns.add(column_name)
+            #     print(
+            #         f"""
+            #         TABLE: {table_name}\n
+            #         COLUMNS: {', '.join(tsql_dict[table_name].keys())}\n
+            #         PRIMARY_KEYS: ({', '.join(pk_columns)})
+            #     """
+            #     )
+            # psql_dict = test_parse_sql()
+            # assert psql_dict == tsql_dict
         except Exception as e:
             return print(str(e).capitalize())
 
-    await test_main()
+    await test_sql()
 
 
 @pytest.mark.skip(reason="Not ready yet")

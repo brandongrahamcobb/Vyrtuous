@@ -49,12 +49,12 @@ async def capture(channel):
 
 async def send_message(bot, content: str = None):
     state = MockState()
-    guild = MockGuild(bot=bot, channels=[], members=[], roles=[], state=state)
+    guild = MockGuild(bot=bot, channels={}, members=[], roles=[], state=state)
     role = MockRole(guild=guild, state=state)
     guild._roles.append(role)
     bot._guilds.append(guild)
     channel = MockChannel(bot=bot, guild=guild, state=state)
-    guild._channels.append(channel)
+    guild._channels.update({channel.id: channel})
     author = MockMember(
         bot=bot,
         guild=guild,
@@ -90,11 +90,10 @@ async def send_message(bot, content: str = None):
     msg = MockMessage(
         author=author, channel=channel, content=content, guild=guild, state=state
     )
+
     async with capture(channel):
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
-        try:
-            await bot.process_commands(msg)
-        except:
-            await bot.on_message(msg)
+        await asyncio.sleep(0.1)
+
     return channel._captured[-1]

@@ -53,10 +53,10 @@ class Alias(Action):
     _ALIAS_CLASS_MAP = {
         "ban": Ban,
         "unban": Ban,
-        "voice_mute": VoiceMute,
-        "unvoice_mute": VoiceMute,
-        "text_mute": TextMute,
-        "untext_mute": TextMute,
+        "vmute": VoiceMute,
+        "unvmute": VoiceMute,
+        "tmute": TextMute,
+        "untmute": TextMute,
         "role": Role,
         "unrole": Role,
         "flag": Flag,
@@ -67,10 +67,10 @@ class Alias(Action):
 
     def __init__(
         self,
-        alias_name: Optional[str],
-        alias_type: Optional[str],
-        channel_snowflake: Optional[int],
-        guild_snowflake: Optional[int],
+        alias_name: str,
+        alias_type: str,
+        channel_snowflake: int,
+        guild_snowflake: int,
         created_at: Optional[datetime] = None,
         role_snowflake: Optional[int] = None,
         updated_at: Optional[datetime] = None,
@@ -92,10 +92,10 @@ class Alias(Action):
             "unban": self.alias_cog.handle_unban_alias,
             "flag": self.alias_cog.handle_flag_alias,
             "unflag": self.alias_cog.handle_unflag_alias,
-            "voice_mute": self.alias_cog.handle_voice_mute_alias,
-            "unvoice_mute": self.alias_cog.handle_unmute_alias,
-            "text_mute": self.alias_cog.handle_text_mute_alias,
-            "untext_mute": self.alias_cog.handle_untextmute_alias,
+            "vmute": self.alias_cog.handle_voice_mute_alias,
+            "unvmute": self.alias_cog.handle_unmute_alias,
+            "tmute": self.alias_cog.handle_text_mute_alias,
+            "untmute": self.alias_cog.handle_untextmute_alias,
             "role": self.alias_cog.handle_role_alias,
             "unrole": self.alias_cog.handle_unrole_alias,
         }
@@ -109,18 +109,18 @@ class Alias(Action):
         return self._alias_type
 
     @alias_type.setter
-    def alias_type(self, alias_type: Optional[str]):
+    def alias_type(self, alias_type: str):
         if alias_type not in (
             "vegan",
             "carnist",
-            "voice_mute",
-            "unvoice_mute",
+            "vmute",
+            "unvmute",
             "ban",
             "unban",
             "flag",
             "unflag",
-            "text_mute",
-            "untext_mute",
+            "tmute",
+            "untmute",
             "role",
             "unrole",
         ):
@@ -143,9 +143,9 @@ class Alias(Action):
                     formatted_type = "Role"
                 case "flag" | "unflag":
                     formatted_type = "Flag"
-                case "text_mute" | "untext_mute":
+                case "tmute" | "untmute":
                     formatted_type = "Text Mute"
-                case "voice_mute" | "unvoice_mute":
+                case "vmute" | "unvmute":
                     formatted_type = "Voice Mute"
             grouped[(alias.channel_snowflake, formatted_type)].append(alias)
         for (channel_snowflake, formatted_type), channel_aliases in grouped.items():

@@ -45,14 +45,14 @@ class DeveloperLog(DatabaseFactory):
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
+        channel_snowflake: int,
         developer_snowflakes: list[int],
-        guild_snowflake: Optional[int],
-        id: Optional[str],
-        message_snowflake: Optional[int],
+        guild_snowflake: int,
+        id: str,
+        message_snowflake: int,
         created_at: Optional[datetime] = None,
         notes: Optional[str] = None,
-        resolved: bool = False,
+        resolved: Optional[bool] = False,
         updated_at: Optional[datetime] = None,
     ):
         super().__init__()

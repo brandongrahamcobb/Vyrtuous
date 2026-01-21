@@ -283,7 +283,7 @@ class ModeratorCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_bans_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -330,7 +330,7 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, ban_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not object_dict.get("type", None) != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -384,7 +384,7 @@ class ModeratorCommands(commands.Cog):
     async def list_bans_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
@@ -488,7 +488,7 @@ class ModeratorCommands(commands.Cog):
         target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     async def list_caps_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -576,7 +576,7 @@ class ModeratorCommands(commands.Cog):
     async def list_caps_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
@@ -669,7 +669,7 @@ class ModeratorCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_commands_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -756,7 +756,7 @@ class ModeratorCommands(commands.Cog):
     async def list_commands_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
@@ -845,7 +845,7 @@ class ModeratorCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_coordinators_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -945,7 +945,7 @@ class ModeratorCommands(commands.Cog):
     async def list_coordinators_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
@@ -1087,7 +1087,7 @@ class ModeratorCommands(commands.Cog):
     @app_commands.describe(target="Specify one of: 'all', or server ID.")
     @moderator_predicator()
     async def list_developers_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -1270,7 +1270,7 @@ class ModeratorCommands(commands.Cog):
     @app_commands.command(name="flags", description="List flags.")
     @moderator_predicator()
     async def list_flags_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -1318,7 +1318,7 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, flag_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not object_dict.get("type", None) != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -1371,7 +1371,7 @@ class ModeratorCommands(commands.Cog):
     async def list_flags_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
@@ -1421,7 +1421,7 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, flag_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not object_dict.get("type", None) != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                 elif not thumbnail:
                     embed.set_thumbnail(
@@ -1475,7 +1475,7 @@ class ModeratorCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_new_vegans_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -1516,7 +1516,7 @@ class ModeratorCommands(commands.Cog):
             )
             for member_snowflake, vegan_dictionary in guild_data.get("members").items():
                 member = guild.get_member(member_snowflake)
-                if not object_dict.get("type", None) != discord.Member:
+                if object_dict.get("type", None) != discord.Member:
                     lines.append(f"**User:** {member.display_name} {member.mention}")
                 else:
                     if not thumbnail:
@@ -1827,7 +1827,7 @@ class ModeratorCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_moderators_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -1927,7 +1927,7 @@ class ModeratorCommands(commands.Cog):
     async def list_moderators_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
@@ -2026,7 +2026,7 @@ class ModeratorCommands(commands.Cog):
     @app_commands.command(name="mutes", description="List mutes.")
     @moderator_predicator()
     async def list_mutes_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2132,7 +2132,7 @@ class ModeratorCommands(commands.Cog):
     async def list_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
@@ -2340,7 +2340,7 @@ class ModeratorCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_stages_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2432,7 +2432,7 @@ class ModeratorCommands(commands.Cog):
     async def list_stages_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
@@ -2530,7 +2530,7 @@ class ModeratorCommands(commands.Cog):
         self,
         interaction: discord.Interaction,
         member: AppMemberSnowflake,
-        target: Optional[str] = None,
+        target: str = None,
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         objects_list = []
@@ -2600,7 +2600,7 @@ class ModeratorCommands(commands.Cog):
         member: MemberSnowflake = commands.parameter(
             description="Specify a member ID/mention."
         ),
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify 'all' or a channel ID/mention."
         ),
     ):
@@ -2880,7 +2880,7 @@ class ModeratorCommands(commands.Cog):
     )
     @moderator_predicator()
     async def list_text_mutes_app_command(
-        self, interaction: discord.Interaction, target: Optional[str] = None
+        self, interaction: discord.Interaction, target: str = None
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -2986,7 +2986,7 @@ class ModeratorCommands(commands.Cog):
     async def list_text_mutes_text_command(
         self,
         ctx: commands.Context,
-        target: Optional[str] = commands.parameter(
+        target: str = commands.parameter(
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):

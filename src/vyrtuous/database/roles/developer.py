@@ -28,7 +28,7 @@ from vyrtuous.service.member_snowflake import get_member_snowflake
 
 
 class NotDeveloper(commands.CheckFailure):
-    def __init__(self, message="You are not a developer and cannot do this."):
+    def __init__(self, message="Member is not a sysadmin or developer."):
         super().__init__(message)
 
 
@@ -49,7 +49,7 @@ def developer_predicator():
                     return True
             except commands.CheckFailure:
                 continue
-        raise commands.CheckFailure("You are not a sysadmin or developer.")
+        raise commands.CheckFailure("Member is not a sysadmin or developer.")
 
     predicate._permission_level = "Developer"
     return commands.check(predicate)
@@ -74,8 +74,8 @@ class Developer(DatabaseFactory):
 
     def __init__(
         self,
-        guild_snowflake: Optional[int],
-        member_snowflake: Optional[int],
+        guild_snowflake: int,
+        member_snowflake: int,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         **kwargs,

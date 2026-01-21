@@ -42,10 +42,10 @@ class TemporaryRoom(Room):
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
-        guild_snowflake: Optional[int],
-        member_snowflake: Optional[int],
-        room_name: Optional[str],
+        channel_snowflake: int,
+        guild_snowflake: int,
+        member_snowflake: int,
+        room_name: str,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         **kwargs,

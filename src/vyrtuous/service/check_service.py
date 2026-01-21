@@ -80,7 +80,6 @@ async def has_equal_or_lower_role(
     target_kwargs = kwargs
     target_name = await resolve_highest_role(**target_kwargs)
     target_rank = PERMISSION_TYPES.index(target_name)
-
     if sender_rank <= target_rank:
         raise HasEqualOrLowerRole(PERMISSION_TYPES[target_rank])
 

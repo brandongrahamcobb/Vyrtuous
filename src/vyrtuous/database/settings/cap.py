@@ -42,10 +42,10 @@ class Cap(DatabaseFactory):
 
     def __init__(
         self,
-        channel_snowflake: Optional[int],
-        duration_seconds: Optional[int],
-        guild_snowflake: Optional[int],
-        moderation_type: Optional[str],
+        channel_snowflake: int,
+        duration_seconds: int,
+        guild_snowflake: int,
+        moderation_type: str,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):

@@ -139,3 +139,25 @@ class DatabaseFactory(object):
             """,
                 *values,
             )
+
+    @classmethod
+    async def primary_keys(cls):
+        bot = DiscordBot.get_instance()
+        table_name = getattr(cls, "TABLE_NAME")
+        statement = """
+            SELECT kcu.column_name
+              FROM information_schema.table_constraints tc
+              JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_name = kcu.constraint_name
+               AND tc.table_schema = kcu.table_schema
+              WHERE tc.constraint_type = 'PRIMARY KEY'
+                AND tc.table_schema = 'public'
+                AND tc.table_name = $1
+              ORDER BY kcu.ordinal_position;
+        """
+        kwargs = []
+        async with bot.db_pool.acquire() as conn:
+            rows = await conn.fetch(statement, table_name)
+        for row in rows:
+            kwargs.append(row["column_name"])
+        return kwargs

@@ -26,7 +26,7 @@ from vyrtuous.service.member_snowflake import get_member_snowflake
 
 
 class NotSysAdmin(commands.CheckFailure):
-    def __init__(self, message="You are not the sysadmin and cannot do this."):
+    def __init__(self, message="Member is not a sysadmin."):
         super().__init__(message)
 
 
@@ -43,7 +43,7 @@ def sysadmin_predicator():
     ):
         if await is_sysadmin_wrapper(source):
             return True
-        raise commands.CheckFailure("You are not a sysadmin.")
+        raise commands.CheckFailure("Member is not a sysadmin.")
 
     predicate._permission_level = "SysAdmin"
     return commands.check(predicate)
