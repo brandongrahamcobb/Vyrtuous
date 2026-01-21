@@ -1,4 +1,4 @@
-"""test_roleid.py The purpose of this program is to be the integration test for the roleid list command for Vyrtuous.
+"""test_smute.py The purpose of this program is to be the integration test for the smute command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -22,36 +22,37 @@ import pytest
 
 from vyrtuous.tests.integration.test_suite import send_message
 
-TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
-VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
+DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "command",
     [
-        ("!rmv {source_channel_snowflake} {target_channel_snowflake}"),
+        ("!smute {member_snowflake} "),
+        ("!smute <@{member_snowflake}>"),
     ],
 )
-async def test_rmv(bot, command: Optional[str]):
+async def test_smute(bot, command: Optional[str]):
     """
-    Move all members from one VC to another
+    Server mute a member localized to the guild
 
     Parameters
     ----------
-    source_channel_snowflake
-        The snowflake or mention of a channel
-
-    target_channel_snowflake
-        The snowflake or mention of a channel
+    None
+        No paramers neccesary
 
     Examples
     --------
-    >>> !!rmv 1000000000000010 1000000000000011 
-    [{emoji} Members moved succesfully to Voice Channel One\n Member1\b Member2]
 
+    >>> !smute <@10000000000000003>
+    [{emoji} Member1 was Server Muted]
+
+    >>> !smute 10000000000000003
+    [{emoji} Member1 was Server Muted]
     """
-    formatted = command.format(source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
-        target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE)
+    formatted = command.format(
+        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
+    )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content
