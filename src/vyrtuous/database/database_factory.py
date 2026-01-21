@@ -21,10 +21,8 @@ from vyrtuous.bot.discord_bot import DiscordBot
 
 class DatabaseFactory(object):
 
-    def __init__(self):
-        self.bot = DiscordBot.get_instance()
-
     async def create(self):
+        bot = DiscordBot.get_instance()
         table_name = getattr(self, "TABLE_NAME")
         fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(
             self, "OPTIONAL_ARGS"
@@ -34,7 +32,7 @@ class DatabaseFactory(object):
             raise ValueError("No fields available to insert")
         placeholders = ", ".join(f"${i+1}" for i in range(len(insert_fields)))
         values = [getattr(self, f) for f in insert_fields]
-        async with self.bot.db_pool.acquire() as conn:
+        async with bot.db_pool.acquire() as conn:
             await conn.execute(
                 f"""
                 INSERT INTO {table_name} ({', '.join(insert_fields)})

@@ -41,8 +41,6 @@ class Stage(Room):
     OPTIONAL_ARGS = [
         "created_at",
         "expired",
-        "reason",
-        "target",
         "updated_at",
     ]
     TABLE_NAME = "active_stages"
@@ -52,8 +50,6 @@ class Stage(Room):
         channel_snowflake: int,
         expires_in: Optional[datetime],
         guild_snowflake: int,
-        reason: Optional[str] = "No reason provided.",
-        target: Optional[str] = "room",
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         **kwargs,
@@ -63,8 +59,6 @@ class Stage(Room):
         self.created_at = created_at
         self.expires_in = expires_in
         self.guild_snowflake = guild_snowflake
-        self.reason = reason
-        self.target = target
         self.updated_at = updated_at
 
     async def send_stage_ask_to_speak_message(

@@ -21,7 +21,6 @@ from typing import Optional
 
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.database_factory import DatabaseFactory
 from vyrtuous.database.logs.data import Data
 from vyrtuous.database.roles.role import resolve_highest_role
@@ -62,7 +61,6 @@ class Streaming(DatabaseFactory):
         updated_at: Optional[datetime] = None,
     ):
         self.action: str
-        self.bot = DiscordBot.get_instance()
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.enabled = enabled

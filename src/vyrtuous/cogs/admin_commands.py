@@ -1209,8 +1209,7 @@ class AdminCommands(commands.Cog):
             duration = DurationObject(duration)
         if duration.is_modification:
             is_modification = True
-
-        stage = await Stage.select(**kwargs)
+        stage = await Stage.select(**kwargs, singular=True)
         if is_modification and stage:
             delta = duration.expires_in - datetime.now(timezone.utc)
             if delta.total_seconds() < 0:
@@ -1354,7 +1353,7 @@ class AdminCommands(commands.Cog):
         kwargs = {}
         kwargs.update(channel_dict["columns"])
 
-        temporary_room = await TemporaryRoom.select(**kwargs)
+        temporary_room = await TemporaryRoom.select(**kwargs, singular=True)
         if temporary_room:
             if temporary_room.member_snowflake:
                 kwargs.update({"member_snowflake": temporary_room.member_snowflake})
@@ -1403,7 +1402,7 @@ class AdminCommands(commands.Cog):
         kwargs = {}
         kwargs.update(channel_dict["columns"])
 
-        temporary_room = await TemporaryRoom.select(**kwargs)
+        temporary_room = await TemporaryRoom.select(**kwargs, singular=True)
         if temporary_room:
             if temporary_room.member_snowflake:
                 kwargs.update({"member_snowflake": temporary_room.member_snowflake})
@@ -2083,7 +2082,7 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
-        video_room = await VideoRoom.select(**kwargs)
+        video_room = await VideoRoom.select(**kwargs, singular=True)
 
         if video_room:
             action = "removed"
@@ -2121,7 +2120,7 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict["columns"]
 
-        video_room = await VideoRoom.select(**kwargs)
+        video_room = await VideoRoom.select(**kwargs, singular=True)
 
         if video_room:
             action = "removed"
