@@ -55,7 +55,7 @@ from vyrtuous.service.check_service import check, has_equal_or_lower_role_wrappe
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.scope_service import member_relevant_objects_dict
-from vyrtuous.service.messaging.state_service import StateService, ChannelView
+from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.resolution.discord_object_service import DiscordObject
 from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
@@ -276,7 +276,6 @@ class ModeratorCommands(commands.Cog):
                     title="Skipped Members in Server",
                 )
         await StateService.send_pages(obj=Administrator, pages=pages, state=state)
-        
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(

@@ -259,7 +259,6 @@ class DurationDisplayButton(discord.ui.Button):
             label=label, style=discord.ButtonStyle.secondary, disabled=True
         )
 
-
     @app_commands.command(name="ban", description="Set a ban.")
     @app_commands.describe(
         member="Specify member ID or mention.",

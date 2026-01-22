@@ -38,6 +38,13 @@ from vyrtuous.database.rooms.stage import Stage
 from vyrtuous.service.scope_service import (
     member_relevant_objects_dict,
     room_relevant_objects_dict,
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    generate_skipped_channels,
+    generate_skipped_guilds,
+    generate_skipped_roles,
+    clean_guild_dictionary,
+    flush_page,
 )
 from vyrtuous.database.rooms.temporary_room import TemporaryRoom
 from vyrtuous.database.rooms.video_room import VideoRoom
@@ -62,16 +69,6 @@ from vyrtuous.service.messaging.state_service import StateService
 from vyrtuous.service.resolution.discord_object_service import (
     DiscordObject,
     DiscordObjectNotFound,
-)
-
-from vyrtuous.service.scope_service import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
-    generate_skipped_roles,
-    clean_guild_dictionary,
-    flush_page,
 )
 from vyrtuous.utils.cancel_confirm import VerifyView
 from vyrtuous.utils.emojis import get_random_emoji
@@ -292,7 +289,6 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict["columns"]
-        logger.info(kwargs)
 
         administrator_roles = await AdministratorRole.select(**kwargs)
 
@@ -719,8 +715,80 @@ class AdminCommands(commands.Cog):
             f"in {channel_dict['mention']}."
         )
 
-    # @app_commands.command(name='pc', description='View permissions.')
-    # @app_commands.describe(scope="Specify one of: 'all', channel ID/mention, or server ID.")
+    @app_commands.command(name="pc", description="View permissions.")
+    @app_commands.describe(
+        target="Specify one of: 'all', channel ID/mention, or server ID."
+    )
+    @administrator_predicator()
+    async def list_permissions_text_command(
+        self, interaction: discord.Interaction, target: str
+    ):
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
+        title = f"{get_random_emoji()} {self.bot.user.display_name} Missing Permissions"
+
+        state = StateService(source=interaction)
+
+        do = DiscordObject(interaction=interaction)
+        object_dict = await do.determine_from_target(target=target)
+
+        if target and target.lower() == "all":
+            await check(source=interaction, lowest_role="Developer")
+            channel_objs = [
+                channel_obj
+                for guild in self.bot.guilds
+                for channel_obj in guild.channels
+            ]
+        elif hasattr(object_dict["object"], "channels"):
+            channel_objs = object_dict.get("object", None).channels
+        else:
+            channel_objs = [object_dict.get("object", None)]
+        for channel in channel_objs:
+            permissions = channel.permissions_for(interaction.guild.me)
+            missing = []
+            for permission in TARGET_PERMISSIONS:
+                if not getattr(permissions, permission):
+                    missing.append(permission)
+            if not missing:
+                continue
+            guild_dictionary.setdefault(channel.guild.id, {"channels": {}})
+            guild_dictionary[channel.guild.id]["channels"].setdefault(channel.id, {})
+            guild_dictionary[channel.guild.id]["channels"][channel.id].update(
+                {"permissions": missing}
+            )
+        for guild_snowflake, guild_data in guild_dictionary.items():
+            field_count = 0
+            guild = self.bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for channel_snowflake, channel_data in guild_data.get(
+                "channels", {}
+            ).items():
+                channel = guild.get_channel(channel_snowflake)
+                lines.append(f"Channel: {channel.mention}")
+                for section_name, permissions in channel_data.items():
+                    for permission in permissions:
+                        lines.append(f"  ↳ {permission}")
+                field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(
+                        name="Information", value="\n".join(lines), inline=False
+                    )
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
+            if lines:
+                embed.add_field(
+                    name="Information", value="\n".join(lines), inline=False
+                )
+            pages.append(embed)
+
+        if pages:
+            return await state.end(warning=pages)
+        else:
+            return await state.end(
+                success=f"{self.bot.user.display_name} has all permissions for `{target}`."
+            )
 
     @commands.command(name="pc", help="View permissions.")
     @administrator_predicator()
@@ -733,7 +801,7 @@ class AdminCommands(commands.Cog):
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
-        title = f"{get_random_emoji()} {self.bot.user.display_name} Permissions"
+        title = f"{get_random_emoji()} {self.bot.user.display_name} Missing Permissions"
 
         state = StateService(source=ctx)
 
@@ -751,12 +819,11 @@ class AdminCommands(commands.Cog):
             channel_objs = object_dict.get("object", None).channels
         else:
             channel_objs = [object_dict.get("object", None)]
-
         for channel in channel_objs:
-            permissions = channel.permissions_for(self.bot.me)
+            permissions = channel.permissions_for(ctx.guild.me)
             missing = []
             for permission in TARGET_PERMISSIONS:
-                if not hasattr(permissions, permission):
+                if not getattr(permissions, permission):
                     missing.append(permission)
             if not missing:
                 continue
@@ -765,7 +832,6 @@ class AdminCommands(commands.Cog):
             guild_dictionary[channel.guild.id]["channels"][channel.id].update(
                 {"permissions": missing}
             )
-
         for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
@@ -776,14 +842,14 @@ class AdminCommands(commands.Cog):
                 "channels", {}
             ).items():
                 channel = guild.get_channel(channel_snowflake)
+                lines.append(f"Channel: {channel.mention}")
                 for section_name, permissions in channel_data.items():
-                    lines.append(section_name)
                     for permission in permissions:
                         lines.append(f"  ↳ {permission}")
                 field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
@@ -794,9 +860,11 @@ class AdminCommands(commands.Cog):
             pages.append(embed)
 
         if pages:
-            return await state.end(success=pages)
+            return await state.end(warning=pages)
         else:
-            return await state.end(warning="No permissions found.")
+            return await state.end(
+                success=f"{self.bot.user.display_name} has all permissions for `{target}`."
+            )
 
     # DONE
     @app_commands.command(name="rmv", description="VC move.")
