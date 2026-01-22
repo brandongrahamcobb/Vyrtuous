@@ -258,3 +258,29 @@ class DurationDisplayButton(discord.ui.Button):
         super().__init__(
             label=label, style=discord.ButtonStyle.secondary, disabled=True
         )
+
+
+    @app_commands.command(name="ban", description="Set a ban.")
+    @app_commands.describe(
+        member="Specify member ID or mention.",
+    )
+    @moderator_predicator()
+    async def ban_app_command(
+        self, interaction: discord.Interaction, member: AppMemberSnowflake
+    ):
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+        member_dict = await do.determine_from_target(target=member)
+        partial_action_information = {
+            "alias_class": Ban,
+            "action_guild_snowflake": interaction.guild.id,
+            "action_member_snowflake": member_dict["id"],
+        }
+        view = ChannelView(
+            partial_action_information=partial_action_information,
+            interaction=interaction,
+            state=state,
+        )
+        return await interaction.response.send_message(
+            content=f"Banning {member_dict['mention']}", view=view
+        )
