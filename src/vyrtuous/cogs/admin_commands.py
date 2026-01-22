@@ -459,11 +459,9 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
 
-        kwargs = {}
-        kwargs.update(channel_dict["columns"])
-        kwargs.update(member_dict["columns"])
-
-        await TemporaryRoom.update_owner(**kwargs)
+        where_kwargs = channel_dict["columns"]
+        set_kwargs = member_dict["columns"]
+        await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
 
         return await state.end(
             success=f"Temporary room {channel_dict.get('object', None).mention} ownership "
@@ -491,11 +489,9 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
 
-        kwargs = {}
-        kwargs.update(channel_dict["columns"])
-        kwargs.update(member_dict["columns"])
-
-        await TemporaryRoom.update_owner(**kwargs)
+        where_kwargs = channel_dict["columns"]
+        set_kwargs = member_dict["columns"]
+        await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
 
         return await state.end(
             success=f"Temporary room {channel_dict.get('object', None).mention} ownership "

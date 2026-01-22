@@ -58,3 +58,4 @@ ALTER TABLE vegans
 DROP CONSTRAINT vegans_pkey,
 DROP COLUMN channel_snowflake,
 ADD PRIMARY KEY (guild_snowflake, member_snowflake);
+ALTER TABLE active_stages DROP COLUMN member_snowflake;
