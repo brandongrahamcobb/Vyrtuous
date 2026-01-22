@@ -46,14 +46,12 @@ async def test_stage(bot, command: Optional[str]):
 
     Examples
     --------
-    >>> !stage <@10000000000000010> 
+    >>> !stage <@10000000000000010>
     [{emoji} Stage Room has been created]
 
     >>> !stage 10000000000000010
     [{emoji} Stage has been ended]
     """
-    formatted = command.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE
-    )
+    formatted = command.format(channel_snowflake=TEXT_CHANNEL_SNOWFLAKE)
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

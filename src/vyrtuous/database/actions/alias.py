@@ -17,15 +17,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.action import Action
 from vyrtuous.database.actions.ban import Ban
 from vyrtuous.database.actions.flag import Flag
 from vyrtuous.database.actions.role import Role
 from vyrtuous.database.actions.text_mute import TextMute
 from vyrtuous.database.actions.voice_mute import VoiceMute
+from vyrtuous.database.settings.cap import Cap
 from vyrtuous.database.roles.vegan import Vegan
+from vyrtuous.properties.duration import DurationObject
 
 
 class Alias(Action):
@@ -77,6 +80,7 @@ class Alias(Action):
         **kwargs,
     ):
         super().__init__()
+        self.bot = DiscordBot.get_instance()
         self.alias_class = self._ALIAS_CLASS_MAP.get(alias_type, None)
         self.alias_cog = self.bot.get_cog("Aliases")
         self.alias_type = alias_type
@@ -156,3 +160,60 @@ class Alias(Action):
                 else:
                     lines.append(f"`{alias.alias_name}`")
         return lines
+
+    @classmethod
+    async def generate_cap_duration(
+        cls,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        moderation_type: str,
+    ):
+        cap = await Cap.select(
+            channel_snowflake=channel_snowflake,
+            guild_snowflake=guild_snowflake,
+            moderation_type=moderation_type,
+            singular=True,
+        )
+        if not hasattr(cap, "duration"):
+            cap_duration = DurationObject("8h").to_seconds()
+        else:
+            cap_duration = cap.duration_seconds
+        return cap_duration
+
+    @classmethod
+    async def update_duration(cls, action_information, where_kwargs):
+        match action_information["action_duration"].prefix:
+            case "+":
+                updated_expires_in = (
+                    action_information["action_existing"].expires_in
+                    + action_information["action_expires_in"]
+                )
+            case "=":
+                updated_expires_in = (
+                    datetime.now(timezone.utc)
+                    + action_information["action_expires_in"].to_timedelta()
+                )
+            case "-":
+                updated_expires_in = (
+                    action_information["action_existing"].expires_in
+                    - action_information["action_expires_in"]
+                )
+        set_kwargs = {"expires_in": updated_expires_in}
+        await action_information["alias_class"].update(
+            set_kwargs=set_kwargs, where_kwargs=where_kwargs
+        )
+
+    @classmethod
+    async def update_reason(cls, action_information, where_kwargs):
+        match action_information["action_duration"].prefix:
+            case "+":
+                reason = (
+                    action_information["action_existing"].reason
+                    + action_information["action_reason"]
+                )
+            case "=" | "-":
+                reason = action_information["action_reason"]
+        set_kwargs = {"reason": reason}
+        await action_information["alias_class"].update(
+            set_kwargs=set_kwargs, where_kwargs=where_kwargs
+        )

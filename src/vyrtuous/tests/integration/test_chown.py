@@ -52,7 +52,8 @@ async def test_chown(bot, command: Optional[str]):
     [{emoji} Temporary Room has been created]
     """
     formatted = command.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE, member_snowflake=DUMMY_MEMBER_SNOWFLAKE
+        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

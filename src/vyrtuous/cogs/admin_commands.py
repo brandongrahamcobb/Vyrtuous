@@ -156,7 +156,6 @@ class AdminCommands(commands.Cog):
             "`unvmute`, `ban`, `unban`, `flag`, "
             "`unflag`, `tmute`, `untmute`, `role`, `unrole`",
         ),
-        *,
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         target: str = commands.parameter(
             description="Tag a channel, role or include the ID."
@@ -200,7 +199,6 @@ class AdminCommands(commands.Cog):
 
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
-
         return await state.end(success=msg)
 
     @app_commands.command(name="aroles", description="Administrator roles.")
@@ -1698,52 +1696,47 @@ class AdminCommands(commands.Cog):
                 success=f"Streaming has been {action} in {channel_dict['mention']}."
             )
 
-        try:
-            if action and entry_type:
-                match action.lower():
-                    case "create" | "modify":
-                        resolved_channels = []
-                        for snowflake in snowflakes:
-                            try:
-                                channel_dict = await do.determine_from_target(
-                                    target=channel
-                                )
-                                resolved_channels.append(channel_dict.get("id", None))
-                                channel_mentions.append(
-                                    channel_dict.get("mention", None)
-                                )
-                            except Exception:
-                                failed_snowflakes.append(snowflake)
-                                continue
-                        if action.lower() == "create":
-                            stream = Streaming(
-                                **kwargs,
-                                enabled=True,
-                                entry_type=entry_type,
-                                snowflakes=resolved_channels,
+        if action and entry_type:
+            match action.lower():
+                case "create" | "modify":
+                    resolved_channels = []
+                    for snowflake in snowflakes:
+                        try:
+                            channel_dict = await do.determine_from_target(
+                                target=channel
                             )
-                            await stream.create()
-                            action = "created"
-                        else:
-                            where_kwargs = {
-                                "channel_snowflake": kwargs["channel_snowflake"],
-                                "entry_type": entry_type,
-                                "guild_snowflake": interaction.guild.id,
-                            }
-                            set_kwargs = {"snowflakes": resolved_channels}
-                            await Streaming.update(
-                                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-                            )
-                            action = "modified"
-                    case "delete":
-                        await Streaming.delete(**kwargs)
-                        action = "deleted"
-                    case _:
-                        return await state.end(
-                            warning="Scope must be one of `create`, `delete` or `modify`."
+                            resolved_channels.append(channel_dict.get("id", None))
+                            channel_mentions.append(channel_dict.get("mention", None))
+                        except Exception:
+                            failed_snowflakes.append(snowflake)
+                            continue
+                    if action.lower() == "create":
+                        stream = Streaming(
+                            **kwargs,
+                            enabled=True,
+                            entry_type=entry_type,
+                            snowflakes=resolved_channels,
                         )
-        except Exception as e:
-            print(e)
+                        await stream.create()
+                        action = "created"
+                    else:
+                        where_kwargs = {
+                            "channel_snowflake": kwargs["channel_snowflake"],
+                            "entry_type": entry_type,
+                            "guild_snowflake": interaction.guild.id,
+                        }
+                        set_kwargs = {"snowflakes": resolved_channels}
+                        await Streaming.update(
+                            set_kwargs=set_kwargs, where_kwargs=where_kwargs
+                        )
+                        action = "modified"
+                case "delete":
+                    await Streaming.delete(**kwargs)
+                    action = "deleted"
+                case _:
+                    return await state.end(
+                        warning="Scope must be one of `create`, `delete` or `modify`."
+                    )
         embed = discord.Embed(
             title=f"{get_random_emoji()} Tracking {action.capitalize()} for {channel_dict['mention']}",
             color=0x00FF00,
@@ -1916,29 +1909,27 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, entries in guild_data.get("channels", {}).items():
+            for channel_snowflake, entry in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
-                for entry in entries:
-                    status = "\u2705" if entry["enabled"] else "\u26d4"
-                    channel = guild.get_channel(entry["channel_snowflake"])
-                    lines.append(
-                        f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
+                status = "\u2705" if entry["enabled"] else "\u26d4"
+                lines.append(
+                    f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
+                )
+                if object_dict.get("type", None) in (
+                    discord.StageChannel,
+                    discord.TextChannel,
+                    discord.VoiceChannel,
+                ):
+                    lines.append(f"**Snowflakes:** {entry['snowflakes']}")
+                field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(
+                        name="Information",
+                        value="\n\n".join(lines),
+                        inline=False,
                     )
-                    if object_dict.get("type", None) in (
-                        discord.StageChannel,
-                        discord.TextChannel,
-                        discord.VoiceChannel,
-                    ):
-                        lines.append(f"**Snowflakes:** {entry['snowflakes']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information",
-                            value="\n\n".join(lines),
-                            inline=False,
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
             if lines:
                 embed.add_field(
                     name="Information", value="\n".join(lines), inline=False
@@ -2013,29 +2004,27 @@ class AdminCommands(commands.Cog):
             embed = discord.Embed(
                 title=title, description=guild.name, color=discord.Color.blue()
             )
-            for channel_snowflake, entries in guild_data.get("channels", {}).items():
+            for channel_snowflake, entry in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
-                for entry in entries:
-                    status = "\u2705" if entry["enabled"] else "\u26d4"
-                    channel = guild.get_channel(entry["channel_snowflake"])
-                    lines.append(
-                        f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
+                status = "\u2705" if entry["enabled"] else "\u26d4"
+                lines.append(
+                    f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
+                )
+                if object_dict.get("type", None) in (
+                    discord.StageChannel,
+                    discord.TextChannel,
+                    discord.VoiceChannel,
+                ):
+                    lines.append(f"**Snowflakes:** {entry['snowflakes']}")
+                field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(
+                        name="Information",
+                        value="\n\n".join(lines),
+                        inline=False,
                     )
-                    if object_dict.get("type", None) in (
-                        discord.StageChannel,
-                        discord.TextChannel,
-                        discord.VoiceChannel,
-                    ):
-                        lines.append(f"**Snowflakes:** {entry['snowflakes']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information",
-                            value="\n\n".join(lines),
-                            inline=False,
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
             if lines:
                 embed.add_field(
                     name="Information", value="\n".join(lines), inline=False
@@ -2059,7 +2048,6 @@ class AdminCommands(commands.Cog):
                     skipped=skipped_guilds,
                     title="Skipped Servers",
                 )
-
         await StateService.send_pages(obj=Streaming, pages=pages, state=state)
 
     # DONE

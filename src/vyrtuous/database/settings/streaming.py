@@ -21,6 +21,7 @@ from typing import Optional
 
 import discord
 
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.database_factory import DatabaseFactory
 from vyrtuous.database.logs.data import Data
 from vyrtuous.database.roles.role import resolve_highest_role

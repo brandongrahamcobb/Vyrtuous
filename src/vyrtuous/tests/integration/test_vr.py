@@ -46,14 +46,12 @@ async def test_vr(bot, command: Optional[str]):
 
     Examples
     --------
-    >>> !vr <@10000000000000010> 
+    >>> !vr <@10000000000000010>
     [{emoji} Video Room has been created]
 
     >>> !vr 10000000000000010
     [{emoji} Video Rooms has been deleted]
     """
-    formatted = command.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE
-    )
+    formatted = command.format(channel_snowflake=TEXT_CHANNEL_SNOWFLAKE)
     captured = await send_message(bot=bot, content=formatted)
     assert captured.content

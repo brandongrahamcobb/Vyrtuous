@@ -125,27 +125,15 @@ class EventListeners(commands.Cog):
     async def on_guild_channel_update(self, before, after):
         if before.name == after.name:
             return
-        await Ban.update_channel(
-            source_channel_snowflake=after.id, target_channel_snowflake=before.id
-        )
-        await Cap.update_channel(
-            source_channel_snowflake=after.id, target_channel_snowflake=before.id
-        )
-        await Coordinator.update_channel(
-            source_channel_snowflake=after.id, target_channel_snowflake=before.id
-        )
-        await Moderator.update_channel(
-            source_channel_snowflake=after.id, target_channel_snowflake=before.id
-        )
-        await Stage.update_channel(
-            source_channel_snowflake=after.id, target_channel_snowflake=before.id
-        )
-        await TextMute.update_channel(
-            source_channel_snowflake=after.id, target_channel_snowflake=before.id
-        )
-        await VoiceMute.update_channel(
-            source_channel_snowflake=after.id, target_channel_snowflake=before.id
-        )
+        set_kwargs = {"channel_snowflake": after.id}
+        where_kwargs = {"channel_snowflake": before.id}
+        await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Cap.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Coordinator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Moderator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await Stage.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        await VoiceMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
 
     # Done
     @commands.Cog.listener()
@@ -477,7 +465,7 @@ class EventListeners(commands.Cog):
                 member_snowflake=member_obj.id,
             )
 
-        action_channel_cap = await generate_cap_duration(
+        action_channel_cap = await Alias.generate_cap_duration(
             channel_snowflake=channel_obj.id,
             guild_snowflake=message.guild.id,
             moderation_type=alias_class.ACT,
@@ -528,11 +516,11 @@ class EventListeners(commands.Cog):
         if action_information["action_existing"]:
             if action_information["action_modification"]:
                 if action_information["action_expires_in_modification"]:
-                    await update_duration(
+                    await Alias.update_duration(
                         action_information=action_information, where_kwargs=where_kwargs
                     )
                 if action_information["action_reason_modification"]:
-                    await update_reason(
+                    await Alias.update_reason(
                         action_information=action_information, where_kwargs=where_kwargs
                     )
             else:
@@ -687,59 +675,3 @@ class EventListeners(commands.Cog):
 
 async def setup(bot: DiscordBot):
     await bot.add_cog(EventListeners(bot))
-
-
-async def generate_cap_duration(
-    channel_snowflake: int,
-    guild_snowflake: int,
-    moderation_type: str,
-):
-    cap = await Cap.select(
-        channel_snowflake=channel_snowflake,
-        guild_snowflake=guild_snowflake,
-        moderation_type=moderation_type,
-        singular=True,
-    )
-    if not hasattr(cap, "duration"):
-        cap_duration = DurationObject("8h").to_seconds()
-    else:
-        cap_duration = cap.duration_seconds
-    return cap_duration
-
-
-async def update_reason(action_information, where_kwargs):
-    match action_information["action_duration"].prefix:
-        case "+":
-            reason = (
-                action_information["action_existing"].reason
-                + action_information["action_reason"]
-            )
-        case "=" | "-":
-            reason = action_information["action_reason"]
-    set_kwargs = {"reason": reason}
-    await action_information["alias_class"].update(
-        set_kwargs=set_kwargs, where_kwargs=where_kwargs
-    )
-
-
-async def update_duration(action_information, where_kwargs):
-    match action_information["action_duration"].prefix:
-        case "+":
-            updated_expires_in = (
-                action_information["action_existing"].expires_in
-                + action_information["action_expires_in"]
-            )
-        case "=":
-            updated_expires_in = (
-                datetime.now(timezone.utc)
-                + action_information["action_expires_in"].to_timedelta()
-            )
-        case "-":
-            updated_expires_in = (
-                action_information["action_existing"].expires_in
-                - action_information["action_expires_in"]
-            )
-    set_kwargs = {"expires_in": updated_expires_in}
-    await action_information["alias_class"].update(
-        set_kwargs=set_kwargs, where_kwargs=where_kwargs
-    )
