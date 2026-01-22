@@ -26,7 +26,7 @@ from vyrtuous.database.roles.administrator import is_administrator_wrapper
 from vyrtuous.database.roles.developer import is_developer_wrapper
 from vyrtuous.database.roles.guild_owner import is_guild_owner_wrapper
 from vyrtuous.database.roles.sysadmin import is_sysadmin_wrapper
-from vyrtuous.service.member_snowflake import get_member_snowflake
+from vyrtuous.service.member_snowflake import get_author
 
 
 class NotCoordinator(commands.CheckFailure):
@@ -40,7 +40,8 @@ class NotCoordinator(commands.CheckFailure):
 async def is_coordinator_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
-    member_snowflake = get_member_snowflake(source=source)
+    member = get_author(source=source)
+    member_snowflake = member.id
     return await is_coordinator(
         channel_snowflake=source.channel.id,
         guild_snowflake=source.guild.id,

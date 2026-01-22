@@ -24,7 +24,7 @@ import discord
 
 from vyrtuous.database.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.database.database_factory import DatabaseFactory
-from vyrtuous.service.member_snowflake import get_member_snowflake
+from vyrtuous.service.member_snowflake import get_author
 
 
 class NotDeveloper(commands.CheckFailure):
@@ -35,7 +35,8 @@ class NotDeveloper(commands.CheckFailure):
 async def is_developer_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
-    member_snowflake = get_member_snowflake(source=source)
+    member = get_author(source=source)
+    member_snowflake = member.id
     return await is_developer(member_snowflake)
 
 

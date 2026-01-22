@@ -2,9 +2,9 @@ from discord.ext import commands
 import discord
 
 
-def get_member_snowflake(source):
+def get_author(source):
     if isinstance(source, discord.Interaction):
-        member_snowflake = source.user.id
+        member = source.user
     elif isinstance(source, (commands.Context, discord.Message)):
-        member_snowflake = source.author.id
-    return member_snowflake
+        member = source.author
+    return member

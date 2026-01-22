@@ -44,7 +44,7 @@ from vyrtuous.database.settings.streaming import Streaming
 from vyrtuous.properties.duration import DurationObject
 from vyrtuous.service.resolution.discord_object_service import DiscordObjectNotFound
 
-from vyrtuous.service.check_service import has_equal_or_lower_role
+from vyrtuous.service.check_service import has_equal_or_lower_role_wrapper
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -418,7 +418,7 @@ class EventListeners(commands.Cog):
         state = StateService(source=message)
         channel_obj = message.guild.get_channel(alias.channel_snowflake)
         member_obj = message.guild.get_member(int(args[1]))
-        executor_role = await has_equal_or_lower_role(
+        executor_role = await has_equal_or_lower_role_wrapper(
             source=message,
             member_snowflake=member_obj.id,
             sender_snowflake=message.author.id,
@@ -429,8 +429,6 @@ class EventListeners(commands.Cog):
             else DurationObject("8h")
         )
         duration_modification = action_duration.is_modification
-        action_expires_in = datetime.now(timezone.utc) + action_duration.to_timedelta()
-        expires_in_timedelta = action_expires_in - datetime.now(timezone.utc)
         action_reason = " ".join(args[3:]) if len(args) > 3 else "No reason provided."
         reason_modification = (
             action_duration.prefix in modification_chars
@@ -477,7 +475,6 @@ class EventListeners(commands.Cog):
             "action_duration": action_duration,
             "action_executor_role": executor_role,
             "action_existing": action_existing,
-            "action_expires_in": action_expires_in,
             "action_expires_in_modification": duration_modification,
             "action_guild_snowflake": message.guild.id,
             "action_member_snowflake": member_obj.id,
@@ -490,12 +487,18 @@ class EventListeners(commands.Cog):
                 alias.role_snowflake if alias.role_snowflake else None
             ),
         }
+        expires_in_timedelta = action_duration.to_timedelta()
         if action_information["action_duration"].number != 0 and action_existing:
             if expires_in_timedelta.total_seconds() < 0:
                 return await state.end(
-                    warning="Member is not authorized to decrease "
+                    warning="You not authorized to decrease "
                     "the duration below the current time."
                 )
+        if action_information["action_existing"]:
+            action_expires_in = action_existing.expires_in + expires_in_timedelta
+        else:
+            action_expires_in = datetime.now(timezone.utc) + expires_in_timedelta
+        action_information["action_expires_in"] = action_expires_in
         if (
             action_information["action_existing"]
             and expires_in_timedelta.total_seconds()
@@ -503,9 +506,11 @@ class EventListeners(commands.Cog):
             or action_information["action_duration"].number == 0
         ):
             if executor_role == "Moderator":
-                duration_str = DurationObject.from_seconds(action_channel_cap)
+                duration_str = DurationObject.from_seconds(
+                    action_information["action_channel_cap"]
+                )
                 return await state.end(
-                    warning=f"Cannot set the {alias_class.SINGULAR} beyond {duration_str} as a "
+                    warning=f"Cannot set the {action_information['alias_class'].SINGULAR} beyond {duration_str} as a "
                     f"{executor_role} in {channel_obj.mention}."
                 )
         where_kwargs = {

@@ -51,11 +51,11 @@ from vyrtuous.properties.snowflake import (
     MemberSnowflake,
 )
 from vyrtuous.service.at_home import at_home
-from vyrtuous.service.check_service import check, has_equal_or_lower_role
+from vyrtuous.service.check_service import check, has_equal_or_lower_role_wrapper
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.scope_service import member_relevant_objects_dict
-from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.messaging.state_service import StateService, ChannelView
 from vyrtuous.service.resolution.discord_object_service import DiscordObject
 from vyrtuous.service.scope_service import (
     generate_skipped_dict_pages,
@@ -276,6 +276,31 @@ class ModeratorCommands(commands.Cog):
                     title="Skipped Members in Server",
                 )
         await StateService.send_pages(obj=Administrator, pages=pages, state=state)
+
+    @app_commands.command(name="ban", description="Set a ban.")
+    @app_commands.describe(
+        member="Specify member ID or mention.",
+    )
+    @moderator_predicator()
+    async def ban_app_command(
+        self, interaction: discord.Interaction, member: AppMemberSnowflake
+    ):
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+        member_dict = await do.determine_from_target(target=member)
+        partial_action_information = {
+            "alias_class": Ban,
+            "action_guild_snowflake": interaction.guild.id,
+            "action_member_snowflake": member_dict["id"],
+        }
+        view = ChannelView(
+            partial_action_information=partial_action_information,
+            interaction=interaction,
+            state=state,
+        )
+        return await interaction.response.send_message(
+            content=f"Banning {member_dict['mention']}", view=view
+        )
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
@@ -2248,7 +2273,7 @@ class ModeratorCommands(commands.Cog):
 
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=member_dict["id"],
             sender_snowflake=interaction.user.id,
@@ -2285,7 +2310,7 @@ class ModeratorCommands(commands.Cog):
 
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=ctx,
             member_snowflake=member_dict["id"],
             sender_snowflake=ctx.author.id,
@@ -2539,7 +2564,7 @@ class ModeratorCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
 
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=member_dict["id"],
             sender_snowflake=interaction.user.id,
@@ -2610,7 +2635,7 @@ class ModeratorCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
 
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=ctx,
             member_snowflake=member_dict["id"],
             sender_snowflake=ctx.author.id,

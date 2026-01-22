@@ -35,7 +35,7 @@ from vyrtuous.properties.snowflake import (
 )
 from vyrtuous.service.logging_service import logger
 from vyrtuous.service.check_service import (
-    has_equal_or_lower_role,
+    has_equal_or_lower_role_wrapper,
 )
 from vyrtuous.service.messaging.message_service import MessageService
 from vyrtuous.service.messaging.state_service import StateService
@@ -70,7 +70,7 @@ class CoordinatorCommands(commands.Cog):
 
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=member_dict["id"],
             sender_snowflake=interaction.user.id,
@@ -114,7 +114,7 @@ class CoordinatorCommands(commands.Cog):
 
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=ctx,
             member_snowflake=member_dict["id"],
             sender_snowflake=ctx.author.id,

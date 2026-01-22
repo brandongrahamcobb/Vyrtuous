@@ -53,7 +53,7 @@ from vyrtuous.properties.snowflake import (
 )
 from vyrtuous.service.check_service import (
     check,
-    has_equal_or_lower_role,
+    has_equal_or_lower_role_wrapper,
 )
 from vyrtuous.service.at_home import at_home
 from vyrtuous.service.logging_service import logger
@@ -656,7 +656,7 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=member_dict["id"],
             sender_snowflake=interaction.user.id,
@@ -697,7 +697,7 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=ctx,
             member_snowflake=member_dict["id"],
             sender_snowflake=ctx.author.id,
@@ -940,7 +940,7 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
 
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=member_dict["id"],
             sender_snowflake=interaction.user.id,
@@ -994,7 +994,7 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
 
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role(
+        await has_equal_or_lower_role_wrapper(
             source=ctx,
             member_snowflake=member_dict["id"],
             sender_snowflake=ctx.author.id,

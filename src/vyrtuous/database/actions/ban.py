@@ -18,7 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from typing import Optional
+
+import discord
+
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.action import Action
+from vyrtuous.service.member_snowflake import get_author
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 class Ban(Action):
@@ -58,3 +64,27 @@ class Ban(Action):
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.reason = reason
         self.updated_at = updated_at
+
+    async def create_embed(self, action_information, source, **kwargs):
+        channel = self.bot.get_channel(action_information["action_channel_snowflake"])
+        author = get_author(source=source)
+        member = self.bot.get_member(action_information["action_member_snowflake"])
+        embed = discord.Embed(
+            title=f"{get_random_emoji()} " f"{member.display_name} has been Banned",
+            description=(
+                f"**By:** {author.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}\n"
+                f"**Expires:** {action_information['action_duration']}\n"
+                f"**Reason:** {action_information['action_reason']}"
+            ),
+            color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        return embed
+
+    @classmethod
+    def get_handler(cls):
+        bot = DiscordBot.get_instance()
+        alias_cog = bot.get_cog("Aliases")
+        return alias_cog.handle_ban_alias

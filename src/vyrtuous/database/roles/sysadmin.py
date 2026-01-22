@@ -22,7 +22,7 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.service.member_snowflake import get_member_snowflake
+from vyrtuous.service.member_snowflake import get_author
 
 
 class NotSysAdmin(commands.CheckFailure):
@@ -33,7 +33,8 @@ class NotSysAdmin(commands.CheckFailure):
 async def is_sysadmin_wrapper(
     source: Union[commands.Context, discord.Interaction, discord.Message],
 ):
-    member_snowflake = get_member_snowflake(source=source)
+    member = get_author(source=source)
+    member_snowflake = member.id
     return is_sysadmin(member_snowflake)
 
 
