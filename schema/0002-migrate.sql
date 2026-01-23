@@ -63,3 +63,5 @@ ALTER TABLE active_bans
 ADD COLUMN role_snowflake BIGINT;
 ALTER TABLE active_text_mutes
 ADD COLUMN role_snowflake BIGINT;
+DELETE FROM command_aliases
+WHERE alias_type IN ('unban', 'unrole', 'untmute', 'unvmute', 'unflag', 'carnist');

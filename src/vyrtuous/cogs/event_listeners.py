@@ -125,15 +125,9 @@ class EventListeners(commands.Cog):
     async def on_guild_channel_update(self, before, after):
         if before.name == after.name:
             return
-        set_kwargs = {"channel_snowflake": after.id}
-        where_kwargs = {"channel_snowflake": before.id}
-        await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        await Cap.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        await Coordinator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        await Moderator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        await Stage.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        await VoiceMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        set_kwargs = {"room_name": after.id}
+        where_kwargs = {"room_name": before.id}
+        await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
 
     # Done
     @commands.Cog.listener()
@@ -346,14 +340,9 @@ class EventListeners(commands.Cog):
         if bans:
             for ban in bans:
                 channel = guild.get_channel(ban.channel_snowflake)
+                role = guild.get_role(ban.role_snowflake)
                 try:
-                    overwrite = channel.overwrites_for(member)
-                    overwrite.view_channel = False
-                    await channel.set_permissions(
-                        member=member,
-                        overwrite=overwrite,
-                        reason="Reinstating active channel ban",
-                    )
+                    await member.add_roles(role, reason="Reinstating channel ban")
                 except discord.Forbidden as e:
                     logger.warning(
                         f"Unable to ban member "
@@ -365,14 +354,9 @@ class EventListeners(commands.Cog):
         if text_mutes:
             for text_mute in text_mutes:
                 channel = guild.get_channel(text_mute.channel_snowflake)
+                role = guild.get_role(text_mute.role_snowflake)
                 try:
-                    overwrite = channel.overwrites_for(member)
-                    overwrite.send_messages = False
-                    await channel.set_permissions(
-                        member=member,
-                        overwrite=overwrite,
-                        reason="Reinstating text mute",
-                    )
+                    await member.add_roles(role, reason="Reinstating text-mute")
                 except discord.Forbidden as e:
                     logger.warning(
                         f"Unable to text-mute member "
@@ -635,14 +619,14 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
-        administrators = await Administrator.select(role_snowflake=role.id)
+        administrators = await Administrator.select(role_snowflakes=[role.id])
         for administrator in administrators:
             role_snowflakes = set(administrator.role_snowflake)
             guild_snowflakes = set(administrator.guild_snowflake)
             role_snowflakes.discard(role.id)
             if not role_snowflakes:
                 guild_snowflakes.discard(role.guild)
-            Administrator.update_guilds_and_roles_by_member(
+            Administrator.update(
                 guild_snowflake=list(guild_snowflakes),
                 member_snowflake=administrator.member_snowflake,
                 role_snowflakes=list(role_snowflakes),

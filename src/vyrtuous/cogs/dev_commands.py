@@ -105,17 +105,23 @@ class DevCommands(commands.Cog):
         try:
             if alias.alias_type == "ban":
                 overwrite = discord.PermissionOverwrite(connect=False)
-                await channel.set_permissions(role, overwrite=overwrite)
+                try:
+                    await channel.set_permissions(role, overwrite=overwrite)
+                except discord.Forbidden as e:
+                    logger.warning(e)
                 bans = await Ban.select(
                     channel_snowflake=channel.id, guild_snowflake=interaction.guild.id
                 )
                 for ban in bans:
                     channel = interaction.guild.get_channel(ban.channel_snowflake)
                     member = interaction.guild.get_member(ban.member_snowflake)
-                    await channel.set_permissions(member, overwrite=None)
-                    await member.add_roles(
-                        role, reason="Associating old bans with a role"
-                    )
+                    try:
+                        await channel.set_permissions(member, overwrite=None)
+                        await member.add_roles(
+                            role, reason="Associating old bans with a role"
+                        )
+                    except discord.Forbidden as e:
+                        logger.warning(e)
             elif alias.alias_type == "tmute":
                 overwrite = discord.PermissionOverwrite(
                     send_messages=False,
@@ -124,17 +130,23 @@ class DevCommands(commands.Cog):
                     create_private_threads=False,
                     send_messages_in_threads=False,
                 )
-                await channel.set_permissions(role, overwrite=overwrite)
+                try:
+                    await channel.set_permissions(role, overwrite=overwrite)
+                except discord.Forbidden as e:
+                    logger.warning(e)
                 text_mutes = await TextMute.select(
                     channel_snowflake=channel.id, guild_snowflake=interaction.guild.id
                 )
                 for text_mute in text_mutes:
                     channel = interaction.guild.get_channel(text_mute.channel_snowflake)
                     member = interaction.guild.get_member(text_mute.member_snowflake)
-                    await channel.set_permissions(member, overwrite=None)
-                    await member.add_roles(
-                        role, reason="Associating old text mutes with a role"
-                    )
+                    try:
+                        await channel.set_permissions(member, overwrite=None)
+                        await member.add_roles(
+                            role, reason="Associating old text mutes with a role"
+                        )
+                    except discord.Forbidden as e:
+                        logger.warning(e)
         except discord.Forbidden as e:
             logger.warning(e)
         where_kwargs = {
@@ -183,7 +195,10 @@ class DevCommands(commands.Cog):
                         return await state.end(
                             warning=f"{role.name} already exists. You must specify it to override."
                         )
-                role = await ctx.guild.create_role(name=alias_name)
+                try:
+                    role = await ctx.guild.create_role(name=alias_name)
+                except discord.Forbidden as e:
+                    logger.warning(e)
                 if alias.alias_type not in ("ban", "tmute"):
                     return await state.end(
                         warning=f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
@@ -197,17 +212,23 @@ class DevCommands(commands.Cog):
         try:
             if alias.alias_type == "ban":
                 overwrite = discord.PermissionOverwrite(connect=False)
-                await channel.set_permissions(role, overwrite=overwrite)
+                try:
+                    await channel.set_permissions(role, overwrite=overwrite)
+                except discord.Forbidden as e:
+                    logger.warning(e)
                 bans = await Ban.select(
                     channel_snowflake=channel.id, guild_snowflake=ctx.guild.id
                 )
                 for ban in bans:
                     channel = ctx.guild.get_channel(ban.channel_snowflake)
                     member = ctx.guild.get_member(ban.member_snowflake)
-                    await channel.set_permissions(member, overwrite=None)
-                    await member.add_roles(
-                        role, reason="Associating old bans with a role"
-                    )
+                    try:
+                        await channel.set_permissions(member, overwrite=None)
+                        await member.add_roles(
+                            role, reason="Associating old bans with a role"
+                        )
+                    except discord.Forbidden as e:
+                        logger.warning(e)
             elif alias.alias_type == "tmute":
                 overwrite = discord.PermissionOverwrite(
                     send_messages=False,
@@ -216,17 +237,23 @@ class DevCommands(commands.Cog):
                     create_private_threads=False,
                     send_messages_in_threads=False,
                 )
-                await channel.set_permissions(role, overwrite=overwrite)
+                try:
+                    await channel.set_permissions(role, overwrite=overwrite)
+                except discord.Forbidden as e:
+                    logger.warning(e)
                 text_mutes = await TextMute.select(
                     channel_snowflake=channel.id, guild_snowflake=ctx.guild.id
                 )
                 for text_mute in text_mutes:
                     channel = ctx.guild.get_channel(text_mute.channel_snowflake)
                     member = ctx.guild.get_member(text_mute.member_snowflake)
-                    await channel.set_permissions(member, overwrite=None)
-                    await member.add_roles(
-                        role, reason="Associating old text mutes with the new "
-                    )
+                    try:
+                        await channel.set_permissions(member, overwrite=None)
+                        await member.add_roles(
+                            role, reason="Associating old text mutes with the new "
+                        )
+                    except discord.Forbidden as e:
+                        logger.warning(e)
         except discord.Forbidden as e:
             logger.warning(e)
 
