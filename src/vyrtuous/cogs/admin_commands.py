@@ -35,6 +35,34 @@ from vyrtuous.database.roles.coordinator import Coordinator
 from vyrtuous.database.roles.moderator import Moderator
 from vyrtuous.database.roles.guild_owner import NotGuildOwner
 from vyrtuous.database.rooms.stage import Stage
+from vyrtuous.database.rooms.temporary_room import TemporaryRoom
+from vyrtuous.database.rooms.video_room import VideoRoom
+from vyrtuous.database.settings.cap import Cap
+from vyrtuous.database.settings.streaming import Streaming
+from vyrtuous.inc.helpers import PATH_LOG
+from vyrtuous.properties.duration import AppDuration, Duration, DurationObject
+from vyrtuous.properties.moderation_type import AppModerationType, ModerationType
+from vyrtuous.properties.snowflake import (
+    AppChannelSnowflake,
+    AppRoleSnowflake,
+    AppMemberSnowflake,
+    ChannelSnowflake,
+    MemberSnowflake,
+    RoleSnowflake,
+)
+from vyrtuous.service.at_home import at_home
+from vyrtuous.service.check_service import (
+    check,
+    has_equal_or_lower_role_wrapper,
+)
+
+from vyrtuous.service.logging_service import logger
+from vyrtuous.service.messaging.message_service import MessageService
+from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.service.resolution.discord_object_service import (
+    DiscordObject,
+    DiscordObjectNotFound,
+)
 from vyrtuous.service.scope_service import (
     member_relevant_objects_dict,
     room_relevant_objects_dict,
@@ -45,30 +73,6 @@ from vyrtuous.service.scope_service import (
     generate_skipped_roles,
     clean_guild_dictionary,
     flush_page,
-)
-from vyrtuous.database.rooms.temporary_room import TemporaryRoom
-from vyrtuous.database.rooms.video_room import VideoRoom
-from vyrtuous.database.settings.cap import Cap
-from vyrtuous.database.settings.streaming import Streaming
-from vyrtuous.properties.duration import AppDuration, Duration, DurationObject
-from vyrtuous.properties.moderation_type import AppModerationType, ModerationType
-from vyrtuous.properties.snowflake import (
-    AppChannelSnowflake,
-    AppMemberSnowflake,
-    ChannelSnowflake,
-    MemberSnowflake,
-)
-from vyrtuous.service.check_service import (
-    check,
-    has_equal_or_lower_role_wrapper,
-)
-from vyrtuous.service.at_home import at_home
-from vyrtuous.service.logging_service import logger
-from vyrtuous.service.messaging.message_service import MessageService
-from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.service.resolution.discord_object_service import (
-    DiscordObject,
-    DiscordObjectNotFound,
 )
 from vyrtuous.utils.cancel_confirm import VerifyView
 from vyrtuous.utils.emojis import get_random_emoji
@@ -88,14 +92,17 @@ class AdminCommands(commands.Cog):
         alias_name="Alias/Pseudonym",
         moderation_type="One of: vegan, carnist, vmute, unvmute,"
         "ban, unban, flag, unflag, tmute, untmute, role, unrole",
-        target="Tag a channel, role or include the ID.",
+        channel="Tag a channel or include the ID.",
+        role="Tag a channel, role or include the ID.",
     )
     async def create_alias_app_command(
         self,
         interaction: discord.Interaction,
         moderation_type: AppModerationType,
         alias_name: str,
-        target: str,
+        channel: AppChannelSnowflake,
+        *,
+        role: AppRoleSnowflake = None,
     ):
         msg = ""
         state = StateService(source=interaction)
@@ -103,7 +110,7 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         kwargs = {}
         try:
-            channel_dict = await do.determine_from_target(target=target)
+            channel_dict = await do.determine_from_target(target=channel)
         except (DiscordObjectNotFound, TypeError) as e:
             logger.warning(str(e).capitalize())
         else:
@@ -112,18 +119,24 @@ class AdminCommands(commands.Cog):
                 f"Alias `{alias_name}`  of type `{moderation_type}` "
                 f"created successfully for channel {channel_dict['mention']}."
             )
-        if not kwargs:
-            try:
-                role_dict = await do.determine_from_target(target=target)
-            except (DiscordObjectNotFound, TypeError) as e:
-                logger.warning(str(e).capitalize())
+        if moderation_type in ("ban", "tmute", "role"):
+            if role:
+                try:
+                    role_dict = await do.determine_from_target(target=role)
+                except (DiscordObjectNotFound, TypeError) as e:
+                    logger.warning(str(e).capitalize())
+                else:
+                    kwargs.update(role_dict["columns"])
+                    msg = (
+                        f"Alias `{alias_name}` of type `{moderation_type}` "
+                        f"created successfully"
+                        f"for role {role_dict['mention']}."
+                    )
             else:
-                kwargs.update(role_dict["columns"])
-                msg = (
-                    f"Alias `{alias_name}` of type `{moderation_type}` "
-                    f"created successfully"
-                    f"for role {role_dict['mention']}."
+                return await state.end(
+                    warning=f"The alias type ({moderation_type}) requires a role."
                 )
+
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=interaction.guild.id, singular=True
         )
@@ -135,27 +148,29 @@ class AdminCommands(commands.Cog):
 
         alias = Alias(alias_name=alias_name, alias_type=moderation_type, **kwargs)
         await alias.create()
-
         return await state.end(success=msg)
 
     # DONE
     @commands.command(
         name="alias",
-        help="Set an alias for a vegan, carnist, mute, unmute, ban, "
-        "unban, flag, unflag, tmute, untmute, role, or unrole action.",
+        help="Set an alias for a vegan, mute, ban, flag, tmute, role action.",
     )
     @administrator_predicator()
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
         moderation_type: ModerationType = commands.parameter(
-            description="One of: `vegan`, `carnist`, `vmute`, "
-            "`unvmute`, `ban`, `unban`, `flag`, "
-            "`unflag`, `tmute`, `untmute`, `role`, `unrole`",
+            description="One of: `vegan`, `vmute`, "
+            "`ban`, `flag`, "
+            "`tmute`, or `role`."
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
-        target: str = commands.parameter(
-            description="Tag a channel, role or include the ID."
+        channel: ChannelSnowflake = commands.parameter(
+            description="Tag a channel or include the ID"
+        ),
+        *,
+        role: RoleSnowflake = commands.parameter(
+            default=None, description="Tag a role or include the ID."
         ),
     ):
         msg = ""
@@ -164,7 +179,7 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         kwargs = {}
         try:
-            channel_dict = await do.determine_from_target(target=target)
+            channel_dict = await do.determine_from_target(target=channel)
         except (DiscordObjectNotFound, TypeError) as e:
             logger.warning(str(e).capitalize())
         else:
@@ -173,18 +188,24 @@ class AdminCommands(commands.Cog):
                 f"Alias `{alias_name}`  of type `{moderation_type}` "
                 f"created successfully for channel {channel_dict['mention']}."
             )
-        if not kwargs:
-            try:
-                role_dict = await do.determine_from_target(target=target)
-            except (DiscordObjectNotFound, TypeError) as e:
-                logger.warning(str(e).capitalize())
+        if moderation_type in ("ban", "tmute", "role"):
+            if role:
+                try:
+                    role_dict = await do.determine_from_target(target=role)
+                except (DiscordObjectNotFound, TypeError) as e:
+                    logger.warning(str(e).capitalize())
+                else:
+                    kwargs.update(role_dict["columns"])
+                    msg = (
+                        f"Alias `{alias_name}` of type `{moderation_type}` "
+                        f"created successfully"
+                        f"for role {role_dict['mention']}."
+                    )
             else:
-                kwargs.update(role_dict["columns"])
-                msg = (
-                    f"Alias `{alias_name}` of type `{moderation_type}` "
-                    f"created successfully"
-                    f"for role {role_dict['mention']}."
+                return await state.end(
+                    warning=f"The alias type ({moderation_type}) requires a role."
                 )
+
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=ctx.guild.id, singular=True
         )
@@ -715,12 +736,53 @@ class AdminCommands(commands.Cog):
             f"in {channel_dict['mention']}."
         )
 
+    @app_commands.command(
+        name="debug", description="Shows the last `n` number of logging."
+    )
+    @administrator_predicator()
+    async def debug_app_command(self, interaction: discord.Interaction, lines: int = 3):
+        state = StateService(source=interaction)
+        if lines <= 0:
+            return await state.end(warning="Lines must be greater than 0")
+        try:
+            with open(PATH_LOG, "r") as f:
+                content = f.readlines()[-lines:]
+        except FileNotFoundError:
+            return await state.end(warning="Log file not found")
+        output = "".join(content)
+        if len(output) > 1900:
+            output = output[-1900:]
+        return await state.end(success=f"```log\n{output}\n```")
+
+    @commands.command(name="debug", help="Shows the last `n` number of logging.")
+    @administrator_predicator()
+    async def debug_text_command(
+        self,
+        ctx,
+        *,
+        lines: Optional[int] = commands.parameter(
+            default=3, description="Specify the number of lines"
+        ),
+    ):
+        state = StateService(source=ctx)
+        if lines <= 0:
+            return await state.end(warning="Lines must be greater than 0")
+        try:
+            with open(PATH_LOG, "r") as f:
+                content = f.readlines()[-lines:]
+        except FileNotFoundError:
+            return await state.end(warning="Log file not found")
+        output = "".join(content)
+        if len(output) > 1900:
+            output = output[-1900:]
+        return await state.end(success=f"```log\n{output}\n```")
+
     @app_commands.command(name="pc", description="View permissions.")
     @app_commands.describe(
         target="Specify one of: 'all', channel ID/mention, or server ID."
     )
     @administrator_predicator()
-    async def list_permissions_text_command(
+    async def list_permissions_app_command(
         self, interaction: discord.Interaction, target: str
     ):
         chunk_size, field_count, lines, pages = 7, 0, [], []
@@ -1559,7 +1621,7 @@ class AdminCommands(commands.Cog):
                         if field_count >= chunk_size:
                             embed.add_field(
                                 name="Information",
-                                value="\n\n".join(lines),
+                                value="\n".join(lines),
                                 inline=False,
                             )
                             embed, field_count = flush_page(
@@ -1568,7 +1630,7 @@ class AdminCommands(commands.Cog):
                             lines = []
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
@@ -1676,7 +1738,7 @@ class AdminCommands(commands.Cog):
                         if field_count >= chunk_size:
                             embed.add_field(
                                 name="Information",
-                                value="\n\n".join(lines),
+                                value="\n".join(lines),
                                 inline=False,
                             )
                             embed, field_count = flush_page(
@@ -1685,7 +1747,7 @@ class AdminCommands(commands.Cog):
                             lines = []
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
@@ -1993,7 +2055,7 @@ class AdminCommands(commands.Cog):
                 if field_count >= chunk_size:
                     embed.add_field(
                         name="Information",
-                        value="\n\n".join(lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
@@ -2088,7 +2150,7 @@ class AdminCommands(commands.Cog):
                 if field_count >= chunk_size:
                     embed.add_field(
                         name="Information",
-                        value="\n\n".join(lines),
+                        value="\n".join(lines),
                         inline=False,
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
@@ -2263,7 +2325,7 @@ class AdminCommands(commands.Cog):
                         if field_count >= chunk_size:
                             embed.add_field(
                                 name="Information",
-                                value="\n\n".join(lines),
+                                value="\n".join(lines),
                                 inline=False,
                             )
                             embed, field_count = flush_page(
@@ -2272,7 +2334,7 @@ class AdminCommands(commands.Cog):
                             lines = []
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
@@ -2375,7 +2437,7 @@ class AdminCommands(commands.Cog):
                         if field_count >= chunk_size:
                             embed.add_field(
                                 name="Information",
-                                value="\n\n".join(lines),
+                                value="\n".join(lines),
                                 inline=False,
                             )
                             embed, field_count = flush_page(
@@ -2384,7 +2446,7 @@ class AdminCommands(commands.Cog):
                             lines = []
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []

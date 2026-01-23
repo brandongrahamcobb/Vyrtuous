@@ -103,7 +103,6 @@ class Alias(Action):
             "role": self.alias_cog.handle_role_alias,
             "unrole": self.alias_cog.handle_unrole_alias,
         }
-        self.handler = self.handlers[alias_type]
         self.role_snowflake = role_snowflake
         self.role_mention = f"<@&{role_snowflake}>"
         self.updated_at = updated_at

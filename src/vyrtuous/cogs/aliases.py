@@ -110,13 +110,17 @@ class Aliases(commands.Cog):
                 expires_in=action_information["action_expires_in"],
                 guild_snowflake=action_information["action_guild_snowflake"],
                 member_snowflake=action_information["action_member_snowflake"],
+                role_snowflake=alias.role_snowflake,
                 reason=action_information["action_reason"],
             )
             await ban.create()
-        try:
-            await channel.set_permissions(
-                member, view_channel=False, reason=action_information["action_reason"]
+        role = message.guild.get_role(alias.role_snowflake)
+        if not role:
+            return await state.end(
+                warning=f"Role `{alias.role_snowflake}` was not found."
             )
+        try:
+            await member.add_roles(role, reason=action_information["action_reason"])
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
         is_channel_scope = False
@@ -141,18 +145,9 @@ class Aliases(commands.Cog):
             reason=action_information["action_reason"],
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been Banned",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {action_information["action_duration"]}\n"
-                f"**Reason:** {action_information["action_reason"]}"
-            ),
-            color=discord.Color.blue(),
+        embed = await action_information["alias_class"].act_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -177,18 +172,10 @@ class Aliases(commands.Cog):
             message=message,
             reason="No reason provied.",
         )
-        embed = discord.Embed(
-            title=f"\U0001f525\U0001f525 {member.display_name} "
-            f"is going Vegan!!!\U0001f525\U0001f525",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
-                f"**Celebrate!** Stick around and do some activism with us!"
-            ),
-            color=discord.Color.green(),
+
+        embed = await action_information["alias_class"].act_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -220,17 +207,9 @@ class Aliases(commands.Cog):
             reason=action_information["action_reason"],
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} Flagged",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
-                f"**Reason:** {action_information['action_reason']}"
-            ),
-            color=discord.Color.red(),
+        embed = await action_information["alias_class"].act_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -266,17 +245,9 @@ class Aliases(commands.Cog):
             reason="No reason provided.",
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} Roled",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
-                f"**Role:** {role.mention}"
-            ),
-            color=discord.Color.blurple(),
+        embed = await action_information["alias_class"].act_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -290,17 +261,18 @@ class Aliases(commands.Cog):
                 expires_in=action_information["action_expires_in"],
                 guild_snowflake=action_information["action_guild_snowflake"],
                 member_snowflake=action_information["action_member_snowflake"],
+                role_snowflake=alias.role_snowflake,
                 reason=action_information["action_reason"],
             )
             await text_mute.create()
 
-        try:
-            await channel.set_permissions(
-                target=member,
-                send_messages=False,
-                add_reactions=False,
-                reason=action_information["action_reason"],
+        role = message.guild.get_role(alias.role_snowflake)
+        if not role:
+            return await state.end(
+                warning=f"Role `{alias.role_snowflake}` was not found."
             )
+        try:
+            await member.add_roles(role, reason=action_information["action_reason"])
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
@@ -315,18 +287,9 @@ class Aliases(commands.Cog):
             reason=action_information["action_reason"],
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} Text Muted",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {action_information['action_duration']}\n"
-                f"**Reason:** {action_information['action_reason']}"
-            ),
-            color=discord.Color.green(),
+        embed = await action_information["alias_class"].act_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -369,19 +332,9 @@ class Aliases(commands.Cog):
             reason=action_information["action_reason"],
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member.display_name} has been Voice Muted",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
-                f"**Expires:** {action_information['action_duration']}\n"
-                f"**Reason:** {action_information['action_reason']}"
-            ),
-            color=discord.Color.green(),
+        embed = await action_information["alias_class"].act_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -391,18 +344,8 @@ class Aliases(commands.Cog):
     ):
         is_channel_scope = False
 
-        try:
-            await channel.set_permissions(member, overwrite=None)
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
-
-        if member.voice and member.voice.channel:
-            if member.voice.channel.id == channel.id:
-                is_channel_scope = True
-                try:
-                    await member.move_to(None, reason="Unbanned")
-                except discord.Forbidden as e:
-                    return await state.end(error=str(e).capitalize())
+        role = message.guild.get_role(alias.role_snowflake)
+        await member.remove_roles(role)
 
         await Streaming.send_entry(
             alias=alias,
@@ -415,16 +358,9 @@ class Aliases(commands.Cog):
             reason="No reason provided.",
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been Unbanned",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}"
-            ),
-            color=discord.Color.yellow(),
+        embed = await action_information["alias_class"].undo_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -444,17 +380,9 @@ class Aliases(commands.Cog):
             reason="No reason provided.",
         )
 
-        embed = discord.Embed(
-            title=f"\U0001f44e\U0001f44e "
-            f"{member.display_name} is a Carnist \U0001f44e\U0001f44e",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}"
-            ),
-            color=discord.Color.red(),
+        embed = await action_information["alias_class"].undo_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -481,16 +409,9 @@ class Aliases(commands.Cog):
             reason="No reason provided.",
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been Unflagged",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}"
-            ),
-            color=discord.Color.yellow(),
+        embed = await action_information["alias_class"].undo_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -518,16 +439,9 @@ class Aliases(commands.Cog):
             reason="No reason provided.",
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been Unmuted",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}"
-            ),
-            color=discord.Color.yellow(),
+        embed = await action_information["alias_class"].undo_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -561,17 +475,9 @@ class Aliases(commands.Cog):
             reason="No reason provided.",
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been Unroled",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
-                f"**Role:** {role.mention}"
-            ),
-            color=discord.Color.yellow(),
+        embed = await action_information["alias_class"].undo_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 
@@ -579,10 +485,9 @@ class Aliases(commands.Cog):
     async def handle_untextmute_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        try:
-            await channel.set_permissions(target=member, send_messages=None)
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
+
+        role = message.guild.get_role(alias.role_snowflake)
+        await member.remove_roles(role)
 
         await Streaming.send_entry(
             alias=alias,
@@ -595,16 +500,9 @@ class Aliases(commands.Cog):
             reason="No reason provided.",
         )
 
-        embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been Unmuted",
-            description=(
-                f"**By:** {message.author.mention}\n"
-                f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}"
-            ),
-            color=discord.Color.yellow(),
+        embed = await action_information["alias_class"].undo_embed(
+            action_information=action_information, source=message
         )
-        embed.set_thumbnail(url=member.display_avatar.url)
 
         return await state.end(success=embed)
 

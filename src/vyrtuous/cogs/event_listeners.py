@@ -450,18 +450,14 @@ class EventListeners(commands.Cog):
         )
         action_modification = False
 
-        if alias.alias_type == alias_class.UNDO:
+        if action_existing and not duration_modification and not reason_modification:
             action_modification = True
-            if not action_existing:
-                return await state.end(
-                    warning=f"No current {alias_class.SINGULAR} for {member_obj.mention} exists in "
-                    f"{channel_obj.mention}."
-                )
             await alias_class.delete(
                 channel_snowflake=channel_obj.id,
                 guild_snowflake=message.guild.id,
                 member_snowflake=member_obj.id,
             )
+            alias.alias_type = alias_class.UNDO
 
         action_channel_cap = await Alias.generate_cap_duration(
             channel_snowflake=channel_obj.id,
@@ -533,7 +529,7 @@ class EventListeners(commands.Cog):
                     warning=f"An existing {action_information['alias_class'].SINGULAR} already exists for "
                     f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
                 )
-        await alias.handler(
+        await alias.handlers[alias.alias_type](
             alias=alias,
             action_information=action_information,
             channel=channel_obj,

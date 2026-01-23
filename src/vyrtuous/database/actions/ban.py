@@ -37,6 +37,7 @@ class Ban(Action):
         "channel_snowflake",
         "guild_snowflake",
         "member_snowflake",
+        "role_snowflake",
     ]
     OPTIONAL_ARGS = ["created_at", "expires_in", "reason", "updated_at"]
     TABLE_NAME = "active_bans"
@@ -46,6 +47,7 @@ class Ban(Action):
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
+        role_snowflake: int,
         created_at: Optional[datetime] = None,
         expired: bool = False,
         expires_in: Optional[datetime] = None,
@@ -63,14 +65,17 @@ class Ban(Action):
         self.member_snowflake = member_snowflake
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.reason = reason
+        self.role_snowflake = role_snowflake
         self.updated_at = updated_at
 
-    async def create_embed(self, action_information, source, **kwargs):
-        channel = self.bot.get_channel(action_information["action_channel_snowflake"])
+    @classmethod
+    async def act_embed(cls, action_information, source, **kwargs):
+        bot = DiscordBot.get_instance()
+        channel = bot.get_channel(action_information["action_channel_snowflake"])
         author = get_author(source=source)
-        member = self.bot.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(action_information["action_member_snowflake"])
         embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been Banned",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been banned",
             description=(
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
@@ -84,7 +89,20 @@ class Ban(Action):
         return embed
 
     @classmethod
-    def get_handler(cls):
+    async def undo_embed(cls, action_information, source, **kwargs):
         bot = DiscordBot.get_instance()
-        alias_cog = bot.get_cog("Aliases")
-        return alias_cog.handle_ban_alias
+        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        author = get_author(source=source)
+        member = source.guild.get_member(action_information["action_member_snowflake"])
+        embed = discord.Embed(
+            title=f"{get_random_emoji()} "
+            f"{member.display_name}'s ban has been removed",
+            description=(
+                f"**By:** {author.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}"
+            ),
+            color=discord.Color.yellow(),
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        return embed

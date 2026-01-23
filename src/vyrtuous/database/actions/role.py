@@ -18,7 +18,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime
 from typing import Optional
+
+import discord
+
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.action import Action
+from vyrtuous.service.member_snowflake import get_author
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 class Role(Action):
@@ -53,3 +59,45 @@ class Role(Action):
         self.member_snowflake = member_snowflake
         self.role_snowflake = role_snowflake
         self.updated_at = updated_at
+
+    @classmethod
+    async def act_embed(cls, action_information, source, **kwargs):
+        bot = DiscordBot.get_instance()
+        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        author = get_author(source=source)
+        member = source.guild.get_member(action_information["action_member_snowflake"])
+        role = source.guild.get_member(action_information["action_role_snowflake"])
+        embed = discord.Embed(
+            title=f"{get_random_emoji()} "
+            f"{member.display_name} has been granted a role",
+            description=(
+                f"**By:** {author.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}\n"
+                f"**Role:** {role.mention}"
+            ),
+            color=discord.Color.yellow(),
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        return embed
+
+    @classmethod
+    async def undo_embed(cls, action_information, source, **kwargs):
+        bot = DiscordBot.get_instance()
+        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        author = get_author(source=source)
+        member = source.guild.get_member(action_information["action_member_snowflake"])
+        role = source.guild.get_member(action_information["action_role_snowflake"])
+        embed = discord.Embed(
+            title=f"{get_random_emoji()} "
+            f"{member.display_name}'s role has been revoked",
+            description=(
+                f"**By:** {author.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}\n"
+                f"**Role:** {role.mention}"
+            ),
+            color=discord.Color.yellow(),
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        return embed

@@ -21,6 +21,7 @@ from typing import Optional
 
 import discord
 
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.database.actions.action import Action
 from vyrtuous.service.member_snowflake import get_author
 from vyrtuous.utils.emojis import get_random_emoji
@@ -53,6 +54,7 @@ class TextMute(Action):
         **kwargs,
     ):
         super().__init__()
+        self.bot = DiscordBot.get_instance()
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
         self.created_at = created_at
@@ -64,10 +66,12 @@ class TextMute(Action):
         self.reason = reason
         self.updated_at = updated_at
 
-    async def create_embed(self, action_information, source, **kwargs):
-        channel = self.bot.get_channel(action_information["action_channel_snowflake"])
+    @classmethod
+    async def act_embed(cls, action_information, source, **kwargs):
+        bot = DiscordBot.get_instance()
+        channel = bot.get_channel(action_information["action_channel_snowflake"])
         author = get_author(source=source)
-        member = self.bot.get_member(action_information["action_member_snowflake"])
+        member = source.guild.get_member(action_information["action_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been Text-Muted",
             description=(
@@ -78,6 +82,24 @@ class TextMute(Action):
                 f"**Reason:** {action_information['action_reason']}"
             ),
             color=discord.Color.blue(),
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        return embed
+
+    @classmethod
+    async def undo_embed(cls, action_information, source, **kwargs):
+        bot = DiscordBot.get_instance()
+        channel = bot.get_channel(action_information["action_channel_snowflake"])
+        author = get_author(source=source)
+        member = source.guild.get_member(action_information["action_member_snowflake"])
+        embed = discord.Embed(
+            title=f"{get_random_emoji()} " f"{member.display_name} has been Unmuted",
+            description=(
+                f"**By:** {author.mention}\n"
+                f"**User:** {member.mention}\n"
+                f"**Channel:** {channel.mention}"
+            ),
+            color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed

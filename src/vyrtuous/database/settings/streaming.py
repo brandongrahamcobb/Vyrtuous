@@ -182,10 +182,10 @@ class Streaming(DatabaseFactory):
         if duration != "permanent":
             if duration is None:
                 duration_info = (
-                    f"**Type:** {alias.alias_type.capitalize()}\n\n**Expires:** Never"
+                    f"**Type:** {alias.alias_type.capitalize()}\n**Expires:** Never"
                 )
             else:
-                duration_info = f"**Type:** {alias.alias_type.capitalize()}\n\n**Expires:** {duration}"
+                duration_info = f"**Type:** {alias.alias_type.capitalize()}\n**Expires:** {duration}"
             if is_modification:
                 color, duration_type = 0xFF6B35, "⏰ Modified"
             else:

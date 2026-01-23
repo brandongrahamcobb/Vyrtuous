@@ -146,13 +146,13 @@ class ModeratorCommands(commands.Cog):
                 field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
             if lines:
                 embed.add_field(
-                    name="Information", value="\n\n".join(lines), inline=False
+                    name="Information", value="\n".join(lines), inline=False
                 )
             pages.append(embed)
 
@@ -248,13 +248,13 @@ class ModeratorCommands(commands.Cog):
                 field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
             if lines:
                 embed.add_field(
-                    name="Information", value="\n\n".join(lines), inline=False
+                    name="Information", value="\n".join(lines), inline=False
                 )
             pages.append(embed)
 
@@ -348,7 +348,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -451,7 +451,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -709,11 +709,11 @@ class ModeratorCommands(commands.Cog):
             )
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
-                channel_lines = []
+                lines = []
                 for alias_type, alias_names in dictionary["aliases"].items():
-                    channel_lines.append(f"{alias_type}")
+                    lines.append(f"{alias_type}")
                     for name in alias_names:
-                        channel_lines.append(f"  ↳ {name}")
+                        lines.append(f"  ↳ {name}")
                 if len(lines) >= chunk_size:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -789,7 +789,6 @@ class ModeratorCommands(commands.Cog):
             skipped_channels=skipped_channels,
             skipped_guilds=skipped_guilds,
         )
-
         for guild_snowflake, guild_data in guild_dictionary.items():
             field_count = 0
             guild = self.bot.get_guild(guild_snowflake)
@@ -798,11 +797,11 @@ class ModeratorCommands(commands.Cog):
             )
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
-                channel_lines = []
+                lines = []
                 for alias_type, alias_names in dictionary["aliases"].items():
-                    channel_lines.append(f"{alias_type}")
+                    lines.append(f"{alias_type}")
                     for name in alias_names:
-                        channel_lines.append(f"  ↳ {name}")
+                        lines.append(f"  ↳ {name}")
                 if len(lines) >= chunk_size:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -909,7 +908,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -1011,7 +1010,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -1142,7 +1141,7 @@ class ModeratorCommands(commands.Cog):
                     thumbnail = True
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
@@ -1236,7 +1235,7 @@ class ModeratorCommands(commands.Cog):
                     thumbnail = True
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
@@ -1335,7 +1334,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -1438,7 +1437,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -1527,7 +1526,7 @@ class ModeratorCommands(commands.Cog):
                 field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
@@ -1618,7 +1617,7 @@ class ModeratorCommands(commands.Cog):
                 field_count += 1
                 if field_count >= chunk_size:
                     embed.add_field(
-                        name="Information", value="\n\n".join(lines), inline=False
+                        name="Information", value="\n".join(lines), inline=False
                     )
                     embed, field_count = flush_page(embed, pages, title, guild.name)
                     lines = []
@@ -1891,7 +1890,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -1993,7 +1992,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -2096,7 +2095,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -2204,7 +2203,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -2949,7 +2948,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []
@@ -3057,7 +3056,7 @@ class ModeratorCommands(commands.Cog):
                     field_count += 1
                     if field_count >= chunk_size:
                         embed.add_field(
-                            name="Information", value="\n\n".join(lines), inline=False
+                            name="Information", value="\n".join(lines), inline=False
                         )
                         embed, field_count = flush_page(embed, pages, title, guild.name)
                         lines = []

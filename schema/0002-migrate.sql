@@ -59,3 +59,7 @@ DROP CONSTRAINT vegans_pkey,
 DROP COLUMN channel_snowflake,
 ADD PRIMARY KEY (guild_snowflake, member_snowflake);
 ALTER TABLE active_stages DROP COLUMN member_snowflake;
+ALTER TABLE active_bans
+ADD COLUMN role_snowflake BIGINT;
+ALTER TABLE active_text_mutes
+ADD COLUMN role_snowflake BIGINT;

@@ -63,9 +63,10 @@ class ScheduledTasks(commands.Cog):
         expired_bans = await Ban.select(expired=True)
         if expired_bans:
             for expired_ban in expired_bans:
-                member_snowflake = expired_ban.member_snowflake
-                guild_snowflake = expired_ban.guild_snowflake
                 channel_snowflake = expired_ban.channel_snowflake
+                guild_snowflake = expired_ban.guild_snowflake
+                member_snowflake = expired_ban.member_snowflake
+                role_snowflake = expired_ban.role_snowflake
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(
@@ -101,7 +102,8 @@ class ScheduledTasks(commands.Cog):
                     member_snowflake=member_snowflake,
                 )
                 try:
-                    await channel.set_permissions(member, overwrite=None)
+                    role = guild.get_role(role_snowflake)
+                    await member.remove_roles(role)
                     logger.info(
                         f"Unbanned member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
                     )
@@ -343,6 +345,7 @@ class ScheduledTasks(commands.Cog):
                 channel_snowflake = expired_text_mute.channel_snowflake
                 guild_snowflake = expired_text_mute.guild_snowflake
                 member_snowflake = expired_text_mute.member_snowflake
+                role_snowflake = expired_text_mute.role_snowflake
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     await TextMute.delete(guild_snowflake=guild_snowflake)
@@ -377,7 +380,8 @@ class ScheduledTasks(commands.Cog):
                     member_snowflake=member_snowflake,
                 )
                 try:
-                    await channel.set_permissions(member, send_messages=None)
+                    role = guild.get_role(role_snowflake)
+                    await member.remove_roles(role)
                     logger.info(
                         f"Undone text-mute for member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
                     )
