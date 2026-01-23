@@ -26,7 +26,7 @@ import time
 import asyncpg
 import pytest
 
-from vyrtuous.database.database import Database
+from vyrtuous.db.database import Database
 
 
 class NoDataFoundError(asyncpg.NoDataFoundError):

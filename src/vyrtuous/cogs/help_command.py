@@ -24,13 +24,13 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.alias import Alias
-from vyrtuous.database.roles.moderator import moderator_predicator
-from vyrtuous.database.roles.role import resolve_highest_role
-from vyrtuous.service.logging_service import logger
-from vyrtuous.service.messaging.message_service import MessageService
-from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.utils.permission import PERMISSION_TYPES
+from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.roles.moderator import moderator_predicator
+from vyrtuous.utils.highest_role import resolve_highest_role
+from vyrtuous.utils.logger import logger
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.state_service import StateService
+from vyrtuous.inc.helpers import PERMISSION_TYPES
 
 
 class HelpCommand(commands.Cog):
@@ -40,9 +40,9 @@ class HelpCommand(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self.bot.db_pool = bot.db_pool
-        self.message_service = MessageService(self.bot, self.bot.db_pool)
+        self.message_service = MessageService(self.bot)
         self.permission_page_title_pairs = [
-            ("SysAdmin", "`SysAdmin` inherits `Developer`."),
+            ("Sysadmin", "`Sysadmin` inherits `Developer`."),
             ("Developer", "`Developer` inherits `Guild Owner`."),
             ("Guild Owner", "`Guild Owner` inherits `Administrator`."),
             ("Administrator", "`Administrator` inherits `Coordinator`."),
@@ -99,7 +99,7 @@ class HelpCommand(commands.Cog):
 
     def get_permission_color(self, perm_level):
         colors = {
-            "SysAdmin": discord.Color.dark_red(),
+            "Sysadmin": discord.Color.dark_red(),
             "Developer": discord.Color.red(),
             "Guild Owner": discord.Color.purple(),
             "Administrator": discord.Color.blue(),

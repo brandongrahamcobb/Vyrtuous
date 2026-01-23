@@ -25,7 +25,7 @@ class VerifyView(discord.ui.View):
 
     def __init__(
         self,
-        action_type,
+        category,
         author_snowflake,
         guild_snowflake,
         channel_snowflake=None,
@@ -33,29 +33,37 @@ class VerifyView(discord.ui.View):
         timeout=60,
     ):
         super().__init__(timeout=timeout)
-        match action_type:
+        match category:
             case "alias":
-                self.action_type = "Deletes all aliases."
+                self.action = "Deletes all aliases."
+            case "admin":
+                self.action = "Deletes all administrators."
+            case "arole":
+                self.action = "Deletes all administrator roles."
             case "all":
-                self.action_type = "Deletes all of the above: aliases, bans, coords, flags, mods, temporary rooms, text-mutes, vegans, voice-mutes and video rooms."
+                self.action = "Deletes all of the above: administrators, administrator roles, aliases, bans, coords, devs, flags, mods, stages, temporary rooms, text-mutes, vegans, voice-mutes and video rooms."
             case "ban":
-                self.action_type = "Deletes all bans."
+                self.action = "Deletes all bans."
             case "coord":
-                self.action_type = "Deletes all coordinators."
+                self.action = "Deletes all coordinators."
+            case "dev":
+                self.action = "Deletes all developers."
             case "flag":
-                self.action_type = "Deletes all flags."
+                self.action = "Deletes all flags."
             case "mod":
-                self.action_type = "Deletes all moderators."
+                self.action = "Deletes all moderators."
+            case "stage":
+                self.action = "Deletes all stages."
             case "temp":
-                self.action_type = "Deletes all temporary rooms."
+                self.action = "Deletes all temporary rooms."
             case "tmute":
-                self.action_type = "Deletes all text-mutes."
+                self.action = "Deletes all text-mutes."
             case "vegan":
-                self.action_type = "Deletes all vegans."
+                self.action = "Deletes all vegans."
             case "vmute":
-                self.action_type = "Deletes all voice-mutes."
+                self.action = "Deletes all voice-mutes."
             case "vr":
-                self.action_type = "Deletes all video rooms."
+                self.action = "Deletes all video rooms."
             case _:
                 raise ValueError("Invalid action type specified for confirmation view.")
         self.author_snowflake = author_snowflake
@@ -88,11 +96,11 @@ class VerifyView(discord.ui.View):
         await interaction.message.delete()
         self.stop()
 
-    def build_embed(self, action_type, target):
+    def build_embed(self, target):
         mention = target.mention if target else "Unknown"
         embed = discord.Embed(
             title="\U000026a0\U0000fe0f Clear Command Confirmation",
-            description=f"**Action:** {action_type}\n**Target:** {mention}",
+            description=f"**Action:** {self.action}\n**Target:** {mention}",
             color=discord.Color.orange(),
         )
         embed.set_footer(text="Please confirm or cancel this action.")

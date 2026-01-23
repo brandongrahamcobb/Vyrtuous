@@ -24,26 +24,26 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.alias import Alias
-from vyrtuous.database.actions.ban import Ban
-from vyrtuous.database.actions.text_mute import TextMute
-from vyrtuous.database.database import Database
-from vyrtuous.database.logs.developer_log import DeveloperLog
-from vyrtuous.database.roles.developer import developer_predicator
-from vyrtuous.inc.helpers import DISCORD_COGS_CLASSES
-from vyrtuous.properties.snowflake import (
+from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.actions.ban import Ban
+from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.database import Database
+from vyrtuous.db.mgmt.bug import Bug
+from vyrtuous.db.roles.developer import developer_predicator
+from vyrtuous.inc.helpers import DISCORD_COGS, DISCORD_COGS_CLASSES
+from vyrtuous.fields.snowflake import (
     AppRoleSnowflake,
     RoleSnowflake,
 )
-from vyrtuous.service.at_home import at_home
-from vyrtuous.service.logging_service import logger
-from vyrtuous.service.messaging.message_service import MessageService
-from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.service.resolution.discord_object_service import (
+from vyrtuous.utils.home import at_home
+from vyrtuous.utils.logger import logger
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.state_service import StateService
+from vyrtuous.service.discord_object_service import (
     DiscordObject,
     DiscordObjectNotFound,
 )
-from vyrtuous.service.scope_service import (
+from vyrtuous.utils.guild_dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
     generate_skipped_guilds,
@@ -58,7 +58,7 @@ class DevCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-        self.message_service = MessageService(self.bot, self.bot.db_pool)
+        self.message_service = MessageService(self.bot)
 
     @app_commands.command(
         name="assoc", description="Associate a ban or text-mute alias to a role."
@@ -78,7 +78,7 @@ class DevCommands(commands.Cog):
             logger.info(e)
             role = None
         else:
-            role = interaction.guild.get_role(role_dict["id"])
+            role = interaction.guild.get_role(role_dict.get("id", None))
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=interaction.guild.id, singular=True
         )
@@ -117,11 +117,14 @@ class DevCommands(commands.Cog):
                     member = interaction.guild.get_member(ban.member_snowflake)
                     try:
                         await channel.set_permissions(member, overwrite=None)
-                        await member.add_roles(
-                            role, reason="Associating old bans with a role"
-                        )
                     except discord.Forbidden as e:
                         logger.warning(e)
+                    await Ban.administer_role(
+                        guild_snowflake=interaction.guild.id,
+                        member_snowflake=member.id,
+                        role_snowflake=role.id,
+                        state=state
+                    )
             elif alias.alias_type == "tmute":
                 overwrite = discord.PermissionOverwrite(
                     send_messages=False,
@@ -182,7 +185,7 @@ class DevCommands(commands.Cog):
             logger.info(e)
             role = None
         else:
-            role = ctx.guild.get_role(role_dict["id"])
+            role = ctx.guild.get_role(role_dict.get("id", None))
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=ctx.guild.id, singular=True
         )
@@ -224,11 +227,14 @@ class DevCommands(commands.Cog):
                     member = ctx.guild.get_member(ban.member_snowflake)
                     try:
                         await channel.set_permissions(member, overwrite=None)
-                        await member.add_roles(
-                            role, reason="Associating old bans with a role"
-                        )
                     except discord.Forbidden as e:
                         logger.warning(e)
+                    await Ban.administer_role(
+                        guild_snowflake=ctx.guild.id,
+                        member_snowflake=member.id,
+                        role_snowflake=role.id,
+                        state=state
+                    )
             elif alias.alias_type == "tmute":
                 overwrite = discord.PermissionOverwrite(
                     send_messages=False,
@@ -302,11 +308,11 @@ class DevCommands(commands.Cog):
             title=f"{get_random_emoji()} " f"Cogs for {interaction.guild.me.name}",
             color=discord.Color.blurple(),
         )
-        for cog in sorted(DISCORD_COGS_CLASSES):
+        for representation, cog in zip(sorted(DISCORD_COGS), sorted(DISCORD_COGS_CLASSES)):
             if cog in self.bot.cogs:
-                loaded.append(cog)
+                loaded.append(representation)
             else:
-                not_loaded.append(cog)
+                not_loaded.append(representation)
         if loaded:
             embed.add_field(name="Loaded", value="\n".join(loaded), inline=False)
         if not_loaded:
@@ -326,11 +332,11 @@ class DevCommands(commands.Cog):
             title=f"{get_random_emoji()} " f"Cogs for {ctx.guild.me.name}",
             color=discord.Color.blurple(),
         )
-        for cog in sorted(DISCORD_COGS_CLASSES):
+        for representation, cog in zip(sorted(DISCORD_COGS), sorted(DISCORD_COGS_CLASSES)):
             if cog in self.bot.cogs:
-                loaded.append(cog)
+                loaded.append(representation)
             else:
-                not_loaded.append(cog)
+                not_loaded.append(representation)
         if loaded:
             embed.add_field(name="Loaded", value="\n".join(loaded), inline=False)
         if not_loaded:
@@ -342,7 +348,7 @@ class DevCommands(commands.Cog):
         return await state.end(success=embed)
 
     @app_commands.command(
-        name="dlog", description="Resolve or update the notes on an issue by reference."
+        name="bug", description="Resolve or update the notes on an issue by reference."
     )
     @app_commands.describe(
         reference="Specify the issue reference ID.",
@@ -350,7 +356,7 @@ class DevCommands(commands.Cog):
         notes="Optionally specify notes to append or overwrite.",
     )
     @developer_predicator()
-    async def update_developer_logs_app_command(
+    async def update_bug_tracking_app_command(
         self,
         ctx: commands.Context,
         reference: str,
@@ -359,30 +365,42 @@ class DevCommands(commands.Cog):
     ):
         state = StateService(source=ctx)
 
-        developer_log = await DeveloperLog.select(id=reference, resolved=False)
-        if not developer_log:
-            return await state.end(warning=f"Issue not found. Received: {reference}.")
+        bug = await Bug.select(id=reference, resolved=False, singular=True)
+        if not bug:
+            return await state.end(warning=f"Unresolved issue not found for reference ({reference}).")
         if action and action.lower() == "resolve":
-            await developer_log.resolve()
+            where_kwargs = {
+                "id": reference
+            }
+            set_kwargs = {
+                "resolved": True
+            }
+            await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = (
                 "resolved the issue. The record "
                 "will remain in the database for the next 30 days."
             )
         elif action and action.lower() == "append":
-            await developer_log.append(notes)
+            await bug.append(notes)
             detail = "appended to the previous notes."
         elif action and action.lower() == "overwrite":
-            await developer_log.overwrite(notes)
+            where_kwargs = {
+                "id": reference
+            }
+            set_kwargs = {
+                "notes": notes
+            }
+            await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = "overwrote the previous notes."
         return await state.end(
             success=f"\U000026a0\U0000fe0f " f"You successfully {detail}."
         )
 
     @commands.command(
-        name="dlog", help="Resolve or update the notes on an issue by reference"
+        name="bug", help="Resolve or update the notes on an issue by reference"
     )
     @developer_predicator()
-    async def update_developer_logs_text_command(
+    async def update_bug_tracking_text_command(
         self,
         ctx: commands.Context,
         reference: str = commands.parameter(
@@ -398,29 +416,44 @@ class DevCommands(commands.Cog):
     ):
         state = StateService(source=ctx)
 
-        developer_log = await DeveloperLog.select(id=reference, resolved=False)
-        if not developer_log:
-            return await state.end(warning=f"Issue not found. Received: {reference}.")
+        bug = await Bug.select(id=reference, resolved=False, singular=True)
+        if not bug:
+            return await state.end(warning=f"Unresolved issue not found for reference ({reference}).")
         if action and action.lower() == "resolve":
-            await developer_log.resolve()
-            detail = "resolved the issue"
+            where_kwargs = {
+                "id": reference
+            }
+            set_kwargs = {
+                "resolved": True
+            }
+            await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
+            detail = (
+                "resolved the issue. The record "
+                "will remain in the database for the next 30 days."
+            )
         elif action and action.lower() == "append":
-            await developer_log.append(notes)
-            detail = "appended to the previous notes"
+            await bug.append(notes)
+            detail = "appended to the previous notes."
         elif action and action.lower() == "overwrite":
-            await developer_log.overwrite(notes)
+            where_kwargs = {
+                "id": reference
+            }
+            set_kwargs = {
+                "notes": notes
+            }
+            await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = "overwrote the previous notes"
         return await state.end(
             success=f"\U000026a0\U0000fe0f " f"You successfully {detail}."
         )
 
-    @app_commands.command(name="dlogs", description="List issues.")
+    @app_commands.command(name="bugs", description="List issues.")
     @app_commands.describe(
         target="Specify one of: `all`, server ID or UUID.",
         filter="Optionally specify `resolved` or `unresolved`.",
     )
     @developer_predicator()
-    async def list_developer_logs_app_command(
+    async def list_bugs_app_command(
         self,
         interaction: discord.Interaction,
         target: str = None,
@@ -439,28 +472,28 @@ class DevCommands(commands.Cog):
         except Exception as e:
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
-            kwargs = object_dict["columns"]
+            kwargs = object_dict.get("columns", None)
 
-        developer_logs = await DeveloperLog.select(**kwargs)
+        bugs = await Bug.select(**kwargs)
 
-        for developer_log in developer_logs:
-            guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
-            messages = guild_dictionary[developer_log.guild_snowflake]["messages"]
+        for bug in bugs:
+            guild_dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
+            messages = guild_dictionary[bug.guild_snowflake]["messages"]
             messages.setdefault(
-                developer_log.message_snowflake,
+                bug.message_snowflake,
                 {
-                    "channel_snowflake": developer_log.channel_snowflake,
+                    "channel_snowflake": bug.channel_snowflake,
                     "developer_snowflakes": [],
-                    "id": developer_log.id,
+                    "id": bug.id,
                     "notes": [],
-                    "resolved": developer_log.resolved,
+                    "resolved": bug.resolved,
                 },
             )
-            messages[developer_log.message_snowflake]["developer_snowflakes"].extend(
-                developer_log.developer_snowflakes
+            messages[bug.message_snowflake]["developer_snowflakes"].extend(
+                bug.member_snowflakes
             )
-            messages[developer_log.message_snowflake]["notes"].append(
-                developer_log.notes
+            messages[bug.message_snowflake]["notes"].append(
+                bug.notes
             )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -535,11 +568,11 @@ class DevCommands(commands.Cog):
                     title="Skipped Messages in Server",
                 )
 
-        await StateService.send_pages(obj=DeveloperLog, pages=pages, state=state)
+        await StateService.send_pages(obj=Bug, pages=pages, state=state)
 
     @commands.command(name="dlogs", help="List issues.")
     @developer_predicator()
-    async def list_developer_logs_text_command(
+    async def list_bugs_text_command(
         self,
         ctx: commands.Context,
         target: str = commands.parameter(
@@ -564,28 +597,28 @@ class DevCommands(commands.Cog):
         except Exception as e:
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
-            kwargs = object_dict["columns"]
+            kwargs = object_dict.get("columns", None)
 
-        developer_logs = await DeveloperLog.select(**kwargs)
+        bugs = await Bug.select(**kwargs)
 
-        for developer_log in developer_logs:
-            guild_dictionary.setdefault(developer_log.guild_snowflake, {"messages": {}})
-            messages = guild_dictionary[developer_log.guild_snowflake]["messages"]
+        for bug in bugs:
+            guild_dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
+            messages = guild_dictionary[bug.guild_snowflake]["messages"]
             messages.setdefault(
-                developer_log.message_snowflake,
+                bug.message_snowflake,
                 {
-                    "channel_snowflake": developer_log.channel_snowflake,
+                    "channel_snowflake": bug.channel_snowflake,
                     "developer_snowflakes": [],
-                    "id": developer_log.id,
+                    "id": bug.id,
                     "notes": [],
-                    "resolved": developer_log.resolved,
+                    "resolved": bug.resolved,
                 },
             )
-            messages[developer_log.message_snowflake]["developer_snowflakes"].extend(
-                developer_log.developer_snowflakes
+            messages[bug.message_snowflake]["developer_snowflakes"].extend(
+                bug.member_snowflakes
             )
-            messages[developer_log.message_snowflake]["notes"].append(
-                developer_log.notes
+            messages[bug.message_snowflake]["notes"].append(
+                bug.notes
             )
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -660,7 +693,7 @@ class DevCommands(commands.Cog):
                     title="Skipped Messages in Server",
                 )
 
-        await StateService.send_pages(obj=DeveloperLog, pages=pages, state=state)
+        await StateService.send_pages(obj=Bug, pages=pages, state=state)
 
     # DONE
     @app_commands.command(

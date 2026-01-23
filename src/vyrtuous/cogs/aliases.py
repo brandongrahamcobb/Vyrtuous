@@ -20,7 +20,7 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.settings.streaming import Streaming
+from vyrtuous.db.mgmt.stream import Streaming
 
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
@@ -119,10 +119,14 @@ class Aliases(commands.Cog):
             return await state.end(
                 warning=f"Role `{alias.role_snowflake}` was not found."
             )
-        try:
-            await member.add_roles(role, reason=action_information["action_reason"])
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
+        
+        await action_information["alias_class"].administer_role(
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            role_snowflake=alias.role_snowflake,
+            state=state
+        )
+        
         is_channel_scope = False
         if (
             member.voice
@@ -266,15 +270,12 @@ class Aliases(commands.Cog):
             )
             await text_mute.create()
 
-        role = message.guild.get_role(alias.role_snowflake)
-        if not role:
-            return await state.end(
-                warning=f"Role `{alias.role_snowflake}` was not found."
-            )
-        try:
-            await member.add_roles(role, reason=action_information["action_reason"])
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
+        await action_information["alias_class"].administer_role(
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            role_snowflake=alias.role_snowflake,
+            state=state
+        )
 
         await Streaming.send_entry(
             alias=alias,
@@ -344,8 +345,12 @@ class Aliases(commands.Cog):
     ):
         is_channel_scope = False
 
-        role = message.guild.get_role(alias.role_snowflake)
-        await member.remove_roles(role)
+        await action_information["alias_class"].revoke_role(
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            role_snowflake=alias.role_snowflake,
+            state=state
+        )
 
         await Streaming.send_entry(
             alias=alias,
@@ -486,8 +491,12 @@ class Aliases(commands.Cog):
         self, alias, action_information, channel, member, message, state
     ):
 
-        role = message.guild.get_role(alias.role_snowflake)
-        await member.remove_roles(role)
+        await action_information["alias_class"].revoke_role(
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            role_snowflake=alias.role_snowflake,
+            state=state
+        )
 
         await Streaming.send_entry(
             alias=alias,

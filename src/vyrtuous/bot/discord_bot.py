@@ -21,7 +21,7 @@ import asyncpg
 import discord
 
 from vyrtuous.inc.helpers import DISCORD_COGS
-from vyrtuous.service.logging_service import logger
+from vyrtuous.utils.logger import logger
 
 
 class DiscordBot(commands.Bot):

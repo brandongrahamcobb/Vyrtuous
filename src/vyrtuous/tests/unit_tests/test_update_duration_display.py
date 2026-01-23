@@ -1,4 +1,4 @@
-from vyrtuous.properties.duration import DurationObject
+from vyrtuous.fields.duration import DurationObject
 
 
 def update_duration_display(td):

@@ -21,11 +21,11 @@ from typing import Dict, Tuple
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.ban import Ban
-from vyrtuous.database.actions.flag import Flag
-from vyrtuous.database.actions.text_mute import TextMute
-from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.service.logging_service import logger
+from vyrtuous.db.actions.ban import Ban
+from vyrtuous.db.actions.flag import Flag
+from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.utils.logger import logger
 
 
 class Invincibility:

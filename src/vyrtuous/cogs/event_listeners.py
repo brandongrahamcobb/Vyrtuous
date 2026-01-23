@@ -27,27 +27,27 @@ from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.alias import Alias
-from vyrtuous.database.actions.ban import Ban
-from vyrtuous.database.actions.flag import Flag
-from vyrtuous.database.actions.server_mute import ServerMute
-from vyrtuous.database.actions.text_mute import TextMute
-from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.database.roles.administrator import Administrator, AdministratorRole
-from vyrtuous.database.roles.coordinator import Coordinator
-from vyrtuous.database.roles.moderator import Moderator
-from vyrtuous.database.rooms.stage import Stage
-from vyrtuous.database.rooms.temporary_room import TemporaryRoom
-from vyrtuous.database.rooms.video_room import VideoRoom
-from vyrtuous.database.settings.cap import Cap
-from vyrtuous.database.settings.streaming import Streaming
-from vyrtuous.properties.duration import DurationObject
-from vyrtuous.service.resolution.discord_object_service import DiscordObjectNotFound
+from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.actions.ban import Ban
+from vyrtuous.db.actions.flag import Flag
+from vyrtuous.db.actions.server_mute import ServerMute
+from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.roles.administrator import Administrator, AdministratorRole
+from vyrtuous.db.roles.coordinator import Coordinator
+from vyrtuous.db.roles.moderator import Moderator
+from vyrtuous.db.rooms.stage import Stage
+from vyrtuous.db.rooms.temporary_room import TemporaryRoom
+from vyrtuous.db.rooms.video_room import VideoRoom
+from vyrtuous.db.mgmt.cap import Cap
+from vyrtuous.db.mgmt.stream import Streaming
+from vyrtuous.fields.duration import DurationObject
+from vyrtuous.service.discord_object_service import DiscordObjectNotFound
 
-from vyrtuous.service.check_service import has_equal_or_lower_role_wrapper
-from vyrtuous.service.logging_service import logger
-from vyrtuous.service.messaging.message_service import MessageService
-from vyrtuous.service.messaging.state_service import StateService
+from vyrtuous.utils.check import has_equal_or_lower_role_wrapper
+from vyrtuous.utils.logger import logger
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
 
@@ -59,7 +59,7 @@ class EventListeners(commands.Cog):
         self.config = bot.config
         self.db_pool = bot.db_pool
         self.flags = []
-        self.message_service = MessageService(self.bot, self.db_pool)
+        self.message_service = MessageService(self.bot)
         self.join_log = defaultdict(list)
         self._ready_done = False
         self.deleted_rooms = {}
@@ -525,6 +525,7 @@ class EventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         state = StateService(source=ctx)
+        logger.error(str(error))
         if isinstance(error, commands.BadArgument):
             return await state.end(error=str(error))
         elif isinstance(error, commands.CheckFailure):
@@ -536,6 +537,7 @@ class EventListeners(commands.Cog):
     @commands.Cog.listener()
     async def on_app_command_error(self, interaction, error):
         state = StateService(source=interaction)
+        logger.error(str(error))
         if isinstance(error, app_commands.BadArgument):
             return await state.end(error=str(error))
         elif isinstance(error, app_commands.CheckFailure):

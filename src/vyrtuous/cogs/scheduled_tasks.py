@@ -22,17 +22,19 @@ from discord.ext import commands, tasks
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.actions.ban import Ban
-from vyrtuous.database.actions.text_mute import TextMute
-from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.database.database import Database
-from vyrtuous.database.logs.developer_log import DeveloperLog
-from vyrtuous.database.roles.developer import Developer
-from vyrtuous.database.rooms.stage import Stage
+from vyrtuous.db.actions.ban import Ban
+from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.db.database import Database
+from vyrtuous.db.mgmt.bug import Bug
+from vyrtuous.db.roles.developer import Developer
+from vyrtuous.db.roles.guild_owner import GuildOwner
+from vyrtuous.db.roles.sysadmin import Sysadmin
+from vyrtuous.db.rooms.stage import Stage
 
-# from vyrtuous.database.rooms.video_room import VideoRoom
-from vyrtuous.properties.duration import DurationObject
-from vyrtuous.service.logging_service import logger
+# from vyrtuous.db.rooms.video_room import VideoRoom
+from vyrtuous.fields.duration import DurationObject
+from vyrtuous.utils.logger import logger
 
 
 class ScheduledTasks(commands.Cog):
@@ -52,8 +54,12 @@ class ScheduledTasks(commands.Cog):
             self.check_expired_text_mutes.start()
         if not self.check_expired_stages.is_running():
             self.check_expired_stages.start()
-        if not self.check_expired_developer_logs.is_running():
-            self.check_expired_developer_logs.start()
+        if not self.check_expired_bugs.is_running():
+            self.check_expired_bugs.start()
+        if not self.check_guild_owners.is_running():
+            self.check_guild_owners.start()
+        if not self.check_sysadmin.is_running():
+            self.check_sysadmin.start()
 
     #        if not self.update_video_room_status.is_running():
     #            self.update_video_room_status.start()
@@ -268,16 +274,18 @@ class ScheduledTasks(commands.Cog):
     #            else:
     #                logger.info("Failed to enforce video room status")
     @tasks.loop(hours=8)
-    async def check_expired_developer_logs(self):
+    async def check_expired_bugs(self):
         now = datetime.now(timezone.utc)
-        developer_logs = await DeveloperLog.select(resolved=True)
-        if developer_logs:
-            for developer_log in developer_logs:
-                channel_snowflake = developer_log.channel_snowflake
-                guild_snowflake = developer_log.guild_snowflake
-                member_snowflake = developer_log.member_snowflake
-                if developer_log.created_at < now - timedelta(weeks=1):
-                    guild = self.bot.get_guild(developer_log.guild_snowflake)
+        bugs = await Bug.select(resolved=True)
+        if bugs:
+            for bug in bugs:
+                channel_snowflake = bug.channel_snowflake
+                guild_snowflake = bug.guild_snowflake
+                member_snowflakes = bug.member_snowflakes
+                message_snowflake = bug.message_snowflake
+                reference = bug.id
+                if bug.created_at < now - timedelta(weeks=1):
+                    guild = self.bot.get_guild(bug.guild_snowflake)
                     if guild is None:
                         logger.info(
                             f"Unable to locate guild {guild_snowflake}, not sending developer log."
@@ -293,48 +301,50 @@ class ScheduledTasks(commands.Cog):
                             f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, not sending developer log."
                         )
                         continue
-                    member = channel.get_member(member_snowflake)
-                    if member is None:
-                        logger.info(
-                            f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
-                        )
-                        continue
-                    embed.set_thumbnail(url=member.display_avatar.url)
-                    try:
-                        msg = await channel.fetch_message(developer_log.message)
-                    except Exception as e:
-                        logger.warning(
-                            f"Unable to locate a message {msg} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log. {str(e).capitalize()}"
-                        )
-                    time_since_updated = await DurationObject.from_expires_at(
-                        developer_log.updated_at
-                    )
-                    assigned_developer_mentions = []
-                    for developer_snowflake in developer_log.developer_snowflakes:
-                        assigned_developer = self.bot.get_user(developer_snowflake)
-                        assigned_developer_mentions.append(assigned_developer.mention)
-                    embed.add_field(
-                        name=f"Updated: {time_since_updated}",
-                        value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {developer_log.notes}",
-                        inline=False,
-                    )
-                    developers = await Developer.select()
-                    for developer in developers:
-                        member = guild.get_member(developer.member_snowflake)
+                    for member_snowflake in member_snowflakes:
+                        member = channel.get_member(member_snowflake)
                         if member is None:
                             logger.info(
-                                f"Unable to locate member {member.id} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
+                                f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
                             )
                             continue
+                        embed.set_thumbnail(url=member.display_avatar.url)
                         try:
-                            await member.send(embed=embed)
-                            logger.info(
-                                f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
-                            )
+                            msg = await channel.fetch_message(message_snowflake)
                         except Exception as e:
                             logger.warning(
-                                f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
+                                f"Unable to locate a message {msg} in {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), deleting developer log. {str(e).capitalize()}"
                             )
+                            return await Bug.delete(id=reference)
+                        time_since_updated = await DurationObject.from_expires_at(
+                            bug.updated_at
+                        )
+                        assigned_developer_mentions = []
+                        for developer_snowflake in bug.member_snowflakes:
+                            assigned_developer = self.bot.get_user(developer_snowflake)
+                            assigned_developer_mentions.append(assigned_developer.mention)
+                        embed.add_field(
+                            name=f"Updated: {time_since_updated}",
+                            value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {bug.notes}",
+                            inline=False,
+                        )
+                        developers = await Developer.select()
+                        for developer in developers:
+                            member = guild.get_member(developer.member_snowflake)
+                            if member is None:
+                                logger.info(
+                                    f"Unable to locate member {member.id} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), not sending developer log."
+                                )
+                                continue
+                            try:
+                                await member.send(embed=embed)
+                                logger.info(
+                                    f"Sent the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake})."
+                                )
+                            except Exception as e:
+                                logger.warning(
+                                    f"Unable to send the issue to member {member.display_name} ({member.id}) in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}). {str(e).capitalize()}"
+                                )
             logger.info("Sent developer log to developers.")
 
     @tasks.loop(minutes=1)
@@ -391,6 +401,29 @@ class ScheduledTasks(commands.Cog):
                     )
             logger.info("Cleaned up expired text-mutes.")
 
+    @tasks.loop(hours=8)
+    async def check_guild_owners(self):
+        for guild in self.bot.guilds:
+            guild_owner = await GuildOwner.select(guild_snowflake=guild.id, singular=True)
+            if guild_owner and guild_owner.member_snowflake == guild.owner_id:
+                logger.info(f"Guild owner ({guild_owner.member_snowflake}) already in the db.")
+                continue
+            else:
+                guild_owner = GuildOwner(guild_snowflake=guild.id, member_snowflake=guild.owner_id)
+                await guild_owner.create()
+                logger.info(f"Guild owner ({guild_owner.member_snowflake}) added to the db.")
+    
+    @tasks.loop(hours=8)
+    async def check_sysadmin(self):
+        member_snowflake = self.bot.config.get("discord_owner_id", None)
+        sysadmin = await Sysadmin.select(member_snowflake=member_snowflake, singular=True)
+        if not sysadmin:
+            sysadmin = Sysadmin(member_snowflake=member_snowflake)
+            await sysadmin.create()
+            logger.info(f"Sysadmin ({member_snowflake}) added to the db.")
+        else:
+            logger.info(f"Sysadmin ({member_snowflake}) already in the db.")
+
     @tasks.loop(hours=24)
     async def backup_database(self):
         try:
@@ -419,6 +452,14 @@ class ScheduledTasks(commands.Cog):
 
     @check_expired_stages.before_loop
     async def before_check_expired_stages(self):
+        await self.bot.wait_until_ready()
+
+    @check_guild_owners.before_loop
+    async def before_check_guild_owners(self):
+        await self.bot.wait_until_ready()
+
+    @check_sysadmin.before_loop
+    async def before_check_sysadmin(self):
         await self.bot.wait_until_ready()
 
 

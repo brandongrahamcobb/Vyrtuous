@@ -23,23 +23,23 @@ from discord.ext import commands
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.database.roles.coordinator import coordinator_predicator
-from vyrtuous.database.roles.moderator import Moderator
-from vyrtuous.database.roles.vegan import Vegan
-from vyrtuous.database.actions.voice_mute import VoiceMute
-from vyrtuous.properties.snowflake import (
+from vyrtuous.db.roles.coordinator import coordinator_predicator
+from vyrtuous.db.roles.moderator import Moderator
+from vyrtuous.db.roles.vegan import Vegan
+from vyrtuous.db.actions.voice_mute import VoiceMute
+from vyrtuous.fields.snowflake import (
     AppChannelSnowflake,
     AppMemberSnowflake,
     ChannelSnowflake,
     MemberSnowflake,
 )
-from vyrtuous.service.logging_service import logger
-from vyrtuous.service.check_service import (
+from vyrtuous.utils.logger import logger
+from vyrtuous.utils.check import (
     has_equal_or_lower_role_wrapper,
 )
-from vyrtuous.service.messaging.message_service import MessageService
-from vyrtuous.service.messaging.state_service import StateService
-from vyrtuous.service.resolution.discord_object_service import DiscordObject
+from vyrtuous.service.message_service import MessageService
+from vyrtuous.service.state_service import StateService
+from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.utils.emojis import get_random_emoji
 
 
@@ -47,7 +47,7 @@ class CoordinatorCommands(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-        self.message_service = MessageService(self.bot, self.bot.db_pool)
+        self.message_service = MessageService(self.bot)
 
     # DONE
     @app_commands.command(name="mod", description="Grant/revoke mods.")
@@ -69,15 +69,23 @@ class CoordinatorCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
 
         channel_dict = await do.determine_from_target(target=channel)
+        if not isinstance(channel_dict.get("object", None), discord.abc.GuildChannel):
+            return await state.end(
+                warning=f"Invalid channel ID ({channel})."
+            )
         member_dict = await do.determine_from_target(target=member)
+        if not isinstance(member_dict.get("object", None), discord.Member):
+            return await state.end(
+                warning=f"Invalid member ID ({channel})."
+            )
         await has_equal_or_lower_role_wrapper(
             source=interaction,
-            member_snowflake=member_dict["id"],
+            member_snowflake=member_dict.get("id", None),
             sender_snowflake=interaction.user.id,
         )
         kwargs = {}
-        kwargs.update(channel_dict["columns"])
-        kwargs.update(member_dict["columns"])
+        kwargs.update(channel_dict.get("columns", None))
+        kwargs.update(member_dict.get("columns", None))
 
         moderator = await Moderator.select(**kwargs)
         if moderator:
@@ -89,8 +97,8 @@ class CoordinatorCommands(commands.Cog):
             action = "granted"
 
         return await state.end(
-            success=f"Moderator access for {member_dict['mention']} has been "
-            f"{action} in {channel_dict['mention']}."
+            success=f"Moderator access for {member_dict.get("mention", None)} has been "
+            f"{action} in {channel_dict.get("mention", None)}."
         )
 
     # DONE
@@ -113,15 +121,23 @@ class CoordinatorCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
 
         channel_dict = await do.determine_from_target(target=channel)
+        if not isinstance(channel_dict.get("object", None), discord.abc.GuildChannel):
+            return await state.end(
+                warning=f"Invalid channel ID ({channel})."
+            )
         member_dict = await do.determine_from_target(target=member)
+        if not isinstance(member_dict.get("object", None), discord.Member):
+            return await state.end(
+                warning=f"Invalid member ID ({channel})."
+            )
         await has_equal_or_lower_role_wrapper(
             source=ctx,
-            member_snowflake=member_dict["id"],
+            member_snowflake=member_dict.get("id", None),
             sender_snowflake=ctx.author.id,
         )
         kwargs = {}
-        kwargs.update(channel_dict["columns"])
-        kwargs.update(member_dict["columns"])
+        kwargs.update(channel_dict.get("columns", None))
+        kwargs.update(member_dict.get("columns", None))
 
         moderator = await Moderator.select(**kwargs)
         if moderator:
@@ -133,8 +149,8 @@ class CoordinatorCommands(commands.Cog):
             action = "granted"
 
         return await state.end(
-            success=f"Moderator access for {member_dict['mention']} has been "
-            f"{action} in {channel_dict['mention']}."
+            success=f"Moderator access for {member_dict.get("mention", None)} has been "
+            f"{action} in {channel_dict.get("mention", None)}."
         )
 
     # DONE
@@ -147,16 +163,16 @@ class CoordinatorCommands(commands.Cog):
         channel: AppChannelSnowflake,
         reason: str = "No reason provided.",
     ):
-        muted_members = pages = skipped_members = failed_members = []
+        muted_members, pages, skipped_members, failed_members = [], [], [], []
 
         state = StateService(source=interaction)
 
         do = DiscordObject(interaction=interaction)
 
         channel_dict = await do.determine_from_target(target=channel)
-        kwargs = channel_dict["columns"]
+        kwargs = channel_dict.get("columns", None)
 
-        for member in channel_dict["object"].members:
+        for member in channel_dict.get("object", None).members:
             if member.id == interaction.user.id:
                 continue
             voice_mute = await VoiceMute.select(
@@ -167,7 +183,7 @@ class CoordinatorCommands(commands.Cog):
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_dict["id"]:
+                if member.voice.channel.id == channel_dict.get("id", None):
                     try:
                         await member.edit(mute=True)
                     except Exception as e:
@@ -190,7 +206,7 @@ class CoordinatorCommands(commands.Cog):
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_dict['mention']}",
+            f"**Channel:** {channel_dict.get("mention", None)}",
             f"**Muted:** {len(muted_members)} users",
             f"**Failed:** {len(failed_members)} users",
             f'**Skipped:** {len(channel_dict.get('object', None).members) \
@@ -221,15 +237,15 @@ class CoordinatorCommands(commands.Cog):
             default="No reason provided.", description="Specify a reason."
         ),
     ):
-        muted_members = pages = skipped_members = failed_members = []
+        muted_members, pages, skipped_members, failed_members = [], [], [], []
         state = StateService(source=ctx)
 
         do = DiscordObject(ctx=ctx)
 
         channel_dict = await do.determine_from_target(target=channel)
-        kwargs = channel_dict["columns"]
+        kwargs = channel_dict.get("columns", None)
 
-        for member in channel_dict["object"].members:
+        for member in channel_dict.get("object", None).members:
             if member.id == ctx.author.id:
                 continue
             voice_mute = await VoiceMute.select(
@@ -240,7 +256,7 @@ class CoordinatorCommands(commands.Cog):
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_dict["id"]:
+                if member.voice.channel.id == channel_dict.get("id", None):
                     try:
                         await member.edit(mute=True)
                     except Exception as e:
@@ -263,7 +279,7 @@ class CoordinatorCommands(commands.Cog):
             await voice_mute.create()
             muted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_dict['mention']}",
+            f"**Channel:** {channel_dict.get("mention", None)}",
             f"**Muted:** {len(muted_members)} users",
             f"**Failed:** {len(failed_members)} users",
             f'**Skipped:** {len(channel_dict.get('object', None).members) \
@@ -287,22 +303,22 @@ class CoordinatorCommands(commands.Cog):
     async def room_unmute_app_command(
         self, interaction: discord.Interaction, channel: AppChannelSnowflake
     ):
-        failed_members = pages = skipped_members = unmuted_members = []
+        unmuted_members, pages, skipped_members, failed_members = [], [], [], []
 
         state = StateService(source=interaction)
 
         do = DiscordObject(interaction=interaction)
 
         channel_dict = await do.determine_from_target(target=channel)
-        kwargs = channel_dict["columns"]
+        kwargs = channel_dict.get("columns", None)
 
-        for member in channel_dict["object"].members:
+        for member in channel_dict.get("object", None).members:
             voice_mute = await VoiceMute.select(target="user", **kwargs)
             if not voice_mute:
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_dict["id"]:
+                if member.voice.channel.id == channel_dict.get("id", None):
                     try:
                         await member.edit(mute=False)
                     except Exception as e:
@@ -318,7 +334,7 @@ class CoordinatorCommands(commands.Cog):
             await VoiceMute.delete(target="user", **kwargs)
             unmuted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_dict['mention']}",
+            f"**Channel:** {channel_dict.get("mention", None)}",
             f"**Unmuted:** {len(unmuted_members)} users",
             f"**Failed:** {len(failed_members)} users",
             f'**Skipped:** {len(channel_dict.get('object', None).members) \
@@ -345,22 +361,22 @@ class CoordinatorCommands(commands.Cog):
             description="Tag a channel or include its ID."
         ),
     ):
-        failed_members = pages = skipped_members = unmuted_members = []
+        unmuted_members, pages, skipped_members, failed_members = [], [], [], []
 
         state = StateService(source=ctx)
 
         do = DiscordObject(ctx=ctx)
 
         channel_dict = await do.determine_from_target(target=channel)
-        kwargs = channel_dict["columns"]
+        kwargs = channel_dict.get("columns", None)
 
-        for member in channel_dict["object"].members:
+        for member in channel_dict.get("object", None).members:
             voice_mute = await VoiceMute.select(target="user", **kwargs)
             if not voice_mute:
                 skipped_members.append(member)
                 continue
             if member.voice and member.voice.channel:
-                if member.voice.channel.id == channel_dict["id"]:
+                if member.voice.channel.id == channel_dict.get("id", None):
                     try:
                         await member.edit(mute=False)
                     except Exception as e:
@@ -376,7 +392,7 @@ class CoordinatorCommands(commands.Cog):
             await VoiceMute.delete(target="user", **kwargs)
             unmuted_members.append(member)
         description_lines = [
-            f"**Channel:** {channel_dict['mention']}",
+            f"**Channel:** {channel_dict.get("mention", None)}",
             f"**Unmuted:** {len(unmuted_members)} users",
             f"**Failed:** {len(failed_members)} users",
             f'**Skipped:** {len(channel_dict.get('object', None).members) \
