@@ -116,10 +116,6 @@ class ModerationView(discord.ui.View):
             member_snowflake=self.member_snowflake,
             singular=True
         )
-        if not action_existing:
-            await interaction.response.send_message(content="No action exists.", ephemeral=True)
-            await interaction.message.delete()
-            self.stop()
         self.action_information["action_executor_role"] = executor_role
         self.action_information['action_member_snowflake'] = self.member_snowflake
         self.action_information['action_existing'] = action_existing

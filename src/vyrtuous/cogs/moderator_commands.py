@@ -1053,7 +1053,7 @@ class ModeratorCommands(commands.Cog):
         view = ModerationView(interaction=interaction, member_snowflake=member_dict.get("id", None), modal=DurationModal)
         await view.setup()
         await interaction.response.send_message(
-            content='Select a channel and an action',
+            content='Select a channel and a category',
             view=view,
             ephemeral=True
         )
@@ -2120,7 +2120,7 @@ class ModeratorCommands(commands.Cog):
         view = ModerationView(interaction=interaction, member_snowflake=member_dict.get("id", None), modal=ReasonModal)
         await view.setup()
         await interaction.response.send_message(
-            content='Select a channel and an action',
+            content='Select a channel and a category',
             view=view,
             ephemeral=True
         )
