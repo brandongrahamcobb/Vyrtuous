@@ -30,7 +30,7 @@ class DurationModal(discord.ui.Modal):
         )
         self.action_information = action_information
         self.duration = discord.ui.TextInput(
-            label=f'Type the duration',
+            label='Type the duration',
             style=discord.TextStyle.paragraph,
             required=True,
             default=DurationObject.from_expires_in_to_str(self.action_information.get("action_existing", None).expires_in) or "",

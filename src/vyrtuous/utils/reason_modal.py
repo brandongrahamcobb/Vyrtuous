@@ -25,7 +25,7 @@ class ReasonModal(discord.ui.Modal):
         )
         self.action_information = action_information
         self.reason = discord.ui.TextInput(
-            label=f'Type the reason',
+            label='Type the reason',
             style=discord.TextStyle.paragraph,
             required=True,
             default=self.action_information.get("action_existing", None).reason or "",

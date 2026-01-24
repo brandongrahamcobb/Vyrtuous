@@ -32,71 +32,44 @@ class Aliases(commands.Cog):
         self.alias_help = {
             "ban": [
                 "**member** (Required): Tag a member or include their ID",
-                "**duration** (Optional): (+|-)duration(m|h|d)\n"
-                "0 = permanent / 24h = default\n`+` to append, "
-                "`-` to delete, `=` to overwrite reason",
-                "**reason** (Optional): Reason (required for 7 days or more)",
+                "**duration** (Optional): #(m|h|d)\n0 = permanent",
+                "**reason** (Optional): Reason for ban",
             ],
-            "vegan": ["**member** (Required): Tag a member or include their ID"],
-            "carnist": ["**member** (Required): Tag a member or include their ID"],
-            "unban": ["**member** (Required): Tag a member or include their ID"],
             "flag": [
                 "**member** (Required): Tag a member or include their ID",
-                "**reason** (Optional): Reason for flagging the user",
+                "**reason** (Optional): Reason for flag",
             ],
-            "unflag": ["**member** (Required): Tag a member or include their ID"],
-            "vmute": [
-                "**member** (Required): Tag a member or include their ID",
-                "**duration** (Optional): (+|-)duration(m|h|d)\n"
-                "0 = permanent / 24h = default\n`+` to append, "
-                "`-` to delete, `=` to overwrite reason",
-                "**reason** (Optional): Reason (required for 7 days or more)",
-            ],
-            "unvmute": ["**member** (Required): Tag a member or include their ID"],
-            "tmute": [
-                "**member** (Required): Tag a member or include their ID",
-                "**duration** (Required): (+|-)duration(m|h|d)\n"
-                "0 = permanent / 24h = default\n`+` to append, "
-                "`-` to delete, `=` to overwrite reason",
-                "**reason** (Required): Reason (required for 7 days or more)",
-            ],
-            "untmute": ["**member** (Required): Tag a member or include their ID"],
             "role": [
                 "**member** (Required): Tag a member or include their ID",
-                "**role** (Required): Role to assign",
+                "**role** (Required): Tag a role or include its ID",
             ],
-            "unrole": [
+            "tmute": [
                 "**member** (Required): Tag a member or include their ID",
-                "**role** (Required): Role to remove",
+                "**duration** (Optional): #(m|h|d)\n0 = permanent",
+                "**reason** (Required): Reason for text-mute",
+            ],
+            "vegan": ["**member** (Required): Tag a member or include their ID"],
+            "vmute": [
+                "**member** (Required): Tag a member or include their ID",
+                "**duration** (Optional): #(m|h|d)\n0 = permanent",
+                "**reason** (Optional): Reason for voice-mute",
             ],
         }
         self.alias_type_to_description = {
-            "ban": "Bans a user from the server.",
-            "vegan": "Verifies a user as going vegan.",
-            "carnist": "Unverifies a user as going vegan.",
-            "unban": "Unbans a user from the server.",
-            "flag": "Flags a user for moderation review.",
-            "unflag": "Removes a flag from a user.",
-            "vmute": "Mutes a user in voice channels.",
-            "unvmute": "Unmutes a user in voice channels.",
-            "tmute": "Mutes a user in text channels.",
-            "untmute": "Unmutes a user in text channels.",
-            "role": "Assigns a role to a user.",
-            "unrole": "Removes a role from a user.",
+            "ban": "Toggles a ban.",
+            "flag": "Toggles a moderation flag.",
+            "role": "Toggles a role to a user.",
+            "tmute": "Toggles a mute in text channels.",
+            "vegan": "Toggles a vegan.",
+            "vmute": "Toggles a mute in voice channels.",
         }
         self.alias_type_to_permission_level = {
             "ban": "Moderator",
-            "vegan": "Moderator",
-            "carnist": "Moderator",
-            "unban": "Moderator",
-            "vmute": "Moderator",
-            "unvmute": "Moderator",
-            "tmute": "Moderator",
-            "untmute": "Moderator",
             "flag": "Moderator",
-            "unflag": "Moderator",
             "role": "Coordinator",
-            "unrole": "Coordinator",
+            "tmute": "Moderator",
+            "vegan": "Moderator",
+            "vmute": "Moderator",
         }
         self.bot = bot
         self.invincible_members = Invincibility.get_invincible_members()
@@ -104,16 +77,16 @@ class Aliases(commands.Cog):
     async def handle_ban_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        if not action_information["action_modification"]:
-            ban = action_information["alias_class"](
-                channel_snowflake=action_information["action_channel_snowflake"],
-                expires_in=action_information["action_expires_in"],
-                guild_snowflake=action_information["action_guild_snowflake"],
-                member_snowflake=action_information["action_member_snowflake"],
-                role_snowflake=alias.role_snowflake,
-                reason=action_information["action_reason"],
-            )
-            await ban.create()
+        ban = action_information["alias_class"](
+            channel_snowflake=action_information["action_channel_snowflake"],
+            expires_in=action_information["action_expires_in"],
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            role_snowflake=alias.role_snowflake,
+            reason=action_information["action_reason"],
+        )
+        await ban.create()
+
         role = message.guild.get_role(alias.role_snowflake)
         if not role:
             return await state.end(
@@ -138,6 +111,7 @@ class Aliases(commands.Cog):
                 await member.move_to(None, reason=action_information["action_reason"])
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
+            
         await Streaming.send_entry(
             alias=alias,
             channel=channel,
@@ -159,12 +133,11 @@ class Aliases(commands.Cog):
     async def handle_vegan_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        if not action_information["action_modification"]:
-            vegan = action_information["alias_class"](
-                guild_snowflake=action_information["action_guild_snowflake"],
-                member_snowflake=action_information["action_member_snowflake"],
-            )
-            await vegan.create()
+        vegan = action_information["alias_class"](
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+        )
+        await vegan.create()
 
         await Streaming.send_entry(
             alias=alias,
@@ -187,14 +160,13 @@ class Aliases(commands.Cog):
     async def handle_flag_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        if not action_information["action_modification"]:
-            flag = action_information["alias_class"](
-                channel_snowflake=action_information["action_channel_snowflake"],
-                guild_snowflake=action_information["action_guild_snowflake"],
-                member_snowflake=action_information["action_member_snowflake"],
-                reason=action_information["action_reason"],
-            )
-            await flag.create()
+        flag = action_information["alias_class"](
+            channel_snowflake=action_information["action_channel_snowflake"],
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            reason=action_information["action_reason"],
+        )
+        await flag.create()
 
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("EventListeners")
@@ -221,13 +193,13 @@ class Aliases(commands.Cog):
     async def handle_role_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        if not action_information["action_modification"]:
-            role_obj = action_information["alias_class"](
-                guild_snowflake=action_information["action_guild_snowflake"],
-                member_snowflake=action_information["action_member_snowflake"],
-                role_snowflake=action_information["action_role_snowflake"],
-            )
-            await role_obj.create()
+        role_obj = action_information["alias_class"](
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            role_snowflake=action_information["action_role_snowflake"],
+        )
+        await role_obj.create()
+
         role = message.guild.get_role(alias.role_snowflake)
         if not role:
             return await state.end(
@@ -259,16 +231,15 @@ class Aliases(commands.Cog):
     async def handle_text_mute_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        if not action_information["action_modification"]:
-            text_mute = action_information["alias_class"](
-                channel_snowflake=action_information["action_channel_snowflake"],
-                expires_in=action_information["action_expires_in"],
-                guild_snowflake=action_information["action_guild_snowflake"],
-                member_snowflake=action_information["action_member_snowflake"],
-                role_snowflake=alias.role_snowflake,
-                reason=action_information["action_reason"],
-            )
-            await text_mute.create()
+        text_mute = action_information["alias_class"](
+            channel_snowflake=action_information["action_channel_snowflake"],
+            expires_in=action_information["action_expires_in"],
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            role_snowflake=alias.role_snowflake,
+            reason=action_information["action_reason"],
+        )
+        await text_mute.create()
 
         await action_information["alias_class"].administer_role(
             guild_snowflake=action_information["action_guild_snowflake"],
@@ -298,16 +269,15 @@ class Aliases(commands.Cog):
     async def handle_voice_mute_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        if not action_information["action_modification"]:
-            voice_mute = action_information["alias_class"](
-                channel_snowflake=action_information["action_channel_snowflake"],
-                expires_in=action_information["action_expires_in"],
-                guild_snowflake=action_information["action_guild_snowflake"],
-                member_snowflake=action_information["action_member_snowflake"],
-                reason=action_information["action_reason"],
-                target="user",
-            )
-            await voice_mute.create()
+        voice_mute = action_information["alias_class"](
+            channel_snowflake=action_information["action_channel_snowflake"],
+            expires_in=action_information["action_expires_in"],
+            guild_snowflake=action_information["action_guild_snowflake"],
+            member_snowflake=action_information["action_member_snowflake"],
+            reason=action_information["action_reason"],
+            target="user",
+        )
+        await voice_mute.create()
 
         is_channel_scope = False
         if member.voice and member.voice.channel:
@@ -322,6 +292,7 @@ class Aliases(commands.Cog):
                     )
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
+                
         await Streaming.send_entry(
             alias=alias,
             channel=channel,
