@@ -81,7 +81,7 @@ ALTER TABLE active_caps
 ADD CONSTRAINT active_caps_moderation_type_check
 CHECK (moderation_type IN ('ban', 'vmute', 'tmute'));
 ALTER TABLE developer_logs RENAME TO bug_tracking;
-CREATE TABLE sysadmins (
+CREATE TABLE sysadmin (
     id BOOLEAN PRIMARY KEY DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     member_snowflake BIGINT NOT NULL,
