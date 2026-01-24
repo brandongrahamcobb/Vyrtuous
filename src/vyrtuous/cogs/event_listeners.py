@@ -379,7 +379,6 @@ class EventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        modification_chars = ("=", "+", "-")
         args = (
             message.content[len(self.config["discord_command_prefix"]) :]
             .strip()
@@ -409,15 +408,10 @@ class EventListeners(commands.Cog):
         )
         action_duration = (
             DurationObject(args[2])
-            if len(args) > 2 and args[2] not in ("=", "+", "-")
+            if len(args) > 2
             else DurationObject("8h")
         )
-        duration_modification = action_duration.is_modification
         action_reason = " ".join(args[3:]) if len(args) > 3 else "No reason provided."
-        reason_modification = (
-            action_duration.prefix in modification_chars
-            and action_duration.number is None
-        )
 
         alias_class = alias.alias_class
         kwargs = {}
@@ -434,7 +428,7 @@ class EventListeners(commands.Cog):
         )
         action_modification = False
 
-        if action_existing and not duration_modification and not reason_modification:
+        if action_existing:
             action_modification = True
             await alias_class.delete(
                 channel_snowflake=channel_obj.id,
@@ -455,64 +449,19 @@ class EventListeners(commands.Cog):
             "action_duration": action_duration,
             "action_executor_role": executor_role,
             "action_existing": action_existing,
-            "action_expires_in_modification": duration_modification,
             "action_guild_snowflake": message.guild.id,
             "action_member_snowflake": member_obj.id,
-            "action_modification": action_modification
-            or duration_modification
-            or reason_modification,
+            "action_modification": action_modification,
             "action_reason": action_reason,
-            "action_reason_modification": reason_modification,
             "action_role_snowflake": (
                 alias.role_snowflake if alias.role_snowflake else None
             ),
         }
         expires_in_timedelta = action_duration.to_timedelta()
-        if action_information["action_duration"].number != 0 and action_existing:
-            if expires_in_timedelta.total_seconds() < 0:
-                return await state.end(
-                    warning="You not authorized to decrease "
-                    "the duration below the current time."
-                )
-        if action_information["action_existing"]:
-            action_expires_in = action_existing.expires_in + expires_in_timedelta
-        else:
-            action_expires_in = datetime.now(timezone.utc) + expires_in_timedelta
+
+        action_expires_in = datetime.now(timezone.utc) + expires_in_timedelta
         action_information["action_expires_in"] = action_expires_in
-        if (
-            action_information["action_existing"]
-            and expires_in_timedelta.total_seconds()
-            > action_information["action_channel_cap"]
-            or action_information["action_duration"].number == 0
-        ):
-            if executor_role == "Moderator":
-                duration_str = DurationObject.from_seconds(
-                    action_information["action_channel_cap"]
-                )
-                return await state.end(
-                    warning=f"Cannot set the {action_information['alias_class'].SINGULAR} beyond {duration_str} as a "
-                    f"{executor_role} in {channel_obj.mention}."
-                )
-        where_kwargs = {
-            "channel_snowflake": action_information["action_channel_snowflake"],
-            "guild_snowflake": action_information["action_guild_snowflake"],
-            "member_snowflake": action_information["action_member_snowflake"],
-        }
-        if action_information["action_existing"]:
-            if action_information["action_modification"]:
-                if action_information["action_expires_in_modification"]:
-                    await Alias.update_duration(
-                        action_information=action_information, where_kwargs=where_kwargs
-                    )
-                if action_information["action_reason_modification"]:
-                    await Alias.update_reason(
-                        action_information=action_information, where_kwargs=where_kwargs
-                    )
-            else:
-                return await state.end(
-                    warning=f"An existing {action_information['alias_class'].SINGULAR} already exists for "
-                    f"{member_obj.mention}. Try {self.config['discord_command_prefix']}help {args[0]}."
-                )
+        
         await alias.handlers[alias.alias_type](
             alias=alias,
             action_information=action_information,

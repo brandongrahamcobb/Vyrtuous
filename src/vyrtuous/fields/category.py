@@ -15,11 +15,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+from pathlib import Path
+
 from discord import app_commands
 from discord.ext import commands
 import discord
 
-from vyrtuous.utils.db_to_classes import db_to_classes
+from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.logger import logger
 
 class CategoryObject:
@@ -36,7 +38,12 @@ class CategoryObject:
     
     @category.setter
     def category(self, new_cat):
-        classes = db_to_classes()
+        dir_paths = []
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
+        classes = dir_to_classes(dir_paths=dir_paths)
         categories = [obj.CATEGORY for obj in classes if obj.CATEGORY is not None]
         for extra in self.EXTRA_CATEGORIES:
             categories.append(extra)

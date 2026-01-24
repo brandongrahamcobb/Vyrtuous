@@ -1,4 +1,4 @@
-"""logging_service.py The purpose of this program is to set up logging for Vyrtuous.
+"""logger.py The purpose of this program is to set up logging for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

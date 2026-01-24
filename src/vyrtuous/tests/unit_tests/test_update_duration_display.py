@@ -89,7 +89,7 @@ class AliasModal(discord.ui.Modal):
                     )
         self.action_information["action_reason"] = self.reason.value
         channel_obj = interaction.guild.get_channel(
-            self.action_information["action_channel_snowflake"]
+            self.action_information.get("action_channel_snowflake", None)
         )
         member_obj = interaction.guild.get_member(
             self.action_information["action_member_snowflake"]
@@ -100,7 +100,7 @@ class AliasModal(discord.ui.Modal):
         alias = SimpleNamespace(
             alias_name=None,
             alias_type="ban",
-            channel_snowflake=self.action_information["action_channel_snowflake"],
+            channel_snowflake=self.action_information.get("action_channel_snowflake", None),
         )
         await func(
             alias=alias,
@@ -142,7 +142,7 @@ class ChannelView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.action_information["action_channel_snowflake"] = (
+        self.action_information.get("action_channel_snowflake", None) = (
             channel.id
         )  # Adds channel_snowflake
         action_channel_cap = await Alias.generate_cap_duration(
@@ -156,7 +156,7 @@ class ChannelView(discord.ui.View):
         self.channel_select.placeholder = channel.name
         await interaction.response.defer()
         where_kwargs = {
-            "channel_snowflake": self.action_information["action_channel_snowflake"],
+            "channel_snowflake": self.action_information.get("action_channel_snowflake", None),
             "guild_snowflake": interaction.guild.id,
             "member_snowflake": self.action_information["action_member_snowflake"],
         }

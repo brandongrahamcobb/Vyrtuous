@@ -26,7 +26,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.roles.developer import is_developer_wrapper
 from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.db_to_classes import skip_db_discovery
+from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
 @skip_db_discovery
 class NotGuildOwner(commands.CheckFailure):

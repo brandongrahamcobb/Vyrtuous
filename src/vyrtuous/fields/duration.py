@@ -153,6 +153,25 @@ class DurationObject:
         return cls(f"+{number}{unit}")
 
     @classmethod
+    def from_expires_in_to_str(cls, expires_in: datetime) -> str:
+        if expires_in is None:
+            return 0
+        now = datetime.now(timezone.utc)
+        remaining = expires_in - now
+        total_seconds = int(remaining.total_seconds())
+        if total_seconds < 0:
+            total_seconds = 0
+        if total_seconds % 86400 == 0:
+            number, unit = total_seconds // 86400, "d"
+        elif total_seconds % 3600 == 0:
+            number, unit = total_seconds // 3600, "h"
+        elif total_seconds % 60 == 0:
+            number, unit = total_seconds // 60, "m"
+        else:
+            number, unit = total_seconds, "s"
+        return f"+{number}{unit}"
+    
+    @classmethod
     def from_seconds(cls, seconds: int):
         duration = DurationObject(f"{seconds}s")
         return duration

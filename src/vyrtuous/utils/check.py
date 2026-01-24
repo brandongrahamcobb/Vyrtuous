@@ -1,4 +1,4 @@
-"""check_service.py The purpose of this program is to provide the check_service module.
+"""check.py The purpose of this program is to provide the check utility module.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

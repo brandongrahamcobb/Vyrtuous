@@ -25,7 +25,7 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
-from vyrtuous.utils.db_to_classes import skip_db_discovery
+from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
 @skip_db_discovery
 class NotSysadmin(commands.CheckFailure):

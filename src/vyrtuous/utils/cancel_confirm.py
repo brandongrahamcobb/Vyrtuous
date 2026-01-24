@@ -27,7 +27,8 @@ class VerifyView(discord.ui.View):
         self,
         category,
         author_snowflake,
-        guild_snowflake,
+        mention,
+        guild_snowflake=None,
         channel_snowflake=None,
         member_snowflake=None,
         timeout=60,
@@ -72,14 +73,7 @@ class VerifyView(discord.ui.View):
         self.channel_snowflake = channel_snowflake
         self.member_snowflake = member_snowflake
         self.result = None
-        self.target = self._resolve_target()
-
-    def _resolve_target(self):
-        guild = self.bot.get_guild(self.guild_snowflake)
-        target = guild.get_member(self.member_snowflake)
-        if target:
-            return target
-        return guild.get_channel(self.channel_snowflake)
+        self.mention = mention
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.author_snowflake
@@ -96,11 +90,10 @@ class VerifyView(discord.ui.View):
         await interaction.message.delete()
         self.stop()
 
-    def build_embed(self, target):
-        mention = target.mention if target else "Unknown"
+    def build_embed(self):
         embed = discord.Embed(
             title="\U000026a0\U0000fe0f Clear Command Confirmation",
-            description=f"**Action:** {self.action}\n**Target:** {mention}",
+            description=f"**Action:** {self.action}\n**Target:** {self.mention}",
             color=discord.Color.orange(),
         )
         embed.set_footer(text="Please confirm or cancel this action.")

@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from discord import app_commands
@@ -59,7 +60,7 @@ from vyrtuous.utils.check import (
     has_equal_or_lower_role_wrapper,
     HasEqualOrLowerRole
 )
-from vyrtuous.utils.db_to_classes import db_to_classes
+from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.logger import logger
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.state_service import StateService
@@ -711,18 +712,20 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict.get("columns", None)
-
+        
+        dir_paths = []
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
+        view = VerifyView(
+            category=str(category), mention=object_dict.get("mention", "All"), author_snowflake=interaction.user.id, **kwargs
+        )
+        embed = view.build_embed()
+        await interaction.response.send_message(embed=embed, view=view)
+        await view.wait()
+        state = StateService(source=interaction)
         if isinstance(object_dict.get('object', None), discord.Member):
-
-            view = VerifyView(
-                category=str(category), author_snowflake=interaction.user.id, **kwargs
-            )
-            embed = view.build_embed(target=view.target)
-            await interaction.response.send_message(embed=embed, view=view)
-            await view.wait()
-    
-            state = StateService(source=interaction)
-
             try:
                 await has_equal_or_lower_role_wrapper(source=interaction, member_snowflake=object_dict.get('id'), sender_snowflake=interaction.user.id)
             except HasEqualOrLowerRole() as e:
@@ -730,7 +733,7 @@ class AdminCommands(commands.Cog):
                 return state.end(warning=str(e).capitalize())
                 
             if view.result:
-                for obj in db_to_classes():
+                for obj in dir_to_classes(dir_paths=dir_paths):
                     if "member" in obj.SCOPES:
                         if str(category) == "all":
                             await obj.delete(**kwargs)
@@ -763,15 +766,6 @@ class AdminCommands(commands.Cog):
                                     role_snowflake=text_mute.role_snowflake
                                 )
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
-    
-            view = VerifyView(
-                category=str(category), author_snowflake=interaction.user.id, **kwargs
-            )
-            embed = view.build_embed(target=view.target)
-            await interaction.response.send_message(embed=embed, view=view)
-            await view.wait()
-    
-            state = StateService(source=interaction)
             try:
                 await check(source=interaction, lowest_role="Guild Owner")
             except NotGuildOwner() as e:
@@ -779,7 +773,7 @@ class AdminCommands(commands.Cog):
                 return state.end(warning=str(e).capitalize())
         
             if view.result:
-                for obj in db_to_classes():
+                for obj in dir_to_classes(dir_paths=dir_paths):
                     if "channel" in obj.SCOPES:
                         if category == "all":
                             await obj.delete(**kwargs)
@@ -812,15 +806,6 @@ class AdminCommands(commands.Cog):
                                     role_snowflake=text_mute.role_snowflake
                                 )
         elif isinstance(object_dict.get('object', None), discord.Guild):
-            view = VerifyView(
-                category=target, author_snowflake=interaction.user.id, **kwargs
-            )
-            embed = view.build_embed(target=view.target)
-            await interaction.response.send_message(embed=embed, view=view)
-            await view.wait()
-    
-            state = StateService(source=interaction)
-            
             try:
                 await check(source=interaction, lowest_role="Guild Owner")
             except NotGuildOwner() as e:
@@ -828,7 +813,7 @@ class AdminCommands(commands.Cog):
                 return state.end(warning=str(e).capitalize())
             
             if view.result:
-                for obj in db_to_classes():
+                for obj in dir_to_classes(dir_paths=dir_paths):
                     if any(scope in obj.SCOPES for scope in ('guild', 'channel', 'member')):
                         if str(category).lower() == "all":
                             await obj.delete(**kwargs)
@@ -868,17 +853,8 @@ class AdminCommands(commands.Cog):
                                     role_snowflake=administrator_role.role_snowflake
                                 )
         elif target == "all" and await is_sysadmin_wrapper(source=interaction):
-            view = VerifyView(
-                category=target, author_snowflake=interaction.user.id, **kwargs
-            )
-            embed = view.build_embed(target=view.target)
-            await interaction.response.send_message(embed=embed, view=view)
-            await view.wait()
-    
-            state = StateService(source=interaction)
-            
             if view.result:
-                for obj in db_to_classes():
+                for obj in dir_to_classes(dir_paths=dir_paths):
                     await obj.delete(**kwargs)
                     msg = "Deleted all database entries."
                     if isinstance(obj, Ban):
@@ -935,24 +911,26 @@ class AdminCommands(commands.Cog):
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict.get("columns", None)
 
+        dir_paths = []
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
+        view = VerifyView(
+            category=str(category), mention=object_dict.get("mention", "All"), author_snowflake=ctx.author.id, **kwargs
+        )
+        embed = view.build_embed()
+        await ctx.reply(embed=embed, view=view)
+        await view.wait()
+        state = StateService(source=ctx)
         if isinstance(object_dict.get('object', None), discord.Member):
-    
-            view = VerifyView(
-                category=str(category), author_snowflake=ctx.author.id, **kwargs
-            )
-            embed = view.build_embed(target=view.target)
-            await ctx.reply(embed=embed, view=view)
-            await view.wait()
-    
-            state = StateService(source=ctx)
-
             try:
                 await has_equal_or_lower_role_wrapper(source=ctx, member_snowflake=object_dict.get('id'), sender_snowflake=ctx.author.id)
             except HasEqualOrLowerRole() as e:
                 logger.warning(str(e).capitalize())
 
             if view.result:
-                for obj in db_to_classes():
+                for obj in dir_to_classes(dir_paths=dir_paths):
                     if "member" in obj.SCOPES:
                         if str(category) == "all":
                             await obj.delete(**kwargs)
@@ -985,15 +963,6 @@ class AdminCommands(commands.Cog):
                                     role_snowflake=text_mute.role_snowflake
                                 )
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
-            view = VerifyView(
-                category=str(category), author_snowflake=ctx.author.id, **kwargs
-            )
-            embed = view.build_embed(target=view.target)
-            await ctx.reply(embed=embed, view=view)
-            await view.wait()
-    
-            state = StateService(source=ctx)
-
             try:
                 await check(source=ctx, lowest_role="Guild Owner")
             except NotGuildOwner() as e:
@@ -1001,7 +970,7 @@ class AdminCommands(commands.Cog):
                 return state.end(warning=str(e).capitalize())
     
             if view.result:
-                for obj in db_to_classes():
+                for obj in dir_to_classes(dir_paths=dir_paths):
                     if "channel" in obj.SCOPES:
                         if category == "all":
                             await obj.delete(**kwargs)
@@ -1034,15 +1003,6 @@ class AdminCommands(commands.Cog):
                                     role_snowflake=text_mute.role_snowflake
                                 )
         elif isinstance(object_dict.get('object', None), discord.Guild):
-            view = VerifyView(
-                category=target, author_snowflake=ctx.author.id, **kwargs
-            )
-            embed = view.build_embed(target=view.target)
-            await ctx.reply(embed=embed, view=view)
-            await view.wait()
-    
-            state = StateService(source=ctx)
-            
             try:
                 await check(source=ctx, lowest_role="Guild Owner")
             except NotGuildOwner() as e:
@@ -1050,7 +1010,7 @@ class AdminCommands(commands.Cog):
                 return state.end(warning=str(e).capitalize())
             
             if view.result:
-                for obj in db_to_classes():
+                for obj in dir_to_classes(dir_paths=dir_paths):
                     if any(scope in obj.SCOPES for scope in ('guild', 'channel', 'member')):
                         if str(category).lower() == "all":
                             await obj.delete(**kwargs)
@@ -1090,17 +1050,8 @@ class AdminCommands(commands.Cog):
                                     role_snowflake=administrator_role.role_snowflake
                                 )
         elif target == "all" and await is_sysadmin_wrapper(source=ctx):
-            view = VerifyView(
-                category=target, author_snowflake=ctx.author.id, **kwargs
-            )
-            embed = view.build_embed(target=view.target)
-            await ctx.reply(embed=embed, view=view)
-            await view.wait()
-    
-            state = StateService(source=ctx)
-            
             if view.result:
-                for obj in db_to_classes():
+                for obj in dir_to_classes(dir_paths=dir_paths):
                     await obj.delete(**kwargs)
                 msg = "Deleted all database entries."
                 if isinstance(obj, Ban):

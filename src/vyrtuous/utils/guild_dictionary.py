@@ -1,4 +1,4 @@
-"""scope_service.py The purpose of this program is to manage list command logic.
+"""guild_dictionary.py The purpose of this program is to manage list command logic.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

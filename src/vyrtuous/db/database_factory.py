@@ -71,6 +71,7 @@ class DatabaseFactory(object):
         values = []
         if virtual_kwargs.get('expired') is True:
             conditions.append('expires_in IS NOT NULL AND expires_in < NOW()')
+            real_kwargs.pop('expired', None)
         for field, value in real_kwargs.items():
             if inside:
                 conditions.append(f'${len(values)+1} = ANY({field})')

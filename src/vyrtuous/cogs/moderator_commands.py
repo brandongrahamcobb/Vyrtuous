@@ -51,8 +51,11 @@ from vyrtuous.fields.snowflake import (
     MemberSnowflake,
 )
 from vyrtuous.utils.home import at_home
-from vyrtuous.utils.check import check, has_equal_or_lower_role_wrapper
+from vyrtuous.utils.check import check, has_equal_or_lower_role_wrapper, HasEqualOrLowerRole
 from vyrtuous.utils.logger import logger
+from vyrtuous.utils.moderation_view import ModerationView
+from vyrtuous.utils.duration_modal import DurationModal
+from vyrtuous.utils.reason_modal import ReasonModal
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.utils.guild_dictionary import member_relevant_objects_dict
 from vyrtuous.service.state_service import StateService
@@ -1029,6 +1032,31 @@ class ModeratorCommands(commands.Cog):
         pages.append(embed)
 
         await StateService.send_pages(obj=Developer, pages=pages, state=state)
+
+    @app_commands.command(name="duration", description="Modify a duration.")
+    @app_commands.describe(member="The ID or mention of the member.")
+    @moderator_predicator()
+    async def change_moderation_duration_app_command(
+        self, interaction: discord.Interaction, member: AppMemberSnowflake
+    ):
+        do = DiscordObject(interaction=interaction)
+        member_dict = await do.determine_from_target(target=member)
+        try:
+            await has_equal_or_lower_role_wrapper(
+                source=interaction,
+                member_snowflake=member_dict.get("id", None),
+                sender_snowflake=interaction.user.id,
+            )
+        except HasEqualOrLowerRole as e:
+            state = StateService(source=interaction)
+            return await state.end(warning=str(e).capitalize())
+        view = ModerationView(interaction=interaction, member_snowflake=member_dict.get("id", None), modal=DurationModal)
+        await view.setup()
+        await interaction.response.send_message(
+            content='Select a channel and an action',
+            view=view,
+            ephemeral=True
+        )
 
     # DONE
     @app_commands.command(name="flags", description="List flags.")
@@ -2071,6 +2099,31 @@ class ModeratorCommands(commands.Cog):
             )
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
+        
+    @app_commands.command(name="reason", description="Modify a reason.")
+    @app_commands.describe(member="The ID or mention of the member.")
+    @moderator_predicator()
+    async def change_moderation_reason_app_command(
+        self, interaction: discord.Interaction, member: AppMemberSnowflake
+    ):
+        do = DiscordObject(interaction=interaction)
+        member_dict = await do.determine_from_target(target=member)
+        try:
+            await has_equal_or_lower_role_wrapper(
+                source=interaction,
+                member_snowflake=member_dict.get("id", None),
+                sender_snowflake=interaction.user.id,
+            )
+        except HasEqualOrLowerRole as e:
+            state = StateService(source=interaction)
+            return await state.end(warning=str(e).capitalize())
+        view = ModerationView(interaction=interaction, member_snowflake=member_dict.get("id", None), modal=ReasonModal)
+        await view.setup()
+        await interaction.response.send_message(
+            content='Select a channel and an action',
+            view=view,
+            ephemeral=True
+        )
 
     # DONE
     @app_commands.command(name="roleid", description="Get role by name.")

@@ -1,4 +1,4 @@
-"""role.py The purpose of this program is to be a child of DatabaseFactory and the parent to all permission roles.
+"""highest_role.py The purpose of this program is to be a child of DatabaseFactory and the parent to all permission roles.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
