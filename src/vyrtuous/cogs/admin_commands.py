@@ -128,7 +128,7 @@ class AdminCommands(commands.Cog):
                         return await state.end(
                             warning=f"{role.name} already exists. You must specify it to override."
                         )
-                role_obj = await ctx.guild.create_role(name=alias_name)
+                role_obj = await interaction.guild.create_role(name=alias_name)
                 role = str(role_obj.id)
             if role:
                 try:

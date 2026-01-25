@@ -16,8 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.actions.ban import Ban
