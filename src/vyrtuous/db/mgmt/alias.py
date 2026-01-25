@@ -22,6 +22,7 @@ from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.actions.flag import Flag
+from vyrtuous.db.actions.hide import Hide
 from vyrtuous.db.actions.role import Role
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
@@ -59,17 +60,12 @@ class Alias(DatabaseFactory):
 
     _ALIAS_CLASS_MAP = {
         "ban": Ban,
-        "unban": Ban,
+        "hide": Hide,
         "vmute": VoiceMute,
-        "unvmute": VoiceMute,
         "tmute": TextMute,
-        "untmute": TextMute,
         "role": Role,
-        "unrole": Role,
         "flag": Flag,
-        "unflag": Flag,
         "vegan": Vegan,
-        "carnist": Vegan,
     }
 
     def __init__(
@@ -99,6 +95,8 @@ class Alias(DatabaseFactory):
             "carnist": self.alias_cog.handle_carnist_alias,
             "unban": self.alias_cog.handle_unban_alias,
             "flag": self.alias_cog.handle_flag_alias,
+            "hide": self.alias_cog.handle_hide_alias,
+            "unhide": self.alias_cog.handle_unhide_alias,
             "unflag": self.alias_cog.handle_unflag_alias,
             "vmute": self.alias_cog.handle_voice_mute_alias,
             "unvmute": self.alias_cog.handle_unmute_alias,
@@ -119,50 +117,15 @@ class Alias(DatabaseFactory):
     def alias_type(self, alias_type: str):
         if alias_type not in (
             "vegan",
-            "carnist",
             "vmute",
-            "unvmute",
             "ban",
-            "unban",
+            "hide",
             "flag",
-            "unflag",
             "tmute",
-            "untmute",
             "role",
-            "unrole",
         ):
             raise ValueError("Invalid alias_type.")
         self._alias_type = alias_type
-
-    @classmethod
-    def format_aliases(cls, aliases) -> list[str]:
-        lines = []
-        if not aliases:
-            return []
-        grouped = defaultdict(list)
-        for alias in aliases:
-            match alias.alias_type:
-                case "ban" | "unban":
-                    formatted_type = "Ban"
-                case "vegan" | "carnist":
-                    formatted_type = "Veganism"
-                case "role" | "unrole":
-                    formatted_type = "Role"
-                case "flag" | "unflag":
-                    formatted_type = "Flag"
-                case "tmute" | "untmute":
-                    formatted_type = "Text Mute"
-                case "vmute" | "unvmute":
-                    formatted_type = "Voice Mute"
-            grouped[(alias.channel_snowflake, formatted_type)].append(alias)
-        for (channel_snowflake, formatted_type), channel_aliases in grouped.items():
-            lines.append(f"**{formatted_type}**")
-            for alias in sorted(channel_aliases, key=lambda a: a.alias_name.lower()):
-                if alias.role_snowflake:
-                    lines.append(f"`{alias.alias_name}` → <@&{alias.role_snowflake}>")
-                else:
-                    lines.append(f"`{alias.alias_name}`")
-        return lines
 
     @classmethod
     async def generate_cap_duration(
@@ -182,41 +145,3 @@ class Alias(DatabaseFactory):
         else:
             cap_duration = cap.duration_seconds
         return cap_duration
-
-    @classmethod
-    async def update_duration(cls, action_information, where_kwargs):
-        match action_information["action_duration"].prefix:
-            case "+":
-                updated_expires_in = (
-                    action_information["action_existing"].expires_in
-                    + action_information["action_expires_in"]
-                )
-            case "=":
-                updated_expires_in = (
-                    datetime.now(timezone.utc)
-                    + action_information["action_expires_in"].to_timedelta()
-                )
-            case "-":
-                updated_expires_in = (
-                    action_information["action_existing"].expires_in
-                    - action_information["action_expires_in"]
-                )
-        set_kwargs = {"expires_in": updated_expires_in}
-        await action_information["alias_class"].update(
-            set_kwargs=set_kwargs, where_kwargs=where_kwargs
-        )
-
-    @classmethod
-    async def update_reason(cls, action_information, where_kwargs):
-        match action_information["action_duration"].prefix:
-            case "+":
-                reason = (
-                    action_information["action_existing"].reason
-                    + action_information["action_reason"]
-                )
-            case "=" | "-":
-                reason = action_information["action_reason"]
-        set_kwargs = {"reason": reason}
-        await action_information["alias_class"].update(
-            set_kwargs=set_kwargs, where_kwargs=where_kwargs
-        )

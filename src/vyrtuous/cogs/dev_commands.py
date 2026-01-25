@@ -25,7 +25,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.ban import Ban
+from vyrtuous.db.actions.hide import Hide
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.database import Database
 from vyrtuous.db.mgmt.bug import Bug
@@ -61,11 +61,11 @@ class DevCommands(commands.Cog):
         self.message_service = MessageService(self.bot)
 
     @app_commands.command(
-        name="assoc", description="Associate a ban or text-mute alias to a role."
+        name="assoc", description="Associate a hide or text-mute alias to a role."
     )
     @developer_predicator()
     @app_commands.describe(
-        alias_name="One of: `ban`, `tmute`",
+        alias_name="One of: `hide`, `tmute`",
     )
     async def associate_alias_to_role_app_command(
         self, interaction: discord.Interaction, alias_name: str, role: AppRoleSnowflake
@@ -92,7 +92,7 @@ class DevCommands(commands.Cog):
                             warning=f"{role.name} already exists. You must specify it to override."
                         )
                 role = await interaction.guild.create_role(name=alias_name)
-                if alias.alias_type not in ("ban", "tmute"):
+                if alias.alias_type not in ("hide", "tmute"):
                     return await state.end(
                         warning=f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
                         f"cannot be associated with role {role.mention}."
@@ -103,23 +103,23 @@ class DevCommands(commands.Cog):
             )
         channel = interaction.guild.get_channel(alias.channel_snowflake)
         try:
-            if alias.alias_type == "ban":
+            if alias.alias_type == "hide":
                 overwrite = discord.PermissionOverwrite(connect=False)
                 try:
                     await channel.set_permissions(role, overwrite=overwrite)
                 except discord.Forbidden as e:
                     logger.warning(e)
-                bans = await Ban.select(
+                hides = await Hide.select(
                     channel_snowflake=channel.id, guild_snowflake=interaction.guild.id
                 )
-                for ban in bans:
-                    channel = interaction.guild.get_channel(ban.channel_snowflake)
-                    member = interaction.guild.get_member(ban.member_snowflake)
+                for hide in hides:
+                    channel = interaction.guild.get_channel(hide.channel_snowflake)
+                    member = interaction.guild.get_member(hide.member_snowflake)
                     try:
                         await channel.set_permissions(member, overwrite=None)
                     except discord.Forbidden as e:
                         logger.warning(e)
-                    await Ban.administer_role(
+                    await Hide.administer_role(
                         guild_snowflake=interaction.guild.id,
                         member_snowflake=member.id,
                         role_snowflake=role.id,
@@ -165,7 +165,7 @@ class DevCommands(commands.Cog):
         )
 
     @commands.command(
-        name="assoc", help="Associate a ban or text-mute alias to a role."
+        name="assoc", help="Associate a hide or text-mute alias to a role."
     )
     @developer_predicator()
     async def associate_alias_to_role_text_command(
@@ -202,7 +202,7 @@ class DevCommands(commands.Cog):
                     role = await ctx.guild.create_role(name=alias_name)
                 except discord.Forbidden as e:
                     logger.warning(e)
-                if alias.alias_type not in ("ban", "tmute"):
+                if alias.alias_type not in ("hide", "tmute"):
                     return await state.end(
                         warning=f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
                         f"cannot be associated with role {role.mention}."
@@ -213,23 +213,23 @@ class DevCommands(commands.Cog):
             )
         channel = ctx.guild.get_channel(alias.channel_snowflake)
         try:
-            if alias.alias_type == "ban":
+            if alias.alias_type == "hide":
                 overwrite = discord.PermissionOverwrite(connect=False)
                 try:
                     await channel.set_permissions(role, overwrite=overwrite)
                 except discord.Forbidden as e:
                     logger.warning(e)
-                bans = await Ban.select(
+                hides = await Hide.select(
                     channel_snowflake=channel.id, guild_snowflake=ctx.guild.id
                 )
-                for ban in bans:
-                    channel = ctx.guild.get_channel(ban.channel_snowflake)
-                    member = ctx.guild.get_member(ban.member_snowflake)
+                for hide in hides:
+                    channel = ctx.guild.get_channel(hide.channel_snowflake)
+                    member = ctx.guild.get_member(hide.member_snowflake)
                     try:
                         await channel.set_permissions(member, overwrite=None)
                     except discord.Forbidden as e:
                         logger.warning(e)
-                    await Ban.administer_role(
+                    await Hide.administer_role(
                         guild_snowflake=ctx.guild.id,
                         member_snowflake=member.id,
                         role_snowflake=role.id,

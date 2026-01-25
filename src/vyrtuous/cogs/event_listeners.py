@@ -269,26 +269,33 @@ class EventListeners(commands.Cog):
                         reason="Right-click voice-mute.",
                     )
             elif before.mute and not after.mute and before.channel == after.channel:
-                await VoiceMute.delete(
+                ban = await Ban.select(
                     channel_snowflake=before.channel.id,
                     guild_snowflake=before.channel.guild.id,
                     member_snowflake=member.id,
-                    target=target,
+                    singular=True
                 )
-                should_be_muted = False
-                alias = SimpleNamespace(alias_type="unvmute")
-                duration = DurationObject("0")
-                await Streaming.send_entry(
-                    alias=alias,
-                    channel=after.channel,
-                    duration=duration,
-                    executor_role="Role-specfic",
-                    is_channel_scope=True,
-                    is_modification=False,
-                    member=member,
-                    message=None,
-                    reason="Right-click voice-mute.",
-                )
+                if not ban:
+                    await VoiceMute.delete(
+                        channel_snowflake=before.channel.id,
+                        guild_snowflake=before.channel.guild.id,
+                        member_snowflake=member.id,
+                        target=target,
+                    )
+                    should_be_muted = False
+                    alias = SimpleNamespace(alias_type="unvmute")
+                    duration = DurationObject("0")
+                    await Streaming.send_entry(
+                        alias=alias,
+                        channel=after.channel,
+                        duration=duration,
+                        executor_role="Role-specfic",
+                        is_channel_scope=True,
+                        is_modification=False,
+                        member=member,
+                        message=None,
+                        reason="Right-click voice-mute.",
+                    )
             if after.mute != should_be_muted:
                 try:
                     await member.edit(

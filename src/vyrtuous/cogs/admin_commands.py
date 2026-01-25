@@ -93,8 +93,7 @@ class AdminCommands(commands.Cog):
     @administrator_predicator()
     @app_commands.describe(
         alias_name="Alias/Pseudonym",
-        category="One of: vegan, carnist, vmute, unvmute,"
-        "ban, unban, flag, unflag, tmute, untmute, role, unrole",
+        category="Specify an category for a `ban`, `flag`, `hide`, `role`, `tmute`, `vegan` or `vmute` action.",
         channel="Tag a channel or include the ID.",
         role="Tag a channel, role or include the ID.",
     )
@@ -122,12 +121,20 @@ class AdminCommands(commands.Cog):
                 f"Alias `{alias_name}`  of type `{category}` "
                 f"created successfully for channel {channel_dict.get("mention", None)}."
             )
-        if category in ("ban", "tmute", "role"):
+        if category in ("hide", "tmute", "role"):
+            if not role and alias.alias_type in ("hide", "tmute"):
+                for role in interaction.guild.roles:
+                    if role.name == alias_name:
+                        return await state.end(
+                            warning=f"{role.name} already exists. You must specify it to override."
+                        )
+                role = await interaction.guild.create_role(name=alias_name)
             if role:
                 try:
                     role_dict = await do.determine_from_target(target=role)
                 except (DiscordObjectNotFound, TypeError) as e:
                     logger.warning(str(e).capitalize())
+                    return await state.end(warning="Provided role ({role}) was not found.")
                 else:
                     kwargs.update(role_dict.get("columns", None))
                     msg = (
@@ -156,16 +163,14 @@ class AdminCommands(commands.Cog):
     # DONE
     @commands.command(
         name="alias",
-        help="Set an alias for a vegan, mute, ban, flag, tmute, role action.",
+        help="Alias creation.",
     )
     @administrator_predicator()
     async def create_alias_text_command(
         self,
         ctx: commands.Context,
         category: Category = commands.parameter(
-            description="One of: `vegan`, `vmute`, "
-            "`ban`, `flag`, "
-            "`tmute`, or `role`."
+            description="Specify an category for a `ban`, `flag`, `hide`, `role`, `tmute`, `vegan` or `vmute` action."
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         channel: ChannelSnowflake = commands.parameter(
@@ -191,12 +196,20 @@ class AdminCommands(commands.Cog):
                 f"Alias `{alias_name}`  of type `{category}` "
                 f"created successfully for channel {channel_dict.get("mention", None)}."
             )
-        if category in ("ban", "tmute", "role"):
+        if category in ("hide", "tmute", "role"):
+            if not role and alias.alias_type in ("hide", "tmute"):
+                for role in interaction.guild.roles:
+                    if role.name == alias_name:
+                        return await state.end(
+                            warning=f"{role.name} already exists. You must specify it to override."
+                        )
+                role = await interaction.guild.create_role(name=alias_name)
             if role:
                 try:
                     role_dict = await do.determine_from_target(target=role)
                 except (DiscordObjectNotFound, TypeError) as e:
                     logger.warning(str(e).capitalize())
+                    return await state.end(warning="Provided role ({role}) was not found.")
                 else:
                     kwargs.update(role_dict.get("columns", None))
                     msg = (

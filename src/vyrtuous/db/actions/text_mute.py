@@ -1,4 +1,4 @@
-"""text_mute.py The purpose of this program is to inherit from Action to provide the text mute moderation.
+"""text_mute.py The purpose of this program is to inherit from DatabaseFactory to provide the text mute moderation.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

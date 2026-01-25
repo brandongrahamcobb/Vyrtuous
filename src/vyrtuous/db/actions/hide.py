@@ -1,4 +1,4 @@
-"""voice_mute.py The purpose of this program is to inherit from DatabaseFactory to provide the voice mute moderation.
+"""hide.py The purpose of this program is to inherit from DatabaseFactory to provide the hide moderation.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -27,45 +27,39 @@ from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 
 
-class VoiceMute(DatabaseFactory):
+class Hide(DatabaseFactory):
 
-    ACT = "vmute"
-    CATEGORY = "vmute"
-    PLURAL = "Voice Mutes"
+    ACT = "hide"
+    CATEGORY = "hide"
+    PLURAL = "Hidden"
     SCOPES = ["channel", "member"]
-    SINGULAR = "Voice Mute"
-    UNDO = "unvmute"
+    SINGULAR = "Hide"
+    UNDO = "unhide"
 
     REQUIRED_INSTANTIATION_ARGS = [
         "channel_snowflake",
         "guild_snowflake",
         "member_snowflake",
+        "role_snowflake",
     ]
-    OPTIONAL_ARGS = [
-        "created_at",
-        "expires_in",
-        "reason",
-        "target",
-        "updated_at",
-    ]
+    OPTIONAL_ARGS = ["created_at", "expires_in", "reason", "updated_at"]
 
-    TABLE_NAME = "active_voice_mutes"
+    TABLE_NAME = "active_hides"
 
     def __init__(
         self,
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
+        role_snowflake: int,
         created_at: Optional[datetime] = None,
         expired: bool = False,
         expires_in: Optional[datetime] = None,
         reason: Optional[str] = "No reason provided.",
-        target: Optional[str] = "user",
         updated_at: Optional[datetime] = None,
         **kwargs,
     ):
         super().__init__()
-        self.bot = DiscordBot.get_instance()
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
         self.created_at = created_at
@@ -75,18 +69,8 @@ class VoiceMute(DatabaseFactory):
         self.member_snowflake = member_snowflake
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.reason = reason
-        self.target = target
+        self.role_snowflake = role_snowflake
         self.updated_at = updated_at
-
-    @property
-    def target(self):
-        return self._target
-
-    @target.setter
-    def target(self, target):
-        if target not in ["room", "user"]:
-            raise ValueError("Invalid target.")
-        self._target = target
 
     @classmethod
     async def act_embed(cls, action_information, source, **kwargs):
@@ -95,8 +79,7 @@ class VoiceMute(DatabaseFactory):
         author = resolve_author(source=source)
         member = source.guild.get_member(action_information["action_member_snowflake"])
         embed = discord.Embed(
-            title=f"{get_random_emoji()} "
-            f"{member.display_name} has been voice-muted",
+            title=f"{get_random_emoji()} " f"{member.display_name} has been hidened",
             description=(
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
@@ -117,13 +100,36 @@ class VoiceMute(DatabaseFactory):
         member = source.guild.get_member(action_information["action_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
-            f"{member.display_name}'s voice-mute has been removed",
+            f"{member.display_name}'s hide has been removed",
             description=(
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}\n"
+                f"**Channel:** {channel.mention}"
             ),
-            color=discord.Color.blue(),
+            color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+    
+    @classmethod
+    async def administer_role(cls, guild_snowflake, member_snowflake, role_snowflake, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        member = guild.get_member(member_snowflake)
+        role = guild.get_role(role_snowflake)
+        try:
+            member.add_roles(role, reason="Administering a hide role.")
+        except discord.Forbidden as e:
+            return await state.end(error=str(e).capitalize())
+
+    @classmethod
+    async def revoke_role(cls, guild_snowflake, member_snowflake, role_snowflake, state):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        member = guild.get_member(member_snowflake)
+        role = guild.get_role(role_snowflake)
+        try:
+            member.remove_roles(role, reason="Revoking a hide role.")
+        except discord.Forbidden as e:
+            return await state.end(error=str(e).capitalize())
+

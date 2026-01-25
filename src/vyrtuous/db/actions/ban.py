@@ -1,4 +1,4 @@
-"""ban.py The purpose of this program is to inherit from Action to provide the ban moderation.
+"""ban.py The purpose of this program is to inherit from DatabaseFactory to provide the ban moderation.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -40,7 +40,6 @@ class Ban(DatabaseFactory):
         "channel_snowflake",
         "guild_snowflake",
         "member_snowflake",
-        "role_snowflake",
     ]
     OPTIONAL_ARGS = ["created_at", "expires_in", "reason", "updated_at"]
 
@@ -51,7 +50,6 @@ class Ban(DatabaseFactory):
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
-        role_snowflake: int,
         created_at: Optional[datetime] = None,
         expired: bool = False,
         expires_in: Optional[datetime] = None,
@@ -69,7 +67,6 @@ class Ban(DatabaseFactory):
         self.member_snowflake = member_snowflake
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.reason = reason
-        self.role_snowflake = role_snowflake
         self.updated_at = updated_at
 
     @classmethod
@@ -110,26 +107,4 @@ class Ban(DatabaseFactory):
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
-    
-    @classmethod
-    async def administer_role(cls, guild_snowflake, member_snowflake, role_snowflake, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(guild_snowflake)
-        member = guild.get_member(member_snowflake)
-        role = guild.get_role(role_snowflake)
-        try:
-            member.add_roles(role, reason="Administering a ban role.")
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
-
-    @classmethod
-    async def revoke_role(cls, guild_snowflake, member_snowflake, role_snowflake, state):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(guild_snowflake)
-        member = guild.get_member(member_snowflake)
-        role = guild.get_role(role_snowflake)
-        try:
-            member.remove_roles(role, reason="Revoking a ban role.")
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
 

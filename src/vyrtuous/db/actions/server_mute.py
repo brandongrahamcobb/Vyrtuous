@@ -1,4 +1,4 @@
-"""server_mute.py The purpose of this program is to inherit from Action to provide the server mute moderation.
+"""server_mute.py The purpose of this program is to inherit from DatabaseFactory to provide the server mute moderation.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 

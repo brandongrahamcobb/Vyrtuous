@@ -1,4 +1,4 @@
-"""flag.py The purpose of this program is to inherit from Action to provide the flag moderation.
+"""flag.py The purpose of this program is to inherit from DatabaseFactory to provide the flag moderation.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
