@@ -17,6 +17,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.utils.logger import logger
+
 
 class DatabaseFactory(object):
 
@@ -26,7 +28,9 @@ class DatabaseFactory(object):
         fields = getattr(self, "REQUIRED_INSTANTIATION_ARGS") + getattr(
             self, "OPTIONAL_ARGS"
         )
-        insert_fields = [f for f in fields if hasattr(self, f) and getattr(self, f) is not None]
+        insert_fields = [
+            f for f in fields if hasattr(self, f) and getattr(self, f) is not None
+        ]
         if not insert_fields:
             raise ValueError("No fields available to insert")
         placeholders = ", ".join(f"${i+1}" for i in range(len(insert_fields)))
@@ -40,6 +44,7 @@ class DatabaseFactory(object):
             """,
                 *values,
             )
+        logger.info(f"Crated entry in {table_name}.")
 
     @classmethod
     async def delete(cls, **kwargs):
@@ -58,29 +63,34 @@ class DatabaseFactory(object):
         where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {table_name} {where_clause}", *values)
+        logger.info(f"Deleted entry from {table_name}.")
 
     @classmethod
     async def select(cls, *, singular=False, inside=False, **kwargs):
         bot = DiscordBot.get_instance()
-        table_name = getattr(cls, 'TABLE_NAME')
-        fields = getattr(cls, 'REQUIRED_INSTANTIATION_ARGS') + getattr(cls, 'OPTIONAL_ARGS')
-        virtual_filters = {'expired'}
+        table_name = getattr(cls, "TABLE_NAME")
+        fields = getattr(cls, "REQUIRED_INSTANTIATION_ARGS") + getattr(
+            cls, "OPTIONAL_ARGS"
+        )
+        virtual_filters = {"expired"}
         real_kwargs = {k: v for k, v in kwargs.items() if k in fields}
         virtual_kwargs = {k: v for k, v in kwargs.items() if k in virtual_filters}
         conditions = []
         values = []
-        if virtual_kwargs.get('expired') is True:
-            conditions.append('expires_in IS NOT NULL AND expires_in < NOW()')
-            real_kwargs.pop('expired', None)
+        if virtual_kwargs.get("expired") is True:
+            conditions.append("expires_in IS NOT NULL AND expires_in < NOW()")
+            real_kwargs.pop("expired", None)
         for field, value in real_kwargs.items():
             if inside:
-                conditions.append(f'${len(values)+1} = ANY({field})')
+                conditions.append(f"${len(values)+1} = ANY({field})")
             else:
-                conditions.append(f'{field}=${len(values)+1}')
+                conditions.append(f"{field}=${len(values)+1}")
             values.append(value)
-        where_clause = 'WHERE ' + ' AND '.join(conditions) if conditions else ''
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
         async with bot.db_pool.acquire() as conn:
-            rows = await conn.fetch(f'SELECT * FROM {table_name} {where_clause}', *values)
+            rows = await conn.fetch(
+                f"SELECT * FROM {table_name} {where_clause}", *values
+            )
         if singular:
             if not rows:
                 return None
@@ -91,8 +101,8 @@ class DatabaseFactory(object):
         for row in rows:
             row_data = {k: row[k] for k in fields if k in row}
             children.append(cls(**row_data))
+        logger.info(f"Selected entry from {table_name}.")
         return children
-    
 
     @classmethod
     async def update(cls, *, set_kwargs: dict, where_kwargs: dict):
@@ -124,6 +134,7 @@ class DatabaseFactory(object):
             """,
                 *values,
             )
+        logger.info(f"Updated entry from {table_name}.")
 
     @classmethod
     async def primary_keys(cls):

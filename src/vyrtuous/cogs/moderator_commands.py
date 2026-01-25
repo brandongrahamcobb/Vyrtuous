@@ -51,7 +51,11 @@ from vyrtuous.fields.snowflake import (
     MemberSnowflake,
 )
 from vyrtuous.utils.home import at_home
-from vyrtuous.utils.check import check, has_equal_or_lower_role_wrapper, HasEqualOrLowerRole
+from vyrtuous.utils.check import (
+    check,
+    has_equal_or_lower_role_wrapper,
+    HasEqualOrLowerRole,
+)
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.moderation_view import ModerationView
 from vyrtuous.utils.duration_modal import DurationModal
@@ -136,7 +140,9 @@ class ModeratorCommands(commands.Cog):
                     for role_snowflake in primary_dictionary
                     if guild.get_role(role_snowflake)
                 ]
-                if not thumbnail and isinstance(object_dict.get("object", None), discord.Member):
+                if not thumbnail and isinstance(
+                    object_dict.get("object", None), discord.Member
+                ):
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
                     )
@@ -238,7 +244,9 @@ class ModeratorCommands(commands.Cog):
                     for role_snowflake in primary_dictionary
                     if guild.get_role(role_snowflake)
                 ]
-                if not thumbnail and isinstance(object_dict.get("object", None), discord.Member):
+                if not thumbnail and isinstance(
+                    object_dict.get("object", None), discord.Member
+                ):
                     embed.set_thumbnail(
                         url=object_dict.get("object", None).display_avatar.url
                     )
@@ -344,10 +352,14 @@ class ModeratorCommands(commands.Cog):
                     "bans"
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(object_dict.get('object'), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object"), discord.abc.GuildChannel
+                    ):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get('object'), discord.Member):
-                        lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
+                    if isinstance(object_dict.get("object"), discord.Member):
+                        lines.append(
+                            f"**Expires in:** {channel_dictionary['expires_in']}"
+                        )
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -448,10 +460,14 @@ class ModeratorCommands(commands.Cog):
                     "bans"
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(object_dict.get('object'), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object"), discord.abc.GuildChannel
+                    ):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get('object'), discord.Member):
-                        lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
+                    if isinstance(object_dict.get("object"), discord.Member):
+                        lines.append(
+                            f"**Expires in:** {channel_dictionary['expires_in']}"
+                        )
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -930,9 +946,9 @@ class ModeratorCommands(commands.Cog):
             dictionary["members"].setdefault(
                 developer.member_snowflake, {"developers": {}}
             )
-            dictionary["members"][
-                developer.member_snowflake
-            ]["developers"].update({"placeholder": "placeholder"})
+            dictionary["members"][developer.member_snowflake]["developers"].update(
+                {"placeholder": "placeholder"}
+            )
 
         embed = discord.Embed(
             title=title, description="All guilds", color=discord.Color.blue()
@@ -952,17 +968,17 @@ class ModeratorCommands(commands.Cog):
                     name="Information", value="\n".join(lines), inline=False
                 )
                 pages.append(embed)
-                embed = discord.Embed(
-                    title=title,
-                    description="All guilds continued...",
-                    color=discord.Color.blue(),
-                ),
+                embed = (
+                    discord.Embed(
+                        title=title,
+                        description="All guilds continued...",
+                        color=discord.Color.blue(),
+                    ),
+                )
                 field_count = 0
                 lines = []
         if lines:
-            embed.add_field(
-                name="Information", value="\n".join(lines), inline=False
-            )
+            embed.add_field(name="Information", value="\n".join(lines), inline=False)
         pages.append(embed)
 
         await StateService.send_pages(obj=Developer, pages=pages, state=state)
@@ -996,10 +1012,10 @@ class ModeratorCommands(commands.Cog):
             dictionary["members"].setdefault(
                 developer.member_snowflake, {"developers": {}}
             )
-            dictionary["members"][
-                developer.member_snowflake
-            ]["developers"].update({"placeholder": "placeholder"})
-            
+            dictionary["members"][developer.member_snowflake]["developers"].update(
+                {"placeholder": "placeholder"}
+            )
+
         embed = discord.Embed(
             title=title, description="All guilds", color=discord.Color.blue()
         )
@@ -1018,17 +1034,17 @@ class ModeratorCommands(commands.Cog):
                     name="Information", value="\n".join(lines), inline=False
                 )
                 pages.append(embed)
-                embed = discord.Embed(
-                    title=title,
-                    description="All guilds continued...",
-                    color=discord.Color.blue(),
-                ),
+                embed = (
+                    discord.Embed(
+                        title=title,
+                        description="All guilds continued...",
+                        color=discord.Color.blue(),
+                    ),
+                )
                 field_count = 0
                 lines = []
         if lines:
-            embed.add_field(
-                name="Information", value="\n".join(lines), inline=False
-            )
+            embed.add_field(name="Information", value="\n".join(lines), inline=False)
         pages.append(embed)
 
         await StateService.send_pages(obj=Developer, pages=pages, state=state)
@@ -1050,12 +1066,14 @@ class ModeratorCommands(commands.Cog):
         except HasEqualOrLowerRole as e:
             state = StateService(source=interaction)
             return await state.end(warning=str(e).capitalize())
-        view = ModerationView(interaction=interaction, member_snowflake=member_dict.get("id", None), modal=DurationModal)
+        view = ModerationView(
+            interaction=interaction,
+            member_snowflake=member_dict.get("id", None),
+            modal=DurationModal,
+        )
         await view.setup()
         await interaction.response.send_message(
-            content='Select a channel and a category',
-            view=view,
-            ephemeral=True
+            content="Select a channel and a category", view=view, ephemeral=True
         )
 
     # DONE
@@ -1121,9 +1139,11 @@ class ModeratorCommands(commands.Cog):
                     "flags", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(object_dict.get('object'), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object"), discord.abc.GuildChannel
+                    ):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get('object'), discord.Member):
+                    if isinstance(object_dict.get("object"), discord.Member):
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -1225,9 +1245,11 @@ class ModeratorCommands(commands.Cog):
                     "flags", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(object_dict.get('object'), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object"), discord.abc.GuildChannel
+                    ):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get('object'), discord.Member):
+                    if isinstance(object_dict.get("object"), discord.Member):
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -1883,10 +1905,14 @@ class ModeratorCommands(commands.Cog):
                     "voice_mutes", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(object_dict.get('object'), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object"), discord.abc.GuildChannel
+                    ):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get('object'), discord.Member):
-                        lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
+                    if isinstance(object_dict.get("object"), discord.Member):
+                        lines.append(
+                            f"**Expires in:** {channel_dictionary['expires_in']}"
+                        )
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -1992,10 +2018,14 @@ class ModeratorCommands(commands.Cog):
                     "voice_mutes", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(object_dict.get('object'), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object"), discord.abc.GuildChannel
+                    ):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get('object'), discord.Member):
-                        lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
+                    if isinstance(object_dict.get("object"), discord.Member):
+                        lines.append(
+                            f"**Expires in:** {channel_dictionary['expires_in']}"
+                        )
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -2099,7 +2129,7 @@ class ModeratorCommands(commands.Cog):
             )
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
-        
+
     @app_commands.command(name="reason", description="Modify a reason.")
     @app_commands.describe(member="The ID or mention of the member.")
     @moderator_predicator()
@@ -2117,12 +2147,14 @@ class ModeratorCommands(commands.Cog):
         except HasEqualOrLowerRole as e:
             state = StateService(source=interaction)
             return await state.end(warning=str(e).capitalize())
-        view = ModerationView(interaction=interaction, member_snowflake=member_dict.get("id", None), modal=ReasonModal)
+        view = ModerationView(
+            interaction=interaction,
+            member_snowflake=member_dict.get("id", None),
+            modal=ReasonModal,
+        )
         await view.setup()
         await interaction.response.send_message(
-            content='Select a channel and a category',
-            view=view,
-            ephemeral=True
+            content="Select a channel and a category", view=view, ephemeral=True
         )
 
     # DONE
@@ -2208,7 +2240,9 @@ class ModeratorCommands(commands.Cog):
                 "channels"
             ).items():
                 channel = guild.get_channel(channel_snowflake)
-                lines.append(f"**Expires in:** {stage_dictionary.get("expires_in", None)}")
+                lines.append(
+                    f"**Expires in:** {stage_dictionary.get("expires_in", None)}"
+                )
                 field_count += 1
                 if field_count == chunk_size:
                     embed.add_field(
@@ -2301,7 +2335,9 @@ class ModeratorCommands(commands.Cog):
                 "channels"
             ).items():
                 channel = guild.get_channel(channel_snowflake)
-                lines.append(f"**Expires in:** {stage_dictionary.get("expires_in", None)}")
+                lines.append(
+                    f"**Expires in:** {stage_dictionary.get("expires_in", None)}"
+                )
                 field_count += 1
                 if field_count == chunk_size:
                     embed.add_field(
@@ -2761,10 +2797,14 @@ class ModeratorCommands(commands.Cog):
                     "text_mutes", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(object_dict.get('object'), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object"), discord.abc.GuildChannel
+                    ):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get('object'), discord.Member):
-                        lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
+                    if isinstance(object_dict.get("object"), discord.Member):
+                        lines.append(
+                            f"**Expires in:** {channel_dictionary['expires_in']}"
+                        )
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:
@@ -2870,10 +2910,14 @@ class ModeratorCommands(commands.Cog):
                     "text_mutes", {}
                 ).items():
                     channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(object_dict.get('object'), discord.abc.GuildChannel):
+                    if not isinstance(
+                        object_dict.get("object"), discord.abc.GuildChannel
+                    ):
                         lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get('object'), discord.Member):
-                        lines.append(f"**Expires in:** {channel_dictionary['expires_in']}")
+                    if isinstance(object_dict.get("object"), discord.Member):
+                        lines.append(
+                            f"**Expires in:** {channel_dictionary['expires_in']}"
+                        )
                         lines.append(f"**Reason:** {channel_dictionary['reason']}")
                     field_count += 1
                     if field_count >= chunk_size:

@@ -58,7 +58,7 @@ from vyrtuous.utils.home import at_home
 from vyrtuous.utils.check import (
     check,
     has_equal_or_lower_role_wrapper,
-    HasEqualOrLowerRole
+    HasEqualOrLowerRole,
 )
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.logger import logger
@@ -122,19 +122,22 @@ class AdminCommands(commands.Cog):
                 f"created successfully for channel {channel_dict.get("mention", None)}."
             )
         if category in ("hide", "tmute", "role"):
-            if not role and alias.alias_type in ("hide", "tmute"):
+            if not role and str(category) in ("hide", "tmute"):
                 for role in interaction.guild.roles:
                     if role.name == alias_name:
                         return await state.end(
                             warning=f"{role.name} already exists. You must specify it to override."
                         )
-                role = await interaction.guild.create_role(name=alias_name)
+                role_obj = await ctx.guild.create_role(name=alias_name)
+                role = str(role_obj.id)
             if role:
                 try:
                     role_dict = await do.determine_from_target(target=role)
                 except (DiscordObjectNotFound, TypeError) as e:
                     logger.warning(str(e).capitalize())
-                    return await state.end(warning="Provided role ({role}) was not found.")
+                    return await state.end(
+                        warning="Provided role ({role}) was not found."
+                    )
                 else:
                     kwargs.update(role_dict.get("columns", None))
                     msg = (
@@ -156,7 +159,7 @@ class AdminCommands(commands.Cog):
                 warning=f"Alias `{alias.alias_name}` already exists in {interaction.guild.name}."
             )
 
-        alias = Alias(alias_name=alias_name, alias_type=category, **kwargs)
+        alias = Alias(alias_name=alias_name, alias_type=str(category), **kwargs)
         await alias.create()
         return await state.end(success=msg)
 
@@ -197,19 +200,22 @@ class AdminCommands(commands.Cog):
                 f"created successfully for channel {channel_dict.get("mention", None)}."
             )
         if category in ("hide", "tmute", "role"):
-            if not role and alias.alias_type in ("hide", "tmute"):
-                for role in interaction.guild.roles:
+            if not role and category in ("hide", "tmute"):
+                for role in ctx.guild.roles:
                     if role.name == alias_name:
                         return await state.end(
                             warning=f"{role.name} already exists. You must specify it to override."
                         )
-                role = await interaction.guild.create_role(name=alias_name)
+                role_obj = await ctx.guild.create_role(name=alias_name)
+                role = str(role_obj.id)
             if role:
                 try:
                     role_dict = await do.determine_from_target(target=role)
                 except (DiscordObjectNotFound, TypeError) as e:
                     logger.warning(str(e).capitalize())
-                    return await state.end(warning="Provided role ({role}) was not found.")
+                    return await state.end(
+                        warning="Provided role ({role}) was not found."
+                    )
                 else:
                     kwargs.update(role_dict.get("columns", None))
                     msg = (
@@ -231,7 +237,8 @@ class AdminCommands(commands.Cog):
                 warning=f"Alias `{alias.alias_name}` already exists in {ctx.guild.name}."
             )
 
-        alias = Alias(alias_name=alias_name, alias_type=category, **kwargs)
+        logger.info(category)
+        alias = Alias(alias_name=alias_name, alias_type=str(category), **kwargs)
         await alias.create()
         return await state.end(success=msg)
 
@@ -471,7 +478,6 @@ class AdminCommands(commands.Cog):
                 f"{channel_dict.get("mention", None)} successfully."
             )
         return await state.end(success=msg)
-
 
     # DONE
     @app_commands.command(name="caps", description="List caps.")
@@ -716,67 +722,75 @@ class AdminCommands(commands.Cog):
     @app_commands.describe(
         target="Specify 'all', tag a channel/guild/member or include its ID",
         category="Specify one of: `admin`, `alias`, `arole`, `all`, `ban`, `coord`, "
-            "flag`, `mod`, `temp`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vr`.",
+        "flag`, `mod`, `temp`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vr`.",
     )
     @administrator_predicator()
     async def clear_channel_access_app_command(
-        self, interaction: discord.Interaction, target: str, category: AppCategory = "all"
+        self,
+        interaction: discord.Interaction,
+        target: str,
+        category: AppCategory = "all",
     ):
         do = DiscordObject(interaction=interaction)
         object_dict = await do.determine_from_target(target=target)
         kwargs = object_dict.get("columns", None)
-        
+
         dir_paths = []
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
         view = VerifyView(
-            category=str(category), mention=object_dict.get("mention", "All"), author_snowflake=interaction.user.id, **kwargs
+            category=str(category),
+            mention=object_dict.get("mention", "All"),
+            author_snowflake=interaction.user.id,
+            **kwargs,
         )
         embed = view.build_embed()
         await interaction.response.send_message(embed=embed, view=view)
         await view.wait()
         state = StateService(source=interaction)
-        if isinstance(object_dict.get('object', None), discord.Member):
+        if isinstance(object_dict.get("object", None), discord.Member):
             try:
-                await has_equal_or_lower_role_wrapper(source=interaction, member_snowflake=object_dict.get('id'), sender_snowflake=interaction.user.id)
+                await has_equal_or_lower_role_wrapper(
+                    source=interaction,
+                    member_snowflake=object_dict.get("id"),
+                    sender_snowflake=interaction.user.id,
+                )
             except HasEqualOrLowerRole() as e:
                 logger.warning(str(e).capitalize())
                 return state.end(warning=str(e).capitalize())
-                
+
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
                     if "member" in obj.SCOPES:
                         if str(category) == "all":
                             await obj.delete(**kwargs)
-                            msg = (
-                                f"Deleted all associated database information for {object_dict.get('mention', None)}."
-                            )
+                            msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
                         elif str(category).lower() == obj.CATEGORY:
                             await obj.delete(**kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} for {object_dict.get('mention', None)}."
                         if isinstance(obj, Ban):
                             bans = Ban.select(
                                 guild_snowflake=interaction.guild.id,
-                                member_snowflake=object_dict.get('id', None)
+                                member_snowflake=object_dict.get("id", None),
                             )
                             for ban in bans:
                                 await obj.revoke_role(
                                     guild_snowflake=interaction.guild.id,
                                     member_snowflake=ban.member_snowflake,
-                                    role_snowflake=ban.role_snowflake
+                                    role_snowflake=ban.role_snowflake,
                                 )
                         elif isinstance(obj, TextMute):
                             text_mutes = TextMute.select(
                                 guild_snowflake=interaction.guild.id,
-                                member_snowflake=object_dict.get('id', None)
+                                member_snowflake=object_dict.get("id", None),
                             )
                             for text_mute in text_mutes:
                                 await obj.revoke_role(
                                     guild_snowflake=interaction.guild.id,
                                     member_snowflake=text_mute.member_snowflake,
-                                    role_snowflake=text_mute.role_snowflake
+                                    role_snowflake=text_mute.role_snowflake,
                                 )
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
             try:
@@ -784,55 +798,53 @@ class AdminCommands(commands.Cog):
             except NotGuildOwner() as e:
                 logger.warning(str(e).capitalize())
                 return state.end(warning=str(e).capitalize())
-        
+
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
                     if "channel" in obj.SCOPES:
                         if category == "all":
                             await obj.delete(**kwargs)
-                            msg = (
-                                f"Deleted all database information for {object_dict.get('mention')}."
-                            )
+                            msg = f"Deleted all database information for {object_dict.get('mention')}."
                         elif str(category).lower() == obj.CATEGORY:
                             await obj.delete(**kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('mention', None)}."
                         if isinstance(obj, Ban):
                             bans = Ban.select(
-                                channel_snowflake=object_dict.get('id', None),
+                                channel_snowflake=object_dict.get("id", None),
                                 guild_snowflake=interaction.guild.id,
                             )
                             for ban in bans:
                                 await obj.revoke_role(
                                     guild_snowflake=interaction.guild.id,
                                     member_snowflake=ban.member_snowflake,
-                                    role_snowflake=ban.role_snowflake
+                                    role_snowflake=ban.role_snowflake,
                                 )
                         elif isinstance(obj, TextMute):
                             text_mutes = TextMute.select(
-                                channel_snowflake=object_dict.get('id', None),
+                                channel_snowflake=object_dict.get("id", None),
                                 guild_snowflake=interaction.guild.id,
                             )
                             for text_mute in text_mutes:
                                 await obj.revoke_role(
                                     guild_snowflake=interaction.guild.id,
                                     member_snowflake=text_mute.member_snowflake,
-                                    role_snowflake=text_mute.role_snowflake
+                                    role_snowflake=text_mute.role_snowflake,
                                 )
-        elif isinstance(object_dict.get('object', None), discord.Guild):
+        elif isinstance(object_dict.get("object", None), discord.Guild):
             try:
                 await check(source=interaction, lowest_role="Guild Owner")
             except NotGuildOwner() as e:
                 logger.warning(str(e).capitalize())
                 return state.end(warning=str(e).capitalize())
-            
+
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
-                    if any(scope in obj.SCOPES for scope in ('guild', 'channel', 'member')):
+                    if any(
+                        scope in obj.SCOPES for scope in ("guild", "channel", "member")
+                    ):
                         if str(category).lower() == "all":
                             await obj.delete(**kwargs)
-                            msg = (
-                                f"Deleted all database information for {object_dict.get('name')}."
-                            )
+                            msg = f"Deleted all database information for {object_dict.get('name')}."
                         elif str(category).lower() == obj.CATEGORY:
                             await obj.delete(**kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('name', None)}."
@@ -844,7 +856,7 @@ class AdminCommands(commands.Cog):
                                 await obj.revoke_role(
                                     guild_snowflake=interaction.guild.id,
                                     member_snowflake=ban.member_snowflake,
-                                    role_snowflake=ban.role_snowflake
+                                    role_snowflake=ban.role_snowflake,
                                 )
                         elif isinstance(obj, TextMute):
                             text_mutes = TextMute.select(
@@ -854,7 +866,7 @@ class AdminCommands(commands.Cog):
                                 await obj.revoke_role(
                                     guild_snowflake=interaction.guild.id,
                                     member_snowflake=text_mute.member_snowflake,
-                                    role_snowflake=text_mute.role_snowflake
+                                    role_snowflake=text_mute.role_snowflake,
                                 )
                         elif isinstance(obj, AdministratorRole):
                             administrator_roles = AdministratorRole.select(
@@ -863,7 +875,7 @@ class AdminCommands(commands.Cog):
                             for administrator_role in administrator_roles:
                                 await obj.revoke_role(
                                     guild_snowflake=interaction.guild.id,
-                                    role_snowflake=administrator_role.role_snowflake
+                                    role_snowflake=administrator_role.role_snowflake,
                                 )
         elif target == "all" and await is_sysadmin_wrapper(source=interaction):
             if view.result:
@@ -878,7 +890,7 @@ class AdminCommands(commands.Cog):
                             await obj.revoke_role(
                                 guild_snowflake=interaction.guild.id,
                                 member_snowflake=ban.member_snowflake,
-                                role_snowflake=ban.role_snowflake
+                                role_snowflake=ban.role_snowflake,
                             )
                     elif isinstance(obj, TextMute):
                         text_mutes = TextMute.select(
@@ -888,7 +900,7 @@ class AdminCommands(commands.Cog):
                             await obj.revoke_role(
                                 guild_snowflake=interaction.guild.id,
                                 member_snowflake=text_mute.member_snowflake,
-                                role_snowflake=text_mute.role_snowflake
+                                role_snowflake=text_mute.role_snowflake,
                             )
                     elif isinstance(obj, AdministratorRole):
                         administrator_roles = AdministratorRole.select(
@@ -897,7 +909,7 @@ class AdminCommands(commands.Cog):
                         for administrator_role in administrator_roles:
                             await obj.revoke_role(
                                 guild_snowflake=interaction.guild.id,
-                                role_snowflake=administrator_role.role_snowflake
+                                role_snowflake=administrator_role.role_snowflake,
                             )
         else:
             state = StateService(source=interaction)
@@ -916,7 +928,8 @@ class AdminCommands(commands.Cog):
         ),
         *,
         category: Category = commands.parameter(
-            default="all", description="Specify one of: `alias`, `arole`, `all`, `ban`, `coord`, "
+            default="all",
+            description="Specify one of: `alias`, `arole`, `all`, `ban`, `coord`, "
             "flag`, `mod`, `temp`, `tmute`, `stage`, `stream`, `vegan`, `vmute` or `vr`.",
         ),
     ):
@@ -930,15 +943,22 @@ class AdminCommands(commands.Cog):
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/roles")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/rooms")
         view = VerifyView(
-            category=str(category), mention=object_dict.get("mention", "All"), author_snowflake=ctx.author.id, **kwargs
+            category=str(category),
+            mention=object_dict.get("mention", "All"),
+            author_snowflake=ctx.author.id,
+            **kwargs,
         )
         embed = view.build_embed()
         await ctx.reply(embed=embed, view=view)
         await view.wait()
         state = StateService(source=ctx)
-        if isinstance(object_dict.get('object', None), discord.Member):
+        if isinstance(object_dict.get("object", None), discord.Member):
             try:
-                await has_equal_or_lower_role_wrapper(source=ctx, member_snowflake=object_dict.get('id'), sender_snowflake=ctx.author.id)
+                await has_equal_or_lower_role_wrapper(
+                    source=ctx,
+                    member_snowflake=object_dict.get("id"),
+                    sender_snowflake=ctx.author.id,
+                )
             except HasEqualOrLowerRole() as e:
                 logger.warning(str(e).capitalize())
 
@@ -947,33 +967,31 @@ class AdminCommands(commands.Cog):
                     if "member" in obj.SCOPES:
                         if str(category) == "all":
                             await obj.delete(**kwargs)
-                            msg = (
-                                f"Deleted all associated database information for {object_dict.get('mention', None)}."
-                            )
+                            msg = f"Deleted all associated database information for {object_dict.get('mention', None)}."
                         elif str(category).lower() == obj.CATEGORY:
                             await obj.delete(**kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} for {object_dict.get('mention', None)}."
                         if isinstance(obj, Ban):
                             bans = Ban.select(
                                 guild_snowflake=obj.guild.id,
-                                member_snowflake=object_dict.get('id', None)
+                                member_snowflake=object_dict.get("id", None),
                             )
                             for ban in bans:
                                 await obj.revoke_role(
                                     guild_snowflake=obj.guild.id,
                                     member_snowflake=ban.member_snowflake,
-                                    role_snowflake=ban.role_snowflake
+                                    role_snowflake=ban.role_snowflake,
                                 )
                         elif isinstance(obj, TextMute):
                             text_mutes = TextMute.select(
                                 guild_snowflake=obj.guild.id,
-                                member_snowflake=object_dict.get('id', None)
+                                member_snowflake=object_dict.get("id", None),
                             )
                             for text_mute in text_mutes:
                                 await obj.revoke_role(
                                     guild_snowflake=obj.guild.id,
                                     member_snowflake=text_mute.member_snowflake,
-                                    role_snowflake=text_mute.role_snowflake
+                                    role_snowflake=text_mute.role_snowflake,
                                 )
         elif isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
             try:
@@ -981,55 +999,53 @@ class AdminCommands(commands.Cog):
             except NotGuildOwner() as e:
                 logger.warning(str(e).capitalize())
                 return state.end(warning=str(e).capitalize())
-    
+
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
                     if "channel" in obj.SCOPES:
                         if category == "all":
                             await obj.delete(**kwargs)
-                            msg = (
-                                f"Deleted all database information for {object_dict.get('mention')}."
-                            )
+                            msg = f"Deleted all database information for {object_dict.get('mention')}."
                         elif str(category).lower() == obj.CATEGORY:
                             await obj.delete(**kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('mention', None)}."
                         if isinstance(obj, Ban):
                             bans = Ban.select(
-                                channel_snowflake=object_dict.get('id', None),
+                                channel_snowflake=object_dict.get("id", None),
                                 guild_snowflake=obj.guild.id,
                             )
                             for ban in bans:
                                 await obj.revoke_role(
                                     guild_snowflake=obj.guild.id,
                                     member_snowflake=ban.member_snowflake,
-                                    role_snowflake=ban.role_snowflake
+                                    role_snowflake=ban.role_snowflake,
                                 )
                         elif isinstance(obj, TextMute):
                             text_mutes = TextMute.select(
-                                channel_snowflake=object_dict.get('id', None),
+                                channel_snowflake=object_dict.get("id", None),
                                 guild_snowflake=obj.guild.id,
                             )
                             for text_mute in text_mutes:
                                 await obj.revoke_role(
                                     guild_snowflake=obj.guild.id,
                                     member_snowflake=text_mute.member_snowflake,
-                                    role_snowflake=text_mute.role_snowflake
+                                    role_snowflake=text_mute.role_snowflake,
                                 )
-        elif isinstance(object_dict.get('object', None), discord.Guild):
+        elif isinstance(object_dict.get("object", None), discord.Guild):
             try:
                 await check(source=ctx, lowest_role="Guild Owner")
             except NotGuildOwner() as e:
                 logger.warning(str(e).capitalize())
                 return state.end(warning=str(e).capitalize())
-            
+
             if view.result:
                 for obj in dir_to_classes(dir_paths=dir_paths):
-                    if any(scope in obj.SCOPES for scope in ('guild', 'channel', 'member')):
+                    if any(
+                        scope in obj.SCOPES for scope in ("guild", "channel", "member")
+                    ):
                         if str(category).lower() == "all":
                             await obj.delete(**kwargs)
-                            msg = (
-                                f"Deleted all database information for {object_dict.get('name')}."
-                            )
+                            msg = f"Deleted all database information for {object_dict.get('name')}."
                         elif str(category).lower() == obj.CATEGORY:
                             await obj.delete(**kwargs)
                             msg = f"Deleted all associated {obj.PLURAL.lower()} in {object_dict.get('name', None)}."
@@ -1041,7 +1057,7 @@ class AdminCommands(commands.Cog):
                                 await obj.revoke_role(
                                     guild_snowflake=obj.guild.id,
                                     member_snowflake=ban.member_snowflake,
-                                    role_snowflake=ban.role_snowflake
+                                    role_snowflake=ban.role_snowflake,
                                 )
                         elif isinstance(obj, TextMute):
                             text_mutes = TextMute.select(
@@ -1051,7 +1067,7 @@ class AdminCommands(commands.Cog):
                                 await obj.revoke_role(
                                     guild_snowflake=obj.guild.id,
                                     member_snowflake=text_mute.member_snowflake,
-                                    role_snowflake=text_mute.role_snowflake
+                                    role_snowflake=text_mute.role_snowflake,
                                 )
                         elif isinstance(obj, AdministratorRole):
                             administrator_roles = AdministratorRole.select(
@@ -1060,7 +1076,7 @@ class AdminCommands(commands.Cog):
                             for administrator_role in administrator_roles:
                                 await obj.revoke_role(
                                     guild_snowflake=obj.guild.id,
-                                    role_snowflake=administrator_role.role_snowflake
+                                    role_snowflake=administrator_role.role_snowflake,
                                 )
         elif target == "all" and await is_sysadmin_wrapper(source=ctx):
             if view.result:
@@ -1075,7 +1091,7 @@ class AdminCommands(commands.Cog):
                         await obj.revoke_role(
                             guild_snowflake=obj.guild.id,
                             member_snowflake=ban.member_snowflake,
-                            role_snowflake=ban.role_snowflake
+                            role_snowflake=ban.role_snowflake,
                         )
                 elif isinstance(obj, TextMute):
                     text_mutes = TextMute.select(
@@ -1085,7 +1101,7 @@ class AdminCommands(commands.Cog):
                         await obj.revoke_role(
                             guild_snowflake=obj.guild.id,
                             member_snowflake=text_mute.member_snowflake,
-                            role_snowflake=text_mute.role_snowflake
+                            role_snowflake=text_mute.role_snowflake,
                         )
                 elif isinstance(obj, AdministratorRole):
                     administrator_roles = AdministratorRole.select(
@@ -1094,7 +1110,7 @@ class AdminCommands(commands.Cog):
                     for administrator_role in administrator_roles:
                         await obj.revoke_role(
                             guild_snowflake=obj.guild.id,
-                            role_snowflake=administrator_role.role_snowflake
+                            role_snowflake=administrator_role.role_snowflake,
                         )
         else:
             state = StateService(source=ctx)
@@ -1120,14 +1136,10 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         channel_dict = await do.determine_from_target(target=channel)
         if not isinstance(channel_dict.get("object", None), discord.abc.GuildChannel):
-            return await state.end(
-                warning=f"Invalid channel ID ({channel})."
-            )
+            return await state.end(warning=f"Invalid channel ID ({channel}).")
         member_dict = await do.determine_from_target(target=member)
         if not isinstance(member_dict.get("object", None), discord.Member):
-            return await state.end(
-                warning=f"Invalid member ID ({channel})."
-            )
+            return await state.end(warning=f"Invalid member ID ({channel}).")
         await has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=member_dict.get("id", None),
@@ -1169,14 +1181,10 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(ctx=ctx)
         channel_dict = await do.determine_from_target(target=channel)
         if not isinstance(channel_dict.get("object", None), discord.abc.GuildChannel):
-            return await state.end(
-                warning=f"Invalid channel ID ({channel})."
-            )
+            return await state.end(warning=f"Invalid channel ID ({channel}).")
         member_dict = await do.determine_from_target(target=member)
         if not isinstance(member_dict.get("object", None), discord.Member):
-            return await state.end(
-                warning=f"Invalid member ID ({channel})."
-            )
+            return await state.end(warning=f"Invalid member ID ({channel}).")
 
         await has_equal_or_lower_role_wrapper(
             source=ctx,
@@ -1211,7 +1219,7 @@ class AdminCommands(commands.Cog):
         try:
             with open(PATH_LOG, "r") as f:
                 content = f.readlines()[-lines:]
-                content = [line.split(' - ',3)[-1] for line in content]
+                content = [line.split(" - ", 3)[-1] for line in content]
         except FileNotFoundError:
             return await state.end(warning="Log file not found")
         output = "".join(content)
@@ -1235,7 +1243,7 @@ class AdminCommands(commands.Cog):
         try:
             with open(PATH_LOG, "r") as f:
                 content = f.readlines()[-lines:]
-                content = [line.split(' - ',3)[-1] for line in content]
+                content = [line.split(" - ", 3)[-1] for line in content]
         except FileNotFoundError:
             return await state.end(warning="Log file not found")
         output = "".join(content)
@@ -2310,7 +2318,9 @@ class AdminCommands(commands.Cog):
                                     target=channel
                                 )
                                 resolved_channels.append(channel_dict.get("id", None))
-                                channel_mentions.append(channel_dict.get("mention", None))
+                                channel_mentions.append(
+                                    channel_dict.get("mention", None)
+                                )
                             except Exception:
                                 failed_snowflakes.append(snowflake)
                                 continue
@@ -2416,7 +2426,9 @@ class AdminCommands(commands.Cog):
                                     target=channel
                                 )
                                 resolved_channels.append(channel_dict.get("id", None))
-                                channel_mentions.append(channel_dict.get("mention", None))
+                                channel_mentions.append(
+                                    channel_dict.get("mention", None)
+                                )
                             except Exception:
                                 failed_snowflakes.append(snowflake)
                                 continue
@@ -2520,7 +2532,9 @@ class AdminCommands(commands.Cog):
                 lines.append(
                     f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
                 )
-                if isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
+                if isinstance(
+                    object_dict.get("object", None), discord.abc.GuildChannel
+                ):
                     lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                 field_count += 1
                 if field_count >= chunk_size:
@@ -2611,7 +2625,9 @@ class AdminCommands(commands.Cog):
                 lines.append(
                     f"{status}**Channel:** {channel.mention}\n**Type:** {entry['entry_type']}"
                 )
-                if isinstance(object_dict.get("object", None), discord.abc.GuildChannel):
+                if isinstance(
+                    object_dict.get("object", None), discord.abc.GuildChannel
+                ):
                     lines.append(f"**Snowflakes:** {entry['snowflakes']}")
                 field_count += 1
                 if field_count >= chunk_size:

@@ -84,9 +84,9 @@ class Aliases(commands.Cog):
         self.invincible_members = Invincibility.get_invincible_members()
 
     async def handle_ban_alias(
-            self, alias, action_information, channel, member, message, state
+        self, alias, action_information, channel, member, message, state
     ):
-        
+
         ban = action_information["alias_class"](
             channel_snowflake=action_information["action_channel_snowflake"],
             expires_in=action_information["action_expires_in"],
@@ -122,13 +122,13 @@ class Aliases(commands.Cog):
             return await state.end(
                 warning=f"Role `{alias.role_snowflake}` was not found."
             )
-        
+
         await action_information["alias_class"].administer_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=alias.role_snowflake,
-            state=state
-        )        
+            state=state,
+        )
 
         is_channel_scope = False
         if member.voice and member.voice.channel:
@@ -153,7 +153,7 @@ class Aliases(commands.Cog):
             member=member,
             message=message,
             reason=action_information["action_reason"],
-        )        
+        )
 
         embed = await action_information["alias_class"].act_embed(
             action_information=action_information, source=message
@@ -162,16 +162,16 @@ class Aliases(commands.Cog):
         return await state.end(success=embed)
 
     async def handle_unban_alias(
-            self, alias, action_information, channel, member, message, state
+        self, alias, action_information, channel, member, message, state
     ):
-        
+
         is_channel_scope = False
 
         await TextMute.revoke_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=alias.role_snowflake,
-            state=state
+            state=state,
         )
 
         if member.voice and member.voice.channel:
@@ -190,7 +190,7 @@ class Aliases(commands.Cog):
             member=member,
             message=message,
             reason=action_information["action_reason"],
-        )        
+        )
 
         embed = await action_information["alias_class"].undo_embed(
             action_information=action_information, source=message
@@ -201,7 +201,7 @@ class Aliases(commands.Cog):
     async def handle_hide_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         hide = action_information["alias_class"](
             channel_snowflake=action_information["action_channel_snowflake"],
             expires_in=action_information["action_expires_in"],
@@ -217,14 +217,14 @@ class Aliases(commands.Cog):
             return await state.end(
                 warning=f"Role `{alias.role_snowflake}` was not found."
             )
-        
+
         await action_information["alias_class"].administer_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=alias.role_snowflake,
-            state=state
+            state=state,
         )
-        
+
         is_channel_scope = False
         if (
             member.voice
@@ -236,7 +236,7 @@ class Aliases(commands.Cog):
                 await member.move_to(None, reason=action_information["action_reason"])
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
-            
+
         await Streaming.send_entry(
             alias=alias,
             channel=channel,
@@ -258,7 +258,7 @@ class Aliases(commands.Cog):
     async def handle_vegan_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         vegan = action_information["alias_class"](
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
@@ -286,7 +286,7 @@ class Aliases(commands.Cog):
     async def handle_flag_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         flag = action_information["alias_class"](
             channel_snowflake=action_information["action_channel_snowflake"],
             guild_snowflake=action_information["action_guild_snowflake"],
@@ -320,7 +320,7 @@ class Aliases(commands.Cog):
     async def handle_role_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         role_obj = action_information["alias_class"](
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
@@ -359,7 +359,7 @@ class Aliases(commands.Cog):
     async def handle_text_mute_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         text_mute = action_information["alias_class"](
             channel_snowflake=action_information["action_channel_snowflake"],
             expires_in=action_information["action_expires_in"],
@@ -374,7 +374,7 @@ class Aliases(commands.Cog):
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=alias.role_snowflake,
-            state=state
+            state=state,
         )
 
         await Streaming.send_entry(
@@ -398,7 +398,7 @@ class Aliases(commands.Cog):
     async def handle_voice_mute_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         voice_mute = action_information["alias_class"](
             channel_snowflake=action_information["action_channel_snowflake"],
             expires_in=action_information["action_expires_in"],
@@ -422,7 +422,7 @@ class Aliases(commands.Cog):
                     )
                 except discord.Forbidden as e:
                     return await state.end(error=str(e).capitalize())
-                
+
         await Streaming.send_entry(
             alias=alias,
             channel=channel,
@@ -444,20 +444,20 @@ class Aliases(commands.Cog):
     async def handle_unhide_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         is_channel_scope = False
 
         await action_information["alias_class"].delete(
             channel_snowflake=action_information["action_channel_snowflake"],
             guild_snowflake=action_information["action_guild_snowflake"],
-            member_snowflake=action_information["action_member_snowflake"],     
+            member_snowflake=action_information["action_member_snowflake"],
         )
 
         await action_information["alias_class"].revoke_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=alias.role_snowflake,
-            state=state
+            state=state,
         )
 
         await Streaming.send_entry(
@@ -485,7 +485,7 @@ class Aliases(commands.Cog):
         await action_information["alias_class"].delete(
             channel_snowflake=action_information["action_channel_snowflake"],
             guild_snowflake=action_information["action_guild_snowflake"],
-            member_snowflake=action_information["action_member_snowflake"],     
+            member_snowflake=action_information["action_member_snowflake"],
         )
 
         await Streaming.send_entry(
@@ -509,11 +509,11 @@ class Aliases(commands.Cog):
     async def handle_unflag_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         await action_information["alias_class"].delete(
             channel_snowflake=action_information["action_channel_snowflake"],
             guild_snowflake=action_information["action_guild_snowflake"],
-            member_snowflake=action_information["action_member_snowflake"],     
+            member_snowflake=action_information["action_member_snowflake"],
         )
 
         bot = DiscordBot.get_instance()
@@ -544,22 +544,21 @@ class Aliases(commands.Cog):
     async def handle_unmute_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         is_channel_scope = False
 
         await action_information["alias_class"].delete(
             channel_snowflake=action_information["action_channel_snowflake"],
             guild_snowflake=action_information["action_guild_snowflake"],
-            member_snowflake=action_information["action_member_snowflake"],     
+            member_snowflake=action_information["action_member_snowflake"],
         )
-        
+
         if member.voice and member.voice.channel:
             try:
                 is_channel_scope = True
                 await member.edit(mute=False)
             except discord.Forbidden as e:
                 return await state.end(error=str(e).capitalize())
-
 
         await Streaming.send_entry(
             alias=alias,
@@ -582,7 +581,7 @@ class Aliases(commands.Cog):
     async def handle_unrole_alias(
         self, alias, action_information, channel, member, message, state
     ):
-        
+
         role = message.guild.get_role(alias.role_snowflake)
         if not role:
             return await state.end(
@@ -623,16 +622,15 @@ class Aliases(commands.Cog):
         await action_information["alias_class"].delete(
             channel_snowflake=action_information["action_channel_snowflake"],
             guild_snowflake=action_information["action_guild_snowflake"],
-            member_snowflake=action_information["action_member_snowflake"],     
+            member_snowflake=action_information["action_member_snowflake"],
         )
 
         await action_information["alias_class"].revoke_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=alias.role_snowflake,
-            state=state
+            state=state,
         )
-
 
         await Streaming.send_entry(
             alias=alias,

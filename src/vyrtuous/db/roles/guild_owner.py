@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from datetime import datetime
 from typing import Optional, Union
 
@@ -27,6 +28,7 @@ from vyrtuous.db.roles.developer import is_developer_wrapper
 from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
+
 
 @skip_db_discovery
 class NotGuildOwner(commands.CheckFailure):
@@ -88,7 +90,7 @@ class GuildOwner(DatabaseFactory):
 
     REQUIRED_INSTANTIATION_ARGS = ["guild_snowflake", "member_snowflake"]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
-    
+
     TABLE_NAME = "guild_owners"
 
     def __init__(

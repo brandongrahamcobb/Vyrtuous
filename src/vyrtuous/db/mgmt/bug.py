@@ -27,6 +27,7 @@ from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.logger import logger
 from vyrtuous.utils.emojis import get_random_emoji
 
+
 class Bug(DatabaseFactory):
 
     ACT = "bug"
@@ -35,7 +36,7 @@ class Bug(DatabaseFactory):
     SCOPES = ["channels"]
     SINGULAR = "Bug"
     UNDO = None
-    
+
     REQUIRED_INSTANTIATION_ARGS = [
         "channel_snowflake",
         "guild_snowflake",

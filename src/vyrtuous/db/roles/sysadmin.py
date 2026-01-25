@@ -27,6 +27,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
+
 @skip_db_discovery
 class NotSysadmin(commands.CheckFailure):
     def __init__(self, message="Member is not a sysadmin."):
@@ -71,7 +72,7 @@ class Sysadmin(DatabaseFactory):
 
     REQUIRED_INSTANTIATION_ARGS = ["member_snowflake"]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
-    
+
     TABLE_NAME = "sysadmin"
 
     def __init__(
@@ -85,4 +86,4 @@ class Sysadmin(DatabaseFactory):
         self.created_at = created_at
         self.member_snowflake = member_snowflake
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
-        self.updated_at = updated_at    
+        self.updated_at = updated_at

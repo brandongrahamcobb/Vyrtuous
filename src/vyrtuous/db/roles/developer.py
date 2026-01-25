@@ -27,6 +27,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
+
 @skip_db_discovery
 class NotDeveloper(commands.CheckFailure):
     def __init__(self, message="Member is not a sysadmin or developer."):
@@ -73,14 +74,13 @@ class Developer(DatabaseFactory):
     SINGULAR = "Developer"
     UNDO = "dev"
 
-    REQUIRED_INSTANTIATION_ARGS = ["guild_snowflake", "member_snowflake"]
+    REQUIRED_INSTANTIATION_ARGS = ["member_snowflake"]
     OPTIONAL_ARGS = ["created_at", "updated_at"]
 
     TABLE_NAME = "developers"
 
     def __init__(
         self,
-        guild_snowflake: int,
         member_snowflake: int,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
@@ -88,7 +88,6 @@ class Developer(DatabaseFactory):
     ):
         super().__init__()
         self.created_at = created_at
-        self.guild_snowflake = guild_snowflake
         self.member_snowflake = member_snowflake
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.updated_at = updated_at

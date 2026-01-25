@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from datetime import datetime, timezone
 
 import discord
@@ -22,50 +23,68 @@ import discord
 from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.fields.duration import DurationObject
 
+
 class DurationModal(discord.ui.Modal):
 
     def __init__(self, action_information):
-        super().__init__(
-            title=f'{action_information["alias_class"].SINGULAR} Reason'
-        )
+        super().__init__(title=f'{action_information["alias_class"].SINGULAR} Reason')
         self.action_information = action_information
         self.duration = discord.ui.TextInput(
-            label='Type the duration',
+            label="Type the duration",
             style=discord.TextStyle.paragraph,
             required=True,
-            default=DurationObject.from_expires_in_to_str(self.action_information.get("action_existing", None).expires_in) or "",
+            default=DurationObject.from_expires_in_to_str(
+                self.action_information.get("action_existing", None).expires_in
+            )
+            or "",
         )
         self.add_item(self.duration)
 
     async def on_submit(self, interaction):
-        channel = interaction.guild.get_channel(self.action_information.get('action_channel_snowflake', None))
+        channel = interaction.guild.get_channel(
+            self.action_information.get("action_channel_snowflake", None)
+        )
         duration_obj = DurationObject(self.duration.value)
         action_channel_cap = await Alias.generate_cap_duration(
-            channel_snowflake=self.action_information.get("action_channel_snowflake", None),
+            channel_snowflake=self.action_information.get(
+                "action_channel_snowflake", None
+            ),
             guild_snowflake=interaction.guild.id,
             moderation_type=self.action_information.get("alias_class", None).ACT,
         )
         expires_in_timedelta = DurationObject(self.duration.value).to_timedelta()
         if (
             self.action_information["action_existing"]
-            and expires_in_timedelta.total_seconds()
-            > action_channel_cap
+            and expires_in_timedelta.total_seconds() > action_channel_cap
             or duration_obj.number == 0
         ):
             if self.action_information.get("action_executor_role", None) == "Moderator":
-                duration_str = DurationObject.from_seconds(
-                    action_channel_cap
-                )
-                await interaction.response.send_message(content=f"Cannot set the "
+                duration_str = DurationObject.from_seconds(action_channel_cap)
+                await interaction.response.send_message(
+                    content=f"Cannot set the "
                     f"{self.action_information['alias_class'].SINGULAR} beyond {duration_str} as a "
                     f"{self.action_information.get("action_executor_role", None)} in {channel.mention}."
                 )
         where_kwargs = {
-            "channel_snowflake": self.action_information.get('action_channel_snowflake', None),
-            "member_snowflake": self.action_information.get('action_member_snowflake', None)
+            "channel_snowflake": self.action_information.get(
+                "action_channel_snowflake", None
+            ),
+            "member_snowflake": self.action_information.get(
+                "action_member_snowflake", None
+            ),
         }
         set_kwargs = {
-            "expires_in": datetime.now(timezone.utc) + DurationObject(self.duration.value).to_timedelta() if duration_obj.number != 0 else None
+            "expires_in": (
+                datetime.now(timezone.utc)
+                + DurationObject(self.duration.value).to_timedelta()
+                if duration_obj.number != 0
+                else None
+            )
         }
-        await self.action_information.get('alias_class', None).update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
-        await interaction.response.send_message(content=f"Duration has been updated to {DurationObject(self.duration.value)}.", ephemeral=True)
+        await self.action_information.get("alias_class", None).update(
+            where_kwargs=where_kwargs, set_kwargs=set_kwargs
+        )
+        await interaction.response.send_message(
+            content=f"Duration has been updated to {DurationObject(self.duration.value)}.",
+            ephemeral=True,
+        )

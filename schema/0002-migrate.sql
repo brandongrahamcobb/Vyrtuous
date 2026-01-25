@@ -82,13 +82,13 @@ END;
 
 DELETE FROM command_aliases
 WHERE alias_type NOT IN (
-    'vegan','carnist','vmute','unvmute','ban','unban','flag','unflag','tmute','untmute','role','unrole'
+    'vegan','hide','vmute','ban','flag','tmute','role'
 );
 
 ALTER TABLE command_aliases
 ADD CONSTRAINT command_aliases_alias_type_check
 CHECK (alias_type IN (
-    'vegan','carnist','vmute','unvmute','ban','unban','flag','unflag','tmute','untmute','role','unrole'
+    'vegan','vmute','ban','flag','tmute','role','hide'
 ));
 
 COMMIT;
@@ -102,8 +102,6 @@ ALTER TABLE active_bans
 ADD COLUMN role_snowflake BIGINT;
 ALTER TABLE active_text_mutes
 ADD COLUMN role_snowflake BIGINT;
-DELETE FROM command_aliases
-WHERE alias_type IN ('unban', 'unrole', 'untmute', 'unvmute', 'unflag', 'carnist');
 ALTER TABLE developer_logs
 RENAME COLUMN developer_snowflakes TO member_snowflakes;
 ALTER TABLE developer_logs RENAME TO bug_tracking;

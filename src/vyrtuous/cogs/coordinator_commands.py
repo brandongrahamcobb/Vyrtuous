@@ -70,14 +70,10 @@ class CoordinatorCommands(commands.Cog):
 
         channel_dict = await do.determine_from_target(target=channel)
         if not isinstance(channel_dict.get("object", None), discord.abc.GuildChannel):
-            return await state.end(
-                warning=f"Invalid channel ID ({channel})."
-            )
+            return await state.end(warning=f"Invalid channel ID ({channel}).")
         member_dict = await do.determine_from_target(target=member)
         if not isinstance(member_dict.get("object", None), discord.Member):
-            return await state.end(
-                warning=f"Invalid member ID ({channel})."
-            )
+            return await state.end(warning=f"Invalid member ID ({channel}).")
         await has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=member_dict.get("id", None),
@@ -122,14 +118,10 @@ class CoordinatorCommands(commands.Cog):
 
         channel_dict = await do.determine_from_target(target=channel)
         if not isinstance(channel_dict.get("object", None), discord.abc.GuildChannel):
-            return await state.end(
-                warning=f"Invalid channel ID ({channel})."
-            )
+            return await state.end(warning=f"Invalid channel ID ({channel}).")
         member_dict = await do.determine_from_target(target=member)
         if not isinstance(member_dict.get("object", None), discord.Member):
-            return await state.end(
-                warning=f"Invalid member ID ({channel})."
-            )
+            return await state.end(warning=f"Invalid member ID ({channel}).")
         await has_equal_or_lower_role_wrapper(
             source=ctx,
             member_snowflake=member_dict.get("id", None),

@@ -70,28 +70,29 @@ class SysadminCommands(commands.Cog):
                 warning=f"Unresolved issue not found for reference: {reference}."
             )
         member_snowflakes = bug.member_snowflakes
-        where_kwargs = {
-            "id": bug.id
-        }
+        where_kwargs = {"id": bug.id}
         member_snowflakes = bug.member_snowflakes
         if developer.member_snowflake in bug.member_snowflakes:
             member_snowflakes.remove(developer.member_snowflake)
-            set_kwargs = {
-                "member_snowflakes": member_snowflakes
-            }
+            set_kwargs = {"member_snowflakes": member_snowflakes}
             await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(action="unassigned", member_snowflake=developer.member_snowflake, source=interaction)
+            embed = await bug.create_embed(
+                action="unassigned",
+                member_snowflake=developer.member_snowflake,
+                source=interaction,
+            )
             return await state.end(success=embed)
         else:
             member_snowflakes.append(developer.member_snowflake)
-            set_kwargs = {
-                "member_snowflakes": member_snowflakes
-            }
+            set_kwargs = {"member_snowflakes": member_snowflakes}
             await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(action="assigned", member_snowflake=developer.member_snowflake, source=interaction)
+            embed = await bug.create_embed(
+                action="assigned",
+                member_snowflake=developer.member_snowflake,
+                source=interaction,
+            )
             await member_dict.get("object", None).send(embed=embed)
             return await state.end(success=embed)
-
 
     # DONE
     @commands.command(name="assign", help="Assign developer.")
@@ -124,25 +125,27 @@ class SysadminCommands(commands.Cog):
                 warning=f"Unresolved issue not found for reference: {reference}."
             )
         member_snowflakes = bug.member_snowflakes
-        where_kwargs = {
-            "id": bug.id
-        }
+        where_kwargs = {"id": bug.id}
         member_snowflakes = bug.member_snowflakes
         if developer.member_snowflake in bug.member_snowflakes:
             member_snowflakes.remove(developer.member_snowflake)
-            set_kwargs = {
-                "member_snowflakes": member_snowflakes
-            }
+            set_kwargs = {"member_snowflakes": member_snowflakes}
             await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(action="unassigned", member_snowflake=developer.member_snowflake, source=ctx)
+            embed = await bug.create_embed(
+                action="unassigned",
+                member_snowflake=developer.member_snowflake,
+                source=ctx,
+            )
             return await state.end(success=embed)
         else:
             member_snowflakes.append(developer.member_snowflake)
-            set_kwargs = {
-                "member_snowflakes": member_snowflakes
-            }
+            set_kwargs = {"member_snowflakes": member_snowflakes}
             await bug.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-            embed = await bug.create_embed(action="assigned", member_snowflake=developer.member_snowflake, source=ctx)
+            embed = await bug.create_embed(
+                action="assigned",
+                member_snowflake=developer.member_snowflake,
+                source=ctx,
+            )
             await member_dict.get("object", None).send(embed=embed)
             return await state.end(success=embed)
 

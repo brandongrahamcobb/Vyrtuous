@@ -35,6 +35,7 @@ from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.roles.administrator import Administrator, AdministratorRole
 from vyrtuous.db.roles.coordinator import Coordinator
+from vyrtuous.db.roles.guild_owner import GuildOwner
 from vyrtuous.db.roles.moderator import Moderator
 from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
@@ -79,6 +80,19 @@ class EventListeners(commands.Cog):
         self.flags = await Flag.select()
 
     @commands.Cog.listener()
+    async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
+        if before.owner_id != after.owner_id:
+            where_kwargs = {
+                "guild_snowflake": before.guild.id,
+                "member_snowflake": before.owner_id,
+            }
+            set_kwargs = {
+                "guild_snowflake": after.guild.id,
+                "member_snowflake": after.owner_id,
+            }
+            await GuildOwner.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+
+    @commands.Cog.listener()
     async def on_guild_channel_grant(self, channel: discord.abc.GuildChannel):
         guild = channel.guild
         name = channel.name
@@ -104,14 +118,6 @@ class EventListeners(commands.Cog):
         await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
         await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
         await VoiceMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-        bans = await Ban.select(guild_snowflake=guild.id)
-        for ban in bans:
-            member = self.bot.get_user(ban.member_snowflake)
-            await channel.set_permissions(member=member, view_channel=False)
-        text_mutes = await TextMute.select(guild_snowflake=guild.id)
-        for text_mute in text_mutes:
-            member = self.bot.get_user(text_mute.member_snowflake)
-            await channel.set_permissions(member=member, send_messages=False)
 
     @commands.Cog.listener()
     async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
@@ -273,7 +279,7 @@ class EventListeners(commands.Cog):
                     channel_snowflake=before.channel.id,
                     guild_snowflake=before.channel.guild.id,
                     member_snowflake=member.id,
-                    singular=True
+                    singular=True,
                 )
                 if not ban:
                     await VoiceMute.delete(
@@ -414,9 +420,7 @@ class EventListeners(commands.Cog):
             sender_snowflake=message.author.id,
         )
         action_duration = (
-            DurationObject(args[2])
-            if len(args) > 2
-            else DurationObject("8h")
+            DurationObject(args[2]) if len(args) > 2 else DurationObject("8h")
         )
         action_reason = " ".join(args[3:]) if len(args) > 3 else "No reason provided."
 
@@ -468,7 +472,7 @@ class EventListeners(commands.Cog):
 
         action_expires_in = datetime.now(timezone.utc) + expires_in_timedelta
         action_information["action_expires_in"] = action_expires_in
-        
+
         await alias.handlers[alias.alias_type](
             alias=alias,
             action_information=action_information,

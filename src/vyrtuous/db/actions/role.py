@@ -25,8 +25,10 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
 
+@skip_db_discovery
 class Role(DatabaseFactory):
 
     ACT = "role"
@@ -43,7 +45,7 @@ class Role(DatabaseFactory):
     ]
     OPTIONAL_ARGS = ["channel_snowflake", "created_at", "updated_at"]
 
-    TABLE_NAME = "dummy"
+    TABLE_NAME = None
 
     def __init__(
         self,

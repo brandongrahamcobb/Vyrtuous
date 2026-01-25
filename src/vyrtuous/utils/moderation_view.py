@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from pathlib import Path
 
 import discord
@@ -22,6 +23,7 @@ import discord
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.check import has_equal_or_lower_role_wrapper
 from vyrtuous.utils.dir_to_classes import dir_to_classes
+
 
 class ModerationView(discord.ui.View):
 
@@ -39,7 +41,7 @@ class ModerationView(discord.ui.View):
 
     async def interaction_check(self, interaction):
         return interaction.user.id == self.author_snowflake
-    
+
     async def setup(self):
         self.channel_select.options = await self._build_channel_options()
         self.category_select.options = await self._build_category_options()
@@ -50,7 +52,7 @@ class ModerationView(discord.ui.View):
             action = await category.select(
                 guild_snowflake=self.interaction.guild.id,
                 member_snowflake=self.member_snowflake,
-                singular=True
+                singular=True,
             )
             if action:
                 channel = self.interaction.guild.get_channel(action.channel_snowflake)
@@ -60,14 +62,14 @@ class ModerationView(discord.ui.View):
             for ch in channels
             if isinstance(ch, discord.VoiceChannel)
         ]
-    
+
     async def _build_category_options(self):
         actions = []
         for category in self.categories:
             action = await category.select(
                 guild_snowflake=self.interaction.guild.id,
                 member_snowflake=self.member_snowflake,
-                singular=True
+                singular=True,
             )
             if action:
                 actions.append(category)
@@ -83,9 +85,7 @@ class ModerationView(discord.ui.View):
     )
     async def channel_select(self, interaction, select):
         channel = interaction.guild.get_channel(int(select.values[0]))
-        self.action_information["action_channel_snowflake"] = (
-            channel.id
-        )
+        self.action_information["action_channel_snowflake"] = channel.id
         self.channel_select.placeholder = channel.name
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
@@ -98,30 +98,33 @@ class ModerationView(discord.ui.View):
         category_name = select.values[0]
         category = next(c for c in self.categories if c.__name__ == category_name)
         self.category_select.placeholder = category.ACT
-        self.action_information["alias_class"] = (
-            category
-        )
+        self.action_information["alias_class"] = category
         await interaction.response.defer()
         await interaction.edit_original_response(view=self)
-    
-    @discord.ui.button(label='Submit', style=discord.ButtonStyle.green)
+
+    @discord.ui.button(label="Submit", style=discord.ButtonStyle.green)
     async def submit(self, interaction, button):
         executor_role = await has_equal_or_lower_role_wrapper(
             source=interaction,
             member_snowflake=self.member_snowflake,
             sender_snowflake=interaction.user.id,
         )
-        action_existing = await self.action_information.get('alias_class', None).select(
-            channel_snowflake=self.action_information.get('action_channel_snowflake', None),
+        action_existing = await self.action_information.get("alias_class", None).select(
+            channel_snowflake=self.action_information.get(
+                "action_channel_snowflake", None
+            ),
             member_snowflake=self.member_snowflake,
-            singular=True
+            singular=True,
         )
         self.action_information["action_executor_role"] = executor_role
-        self.action_information['action_member_snowflake'] = self.member_snowflake
-        self.action_information['action_existing'] = action_existing
+        self.action_information["action_member_snowflake"] = self.member_snowflake
+        self.action_information["action_existing"] = action_existing
         if hasattr(action_existing, "expires_in"):
             if DurationObject.from_expires_in_to_str(action_existing.expires_in) == 0:
-                await interaction.response.send_message(content="This moderation is permanent and can only be undone, not modified.", ephemeral=True)
+                await interaction.response.send_message(
+                    content="This moderation is permanent and can only be undone, not modified.",
+                    ephemeral=True,
+                )
                 await interaction.message.delete()
                 self.stop()
         modal = self.modal(action_information=self.action_information)

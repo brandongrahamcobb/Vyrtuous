@@ -80,9 +80,9 @@ class GuildOwnerCommands(commands.Cog):
                     guild_snowflake=interaction.guild.id,
                     member_snowflake=administrator.member_snowflake,
                 )
-                revoked_members.setdefault(administrator.guild_snowflake, {}).setdefault(
-                    role_dict.get("id", None), []
-                ).append(member)
+                revoked_members.setdefault(
+                    administrator.guild_snowflake, {}
+                ).setdefault(role_dict.get("id", None), []).append(member)
         else:
             revoked_members = {}
 
@@ -121,9 +121,9 @@ class GuildOwnerCommands(commands.Cog):
             )
         else:
             members = granted_members.get(interaction.guild.id, {}).get(
-            role_dict.get("id", None), []
-        )
-    
+                role_dict.get("id", None), []
+            )
+
         chunks = []
         chunk = []
         for member in members:
@@ -166,13 +166,13 @@ class GuildOwnerCommands(commands.Cog):
         action = None
         chunk_size, field_count, pages = 7, 0, []
         title = f"{get_random_emoji()} Administrators and Roles"
-    
+
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-    
+
         role_dict = await do.determine_from_target(target=role)
         kwargs = role_dict.get("columns", None)
-    
+
         administrators = await Administrator.select(
             role_snowflakes=role_dict.get("id", None), inside=True
         )
@@ -193,9 +193,9 @@ class GuildOwnerCommands(commands.Cog):
                     guild_snowflake=ctx.guild.id,
                     member_snowflake=administrator.member_snowflake,
                 )
-                revoked_members.setdefault(administrator.guild_snowflake, {}).setdefault(
-                    role_dict.get("id", None), []
-                ).append(member)
+                revoked_members.setdefault(
+                    administrator.guild_snowflake, {}
+                ).setdefault(role_dict.get("id", None), []).append(member)
         else:
             revoked_members = {}
         if action != "revoked":
@@ -212,7 +212,7 @@ class GuildOwnerCommands(commands.Cog):
                 )
                 await administrator.create()
                 granted_members[ctx.guild.id][role_dict.get("id", None)].append(member)
-    
+
         embed = discord.Embed(
             title=title,
             description=f"`{role_dict.get('name', None)}` was `{action}`.",
@@ -229,8 +229,8 @@ class GuildOwnerCommands(commands.Cog):
             )
         else:
             members = granted_members.get(ctx.guild.id, {}).get(
-            role_dict.get("id", None), []
-        )
+                role_dict.get("id", None), []
+            )
         chunks = []
         chunk = []
         for member in members:
@@ -261,7 +261,7 @@ class GuildOwnerCommands(commands.Cog):
             embed.set_footer(text=f"Page {page_number}")
             pages.append(embed)
             page_number += 1
-    
+
         await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
 
     # DONE

@@ -30,6 +30,7 @@ from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
+
 @skip_db_discovery
 class NotAdministrator(commands.CheckFailure):
     def __init__(
@@ -155,7 +156,7 @@ class AdministratorRole(DatabaseFactory):
         role = guild.get_role(role_snowflake)
         for member in role.members:
             try:
-                member.add_roles(role, reason="Granting administrator role.")
+                await member.add_roles(role, reason="Granting administrator role.")
             except discord.Forbidden:
                 continue
 
@@ -166,6 +167,6 @@ class AdministratorRole(DatabaseFactory):
         role = guild.get_role(role_snowflake)
         for member in role.members:
             try:
-                member.remove_roles(role, reason="Revoking a administrator role.")
+                await member.remove_roles(role, reason="Revoking a administrator role.")
             except discord.Forbidden:
                 continue

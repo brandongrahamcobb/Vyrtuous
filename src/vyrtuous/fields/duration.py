@@ -170,7 +170,7 @@ class DurationObject:
         else:
             number, unit = total_seconds, "s"
         return f"+{number}{unit}"
-    
+
     @classmethod
     def from_seconds(cls, seconds: int):
         duration = DurationObject(f"{seconds}s")

@@ -79,7 +79,8 @@ class Hide(DatabaseFactory):
         author = resolve_author(source=source)
         member = source.guild.get_member(action_information["action_member_snowflake"])
         embed = discord.Embed(
-            title=f"{get_random_emoji()} " f"{member.display_name} has been hidened",
+            title=f"{get_random_emoji()} "
+            f"{member.display_name}'s channel access has been revoked",
             description=(
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
@@ -100,7 +101,7 @@ class Hide(DatabaseFactory):
         member = source.guild.get_member(action_information["action_member_snowflake"])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
-            f"{member.display_name}'s hide has been removed",
+            f"{member.display_name}'s channel access has been restored",
             description=(
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
@@ -110,26 +111,29 @@ class Hide(DatabaseFactory):
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
-    
+
     @classmethod
-    async def administer_role(cls, guild_snowflake, member_snowflake, role_snowflake, state):
+    async def administer_role(
+        cls, guild_snowflake, member_snowflake, role_snowflake, state
+    ):
         bot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         member = guild.get_member(member_snowflake)
         role = guild.get_role(role_snowflake)
         try:
-            member.add_roles(role, reason="Administering a hide role.")
+            await member.add_roles(role, reason="Administering a hide role.")
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
     @classmethod
-    async def revoke_role(cls, guild_snowflake, member_snowflake, role_snowflake, state):
+    async def revoke_role(
+        cls, guild_snowflake, member_snowflake, role_snowflake, state
+    ):
         bot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         member = guild.get_member(member_snowflake)
         role = guild.get_role(role_snowflake)
         try:
-            member.remove_roles(role, reason="Revoking a hide role.")
+            await member.remove_roles(role, reason="Revoking a hide role.")
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
-

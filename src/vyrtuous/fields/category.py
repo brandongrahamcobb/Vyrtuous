@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from pathlib import Path
 
 from discord import app_commands
@@ -23,6 +24,7 @@ import discord
 
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 from vyrtuous.utils.logger import logger
+
 
 class CategoryObject:
 
@@ -35,7 +37,7 @@ class CategoryObject:
     @property
     def category(self):
         return self.__category
-    
+
     @category.setter
     def category(self, new_cat):
         dir_paths = []

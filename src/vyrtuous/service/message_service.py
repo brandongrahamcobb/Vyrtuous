@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from typing import Union
 import asyncio
 
@@ -23,6 +24,7 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.utils.logger import logger
+
 
 class MessageService:
 
@@ -37,7 +39,7 @@ class MessageService:
         file: discord.File = None,
         embed: discord.Embed = None,
         allowed_mentions: discord.AllowedMentions = discord.AllowedMentions.none(),
-        ephemeral: bool = None
+        ephemeral: bool = None,
     ):
         if isinstance(source, commands.Context):
             can_send = (
@@ -129,7 +131,7 @@ class MessageService:
         content=None,
         file=None,
         embed=None,
-        allowed_mentions=None
+        allowed_mentions=None,
     ):
         dm_channel = user.dm_channel
         if dm_channel is None:

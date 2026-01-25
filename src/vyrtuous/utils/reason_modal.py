@@ -15,17 +15,17 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 import discord
+
 
 class ReasonModal(discord.ui.Modal):
 
     def __init__(self, action_information):
-        super().__init__(
-            title=f'{action_information["alias_class"].SINGULAR} Reason'
-        )
+        super().__init__(title=f'{action_information["alias_class"].SINGULAR} Reason')
         self.action_information = action_information
         self.reason = discord.ui.TextInput(
-            label='Type the reason',
+            label="Type the reason",
             style=discord.TextStyle.paragraph,
             required=True,
             default=self.action_information.get("action_existing", None).reason or "",
@@ -34,11 +34,17 @@ class ReasonModal(discord.ui.Modal):
 
     async def on_submit(self, interaction):
         where_kwargs = {
-            "channel_snowflake": self.action_information.get('action_channel_snowflake', None),
-            "member_snowflake": self.action_information.get('action_member_snowflake', None)
+            "channel_snowflake": self.action_information.get(
+                "action_channel_snowflake", None
+            ),
+            "member_snowflake": self.action_information.get(
+                "action_member_snowflake", None
+            ),
         }
-        set_kwargs = {
-            "reason": self.reason.value
-        }
-        await self.action_information.get('alias_class', None).update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
-        await interaction.response.send_message(content="Reason has been updated.", ephemeral=True)
+        set_kwargs = {"reason": self.reason.value}
+        await self.action_information.get("alias_class", None).update(
+            where_kwargs=where_kwargs, set_kwargs=set_kwargs
+        )
+        await interaction.response.send_message(
+            content="Reason has been updated.", ephemeral=True
+        )

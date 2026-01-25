@@ -15,8 +15,10 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 import importlib.util
 import inspect
+
 
 def dir_to_classes(dir_paths):
     classes = []
@@ -29,10 +31,11 @@ def dir_to_classes(dir_paths):
             for _, cls in inspect.getmembers(module, inspect.isclass):
                 if cls.__module__ != module.__name__:
                     continue
-                if getattr(cls, '__skip_db_discovery__', False):
+                if getattr(cls, "__skip_db_discovery__", False):
                     continue
                 classes.append(cls)
     return classes
+
 
 def skip_db_discovery(cls):
     cls.__skip_db_discovery__ = True

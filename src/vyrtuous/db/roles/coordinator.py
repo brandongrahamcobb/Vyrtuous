@@ -29,6 +29,7 @@ from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 
+
 @skip_db_discovery
 class NotCoordinator(commands.CheckFailure):
     def __init__(

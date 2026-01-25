@@ -322,7 +322,9 @@ class ScheduledTasks(commands.Cog):
                         assigned_developer_mentions = []
                         for developer_snowflake in bug.member_snowflakes:
                             assigned_developer = self.bot.get_user(developer_snowflake)
-                            assigned_developer_mentions.append(assigned_developer.mention)
+                            assigned_developer_mentions.append(
+                                assigned_developer.mention
+                            )
                         embed.add_field(
                             name=f"Updated: {time_since_updated}",
                             value=f"**Link:** {msg.jump_url}\n**Developers:** {', '.join(assigned_developer_mentions)}\n**Notes:** {bug.notes}",
@@ -404,19 +406,29 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(hours=8)
     async def check_guild_owners(self):
         for guild in self.bot.guilds:
-            guild_owner = await GuildOwner.select(guild_snowflake=guild.id, singular=True)
+            guild_owner = await GuildOwner.select(
+                guild_snowflake=guild.id, singular=True
+            )
             if guild_owner and guild_owner.member_snowflake == guild.owner_id:
-                logger.info(f"Guild owner ({guild_owner.member_snowflake}) already in the db.")
+                logger.info(
+                    f"Guild owner ({guild_owner.member_snowflake}) already in the db."
+                )
                 continue
             else:
-                guild_owner = GuildOwner(guild_snowflake=guild.id, member_snowflake=guild.owner_id)
+                guild_owner = GuildOwner(
+                    guild_snowflake=guild.id, member_snowflake=guild.owner_id
+                )
                 await guild_owner.create()
-                logger.info(f"Guild owner ({guild_owner.member_snowflake}) added to the db.")
-    
+                logger.info(
+                    f"Guild owner ({guild_owner.member_snowflake}) added to the db."
+                )
+
     @tasks.loop(hours=8)
     async def check_sysadmin(self):
         member_snowflake = self.bot.config.get("discord_owner_id", None)
-        sysadmin = await Sysadmin.select(member_snowflake=member_snowflake, singular=True)
+        sysadmin = await Sysadmin.select(
+            member_snowflake=member_snowflake, singular=True
+        )
         if not sysadmin:
             sysadmin = Sysadmin(member_snowflake=member_snowflake)
             await sysadmin.create()

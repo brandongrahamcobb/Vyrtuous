@@ -123,7 +123,7 @@ class DevCommands(commands.Cog):
                         guild_snowflake=interaction.guild.id,
                         member_snowflake=member.id,
                         role_snowflake=role.id,
-                        state=state
+                        state=state,
                     )
             elif alias.alias_type == "tmute":
                 overwrite = discord.PermissionOverwrite(
@@ -233,7 +233,7 @@ class DevCommands(commands.Cog):
                         guild_snowflake=ctx.guild.id,
                         member_snowflake=member.id,
                         role_snowflake=role.id,
-                        state=state
+                        state=state,
                     )
             elif alias.alias_type == "tmute":
                 overwrite = discord.PermissionOverwrite(
@@ -308,7 +308,9 @@ class DevCommands(commands.Cog):
             title=f"{get_random_emoji()} " f"Cogs for {interaction.guild.me.name}",
             color=discord.Color.blurple(),
         )
-        for representation, cog in zip(sorted(DISCORD_COGS), sorted(DISCORD_COGS_CLASSES)):
+        for representation, cog in zip(
+            sorted(DISCORD_COGS), sorted(DISCORD_COGS_CLASSES)
+        ):
             if cog in self.bot.cogs:
                 loaded.append(representation)
             else:
@@ -332,7 +334,9 @@ class DevCommands(commands.Cog):
             title=f"{get_random_emoji()} " f"Cogs for {ctx.guild.me.name}",
             color=discord.Color.blurple(),
         )
-        for representation, cog in zip(sorted(DISCORD_COGS), sorted(DISCORD_COGS_CLASSES)):
+        for representation, cog in zip(
+            sorted(DISCORD_COGS), sorted(DISCORD_COGS_CLASSES)
+        ):
             if cog in self.bot.cogs:
                 loaded.append(representation)
             else:
@@ -367,14 +371,12 @@ class DevCommands(commands.Cog):
 
         bug = await Bug.select(id=reference, resolved=False, singular=True)
         if not bug:
-            return await state.end(warning=f"Unresolved issue not found for reference ({reference}).")
+            return await state.end(
+                warning=f"Unresolved issue not found for reference ({reference})."
+            )
         if action and action.lower() == "resolve":
-            where_kwargs = {
-                "id": reference
-            }
-            set_kwargs = {
-                "resolved": True
-            }
+            where_kwargs = {"id": reference}
+            set_kwargs = {"resolved": True}
             await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = (
                 "resolved the issue. The record "
@@ -384,12 +386,8 @@ class DevCommands(commands.Cog):
             await bug.append(notes)
             detail = "appended to the previous notes."
         elif action and action.lower() == "overwrite":
-            where_kwargs = {
-                "id": reference
-            }
-            set_kwargs = {
-                "notes": notes
-            }
+            where_kwargs = {"id": reference}
+            set_kwargs = {"notes": notes}
             await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = "overwrote the previous notes."
         return await state.end(
@@ -418,14 +416,12 @@ class DevCommands(commands.Cog):
 
         bug = await Bug.select(id=reference, resolved=False, singular=True)
         if not bug:
-            return await state.end(warning=f"Unresolved issue not found for reference ({reference}).")
+            return await state.end(
+                warning=f"Unresolved issue not found for reference ({reference})."
+            )
         if action and action.lower() == "resolve":
-            where_kwargs = {
-                "id": reference
-            }
-            set_kwargs = {
-                "resolved": True
-            }
+            where_kwargs = {"id": reference}
+            set_kwargs = {"resolved": True}
             await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = (
                 "resolved the issue. The record "
@@ -435,12 +431,8 @@ class DevCommands(commands.Cog):
             await bug.append(notes)
             detail = "appended to the previous notes."
         elif action and action.lower() == "overwrite":
-            where_kwargs = {
-                "id": reference
-            }
-            set_kwargs = {
-                "notes": notes
-            }
+            where_kwargs = {"id": reference}
+            set_kwargs = {"notes": notes}
             await Bug.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
             detail = "overwrote the previous notes"
         return await state.end(
@@ -492,9 +484,7 @@ class DevCommands(commands.Cog):
             messages[bug.message_snowflake]["developer_snowflakes"].extend(
                 bug.member_snowflakes
             )
-            messages[bug.message_snowflake]["notes"].append(
-                bug.notes
-            )
+            messages[bug.message_snowflake]["notes"].append(bug.notes)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)
@@ -617,9 +607,7 @@ class DevCommands(commands.Cog):
             messages[bug.message_snowflake]["developer_snowflakes"].extend(
                 bug.member_snowflakes
             )
-            messages[bug.message_snowflake]["notes"].append(
-                bug.notes
-            )
+            messages[bug.message_snowflake]["notes"].append(bug.notes)
 
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
         skipped_messages = await generate_skipped_messages(guild_dictionary)

@@ -40,7 +40,7 @@ class TextMute(DatabaseFactory):
         "channel_snowflake",
         "guild_snowflake",
         "member_snowflake",
-        "role_snowflake"
+        "role_snowflake",
     ]
     OPTIONAL_ARGS = ["created_at", "expires_in", "reason", "updated_at"]
 
@@ -111,25 +111,28 @@ class TextMute(DatabaseFactory):
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-
     @classmethod
-    async def administer_role(cls, guild_snowflake, member_snowflake, role_snowflake, state):
+    async def administer_role(
+        cls, guild_snowflake, member_snowflake, role_snowflake, state
+    ):
         bot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         member = guild.get_member(member_snowflake)
         role = guild.get_role(role_snowflake)
         try:
-            member.add_roles(role, reason="Administering a text-mute role.")
+            await member.add_roles(role, reason="Administering a text-mute role.")
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())
 
     @classmethod
-    async def revoke_role(cls, guild_snowflake, member_snowflake, role_snowflake, state):
+    async def revoke_role(
+        cls, guild_snowflake, member_snowflake, role_snowflake, state
+    ):
         bot = DiscordBot.get_instance()
         guild = bot.get_guild(guild_snowflake)
         member = guild.get_member(member_snowflake)
         role = guild.get_role(role_snowflake)
         try:
-            member.remove_roles(role, reason="Revoking a text-mute role.")
+            await member.remove_roles(role, reason="Revoking a text-mute role.")
         except discord.Forbidden as e:
             return await state.end(error=str(e).capitalize())

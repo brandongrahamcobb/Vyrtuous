@@ -42,7 +42,7 @@ class Flag(DatabaseFactory):
         "member_snowflake",
     ]
     OPTIONAL_ARGS = ["created_at", "reason", "updated_at"]
-    
+
     TABLE_NAME = "active_flags"
 
     def __init__(
