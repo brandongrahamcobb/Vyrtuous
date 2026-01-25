@@ -44,7 +44,7 @@ class DatabaseFactory(object):
             """,
                 *values,
             )
-        logger.info(f"Crated entry in {table_name}.")
+        logger.info(f"Created entry in {table_name}.")
 
     @classmethod
     async def delete(cls, **kwargs):

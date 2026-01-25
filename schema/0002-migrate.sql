@@ -99,9 +99,9 @@ DROP COLUMN channel_snowflake,
 ADD PRIMARY KEY (guild_snowflake, member_snowflake);
 ALTER TABLE active_stages DROP COLUMN member_snowflake;
 ALTER TABLE active_bans
-ADD COLUMN role_snowflake BIGINT;
+ADD COLUMN role_snowflake BIGINT NOT NULL;
 ALTER TABLE active_text_mutes
-ADD COLUMN role_snowflake BIGINT;
+ADD COLUMN role_snowflake BIGINT NOT NULL;
 ALTER TABLE developer_logs
 RENAME COLUMN developer_snowflakes TO member_snowflakes;
 ALTER TABLE developer_logs RENAME TO bug_tracking;
@@ -128,7 +128,6 @@ CREATE TABLE active_bans (
     expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
-    role_snowflake BIGINT NOT NULL,
     reason TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
