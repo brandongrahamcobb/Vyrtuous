@@ -92,7 +92,6 @@ class Aliases(commands.Cog):
             expires_in=action_information["action_expires_in"],
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
-            role_snowflake=alias.role_snowflake,
             reason=action_information["action_reason"],
         )
         await ban.create()
@@ -123,7 +122,7 @@ class Aliases(commands.Cog):
                 warning=f"Role `{alias.role_snowflake}` was not found."
             )
 
-        await action_information["alias_class"].administer_role(
+        await TextMute.administer_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=alias.role_snowflake,

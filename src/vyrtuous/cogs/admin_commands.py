@@ -121,7 +121,7 @@ class AdminCommands(commands.Cog):
                 f"Alias `{alias_name}`  of type `{category}` "
                 f"created successfully for channel {channel_dict.get("mention", None)}."
             )
-        if category in ("hide", "tmute", "role"):
+        if category in ("ban", "hide", "tmute", "role"):
             if not role and str(category) in ("hide", "tmute"):
                 for role in interaction.guild.roles:
                     if role.name == alias_name:
@@ -130,6 +130,10 @@ class AdminCommands(commands.Cog):
                         )
                 role_obj = await interaction.guild.create_role(name=alias_name)
                 role = str(role_obj.id)
+            elif not role and category == "ban":
+                return await state.end(
+                    warning="You must provide a preexisting text-mute role to associate with the ban."
+                )
             if role:
                 try:
                     role_dict = await do.determine_from_target(target=role)
@@ -139,10 +143,16 @@ class AdminCommands(commands.Cog):
                         warning="Provided role ({role}) was not found."
                     )
                 else:
+                    if category == "ban":
+                        text_mute = TextMute.select(role_snowflake=role_dict["id"])
+                        if not text_mute:
+                            return await state.end(
+                                warning=f"{role_dict.get("mention", None)} is not a text-mute role. You must provide a preexisting text-mute role to associate with the ban."
+                            )
                     kwargs.update(role_dict.get("columns", None))
                     msg = (
                         f"Alias `{alias_name}` of type `{category}` "
-                        f"created successfully"
+                        f"created successfully "
                         f"for role {role_dict.get("mention", None)}."
                     )
             else:
@@ -199,7 +209,7 @@ class AdminCommands(commands.Cog):
                 f"Alias `{alias_name}`  of type `{category}` "
                 f"created successfully for channel {channel_dict.get("mention", None)}."
             )
-        if category in ("hide", "tmute", "role"):
+        if category in ("ban", "hide", "tmute", "role"):
             if not role and category in ("hide", "tmute"):
                 for role in ctx.guild.roles:
                     if role.name == alias_name:
@@ -208,6 +218,10 @@ class AdminCommands(commands.Cog):
                         )
                 role_obj = await ctx.guild.create_role(name=alias_name)
                 role = str(role_obj.id)
+            elif not role and category == "ban":
+                return await state.end(
+                    warning="You must provide a preexisting text-mute role to associate with the ban."
+                )
             if role:
                 try:
                     role_dict = await do.determine_from_target(target=role)
@@ -217,10 +231,16 @@ class AdminCommands(commands.Cog):
                         warning="Provided role ({role}) was not found."
                     )
                 else:
+                    if category == "ban":
+                        text_mute = TextMute.select(role_snowflake=role_dict["id"])
+                        if not text_mute:
+                            return await state.end(
+                                warning=f"{role_dict.get("mention", None)} is not a text-mute role. You must provide a preexisting text-mute role to associate with the ban."
+                            )
                     kwargs.update(role_dict.get("columns", None))
                     msg = (
                         f"Alias `{alias_name}` of type `{category}` "
-                        f"created successfully"
+                        f"created successfully "
                         f"for role {role_dict.get("mention", None)}."
                     )
             else:
@@ -237,7 +257,6 @@ class AdminCommands(commands.Cog):
                 warning=f"Alias `{alias.alias_name}` already exists in {ctx.guild.name}."
             )
 
-        logger.info(category)
         alias = Alias(alias_name=alias_name, alias_type=str(category), **kwargs)
         await alias.create()
         return await state.end(success=msg)
