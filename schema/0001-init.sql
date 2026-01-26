@@ -158,7 +158,7 @@ CREATE TABLE active_flags (
 );
 
 CREATE TABLE command_aliases (
-    alias_type        TEXT NOT NULL CHECK (alias_type IN (
+    category        TEXT NOT NULL CHECK (category IN (
         'vegan', 'carnist', 'voice_mute', 'unvoice_mute', 'ban', 'unban', 'flag', 'unflag', 'text_mute', 'untext_mute', 'role', 'unrole'
     )),
     alias_name        TEXT NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE command_aliases (
     guild_snowflake   BIGINT NOT NULL,
     role_snowflake    BIGINT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (alias_name, alias_type, guild_snowflake)
+    PRIMARY KEY (alias_name, category, guild_snowflake)
 );
 
 CREATE TABLE active_caps (

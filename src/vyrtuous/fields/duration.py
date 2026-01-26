@@ -73,7 +73,7 @@ class DurationObject:
 
     @prefix.setter
     def prefix(self, value: str):
-        if (value not in self.PREFIXES) or value is None:
+        if (value not in DurationObject.PREFIXES) or value is None:
             raise commands.BadArgument(f"Invalid prefix: {value}")
         self._prefix = value
 
@@ -95,7 +95,7 @@ class DurationObject:
 
     @unit.setter
     def unit(self, value: str):
-        if value not in self.UNIT_MAP.values():
+        if value not in DurationObject.UNIT_MAP.values():
             raise commands.BadArgument(f"Invalid unit: {value}")
         self._unit = value
 

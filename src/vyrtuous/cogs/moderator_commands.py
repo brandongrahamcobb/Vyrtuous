@@ -531,7 +531,14 @@ class ModeratorCommands(commands.Cog):
             )
             guild_dictionary[alias.guild_snowflake]["channels"][
                 alias.channel_snowflake
-            ]["aliases"].setdefault(alias.category, []).append(alias.alias_name)
+            ]["aliases"].setdefault(alias.category, {})[alias.alias_name] = []
+            if alias.category == "role":
+                guild = self.bot.get_guild(alias.guild_snowflake)
+                if guild:
+                    role = guild.get_role(alias.role_snowflake)
+                    guild_dictionary[alias.guild_snowflake]["channels"][
+                        alias.channel_snowflake
+                    ]["aliases"][alias.category][alias.alias_name] = role.mention
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -550,10 +557,13 @@ class ModeratorCommands(commands.Cog):
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 lines = []
-                for category, alias_names in dictionary["aliases"].items():
+                for category, alias_data in dictionary["aliases"].items():
                     lines.append(f"{category}")
-                    for name in alias_names:
-                        lines.append(f"  ↳ {name}")
+                    for name, role_mention in alias_data.items():
+                        if category == "role":
+                            lines.append(f"  ↳ {name} -> {role_mention}")
+                        else:
+                            lines.append(f"  ↳ {name}")
                 if len(lines) >= chunk_size:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
@@ -620,7 +630,14 @@ class ModeratorCommands(commands.Cog):
             )
             guild_dictionary[alias.guild_snowflake]["channels"][
                 alias.channel_snowflake
-            ]["aliases"].setdefault(alias.category, []).append(alias.alias_name)
+            ]["aliases"].setdefault(alias.category, {})[alias.alias_name] = []
+            if alias.category == "role":
+                guild = self.bot.get_guild(alias.guild_snowflake)
+                if guild:
+                    role = guild.get_role(alias.role_snowflake)
+                    guild_dictionary[alias.guild_snowflake]["channels"][
+                        alias.channel_snowflake
+                    ]["aliases"][alias.category][alias.alias_name] = role.mention
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -638,10 +655,13 @@ class ModeratorCommands(commands.Cog):
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 lines = []
-                for category, alias_names in dictionary["aliases"].items():
+                for category, alias_data in dictionary["aliases"].items():
                     lines.append(f"{category}")
-                    for name in alias_names:
-                        lines.append(f"  ↳ {name}")
+                    for name, role_mention in alias_data.items():
+                        if category == "role":
+                            lines.append(f"  ↳ {name} -> {role_mention}")
+                        else:
+                            lines.append(f"  ↳ {name}")
                 if len(lines) >= chunk_size:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",

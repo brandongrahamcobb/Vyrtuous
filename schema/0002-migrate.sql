@@ -64,30 +64,31 @@ DROP TABLE log_channels;
 DROP TABLE active_caps_old;
 ALTER TABLE history RENAME TO streaming;
 BEGIN;
-
+ALTER TABLE command_aliases
+RENAME COLUMN alias_type TO category;
 ALTER TABLE command_aliases
 DROP CONSTRAINT IF EXISTS command_aliases_alias_type_check;
 
 DELETE FROM command_aliases
-WHERE alias_type IS NULL;
+WHERE category IS NULL;
 
 UPDATE command_aliases
-SET alias_type = CASE alias_type
+SET category = CASE category
     WHEN 'voice_mute' THEN 'vmute'
     WHEN 'unvoice_mute' THEN 'unvmute'
     WHEN 'text_mute' THEN 'tmute'
     WHEN 'untext_mute' THEN 'untmute'
-    ELSE alias_type
+    ELSE category
 END;
 
 DELETE FROM command_aliases
-WHERE alias_type NOT IN (
+WHERE category NOT IN (
     'vegan','hide','vmute','ban','flag','tmute','role'
 );
 
 ALTER TABLE command_aliases
-ADD CONSTRAINT command_aliases_alias_type_check
-CHECK (alias_type IN (
+ADD CONSTRAINT command_aliases_category_check
+CHECK (category IN (
     'vegan','vmute','ban','flag','tmute','role','hide'
 ));
 
@@ -98,10 +99,8 @@ DROP CONSTRAINT vegans_pkey,
 DROP COLUMN channel_snowflake,
 ADD PRIMARY KEY (guild_snowflake, member_snowflake);
 ALTER TABLE active_stages DROP COLUMN member_snowflake;
-ALTER TABLE active_bans
-ADD COLUMN role_snowflake BIGINT NOT NULL;
 ALTER TABLE active_text_mutes
-ADD COLUMN role_snowflake BIGINT NOT NULL;
+ADD COLUMN role_snowflake BIGINT;
 ALTER TABLE developer_logs
 RENAME COLUMN developer_snowflakes TO member_snowflakes;
 ALTER TABLE developer_logs RENAME TO bug_tracking;
@@ -119,32 +118,67 @@ CREATE TABLE guild_owners (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (guild_snowflake, member_snowflake)
 );
-ALTER TABLE active_bans RENAME TO active_hides;
-ALTER TABLE active_hides RENAME CONSTRAINT active_bans_pkey1 TO active_hides_pkey;
-CREATE TABLE active_bans (
+ALTER TABLE active_bans ADD COLUMN role_snowflake BIGINT;
+ALTER TABLE active_bans RENAME CONSTRAINT active_bans_pkey1 TO active_bans_pkey;
+CREATE TABLE active_hides (
     channel_snowflake BIGINT NOT NULL DEFAULT -1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     expired BOOLEAN DEFAULT FALSE,
     expires_in TIMESTAMPTZ,
     guild_snowflake BIGINT NOT NULL,
     member_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT NOT NULL,
     reason TEXT,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake)
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake)
 );
-CREATE OR REPLACE FUNCTION set_expired()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.expired := (NEW.expires_in IS NOT NULL AND NEW.expires_in < NOW());
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER set_expired_active_bans
-BEFORE INSERT OR UPDATE ON active_bans
-FOR EACH ROW
-EXECUTE FUNCTION set_expired();
 ALTER TABLE bug_tracking RENAME CONSTRAINT developer_logs_pkey TO bug_tracking_pkey;
 ALTER TABLE active_voice_mutes RENAME CONSTRAINT active_voice_mutes_pkey1 TO active_voice_mutes_pkey;
 ALTER TABLE streaming RENAME CONSTRAINT history_pkey TO streaming_pkey;
 ALTER TABLE temporary_rooms RENAME CONSTRAINT temporary_rooms_pkey1 TO temporary_rooms_pkey;
 
+ALTER TABLE active_caps
+RENAME COLUMN moderation_type TO category;
+CREATE TABLE text_mute_roles (
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    channel_snowflake BIGINT NOT NULL,
+    guild_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (guild_snowflake, role_snowflake)
+);
+CREATE TABLE ban_roles (
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    channel_snowflake BIGINT NOT NULL,
+    guild_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (guild_snowflake, role_snowflake)
+);
+CREATE TABLE hide_roles (
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    channel_snowflake BIGINT NOT NULL,
+    guild_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (guild_snowflake, role_snowflake)
+);
+
+
+
+
+
+
+
+
+
+/*
+ALTER TABLE active_bans
+DROP CONSTRAINT active_bans_pkey,
+ADD CONSTRAINT active_bans_pkey
+PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake);
+ALTER TABLE active_text_mutes
+DROP CONSTRAINT active_text_mutes_pkey,
+ADD CONSTRAINT active_text_mutes_pkey
+PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake);
+*/

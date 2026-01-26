@@ -80,7 +80,7 @@ class Streaming(DatabaseFactory):
 
     @action.setter
     def action(self, action: str):
-        if action not in self.ACTION_TYPES:
+        if action not in Streaming.ACTION_TYPES:
             raise ValueError("Invalid action.")
         self._action = action
 
@@ -90,7 +90,7 @@ class Streaming(DatabaseFactory):
 
     @entry_type.setter
     def entry_type(self, entry_type: str):
-        if entry_type not in self.ENTRY_TYPES:
+        if entry_type not in Streaming.ENTRY_TYPES:
             raise ValueError("Invalid entry type.")
         self._entry_type = entry_type
 

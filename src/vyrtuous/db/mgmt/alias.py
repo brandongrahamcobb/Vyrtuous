@@ -82,7 +82,7 @@ class Alias(DatabaseFactory):
     ):
         super().__init__()
         self.bot = DiscordBot.get_instance()
-        self.alias_class = self._ALIAS_CLASS_MAP.get(category, None)
+        self.alias_class = Alias._ALIAS_CLASS_MAP.get(category, None)
         self.alias_cog = self.bot.get_cog("Aliases")
         self.category = category
         self.alias_name = alias_name
