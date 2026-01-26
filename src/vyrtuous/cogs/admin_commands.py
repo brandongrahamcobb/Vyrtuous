@@ -169,7 +169,7 @@ class AdminCommands(commands.Cog):
                 warning=f"Alias `{alias.alias_name}` already exists in {interaction.guild.name}."
             )
 
-        alias = Alias(alias_name=alias_name, alias_type=str(category), **kwargs)
+        alias = Alias(alias_name=alias_name, category=str(category), **kwargs)
         await alias.create()
         return await state.end(success=msg)
 
@@ -257,7 +257,7 @@ class AdminCommands(commands.Cog):
                 warning=f"Alias `{alias.alias_name}` already exists in {ctx.guild.name}."
             )
 
-        alias = Alias(alias_name=alias_name, alias_type=str(category), **kwargs)
+        alias = Alias(alias_name=alias_name, category=str(category), **kwargs)
         await alias.create()
         return await state.end(success=msg)
 
@@ -426,7 +426,7 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
 
         kwargs = channel_dict.get("columns", None)
-        kwargs.update({"moderation_type": category})
+        kwargs.update({"category": category})
 
         cap = await Cap.select(**kwargs)
         if cap and seconds:
@@ -474,7 +474,7 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
 
         kwargs = channel_dict.get("columns", None)
-        kwargs.update({"moderation_type": category})
+        kwargs.update({"category": category})
 
         cap = await Cap.select(**kwargs)
         if cap and seconds:
@@ -526,7 +526,7 @@ class AdminCommands(commands.Cog):
             )
             guild_dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
                 "caps"
-            ][cap.moderation_type] = cap.duration_seconds
+            ][cap.category] = cap.duration_seconds
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -617,7 +617,7 @@ class AdminCommands(commands.Cog):
             )
             guild_dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
                 "caps"
-            ][cap.moderation_type] = cap.duration_seconds
+            ][cap.category] = cap.duration_seconds
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -1827,7 +1827,6 @@ class AdminCommands(commands.Cog):
         if duration.is_modification:
             is_modification = True
         stage = await Stage.select(**kwargs, singular=True)
-        print("test1")
         if is_modification and stage:
             delta = duration.expires_in - datetime.now(timezone.utc)
             if delta.total_seconds() < 0:
@@ -1890,13 +1889,11 @@ class AdminCommands(commands.Cog):
             )
             pages.append(embed)
         else:
-            print("test")
             stage = Stage(
                 **kwargs,
                 expires_in=duration.expires_in,
             )
             await stage.create()
-            print("test2")
             for member in channel_dict.get("object", None).members:
                 if (
                     await check(
@@ -1907,7 +1904,6 @@ class AdminCommands(commands.Cog):
                     or member.id == ctx.author.id
                 ):
                     skipped.append(member)
-                    print("tes3")
                     continue
                 voice_mute = await VoiceMute(
                     **kwargs,
@@ -1917,7 +1913,6 @@ class AdminCommands(commands.Cog):
                     reason="Stage mute",
                 )
                 await voice_mute.create()
-                print("test4")
                 try:
                     if member.voice and member.voice.channel.id == channel_dict.get(
                         "id", None
@@ -1933,7 +1928,6 @@ class AdminCommands(commands.Cog):
                         f"{str(e).capitalize()}"
                     )
                     failed.append(member)
-            print("test")
             description_lines = [
                 f"**Channel:** {channel_dict.get("mention", None)}",
                 f"**Expires:** {duration}",
@@ -2087,10 +2081,10 @@ class AdminCommands(commands.Cog):
                     ):
                         guild_dictionary[temporary_room.guild_snowflake]["channels"][
                             temporary_room.channel_snowflake
-                        ].setdefault(alias.alias_type, [])
+                        ].setdefault(alias.category, [])
                         guild_dictionary[temporary_room.guild_snowflake]["channels"][
                             temporary_room.channel_snowflake
-                        ][alias.alias_type].append(alias.alias_name)
+                        ][alias.category].append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -2112,8 +2106,8 @@ class AdminCommands(commands.Cog):
                 channel = guild.get_channel(channel_snowflake)
                 lines.append(f"Channel: {channel.mention}")
                 field_count += 1
-                for alias_type, alias_names in channel_data.items():
-                    lines.append(f"{alias_type}")
+                for category, alias_names in channel_data.items():
+                    lines.append(f"{category}")
                     field_count += 1
                     for name in alias_names:
                         lines.append(f"  ↳ {name}")
@@ -2204,10 +2198,10 @@ class AdminCommands(commands.Cog):
                     ):
                         guild_dictionary[temporary_room.guild_snowflake]["channels"][
                             temporary_room.channel_snowflake
-                        ].setdefault(alias.alias_type, [])
+                        ].setdefault(alias.category, [])
                         guild_dictionary[temporary_room.guild_snowflake]["channels"][
                             temporary_room.channel_snowflake
-                        ][alias.alias_type].append(alias.alias_name)
+                        ][alias.category].append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -2229,8 +2223,8 @@ class AdminCommands(commands.Cog):
                 channel = guild.get_channel(channel_snowflake)
                 lines.append(f"Channel: {channel.mention}")
                 field_count += 1
-                for alias_type, alias_names in channel_data.items():
-                    lines.append(f"{alias_type}")
+                for category, alias_names in channel_data.items():
+                    lines.append(f"{category}")
                     field_count += 1
                     for name in alias_names:
                         lines.append(f"  ↳ {name}")
@@ -2793,10 +2787,10 @@ class AdminCommands(commands.Cog):
                     ):
                         guild_dictionary[video_room.guild_snowflake]["channels"][
                             video_room.channel_snowflake
-                        ].setdefault(alias.alias_type, [])
+                        ].setdefault(alias.category, [])
                         guild_dictionary[video_room.guild_snowflake]["channels"][
                             video_room.channel_snowflake
-                        ][alias.alias_type].append(alias.alias_name)
+                        ][alias.category].append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -2818,8 +2812,8 @@ class AdminCommands(commands.Cog):
                 channel = guild.get_channel(channel_snowflake)
                 lines.append(f"Channel: {channel.mention}")
                 field_count += 1
-                for alias_type, alias_names in channel_data.items():
-                    lines.append(f"{alias_type}")
+                for category, alias_names in channel_data.items():
+                    lines.append(f"{category}")
                     field_count += 1
                     for name in alias_names:
                         lines.append(f"  ↳ {name}")
@@ -2905,10 +2899,10 @@ class AdminCommands(commands.Cog):
                     ):
                         guild_dictionary[video_room.guild_snowflake]["channels"][
                             video_room.channel_snowflake
-                        ].setdefault(alias.alias_type, [])
+                        ].setdefault(alias.category, [])
                         guild_dictionary[video_room.guild_snowflake]["channels"][
                             video_room.channel_snowflake
-                        ][alias.alias_type].append(alias.alias_name)
+                        ][alias.category].append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -2930,8 +2924,8 @@ class AdminCommands(commands.Cog):
                 channel = guild.get_channel(channel_snowflake)
                 lines.append(f"Channel: {channel.mention}")
                 field_count += 1
-                for alias_type, alias_names in channel_data.items():
-                    lines.append(f"{alias_type}")
+                for category, alias_names in channel_data.items():
+                    lines.append(f"{category}")
                     field_count += 1
                     for name in alias_names:
                         lines.append(f"  ↳ {name}")
@@ -3002,13 +2996,13 @@ class AdminCommands(commands.Cog):
         if getattr(alias, "role_snowflake"):
             msg = (
                 f"Alias `{alias.alias_name}` of type "
-                f"`{alias.alias_type}` for channel {channel_dict.get("mention", None)} "
+                f"`{alias.category}` for channel {channel_dict.get("mention", None)} "
                 f" and role {alias.role_mention} deleted successfully."
             )
         else:
             msg = (
                 f"Alias `{alias.alias_name}` of type "
-                f"`{alias.alias_type}` for channel {channel_dict.get("mention", None)} "
+                f"`{alias.category}` for channel {channel_dict.get("mention", None)} "
                 f"deleted successfully."
             )
 
@@ -3039,13 +3033,13 @@ class AdminCommands(commands.Cog):
         if getattr(alias, "role_snowflake"):
             msg = (
                 f"Alias `{alias.alias_name}` of type "
-                f"`{alias.alias_type}` for channel {channel_dict.get("mention", None)} "
+                f"`{alias.category}` for channel {channel_dict.get("mention", None)} "
                 f" and role {alias.role_mention} deleted successfully."
             )
         else:
             msg = (
                 f"Alias `{alias.alias_name}` of type "
-                f"`{alias.alias_type}` for channel {channel_dict.get("mention", None)} "
+                f"`{alias.category}` for channel {channel_dict.get("mention", None)} "
                 f"deleted successfully."
             )
 

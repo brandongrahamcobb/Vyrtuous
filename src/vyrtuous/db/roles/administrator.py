@@ -22,13 +22,13 @@ from typing import Optional, Union
 from discord.ext import commands
 import discord
 
-from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.roles.developer import is_developer_wrapper
 from vyrtuous.db.roles.guild_owner import is_guild_owner_wrapper
 from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
+from vyrtuous.utils.logger import logger
 
 
 @skip_db_discovery
@@ -137,8 +137,8 @@ class AdministratorRole(DatabaseFactory):
 
     def __init__(
         self,
-        guild_snowflake: list[int | None],
-        role_snowflake: list[int | None],
+        guild_snowflake: int,
+        role_snowflake: int,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
         **kwargs,
@@ -149,24 +149,66 @@ class AdministratorRole(DatabaseFactory):
         self.role_snowflake = role_snowflake
         self.updated_at = updated_at
 
+    
     @classmethod
-    async def grant_role(cls, guild_snowflake, role_snowflake):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(guild_snowflake)
-        role = guild.get_role(role_snowflake)
-        for member in role.members:
-            try:
-                await member.add_roles(role, reason="Granting administrator role.")
-            except discord.Forbidden:
-                continue
-
+    async def added_role(cls, guild_snowflake, member_snowflake, role_snowflake):
+        administrator_role_snowflakes = []
+        kwargs = {
+            "guild_snowflake": guild_snowflake,
+            "role_snowflakes": [role_snowflake]
+        }
+        administrator_role = await AdministratorRole.select(
+            **kwargs
+        )
+        if not administrator_role:
+            return
+        administrator = await Administrator.select(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        if not administrator:
+            administrator = Administrator(
+                guild_snowflake=guild_snowflake,
+                member_snowflake=member_snowflake,
+                role_snowflake=list(role_snowflake),
+            )
+            await administrator.create()
+        else:
+            administrator_role_snowflakes = administrator.role_snowflakes
+            administrator_role_snowflakes.append(role_snowflake)
+            where_kwargs = {
+                "guild_snowflake": guild_snowflake,
+                "member_snowflake": member_snowflake,
+            }
+            set_kwargs = {
+                "role_snowflakes": administrator_role_snowflakes
+            }
+            await Administrator.update(
+                set_kwargs=set_kwargs, where_kwargs=where_kwargs
+            )
+        logger.info(f"Granted administrator to member ({member_snowflake}) in guild ({guild_snowflake}).")
+        
     @classmethod
-    async def revoke_role(cls, guild_snowflake, role_snowflake):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(guild_snowflake)
-        role = guild.get_role(role_snowflake)
-        for member in role.members:
-            try:
-                await member.remove_roles(role, reason="Revoking a administrator role.")
-            except discord.Forbidden:
-                continue
+    async def removed_role(cls, guild_snowflake, member_snowflake, role_snowflake):
+        administrator_role_snowflakes = []
+        kwargs = {
+            "guild_snowflake": guild_snowflake,
+            "role_snowflakes": [role_snowflake]
+        }
+        administrator_role = await AdministratorRole.select(
+            **kwargs
+        )
+        if not administrator_role:
+            return
+        administrator = await Administrator.select(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        if administrator:
+            administrator_role_snowflakes = administrator.role_snowflakes
+            administrator_role_snowflakes.remove(role_snowflake)
+            where_kwargs = {
+                "guild_snowflake": guild_snowflake,
+                "member_snowflake": member_snowflake,
+            }
+            set_kwargs = {
+                "role_snowflakes": administrator_role_snowflakes
+            }
+            await Administrator.update(
+                set_kwargs=set_kwargs, where_kwargs=where_kwargs
+            )
+        logger.info(f"Revoked administrator from member ({member_snowflake}) in guild ({guild_snowflake}).")

@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.actions.ban import Ban
@@ -29,6 +29,8 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.fields.duration import DurationObject
+from vyrtuous.utils.check import has_equal_or_lower_role
+from vyrtuous.utils.logger import logger
 
 
 class Alias(DatabaseFactory):
@@ -42,7 +44,7 @@ class Alias(DatabaseFactory):
 
     REQUIRED_INSTANTIATION_ARGS = [
         "alias_name",
-        "alias_type",
+        "category",
         "channel_snowflake",
         "guild_snowflake",
     ]
@@ -70,7 +72,7 @@ class Alias(DatabaseFactory):
     def __init__(
         self,
         alias_name: str,
-        alias_type: str,
+        category: str,
         channel_snowflake: int,
         guild_snowflake: int,
         created_at: Optional[datetime] = None,
@@ -80,9 +82,9 @@ class Alias(DatabaseFactory):
     ):
         super().__init__()
         self.bot = DiscordBot.get_instance()
-        self.alias_class = self._ALIAS_CLASS_MAP.get(alias_type, None)
+        self.alias_class = self._ALIAS_CLASS_MAP.get(category, None)
         self.alias_cog = self.bot.get_cog("Aliases")
-        self.alias_type = alias_type
+        self.category = category
         self.alias_name = alias_name
         self.channel_snowflake = channel_snowflake
         self.channel_mention = f"<#{channel_snowflake}>"
@@ -108,39 +110,84 @@ class Alias(DatabaseFactory):
         self.role_mention = f"<@&{role_snowflake}>"
         self.updated_at = updated_at
 
-    @property
-    def alias_type(self):
-        return self._alias_type
-
-    @alias_type.setter
-    def alias_type(self, alias_type: str):
-        if alias_type not in (
-            "vegan",
-            "vmute",
-            "ban",
-            "hide",
-            "flag",
-            "tmute",
-            "role",
-        ):
-            raise ValueError("Invalid alias_type.")
-        self._alias_type = alias_type
-
-    @classmethod
-    async def generate_cap_duration(
-        cls,
-        channel_snowflake: int,
-        guild_snowflake: int,
-        moderation_type: str,
-    ):
+    async def build_existing_information(self, action_information, member_snowflake):
+        kwargs = {}
+        primary_keys = await self.alias_class.primary_keys()
+        if "channel_snowflake" in primary_keys:
+            kwargs.update({"channel_snowflake": self.channel_snowflake})
+        if "guild_snowflake" in primary_keys:
+            kwargs.update({"guild_snowflake": self.guild_snowflake})
+        if "member_snowflake" in primary_keys:
+            kwargs.update({"member_snowflake": member_snowflake})
+        action_existing = await self.alias_class.select(
+            **kwargs,
+            singular=True,
+        )
+        action_modification = False
+        if action_existing:
+            action_modification = True
+            await self.alias_class.delete(**kwargs)
+            self.category = self.alias_class.UNDO
+        action_information.update({
+            "action_existing": action_existing,
+            "action_modification": action_modification,
+            "action_role_snowflake": self.role_snowflake if self.role_snowflake else None
+        })
+        return action_information
+    
+    async def build_duration_information(self, action_information, category, duration, state):
+        channel = self.bot.get_channel(self.channel_snowflake)
         cap = await Cap.select(
-            channel_snowflake=channel_snowflake,
-            guild_snowflake=guild_snowflake,
-            moderation_type=moderation_type,
+            category=category,
+            channel_snowflake=self.channel_snowflake,
+            guild_snowflake=self.guild_snowflake,
             singular=True,
         )
         if not hasattr(cap, "duration"):
             cap_duration = DurationObject("8h").to_seconds()
         else:
             cap_duration = cap.duration_seconds
-        return cap_duration
+        if (
+            duration.to_timedelta().total_seconds() > cap_duration
+            or duration.number == 0
+        ):
+            if action_information['executor_role'] == "Moderator":
+                duration_str = DurationObject.from_seconds(cap_duration)
+                return await state.end(
+                    warning=f"Cannot set the "
+                    f"{action_information['alias_class'].SINGULAR} beyond {duration_str} as a "
+                    f"{action_information['executor_role']} in {channel.mention}."
+                )
+        expires_in = datetime.now(timezone.utc) + duration.to_timedelta()
+        action_information.update({
+            "action_cap_duration": cap_duration,
+            "action_duration": duration,
+            "action_expires_in": expires_in
+        })
+        return action_information
+
+    async def build_action_information(self, author_snowflake, duration, member_snowflake, reason, state):
+        action_information = {}
+        action_information.update({
+            "alias_class": self.alias_class,
+            "action_channel_snowflake": self.channel_snowflake,
+            "action_guild_snowflake": self.guild_snowflake,
+            "action_member_snowflake": member_snowflake
+        })
+        action_executor_role = await has_equal_or_lower_role(
+            member_snowflake=member_snowflake,
+            kwargs={
+                "channel_snowflake": self.channel_snowflake,
+                "guild_snowflake": self.guild_snowflake,
+                "member_snowflake": author_snowflake
+            }
+        )
+        action_information.update({
+            "action_executor_role": action_executor_role
+        })
+        action_information = await self.build_duration_information(action_information=action_information, category=self.category, duration=duration, state=state)
+        action_information.update({
+            "action_reason": reason
+        })
+        action_information = await self.build_existing_information(action_information=action_information, member_snowflake=member_snowflake)
+        return action_information

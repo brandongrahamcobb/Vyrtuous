@@ -531,7 +531,7 @@ class ModeratorCommands(commands.Cog):
             )
             guild_dictionary[alias.guild_snowflake]["channels"][
                 alias.channel_snowflake
-            ]["aliases"].setdefault(alias.alias_type, []).append(alias.alias_name)
+            ]["aliases"].setdefault(alias.category, []).append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -550,8 +550,8 @@ class ModeratorCommands(commands.Cog):
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 lines = []
-                for alias_type, alias_names in dictionary["aliases"].items():
-                    lines.append(f"{alias_type}")
+                for category, alias_names in dictionary["aliases"].items():
+                    lines.append(f"{category}")
                     for name in alias_names:
                         lines.append(f"  ↳ {name}")
                 if len(lines) >= chunk_size:
@@ -620,7 +620,7 @@ class ModeratorCommands(commands.Cog):
             )
             guild_dictionary[alias.guild_snowflake]["channels"][
                 alias.channel_snowflake
-            ]["aliases"].setdefault(alias.alias_type, []).append(alias.alias_name)
+            ]["aliases"].setdefault(alias.category, []).append(alias.alias_name)
 
         skipped_channels = generate_skipped_channels(guild_dictionary)
         skipped_guilds = generate_skipped_guilds(guild_dictionary)
@@ -638,8 +638,8 @@ class ModeratorCommands(commands.Cog):
             for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
                 channel = guild.get_channel(channel_snowflake)
                 lines = []
-                for alias_type, alias_names in dictionary["aliases"].items():
-                    lines.append(f"{alias_type}")
+                for category, alias_names in dictionary["aliases"].items():
+                    lines.append(f"{category}")
                     for name in alias_names:
                         lines.append(f"  ↳ {name}")
                 if len(lines) >= chunk_size:

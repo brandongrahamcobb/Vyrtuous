@@ -25,9 +25,9 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.hide import Hide
-from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.actions.ban import Ban, BanRole
+from vyrtuous.db.actions.role import Role
+from vyrtuous.db.actions.text_mute import TextMute, TextMuteRole
 from vyrtuous.db.database import Database
 from vyrtuous.db.mgmt.bug import Bug
 from vyrtuous.db.roles.developer import developer_predicator
@@ -66,13 +66,14 @@ class DevCommands(commands.Cog):
     )
     @developer_predicator()
     @app_commands.describe(
-        alias_name="Alias name with the type: `hide` or `tmute`",
+        alias_name="Alias name with the type: `ban` or `tmute`",
     )
     async def associate_alias_to_role_app_command(
         self, interaction: discord.Interaction, alias_name: str, role: AppRoleSnowflake
     ):
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
+
         try:
             role_dict = await do.determine_from_target(target=role)
         except (DiscordObjectNotFound, TypeError) as e:
@@ -80,95 +81,80 @@ class DevCommands(commands.Cog):
             role = None
         else:
             role = interaction.guild.get_role(role_dict.get("id", None))
+
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=interaction.guild.id, singular=True
         )
         if not alias:
             return await state.end(success=f"No such alias ({alias_name}) exists.")
-        if alias and not getattr(alias, "role_snowflake"):
-            if not role:
-                for role in interaction.guild.roles:
-                    if role.name == alias_name:
-                        return await state.end(
-                            warning=f"{role.name} already exists. You must specify it to override."
-                        )
-                role = await interaction.guild.create_role(name=alias_name)
-                if alias.alias_type not in ("hide", "tmute"):
-                    return await state.end(
-                        warning=f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
-                        f"cannot be associated with role {role.mention}."
-                    )
-        elif getattr(alias, "role_snowflake"):
+        if alias.category not in ("ban", "tmute"):
             return await state.end(
-                warning=f"Alias ({alias_name}) is already associated with a role."
+                warning=f"Alias `{alias.alias_name}` of type `{alias.category}` is not `ban` or `tmute`."
             )
-        channel = interaction.guild.get_channel(alias.channel_snowflake)
-        try:
-            if alias.alias_type == "ban":
-                overwrite = discord.PermissionOverwrite(connect=False)
-                try:
-                    await channel.set_permissions(role, overwrite=overwrite)
-                except discord.Forbidden as e:
-                    logger.warning(e)
-                bans = await Ban.select(
-                    channel_snowflake=channel.id, guild_snowflake=interaction.guild.id
-                )
-                for ban in bans:
-                    channel = interaction.guild.get_channel(ban.channel_snowflake)
-                    member = interaction.guild.get_member(ban.member_snowflake)
-                    try:
-                        await channel.set_permissions(member, overwrite=None)
-                    except discord.Forbidden as e:
-                        logger.warning(e)
-                    await TextMute.administer_role(
-                        guild_snowflake=interaction.guild.id,
-                        member_snowflake=member.id,
-                        role_snowflake=role.id,
-                        state=state,
+        if alias and not getattr(alias, "role_snowflake") and not role:
+            for role in interaction.guild.roles:
+                if role.name == alias_name:
+                    return await state.end(
+                        warning=f"{role.name} already exists. You must specify it to override."
                     )
-            elif alias.alias_type == "tmute":
-                overwrite = discord.PermissionOverwrite(
-                    send_messages=False,
-                    add_reactions=False,
-                    create_public_threads=False,
-                    create_private_threads=False,
-                    send_messages_in_threads=False,
-                )
-                try:
-                    await channel.set_permissions(role, overwrite=overwrite)
-                except discord.Forbidden as e:
-                    logger.warning(e)
-                text_mutes = await TextMute.select(
-                    channel_snowflake=channel.id, guild_snowflake=interaction.guild.id
-                )
-                for text_mute in text_mutes:
-                    channel = interaction.guild.get_channel(text_mute.channel_snowflake)
-                    member = interaction.guild.get_member(text_mute.member_snowflake)
-                    try:
-                        await channel.set_permissions(member, overwrite=None)
-                        await member.add_roles(
-                            role, reason="Associating old text mutes with a role"
-                        )
-                    except discord.Forbidden as e:
-                        logger.warning(e)
-                    where_kwargs = {
-                        "channel_snowflake": channel.id,
-                        "guild_snowflake": interaction.guild.id,
-                        "member_snowflake": member.id,
-                    }
-                    set_kwargs = {"role_snowflake": role.id}
-                    await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            role = await interaction.guild.create_role(name=alias_name)
+        channel = interaction.guild.get_channel(alias.channel_snowflake)
+        overwrite = discord.PermissionOverwrite(
+            send_messages=False,
+            add_reactions=False,
+            create_public_threads=False,
+            create_private_threads=False,
+            send_messages_in_threads=False,
+        )
+        try:
+            await channel.set_permissions(role, overwrite=overwrite)
         except discord.Forbidden as e:
             logger.warning(e)
+
+        if alias.category == "ban":
+            bans = await Ban.select(channel_snowflake=alias.channel_snowflake, guild_snowflake=interaction.guild.id)
+            for ban in bans:
+                member = interaction.guild.get_member(ban.member_snowflake)
+                await Role.administer_role(
+                    guild_snowflake=ban.guild_snowflake,
+                    member_snowflake=ban.member_snowflake,
+                    role_snowflake=role.id
+                )
+                where_kwargs = {
+                    "channel_snowflake": channel.id,
+                    "guild_snowflake": interaction.guild.id,
+                    "member_snowflake": member.id,
+                }
+                set_kwargs = {"role_snowflake": role.id}
+                await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                ban_role = BanRole(channel_snowflake=channel.id, guild_snowflake=interaction.guild.id, role_snowflake=role.id)
+                await ban_role.create()
+        if alias.category == "tmute":
+            text_mutes = await TextMute.select(channel_snowflake=alias.channel_snowflake, guild_snowflake=interaction.guild.id)
+            for text_mute in text_mutes:
+                member = interaction.guild.get_member(ban.member_snowflake)
+                await Role.administer_role(
+                    guild_snowflake=text_mute.guild_snowflake,
+                    member_snowflake=text_mute.member_snowflake,
+                    role_snowflake=role.id
+                )
+                where_kwargs = {
+                    "channel_snowflake": channel.id,
+                    "guild_snowflake": interaction.guild.id,
+                    "member_snowflake": member.id,
+                }
+                set_kwargs = {"role_snowflake": role.id}
+                await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                text_mute_role = TextMuteRole(channel_snowflake=channel.id, guild_snowflake=interaction.guild.id, role_snowflake=role.id)
+                await text_mute_role.create()
         where_kwargs = {
             "alias_name": alias.alias_name,
             "guild_snowflake": interaction.guild.id,
         }
         set_kwargs = {"role_snowflake": role.id}
         await Alias.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
-
         return await state.end(
-            success=f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
+            success=f"Alias `{alias.alias_name}` of type `{alias.category}` "
             f"was associated with role {role.mention}."
         )
 
@@ -187,6 +173,7 @@ class DevCommands(commands.Cog):
 
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
+
         try:
             role_dict = await do.determine_from_target(target=role)
         except (DiscordObjectNotFound, TypeError) as e:
@@ -194,96 +181,80 @@ class DevCommands(commands.Cog):
             role = None
         else:
             role = ctx.guild.get_role(role_dict.get("id", None))
+
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=ctx.guild.id, singular=True
         )
         if not alias:
-            return await state.end(warning=f"No such alias ({alias_name}) exists.")
-        if alias and not getattr(alias, "role_snowflake"):
-            if not role:
-                for role in ctx.guild.roles:
-                    if role.name == alias_name:
-                        return await state.end(
-                            warning=f"{role.name} already exists. You must specify it to override."
-                        )
-                try:
-                    role = await ctx.guild.create_role(name=alias_name)
-                except discord.Forbidden as e:
-                    logger.warning(e)
-                if alias.alias_type not in ("hide", "tmute"):
-                    return await state.end(
-                        warning=f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
-                        f"cannot be associated with role {role.mention}."
-                    )
-        elif getattr(alias, "role_snowflake"):
+            return await state.end(success=f"No such alias ({alias_name}) exists.")
+        if alias.category not in ("ban", "tmute"):
             return await state.end(
-                warning=f"Alias ({alias_name}) is already associated with a role."
+                warning=f"Alias `{alias.alias_name}` of type `{alias.category}` is not `ban` or `tmute`."
             )
-        channel = ctx.guild.get_channel(alias.channel_snowflake)
-        try:
-            if alias.alias_type == "hide":
-                overwrite = discord.PermissionOverwrite(connect=False)
-                try:
-                    await channel.set_permissions(role, overwrite=overwrite)
-                except discord.Forbidden as e:
-                    logger.warning(e)
-                bans = await Ban.select(
-                    channel_snowflake=channel.id, guild_snowflake=ctx.guild.id
-                )
-                for ban in bans:
-                    channel = ctx.guild.get_channel(ban.channel_snowflake)
-                    member = ctx.guild.get_member(ban.member_snowflake)
-                    try:
-                        await channel.set_permissions(member, overwrite=None)
-                    except discord.Forbidden as e:
-                        logger.warning(e)
-                    await TextMute.administer_role(
-                        guild_snowflake=ctx.guild.id,
-                        member_snowflake=member.id,
-                        role_snowflake=role.id,
-                        state=state,
+        if alias and not getattr(alias, "role_snowflake") and not role:
+            for role in ctx.guild.roles:
+                if role.name == alias_name:
+                    return await state.end(
+                        warning=f"{role.name} already exists. You must specify it to override."
                     )
-            elif alias.alias_type == "tmute":
-                overwrite = discord.PermissionOverwrite(
-                    send_messages=False,
-                    add_reactions=False,
-                    create_public_threads=False,
-                    create_private_threads=False,
-                    send_messages_in_threads=False,
-                )
-                try:
-                    await channel.set_permissions(role, overwrite=overwrite)
-                except discord.Forbidden as e:
-                    logger.warning(e)
-                text_mutes = await TextMute.select(
-                    channel_snowflake=channel.id, guild_snowflake=ctx.guild.id
-                )
-                for text_mute in text_mutes:
-                    channel = ctx.guild.get_channel(text_mute.channel_snowflake)
-                    member = ctx.guild.get_member(text_mute.member_snowflake)
-                    try:
-                        await channel.set_permissions(member, overwrite=None)
-                        await member.add_roles(
-                            role, reason="Associating old text mutes with the new "
-                        )
-                    except discord.Forbidden as e:
-                        logger.warning(e)
-                    where_kwargs = {
-                        "channel_snowflake": channel.id,
-                        "guild_snowflake": ctx.guild.id,
-                        "member_snowflake": member.id,
-                    }
-                    set_kwargs = {"role_snowflake": role.id}
-                    await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+            role = await ctx.guild.create_role(name=alias_name)
+        channel = ctx.guild.get_channel(alias.channel_snowflake)
+        overwrite = discord.PermissionOverwrite(
+            send_messages=False,
+            add_reactions=False,
+            create_public_threads=False,
+            create_private_threads=False,
+            send_messages_in_threads=False,
+        )
+        try:
+            await channel.set_permissions(role, overwrite=overwrite)
         except discord.Forbidden as e:
             logger.warning(e)
 
-        where_kwargs = {"alias_name": alias.alias_name, "guild_snowflake": ctx.guild.id}
+        if alias.category == "ban":
+            bans = await Ban.select(channel_snowflake=alias.channel_snowflake, guild_snowflake=ctx.guild.id)
+            for ban in bans:
+                member = ctx.guild.get_member(ban.member_snowflake)
+                await Role.administer_role(
+                    guild_snowflake=ban.guild_snowflake,
+                    member_snowflake=ban.member_snowflake,
+                    role_snowflake=role.id
+                )
+                where_kwargs = {
+                    "channel_snowflake": channel.id,
+                    "guild_snowflake": ctx.guild.id,
+                    "member_snowflake": member.id,
+                }
+                set_kwargs = {"role_snowflake": role.id}
+                await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                ban_role = await BanRole(channel_snowflake=channel.id, guild_snowflake=ctx.guild.id, role_snowflake=role.id)
+                await ban_role.create()
+        if alias.category == "tmute":
+            text_mutes = await TextMute.select(channel_snowflake=alias.channel_snowflake, guild_snowflake=ctx.guild.id)
+            for text_mute in text_mutes:
+                member = ctx.guild.get_member(ban.member_snowflake)
+                await Role.administer_role(
+                    guild_snowflake=text_mute.guild_snowflake,
+                    member_snowflake=text_mute.member_snowflake,
+                    role_snowflake=role.id
+                )
+                where_kwargs = {
+                    "channel_snowflake": channel.id,
+                    "guild_snowflake": ctx.guild.id,
+                    "member_snowflake": member.id,
+                }
+                set_kwargs = {"role_snowflake": role.id}
+                await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+                text_mute_role = TextMuteRole(channel_snowflake=channel.id, guild_snowflake=ctx.guild.id, role_snowflake=role.id)
+                await text_mute_role.create()
+        where_kwargs = {
+            "alias_name": alias.alias_name,
+            "guild_snowflake": ctx.guild.id,
+        }
         set_kwargs = {"role_snowflake": role.id}
         await Alias.update(where_kwargs=where_kwargs, set_kwargs=set_kwargs)
-
         return await state.end(
-            success=f"Alias `{alias.alias_name}` of type `{alias.alias_type}` "
+            success=f"Alias `{alias.alias_name}` of type `{alias.category}` "
             f"was associated with role {role.mention}."
         )
 

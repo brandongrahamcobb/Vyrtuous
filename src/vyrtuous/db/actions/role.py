@@ -26,6 +26,7 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
+from vyrtuous.utils.logger import logger
 
 
 @skip_db_discovery
@@ -107,3 +108,72 @@ class Role(DatabaseFactory):
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+
+    @classmethod
+    async def administer_role(cls, guild_snowflake, member_snowflake, role_snowflake):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        member = guild.get_member(member_snowflake)
+        role = guild.get_role(role_snowflake)
+        try:
+            await member.add_roles(role, reason="Granting role.")
+        except discord.Forbidden as e:
+            logger.error(str(e).capitalize())
+
+    @classmethod
+    async def revoke_role(cls, guild_snowflake, member_snowflake, role_snowflake):
+        bot = DiscordBot.get_instance()
+        guild = bot.get_guild(guild_snowflake)
+        member = guild.get_member(member_snowflake)
+        role = guild.get_role(role_snowflake)
+        try:
+            await member.remove_roles(role, reason="Revoking role.")
+        except discord.Forbidden as e:
+            logger.error(str(e).capitalize())
+    
+    @classmethod
+    async def added_role(cls, category_class, category_role_class, guild_snowflake, member_snowflake, role_snowflake):
+        kwargs = {
+            "guild_snowflake": guild_snowflake,
+            "role_snowflake": role_snowflake
+        }
+        role = await category_role_class.select(
+            singular=True,
+            **kwargs
+        )
+        if role:
+            if hasattr(role, "channel_snowflake"):
+                kwargs.update({
+                    "channel_snowflake": role.channel_snowflake
+                })
+                msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
+            else:
+                msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) in guild ({guild_snowflake})."
+            category = category_class(**kwargs)
+            await category.create()
+            logger.info(msg)
+        else:
+            return
+        
+    @classmethod
+    async def removed_role(cls, category_class, category_role_class, guild_snowflake, member_snowflake, role_snowflake):
+        kwargs = {
+            "guild_snowflake": guild_snowflake,
+            "role_snowflake": role_snowflake
+        }
+        role = await category_role_class.select(
+            singular=True,
+            **kwargs
+        )
+        if role:
+            if hasattr(role, "channel_snowflake"):
+                kwargs.update({
+                    "channel_snowflake": role.channel_snowflake
+                })
+                msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
+            else:
+                msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) in guild ({guild_snowflake})."
+            await category_class.delete(**kwargs)
+            logger.info(msg)
+        else:
+            return

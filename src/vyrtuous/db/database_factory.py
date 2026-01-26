@@ -157,3 +157,4 @@ class DatabaseFactory(object):
         for row in rows:
             kwargs.append(row["column_name"])
         return kwargs
+

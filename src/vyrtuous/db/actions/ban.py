@@ -25,6 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.logger import logger
 
 
 class Ban(DatabaseFactory):
@@ -40,6 +41,7 @@ class Ban(DatabaseFactory):
         "channel_snowflake",
         "guild_snowflake",
         "member_snowflake",
+        "role_snowflake"
     ]
     OPTIONAL_ARGS = ["created_at", "expires_in", "reason", "updated_at"]
 
@@ -50,6 +52,7 @@ class Ban(DatabaseFactory):
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
+        role_snowflake: int,
         created_at: Optional[datetime] = None,
         expired: bool = False,
         expires_in: Optional[datetime] = None,
@@ -67,6 +70,7 @@ class Ban(DatabaseFactory):
         self.member_snowflake = member_snowflake
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.reason = reason
+        self.role_snowflake = role_snowflake
         self.updated_at = updated_at
 
     @classmethod
@@ -75,6 +79,7 @@ class Ban(DatabaseFactory):
         channel = bot.get_channel(action_information["action_channel_snowflake"])
         author = resolve_author(source=source)
         member = source.guild.get_member(action_information["action_member_snowflake"])
+        role = source.guild.get_role(action_information['action_role_snowflake'])
         embed = discord.Embed(
             title=f"{get_random_emoji()} " f"{member.display_name} has been banned",
             description=(
@@ -82,7 +87,8 @@ class Ban(DatabaseFactory):
                 f"**User:** {member.mention}\n"
                 f"**Channel:** {channel.mention}\n"
                 f"**Expires:** {action_information['action_duration']}\n"
-                f"**Reason:** {action_information['action_reason']}"
+                f"**Reason:** {action_information['action_reason']}\n"
+                f"**Role:** {role.mention}"
             ),
             color=discord.Color.blue(),
         )
@@ -95,15 +101,54 @@ class Ban(DatabaseFactory):
         channel = bot.get_channel(action_information["action_channel_snowflake"])
         author = resolve_author(source=source)
         member = source.guild.get_member(action_information["action_member_snowflake"])
+        role = source.guild.get_role(action_information['action_role_snowflake'])
         embed = discord.Embed(
             title=f"{get_random_emoji()} "
             f"{member.display_name}'s ban has been removed",
             description=(
                 f"**By:** {author.mention}\n"
                 f"**User:** {member.mention}\n"
-                f"**Channel:** {channel.mention}"
+                f"**Channel:** {channel.mention}\n"
+                f"**Role:** {role.mention}"
             ),
             color=discord.Color.yellow(),
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+
+
+
+
+class BanRole(DatabaseFactory):
+
+    ACT = "brole"
+    CATEGORY = "brole"
+    PLURAL = "Ban Roles"
+    SCOPES = ["channel", "guild"]
+    SINGULAR = "Ban Role"
+    UNDO = "brole"
+
+    REQUIRED_INSTANTIATION_ARGS = [
+        "channel_snowflake",
+        "guild_snowflake",
+        "role_snowflake",
+    ]
+    OPTIONAL_ARGS = ["created_at", "updated_at"]
+
+    TABLE_NAME = "ban_roles"
+
+    def __init__(
+        self,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        role_snowflake: int,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        **kwargs,
+    ):
+        super().__init__()
+        self.created_at = created_at
+        self.channel_snowflake = channel_snowflake
+        self.guild_snowflake = guild_snowflake
+        self.role_snowflake = role_snowflake
+        self.updated_at = updated_at

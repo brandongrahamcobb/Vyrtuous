@@ -98,7 +98,7 @@ class Streaming(DatabaseFactory):
     async def send_entry(
         cls,
         alias,
-        channel: Optional[discord.VoiceChannel],
+        channel_snowflake: int,
         duration: str,
         is_channel_scope: bool,
         is_modification: bool,
@@ -107,6 +107,7 @@ class Streaming(DatabaseFactory):
         reason: str,
     ):
         bot = DiscordBot.get_instance()
+        channel = bot.get_channel(channel_snowflake)
         author_snowflake = None
         expires_at = None
         streaming = await Streaming.select()
@@ -155,7 +156,7 @@ class Streaming(DatabaseFactory):
             for channel in channel.guild.voice_channels
         )
         await Data.save(
-            action_type=alias.alias_type,
+            action_type=alias.category,
             channel_members_voice_count=channel_members_voice_count,
             channel_snowflake=channel.id,
             executor_member_snowflake=author_snowflake,
@@ -186,10 +187,10 @@ class Streaming(DatabaseFactory):
         if duration != "permanent":
             if duration is None:
                 duration_info = (
-                    f"**Type:** {alias.alias_type.capitalize()}\n**Expires:** Never"
+                    f"**Type:** {alias.category.capitalize()}\n**Expires:** Never"
                 )
             else:
-                duration_info = f"**Type:** {alias.alias_type.capitalize()}\n**Expires:** {duration}"
+                duration_info = f"**Type:** {alias.category.capitalize()}\n**Expires:** {duration}"
             if is_modification:
                 color, duration_type = 0xFF6B35, "⏰ Modified"
             else:
@@ -197,42 +198,42 @@ class Streaming(DatabaseFactory):
         else:
             color, duration_type = 0xDC143C, "♾️ Permanent"
             duration_info = (
-                f"**Type:** {alias.alias_type.capitalize()}\n**Expires:** {duration}"
+                f"**Type:** {alias.category.capitalize()}\n**Expires:** {duration}"
             )
-        if alias.alias_type == "ban":
+        if alias.category == "ban":
             if is_modification:
                 title = "🔄 Ban Modified"
             else:
                 title = "🔨 User Banned"
             action = "banned"
-        elif alias.alias_type == "flag":
+        elif alias.category == "flag":
             if is_modification:
                 title = "🔄 Flag Modified"
             else:
                 title = "🚩 User Flagged"
             action = "flagged"
-        elif alias.alias_type == "tmute":
+        elif alias.category == "tmute":
             if is_modification:
                 title = "🔄 Text Mute Modified"
             else:
                 title = "📝 User Text Muted"
             action = "text muted"
-        elif alias.alias_type == "vmute":
+        elif alias.category == "vmute":
             if is_modification:
                 title = "🔄 Voice Mute Modified"
             else:
                 title = "🎙️ User Voice Muted"
             action = "voice muted"
-        elif alias.alias_type == "unban":
+        elif alias.category == "unban":
             title = "⏮️ User Unbanned"
             action = "unbanned"
-        elif alias.alias_type == "unflag":
+        elif alias.category == "unflag":
             title = "⏮️ User Unflagged"
             action = "unflagged"
-        elif alias.alias_type == "untmute":
+        elif alias.category == "untmute":
             title = "⏮️ User Text-Mute Removed"
             action = "untext-muted"
-        elif alias.alias_type == "unvmute":
+        elif alias.category == "unvmute":
             title = "⏮️ User Voice-Mute Removed"
             action = "unvoice-muted"
         else:

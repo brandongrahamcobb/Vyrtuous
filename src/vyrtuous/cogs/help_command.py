@@ -59,9 +59,9 @@ class HelpCommand(commands.Cog):
         if aliases:
             grouped = defaultdict(list)
             for alias in aliases:
-                grouped[alias.alias_type].append(alias.alias_name)
-            for alias_type, alias_names in grouped.items():
-                help_lines = self.aliases_cog.alias_help.get(alias_type, None)
+                grouped[alias.category].append(alias.alias_name)
+            for category, alias_names in grouped.items():
+                help_lines = self.aliases_cog.alias_help.get(category, None)
                 if not help_lines:
                     continue
                 for alias_name in alias_names:
@@ -160,14 +160,14 @@ class HelpCommand(commands.Cog):
         if aliases:
             grouped = defaultdict(list)
             for alias in aliases:
-                grouped[alias.alias_type].append(alias)
+                grouped[alias.category].append(alias)
             perm_alias_map = defaultdict(list)
-            for alias_type, alias_list in grouped.items():
-                perm_level = self.aliases_cog.alias_type_to_permission_level.get(
-                    alias_type, "Everyone"
+            for category, alias_list in grouped.items():
+                perm_level = self.aliases_cog.category_to_permission_level.get(
+                    category, "Everyone"
                 )
                 for a in alias_list:
-                    help_lines = self.aliases_cog.alias_help.get(alias_type, [])
+                    help_lines = self.aliases_cog.alias_help.get(category, [])
                     perm_alias_map[perm_level].append(
                         f"**{a.alias_name}**\n"
                         + "\n".join(f"• {line}" for line in help_lines)
@@ -240,14 +240,14 @@ class HelpCommand(commands.Cog):
                         )
                         return await state.end(success=embed)
                 alias = obj
-                help_lines = self.aliases_cog.alias_help.get(alias.alias_type, None)
+                help_lines = self.aliases_cog.alias_help.get(alias.category, None)
                 if not help_lines:
                     return await state.end(
                         warning=f"No help available for `{alias.alias_name}`."
                     )
                 embed = discord.Embed(
                     title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
-                    description=f"Alias for **{alias.alias_type}**",
+                    description=f"Alias for **{alias.category}**",
                     color=discord.Color.green(),
                 )
                 embed.add_field(
@@ -274,12 +274,12 @@ class HelpCommand(commands.Cog):
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = self.aliases_cog.alias_type_to_description.get(
-                    alias.alias_type, "No description"
+                short_desc = self.aliases_cog.category_to_description.get(
+                    alias.category, "No description"
                 )
                 perm_level_for_alias = (
-                    self.aliases_cog.alias_type_to_permission_level.get(
-                        alias.alias_type, "Everyone"
+                    self.aliases_cog.category_to_permission_level.get(
+                        alias.category, "Everyone"
                     )
                 )
                 perm_alias_map[perm_level_for_alias].append(
@@ -386,14 +386,14 @@ class HelpCommand(commands.Cog):
                         return await state.end(success=embed)
             if kind == "alias":
                 alias = obj
-                help_lines = self.aliases_cog.alias_help.get(alias.alias_type, None)
+                help_lines = self.aliases_cog.alias_help.get(alias.category, None)
                 if not help_lines:
                     return await state.end(
                         warning=f"No help available for `{alias.alias_name}`."
                     )
                 embed = discord.Embed(
                     title=f"{self.config['discord_command_prefix']}{alias.alias_name}",
-                    description=f"Alias for **{alias.alias_type}**",
+                    description=f"Alias for **{alias.category}**",
                     color=discord.Color.green(),
                 )
                 embed.add_field(
@@ -419,12 +419,12 @@ class HelpCommand(commands.Cog):
         perm_alias_map = defaultdict(list)
         if aliases:
             for alias in aliases:
-                short_desc = self.aliases_cog.alias_type_to_description.get(
-                    alias.alias_type, "No description"
+                short_desc = self.aliases_cog.category_to_description.get(
+                    alias.category, "No description"
                 )
                 perm_level_for_alias = (
-                    self.aliases_cog.alias_type_to_permission_level.get(
-                        alias.alias_type, "Everyone"
+                    self.aliases_cog.category_to_permission_level.get(
+                        alias.category, "Everyone"
                     )
                 )
                 perm_alias_map[perm_level_for_alias].append(

@@ -22,9 +22,9 @@ from discord.ext import commands, tasks
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.hide import Hide
-from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.actions.ban import Ban, BanRole
+from vyrtuous.db.actions.hide import Hide, HideRole
+from vyrtuous.db.actions.text_mute import TextMute, TextMuteRole
 from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.database import Database
 from vyrtuous.db.mgmt.bug import Bug
@@ -70,49 +70,39 @@ class ScheduledTasks(commands.Cog):
     async def check_expired_hides(self):
         expired_hides = await Hide.select(expired=True)
         if expired_hides:
-            for expired_hide in expired_hide:
+            for expired_hide in expired_hides:
                 channel_snowflake = expired_hide.channel_snowflake
                 guild_snowflake = expired_hide.guild_snowflake
                 member_snowflake = expired_hide.member_snowflake
-                role_snowflake = expired_hide.role_snowflake
+                kwargs = {
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
+                    "member_snowflake": member_snowflake
+                }
+                hide_role = await HideRole.select(**kwargs, singular=True)
+                role_snowflake = hide_role.role_snowflake
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(
                         f"Unable to locate guild {guild_snowflake}, cleaning up expired hide."
                     )
-                    await Hide.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
+                    await Hide.delete(**kwargs)
                     continue
                 channel = guild.get_channel(channel_snowflake)
                 if channel is None:
                     logger.info(
                         f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, cleaning up expired hide."
                     )
-                    await Hide.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
+                    await Hide.delete(**kwargs)
                     continue
                 member = guild.get_member(member_snowflake)
                 if member is None:
                     logger.info(
                         f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired hide."
                     )
-                    await Hide.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
+                    await Hide.delete(**kwargs)
                     continue
-                await Hide.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                )
+                await Hide.delete(**kwargs)
                 try:
                     role = guild.get_role(role_snowflake)
                     await member.remove_roles(role)
@@ -134,94 +124,45 @@ class ScheduledTasks(commands.Cog):
                 channel_snowflake = expired_ban.channel_snowflake
                 guild_snowflake = expired_ban.guild_snowflake
                 member_snowflake = expired_ban.member_snowflake
-                text_mute = await TextMute.select(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake
+                kwargs = {
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
+                    "member_snowflake": member_snowflake
+                }
+                ban_role = await BanRole.select(
+                    singular=True, **kwargs
                 )
-                role_snowflake = text_mute.role_snowflake
+                role_snowflake = ban_role.role_snowflake
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
                     logger.info(
                         f"Unable to locate guild {guild_snowflake}, cleaning up expired ban."
                     )
-                    await Ban.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake
-                    )
-                    await TextMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake
-                    )
-                    await VoiceMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                        target=target
-                    )
+                    await Ban.delete(**kwargs)
+                    await TextMute.delete(**kwargs)
+                    await VoiceMute.delete(**kwargs, target=target)
                     continue
                 channel = guild.get_channel(channel_snowflake)
                 if channel is None:
                     logger.info(
                         f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}, cleaning up expired ban."
                     )
-                    await Ban.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
-                    await TextMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
-                    await VoiceMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                        target=target
-                    )
+                    await Ban.delete(**kwargs)
+                    await TextMute.delete(**kwargs)
+                    await VoiceMute.delete(**kwargs, target=target)
                     continue
                 member = guild.get_member(member_snowflake)
                 if member is None:
                     logger.info(
                         f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired ban."
                     )
-                    await Ban.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
-                    await TextMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
-                    await VoiceMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                        target=target
-                    )
+                    await Ban.delete(**kwargs)
+                    await TextMute.delete(**kwargs)
+                    await VoiceMute.delete(**kwargs, target=target)
                     continue
-                await Ban.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                )
-                await TextMute.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                )
-                await VoiceMute.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                    target=target
-                )
+                await Ban.delete(**kwargs)
+                await TextMute.delete(**kwargs)
+                await VoiceMute.delete(**kwargs)
                 try:
                     role = guild.get_role(role_snowflake)
                     await member.remove_roles(role)
@@ -258,47 +199,33 @@ class ScheduledTasks(commands.Cog):
                 channel_snowflake = expired_voice_mute.channel_snowflake
                 target = expired_voice_mute.target
                 guild = self.bot.get_guild(guild_snowflake)
+                kwargs = {
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
+                    "member_snowflake": member_snowflake,
+                    "target": target
+                }
                 if guild is None:
-                    await VoiceMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                        target=target
-                    )
+                    await VoiceMute.delete(**kwargs)
                     logger.info(
                         f"Unable to locate guild {guild_snowflake}, cleaning up expired voice-mute."
                     )
                     continue
                 channel = guild.get_channel(channel_snowflake)
                 if channel is None:
-                    await VoiceMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                        target=target
-                    )
+                    await VoiceMute.delete(**kwargs)
                     logger.info(
                         f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired voice-mute."
                     )
                     continue
                 member = guild.get_member(member_snowflake)
                 if member is None:
-                    await VoiceMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                        target="user",
-                    )
+                    await VoiceMute.delete(**kwargs)
                     logger.info(
                         f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild.name}), cleaning up expired voice-mute."
                     )
                     continue
-                await VoiceMute.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member.id,
-                    target="user",
-                )
+                await VoiceMute.delete(**kwargs)
                 if (
                     member.voice
                     and member.voice.channel
@@ -493,25 +420,23 @@ class ScheduledTasks(commands.Cog):
                 channel_snowflake = expired_text_mute.channel_snowflake
                 guild_snowflake = expired_text_mute.guild_snowflake
                 member_snowflake = expired_text_mute.member_snowflake
-                role_snowflake = expired_text_mute.role_snowflake
+                kwargs = {
+                    "channel_snowflake": channel_snowflake,
+                    "guild_snowflake": guild_snowflake,
+                    "member_snowflake": member_snowflake
+                }
+                text_mute_role = await TextMuteRole.select(**kwargs, singular=True)
+                role_snowflake = text_mute_role.role_snowflake
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
-                    await TextMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
+                    await TextMute.delete(**kwargs)
                     logger.info(
                         f"Unable to locate guild {guild_snowflake}, cleaning up expired text-mute."
                     )
                     continue
                 channel = guild.get_channel(channel_snowflake)
                 if channel is None:
-                    await TextMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
+                    await TextMute.delete(**kwargs)
                     logger.info(
                         f"Unable to locate channel {channel_snowflake} in guild {guild.name} ({guild_snowflake}), cleaning up expired text-mute."
                     )
@@ -521,17 +446,9 @@ class ScheduledTasks(commands.Cog):
                     logger.info(
                         f"Unable to locate member {member_snowflake} in channel {channel.name} ({channel.id}) in guild {guild.name} ({guild_snowflake}), cleaning up expired text-mute"
                     )
-                    await TextMute.delete(
-                        channel_snowflake=channel_snowflake,
-                        guild_snowflake=guild_snowflake,
-                        member_snowflake=member_snowflake,
-                    )
+                    await TextMute.delete(**kwargs)
                     continue
-                await TextMute.delete(
-                    channel_snowflake=channel_snowflake,
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member_snowflake,
-                )
+                await TextMute.delete(**kwargs)
                 try:
                     role = guild.get_role(role_snowflake)
                     await member.remove_roles(role)

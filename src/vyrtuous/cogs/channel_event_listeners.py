@@ -23,7 +23,6 @@ import asyncio
 import time
 
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -33,9 +32,7 @@ from vyrtuous.db.actions.flag import Flag
 from vyrtuous.db.actions.server_mute import ServerMute
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
-from vyrtuous.db.roles.administrator import Administrator, AdministratorRole
 from vyrtuous.db.roles.coordinator import Coordinator
-from vyrtuous.db.roles.guild_owner import GuildOwner
 from vyrtuous.db.roles.moderator import Moderator
 from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
@@ -43,24 +40,17 @@ from vyrtuous.db.rooms.video_room import VideoRoom
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.mgmt.stream import Streaming
 from vyrtuous.fields.duration import DurationObject
-from vyrtuous.service.discord_object_service import DiscordObjectNotFound
 
-from vyrtuous.utils.check import has_equal_or_lower_role_wrapper
 from vyrtuous.utils.logger import logger
-from vyrtuous.service.message_service import MessageService
-from vyrtuous.service.state_service import StateService
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.invincibility import Invincibility
 
 
-class EventListeners(commands.Cog):
+class ChannelEventListeners(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-        self.config = bot.config
-        self.db_pool = bot.db_pool
         self.flags = []
-        self.message_service = MessageService(self.bot)
         self.join_log = defaultdict(list)
         self._ready_done = False
         self.deleted_rooms = {}
@@ -78,19 +68,6 @@ class EventListeners(commands.Cog):
                 except discord.Forbidden as e:
                     logger.warning(str(e).capitalize())
         self.flags = await Flag.select()
-
-    @commands.Cog.listener()
-    async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
-        if before.owner_id != after.owner_id:
-            where_kwargs = {
-                "guild_snowflake": before.guild.id,
-                "member_snowflake": before.owner_id,
-            }
-            set_kwargs = {
-                "guild_snowflake": after.guild.id,
-                "member_snowflake": after.owner_id,
-            }
-            await GuildOwner.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
 
     @commands.Cog.listener()
     async def on_guild_channel_grant(self, channel: discord.abc.GuildChannel):
@@ -261,7 +238,7 @@ class EventListeners(commands.Cog):
                     )
                     await voice_mute.create()
                     should_be_muted = True
-                    alias = SimpleNamespace(alias_type="voice_mute")
+                    alias = SimpleNamespace(category="voice_mute")
                     duration = DurationObject("1h")
                     await Streaming.send_entry(
                         alias=alias,
@@ -289,7 +266,7 @@ class EventListeners(commands.Cog):
                         target=target,
                     )
                     should_be_muted = False
-                    alias = SimpleNamespace(alias_type="unvmute")
+                    alias = SimpleNamespace(category="unvmute")
                     duration = DurationObject("0")
                     await Streaming.send_entry(
                         alias=alias,
@@ -342,258 +319,6 @@ class EventListeners(commands.Cog):
     #                        except discord.HTTPException as e:
     #                            logger.warning(f'Failed to mute {member.display_name}: {str(e).capitalize()}')
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member):
-        user_id = member.id
-        guild = member.guild
-        bans = await Ban.select(guild_snowflake=guild.id, member_snowflake=user_id)
-        text_mutes = await TextMute.select(
-            guild_snowflake=guild.id, member_snowflake=user_id
-        )
-        if bans:
-            for ban in bans:
-                channel = guild.get_channel(ban.channel_snowflake)
-                role = guild.get_role(ban.role_snowflake)
-                try:
-                    await member.add_roles(role, reason="Reinstating channel ban")
-                except discord.Forbidden as e:
-                    logger.warning(
-                        f"Unable to ban member "
-                        f"{member.display_name} ({member.id}) "
-                        f"in channel {channel.name} ({channel.id}) "
-                        f"in guild {guild.name} ({guild.id}). "
-                        f"{str(e).capitalize()}"
-                    )
-        if text_mutes:
-            for text_mute in text_mutes:
-                channel = guild.get_channel(text_mute.channel_snowflake)
-                role = guild.get_role(text_mute.role_snowflake)
-                try:
-                    await member.add_roles(role, reason="Reinstating text-mute")
-                except discord.Forbidden as e:
-                    logger.warning(
-                        f"Unable to text-mute member "
-                        f"{member.display_name} ({member.id}) "
-                        f"in channel {channel.name} ({channel.id}) "
-                        f"in guild {guild.name} ({guild.id}). "
-                        f"{str(e).capitalize()}"
-                    )
-
-    @commands.Cog.listener()
-    async def on_message_edit(self, before, after):
-        if after.author.bot:
-            return
-        if before.content != after.content:
-            ctx = await self.bot.get_context(after)
-            if ctx.command:
-                await self.bot.invoke(ctx)
-            else:
-                await self.on_message(after)
-
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
-        args = (
-            message.content[len(self.config["discord_command_prefix"]) :]
-            .strip()
-            .split()
-        )
-        if (
-            not message.guild
-            or not args
-            or not message.content.startswith(self.config["discord_command_prefix"])
-            or (self.config["release_mode"] and message.author.id == self.bot.user.id)
-        ):
-            return
-        alias = await Alias.select(
-            alias_name=args[0],
-            guild_snowflake=message.guild.id,
-            singular=True,
-        )
-        if not alias:
-            return
-        state = StateService(source=message)
-        channel_obj = message.guild.get_channel(alias.channel_snowflake)
-        member_obj = message.guild.get_member(int(args[1]))
-        executor_role = await has_equal_or_lower_role_wrapper(
-            source=message,
-            member_snowflake=member_obj.id,
-            sender_snowflake=message.author.id,
-        )
-        action_duration = (
-            DurationObject(args[2]) if len(args) > 2 else DurationObject("8h")
-        )
-        action_reason = " ".join(args[3:]) if len(args) > 3 else "No reason provided."
-
-        alias_class = alias.alias_class
-        kwargs = {}
-        primary_keys = await alias_class.primary_keys()
-        if "channel_snowflake" in primary_keys:
-            kwargs.update({"channel_snowflake": channel_obj.id})
-        if "guild_snowflake" in primary_keys:
-            kwargs.update({"guild_snowflake": message.guild.id})
-        if "member_snowflake" in primary_keys:
-            kwargs.update({"member_snowflake": member_obj.id})
-        action_existing = await alias_class.select(
-            **kwargs,
-            singular=True,
-        )
-        action_modification = False
-
-        if action_existing:
-            action_modification = True
-            await alias_class.delete(
-                channel_snowflake=channel_obj.id,
-                guild_snowflake=message.guild.id,
-                member_snowflake=member_obj.id,
-            )
-            alias.alias_type = alias_class.UNDO
-
-        action_channel_cap = await Alias.generate_cap_duration(
-            channel_snowflake=channel_obj.id,
-            guild_snowflake=message.guild.id,
-            moderation_type=alias_class.ACT,
-        )
-        action_information = {
-            "alias_class": alias_class,
-            "action_channel_cap": action_channel_cap,
-            "action_channel_snowflake": channel_obj.id,
-            "action_duration": action_duration,
-            "action_executor_role": executor_role,
-            "action_existing": action_existing,
-            "action_guild_snowflake": message.guild.id,
-            "action_member_snowflake": member_obj.id,
-            "action_modification": action_modification,
-            "action_reason": action_reason,
-            "action_role_snowflake": (
-                alias.role_snowflake if alias.role_snowflake else None
-            ),
-        }
-        expires_in_timedelta = action_duration.to_timedelta()
-
-        action_expires_in = datetime.now(timezone.utc) + expires_in_timedelta
-        action_information["action_expires_in"] = action_expires_in
-
-        await alias.handlers[alias.alias_type](
-            alias=alias,
-            action_information=action_information,
-            channel=channel_obj,
-            member=member_obj,
-            message=message,
-            state=state,
-        )
-
-    @commands.Cog.listener()
-    async def on_command_error(self, ctx, error):
-        state = StateService(source=ctx)
-        logger.error(str(error))
-        if isinstance(error, commands.BadArgument):
-            return await state.end(error=str(error))
-        elif isinstance(error, commands.CheckFailure):
-            return await state.end(error=str(error))
-        elif isinstance(error, commands.MissingRequiredArgument):
-            missing = error.param.name
-            return await state.end(error=f"Missing required argument: `{missing}`")
-
-    @commands.Cog.listener()
-    async def on_app_command_error(self, interaction, error):
-        state = StateService(source=interaction)
-        logger.error(str(error))
-        if isinstance(error, app_commands.BadArgument):
-            return await state.end(error=str(error))
-        elif isinstance(error, app_commands.CheckFailure):
-            return await state.end(error=str(error))
-        elif isinstance(error, DiscordObjectNotFound()):
-            return await state.end(error=str(error))
-
-    #    @commands.Cog.listener()
-    #    async def on_command(self, ctx):
-    #        await ctx.send("Bot is currently down. Changes will not be saved permanently.")
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        if getattr(self, "_ready_done", False):
-            return
-        self._ready_done = True
-        method_names = [cmd.callback.__name__ for cmd in self.bot.commands]
-        logger.info(method_names)
-
-    @commands.Cog.listener()
-    async def on_member_update(self, before: discord.Member, after: discord.Member):
-        if before.roles == after.roles:
-            return
-        before_role_snowflakes = {r.id for r in before.roles}
-        after_role_snowflakes = {r.id for r in after.roles}
-        added_roles = after_role_snowflakes - before_role_snowflakes
-        removed_roles = before_role_snowflakes - after_role_snowflakes
-        administrator_role_snowflakes = []
-        administrator_roles = await AdministratorRole.select(
-            guild_snowflake=after.guild.id
-        )
-        for administrator_role in administrator_roles:
-            administrator_role_snowflakes.append(administrator_role.role_snowflake)
-        relevant_added_roles = added_roles & set(administrator_role_snowflakes)
-        relevant_removed_roles = removed_roles & set(administrator_role_snowflakes)
-        if not relevant_added_roles and not relevant_removed_roles:
-            return
-        administrator = await Administrator.select(
-            guild_snowflake=after.guild.id, member_snowflake=after.id
-        )
-        if not administrator and relevant_added_roles:
-            administrator = Administrator(
-                guild_snowflake=after.guild.id,
-                member_snowflake=after.id,
-                role_snowflakes=list(after_role_snowflakes),
-            )
-            await administrator.create()
-            return
-        if administrator:
-            where_kwargs = {
-                "guild_snowflake": after.guild.id,
-                "member_snowflake": after.id,
-            }
-            for role_snowflake in relevant_added_roles:
-                if role_snowflake not in administrator.role_snowflakes:
-                    set_kwargs = {
-                        "role_snowflakes": administrator.role_snowflakes.append(
-                            role_snowflake
-                        )
-                    }
-                    await Administrator.update(
-                        set_kwargs=set_kwargs, where_kwargs=where_kwargs
-                    )
-            for role_snowflake in relevant_removed_roles:
-                if role_snowflake in administrator.role_snowflakes:
-                    set_kwargs = {
-                        "role_snowflakes": administrator.role_snowflakes.remove(
-                            role_snowflake
-                        )
-                    }
-                    await Administrator.update(
-                        set_kwargs=set_kwargs, where_kwargs=where_kwargs
-                    )
-            remaining_admin_roles = (
-                set(administrator.role_snowflakes) & after_role_snowflakes
-            )
-            if not remaining_admin_roles:
-                await Administrator.delete(
-                    guild_snowflake=after.guild.id, member_snowflake=after.id
-                )
-
-    @commands.Cog.listener()
-    async def on_guild_role_delete(self, role: discord.Role):
-        administrators = await Administrator.select(role_snowflakes=[role.id])
-        for administrator in administrators:
-            role_snowflakes = set(administrator.role_snowflake)
-            guild_snowflakes = set(administrator.guild_snowflake)
-            role_snowflakes.discard(role.id)
-            if not role_snowflakes:
-                guild_snowflakes.discard(role.guild)
-            Administrator.update(
-                guild_snowflake=list(guild_snowflakes),
-                member_snowflake=administrator.member_snowflake,
-                role_snowflakes=list(role_snowflakes),
-            )
-
     async def print_flags(
         self, member: discord.Member, after_channel: discord.abc.GuildChannel
     ):
@@ -621,4 +346,4 @@ class EventListeners(commands.Cog):
 
 
 async def setup(bot: DiscordBot):
-    await bot.add_cog(EventListeners(bot))
+    await bot.add_cog(ChannelEventListeners(bot))

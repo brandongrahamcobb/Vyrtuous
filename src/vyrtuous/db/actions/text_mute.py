@@ -25,6 +25,7 @@ from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.logger import logger
 
 
 class TextMute(DatabaseFactory):
@@ -111,28 +112,36 @@ class TextMute(DatabaseFactory):
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-    @classmethod
-    async def administer_role(
-        cls, guild_snowflake, member_snowflake, role_snowflake, state
-    ):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(guild_snowflake)
-        member = guild.get_member(member_snowflake)
-        role = guild.get_role(role_snowflake)
-        try:
-            await member.add_roles(role, reason="Administering a text-mute role.")
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
+class TextMuteRole(DatabaseFactory):
 
-    @classmethod
-    async def revoke_role(
-        cls, guild_snowflake, member_snowflake, role_snowflake, state
+    ACT = "tmrole"
+    CATEGORY = "tmrole"
+    PLURAL = "Text-Mute Roles"
+    SCOPES = ["channel", "guild"]
+    SINGULAR = "Text-Mute Role"
+    UNDO = "tmrole"
+
+    REQUIRED_INSTANTIATION_ARGS = [
+        "channel_snowflake",
+        "guild_snowflake",
+        "role_snowflake",
+    ]
+    OPTIONAL_ARGS = ["created_at", "updated_at"]
+
+    TABLE_NAME = "text_mute_roles"
+
+    def __init__(
+        self,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        role_snowflake: int,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        **kwargs,
     ):
-        bot = DiscordBot.get_instance()
-        guild = bot.get_guild(guild_snowflake)
-        member = guild.get_member(member_snowflake)
-        role = guild.get_role(role_snowflake)
-        try:
-            await member.remove_roles(role, reason="Revoking a text-mute role.")
-        except discord.Forbidden as e:
-            return await state.end(error=str(e).capitalize())
+        super().__init__()
+        self.created_at = created_at
+        self.channel_snowflake = channel_snowflake
+        self.guild_snowflake = guild_snowflake
+        self.role_snowflake = role_snowflake
+        self.updated_at = updated_at

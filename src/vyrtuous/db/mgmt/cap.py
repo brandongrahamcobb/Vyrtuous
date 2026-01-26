@@ -32,10 +32,10 @@ class Cap(DatabaseFactory):
     UNDO = None
 
     REQUIRED_INSTANTIATION_ARGS = [
+        "category",
         "channel_snowflake",
         "duration_seconds",
         "guild_snowflake",
-        "moderation_type",
     ]
     OPTIONAL_ARGS = [
         "created_at",
@@ -46,16 +46,16 @@ class Cap(DatabaseFactory):
 
     def __init__(
         self,
+        category: str,
         channel_snowflake: int,
         duration_seconds: int,
         guild_snowflake: int,
-        moderation_type: str,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):
+        self.category = category
         self.channel_snowflake = channel_snowflake
         self.created_at = created_at
         self.duration_seconds = duration_seconds
         self.guild_snowflake = guild_snowflake
-        self.moderation_type = moderation_type
         self.updated_at = updated_at
