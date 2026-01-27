@@ -24,7 +24,16 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.guild_dictionary import (
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    generate_skipped_channels,
+    generate_skipped_guilds,
+    clean_guild_dictionary,
+    flush_page,
+)
 
 
 class Stage(DatabaseFactory):
@@ -80,3 +89,84 @@ class Stage(DatabaseFactory):
             )
             embed.add_field(name="\u200b", value="**Ask to speak!**", inline=False)
             await bot.get_channel(self.channel_snowflake).send(embed=embed)
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
+        title = f"{get_random_emoji()} Stages"
+        kwargs = object_dict.get("columns", None)
+
+        stages = await Stage.select(**kwargs)
+
+        for stage in stages:
+            guild_dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
+            guild_dictionary[stage.guild_snowflake]["channels"].setdefault(
+                stage.channel_snowflake, {}
+            )
+            guild_dictionary[stage.guild_snowflake]["channels"][
+                stage.channel_snowflake
+            ].setdefault("stages", {})
+            guild_dictionary[stage.guild_snowflake]["channels"][
+                stage.channel_snowflake
+            ]["stages"].update(
+                {"expires_in": DurationObject.from_expires_in(stage.expires_in)}
+            )
+
+        skipped_channels = generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
+
+        for guild_snowflake, guild_data in guild_dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for channel_snowflake, stage_dictionary in guild_data.get(
+                "channels"
+            ).items():
+                channel = guild.get_channel(channel_snowflake)
+                lines.append(
+                    f"**Expires in:** {stage_dictionary.get("expires_in", None)}"
+                )
+                field_count += 1
+                if field_count == chunk_size:
+                    embed.add_field(
+                        name=f"Channel: {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
+                if lines:
+                    embed.add_field(
+                        name=f"Channel: {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
+            pages.append(embed)
+
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_channels:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_channels,
+                    title="Skipped Channels in Server",
+                )
+        return pages

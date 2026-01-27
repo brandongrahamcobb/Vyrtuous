@@ -19,44 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.flag import Flag
-from vyrtuous.db.actions.text_mute import TextMute
-from vyrtuous.db.actions.voice_mute import VoiceMute
-from vyrtuous.db.roles.coordinator import Coordinator
-from vyrtuous.db.roles.moderator import Moderator
-from vyrtuous.db.roles.vegan import Vegan
-from vyrtuous.db.rooms.stage import Stage
-from vyrtuous.db.rooms.temporary_room import TemporaryRoom
-from vyrtuous.db.rooms.video_room import VideoRoom
-from vyrtuous.db.mgmt.stream import Streaming
-
-
-member_relevant_objects_dict = {
-    Ban.SINGULAR: Ban,
-    Coordinator.SINGULAR: Coordinator,
-    Flag.SINGULAR: Flag,
-    Moderator.SINGULAR: Moderator,
-    TextMute.SINGULAR: TextMute,
-    Vegan.SINGULAR: Vegan,
-    VoiceMute.SINGULAR: VoiceMute,
-}
-
-room_relevant_objects_dict = {
-    Alias.SINGULAR: Alias,
-    Ban.SINGULAR: Ban,
-    Coordinator.SINGULAR: Coordinator,
-    Flag.SINGULAR: Flag,
-    Moderator.SINGULAR: Moderator,
-    TemporaryRoom.SINGULAR: TemporaryRoom,
-    TextMute.SINGULAR: TextMute,
-    Streaming.SINGULAR: Streaming,
-    Vegan.SINGULAR: Vegan,
-    VideoRoom.SINGULAR: VideoRoom,
-    VoiceMute.SINGULAR: VoiceMute,
-    Stage.SINGULAR: Stage,
-}
 
 
 def generate_skipped_set_pages(chunk_size, field_count, pages, skipped, title):

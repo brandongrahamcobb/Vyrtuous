@@ -18,6 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from datetime import datetime, timezone
 from typing import Optional
+
+import discord
+
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.actions.flag import Flag
@@ -31,6 +34,15 @@ from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.check import has_equal_or_lower_role
 from vyrtuous.utils.logger import logger
+from vyrtuous.utils.guild_dictionary import (
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    generate_skipped_channels,
+    generate_skipped_guilds,
+    clean_guild_dictionary,
+    flush_page,
+)
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 class Alias(DatabaseFactory):
@@ -128,14 +140,20 @@ class Alias(DatabaseFactory):
             action_modification = True
             await self.alias_class.delete(**kwargs)
             self.category = self.alias_class.UNDO
-        action_information.update({
-            "action_existing": action_existing,
-            "action_modification": action_modification,
-            "action_role_snowflake": self.role_snowflake if self.role_snowflake else None
-        })
+        action_information.update(
+            {
+                "action_existing": action_existing,
+                "action_modification": action_modification,
+                "action_role_snowflake": (
+                    self.role_snowflake if self.role_snowflake else None
+                ),
+            }
+        )
         return action_information
-    
-    async def build_duration_information(self, action_information, category, duration, state):
+
+    async def build_duration_information(
+        self, action_information, category, duration, state
+    ):
         channel = self.bot.get_channel(self.channel_snowflake)
         cap = await Cap.select(
             category=category,
@@ -151,7 +169,7 @@ class Alias(DatabaseFactory):
             duration.to_timedelta().total_seconds() > cap_duration
             or duration.number == 0
         ):
-            if action_information['executor_role'] == "Moderator":
+            if action_information["executor_role"] == "Moderator":
                 duration_str = DurationObject.from_seconds(cap_duration)
                 return await state.end(
                     warning=f"Cannot set the "
@@ -159,35 +177,132 @@ class Alias(DatabaseFactory):
                     f"{action_information['executor_role']} in {channel.mention}."
                 )
         expires_in = datetime.now(timezone.utc) + duration.to_timedelta()
-        action_information.update({
-            "action_cap_duration": cap_duration,
-            "action_duration": duration,
-            "action_expires_in": expires_in
-        })
+        action_information.update(
+            {
+                "action_cap_duration": cap_duration,
+                "action_duration": duration,
+                "action_expires_in": expires_in,
+            }
+        )
         return action_information
 
-    async def build_action_information(self, author_snowflake, duration, member_snowflake, reason, state):
+    async def build_action_information(
+        self, author_snowflake, duration, member_snowflake, reason, state
+    ):
         action_information = {}
-        action_information.update({
-            "alias_class": self.alias_class,
-            "action_channel_snowflake": self.channel_snowflake,
-            "action_guild_snowflake": self.guild_snowflake,
-            "action_member_snowflake": member_snowflake
-        })
+        action_information.update(
+            {
+                "alias_class": self.alias_class,
+                "action_channel_snowflake": self.channel_snowflake,
+                "action_guild_snowflake": self.guild_snowflake,
+                "action_member_snowflake": member_snowflake,
+            }
+        )
         action_executor_role = await has_equal_or_lower_role(
             member_snowflake=member_snowflake,
             kwargs={
                 "channel_snowflake": self.channel_snowflake,
                 "guild_snowflake": self.guild_snowflake,
-                "member_snowflake": author_snowflake
-            }
+                "member_snowflake": author_snowflake,
+            },
         )
-        action_information.update({
-            "action_executor_role": action_executor_role
-        })
-        action_information = await self.build_duration_information(action_information=action_information, category=self.category, duration=duration, state=state)
-        action_information.update({
-            "action_reason": reason
-        })
-        action_information = await self.build_existing_information(action_information=action_information, member_snowflake=member_snowflake)
+        action_information.update({"action_executor_role": action_executor_role})
+        action_information = await self.build_duration_information(
+            action_information=action_information,
+            category=self.category,
+            duration=duration,
+            state=state,
+        )
+        action_information.update({"action_reason": reason})
+        action_information = await self.build_existing_information(
+            action_information=action_information, member_snowflake=member_snowflake
+        )
         return action_information
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
+        title = f"{get_random_emoji()} Command Aliases"
+
+        kwargs = object_dict.get("columns", None)
+
+        aliases = await Alias.select(**kwargs)
+
+        for alias in aliases:
+            guild_dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
+            guild_dictionary[alias.guild_snowflake]["channels"].setdefault(
+                alias.channel_snowflake, {"aliases": {}}
+            )
+            guild_dictionary[alias.guild_snowflake]["channels"][
+                alias.channel_snowflake
+            ]["aliases"].setdefault(alias.category, {})[alias.alias_name] = []
+            if alias.category == "role":
+                guild = bot.get_guild(alias.guild_snowflake)
+                if guild:
+                    role = guild.get_role(alias.role_snowflake)
+                    guild_dictionary[alias.guild_snowflake]["channels"][
+                        alias.channel_snowflake
+                    ]["aliases"][alias.category][alias.alias_name] = role.mention
+
+            skipped_channels = generate_skipped_channels(guild_dictionary)
+            skipped_guilds = generate_skipped_guilds(guild_dictionary)
+            guild_dictionary = clean_guild_dictionary(
+                guild_dictionary=guild_dictionary,
+                skipped_channels=skipped_channels,
+                skipped_guilds=skipped_guilds,
+            )
+
+            for guild_snowflake, guild_data in guild_dictionary.items():
+                field_count = 0
+                guild = bot.get_guild(guild_snowflake)
+                embed = discord.Embed(
+                    title=title, description=guild.name, color=discord.Color.blue()
+                )
+                for channel_snowflake, dictionary in guild_data.get(
+                    "channels", {}
+                ).items():
+                    channel = guild.get_channel(channel_snowflake)
+                    lines = []
+                    for category, alias_data in dictionary["aliases"].items():
+                        lines.append(f"{category}")
+                        for name, role_mention in alias_data.items():
+                            if category == "role":
+                                lines.append(f"  ↳ `{name}` -> {role_mention}")
+                            else:
+                                lines.append(f"  ↳ `{name}`")
+                    if len(lines) >= chunk_size:
+                        embed.add_field(
+                            name=f"Channel: {channel.mention}",
+                            value="\n".join(lines),
+                            inline=False,
+                        )
+                        embed, field_count = flush_page(embed, pages, title, guild.name)
+                        lines = []
+                if lines:
+                    embed.add_field(
+                        name=f"Channel: {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
+                pages.append(embed)
+
+            if is_at_home:
+                if skipped_guilds:
+                    pages = generate_skipped_set_pages(
+                        chunk_size=chunk_size,
+                        field_count=field_count,
+                        pages=pages,
+                        skipped=skipped_guilds,
+                        title="Skipped Servers",
+                    )
+                if skipped_channels:
+                    pages = generate_skipped_dict_pages(
+                        chunk_size=chunk_size,
+                        field_count=field_count,
+                        pages=pages,
+                        skipped=skipped_channels,
+                        title="Skipped Channels in Server",
+                    )
+        return pages

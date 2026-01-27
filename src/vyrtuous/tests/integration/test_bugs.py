@@ -1,4 +1,4 @@
-"""test_dlogs.py The purpose of this program is to be the integration test for the dlogs list command for Vyrtuous.
+"""test_bugs.py The purpose of this program is to be the integration test for the bugs list command for Vyrtuous.
 
 Copyright (C) 2025  https://github.com/brandongrahamcobb/Vyrtuous.git
 
@@ -31,18 +31,18 @@ UUID = "7c772534-9528-4c3d-a065-ad3e29f754f8"
 @pytest.mark.parametrize(
     "command",
     [
-        ("!dlogs all"),
-        ("!dlogs all resolved"),
-        ("!dlogs all unresolved"),
-        ("!dlogs {uuid}"),
-        ("!dlogs {uuid} resolved"),
-        ("!dlogs {uuid} unresolved"),
-        ("!dlogs {guild_snowflake}"),
-        ("!dlogs {guild_snowflake} resolved"),
-        ("!dlogs {guild_snowflake} unresolved"),
+        ("!bugs all"),
+        ("!bugs all resolved"),
+        ("!bugs all unresolved"),
+        ("!bugs {uuid}"),
+        ("!bugs {uuid} resolved"),
+        ("!bugs {uuid} unresolved"),
+        ("!bugs {guild_snowflake}"),
+        ("!bugs {guild_snowflake} resolved"),
+        ("!bugs {guild_snowflake} unresolved"),
     ],
 )
-async def test_dlogs(bot, command: Optional[str]):
+async def test_bugs(bot, command: Optional[str]):
     """
     List developer issues which are registered in the PostgresSQL database
     'vyrtuous' in the table 'developer_logs'.
@@ -65,31 +65,31 @@ async def test_dlogs(bot, command: Optional[str]):
 
     Examples
     --------
-    >>> !dlogs "all"
+    >>> !bugs "all"
     [{emoji} Developer Issues\n Guild1\n Guild2]
 
-    >>> !dlogs "all" "resolved"
+    >>> !bugs "all" "resolved"
     [{emoji} Developer Issues\n Guild1\n Guild2]
 
-    >>> !dlogs "all" "unresolved
+    >>> !bugs "all" "unresolved
     [{emoji} Developer Issues\n Guild1\n Guild2]
 
-    >>> !dlogs 10000000000000500
+    >>> !bugs 10000000000000500
     [{emoji} Developer Issues\n Guild1]
 
-    >>> !dlogs 10000000000000500 resolved
+    >>> !bugs 10000000000000500 resolved
     [{emoji} Developer Issues\n Guild1]
 
-    >>> !dlogs 10000000000000500 unresolved
+    >>> !bugs 10000000000000500 unresolved
     [{emoji} Developer Issues\n Guild1]
 
-    >>> !dlogs "7c772534-9528-4c3d-a065-ad3e29f754f8"
+    >>> !bugs "7c772534-9528-4c3d-a065-ad3e29f754f8"
     [{emoji} Developer Issues\n Guild1]
 
-    >>> !dlogs "7c772534-9528-4c3d-a065-ad3e29f754f8" resolved
+    >>> !bugs "7c772534-9528-4c3d-a065-ad3e29f754f8" resolved
     [{emoji} Developer Issues\n Guild1]
 
-    >>> !dlogs "7c772534-9528-4c3d-a065-ad3e29f754f8" unresolved
+    >>> !bugs "7c772534-9528-4c3d-a065-ad3e29f754f8" unresolved
     [{emoji} Developer Issues\n Guild1]
     """
     formatted = command.format(

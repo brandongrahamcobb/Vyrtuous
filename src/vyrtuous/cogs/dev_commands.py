@@ -112,13 +112,16 @@ class DevCommands(commands.Cog):
             logger.warning(e)
 
         if alias.category == "ban":
-            bans = await Ban.select(channel_snowflake=alias.channel_snowflake, guild_snowflake=interaction.guild.id)
+            bans = await Ban.select(
+                channel_snowflake=alias.channel_snowflake,
+                guild_snowflake=interaction.guild.id,
+            )
             for ban in bans:
                 member = interaction.guild.get_member(ban.member_snowflake)
                 await Role.administer_role(
                     guild_snowflake=ban.guild_snowflake,
                     member_snowflake=ban.member_snowflake,
-                    role_snowflake=role.id
+                    role_snowflake=role.id,
                 )
                 where_kwargs = {
                     "channel_snowflake": channel.id,
@@ -127,16 +130,23 @@ class DevCommands(commands.Cog):
                 }
                 set_kwargs = {"role_snowflake": role.id}
                 await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-                ban_role = BanRole(channel_snowflake=channel.id, guild_snowflake=interaction.guild.id, role_snowflake=role.id)
+                ban_role = BanRole(
+                    channel_snowflake=channel.id,
+                    guild_snowflake=interaction.guild.id,
+                    role_snowflake=role.id,
+                )
                 await ban_role.create()
         if alias.category == "tmute":
-            text_mutes = await TextMute.select(channel_snowflake=alias.channel_snowflake, guild_snowflake=interaction.guild.id)
+            text_mutes = await TextMute.select(
+                channel_snowflake=alias.channel_snowflake,
+                guild_snowflake=interaction.guild.id,
+            )
             for text_mute in text_mutes:
                 member = interaction.guild.get_member(ban.member_snowflake)
                 await Role.administer_role(
                     guild_snowflake=text_mute.guild_snowflake,
                     member_snowflake=text_mute.member_snowflake,
-                    role_snowflake=role.id
+                    role_snowflake=role.id,
                 )
                 where_kwargs = {
                     "channel_snowflake": channel.id,
@@ -145,7 +155,11 @@ class DevCommands(commands.Cog):
                 }
                 set_kwargs = {"role_snowflake": role.id}
                 await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-                text_mute_role = TextMuteRole(channel_snowflake=channel.id, guild_snowflake=interaction.guild.id, role_snowflake=role.id)
+                text_mute_role = TextMuteRole(
+                    channel_snowflake=channel.id,
+                    guild_snowflake=interaction.guild.id,
+                    role_snowflake=role.id,
+                )
                 await text_mute_role.create()
         where_kwargs = {
             "alias_name": alias.alias_name,
@@ -165,7 +179,9 @@ class DevCommands(commands.Cog):
     async def associate_alias_to_role_text_command(
         self,
         ctx: commands.Context,
-        alias_name: str = commands.parameter(description="Alias name with the type `ban` or `tmute`."),
+        alias_name: str = commands.parameter(
+            description="Alias name with the type `ban` or `tmute`."
+        ),
         role: RoleSnowflake = commands.parameter(
             default=None, description="Tag a role or include the ID."
         ),
@@ -212,13 +228,15 @@ class DevCommands(commands.Cog):
             logger.warning(e)
 
         if alias.category == "ban":
-            bans = await Ban.select(channel_snowflake=alias.channel_snowflake, guild_snowflake=ctx.guild.id)
+            bans = await Ban.select(
+                channel_snowflake=alias.channel_snowflake, guild_snowflake=ctx.guild.id
+            )
             for ban in bans:
                 member = ctx.guild.get_member(ban.member_snowflake)
                 await Role.administer_role(
                     guild_snowflake=ban.guild_snowflake,
                     member_snowflake=ban.member_snowflake,
-                    role_snowflake=role.id
+                    role_snowflake=role.id,
                 )
                 where_kwargs = {
                     "channel_snowflake": channel.id,
@@ -227,16 +245,22 @@ class DevCommands(commands.Cog):
                 }
                 set_kwargs = {"role_snowflake": role.id}
                 await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-                ban_role = await BanRole(channel_snowflake=channel.id, guild_snowflake=ctx.guild.id, role_snowflake=role.id)
+                ban_role = await BanRole(
+                    channel_snowflake=channel.id,
+                    guild_snowflake=ctx.guild.id,
+                    role_snowflake=role.id,
+                )
                 await ban_role.create()
         if alias.category == "tmute":
-            text_mutes = await TextMute.select(channel_snowflake=alias.channel_snowflake, guild_snowflake=ctx.guild.id)
+            text_mutes = await TextMute.select(
+                channel_snowflake=alias.channel_snowflake, guild_snowflake=ctx.guild.id
+            )
             for text_mute in text_mutes:
                 member = ctx.guild.get_member(ban.member_snowflake)
                 await Role.administer_role(
                     guild_snowflake=text_mute.guild_snowflake,
                     member_snowflake=text_mute.member_snowflake,
-                    role_snowflake=role.id
+                    role_snowflake=role.id,
                 )
                 where_kwargs = {
                     "channel_snowflake": channel.id,
@@ -245,7 +269,11 @@ class DevCommands(commands.Cog):
                 }
                 set_kwargs = {"role_snowflake": role.id}
                 await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-                text_mute_role = TextMuteRole(channel_snowflake=channel.id, guild_snowflake=ctx.guild.id, role_snowflake=role.id)
+                text_mute_role = TextMuteRole(
+                    channel_snowflake=channel.id,
+                    guild_snowflake=ctx.guild.id,
+                    role_snowflake=role.id,
+                )
                 await text_mute_role.create()
         where_kwargs = {
             "alias_name": alias.alias_name,
@@ -437,13 +465,9 @@ class DevCommands(commands.Cog):
         target: str = None,
         filter: str = None,
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=interaction)
-        title = f"{get_random_emoji()} Developer Logs"
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
+        is_at_home = at_home(source=interaction)
         try:
             target_uuid = UUID(str(target))
             kwargs = {"id": target_uuid}
@@ -451,102 +475,10 @@ class DevCommands(commands.Cog):
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
             kwargs = object_dict.get("columns", None)
+        pages = await Bug.build_pages(filter=filter, kwargs=kwargs, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Bug.PLURAL, pages=pages, state=state)
 
-        bugs = await Bug.select(**kwargs)
-
-        for bug in bugs:
-            guild_dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
-            messages = guild_dictionary[bug.guild_snowflake]["messages"]
-            messages.setdefault(
-                bug.message_snowflake,
-                {
-                    "channel_snowflake": bug.channel_snowflake,
-                    "developer_snowflakes": [],
-                    "id": bug.id,
-                    "notes": [],
-                    "resolved": bug.resolved,
-                },
-            )
-            messages[bug.message_snowflake]["developer_snowflakes"].extend(
-                bug.member_snowflakes
-            )
-            messages[bug.message_snowflake]["notes"].append(bug.notes)
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_messages = await generate_skipped_messages(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_messages=skipped_messages,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for message_snowflake, entry in guild_data.get("messages", {}).items():
-                channel = self.bot.get_channel(entry["channel_snowflake"])
-                if not channel:
-                    continue
-                if filter == "resolved" and not entry.get("resolved"):
-                    continue
-                if filter == "unresolved" and entry.get("resolved"):
-                    continue
-                lines = []
-                msg = await channel.fetch_message(message_snowflake)
-                lines.append(
-                    f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}'
-                )
-                lines.append(f"**Message:** {msg.jump_url}")
-                if target and str(target) == str(entry["id"]):
-                    lines.append(
-                        f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}'
-                    )
-                    lines.append(
-                        f'**Assigned to:** {", ".join(str(d) for d in entry["developer_snowflakes"]) if entry.get("developer_snowflakes") else None}'
-                    )
-                else:
-                    lines.append(f'**Reference:** {entry["id"]}')
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name=f"**Channel:** {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name=f"**Channel:** {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_messages:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_messages,
-                    title="Skipped Messages in Server",
-                )
-
-        await StateService.send_pages(obj=Bug, pages=pages, state=state)
-
-    @commands.command(name="dlogs", help="List issues.")
+    @commands.command(name="bugs", help="List issues.")
     @developer_predicator()
     async def list_bugs_text_command(
         self,
@@ -560,13 +492,9 @@ class DevCommands(commands.Cog):
             description="Optionally specify `resolved` or `unresolved`.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=ctx)
-        title = f"{get_random_emoji()} Developer Logs"
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
+        is_at_home = at_home(source=ctx)
         try:
             target_uuid = UUID(str(target))
             kwargs = {"id": target_uuid}
@@ -574,100 +502,8 @@ class DevCommands(commands.Cog):
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
             kwargs = object_dict.get("columns", None)
-
-        bugs = await Bug.select(**kwargs)
-
-        for bug in bugs:
-            guild_dictionary.setdefault(bug.guild_snowflake, {"messages": {}})
-            messages = guild_dictionary[bug.guild_snowflake]["messages"]
-            messages.setdefault(
-                bug.message_snowflake,
-                {
-                    "channel_snowflake": bug.channel_snowflake,
-                    "developer_snowflakes": [],
-                    "id": bug.id,
-                    "notes": [],
-                    "resolved": bug.resolved,
-                },
-            )
-            messages[bug.message_snowflake]["developer_snowflakes"].extend(
-                bug.member_snowflakes
-            )
-            messages[bug.message_snowflake]["notes"].append(bug.notes)
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_messages = await generate_skipped_messages(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_messages=skipped_messages,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for message_snowflake, entry in guild_data.get("messages", {}).items():
-                channel = self.bot.get_channel(entry["channel_snowflake"])
-                if not channel:
-                    continue
-                if filter == "resolved" and not entry.get("resolved"):
-                    continue
-                if filter == "unresolved" and entry.get("resolved"):
-                    continue
-                lines = []
-                msg = await channel.fetch_message(message_snowflake)
-                lines.append(
-                    f'**Resolved:** {"\u2705" if entry.get("resolved") else "\u274c"}'
-                )
-                lines.append(f"**Message:** {msg.jump_url}")
-                if target and str(target) == str(entry["id"]):
-                    lines.append(
-                        f'**Notes:** {entry["notes"] if entry.get("notes") is not None else None}'
-                    )
-                    lines.append(
-                        f'**Assigned to:** {", ".join(str(d) for d in entry["developer_snowflakes"]) if entry.get("developer_snowflakes") else None}'
-                    )
-                else:
-                    lines.append(f'**Reference:** {entry["id"]}')
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name=f"**Channel:** {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name=f"**Channel:** {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_messages:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_messages,
-                    title="Skipped Messages in Server",
-                )
-
-        await StateService.send_pages(obj=Bug, pages=pages, state=state)
+        pages = await Bug.build_pages(filter=filter, kwargs=kwargs, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Bug.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(

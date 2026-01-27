@@ -130,22 +130,21 @@ class Role(DatabaseFactory):
             await member.remove_roles(role, reason="Revoking role.")
         except discord.Forbidden as e:
             logger.error(str(e).capitalize())
-    
+
     @classmethod
-    async def added_role(cls, category_class, category_role_class, guild_snowflake, member_snowflake, role_snowflake):
-        kwargs = {
-            "guild_snowflake": guild_snowflake,
-            "role_snowflake": role_snowflake
-        }
-        role = await category_role_class.select(
-            singular=True,
-            **kwargs
-        )
+    async def added_role(
+        cls,
+        category_class,
+        category_role_class,
+        guild_snowflake,
+        member_snowflake,
+        role_snowflake,
+    ):
+        kwargs = {"guild_snowflake": guild_snowflake, "role_snowflake": role_snowflake}
+        role = await category_role_class.select(singular=True, **kwargs)
         if role:
             if hasattr(role, "channel_snowflake"):
-                kwargs.update({
-                    "channel_snowflake": role.channel_snowflake
-                })
+                kwargs.update({"channel_snowflake": role.channel_snowflake})
                 msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
             else:
                 msg = f"Member ({member_snowflake}) was granted the role ({role_snowflake}) for category ({category_class.__name__()}) in guild ({guild_snowflake})."
@@ -154,22 +153,21 @@ class Role(DatabaseFactory):
             logger.info(msg)
         else:
             return
-        
+
     @classmethod
-    async def removed_role(cls, category_class, category_role_class, guild_snowflake, member_snowflake, role_snowflake):
-        kwargs = {
-            "guild_snowflake": guild_snowflake,
-            "role_snowflake": role_snowflake
-        }
-        role = await category_role_class.select(
-            singular=True,
-            **kwargs
-        )
+    async def removed_role(
+        cls,
+        category_class,
+        category_role_class,
+        guild_snowflake,
+        member_snowflake,
+        role_snowflake,
+    ):
+        kwargs = {"guild_snowflake": guild_snowflake, "role_snowflake": role_snowflake}
+        role = await category_role_class.select(singular=True, **kwargs)
         if role:
             if hasattr(role, "channel_snowflake"):
-                kwargs.update({
-                    "channel_snowflake": role.channel_snowflake
-                })
+                kwargs.update({"channel_snowflake": role.channel_snowflake})
                 msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) related to channel ({role.channel_snowflake}) in guild ({guild_snowflake})."
             else:
                 msg = f"Member ({member_snowflake}) was revoked the role ({role_snowflake}) for category ({category_class.__name__()}) in guild ({guild_snowflake})."

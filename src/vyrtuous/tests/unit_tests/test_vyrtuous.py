@@ -1,5 +1,3 @@
-
-
 class Vyrtuous(object):
 
     def __init__(self):
@@ -8,4 +6,4 @@ class Vyrtuous(object):
 
 def test_vyrtuous():
     vyrtuous = Vyrtuous()
-    assert "__init__" in dir(vyrtuous)  
+    assert "__init__" in dir(vyrtuous)

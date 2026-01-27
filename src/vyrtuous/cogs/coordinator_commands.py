@@ -213,7 +213,7 @@ class CoordinatorCommands(commands.Cog):
         )
         pages.append(embed)
 
-        await StateService.send_pages(obj=Vegan, pages=pages, state=state)
+        await StateService.send_pages(plural=Vegan.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="rmute", help="Room mute (except yourself).")
@@ -286,7 +286,7 @@ class CoordinatorCommands(commands.Cog):
         )
         pages.append(embed)
 
-        await StateService.send_pages(obj=Vegan, pages=pages, state=state)
+        await StateService.send_pages(plural=Vegan.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="xrmute", description="Unmute all.")
@@ -341,7 +341,7 @@ class CoordinatorCommands(commands.Cog):
         )
         pages.append(embed)
 
-        await StateService.send_pages(obj=VoiceMute, pages=pages, state=state)
+        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="xrmute", help="Unmute all.")
@@ -399,7 +399,7 @@ class CoordinatorCommands(commands.Cog):
         )
         pages.append(embed)
 
-        await StateService.send_pages(obj=VoiceMute, pages=pages, state=state)
+        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

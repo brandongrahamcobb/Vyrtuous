@@ -301,7 +301,7 @@ class StateService:
             message = f"{message}. The developers {', '.join(online_developer_mentions)} are online and will respond to your report shortly."
         await user.send(message)
 
-    async def send_pages(obj, pages, state):
+    async def send_pages(plural, pages, state):
         if pages:
             try:
                 return await state.end(success=pages)
@@ -311,4 +311,4 @@ class StateService:
                     warning="Embed size is too large. Limit the scope."
                 )
         else:
-            return await state.end(warning=f"No {obj.PLURAL.lower()} found.")
+            return await state.end(warning=f"No {plural} found.")

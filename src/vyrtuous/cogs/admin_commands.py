@@ -329,7 +329,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Roles in Server",
                 )
 
-        await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
+        await StateService.send_pages(plural=AdministratorRole.PLURAL, pages=pages, state=state)
 
     @commands.command(name="aroles", help="Administrator roles.")
     @administrator_predicator()
@@ -402,7 +402,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Roles in Server",
                 )
 
-        await StateService.send_pages(obj=AdministratorRole, pages=pages, state=state)
+        await StateService.send_pages(plural=AdministratorRole.PLURAL, pages=pages, state=state)
 
     @app_commands.command(name="cap", description="Cap alias duration for mods.")
     @administrator_predicator()
@@ -507,85 +507,12 @@ class AdminCommands(commands.Cog):
     async def list_caps_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=interaction)
-        title = f"{get_random_emoji()} {Cap.PLURAL}"
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        caps = await Cap.select(**kwargs)
-        for cap in caps:
-            guild_dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
-            guild_dictionary[cap.guild_snowflake]["channels"].setdefault(
-                cap.channel_snowflake, {"caps": {}}
-            )
-            guild_dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
-                "caps"
-            ][cap.category] = cap.duration_seconds
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, cap_dictionary in guild_data.get("channels").items():
-                channel = guild.get_channel(channel_snowflake)
-                for moderation_type, duration_seconds in cap_dictionary.get(
-                    "caps", {}
-                ).items():
-                    lines.append(
-                        f"  ↳ {moderation_type} ({DurationObject.from_seconds(duration_seconds)})"
-                    )
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name=f"Channel: {channel.mention}",
-                            value="\n".join(lines),
-                            inline=False,
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-                if lines:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-
-        await StateService.send_pages(obj=Cap, pages=pages, state=state)
+        pages = await Cap.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Cap.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="caps", help="List caps.")
@@ -597,87 +524,12 @@ class AdminCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=ctx)
-        title = f"{get_random_emoji()} {Cap.PLURAL}"
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        caps = await Cap.select(**kwargs)
-
-        for cap in caps:
-            guild_dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
-            guild_dictionary[cap.guild_snowflake]["channels"].setdefault(
-                cap.channel_snowflake, {"caps": {}}
-            )
-            guild_dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
-                "caps"
-            ][cap.category] = cap.duration_seconds
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, cap_dictionary in guild_data.get("channels").items():
-                channel = guild.get_channel(channel_snowflake)
-                for moderation_type, duration_seconds in cap_dictionary.get(
-                    "caps", {}
-                ).items():
-                    lines.append(
-                        f"  ↳ {moderation_type} ({DurationObject.from_seconds(duration_seconds)})"
-                    )
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-                if lines:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                lines = []
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-
-        await StateService.send_pages(obj=Cap, pages=pages, state=state)
+        pages = await Cap.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Cap.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(
@@ -1795,7 +1647,7 @@ class AdminCommands(commands.Cog):
             )
             pages.append(embed)
 
-        await StateService.send_pages(obj=Stage, pages=pages, state=state)
+        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="stage", help="Start/stop stage")
@@ -1944,7 +1796,7 @@ class AdminCommands(commands.Cog):
             print("test")
             pages.append(embed)
 
-        await StateService.send_pages(obj=Stage, pages=pages, state=state)
+        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(
@@ -2152,7 +2004,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(obj=TemporaryRoom, pages=pages, state=state)
+        await StateService.send_pages(plural=TemporaryRoom.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(
@@ -2269,7 +2121,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(obj=TemporaryRoom, pages=pages, state=state)
+        await StateService.send_pages(plural=TemporaryRoom.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="stream", description="Setup streaming.")
@@ -2582,7 +2434,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(obj=Streaming, pages=pages, state=state)
+        await StateService.send_pages(plural=Streaming.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="streams", help="List streaming routes.")
@@ -2674,7 +2526,7 @@ class AdminCommands(commands.Cog):
                     skipped=skipped_guilds,
                     title="Skipped Servers",
                 )
-        await StateService.send_pages(obj=Streaming, pages=pages, state=state)
+        await StateService.send_pages(plural=Streaming.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="vr", description="Start/stop video-only room.")
@@ -2858,7 +2710,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(obj=VideoRoom, pages=pages, state=state)
+        await StateService.send_pages(plural=VideoRoom.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="vrs", help="List video rooms.")
@@ -2970,7 +2822,7 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(obj=VideoRoom, pages=pages, state=state)
+        await StateService.send_pages(plural=VideoRoom.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="xalias", description="Delete alias.")

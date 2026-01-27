@@ -190,7 +190,9 @@ class Streaming(DatabaseFactory):
                     f"**Type:** {alias.category.capitalize()}\n**Expires:** Never"
                 )
             else:
-                duration_info = f"**Type:** {alias.category.capitalize()}\n**Expires:** {duration}"
+                duration_info = (
+                    f"**Type:** {alias.category.capitalize()}\n**Expires:** {duration}"
+                )
             if is_modification:
                 color, duration_type = 0xFF6B35, "⏰ Modified"
             else:

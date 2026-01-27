@@ -35,7 +35,7 @@ class GenericEventListeners(commands.Cog):
         self.bot = bot
         self.config = bot.config
         self._ready_done = False
-        
+
     @commands.Cog.listener()
     async def on_message_edit(self, before, after):
         if after.author.bot:
@@ -77,7 +77,7 @@ class GenericEventListeners(commands.Cog):
             duration=DurationObject(args[2]) if len(args) > 2 else DurationObject("8h"),
             member_snowflake=member_snowflake,
             reason=" ".join(args[3:]) if len(args) > 3 else "No reason provided.",
-            state=state
+            state=state,
         )
         await alias.handlers[alias.category](
             alias=alias,

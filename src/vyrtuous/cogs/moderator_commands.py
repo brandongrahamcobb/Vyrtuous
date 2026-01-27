@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
+from pathlib import Path
 from typing import Optional
 
 from discord import app_commands
@@ -27,6 +27,7 @@ from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.actions.flag import Flag
+from vyrtuous.db.actions.hide import Hide
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.roles.administrator import Administrator, is_administrator
@@ -42,7 +43,6 @@ from vyrtuous.db.roles.sysadmin import is_sysadmin
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.db.rooms.stage import Stage
 from vyrtuous.db.rooms.temporary_room import TemporaryRoom
-from vyrtuous.fields.duration import DurationObject
 from vyrtuous.fields.snowflake import AppMessageSnowflake, MessageSnowflake
 from vyrtuous.fields.snowflake import (
     AppChannelSnowflake,
@@ -61,19 +61,13 @@ from vyrtuous.utils.moderation_view import ModerationView
 from vyrtuous.utils.duration_modal import DurationModal
 from vyrtuous.utils.reason_modal import ReasonModal
 from vyrtuous.service.message_service import MessageService
-from vyrtuous.utils.guild_dictionary import member_relevant_objects_dict
 from vyrtuous.service.state_service import StateService
 from vyrtuous.service.discord_object_service import DiscordObject
 from vyrtuous.utils.guild_dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_channels,
-    generate_skipped_guilds,
-    generate_skipped_members,
-    clean_guild_dictionary,
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
+from vyrtuous.utils.dir_to_classes import dir_to_classes
 
 
 class ModeratorCommands(commands.Cog):
@@ -91,99 +85,14 @@ class ModeratorCommands(commands.Cog):
     async def list_administrators_app_command(
         self, interaction: discord.Interaction, target: str
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        administrators = await Administrator.select(**kwargs)
-
-        for administrator in administrators:
-            guild_dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
-            guild_dictionary[administrator.guild_snowflake]["members"].setdefault(
-                administrator.member_snowflake, {"administrators": {}}
-            )
-
-            for role_snowflake in administrator.role_snowflakes:
-                guild_dictionary[administrator.guild_snowflake]["members"][
-                    administrator.member_snowflake
-                ]["administrators"].update({role_snowflake: True})
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await Administrator.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, administrators_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                primary_dictionary = administrators_dictionary.get("administrators", {})
-                role_mentions = [
-                    guild.get_role(role_snowflake).mention
-                    for role_snowflake in primary_dictionary
-                    if guild.get_role(role_snowflake)
-                ]
-                if not thumbnail and isinstance(
-                    object_dict.get("object", None), discord.Member
-                ):
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                else:
-                    member_line = f"**User:** {member.display_name} {member.mention} "
-                    if role_mentions:
-                        member_line += "\n**Roles:** " + "\n".join(role_mentions)
-                lines.append(member_line)
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Administrator, pages=pages, state=state)
+        await StateService.send_pages(plural=Administrator.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="admins", help="Lists admins.")
@@ -196,97 +105,14 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: `all`, " "channel ID/mention or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        administrators = await Administrator.select(**kwargs)
-        for administrator in administrators:
-            guild_dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
-            guild_dictionary[administrator.guild_snowflake]["members"].setdefault(
-                administrator.member_snowflake, {"administrators": {}}
-            )
-
-            for role_snowflake in administrator.role_snowflakes:
-                guild_dictionary[administrator.guild_snowflake]["members"][
-                    administrator.member_snowflake
-                ]["administrators"].update({role_snowflake: True})
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await Administrator.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, administrators_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                primary_dictionary = administrators_dictionary.get("administrators", {})
-                role_mentions = [
-                    guild.get_role(role_snowflake).mention
-                    for role_snowflake in primary_dictionary
-                    if guild.get_role(role_snowflake)
-                ]
-                if not thumbnail and isinstance(
-                    object_dict.get("object", None), discord.Member
-                ):
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                else:
-                    member_line = f"**User:** {member.display_name} {member.mention}"
-                    if role_mentions:
-                        member_line += "\n**Roles:** " + "\n".join(role_mentions)
-                        lines.append(member_line)
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-        await StateService.send_pages(obj=Administrator, pages=pages, state=state)
+        await StateService.send_pages(plural=Administrator.PLURAL, pages=pages, state=state)
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
@@ -296,103 +122,12 @@ class ModeratorCommands(commands.Cog):
     async def list_bans_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Ban.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        bans = await Ban.select(**kwargs)
-
-        for ban in bans:
-            guild_dictionary.setdefault(ban.guild_snowflake, {"members": {}})
-            guild_dictionary[ban.guild_snowflake]["members"].setdefault(
-                ban.member_snowflake, {"bans": {}}
-            )
-            guild_dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
-                "bans"
-            ].setdefault(ban.channel_snowflake, {})
-            guild_dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
-                "bans"
-            ][ban.channel_snowflake] = {
-                "reason": ban.reason,
-                "expires_in": DurationObject.from_expires_in(ban.expires_in),
-            }
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, ban_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in ban_dictionary.get(
-                    "bans"
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(
-                            f"**Expires in:** {channel_dictionary['expires_in']}"
-                        )
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Ban, pages=pages, state=state)
+        pages = await Ban.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="bans", description="List bans.")
@@ -404,103 +139,12 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {Ban.PLURAL} ({target})"
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        bans = await Ban.select(**kwargs)
-
-        for ban in bans:
-            guild_dictionary.setdefault(ban.guild_snowflake, {"members": {}})
-            guild_dictionary[ban.guild_snowflake]["members"].setdefault(
-                ban.member_snowflake, {"bans": {}}
-            )
-            guild_dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
-                "bans"
-            ].setdefault(ban.channel_snowflake, {})
-            guild_dictionary[ban.guild_snowflake]["members"][ban.member_snowflake][
-                "bans"
-            ][ban.channel_snowflake] = {
-                "reason": ban.reason,
-                "expires_in": DurationObject.from_expires_in(ban.expires_in),
-            }
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, ban_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in ban_dictionary.get(
-                    "bans"
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(
-                            f"**Expires in:** {channel_dictionary['expires_in']}"
-                        )
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Ban, pages=pages, state=state)
+        pages = await Ban.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="cmds", description="List aliases.")
@@ -511,94 +155,12 @@ class ModeratorCommands(commands.Cog):
     async def list_commands_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=interaction)
-        title = f"{get_random_emoji()} Command Aliases"
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-
-        for alias in aliases:
-            guild_dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
-            guild_dictionary[alias.guild_snowflake]["channels"].setdefault(
-                alias.channel_snowflake, {"aliases": {}}
-            )
-            guild_dictionary[alias.guild_snowflake]["channels"][
-                alias.channel_snowflake
-            ]["aliases"].setdefault(alias.category, {})[alias.alias_name] = []
-            if alias.category == "role":
-                guild = self.bot.get_guild(alias.guild_snowflake)
-                if guild:
-                    role = guild.get_role(alias.role_snowflake)
-                    guild_dictionary[alias.guild_snowflake]["channels"][
-                        alias.channel_snowflake
-                    ]["aliases"][alias.category][alias.alias_name] = role.mention
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines = []
-                for category, alias_data in dictionary["aliases"].items():
-                    lines.append(f"{category}")
-                    for name, role_mention in alias_data.items():
-                        if category == "role":
-                            lines.append(f"  ↳ {name} -> {role_mention}")
-                        else:
-                            lines.append(f"  ↳ {name}")
-                if len(lines) >= chunk_size:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name=f"Channel: {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-
-        await StateService.send_pages(obj=Alias, pages=pages, state=state)
+        pages = await Alias.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Alias.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="cmds", help="List aliases.")
@@ -610,93 +172,12 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=ctx)
-        title = f"{get_random_emoji()} Command Aliases"
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        aliases = await Alias.select(**kwargs)
-
-        for alias in aliases:
-            guild_dictionary.setdefault(alias.guild_snowflake, {"channels": {}})
-            guild_dictionary[alias.guild_snowflake]["channels"].setdefault(
-                alias.channel_snowflake, {"aliases": {}}
-            )
-            guild_dictionary[alias.guild_snowflake]["channels"][
-                alias.channel_snowflake
-            ]["aliases"].setdefault(alias.category, {})[alias.alias_name] = []
-            if alias.category == "role":
-                guild = self.bot.get_guild(alias.guild_snowflake)
-                if guild:
-                    role = guild.get_role(alias.role_snowflake)
-                    guild_dictionary[alias.guild_snowflake]["channels"][
-                        alias.channel_snowflake
-                    ]["aliases"][alias.category][alias.alias_name] = role.mention
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, dictionary in guild_data.get("channels", {}).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines = []
-                for category, alias_data in dictionary["aliases"].items():
-                    lines.append(f"{category}")
-                    for name, role_mention in alias_data.items():
-                        if category == "role":
-                            lines.append(f"  ↳ {name} -> {role_mention}")
-                        else:
-                            lines.append(f"  ↳ {name}")
-                if len(lines) >= chunk_size:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name=f"Channel: {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-
-        await StateService.send_pages(obj=Alias, pages=pages, state=state)
+        pages = await Alias.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Alias.PLURAL, pages=pages, state=state)
 
     @app_commands.command(name="coords", description="Lists coords.")
     @app_commands.describe(
@@ -706,97 +187,14 @@ class ModeratorCommands(commands.Cog):
     async def list_coordinators_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Coordinator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        coordinators = await Coordinator.select(**kwargs)
-
-        for coordinator in coordinators:
-            guild_dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
-            guild_dictionary[coordinator.guild_snowflake]["members"].setdefault(
-                coordinator.member_snowflake, {"coordinators": {}}
-            )
-            guild_dictionary[coordinator.guild_snowflake]["members"][
-                coordinator.member_snowflake
-            ]["coordinators"].setdefault(coordinator.channel_snowflake, {})
-            guild_dictionary[coordinator.guild_snowflake]["members"][
-                coordinator.member_snowflake
-            ]["coordinators"][coordinator.channel_snowflake].update(
-                {"placeholder": "placeholder"}
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await Coordinator.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, coordinator_dictionary in guild_data.get(
-                "members"
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in coordinator_dictionary.get(
-                    "coordinators"
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    lines.append(f"**Channel:** {channel.mention}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Coordinator, pages=pages, state=state)
+        await StateService.send_pages(plural=Coordinator.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="coords", help="Lists coords.")
@@ -808,97 +206,14 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: `all`, channel ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Coordinator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        coordinators = await Coordinator.select(**kwargs)
-
-        for coordinator in coordinators:
-            guild_dictionary.setdefault(coordinator.guild_snowflake, {"members": {}})
-            guild_dictionary[coordinator.guild_snowflake]["members"].setdefault(
-                coordinator.member_snowflake, {"coordinators": {}}
-            )
-            guild_dictionary[coordinator.guild_snowflake]["members"][
-                coordinator.member_snowflake
-            ]["coordinators"].setdefault(coordinator.channel_snowflake, {})
-            guild_dictionary[coordinator.guild_snowflake]["members"][
-                coordinator.member_snowflake
-            ]["coordinators"][coordinator.channel_snowflake].update(
-                {"placeholder": "placeholder"}
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await Coordinator.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, coordinator_dictionary in guild_data.get(
-                "members"
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in coordinator_dictionary.get(
-                    "coordinators"
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    lines.append(f"**Channel:** {channel.mention}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Coordinator, pages=pages, state=state)
+        await StateService.send_pages(plural=Coordinator.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="del", description="Delete message.")
@@ -948,60 +263,11 @@ class ModeratorCommands(commands.Cog):
     async def list_developers_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        dictionary = {}
-        thumbnail = False
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        developers = await Developer.select(**kwargs)
-
-        for developer in developers:
-            dictionary.setdefault("members", {})
-            dictionary["members"].setdefault(
-                developer.member_snowflake, {"developers": {}}
-            )
-            dictionary["members"][developer.member_snowflake]["developers"].update(
-                {"placeholder": "placeholder"}
-            )
-
-        embed = discord.Embed(
-            title=title, description="All guilds", color=discord.Color.blue()
-        )
-        for member_snowflake, member_data in dictionary["members"].items():
-            user = self.bot.get_user(member_snowflake)
-            if not isinstance(object_dict.get("object", None), discord.Member):
-                lines.append(f"**User:** {user.display_name} {user.mention}")
-                field_count += 1
-            elif not thumbnail:
-                embed.set_thumbnail(
-                    url=object_dict.get("object", None).display_avatar.url
-                )
-                thumbnail = True
-            if field_count >= chunk_size:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-                pages.append(embed)
-                embed = (
-                    discord.Embed(
-                        title=title,
-                        description="All guilds continued...",
-                        color=discord.Color.blue(),
-                    ),
-                )
-                field_count = 0
-                lines = []
-        if lines:
-            embed.add_field(name="Information", value="\n".join(lines), inline=False)
-        pages.append(embed)
-
-        await StateService.send_pages(obj=Developer, pages=pages, state=state)
+        pages = await Developer.build_pages(object_dict=object_dict)
+        await StateService.send_pages(plural=Developer.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="devs", help="List devs.")
@@ -1014,60 +280,13 @@ class ModeratorCommands(commands.Cog):
             description="'all', a specific server or user mention/ID"
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        dictionary = {}
-        thumbnail = False
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
 
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Developer.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
+        pages = await Developer.build_pages(object_dict=object_dict)
 
-        developers = await Developer.select(**kwargs)
-
-        for developer in developers:
-            dictionary.setdefault("members", {})
-            dictionary["members"].setdefault(
-                developer.member_snowflake, {"developers": {}}
-            )
-            dictionary["members"][developer.member_snowflake]["developers"].update(
-                {"placeholder": "placeholder"}
-            )
-
-        embed = discord.Embed(
-            title=title, description="All guilds", color=discord.Color.blue()
-        )
-        for member_snowflake, member_data in dictionary["members"].items():
-            user = self.bot.get_user(member_snowflake)
-            if not isinstance(object_dict.get("object", None), discord.Member):
-                lines.append(f"**User:** {user.display_name} {user.mention}")
-                field_count += 1
-            elif not thumbnail:
-                embed.set_thumbnail(
-                    url=object_dict.get("object", None).display_avatar.url
-                )
-                thumbnail = True
-            if field_count >= chunk_size:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-                pages.append(embed)
-                embed = (
-                    discord.Embed(
-                        title=title,
-                        description="All guilds continued...",
-                        color=discord.Color.blue(),
-                    ),
-                )
-                field_count = 0
-                lines = []
-        if lines:
-            embed.add_field(name="Information", value="\n".join(lines), inline=False)
-        pages.append(embed)
-
-        await StateService.send_pages(obj=Developer, pages=pages, state=state)
+        await StateService.send_pages(plural=Developer.PLURAL, pages=pages, state=state)
 
     @app_commands.command(name="duration", description="Modify a duration.")
     @app_commands.describe(member="The ID or mention of the member.")
@@ -1102,101 +321,12 @@ class ModeratorCommands(commands.Cog):
     async def list_flags_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Flag.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        flags = await Flag.select(**kwargs)
-
-        for flag in flags:
-            guild_dictionary.setdefault(flag.guild_snowflake, {"members": {}})
-            guild_dictionary[flag.guild_snowflake]["members"].setdefault(
-                flag.member_snowflake, {"flags": {}}
-            )
-            guild_dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
-                "flags"
-            ].setdefault(flag.channel_snowflake, {})
-            guild_dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
-                "flags"
-            ][flag.channel_snowflake].update(
-                {
-                    "reason": flag.reason,
-                }
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, flag_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in flag_dictionary.get(
-                    "flags", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Flag, pages=pages, state=state)
+        pages = await Flag.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Flag.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="flags", help="List flags.")
@@ -1208,101 +338,44 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Flag.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
+        pages = await Flag.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Flag.PLURAL, pages=pages, state=state)
 
-        flags = await Flag.select(**kwargs)
+    @app_commands.command(name="hides", description="List hides.")
+    @app_commands.describe(
+        target="Specify one of: 'all', channel ID/mention, or server ID."
+    )
+    @moderator_predicator()
+    async def list_hides_app_command(
+        self, interaction: discord.Interaction, target: str = None
+    ):
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+        is_at_home = at_home(source=interaction)
+        object_dict = await do.determine_from_target(target=target)
+        pages = await Hide.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
 
-        for flag in flags:
-            guild_dictionary.setdefault(flag.guild_snowflake, {"members": {}})
-            guild_dictionary[flag.guild_snowflake]["members"].setdefault(
-                flag.member_snowflake, {"flags": {}}
-            )
-            guild_dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
-                "flags"
-            ].setdefault(flag.channel_snowflake, {})
-            guild_dictionary[flag.guild_snowflake]["members"][flag.member_snowflake][
-                "flags"
-            ][flag.channel_snowflake].update(
-                {
-                    "reason": flag.reason,
-                }
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, flag_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in flag_dictionary.get(
-                    "flags", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Flag, pages=pages, state=state)
+    # DONE
+    @commands.command(name="hides", description="List hides.")
+    @moderator_predicator()
+    async def list_hides_text_command(
+        self,
+        ctx: commands.Context,
+        target: str = commands.parameter(
+            description="Specify one of: 'all', channel ID/mention or server ID.",
+        ),
+    ):
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
+        is_at_home = at_home(source=ctx)
+        object_dict = await do.determine_from_target(target=target)
+        pages = await Hide.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="ls", description="List new vegans.")
@@ -1313,85 +386,12 @@ class ModeratorCommands(commands.Cog):
     async def list_new_vegans_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Vegan.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        vegans = await Vegan.select(**kwargs)
-
-        for vegan in vegans:
-            guild_dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
-            guild_dictionary[vegan.guild_snowflake]["members"].setdefault(
-                vegan.member_snowflake, {"vegans": {}}
-            )
-            guild_dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
-                "vegans"
-            ].setdefault({"placeholder": {}})
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, vegan_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                else:
-                    if not thumbnail:
-                        embed.set_thumbnail(
-                            url=object_dict.get("object", None).display_avatar.url
-                        )
-                        thumbnail = True
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Vegan, pages=pages, state=state)
+        pages = await Vegan.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Vegan.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="ls", help="List new vegans.")
@@ -1404,85 +404,12 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Vegan.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        vegans = await Vegan.select(**kwargs)
-
-        for vegan in vegans:
-            guild_dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
-            guild_dictionary[vegan.guild_snowflake]["members"].setdefault(
-                vegan.member_snowflake, {"vegans": {}}
-            )
-            guild_dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
-                "vegans"
-            ].setdefault({"placeholder": {}})
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, vegan_dictionary in guild_data.get("members").items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                else:
-                    if not thumbnail:
-                        embed.set_thumbnail(
-                            url=object_dict.get("object", None).display_avatar.url
-                        )
-                        thumbnail = True
-                field_count += 1
-                if field_count >= chunk_size:
-                    embed.add_field(
-                        name="Information", value="\n".join(lines), inline=False
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Vegan, pages=pages, state=state)
+        pages = await Vegan.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Vegan.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(
@@ -1518,50 +445,25 @@ class ModeratorCommands(commands.Cog):
                 "channel_snowflake": old_room.channel_snowflake,
                 "guild_snowflake": interaction.guild.id,
             }
+            kwargs = {
+                "set_kwargs": set_kwargs,
+                "where_kwargs": where_kwargs,
+            }
             await TemporaryRoom.update(
                 set_kwargs=set_kwargs,
                 where_kwargs=temp_where_kwargs,
             )
-            await Alias.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Ban.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Cap.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Coordinator.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Flag.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Moderator.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Stage.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await TextMute.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Vegan.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await VoiceMute.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
+            await Alias.update(**kwargs)
+            await Ban.update(**kwargs)
+            await Cap.update(**kwargs)
+            await Coordinator.update(**kwargs)
+            await Flag.update(**kwargs)
+            await Hide.update(**kwargs)
+            await Moderator.update(**kwargs)
+            await Stage.update(**kwargs)
+            await TextMute.update(**kwargs)
+            await Vegan.update(**kwargs)
+            await VoiceMute.update(**kwargs)
             return await state.end(
                 success=f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
             )
@@ -1604,50 +506,24 @@ class ModeratorCommands(commands.Cog):
                 "channel_snowflake": old_room.channel_snowflake,
                 "guild_snowflake": ctx.guild.id,
             }
+            kwargs = {
+                "set_kwargs": set_kwargs,
+                "where_kwargs": where_kwargs,
+            }
             await TemporaryRoom.update(
                 set_kwargs=set_kwargs,
                 where_kwargs=temp_where_kwargs,
             )
-            await Alias.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Ban.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Cap.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Coordinator.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Flag.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Moderator.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Stage.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await TextMute.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await Vegan.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
-            await VoiceMute.update(
-                set_kwargs=set_kwargs,
-                where_kwargs=where_kwargs,
-            )
+            await Alias.update(**kwargs)
+            await Ban.update(**kwargs)
+            await Cap.update(**kwargs)
+            await Coordinator.update(**kwargs)
+            await Flag.update(**kwargs)
+            await Hide.update(**kwargs)
+            await Moderator.update(**kwargs)
+            await Stage.update(**kwargs)
+            await TextMute.update(**kwargs)
+            await Vegan.update(**kwargs)
             return await state.end(
                 success=f"Temporary room `{old_name}` migrated to {channel_dict.get("mention", None)}."
             )
@@ -1665,97 +541,14 @@ class ModeratorCommands(commands.Cog):
     async def list_moderators_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Moderator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        moderators = await Moderator.select(**kwargs)
-
-        for moderator in moderators:
-            guild_dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
-            guild_dictionary[moderator.guild_snowflake]["members"].setdefault(
-                moderator.member_snowflake, {"moderators": {}}
-            )
-            guild_dictionary[moderator.guild_snowflake]["members"][
-                moderator.member_snowflake
-            ]["moderators"].setdefault(moderator.channel_snowflake, {})
-            guild_dictionary[moderator.guild_snowflake]["members"][
-                moderator.member_snowflake
-            ]["moderators"][moderator.channel_snowflake].update(
-                {"placeholder": "placeholder"}
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await Moderator.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, member_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in member_dictionary.get(
-                    "moderators", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    lines.append(f"**Channel:** {channel.mention}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Moderator, pages=pages, state=state)
+        await StateService.send_pages(plural=Moderator.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="mods", help="Lists mods.")
@@ -1767,96 +560,14 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {Moderator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        moderators = await Moderator.select(**kwargs)
-
-        for moderator in moderators:
-            guild_dictionary.setdefault(moderator.guild_snowflake, {"members": {}})
-            guild_dictionary[moderator.guild_snowflake]["members"].setdefault(
-                moderator.member_snowflake, {"moderators": {}}
-            )
-            guild_dictionary[moderator.guild_snowflake]["members"][
-                moderator.member_snowflake
-            ]["moderators"].setdefault(moderator.channel_snowflake, {})
-            guild_dictionary[moderator.guild_snowflake]["members"][
-                moderator.member_snowflake
-            ]["moderators"][moderator.channel_snowflake].update(
-                {"placeholder": "placeholder"}
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await Moderator.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, member_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in member_dictionary.get(
-                    "moderators", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    lines.append(f"**Channel:** {channel.mention}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=Moderator, pages=pages, state=state)
+        await StateService.send_pages(plural=Moderator.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="mutes", description="List mutes.")
@@ -1864,108 +575,14 @@ class ModeratorCommands(commands.Cog):
     async def list_mutes_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {VoiceMute.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        voice_mutes = await VoiceMute.select(target="user", **kwargs)
-
-        for voice_mute in voice_mutes:
-            guild_dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
-            guild_dictionary[voice_mute.guild_snowflake]["members"].setdefault(
-                voice_mute.member_snowflake, {"voice_mutes": {}}
-            )
-            guild_dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"].setdefault(voice_mute.channel_snowflake, {})
-            guild_dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"][voice_mute.channel_snowflake].update(
-                {
-                    "reason": voice_mute.reason,
-                    "expires_in": DurationObject.from_expires_in(voice_mute.expires_in),
-                }
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await VoiceMute.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, voice_mute_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
-                    "voice_mutes", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(
-                            f"**Expires in:** {channel_dictionary['expires_in']}"
-                        )
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=VoiceMute, pages=pages, state=state)
+        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="mutes", help="List mutes.")
@@ -1977,108 +594,14 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        title = f"{get_random_emoji()} {VoiceMute.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
-        kwargs = object_dict.get("columns", None)
-
-        voice_mutes = await VoiceMute.select(target="user", **kwargs)
-
-        for voice_mute in voice_mutes:
-            guild_dictionary.setdefault(voice_mute.guild_snowflake, {"members": {}})
-            guild_dictionary[voice_mute.guild_snowflake]["members"].setdefault(
-                voice_mute.member_snowflake, {"voice_mutes": {}}
-            )
-            guild_dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"].setdefault(voice_mute.channel_snowflake, {})
-            guild_dictionary[voice_mute.guild_snowflake]["members"][
-                voice_mute.member_snowflake
-            ]["voice_mutes"][voice_mute.channel_snowflake].update(
-                {
-                    "reason": voice_mute.reason,
-                    "expires_in": DurationObject.from_expires_in(voice_mute.expires_in),
-                }
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await VoiceMute.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, voice_mute_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in voice_mute_dictionary.get(
-                    "voice_mutes", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(
-                            f"**Expires in:** {channel_dictionary['expires_in']}"
-                        )
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=VoiceMute, pages=pages, state=state)
+        await StateService.send_pages(plural=VoiceMute.PLURAL, pages=pages, state=state)
 
     # DONE
     @app_commands.command(name="mstage", description="Stage mute/unmute.")
@@ -2215,90 +738,12 @@ class ModeratorCommands(commands.Cog):
     async def list_stages_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=interaction)
-        title = f"{get_random_emoji()} Stages"
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        stages = await Stage.select(**kwargs)
-
-        for stage in stages:
-            guild_dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
-            guild_dictionary[stage.guild_snowflake]["channels"].setdefault(
-                stage.channel_snowflake, {}
-            )
-            guild_dictionary[stage.guild_snowflake]["channels"][
-                stage.channel_snowflake
-            ].setdefault("stages", {})
-            guild_dictionary[stage.guild_snowflake]["channels"][
-                stage.channel_snowflake
-            ]["stages"].update(
-                {"expires_in": DurationObject.from_expires_in(stage.expires_in)}
-            )
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, stage_dictionary in guild_data.get(
-                "channels"
-            ).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines.append(
-                    f"**Expires in:** {stage_dictionary.get("expires_in", None)}"
-                )
-                field_count += 1
-                if field_count == chunk_size:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-                if lines:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-
-        await StateService.send_pages(obj=Stage, pages=pages, state=state)
+        pages = await Stage.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="stages", help="List stages.")
@@ -2310,162 +755,35 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        is_at_home = at_home(source=ctx)
-        title = f"{get_random_emoji()} Stages"
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        stages = await Stage.select(**kwargs)
-
-        for stage in stages:
-            guild_dictionary.setdefault(stage.guild_snowflake, {"channels": {}})
-            guild_dictionary[stage.guild_snowflake]["channels"].setdefault(
-                stage.channel_snowflake, {}
-            )
-            guild_dictionary[stage.guild_snowflake]["channels"][
-                stage.channel_snowflake
-            ].setdefault("stages", {})
-            guild_dictionary[stage.guild_snowflake]["channels"][
-                stage.channel_snowflake
-            ]["stages"].update(
-                {"expires_in": DurationObject.from_expires_in(stage.expires_in)}
-            )
-
-        skipped_channels = generate_skipped_channels(guild_dictionary)
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_channels=skipped_channels,
-            skipped_guilds=skipped_guilds,
-        )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for channel_snowflake, stage_dictionary in guild_data.get(
-                "channels"
-            ).items():
-                channel = guild.get_channel(channel_snowflake)
-                lines.append(
-                    f"**Expires in:** {stage_dictionary.get("expires_in", None)}"
-                )
-                field_count += 1
-                if field_count == chunk_size:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-                    embed, field_count = flush_page(embed, pages, title, guild.name)
-                    lines = []
-                if lines:
-                    embed.add_field(
-                        name=f"Channel: {channel.mention}",
-                        value="\n".join(lines),
-                        inline=False,
-                    )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_channels:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_channels,
-                    title="Skipped Channels in Server",
-                )
-
-        await StateService.send_pages(obj=Stage, pages=pages, state=state)
+        pages = await Stage.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
 
     @app_commands.command(name="summary", description="Moderation summary.")
     @app_commands.describe(
         member="Specify a member ID/mention.",
-        target="Specify 'all' or a channel ID/mention.",
     )
     @moderator_predicator()
     async def list_moderation_summary_app_command(
         self,
         interaction: discord.Interaction,
         member: AppMemberSnowflake,
-        target: str = None,
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        objects_list = []
-
+        pages = []
+        dir_paths = []
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role_wrapper(
-            source=interaction,
-            member_snowflake=member_dict.get("id", None),
-            sender_snowflake=interaction.user.id,
-        )
-        kwargs = member_dict.get("columns", None)
-
-        title = f"{get_random_emoji()} Summary for {member_dict.get('name', None)}"
-        for name, object in member_relevant_objects_dict.items():
-            if target and target.lower() == name or target.lower() == "all":
-                objects = object.select(**kwargs)
-                objects_list = [*objects]
-
-        guild = self.bot.get_guild(interaction.guild.id)
-
-        embed = discord.Embed(
-            title=title, description=guild.name, color=discord.Color.blue()
-        )
-        for obj in objects_list:
-            channel = guild.get_channel(obj.channel_snowflake)
-            entries = [f"**User:** {member_dict.get("mention", None)}"]
-            line = entries[0]
-            if hasattr(obj, "expires_in"):
-                entries.append(f"**Expires in:** {obj.expires_in}")
-                line = "\n".join(entries)
-            if hasattr(obj, "reason"):
-                entries.append(f"**Reason:** {obj.reason}")
-                line = "\n".join(entries)
-            lines.append(line)
-            field_count += 1
-            if field_count >= chunk_size:
-                embed.add_field(
-                    name=f"Channel: {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-                embed.set_thumbnail(
-                    url=member_dict.get("object", None).display_avatar.url
-                )
-                embed, field_count = flush_page(embed, pages, title, guild.name)
-                lines = []
-        if lines:
-            embed.add_field(
-                name=f"Channel: {channel.mention}",
-                value="\n".join(lines),
-                inline=False,
-            )
-            embed.set_thumbnail(url=member_dict.get("object", None).display_avatar.url)
-            pages.append(embed)
-            lines = []
-
-        await StateService.send_pages(obj=Alias, pages=pages, state=state)
+        for obj in dir_to_classes(dir_paths=dir_paths):
+            if "member" in obj.SCOPES:
+                object_pages = await obj.build_pages(object_dict=member_dict, is_at_home=is_at_home)
+                pages.extend(object_pages)
+        await StateService.send_pages(plural="infractions", pages=pages, state=state)
 
     @commands.command(name="summary", description="Moderation summary.")
     @moderator_predicator()
@@ -2475,68 +793,19 @@ class ModeratorCommands(commands.Cog):
         member: MemberSnowflake = commands.parameter(
             description="Specify a member ID/mention."
         ),
-        target: str = commands.parameter(
-            description="Specify 'all' or a channel ID/mention."
-        ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-
+        pages = []
+        dir_paths = []
+        dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         member_dict = await do.determine_from_target(target=member)
-        await has_equal_or_lower_role_wrapper(
-            source=ctx,
-            member_snowflake=member_dict.get("id", None),
-            sender_snowflake=ctx.author.id,
-        )
-        kwargs = member_dict.get("columns", None)
-
-        title = f"{get_random_emoji()} Summary for {member_dict.get('name', None)}"
-        for name, object in member_relevant_objects_dict.items():
-            if target and target.lower() == name or target.lower() == "all":
-                objects = object.select(**kwargs)
-                objects_list = [*objects]
-
-        guild = self.bot.get_guild(ctx.guild.id)
-
-        embed = discord.Embed(
-            title=title, description=guild.name, color=discord.Color.blue()
-        )
-        for obj in objects_list:
-            channel = guild.get_channel(obj.channel_snowflake)
-            entries = [f"**User:** {member_dict.get("mention", None)}"]
-            line = entries[0]
-            if hasattr(obj, "expires_in"):
-                entries.append(f"**Expires in:** {obj.expires_in}")
-                line = "\n".join(entries)
-            if hasattr(obj, "reason"):
-                entries.append(f"**Reason:** {obj.reason}")
-                line = "\n".join(entries)
-            lines.append(line)
-            field_count += 1
-            if field_count >= chunk_size:
-                embed.add_field(
-                    name=f"Channel: {channel.mention}",
-                    value="\n".join(lines),
-                    inline=False,
-                )
-                embed.set_thumbnail(
-                    url=member_dict.get("object", None).display_avatar.url
-                )
-                embed, field_count = flush_page(embed, pages, title, guild.name)
-                lines = []
-        if lines:
-            embed.add_field(
-                name=f"Channel: {channel.mention}",
-                value="\n".join(lines),
-                inline=False,
-            )
-            embed.set_thumbnail(url=member_dict.get("object", None).display_avatar.url)
-            pages.append(embed)
-            lines = []
-
-        await StateService.send_pages(obj=Alias, pages=pages, state=state)
+        for obj in dir_to_classes(dir_paths=dir_paths):
+            if "member" in obj.SCOPES:
+                object_pages = await obj.build_pages(object_dict=member_dict, is_at_home=is_at_home)
+                pages.extend(object_pages)
+        await StateService.send_pages(plural="infractions", pages=pages, state=state)
 
     @app_commands.command(name="survey", description="Get all.")
     @app_commands.describe(channel="Tag a voice/stage channel")
@@ -2756,108 +1025,14 @@ class ModeratorCommands(commands.Cog):
     async def list_text_mutes_app_command(
         self, interaction: discord.Interaction, target: str = None
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {TextMute.PLURAL}"
-        is_at_home = at_home(source=interaction)
-
         state = StateService(source=interaction)
         do = DiscordObject(interaction=interaction)
-
+        is_at_home = at_home(source=interaction)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        text_mutes = await TextMute.select(**kwargs)
-
-        for text_mute in text_mutes:
-            guild_dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
-            guild_dictionary[text_mute.guild_snowflake]["members"].setdefault(
-                text_mute.member_snowflake, {"text_mutes": {}}
-            )
-            guild_dictionary[text_mute.guild_snowflake]["members"][
-                text_mute.member_snowflake
-            ]["text_mutes"].setdefault(text_mute.channel_snowflake, {})
-            guild_dictionary[text_mute.guild_snowflake]["members"][
-                text_mute.member_snowflake
-            ]["text_mutes"][text_mute.channel_snowflake].update(
-                {
-                    "reason": text_mute.reason,
-                    "expires_in": DurationObject.from_expires_in(text_mute.expires_in),
-                }
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await TextMute.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, text_mute_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in text_mute_dictionary.get(
-                    "text_mutes", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(
-                            f"**Expires in:** {channel_dictionary['expires_in']}"
-                        )
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=TextMute, pages=pages, state=state)
+        await StateService.send_pages(plural=TextMute.PLURAL, pages=pages, state=state)
 
     # DONE
     @commands.command(name="tmutes", help="List text-mutes.")
@@ -2869,108 +1044,14 @@ class ModeratorCommands(commands.Cog):
             description="Specify one of: 'all', channel ID/mention, or server ID.",
         ),
     ):
-        chunk_size, field_count, lines, pages = 7, 0, [], []
-        guild_dictionary = {}
-        thumbnail = False
-        title = f"{get_random_emoji()} {TextMute.PLURAL}"
-        is_at_home = at_home(source=ctx)
-
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
+        is_at_home = at_home(source=ctx)
         object_dict = await do.determine_from_target(target=target)
-        kwargs = object_dict.get("columns", None)
-
-        text_mutes = await TextMute.select(**kwargs)
-
-        for text_mute in text_mutes:
-            guild_dictionary.setdefault(text_mute.guild_snowflake, {"members": {}})
-            guild_dictionary[text_mute.guild_snowflake]["members"].setdefault(
-                text_mute.member_snowflake, {"text_mutes": {}}
-            )
-            guild_dictionary[text_mute.guild_snowflake]["members"][
-                text_mute.member_snowflake
-            ]["text_mutes"].setdefault(text_mute.channel_snowflake, {})
-            guild_dictionary[text_mute.guild_snowflake]["members"][
-                text_mute.member_snowflake
-            ]["text_mutes"][text_mute.channel_snowflake].update(
-                {
-                    "reason": text_mute.reason,
-                    "expires_in": DurationObject.from_expires_in(text_mute.expires_in),
-                }
-            )
-
-        skipped_guilds = generate_skipped_guilds(guild_dictionary)
-        skipped_members = generate_skipped_members(guild_dictionary)
-        guild_dictionary = clean_guild_dictionary(
-            guild_dictionary=guild_dictionary,
-            skipped_guilds=skipped_guilds,
-            skipped_members=skipped_members,
+        pages = await TextMute.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
         )
-
-        for guild_snowflake, guild_data in guild_dictionary.items():
-            field_count = 0
-            guild = self.bot.get_guild(guild_snowflake)
-            embed = discord.Embed(
-                title=title, description=guild.name, color=discord.Color.blue()
-            )
-            for member_snowflake, text_mute_dictionary in guild_data.get(
-                "members", {}
-            ).items():
-                member = guild.get_member(member_snowflake)
-                if not isinstance(object_dict.get("object", None), discord.Member):
-                    lines.append(f"**User:** {member.display_name} {member.mention}")
-                    field_count += 1
-                elif not thumbnail:
-                    embed.set_thumbnail(
-                        url=object_dict.get("object", None).display_avatar.url
-                    )
-                    thumbnail = True
-                for channel_snowflake, channel_dictionary in text_mute_dictionary.get(
-                    "text_mutes", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    if not isinstance(
-                        object_dict.get("object"), discord.abc.GuildChannel
-                    ):
-                        lines.append(f"**Channel:** {channel.mention}")
-                    if isinstance(object_dict.get("object"), discord.Member):
-                        lines.append(
-                            f"**Expires in:** {channel_dictionary['expires_in']}"
-                        )
-                        lines.append(f"**Reason:** {channel_dictionary['reason']}")
-                    field_count += 1
-                    if field_count >= chunk_size:
-                        embed.add_field(
-                            name="Information", value="\n".join(lines), inline=False
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-            if lines:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-            pages.append(embed)
-
-        if is_at_home:
-            if skipped_guilds:
-                pages = generate_skipped_set_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_guilds,
-                    title="Skipped Servers",
-                )
-            if skipped_members:
-                pages = generate_skipped_dict_pages(
-                    chunk_size=chunk_size,
-                    field_count=field_count,
-                    pages=pages,
-                    skipped=skipped_members,
-                    title="Skipped Members in Server",
-                )
-
-        await StateService.send_pages(obj=TextMute, pages=pages, state=state)
+        await StateService.send_pages(plural=TextMute.PLURAL, pages=pages, state=state)
 
 
 async def setup(bot: DiscordBot):

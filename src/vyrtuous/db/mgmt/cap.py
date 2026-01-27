@@ -19,8 +19,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from datetime import datetime
 from typing import Optional
 
-from vyrtuous.db.database_factory import DatabaseFactory
+import discord
 
+from vyrtuous.bot.discord_bot import DiscordBot
+from vyrtuous.db.database_factory import DatabaseFactory
+from vyrtuous.fields.duration import DurationObject
+from vyrtuous.utils.guild_dictionary import (
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    generate_skipped_channels,
+    generate_skipped_guilds,
+    clean_guild_dictionary,
+    flush_page,
+)
+from vyrtuous.utils.emojis import get_random_emoji
 
 class Cap(DatabaseFactory):
 
@@ -59,3 +71,79 @@ class Cap(DatabaseFactory):
         self.duration_seconds = duration_seconds
         self.guild_snowflake = guild_snowflake
         self.updated_at = updated_at
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
+        title = f"{get_random_emoji()} {Cap.PLURAL}"
+        kwargs = object_dict.get("columns", None)
+
+        caps = await Cap.select(**kwargs)
+        for cap in caps:
+            guild_dictionary.setdefault(cap.guild_snowflake, {"channels": {}})
+            guild_dictionary[cap.guild_snowflake]["channels"].setdefault(
+                cap.channel_snowflake, {"caps": {}}
+            )
+            guild_dictionary[cap.guild_snowflake]["channels"][cap.channel_snowflake][
+                "caps"
+            ][cap.category] = cap.duration_seconds
+
+        skipped_channels = generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
+
+        for guild_snowflake, guild_data in guild_dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for channel_snowflake, cap_dictionary in guild_data.get("channels").items():
+                channel = guild.get_channel(channel_snowflake)
+                for moderation_type, duration_seconds in cap_dictionary.get(
+                    "caps", {}
+                ).items():
+                    lines.append(
+                        f"  ↳ {moderation_type} ({DurationObject.from_seconds(duration_seconds)})"
+                    )
+                    field_count += 1
+                    if field_count >= chunk_size:
+                        embed.add_field(
+                            name=f"Channel: {channel.mention}",
+                            value="\n".join(lines),
+                            inline=False,
+                        )
+                        embed, field_count = flush_page(embed, pages, title, guild.name)
+                        lines = []
+                if lines:
+                    embed.add_field(
+                        name=f"Channel: {channel.mention}",
+                        value="\n".join(lines),
+                        inline=False,
+                    )
+            pages.append(embed)
+
+        if is_at_home:
+            if skipped_channels:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_channels,
+                    title="Skipped Channels in Server",
+                )
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+        return pages

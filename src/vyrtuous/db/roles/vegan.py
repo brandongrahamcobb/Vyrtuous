@@ -21,8 +21,18 @@ from typing import Optional
 
 import discord
 
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.utils.author import resolve_author
+from vyrtuous.utils.guild_dictionary import (
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    generate_skipped_guilds,
+    generate_skipped_members,
+    clean_guild_dictionary,
+    flush_page,
+)
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 class Vegan(DatabaseFactory):
@@ -78,3 +88,79 @@ class Vegan(DatabaseFactory):
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
+
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
+        thumbnail = False
+        title = f"{get_random_emoji()} {Vegan.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        kwargs = object_dict.get("columns", None)
+
+        vegans = await Vegan.select(**kwargs)
+
+        for vegan in vegans:
+            guild_dictionary.setdefault(vegan.guild_snowflake, {"members": {}})
+            guild_dictionary[vegan.guild_snowflake]["members"].setdefault(
+                vegan.member_snowflake, {"vegans": {}}
+            )
+            guild_dictionary[vegan.guild_snowflake]["members"][vegan.member_snowflake][
+                "vegans"
+            ].setdefault({"placeholder": {}})
+
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
+
+        for guild_snowflake, guild_data in guild_dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for member_snowflake, vegan_dictionary in guild_data.get("members").items():
+                member = guild.get_member(member_snowflake)
+                if not isinstance(object_dict.get("object", None), discord.Member):
+                    lines.append(f"**User:** {member.display_name} {member.mention}")
+                else:
+                    if not thumbnail:
+                        embed.set_thumbnail(
+                            url=object_dict.get("object", None).display_avatar.url
+                        )
+                        thumbnail = True
+                field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(
+                        name="Information", value="\n".join(lines), inline=False
+                    )
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
+            if lines:
+                embed.add_field(
+                    name="Information", value="\n".join(lines), inline=False
+                )
+            pages.append(embed)
+
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_members:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_members,
+                    title="Skipped Members in Server",
+                )
+        return pages

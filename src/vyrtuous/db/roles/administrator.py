@@ -22,6 +22,7 @@ from typing import Optional, Union
 from discord.ext import commands
 import discord
 
+from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.db.roles.developer import is_developer_wrapper
 from vyrtuous.db.roles.guild_owner import is_guild_owner_wrapper
@@ -29,6 +30,15 @@ from vyrtuous.db.roles.sysadmin import is_sysadmin_wrapper
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.dir_to_classes import skip_db_discovery
 from vyrtuous.utils.logger import logger
+from vyrtuous.utils.guild_dictionary import (
+    generate_skipped_dict_pages,
+    generate_skipped_set_pages,
+    generate_skipped_guilds,
+    generate_skipped_members,
+    clean_guild_dictionary,
+    flush_page,
+)
+from vyrtuous.utils.emojis import get_random_emoji
 
 
 @skip_db_discovery
@@ -117,6 +127,96 @@ class Administrator(DatabaseFactory):
         self.role_snowflakes = role_snowflakes
         self.updated_at = updated_at
 
+    @classmethod
+    async def build_pages(cls, object_dict, is_at_home):
+        bot = DiscordBot.get_instance()
+        chunk_size, field_count, lines, pages = 7, 0, [], []
+        guild_dictionary = {}
+        thumbnail = False
+        title = f"{get_random_emoji()} {Administrator.PLURAL} {f'for {object_dict.get('name', None)}' if isinstance(object_dict.get("object", None), discord.Member) else ''}"
+        kwargs = object_dict.get("columns", None)
+
+        administrators = await Administrator.select(**kwargs)
+
+        for administrator in administrators:
+            guild_dictionary.setdefault(administrator.guild_snowflake, {"members": {}})
+            guild_dictionary[administrator.guild_snowflake]["members"].setdefault(
+                administrator.member_snowflake, {"administrators": {}}
+            )
+
+            for role_snowflake in administrator.role_snowflakes:
+                guild_dictionary[administrator.guild_snowflake]["members"][
+                    administrator.member_snowflake
+                ]["administrators"].update({role_snowflake: True})
+
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        skipped_members = generate_skipped_members(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_guilds=skipped_guilds,
+            skipped_members=skipped_members,
+        )
+
+        for guild_snowflake, guild_data in guild_dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for member_snowflake, administrators_dictionary in guild_data.get(
+                "members", {}
+            ).items():
+                member = guild.get_member(member_snowflake)
+                primary_dictionary = administrators_dictionary.get("administrators", {})
+                role_mentions = [
+                    guild.get_role(role_snowflake).mention
+                    for role_snowflake in primary_dictionary
+                    if guild.get_role(role_snowflake)
+                ]
+                if not thumbnail and isinstance(
+                    object_dict.get("object", None), discord.Member
+                ):
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
+                    thumbnail = True
+                else:
+                    member_line = f"**User:** {member.display_name} {member.mention} "
+                    if role_mentions:
+                        member_line += "\n**Roles:** " + "\n".join(role_mentions)
+                lines.append(member_line)
+                field_count += 1
+                if field_count >= chunk_size:
+                    embed.add_field(
+                        name="Information", value="\n".join(lines), inline=False
+                    )
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
+            if lines:
+                embed.add_field(
+                    name="Information", value="\n".join(lines), inline=False
+                )
+            pages.append(embed)
+
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_members:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_members,
+                    title="Skipped Members in Server",
+                )
+        return pages
+
 
 class AdministratorRole(DatabaseFactory):
 
@@ -149,20 +249,19 @@ class AdministratorRole(DatabaseFactory):
         self.role_snowflake = role_snowflake
         self.updated_at = updated_at
 
-    
     @classmethod
     async def added_role(cls, guild_snowflake, member_snowflake, role_snowflake):
         administrator_role_snowflakes = []
         kwargs = {
             "guild_snowflake": guild_snowflake,
-            "role_snowflakes": [role_snowflake]
+            "role_snowflakes": [role_snowflake],
         }
-        administrator_role = await AdministratorRole.select(
-            **kwargs
-        )
+        administrator_role = await AdministratorRole.select(**kwargs)
         if not administrator_role:
             return
-        administrator = await Administrator.select(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        administrator = await Administrator.select(
+            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+        )
         if not administrator:
             administrator = Administrator(
                 guild_snowflake=guild_snowflake,
@@ -177,27 +276,25 @@ class AdministratorRole(DatabaseFactory):
                 "guild_snowflake": guild_snowflake,
                 "member_snowflake": member_snowflake,
             }
-            set_kwargs = {
-                "role_snowflakes": administrator_role_snowflakes
-            }
-            await Administrator.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-            )
-        logger.info(f"Granted administrator to member ({member_snowflake}) in guild ({guild_snowflake}).")
-        
+            set_kwargs = {"role_snowflakes": administrator_role_snowflakes}
+            await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        logger.info(
+            f"Granted administrator to member ({member_snowflake}) in guild ({guild_snowflake})."
+        )
+
     @classmethod
     async def removed_role(cls, guild_snowflake, member_snowflake, role_snowflake):
         administrator_role_snowflakes = []
         kwargs = {
             "guild_snowflake": guild_snowflake,
-            "role_snowflakes": [role_snowflake]
+            "role_snowflakes": [role_snowflake],
         }
-        administrator_role = await AdministratorRole.select(
-            **kwargs
-        )
+        administrator_role = await AdministratorRole.select(**kwargs)
         if not administrator_role:
             return
-        administrator = await Administrator.select(guild_snowflake=guild_snowflake, member_snowflake=member_snowflake)
+        administrator = await Administrator.select(
+            guild_snowflake=guild_snowflake, member_snowflake=member_snowflake
+        )
         if administrator:
             administrator_role_snowflakes = administrator.role_snowflakes
             administrator_role_snowflakes.remove(role_snowflake)
@@ -205,10 +302,8 @@ class AdministratorRole(DatabaseFactory):
                 "guild_snowflake": guild_snowflake,
                 "member_snowflake": member_snowflake,
             }
-            set_kwargs = {
-                "role_snowflakes": administrator_role_snowflakes
-            }
-            await Administrator.update(
-                set_kwargs=set_kwargs, where_kwargs=where_kwargs
-            )
-        logger.info(f"Revoked administrator from member ({member_snowflake}) in guild ({guild_snowflake}).")
+            set_kwargs = {"role_snowflakes": administrator_role_snowflakes}
+            await Administrator.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
+        logger.info(
+            f"Revoked administrator from member ({member_snowflake}) in guild ({guild_snowflake})."
+        )

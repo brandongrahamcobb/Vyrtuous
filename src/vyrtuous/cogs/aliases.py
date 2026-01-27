@@ -89,9 +89,7 @@ class Aliases(commands.Cog):
         self.bot = bot
         self.invincible_members = Invincibility.get_invincible_members()
 
-    async def handle_ban_alias(
-        self, alias, action_information, member, message, state
-    ):
+    async def handle_ban_alias(self, alias, action_information, member, message, state):
 
         ban = Ban(
             channel_snowflake=action_information["action_channel_snowflake"],
@@ -111,7 +109,7 @@ class Aliases(commands.Cog):
         await Role.administer_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
-            role_snowflake=alias.role_snowflake
+            role_snowflake=alias.role_snowflake,
         )
 
         is_channel_scope = False
@@ -130,7 +128,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=action_information["action_duration"],
             is_channel_scope=is_channel_scope,
             is_modification=action_information["action_modification"],
@@ -166,7 +164,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=None,
             is_channel_scope=is_channel_scope,
             is_modification=action_information["action_modification"],
@@ -211,7 +209,8 @@ class Aliases(commands.Cog):
         if (
             member.voice
             and member.voice.channel
-            and member.voice.channel.id == action_information['action_channel_snowflake']
+            and member.voice.channel.id
+            == action_information["action_channel_snowflake"]
         ):
             is_channel_scope = True
             try:
@@ -221,7 +220,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=action_information["action_duration"],
             is_channel_scope=is_channel_scope,
             is_modification=action_information["action_modification"],
@@ -249,7 +248,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=None,
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
@@ -283,7 +282,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=action_information["action_duration"],
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
@@ -308,7 +307,7 @@ class Aliases(commands.Cog):
             return await state.end(
                 warning=f"Role `{alias.role_snowflake}` was not found."
             )
-        
+
         await Role.revoke_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
@@ -317,7 +316,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=action_information["action_duration"],
             is_channel_scope=False,
             is_modification=False,
@@ -355,7 +354,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=action_information["action_duration"],
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
@@ -401,7 +400,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=action_information["action_duration"],
             is_channel_scope=is_channel_scope,
             is_modification=action_information["action_modification"],
@@ -431,7 +430,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=None,
             is_channel_scope=is_channel_scope,
             is_modification=action_information["action_modification"],
@@ -453,7 +452,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=None,
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
@@ -476,13 +475,13 @@ class Aliases(commands.Cog):
         bot = DiscordBot.get_instance()
         cog = bot.get_cog("ChannelEventListeners")
         for flag in cog.flags:
-            if flag.channel_snowflake == action_information['action_channel_snowflake']:
+            if flag.channel_snowflake == action_information["action_channel_snowflake"]:
                 cog.flags.remove(flag)
                 break
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=None,
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
@@ -513,7 +512,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=None,
             is_channel_scope=is_channel_scope,
             is_modification=action_information["action_modification"],
@@ -532,13 +531,13 @@ class Aliases(commands.Cog):
     async def handle_unrole_alias(
         self, alias, action_information, member, message, state
     ):
-    
+
         role = message.guild.get_role(alias.role_snowflake)
         if not role:
             return await state.end(
                 warning=f"Role `{alias.role_snowflake}` was not found."
             )
-        
+
         await Role.revoke_role(
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
@@ -547,7 +546,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=None,
             is_channel_scope=False,
             is_modification=action_information["action_modification"],
@@ -576,7 +575,7 @@ class Aliases(commands.Cog):
 
         await Streaming.send_entry(
             alias=alias,
-            channel_snowflake=action_information['action_channel_snowflake'],
+            channel_snowflake=action_information["action_channel_snowflake"],
             duration=None,
             is_channel_scope=False,
             is_modification=action_information["action_modification"],

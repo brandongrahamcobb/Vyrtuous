@@ -77,7 +77,7 @@ class ScheduledTasks(commands.Cog):
                 kwargs = {
                     "channel_snowflake": channel_snowflake,
                     "guild_snowflake": guild_snowflake,
-                    "member_snowflake": member_snowflake
+                    "member_snowflake": member_snowflake,
                 }
                 hide_role = await HideRole.select(**kwargs, singular=True)
                 role_snowflake = hide_role.role_snowflake
@@ -127,11 +127,9 @@ class ScheduledTasks(commands.Cog):
                 kwargs = {
                     "channel_snowflake": channel_snowflake,
                     "guild_snowflake": guild_snowflake,
-                    "member_snowflake": member_snowflake
+                    "member_snowflake": member_snowflake,
                 }
-                ban_role = await BanRole.select(
-                    singular=True, **kwargs
-                )
+                ban_role = await BanRole.select(singular=True, **kwargs)
                 role_snowflake = ban_role.role_snowflake
                 guild = self.bot.get_guild(guild_snowflake)
                 if guild is None:
@@ -203,7 +201,7 @@ class ScheduledTasks(commands.Cog):
                     "channel_snowflake": channel_snowflake,
                     "guild_snowflake": guild_snowflake,
                     "member_snowflake": member_snowflake,
-                    "target": target
+                    "target": target,
                 }
                 if guild is None:
                     await VoiceMute.delete(**kwargs)
@@ -423,7 +421,7 @@ class ScheduledTasks(commands.Cog):
                 kwargs = {
                     "channel_snowflake": channel_snowflake,
                     "guild_snowflake": guild_snowflake,
-                    "member_snowflake": member_snowflake
+                    "member_snowflake": member_snowflake,
                 }
                 text_mute_role = await TextMuteRole.select(**kwargs, singular=True)
                 role_snowflake = text_mute_role.role_snowflake
