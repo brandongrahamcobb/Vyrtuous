@@ -47,15 +47,49 @@ async def capture(channel):
     channel._captured = new_messages
 
 
+def build_guild(bot, state):
+    guild = MockGuild(bot=bot, channels={}, members=[], roles=[], state=state)
+    return guild
+
+
+def build_role(guild, state):
+    role = MockRole(guild=guild, state=state)
+    return role
+
+
+def build_channel(bot, guild, state):
+    channel = MockChannel(bot=bot, guild=guild, state=state)
+    return channel
+
+
+def build_member(bot, guild, id, is_bot, name, state):
+    member = MockMember(
+        bot=bot,
+        guild=guild,
+        id=id,
+        is_bot=is_bot,
+        name=name,
+        state=state,
+    )
+    return member
+
+
+def build_message(author, channel, content, guild, state):
+    msg = MockMessage(
+        author=author, channel=channel, content=content, guild=guild, state=state
+    )
+    return msg
+
+
 async def send_message(bot, content: str = None):
     state = MockState()
-    guild = MockGuild(bot=bot, channels={}, members=[], roles=[], state=state)
-    role = MockRole(guild=guild, state=state)
+    guild = build_guild(bot, state)
+    role = build_role(guild, state)
     guild._roles.append(role)
     bot._guilds.append(guild)
-    channel = MockChannel(bot=bot, guild=guild, state=state)
+    channel = build_channel(bot, guild, state)
     guild._channels.update({channel.id: channel})
-    author = MockMember(
+    author = build_member(
         bot=bot,
         guild=guild,
         id=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE,
@@ -63,7 +97,7 @@ async def send_message(bot, content: str = None):
         name=NOT_PRIVILEGED_AUTHOR_NAME_ONE,
         state=state,
     )
-    dummy = MockMember(
+    dummy = build_member(
         bot=bot,
         guild=guild,
         id=DUMMY_MEMBER_SNOWFLAKE,
@@ -71,7 +105,7 @@ async def send_message(bot, content: str = None):
         name=DUMMY_MEMBER_NAME,
         state=state,
     )
-    bot_member = MockMember(
+    bot_member = build_member(
         bot=bot,
         guild=guild,
         id=PRIVILEGED_AUTHOR_SNOWFLAKE,
@@ -87,7 +121,7 @@ async def send_message(bot, content: str = None):
     bot._connection = state
     bot.me = bot_member
     bot._state = state
-    msg = MockMessage(
+    msg = build_message(
         author=author, channel=channel, content=content, guild=guild, state=state
     )
 

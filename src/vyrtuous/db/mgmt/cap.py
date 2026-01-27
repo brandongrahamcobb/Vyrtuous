@@ -34,6 +34,7 @@ from vyrtuous.utils.guild_dictionary import (
 )
 from vyrtuous.utils.emojis import get_random_emoji
 
+
 class Cap(DatabaseFactory):
 
     ACT = None

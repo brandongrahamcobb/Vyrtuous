@@ -53,6 +53,14 @@ class GuildChannelNotFound(DiscordObjectNotFound):
         )
 
 
+class GuildNotFound(DiscordObjectNotFound):
+
+    def __init__(self, target: str):
+        super().__init__(
+            message=f"Unable to resolve a valid Discord guild with the provided context and target (`{target}`)."
+        )
+
+
 class GuildMemberNotFound(DiscordObjectNotFound):
 
     def __init__(self, target: str):
@@ -136,20 +144,18 @@ class DiscordObject:
                 "object": member,
             }
         try:
-            guild_snowflake = int(target)
-        except TypeError as e:
+            guild = do.resolve_guild(target)
+        except GuildNotFound as e:
             logger.warning(e)
         else:
-            guild = self.bot.get_guild(guild_snowflake)
-            if guild:
-                return {
-                    "author_snowflake": author.id,
-                    "columns": {"guild_snowflake": guild.id},
-                    "id": guild.id,
-                    "name": guild.name,
-                    "type": type(guild),
-                    "object": guild,
-                }
+            return {
+                "author_snowflake": author.id,
+                "columns": {"guild_snowflake": guild.id},
+                "id": guild.id,
+                "name": guild.name,
+                "type": type(guild),
+                "object": guild,
+            }
         try:
             role = do.resolve_role(target)
         except GuildRoleNotFound as e:
@@ -186,6 +192,24 @@ class DiscordObject:
             if isinstance(c, (discord.TextChannel, discord.VoiceChannel)):
                 return c
         raise GuildChannelNotFound(target=target)
+
+    def resolve_guild(
+        self,
+        target: Optional[Union[int, str]],
+    ) -> Union[discord.Guild]:
+        g_id = None
+        if isinstance(target, int):
+            g_id = target
+        elif isinstance(target, str):
+            if target.isdigit():
+                g_id = int(target)
+            elif re_match := re.match(r"^<#(\d+)>$", target):
+                g_id = int(re_match.group(1))
+        if g_id:
+            g = self.bot.get_guild(g_id)
+            if isinstance(g, (discord.Guild)):
+                return g
+        raise GuildNotFound(target=target)
 
     def resolve_member(self, target) -> discord.Member:
         m_id = None

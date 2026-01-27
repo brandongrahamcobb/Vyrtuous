@@ -155,7 +155,9 @@ class GuildOwnerCommands(commands.Cog):
             pages.append(embed)
             page_number += 1
 
-        await StateService.send_pages(plural=AdministratorRole.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=AdministratorRole.PLURAL, pages=pages, state=state
+        )
 
     # DONE
     @commands.command(name="arole", help="Role -> Administrator.")
@@ -262,7 +264,9 @@ class GuildOwnerCommands(commands.Cog):
             pages.append(embed)
             page_number += 1
 
-        await StateService.send_pages(plural=AdministratorRole.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=AdministratorRole.PLURAL, pages=pages, state=state
+        )
 
     # DONE
     @app_commands.command(name="hero", description="Grant/revoke invincibility.")

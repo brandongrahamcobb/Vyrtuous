@@ -44,14 +44,6 @@ from vyrtuous.service.discord_object_service import (
     DiscordObject,
     DiscordObjectNotFound,
 )
-from vyrtuous.utils.guild_dictionary import (
-    generate_skipped_dict_pages,
-    generate_skipped_set_pages,
-    generate_skipped_guilds,
-    generate_skipped_messages,
-    clean_guild_dictionary,
-    flush_page,
-)
 from vyrtuous.utils.emojis import get_random_emoji
 
 
@@ -475,7 +467,9 @@ class DevCommands(commands.Cog):
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
             kwargs = object_dict.get("columns", None)
-        pages = await Bug.build_pages(filter=filter, kwargs=kwargs, is_at_home=is_at_home)
+        pages = await Bug.build_pages(
+            filter=filter, kwargs=kwargs, is_at_home=is_at_home
+        )
         await StateService.send_pages(plural=Bug.PLURAL, pages=pages, state=state)
 
     @commands.command(name="bugs", help="List issues.")
@@ -502,7 +496,9 @@ class DevCommands(commands.Cog):
             logger.warning(str(e).capitalize())
             object_dict = await do.determine_from_target(target=target)
             kwargs = object_dict.get("columns", None)
-        pages = await Bug.build_pages(filter=filter, kwargs=kwargs, is_at_home=is_at_home)
+        pages = await Bug.build_pages(
+            filter=filter, kwargs=kwargs, is_at_home=is_at_home
+        )
         await StateService.send_pages(plural=Bug.PLURAL, pages=pages, state=state)
 
     # DONE

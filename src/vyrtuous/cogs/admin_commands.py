@@ -112,7 +112,7 @@ class AdminCommands(commands.Cog):
         do = DiscordObject(interaction=interaction)
         kwargs = {}
         try:
-            channel_dict = await do.determine_from_target(target=channel)
+            channel_dict = await do.determine_from_target(target=str(channel))
         except (DiscordObjectNotFound, TypeError) as e:
             logger.warning(str(e).capitalize())
         else:
@@ -329,7 +329,9 @@ class AdminCommands(commands.Cog):
                     title="Skipped Roles in Server",
                 )
 
-        await StateService.send_pages(plural=AdministratorRole.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=AdministratorRole.PLURAL, pages=pages, state=state
+        )
 
     @commands.command(name="aroles", help="Administrator roles.")
     @administrator_predicator()
@@ -402,7 +404,9 @@ class AdminCommands(commands.Cog):
                     title="Skipped Roles in Server",
                 )
 
-        await StateService.send_pages(plural=AdministratorRole.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=AdministratorRole.PLURAL, pages=pages, state=state
+        )
 
     @app_commands.command(name="cap", description="Cap alias duration for mods.")
     @administrator_predicator()
@@ -1793,7 +1797,6 @@ class AdminCommands(commands.Cog):
                 title=f"{get_random_emoji()} Stage Created in {channel_dict.get('name', None)}",
                 color=discord.Color.blurple(),
             )
-            print("test")
             pages.append(embed)
 
         await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
@@ -2004,7 +2007,9 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(plural=TemporaryRoom.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=TemporaryRoom.PLURAL, pages=pages, state=state
+        )
 
     # DONE
     @commands.command(
@@ -2121,7 +2126,9 @@ class AdminCommands(commands.Cog):
                     title="Skipped Servers",
                 )
 
-        await StateService.send_pages(plural=TemporaryRoom.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=TemporaryRoom.PLURAL, pages=pages, state=state
+        )
 
     # DONE
     @app_commands.command(name="stream", description="Setup streaming.")

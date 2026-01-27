@@ -42,6 +42,10 @@ class Config:
                 os.environ["DISCORD_TESTING_GUILD_ID"]
             ),
             "logging_level": os.environ["LOGGING_LEVEL"],
+            "postgres_database": os.getenv("POSTGRES_DB"),
+            "backup_directory": os.getenv("DB_DIRECTORY"),
+            "postgres_host": os.getenv("POSTGRES_HOST"),
+            "postgres_password": os.getenv("POSTGRES_PASSWORD"),
         }
         _config["release_mode"] = os.environ.get("RELEASE_MODE").lower() in (
             "1",

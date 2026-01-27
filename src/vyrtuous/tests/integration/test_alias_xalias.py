@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import asyncio
 from typing import Optional
 
 import pytest
@@ -83,4 +84,5 @@ async def test_aliases(bot, command: Optional[str]):
         role_snowflake=ROLE_SNOWFLAKE,
     )
     captured = await send_message(bot=bot, content=formatted)
+    await asyncio.sleep(1)
     assert captured

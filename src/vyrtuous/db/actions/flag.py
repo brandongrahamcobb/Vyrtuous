@@ -110,7 +110,7 @@ class Flag(DatabaseFactory):
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
-    
+
     @classmethod
     async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()

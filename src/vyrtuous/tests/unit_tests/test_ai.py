@@ -1,3 +1,0 @@
-import plistlib
-
-dir(plist)

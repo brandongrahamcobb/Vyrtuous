@@ -16,10 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-import asyncio
 import asyncpg
 import pytest
 import pytest_asyncio
+from discord.ext.commands import Context, view as cmd_view
 
 from vyrtuous.config import Config
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -41,7 +41,6 @@ def cf(monkeypatch):
 async def db():
     db_pool = await asyncpg.create_pool(dsn=dsn)
     yield db_pool
-    await asyncio.sleep(1)
     await db_pool.close()
 
 
@@ -51,3 +50,15 @@ async def bot(cf, db):
     DiscordBot._instance = bot
     await bot.setup_hook()
     return bot
+
+
+def context(bot, message, prefix):
+    print(message.content)
+    view = cmd_view.StringView(message.content)
+    view.skip_string(prefix)
+    command_name = view.get_word()
+    ctx = Context(bot=bot, message=message, prefix=prefix, view=view)
+    ctx.invoked_with = command_name
+    ctx.command = bot.get_command(command_name)
+    view.skip_ws()
+    return ctx

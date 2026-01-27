@@ -121,43 +121,8 @@ class Hide(DatabaseFactory):
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
 
-
-class HideRole(DatabaseFactory):
-
-    ACT = "hrole"
-    CATEGORY = "hrole"
-    PLURAL = "Hide Roles"
-    SCOPES = ["channel", "guild"]
-    SINGULAR = "Hide Role"
-    UNDO = "hrole"
-
-    REQUIRED_INSTANTIATION_ARGS = [
-        "channel_snowflake",
-        "guild_snowflake",
-        "role_snowflake",
-    ]
-    OPTIONAL_ARGS = ["created_at", "updated_at"]
-
-    TABLE_NAME = "hide_roles"
-
-    def __init__(
-        self,
-        channel_snowflake: int,
-        guild_snowflake: int,
-        role_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
-        **kwargs,
-    ):
-        super().__init__()
-        self.created_at = created_at
-        self.channel_snowflake = channel_snowflake
-        self.guild_snowflake = guild_snowflake
-        self.role_snowflake = role_snowflake
-        self.updated_at = updated_at
-
     @classmethod
-    async def build_pages(cls, object_dict, is_at_home, title):
+    async def build_pages(cls, object_dict, is_at_home):
         bot = DiscordBot.get_instance()
         chunk_size, field_count, lines, pages = 7, 0, [], []
         guild_dictionary = {}
@@ -249,3 +214,38 @@ class HideRole(DatabaseFactory):
                     title="Skipped Members in Server",
                 )
         return pages
+
+
+class HideRole(DatabaseFactory):
+
+    ACT = "hrole"
+    CATEGORY = "hrole"
+    PLURAL = "Hide Roles"
+    SCOPES = ["channel", "guild"]
+    SINGULAR = "Hide Role"
+    UNDO = "hrole"
+
+    REQUIRED_INSTANTIATION_ARGS = [
+        "channel_snowflake",
+        "guild_snowflake",
+        "role_snowflake",
+    ]
+    OPTIONAL_ARGS = ["created_at", "updated_at"]
+
+    TABLE_NAME = "hide_roles"
+
+    def __init__(
+        self,
+        channel_snowflake: int,
+        guild_snowflake: int,
+        role_snowflake: int,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        **kwargs,
+    ):
+        super().__init__()
+        self.created_at = created_at
+        self.channel_snowflake = channel_snowflake
+        self.guild_snowflake = guild_snowflake
+        self.role_snowflake = role_snowflake
+        self.updated_at = updated_at

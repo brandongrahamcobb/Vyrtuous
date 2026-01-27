@@ -15,6 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+
 from pathlib import Path
 from typing import Optional
 
@@ -28,6 +29,7 @@ from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.actions.flag import Flag
 from vyrtuous.db.actions.hide import Hide
+from vyrtuous.db.actions.server_mute import ServerMute
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.roles.administrator import Administrator, is_administrator
@@ -63,9 +65,6 @@ from vyrtuous.utils.reason_modal import ReasonModal
 from vyrtuous.service.message_service import MessageService
 from vyrtuous.service.state_service import StateService
 from vyrtuous.service.discord_object_service import DiscordObject
-from vyrtuous.utils.guild_dictionary import (
-    flush_page,
-)
 from vyrtuous.utils.emojis import get_random_emoji
 from vyrtuous.utils.dir_to_classes import dir_to_classes
 
@@ -92,7 +91,9 @@ class ModeratorCommands(commands.Cog):
         pages = await Administrator.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=Administrator.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=Administrator.PLURAL, pages=pages, state=state
+        )
 
     # DONE
     @commands.command(name="admins", help="Lists admins.")
@@ -108,11 +109,13 @@ class ModeratorCommands(commands.Cog):
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
         is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
+        object_dict = await do.determine_from_target(target=str(target))
         pages = await Administrator.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=Administrator.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=Administrator.PLURAL, pages=pages, state=state
+        )
 
     @app_commands.command(name="bans", description="List bans.")
     @app_commands.describe(
@@ -194,7 +197,9 @@ class ModeratorCommands(commands.Cog):
         pages = await Coordinator.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=Coordinator.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=Coordinator.PLURAL, pages=pages, state=state
+        )
 
     # DONE
     @commands.command(name="coords", help="Lists coords.")
@@ -213,7 +218,9 @@ class ModeratorCommands(commands.Cog):
         pages = await Coordinator.build_pages(
             object_dict=object_dict, is_at_home=is_at_home
         )
-        await StateService.send_pages(plural=Coordinator.PLURAL, pages=pages, state=state)
+        await StateService.send_pages(
+            plural=Coordinator.PLURAL, pages=pages, state=state
+        )
 
     # DONE
     @app_commands.command(name="del", description="Delete message.")
@@ -729,6 +736,43 @@ class ModeratorCommands(commands.Cog):
                 warning=f"No role named `{role_name}` found in this server."
             )
 
+    @app_commands.command(name="smutes", description="List mutes.")
+    @moderator_predicator()
+    async def list_server_mutes_app_command(
+        self, interaction: discord.Interaction, target: str = None
+    ):
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+        is_at_home = at_home(source=interaction)
+        object_dict = await do.determine_from_target(target=target)
+        pages = await ServerMute.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(
+            plural=ServerMute.PLURAL, pages=pages, state=state
+        )
+
+    # DONE
+    @commands.command(name="smutes", help="List mutes.")
+    @moderator_predicator()
+    async def list_server_mutes_text_command(
+        self,
+        ctx: commands.Context,
+        target: str = commands.parameter(
+            description="Specify one of: 'all', channel ID/mention, member ID/mention, or server ID.",
+        ),
+    ):
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
+        is_at_home = at_home(source=ctx)
+        object_dict = await do.determine_from_target(target=target)
+        pages = await ServerMute.build_pages(
+            object_dict=object_dict, is_at_home=is_at_home
+        )
+        await StateService.send_pages(
+            plural=ServerMute.PLURAL, pages=pages, state=state
+        )
+
     # DONE
     @app_commands.command(name="stages", description="List stages.")
     @app_commands.describe(
@@ -781,7 +825,9 @@ class ModeratorCommands(commands.Cog):
         member_dict = await do.determine_from_target(target=member)
         for obj in dir_to_classes(dir_paths=dir_paths):
             if "member" in obj.SCOPES:
-                object_pages = await obj.build_pages(object_dict=member_dict, is_at_home=is_at_home)
+                object_pages = await obj.build_pages(
+                    object_dict=member_dict, is_at_home=is_at_home
+                )
                 pages.extend(object_pages)
         await StateService.send_pages(plural="infractions", pages=pages, state=state)
 
@@ -803,8 +849,11 @@ class ModeratorCommands(commands.Cog):
         member_dict = await do.determine_from_target(target=member)
         for obj in dir_to_classes(dir_paths=dir_paths):
             if "member" in obj.SCOPES:
-                object_pages = await obj.build_pages(object_dict=member_dict, is_at_home=is_at_home)
-                pages.extend(object_pages)
+                object_pages = await obj.build_pages(
+                    object_dict=member_dict, is_at_home=is_at_home
+                )
+                if object_pages:
+                    pages.extend(object_pages)
         await StateService.send_pages(plural="infractions", pages=pages, state=state)
 
     @app_commands.command(name="survey", description="Get all.")

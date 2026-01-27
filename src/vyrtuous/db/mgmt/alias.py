@@ -33,7 +33,6 @@ from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.roles.vegan import Vegan
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.check import has_equal_or_lower_role
-from vyrtuous.utils.logger import logger
 from vyrtuous.utils.guild_dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
@@ -190,6 +189,8 @@ class Alias(DatabaseFactory):
         self, author_snowflake, duration, member_snowflake, reason, state
     ):
         action_information = {}
+        if getattr(self, "role_snowflake"):
+            action_information.update({"action_role_snowflake": self.role_snowflake})
         action_information.update(
             {
                 "alias_class": self.alias_class,

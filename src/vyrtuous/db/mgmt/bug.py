@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from datetime import datetime, timezone
-from uuid import UUID
 from typing import Optional
 
 import discord
@@ -35,6 +34,7 @@ from vyrtuous.utils.guild_dictionary import (
     flush_page,
 )
 from vyrtuous.utils.emojis import get_random_emoji
+
 
 class Bug(DatabaseFactory):
 
@@ -109,7 +109,7 @@ class Bug(DatabaseFactory):
         )
         embed.set_thumbnail(url=member.display_avatar.url)
         return embed
-    
+
     @classmethod
     async def build_pages(cls, filter, kwargs, is_at_home):
         bot = DiscordBot.get_instance()

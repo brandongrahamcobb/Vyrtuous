@@ -25,11 +25,11 @@ import asyncpg
 
 class Database:
 
-    def __init__(self, *, directory=None):
-        self.database: str = os.getenv("POSTGRES_DB")
-        self.directory = directory if directory else os.getenv("DB_DIRECTORY")
-        self.host: str = os.getenv("POSTGRES_HOST")
-        self.password: str = os.getenv("POSTGRES_PASSWORD")
+    def __init__(self, config, *, directory=None):
+        self.database: str = config.get("postgres_database")
+        self.directory = directory if directory else config.get("backup_directory")
+        self.host: str = config.get("postgres_host")
+        self.password: str = config.get("postgres_password")
         self.timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         self.file_name: str = os.path.join(
             self.directory, f"backup_{self.timestamp}.sql"

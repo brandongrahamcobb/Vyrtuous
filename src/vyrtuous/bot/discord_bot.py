@@ -40,6 +40,7 @@ class DiscordBot(commands.Bot):
             )
             self.config = config
             self.db_pool = db_pool
+            print(self.config["discord_testing_guild_snowflake"])
             self.testing_guild_snowflake = self.config[
                 "discord_testing_guild_snowflake"
             ]
@@ -57,8 +58,3 @@ class DiscordBot(commands.Bot):
         if cls._instance is None:
             raise RuntimeError("DiscordBot instance has not been created yet")
         return cls._instance
-
-    async def process_commands(self, message):
-        ctx = await self.get_context(message)
-        if ctx.command is not None:
-            await self.invoke(ctx)

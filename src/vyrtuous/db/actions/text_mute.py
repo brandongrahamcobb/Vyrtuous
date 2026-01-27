@@ -26,7 +26,6 @@ from vyrtuous.db.database_factory import DatabaseFactory
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.utils.author import resolve_author
 from vyrtuous.utils.emojis import get_random_emoji
-from vyrtuous.utils.logger import logger
 from vyrtuous.utils.guild_dictionary import (
     generate_skipped_dict_pages,
     generate_skipped_set_pages,
