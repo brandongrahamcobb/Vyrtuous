@@ -20,6 +20,7 @@ import asyncpg
 import pytest
 import pytest_asyncio
 from discord.ext.commands import Context, view as cmd_view
+from discord import Interaction
 
 from vyrtuous.config import Config
 from vyrtuous.bot.discord_bot import DiscordBot
@@ -53,7 +54,6 @@ async def bot(cf, db):
 
 
 def context(bot, message, prefix):
-    print(message.content)
     view = cmd_view.StringView(message.content)
     view.skip_string(prefix)
     command_name = view.get_word()
@@ -62,3 +62,7 @@ def context(bot, message, prefix):
     ctx.command = bot.get_command(command_name)
     view.skip_ws()
     return ctx
+
+def interaction(context):
+    interaction = Interaction(context=context)
+    return interaction

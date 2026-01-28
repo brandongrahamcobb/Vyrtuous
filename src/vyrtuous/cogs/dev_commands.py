@@ -52,7 +52,8 @@ class DevCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.message_service = MessageService(self.bot)
-
+    
+    
     @app_commands.command(
         name="assoc", description="Associate a ban or text-mute alias to a role."
     )
@@ -531,6 +532,59 @@ class DevCommands(commands.Cog):
                 warning=f"{e.__class__.__name__}: {str(e).capitalize()}"
             )
         return await state.end(success=f"Successfully loaded {module}.")
+    
+    @app_commands.command(name='ow', description="List overwrites for a channel.")
+    @app_commands.describe(channel="Specify the ID or mention.")
+    async def list_overwrites_app_command(
+        self,
+        interaction: discord.Interaction,
+        channel: str
+    ):
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+        object_dict = await do.determine_from_target(target=channel)
+        member_count, role_count, total_count = 0, 0, 0
+        for target, overwrite in object_dict.get("object", None).overwrites.items():
+            if any(v is not None for v in overwrite):
+                total_count += 1
+                if isinstance(target, discord.Member):
+                    member_count += 1
+                else:
+                    role_count += 1
+        embed = discord.Embed(title="Channel Overwrites", color=discord.Color.blue())
+        embed.add_field(name="Channel", value=object_dict.get("name", None), inline=False)
+        embed.add_field(name="Total overwrites", value=str(total_count), inline=True)
+        embed.add_field(name="Role overwrites", value=str(role_count), inline=True)
+        embed.add_field(name="Member overwrites", value=str(member_count), inline=True)
+        return await state.end(success=embed)
+
+    @commands.command(name='ow')
+    async def overwrites(
+        self,
+        ctx: commands.Context,
+        channel: str = commands.parameter(
+            default=None,
+            description="Specify the ID or mention.",
+        )
+    ):
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
+        object_dict = await do.determine_from_target(target=channel)
+        member_count, role_count, total_count = 0, 0, 0
+        for target, overwrite in object_dict.get("object", None).overwrites.items():
+            if any(v is not None for v in overwrite):
+                total_count += 1
+                if isinstance(target, discord.Member):
+                    member_count += 1
+                else:
+                    role_count += 1
+        embed = discord.Embed(title="Channel Overwrites", color=discord.Color.blue())
+        embed.add_field(name="Channel", value=object_dict.get("name", None), inline=False)
+        embed.add_field(name="Total overwrites", value=str(total_count), inline=True)
+        embed.add_field(name="Role overwrites", value=str(role_count), inline=True)
+        embed.add_field(name="Member overwrites", value=str(member_count), inline=True)
+        return await state.end(success=embed)
+
 
     # DONE
     @app_commands.command(name="ping", description="Ping me!")

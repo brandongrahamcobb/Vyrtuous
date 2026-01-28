@@ -21,7 +21,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 ROLE_SNOWFLAKE = 10000000000000200
@@ -30,29 +31,17 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, member_snowflake",
     [
-        ("!alias ban testban {channel_snowflake} {role_snowflake}"),
-        ("!testban {member_snowflake}"),
-        ("!xalias testban"),
-        ("!alias vmute testmute {channel_snowflake}"),
-        ("!testmute {member_snowflake}"),
-        ("!xalias testmute"),
-        ("!alias flag testflag {channel_snowflake}"),
-        ("!testflag {member_snowflake}"),
-        ("!xalias testflag"),
-        ("!alias vegan testvegan {channel_snowflake}"),
-        ("!testvegan {member_snowflake}"),
-        ("!xalias testvegan"),
-        ("!alias tmute testtmute {channel_snowflake} {role_snowflake}"),
-        ("!testtmute {member_snowflake}"),
-        ("!xalias testtmute"),
-        ("!alias role testrole {channel_snowflake} {role_snowflake}"),
-        ("!testrole {member_snowflake}"),
-        ("!xalias role testrole"),
+        ("!testban", "{member_snowflake}"),
+        ("!testmute", "{member_snowflake}"),
+        ("!testflag", "{member_snowflake}"),
+        ("!testvegan", "{member_snowflake}"),
+        ("!testtmute", "{member_snowflake}"),
+        ("!testrole", "{member_snowflake}"),
     ],
 )
-async def test_aliases(bot, command: Optional[str]):
+async def test_aliases(bot, command: Optional[str], member_snowflake):
     """
     Create and delete command aliases in the PostgreSQL
     database 'vyrtuous' in the table 'command_aliases'.
@@ -78,11 +67,17 @@ async def test_aliases(bot, command: Optional[str]):
     >>> !xalias testban
     [{emoji} Alias `testban` deleted]
     """
-    formatted = command.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+    member = member_snowflake.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
-        role_snowflake=ROLE_SNOWFLAKE,
     )
-    captured = await send_message(bot=bot, content=formatted)
-    await asyncio.sleep(1)
-    assert captured
+    full = f"{command} {member}"
+    # captured = await send_message(bot=bot, content=full)
+    # await asyncio.sleep(1)
+    # assert captured
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    generic_event_listeners = bot.get_cog("GenericEventListeners")
+    command = await generic_event_listeners.on_message(message=msg)

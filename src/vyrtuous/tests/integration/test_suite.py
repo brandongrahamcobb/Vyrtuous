@@ -80,8 +80,7 @@ def build_message(author, channel, content, guild, state):
     )
     return msg
 
-
-async def send_message(bot, content: str = None):
+def setup(bot):
     state = MockState()
     guild = build_guild(bot, state)
     role = build_role(guild, state)
@@ -121,13 +120,28 @@ async def send_message(bot, content: str = None):
     bot._connection = state
     bot.me = bot_member
     bot._state = state
+    objects = {
+        "author": author,
+        "bot": bot,
+        "channel": channel,
+        "guild": guild,
+        "state": state
+    }
+    return objects
+
+async def send_message(bot, content: str = None):
+    objects = setup(bot)
+    
     msg = build_message(
-        author=author, channel=channel, content=content, guild=guild, state=state
+        author=objects.get("author", None),
+        channel=objects.get("channel", None),
+        content=content,
+        guild=objects.get("guild", None),
+        state=objects.get("state", None)
     )
 
-    async with capture(channel):
+    async with capture(objects.get("channel", None)):
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
-        await asyncio.sleep(0.1)
 
-    return channel._captured[-1]
+    return objects.get("channel", None)._captured[-1]

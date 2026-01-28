@@ -144,7 +144,7 @@ class AdminCommands(commands.Cog):
                     )
                 else:
                     if category == "ban":
-                        text_mute = TextMute.select(role_snowflake=role_dict["id"])
+                        text_mute = await TextMute.select(role_snowflake=role_dict["id"])
                         if not text_mute:
                             return await state.end(
                                 warning=f"{role_dict.get("mention", None)} is not a text-mute role. You must provide a preexisting text-mute role to associate with the ban."
@@ -232,7 +232,7 @@ class AdminCommands(commands.Cog):
                     )
                 else:
                     if category == "ban":
-                        text_mute = TextMute.select(role_snowflake=role_dict["id"])
+                        text_mute = await TextMute.select(role_snowflake=role_dict["id"])
                         if not text_mute:
                             return await state.end(
                                 warning=f"{role_dict.get("mention", None)} is not a text-mute role. You must provide a preexisting text-mute role to associate with the ban."

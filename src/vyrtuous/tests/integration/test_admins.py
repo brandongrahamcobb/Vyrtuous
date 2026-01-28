@@ -19,17 +19,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import inspect
 from typing import Optional
 
+import discord
 import pytest
 
 from vyrtuous.tests.integration.conftest import context
-from vyrtuous.tests.integration.mock_discord_state import MockState
 from vyrtuous.tests.integration.test_suite import (
-    build_channel,
-    build_guild,
-    build_member,
     build_message,
-    build_role,
     send_message,
+    setup
 )
 
 GUILD_SNOWFLAKE = 10000000000000500
@@ -81,25 +78,12 @@ async def test_admins(bot, command: Optional[str], target):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
     full = f"{command} {formatted}"
-    print(full)
     captured = await send_message(bot=bot, content=full)
     assert captured.content
-    state = MockState()
-    guild = build_guild(bot, state)
-    channel = build_channel(bot, guild, state)
-    role = build_role(guild, state)
-    author = build_member(
-        bot=bot,
-        guild=guild,
-        id=NOT_PRIVILEGED_AUTHOR_SNOWFLAKE_ONE,
-        is_bot=False,
-        name=NOT_PRIVILEGED_AUTHOR_NAME_ONE,
-        state=state,
-    )
+    objects = setup(bot)
     msg = build_message(
-        author=author, channel=channel, content=full, guild=guild, state=state
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     mod_commands = bot.get_cog("ModeratorCommands")
-    # print(inspect.getfullargspec((mod_commands.list_administrators_text_command)))
     command = await mod_commands.list_administrators_text_command(ctx, target=formatted)
