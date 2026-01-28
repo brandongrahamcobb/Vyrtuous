@@ -49,43 +49,46 @@ class GenericEventListeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        args = (
-            message.content[len(self.config["discord_command_prefix"]) :]
-            .strip()
-            .split()
-        )
-        if not message.guild:
-            return
-        if not args:
-            return
-        if not message.content.startswith(self.config["discord_command_prefix"]):
-            return
-        if self.config["release_mode"] and message.author.id == self.bot.user.id:
-            return
-        alias = await Alias.select(
-            alias_name=args[0],
-            guild_snowflake=message.guild.id,
-            singular=True,
-        )
-        if not alias:
-            return
-        state = StateService(source=message)
-        member_obj = message.guild.get_member(int(args[1]))
-        member_snowflake = member_obj.id
-        action_information = await alias.build_action_information(
-            author_snowflake=message.author.id,
-            duration=DurationObject(args[2]) if len(args) > 2 else DurationObject("8h"),
-            member_snowflake=member_snowflake,
-            reason=" ".join(args[3:]) if len(args) > 3 else "No reason provided.",
-            state=state,
-        )
-        await alias.handlers[alias.category](
-            alias=alias,
-            action_information=action_information,
-            member=member_obj,
-            message=message,
-            state=state,
-        )
+        try:
+            args = (
+                message.content[len(self.config["discord_command_prefix"]) :]
+                .strip()
+                .split()
+            )
+            if not message.guild:
+                return
+            if not args:
+                return
+            if not message.content.startswith(self.config["discord_command_prefix"]):
+                return
+            if self.config["release_mode"] and message.author.id == self.bot.user.id:
+                return
+            alias = await Alias.select(
+                alias_name=args[0],
+                guild_snowflake=message.guild.id,
+                singular=True,
+            )
+            if not alias:
+                return
+            state = StateService(source=message)
+            member_obj = message.guild.get_member(int(args[1]))
+            member_snowflake = member_obj.id
+            action_information = await alias.build_action_information(
+                author_snowflake=message.author.id,
+                duration=DurationObject(args[2]) if len(args) > 2 else DurationObject("8h"),
+                member_snowflake=member_snowflake,
+                reason=" ".join(args[3:]) if len(args) > 3 else "No reason provided.",
+                state=state,
+            )
+            await alias.handlers[alias.category](
+                alias=alias,
+                action_information=action_information,
+                member=member_obj,
+                message=message,
+                state=state,
+            )
+        except Exception as e:
+            return await state.end(warning=str(e).capitalize())
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):

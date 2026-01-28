@@ -145,7 +145,7 @@ CREATE TABLE text_mute_roles (
     guild_snowflake BIGINT NOT NULL,
     role_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (guild_snowflake, role_snowflake)
+    PRIMARY KEY (channel_snowflake, guild_snowflake, role_snowflake)
 );
 CREATE TABLE ban_roles (
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -153,7 +153,7 @@ CREATE TABLE ban_roles (
     guild_snowflake BIGINT NOT NULL,
     role_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (guild_snowflake, role_snowflake)
+    PRIMARY KEY (channel_snowflake, guild_snowflake, role_snowflake)
 );
 CREATE TABLE hide_roles (
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -161,10 +161,22 @@ CREATE TABLE hide_roles (
     guild_snowflake BIGINT NOT NULL,
     role_snowflake BIGINT NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (guild_snowflake, role_snowflake)
+    PRIMARY KEY (channel_snowflake, guild_snowflake, role_snowflake)
+);
+CREATE TABLE roles (
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    channel_snowflake BIGINT NOT NULL,
+    guild_snowflake BIGINT NOT NULL,
+    member_snowflake BIGINT NOT NULL,
+    role_snowflake BIGINT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake)
 );
 
 
+
+INSERT INTO active_hides (channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, updated_at)
+VALUES (1222056499959042108, NOW(), NULL, 801609515391778826, 910422339810914334, 'Stalking', NOW());
 
 
 

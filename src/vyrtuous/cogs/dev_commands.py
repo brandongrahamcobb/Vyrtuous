@@ -285,7 +285,7 @@ class DevCommands(commands.Cog):
     async def app_backup(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         state = StateService(source=interaction)
-        db = Database(directory="/app/backups")
+        db = Database(config=self.bot.config, directory="/app/backups")
         try:
             db.create_backup_directory()
             db.execute_backup()
@@ -298,7 +298,7 @@ class DevCommands(commands.Cog):
     @developer_predicator()
     async def text_backup(self, ctx: commands.Context):
         state = StateService(source=ctx)
-        db = Database(directory="/app/backups")
+        db = Database(config=self.bot.config, directory="/app/backups")
         try:
             db.create_backup_directory()
             db.execute_backup()
@@ -535,6 +535,7 @@ class DevCommands(commands.Cog):
     
     @app_commands.command(name='ow', description="List overwrites for a channel.")
     @app_commands.describe(channel="Specify the ID or mention.")
+    @developer_predicator()
     async def list_overwrites_app_command(
         self,
         interaction: discord.Interaction,
@@ -553,12 +554,13 @@ class DevCommands(commands.Cog):
                     role_count += 1
         embed = discord.Embed(title="Channel Overwrites", color=discord.Color.blue())
         embed.add_field(name="Channel", value=object_dict.get("name", None), inline=False)
-        embed.add_field(name="Total overwrites", value=str(total_count), inline=True)
-        embed.add_field(name="Role overwrites", value=str(role_count), inline=True)
-        embed.add_field(name="Member overwrites", value=str(member_count), inline=True)
+        embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
+        embed.add_field(name="Member overwrites", value=str(member_count), inline=False)
+        embed.add_field(name="Total overwrites", value=str(total_count), inline=False)
         return await state.end(success=embed)
 
     @commands.command(name='ow')
+    @developer_predicator()
     async def overwrites(
         self,
         ctx: commands.Context,
@@ -580,9 +582,9 @@ class DevCommands(commands.Cog):
                     role_count += 1
         embed = discord.Embed(title="Channel Overwrites", color=discord.Color.blue())
         embed.add_field(name="Channel", value=object_dict.get("name", None), inline=False)
-        embed.add_field(name="Total overwrites", value=str(total_count), inline=True)
-        embed.add_field(name="Role overwrites", value=str(role_count), inline=True)
-        embed.add_field(name="Member overwrites", value=str(member_count), inline=True)
+        embed.add_field(name="Role overwrites", value=str(role_count), inline=False)
+        embed.add_field(name="Member overwrites", value=str(member_count), inline=False)
+        embed.add_field(name="Total overwrites", value=str(total_count), inline=False)
         return await state.end(success=embed)
 
 

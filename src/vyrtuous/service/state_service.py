@@ -183,7 +183,7 @@ class StateService:
             return await self.source.followup.send(**kwargs)
         elif isinstance(self.source, discord.Interaction) and paginated:
             if not self.source.response.is_done():
-                await self.source.response.defer()
+                await self.source.response.defer(ephemeral=True)
             return await self.source.followup.send(**kwargs)
         else:
             return await self.source.channel.send(**kwargs)

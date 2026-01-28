@@ -37,33 +37,33 @@ class Aliases(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.alias_help = {
             "ban": [
-                "**member** (Required): Tag a member or include their ID",
-                "**duration** (Optional): #(m|h|d)\n0 = permanent",
-                "**reason** (Optional): Reason for ban",
+                "**member**: Tag a member or include their ID",
+                "**duration**: m/h/d",
+                "**reason**: Reason for ban",
             ],
             "flag": [
-                "**member** (Required): Tag a member or include their ID",
-                "**reason** (Optional): Reason for flag",
+                "**member**: Tag a member or include their ID",
+                "**reason**: Reason for flag",
             ],
             "hide": [
-                "**member** (Required): Tag a member or include their ID",
-                "**duration** (Optional): #(m|h|d)\n0 = permanent",
-                "**reason** (Optional): Reason for hiding",
+                "**member**: Tag a member or include their ID",
+                "**duration**: m/h/d",
+                "**reason**: Reason for hiding",
             ],
             "role": [
-                "**member** (Required): Tag a member or include their ID",
-                "**role** (Required): Tag a role or include its ID",
+                "**member**: Tag a member or include their ID",
+                "**role**: Tag a role or include its ID",
             ],
             "tmute": [
-                "**member** (Required): Tag a member or include their ID",
-                "**duration** (Optional): #(m|h|d)\n0 = permanent",
-                "**reason** (Required): Reason for text-mute",
+                "**member**: Tag a member or include their ID",
+                "**duration**: m/h/d",
+                "**reason**: Reason for text-mute",
             ],
-            "vegan": ["**member** (Required): Tag a member or include their ID"],
+            "vegan": ["**member**: Tag a member or include their ID"],
             "vmute": [
-                "**member** (Required): Tag a member or include their ID",
-                "**duration** (Optional): #(m|h|d)\n0 = permanent",
-                "**reason** (Optional): Reason for voice-mute",
+                "**member**: Tag a member or include their ID",
+                "**duration**: m/h/d",
+                "**reason**: Reason for voice-mute",
             ],
         }
         self.category_to_description = {
@@ -606,7 +606,6 @@ class Aliases(commands.Cog):
             guild_snowflake=action_information["action_guild_snowflake"],
             member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=action_information["action_role_snowflake"],
-            state=state,
         )
 
         await Streaming.send_entry(

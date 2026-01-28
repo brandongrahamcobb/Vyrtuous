@@ -495,7 +495,7 @@ class ScheduledTasks(commands.Cog):
     @tasks.loop(hours=24)
     async def backup_database(self):
         try:
-            db = Database()
+            db = Database(config=self.bot.config)
             db.create_backup_directory()
             db.execute_backup()
             logger.info("Backup completed successfully.")

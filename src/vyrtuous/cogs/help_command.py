@@ -169,7 +169,7 @@ class HelpCommand(commands.Cog):
                 for a in alias_list:
                     help_lines = self.aliases_cog.alias_help.get(category, [])
                     perm_alias_map[perm_level].append(
-                        f"**{a.alias_name}**\n"
+                        f"**{self.config['discord_command_prefix']}{a.alias_name}**\n"
                         + "\n".join(f"• {line}" for line in help_lines)
                     )
             return perm_alias_map
@@ -214,21 +214,14 @@ class HelpCommand(commands.Cog):
                         param_desc = None
                         if isinstance(param.default, commands.Parameter):
                             param_desc = param.default.description
-                        annotation = (
-                            param.annotation.__name__
-                            if hasattr(param.annotation, "__name__")
-                            else str(param.annotation)
-                        )
-                        if annotation == "_empty":
-                            annotation = "any"
                         is_optional = param.default != inspect.Parameter.empty
                         usage_parts.append(f"[{name}]" if is_optional else f"<{name}>")
                         if param_desc:
                             param_details.append(
-                                f"**{name}** ({annotation}): {param_desc}"
+                                f"**{name}**: {param_desc}"
                             )
                         else:
-                            param_details.append(f"**{name}** ({annotation})")
+                            param_details.append(f"**{name}**")
                     embed.add_field(
                         name="Usage", value=f"`{' '.join(usage_parts)}`", inline=False
                     )
@@ -283,7 +276,7 @@ class HelpCommand(commands.Cog):
                     )
                 )
                 perm_alias_map[perm_level_for_alias].append(
-                    f"**{alias.alias_name}** – {short_desc}"
+                    f"**{self.config['discord_command_prefix']}{alias.alias_name}** – {short_desc}"
                 )
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:
@@ -359,21 +352,14 @@ class HelpCommand(commands.Cog):
                         param_desc = None
                         if isinstance(param.default, commands.Parameter):
                             param_desc = param.default.description
-                        annotation = (
-                            param.annotation.__name__
-                            if hasattr(param.annotation, "__name__")
-                            else str(param.annotation)
-                        )
-                        if annotation == "_empty":
-                            annotation = "any"
                         is_optional = param.default != inspect.Parameter.empty
                         usage_parts.append(f"[{name}]" if is_optional else f"<{name}>")
                         if param_desc:
                             param_details.append(
-                                f"**{name}** ({annotation}): {param_desc}"
+                                f"**{name}**: {param_desc}"
                             )
                         else:
-                            param_details.append(f"**{name}** ({annotation})")
+                            param_details.append(f"**{name}**")
                     embed.add_field(
                         name="Usage", value=f"`{' '.join(usage_parts)}`", inline=False
                     )
@@ -428,7 +414,7 @@ class HelpCommand(commands.Cog):
                     )
                 )
                 perm_alias_map[perm_level_for_alias].append(
-                    f"**{alias.alias_name}** – {short_desc}"
+                    f"**{self.config['discord_command_prefix']}{alias.alias_name}** – {short_desc}"
                 )
         user_index = PERMISSION_TYPES.index(user_highest)
         for perm_level, description in self.permission_page_title_pairs:

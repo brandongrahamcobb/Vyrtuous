@@ -26,8 +26,10 @@ import discord
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
-from vyrtuous.db.actions.ban import Ban
-from vyrtuous.db.actions.text_mute import TextMute
+from vyrtuous.db.actions.ban import Ban, BanRole
+from vyrtuous.db.actions.hide import Hide, HideRole
+from vyrtuous.db.actions.text_mute import TextMute, TextMuteRole
+from vyrtuous.db.actions.role import Role
 from vyrtuous.db.actions.server_mute import ServerMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
 from vyrtuous.db.roles.administrator import (
@@ -93,7 +95,7 @@ class AdminCommands(commands.Cog):
     @administrator_predicator()
     @app_commands.describe(
         alias_name="Alias/Pseudonym",
-        category="Specify an category for a `ban`, `flag`, `hide`, `role`, `tmute`, `vegan` or `vmute` action.",
+        category="Specify a category for a `ban`, `flag`, `hide`, `role`, `tmute`, `vegan` or `vmute` action.",
         channel="Tag a channel or include the ID.",
         role="Tag a channel, role or include the ID.",
     )
@@ -121,19 +123,33 @@ class AdminCommands(commands.Cog):
                 f"Alias `{alias_name}`  of type `{category}` "
                 f"created successfully for channel {channel_dict.get("mention", None)}."
             )
+        alias = await Alias.select(
+            category=category,
+            **kwargs,
+        )
+        if alias:
+            return await state.end(
+                warning=f"Alias of type `{category}` "
+                f"already exists for this channel {channel_dict.get("mention", None)}."
+            )
+        if category == "ban":
+            text_mute = await TextMuteRole.select(**kwargs, singular=True)
+            if not text_mute:
+                return await state.end(
+                    warning=f"An existing text-mute alias must exist to create a `ban` alias."
+                )
+            role = str(text_mute.role_snowflake)
+            ban_role = BanRole(**kwargs, role_snowflake=int(role))
+            await ban_role.create()
         if category in ("ban", "hide", "tmute", "role"):
-            if not role and str(category) in ("hide", "tmute"):
-                for role in interaction.guild.roles:
+            if not role and category in ("hide", "tmute"):
+                for role in ctx.guild.roles:
                     if role.name == alias_name:
                         return await state.end(
                             warning=f"{role.name} already exists. You must specify it to override."
                         )
-                role_obj = await interaction.guild.create_role(name=alias_name)
+                role_obj = await ctx.guild.create_role(name=alias_name)
                 role = str(role_obj.id)
-            elif not role and category == "ban":
-                return await state.end(
-                    warning="You must provide a preexisting text-mute role to associate with the ban."
-                )
             if role:
                 try:
                     role_dict = await do.determine_from_target(target=role)
@@ -143,22 +159,26 @@ class AdminCommands(commands.Cog):
                         warning="Provided role ({role}) was not found."
                     )
                 else:
-                    if category == "ban":
-                        text_mute = await TextMute.select(role_snowflake=role_dict["id"])
-                        if not text_mute:
-                            return await state.end(
-                                warning=f"{role_dict.get("mention", None)} is not a text-mute role. You must provide a preexisting text-mute role to associate with the ban."
-                            )
                     kwargs.update(role_dict.get("columns", None))
+                    if category == "hide":
+                        hide_role = HideRole(**kwargs)
+                        await hide_role.create()
+                    elif category == "role":
+                        role_obj = Role(**kwargs)
+                        await role_obj.create()
+                    elif category == "tmute":
+                        text_mute_role = TextMuteRole(**kwargs)
+                        await text_mute_role.create()
                     msg = (
                         f"Alias `{alias_name}` of type `{category}` "
                         f"created successfully "
-                        f"for role {role_dict.get("mention", None)}."
+                        f"with role {role_dict.get("mention", None)}."
                     )
             else:
                 return await state.end(
                     warning=f"The alias type ({category}) requires a role."
                 )
+
 
         alias = await Alias.select(
             alias_name=alias_name, guild_snowflake=interaction.guild.id, singular=True
@@ -183,7 +203,7 @@ class AdminCommands(commands.Cog):
         self,
         ctx: commands.Context,
         category: Category = commands.parameter(
-            description="Specify an category for a `ban`, `flag`, `hide`, `role`, `tmute`, `vegan` or `vmute` action."
+            description="Specify a category for a `ban`, `flag`, `hide`, `role`, `tmute`, `vegan` or `vmute` action."
         ),
         alias_name: str = commands.parameter(description="Alias/Pseudonym"),
         channel: ChannelSnowflake = commands.parameter(
@@ -206,9 +226,27 @@ class AdminCommands(commands.Cog):
         else:
             kwargs.update(channel_dict.get("columns", None))
             msg = (
-                f"Alias `{alias_name}`  of type `{category}` "
+                f"Alias `{alias_name}` of type `{category}` "
                 f"created successfully for channel {channel_dict.get("mention", None)}."
             )
+        alias = await Alias.select(
+            category=category,
+            **kwargs,
+        )
+        if alias:
+            return await state.end(
+                warning=f"Alias of type `{category}` "
+                f"already exists for this channel {channel_dict.get("mention", None)}."
+            )
+        if category == "ban":
+            text_mute = await TextMuteRole.select(**kwargs, singular=True)
+            if not text_mute:
+                return await state.end(
+                    warning=f"An existing text-mute alias must exist to create a `ban` alias."
+                )
+            role = str(text_mute.role_snowflake)
+            ban_role = BanRole(**kwargs, role_snowflake=int(role))
+            await ban_role.create()
         if category in ("ban", "hide", "tmute", "role"):
             if not role and category in ("hide", "tmute"):
                 for role in ctx.guild.roles:
@@ -218,10 +256,6 @@ class AdminCommands(commands.Cog):
                         )
                 role_obj = await ctx.guild.create_role(name=alias_name)
                 role = str(role_obj.id)
-            elif not role and category == "ban":
-                return await state.end(
-                    warning="You must provide a preexisting text-mute role to associate with the ban."
-                )
             if role:
                 try:
                     role_dict = await do.determine_from_target(target=role)
@@ -231,17 +265,20 @@ class AdminCommands(commands.Cog):
                         warning="Provided role ({role}) was not found."
                     )
                 else:
-                    if category == "ban":
-                        text_mute = await TextMute.select(role_snowflake=role_dict["id"])
-                        if not text_mute:
-                            return await state.end(
-                                warning=f"{role_dict.get("mention", None)} is not a text-mute role. You must provide a preexisting text-mute role to associate with the ban."
-                            )
                     kwargs.update(role_dict.get("columns", None))
+                    if category == "hide":
+                        hide_role = HideRole(**kwargs)
+                        await hide_role.create()
+                    elif category == "role":
+                        role_obj = Role(**kwargs)
+                        await role_obj.create()
+                    elif category == "tmute":
+                        text_mute_role = TextMuteRole(**kwargs)
+                        await text_mute_role.create()
                     msg = (
                         f"Alias `{alias_name}` of type `{category}` "
                         f"created successfully "
-                        f"for role {role_dict.get("mention", None)}."
+                        f"with role {role_dict.get("mention", None)}."
                     )
             else:
                 return await state.end(
@@ -2853,6 +2890,15 @@ class AdminCommands(commands.Cog):
             target=str(alias.channel_snowflake)
         )
         if getattr(alias, "role_snowflake"):
+            if alias.category in ("hide", "tmute"):
+                if alias.category == "hide":
+                    await HideRole.delete(role_snowflake=alias.role_snowflake)
+                    reason = "Removing hide role."
+                elif alias.category == "tmute":
+                    await TextMuteRole.delete(role_snowflake=alias.role_snowflake)
+                    reason = "Removing text-mute role."
+                role = interaction.guild.get_role(alias.role_snowflake)
+                await role.delete(reason=reason)
             msg = (
                 f"Alias `{alias.alias_name}` of type "
                 f"`{alias.category}` for channel {channel_dict.get("mention", None)} "
@@ -2885,11 +2931,19 @@ class AdminCommands(commands.Cog):
         if not alias:
             return await state.end(warning=f"No aliases found for `{alias_name}`.")
         await Alias.delete(**kwargs)
-
         channel_dict = await do.determine_from_target(
             target=str(alias.channel_snowflake)
         )
         if getattr(alias, "role_snowflake"):
+            if alias.category in ("hide", "tmute"):
+                if alias.category == "hide":
+                    await HideRole.delete(role_snowflake=alias.role_snowflake)
+                    reason = "Removing hide role."
+                elif alias.category == "tmute":
+                    await TextMuteRole.delete(role_snowflake=alias.role_snowflake)
+                    reason = "Removing text-mute role."
+                role = ctx.guild.get_role(alias.role_snowflake)
+                await role.delete(reason=reason)
             msg = (
                 f"Alias `{alias.alias_name}` of type "
                 f"`{alias.category}` for channel {channel_dict.get("mention", None)} "

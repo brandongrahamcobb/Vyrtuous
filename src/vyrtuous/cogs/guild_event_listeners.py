@@ -119,7 +119,7 @@ class GuildEventListeners(commands.Cog):
                 role_snowflake=added_roles[0],
             )
         elif removed_roles:
-            await AdministratorRole.removed_roles(
+            await AdministratorRole.removed_role(
                 guild_snowflake=guild_snowflake,
                 member_snowflake=before.id,
                 role_snowflake=removed_roles[0],

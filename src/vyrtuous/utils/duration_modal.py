@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 import discord
 
-from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.fields.duration import DurationObject
 
 
@@ -45,13 +45,18 @@ class DurationModal(discord.ui.Modal):
             self.action_information.get("action_channel_snowflake", None)
         )
         duration_obj = DurationObject(self.duration.value)
-        action_channel_cap = await Alias.generate_cap_duration(
+        cap = await Cap.select(
+            category=self.action_information.get("alias_class", None).ACT,
             channel_snowflake=self.action_information.get(
                 "action_channel_snowflake", None
             ),
             guild_snowflake=interaction.guild.id,
-            moderation_type=self.action_information.get("alias_class", None).ACT,
+            singular=True,
         )
+        if cap:
+            action_channel_cap = cap.duration_seconds
+        else:
+            action_channel_cap = DurationObject('8h').to_seconds()
         expires_in_timedelta = DurationObject(self.duration.value).to_timedelta()
         if (
             self.action_information["action_existing"]
