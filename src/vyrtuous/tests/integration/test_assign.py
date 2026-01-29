@@ -20,7 +20,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -29,12 +30,12 @@ UUID = "7c772534-9528-4c3d-a065-ad3e29f754f8"
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, reference, member",
     [
-        ("!assign {uuid}"),
+        ("!assign", "{uuid}", "{member_snowflake}"),
     ],
 )
-async def test_assign(bot, command: Optional[str]):
+async def test_assign(bot, command: Optional[str], reference, member):
     """
     Assign a developer to a developer issues present in the PostgresSQL database
     'vyrtuous' in the table 'developer_logs'.
@@ -50,8 +51,19 @@ async def test_assign(bot, command: Optional[str]):
     >>> !assign 10000000000000500
     [{emoji} Member1 assign to Developer Issues\n Reference: {UUID}\n Message: {message.jump_url}]
     """
-    formatted = command.format(
+    ref = reference.format(
         uuid=UUID,
     )
-    captured = await send_message(bot=bot, content=formatted)
-    assert captured
+    m = member.format(
+        member_snowflake=DUMMY_MEMBER_SNOWFLAKE
+    )
+    full = f"{command} {ref} {m}"
+    captured = await send_message(bot=bot, content=full)
+    assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    sysadmin_commands = bot.get_cog("SysadminCommands")
+    command = await sysadmin_commands.assign_bug_to_developer_text_command(ctx, reference=ref, member=m)

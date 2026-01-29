@@ -20,7 +20,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
@@ -28,12 +29,12 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, source_channel, target_channel",
     [
-        ("!rmv {source_channel_snowflake} {target_channel_snowflake}"),
+        ("!rmv", "{source_channel_snowflake}", "{target_channel_snowflake}"),
     ],
 )
-async def test_rmv(bot, command: Optional[str]):
+async def test_rmv(bot, command: Optional[str], source_channel, target_channel):
     """
     Move all members from one VC to another
 
@@ -51,9 +52,19 @@ async def test_rmv(bot, command: Optional[str]):
     [{emoji} Members moved succesfully to Voice Channel One\n Member1\b Member2]
 
     """
-    formatted = command.format(
+    sc = source_channel.format(
         source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+    )
+    tc = target_channel.format(
         target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
     )
-    captured = await send_message(bot=bot, content=formatted)
+    full = f"{command} {sc} {tc}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    admin_commands = bot.get_cog("AdminCommands")
+    command = await admin_commands.room_move_all_text_command(ctx, source_channel=sc, target_channel=tc)

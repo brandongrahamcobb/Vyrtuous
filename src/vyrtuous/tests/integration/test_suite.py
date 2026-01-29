@@ -16,8 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from contextlib import asynccontextmanager
 import asyncio
+from contextlib import asynccontextmanager
+import threading
 
 from vyrtuous.tests.integration.mock_discord_channel import MockChannel
 from vyrtuous.tests.integration.mock_discord_guild import MockGuild
@@ -48,7 +49,7 @@ async def capture(channel):
 
 
 def build_guild(bot, state):
-    guild = MockGuild(bot=bot, channels={}, members=[], roles=[], state=state)
+    guild = MockGuild(bot=bot, channels=[], members=[], roles=[], state=state)
     return guild
 
 
@@ -87,7 +88,7 @@ def setup(bot):
     guild._roles.append(role)
     bot._guilds.append(guild)
     channel = build_channel(bot, guild, state)
-    guild._channels.update({channel.id: channel})
+    guild._channels.append(channel)
     author = build_member(
         bot=bot,
         guild=guild,
@@ -143,5 +144,5 @@ async def send_message(bot, content: str = None):
     async with capture(objects.get("channel", None)):
         bot.loop = asyncio.get_running_loop()
         bot.dispatch("message", msg)
-
+        await asyncio.sleep(1)
     return objects.get("channel", None)._captured[-1]

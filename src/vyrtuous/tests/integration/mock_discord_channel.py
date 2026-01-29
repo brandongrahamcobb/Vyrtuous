@@ -62,7 +62,7 @@ class MockChannel(discord.TextChannel):
         raise ValueError(f"Message with snowflake {message_snowflake} not found")
 
     def permissions_for(self, member):
-        return SimpleNamespace(send_messages=True)
+        return SimpleNamespace(send_messages=True, add_reactions=False, manage_messages=False, move_members=False, mute_members=False, view_channel=False)
 
     async def send(self, content=None, embed=None, file=None, **kwargs):
         msg = MockMessage(

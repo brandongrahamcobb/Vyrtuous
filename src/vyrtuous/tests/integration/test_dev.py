@@ -20,20 +20,21 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, member",
     [
-        ("!dev {member_snowflake}"),
-        ("!dev <@{member_snowflake}>"),
+        ("!dev", "{member_snowflake}"),
+        ("!dev", "<@{member_snowflake}>"),
     ],
 )
-async def test_dev(bot, command: Optional[str]):
+async def test_dev(bot, command: Optional[str], member):
     """
     Promote or demote a member with 'Developer' by registering them in the PostgresSQL database
     'vyrtuous' in the table 'developers'.
@@ -53,8 +54,16 @@ async def test_dev(bot, command: Optional[str]):
     >>> !dev 10000000000000003
     [{emoji} Developer granted for Member1]
     """
-    formatted = command.format(
+    m = member.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    captured = await send_message(bot=bot, content=formatted)
+    full = f"{command} {m}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    sysadmin_commands = bot.get_cog("SysadminCommands")
+    command = await sysadmin_commands.toggle_developer_text_command(ctx, member=m)

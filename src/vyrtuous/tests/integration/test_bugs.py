@@ -20,7 +20,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -29,20 +30,20 @@ UUID = "7c772534-9528-4c3d-a065-ad3e29f754f8"
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, target, filter",
     [
-        ("!bugs all"),
-        ("!bugs all resolved"),
-        ("!bugs all unresolved"),
-        ("!bugs {uuid}"),
-        ("!bugs {uuid} resolved"),
-        ("!bugs {uuid} unresolved"),
-        ("!bugs {guild_snowflake}"),
-        ("!bugs {guild_snowflake} resolved"),
-        ("!bugs {guild_snowflake} unresolved"),
+        ("!bugs", "all", None),
+        ("!bugs", "all", "resolved"),
+        ("!bugs", "all", "unresolved"),
+        ("!bugs", "{uuid}", None),
+        ("!bugs", "{uuid}", "resolved"),
+        ("!bugs", "{uuid}", "unresolved"),
+        ("!bugs", "{guild_snowflake}", None),
+        ("!bugs", "{guild_snowflake}", "resolved"),
+        ("!bugs", "{guild_snowflake}", "unresolved"),
     ],
 )
-async def test_bugs(bot, command: Optional[str]):
+async def test_bugs(bot, command: Optional[str], target, filter):
     """
     List developer issues which are registered in the PostgresSQL database
     'vyrtuous' in the table 'developer_logs'.
@@ -92,10 +93,21 @@ async def test_bugs(bot, command: Optional[str]):
     >>> !bugs "7c772534-9528-4c3d-a065-ad3e29f754f8" unresolved
     [{emoji} Developer Issues\n Guild1]
     """
-    formatted = command.format(
+    formatted = target.format(
         guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
         uuid=UUID,
     )
-    captured = await send_message(bot=bot, content=formatted)
+    if filter:
+        full = f"{command} {formatted} {filter}"
+    else:
+        full = f"{command} {formatted}"
+    captured = await send_message(bot=bot, content=full)
     assert captured
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    dev_commands = bot.get_cog("DevCommands")
+    command = await dev_commands.list_bugs_text_command(ctx, target=formatted, filter=filter)

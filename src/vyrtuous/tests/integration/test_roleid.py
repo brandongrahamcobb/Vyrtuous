@@ -20,19 +20,20 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 ROLE_SNOWFLAKE = 10000000000000200
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, role",
     [
-        ("!roleid {role_snowflake}"),
+        ("!roleid", "{role_snowflake}"),
     ],
 )
-async def test_roleid(bot, command: Optional[str]):
+async def test_roleid(bot, command: Optional[str], role):
     """
     Fetch a role snowflake in a guild
 
@@ -47,6 +48,14 @@ async def test_roleid(bot, command: Optional[str]):
     [{emoji} Role `role` has the id `10000000000000200`]
 
     """
-    formatted = command.format(role_snowflake=ROLE_SNOWFLAKE)
-    captured = await send_message(bot=bot, content=formatted)
+    r = role.format(role_snowflake=ROLE_SNOWFLAKE)
+    full = f"{command} {r}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    mod_commands = bot.get_cog("ModeratorCommands")
+    command = await mod_commands.get_role_id_text_command(ctx, role_name=r)

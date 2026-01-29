@@ -56,7 +56,7 @@ class CoordinatorCommands(commands.Cog):
         channel="Tag a channel or include its ID.",
     )
     @coordinator_predicator()
-    async def create_moderator_app_command(
+    async def toggle_moderator_app_command(
         self,
         interaction: discord.Interaction,
         member: AppMemberSnowflake,
@@ -100,7 +100,7 @@ class CoordinatorCommands(commands.Cog):
     # DONE
     @commands.command(name="mod", help="Grant/revoke mods.")
     @coordinator_predicator()
-    async def create_moderator_text_command(
+    async def toggle_moderator_text_command(
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(

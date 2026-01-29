@@ -20,7 +20,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -29,17 +30,17 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, target",
     [
-        ("!flags all"),
-        ("!flags {channel_snowflake}"),
-        ("!flags <#{channel_snowflake}>"),
-        ("!flags {guild_snowflake}"),
-        ("!flags <@{member_snowflake}>"),
-        ("!flags {member_snowflake}"),
+        ("!flags", "all"),
+        ("!flags", "{channel_snowflake}"),
+        ("!flags", "<#{channel_snowflake}>"),
+        ("!flags", "{guild_snowflake}"),
+        ("!flags", "<@{member_snowflake}>"),
+        ("!flags", "{member_snowflake}"),
     ],
 )
-async def test_flags(bot, command: Optional[str]):
+async def test_flags(bot, command: Optional[str], target):
     """
     List flags on members which are registered in the PostgresSQL database
     'vyrtuous' in the table 'active_flags'.
@@ -77,10 +78,18 @@ async def test_flags(bot, command: Optional[str]):
     >>> !flags 10000000000000003
     [{emoji} Flags for Member1\n Guild1\n Guild2]
     """
-    formatted = command.format(
+    t = target.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
         guild_snowflake=GUILD_SNOWFLAKE,
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    captured = await send_message(bot=bot, content=formatted)
+    full = f"{command} {t}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    mod_commands = bot.get_cog("ModeratorCommands")
+    command = await mod_commands.list_flags_text_command(ctx, target=t)

@@ -84,7 +84,9 @@ class MockGuild(discord.Guild):
     def get_channel(self, channel_snowflake):
         if channel_snowflake is None:
             return None
-        return self._channels.get(channel_snowflake)
+        for channel in self._channels:
+            if str(channel.id) == str(channel_snowflake):
+                return channel
 
     def get_member(self, member_snowflake):
         if member_snowflake is None:

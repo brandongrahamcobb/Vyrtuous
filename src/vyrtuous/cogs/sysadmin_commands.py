@@ -153,7 +153,7 @@ class SysadminCommands(commands.Cog):
     @app_commands.command(name="dev", description="Grant/revoke devs.")
     @app_commands.describe(member="Tag a member or include their ID")
     @sysadmin_predicator()
-    async def create_developer_app_command(
+    async def toggle_developer_app_command(
         self, interaction: discord.Interaction, member: AppMemberSnowflake
     ):
         action = None
@@ -181,7 +181,7 @@ class SysadminCommands(commands.Cog):
     # DONE
     @commands.command(name="dev", help="Grant/revoke devs.")
     @sysadmin_predicator()
-    async def create_developer_text_command(
+    async def toggle_developer_text_command(
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(

@@ -74,10 +74,10 @@ async def test_admins(bot, command: Optional[str], target):
     >>> !admins 10000000000000003
     [{emoji} Administrators for Member1\n Guild1\n Guild2]
     """
-    formatted = target.format(
+    t = target.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    full = f"{command} {formatted}"
+    full = f"{command} {t}"
     captured = await send_message(bot=bot, content=full)
     assert captured.content
     objects = setup(bot)
@@ -86,4 +86,4 @@ async def test_admins(bot, command: Optional[str], target):
     )
     ctx = context(bot=bot, message=msg, prefix="!")
     mod_commands = bot.get_cog("ModeratorCommands")
-    command = await mod_commands.list_administrators_text_command(ctx, target=formatted)
+    command = await mod_commands.list_administrators_text_command(ctx, target=t)

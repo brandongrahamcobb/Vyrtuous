@@ -39,7 +39,7 @@ from vyrtuous.utils.guild_dictionary import (
 class Role(DatabaseFactory):
 
     ACT = "role"
-    CATEGORY = None
+    CATEGORY = "role"
     PLURAL = "Roles"
     SCOPES = ["channel", "member"]
     SINGULAR = "Role"
@@ -47,7 +47,6 @@ class Role(DatabaseFactory):
 
     REQUIRED_INSTANTIATION_ARGS = [
         "guild_snowflake",
-        "member_snowflake",
         "role_snowflake",
     ]
     OPTIONAL_ARGS = ["channel_snowflake", "created_at", "updated_at"]
@@ -57,7 +56,6 @@ class Role(DatabaseFactory):
     def __init__(
         self,
         guild_snowflake: int,
-        member_snowflake: int,
         role_snowflake: int,
         channel_snowflake: Optional[int] = None,
         created_at: Optional[datetime] = None,
@@ -69,7 +67,6 @@ class Role(DatabaseFactory):
         self.channel_mention = f"<#{channel_snowflake}>" if channel_snowflake else None
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
-        self.member_snowflake = member_snowflake
         self.role_snowflake = role_snowflake
         self.updated_at = updated_at
 

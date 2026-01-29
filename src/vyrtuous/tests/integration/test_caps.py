@@ -20,7 +20,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 GUILD_SNOWFLAKE = 10000000000000500
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
@@ -28,15 +29,15 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, target",
     [
-        ("!caps all"),
-        ("!caps {channel_snowflake}"),
-        ("!caps <#{channel_snowflake}>"),
-        ("!caps {guild_snowflake}"),
+        ("!caps", "all"),
+        ("!caps", "{channel_snowflake}"),
+        ("!caps", "<#{channel_snowflake}>"),
+        ("!caps", "{guild_snowflake}"),
     ],
 )
-async def test_caps(bot, command: Optional[str]):
+async def test_caps(bot, command: Optional[str], target):
     """
     List caps in the PostgresSQL database
     'vyrtuous' in the table 'active_caps'.
@@ -65,8 +66,17 @@ async def test_caps(bot, command: Optional[str]):
     >>> !caps 10000000000000010
     [{emoji} Caps for Channel1]
     """
-    formatted = command.format(
-        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
+    t = target.format(
+        channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
+        guild_snowflake=GUILD_SNOWFLAKE,
     )
-    captured = await send_message(bot=bot, content=formatted)
+    full = f"{command} {t}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    admin_commands = bot.get_cog("AdminCommands")
+    command = await admin_commands.list_caps_text_command(ctx, target=t)

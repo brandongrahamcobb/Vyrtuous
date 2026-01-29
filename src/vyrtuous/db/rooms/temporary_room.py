@@ -35,7 +35,6 @@ class TemporaryRoom(DatabaseFactory):
     REQUIRED_INSTANTIATION_ARGS = [
         "channel_snowflake",
         "guild_snowflake",
-        "member_snowflake",
         "room_name",
     ]
     OPTIONAL_ARGS = [
@@ -49,7 +48,6 @@ class TemporaryRoom(DatabaseFactory):
         self,
         channel_snowflake: int,
         guild_snowflake: int,
-        member_snowflake: int,
         room_name: str,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
@@ -61,7 +59,5 @@ class TemporaryRoom(DatabaseFactory):
         self.created_at = created_at
         self.guild_snowflake = guild_snowflake
         self.is_temp_room: Optional[bool] = True
-        self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
-        self.member_snowflake = member_snowflake
         self.room_name = room_name
         self.updated_at = updated_at

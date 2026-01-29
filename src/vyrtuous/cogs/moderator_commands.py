@@ -289,10 +289,8 @@ class ModeratorCommands(commands.Cog):
     ):
         state = StateService(source=ctx)
         do = DiscordObject(ctx=ctx)
-
         object_dict = await do.determine_from_target(target=target)
         pages = await Developer.build_pages(object_dict=object_dict)
-
         await StateService.send_pages(plural=Developer.PLURAL, pages=pages, state=state)
 
     @app_commands.command(name="duration", description="Modify a duration.")
@@ -726,7 +724,7 @@ class ModeratorCommands(commands.Cog):
     # DONE
     @commands.command(name="roleid", help="Get role by name.")
     @moderator_predicator()
-    async def get_role_id(self, ctx: commands.Context, *, role_name: str):
+    async def get_role_id_text_command(self, ctx: commands.Context, *, role_name: str):
         state = StateService(source=ctx)
         role = discord.utils.get(ctx.guild.roles, name=role_name)
         if role:
@@ -772,39 +770,6 @@ class ModeratorCommands(commands.Cog):
         await StateService.send_pages(
             plural=ServerMute.PLURAL, pages=pages, state=state
         )
-
-    # DONE
-    @app_commands.command(name="stages", description="List stages.")
-    @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, or server ID."
-    )
-    @moderator_predicator()
-    async def list_stages_app_command(
-        self, interaction: discord.Interaction, target: str = None
-    ):
-        state = StateService(source=interaction)
-        do = DiscordObject(interaction=interaction)
-        is_at_home = at_home(source=interaction)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await Stage.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
-
-    # DONE
-    @commands.command(name="stages", help="List stages.")
-    @moderator_predicator()
-    async def list_stages_text_command(
-        self,
-        ctx: commands.Context,
-        target: str = commands.parameter(
-            description="Specify one of: 'all', channel ID/mention, or server ID.",
-        ),
-    ):
-        state = StateService(source=ctx)
-        do = DiscordObject(ctx=ctx)
-        is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await Stage.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
 
     @app_commands.command(name="summary", description="Moderation summary.")
     @app_commands.describe(

@@ -307,7 +307,6 @@ class Aliases(commands.Cog):
     ):
         db_role = Role(
             guild_snowflake=action_information["action_guild_snowflake"],
-            member_snowflake=action_information["action_member_snowflake"],
             role_snowflake=action_information["action_role_snowflake"],
         )
         await db_role.create()

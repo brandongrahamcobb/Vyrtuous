@@ -20,19 +20,20 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, channel, category, hours",
     [
-        ("!cap {channel_snowflake} ban 8"),
+        ("!cap", "{channel_snowflake}", "ban", "8"),
     ],
 )
-async def test_cap(bot, command: Optional[str]):
+async def test_cap(bot, command: Optional[str], channel, category, hours):
     """
     Set a expires in limit for a channel by populating the PostgresSQL database
     'vyrtuous' in the table 'active_caps'.
@@ -48,8 +49,16 @@ async def test_cap(bot, command: Optional[str]):
     >>> !cap 10000000000000010 ban 8
     [{emoji} Ban cap created\n Guild1\n Channel1]
     """
-    formatted = command.format(
+    c = channel.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
     )
-    captured = await send_message(bot=bot, content=formatted)
-    assert captured.content
+    full = f"{command} {c} {category} {hours}"
+    captured = await send_message(bot=bot, content=full)
+    assert captured
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    admin_commands = bot.get_cog("AdminCommands")
+    command = await admin_commands.cap_text_command(ctx, channel=c, category=category, hours=hours)

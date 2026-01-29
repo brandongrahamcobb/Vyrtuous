@@ -20,7 +20,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 
 @pytest.mark.asyncio
@@ -46,3 +47,10 @@ async def test_ping(bot, command: Optional[str]):
     """
     captured = await send_message(bot=bot, content=command)
     assert captured
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=command, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    dev_commands = bot.get_cog("DevCommands")
+    command = await dev_commands.ping_text_command(ctx)

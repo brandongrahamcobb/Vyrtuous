@@ -20,7 +20,12 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import (
+    build_message,
+    send_message,
+    setup
+)
 
 GUILD_SNOWFLAKE = 10000000000000500
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
@@ -28,15 +33,15 @@ DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, target",
     [
-        ("!devs all"),
-        ("!devs {guild_snowflake}"),
-        ("!devs {member_snowflake}"),
-        ("!devs <@{member_snowflake}>"),
+        ("!devs", "all"),
+        ("!devs", "{guild_snowflake}"),
+        ("!devs", "{member_snowflake}"),
+        ("!devs", "<@{member_snowflake}>"),
     ],
 )
-async def test_devs(bot, command: Optional[str]):
+async def test_devs(bot, command: Optional[str], target):
     """
     List members who are registered in the PostgresSQL database
     'vyrtuous' in the table 'developers'.
@@ -65,8 +70,16 @@ async def test_devs(bot, command: Optional[str]):
     >>> !devs 10000000000000003
     [{emoji} Developers for Member1\n Guild1\n Guild2]
     """
-    formatted = command.format(
+    t = target.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    captured = await send_message(bot=bot, content=formatted)
+    full = f"{command} {t}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    mod_commands = bot.get_cog("ModeratorCommands")
+    command = await mod_commands.list_developers_text_command(ctx, target=t)

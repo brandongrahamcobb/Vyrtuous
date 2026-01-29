@@ -52,8 +52,7 @@ class DevCommands(commands.Cog):
     def __init__(self, bot: DiscordBot):
         self.bot = bot
         self.message_service = MessageService(self.bot)
-    
-    
+   
     @app_commands.command(
         name="assoc", description="Associate a ban or text-mute alias to a role."
     )
@@ -117,15 +116,15 @@ class DevCommands(commands.Cog):
                     role_snowflake=role.id,
                 )
                 where_kwargs = {
-                    "channel_snowflake": channel.id,
-                    "guild_snowflake": interaction.guild.id,
-                    "member_snowflake": member.id,
+                    "channel_snowflake": ban.channel_snowflake,
+                    "guild_snowflake": ban.guild_snowflake,
+                    "member_snowflake": ban.member_snowflake,
                 }
                 set_kwargs = {"role_snowflake": role.id}
                 await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
                 ban_role = BanRole(
-                    channel_snowflake=channel.id,
-                    guild_snowflake=interaction.guild.id,
+                    channel_snowflake=ban.channel_snowflake,
+                    guild_snowflake=ban.guild_snowflake,
                     role_snowflake=role.id,
                 )
                 await ban_role.create()
@@ -232,15 +231,15 @@ class DevCommands(commands.Cog):
                     role_snowflake=role.id,
                 )
                 where_kwargs = {
-                    "channel_snowflake": channel.id,
-                    "guild_snowflake": ctx.guild.id,
-                    "member_snowflake": member.id,
+                    "channel_snowflake": ban.channel_snowflake,
+                    "guild_snowflake": ban.guild_snowflake,
+                    "member_snowflake": ban.member_snowflake,
                 }
                 set_kwargs = {"role_snowflake": role.id}
                 await Ban.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
                 ban_role = await BanRole(
-                    channel_snowflake=channel.id,
-                    guild_snowflake=ctx.guild.id,
+                    channel_snowflake=ban.channel_snowflake,
+                    guild_snowflake=ban.guild_snowflake,
                     role_snowflake=role.id,
                 )
                 await ban_role.create()
@@ -256,15 +255,15 @@ class DevCommands(commands.Cog):
                     role_snowflake=role.id,
                 )
                 where_kwargs = {
-                    "channel_snowflake": channel.id,
-                    "guild_snowflake": ctx.guild.id,
-                    "member_snowflake": member.id,
+                    "channel_snowflake": text_mute.channel_snowflake,
+                    "guild_snowflake": text_mute.guild_snowflake,
+                    "member_snowflake": text_mute.member_snowflake,
                 }
                 set_kwargs = {"role_snowflake": role.id}
                 await TextMute.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
                 text_mute_role = TextMuteRole(
-                    channel_snowflake=channel.id,
-                    guild_snowflake=ctx.guild.id,
+                    channel_snowflake=text_mute.channel_snowflake,
+                    guild_snowflake=text_mute.guild_snowflake,
                     role_snowflake=role.id,
                 )
                 await text_mute_role.create()
@@ -282,7 +281,7 @@ class DevCommands(commands.Cog):
     # DONE
     @app_commands.command(name="backup", description="DB backup.")
     @developer_predicator()
-    async def app_backup(self, interaction: discord.Interaction):
+    async def backup_app_command(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         state = StateService(source=interaction)
         db = Database(config=self.bot.config, directory="/app/backups")
@@ -296,7 +295,7 @@ class DevCommands(commands.Cog):
     # DONE
     @commands.command(name="backup", help="DB backup.")
     @developer_predicator()
-    async def text_backup(self, ctx: commands.Context):
+    async def backup_text_command(self, ctx: commands.Context):
         state = StateService(source=ctx)
         db = Database(config=self.bot.config, directory="/app/backups")
         try:

@@ -170,6 +170,7 @@ class ChannelEventListeners(commands.Cog):
             allowed = False
         if not allowed:
             return
+
         # member_role = await role_check_with_specifics(after.channel, member)
 
         target = "user"

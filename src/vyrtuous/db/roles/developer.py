@@ -117,31 +117,32 @@ class Developer(DatabaseFactory):
         embed = discord.Embed(
             title=title, description="All guilds", color=discord.Color.blue()
         )
-        for member_snowflake, member_data in dictionary["members"].items():
-            user = bot.get_user(member_snowflake)
-            if not isinstance(object_dict.get("object", None), discord.Member):
-                lines.append(f"**User:** {user.display_name} {user.mention}")
-                field_count += 1
-            elif not thumbnail:
-                embed.set_thumbnail(
-                    url=object_dict.get("object", None).display_avatar.url
-                )
-                thumbnail = True
-            if field_count >= chunk_size:
-                embed.add_field(
-                    name="Information", value="\n".join(lines), inline=False
-                )
-                pages.append(embed)
-                embed = (
-                    discord.Embed(
-                        title=title,
-                        description="All guilds continued...",
-                        color=discord.Color.blue(),
-                    ),
-                )
-                field_count = 0
-                lines = []
-        if lines:
-            embed.add_field(name="Information", value="\n".join(lines), inline=False)
-        pages.append(embed)
-        return pages
+        for key, values in dictionary.items():
+            for member_snowflake, member_data in values.items():
+                user = bot.get_user(member_snowflake)
+                if not isinstance(object_dict.get("object", None), discord.Member):
+                    lines.append(f"**User:** {user.display_name} {user.mention}")
+                    field_count += 1
+                elif not thumbnail:
+                    embed.set_thumbnail(
+                        url=object_dict.get("object", None).display_avatar.url
+                    )
+                    thumbnail = True
+                if field_count >= chunk_size:
+                    embed.add_field(
+                        name="Information", value="\n".join(lines), inline=False
+                    )
+                    pages.append(embed)
+                    embed = (
+                        discord.Embed(
+                            title=title,
+                            description="All guilds continued...",
+                            color=discord.Color.blue(),
+                        ),
+                    )
+                    field_count = 0
+                    lines = []
+            if lines:
+                embed.add_field(name="Information", value="\n".join(lines), inline=False)
+            pages.append(embed)
+            return pages

@@ -40,6 +40,7 @@ class CategoryObject:
 
     @category.setter
     def category(self, new_cat):
+        print(new_cat)
         dir_paths = []
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/actions")
         dir_paths.append(Path(__file__).resolve().parents[1] / "db/mgmt")
@@ -50,7 +51,7 @@ class CategoryObject:
         for extra in self.EXTRA_CATEGORIES:
             categories.append(extra)
         if new_cat not in categories:
-            logger.warning(f"Invalid category type ({str(type(new_cat))}).")
+            logger.warning(f"Invalid category type ({str(new_cat)}).")
         self.__category = new_cat
 
 

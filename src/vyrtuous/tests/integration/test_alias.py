@@ -33,11 +33,11 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 @pytest.mark.parametrize(
     "command, category, alias_name, channel_snowflake, role_snowflake",
     [
-        ("!alias", "ban", "testban", "{channel_snowflake}", "{role_snowflake}"),
         ("!alias", "vmute", "testmute", "{channel_snowflake}", None),
         ("!alias", "flag", "testflag", "{channel_snowflake}", None),
         ("!alias", "vegan", "testvegan", "{channel_snowflake}", None),
         ("!alias", "tmute", "testtmute", "{channel_snowflake}", "{role_snowflake}"),
+        ("!alias", "ban", "testban", "{channel_snowflake}", "{role_snowflake}"),
         ("!alias", "role", "testrole", "{channel_snowflake}", "{role_snowflake}"),
     ],
 )

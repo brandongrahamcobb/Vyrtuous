@@ -71,9 +71,8 @@ async def test_aliases(bot, command: Optional[str], member_snowflake):
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
     full = f"{command} {member}"
-    # captured = await send_message(bot=bot, content=full)
-    # await asyncio.sleep(1)
-    # assert captured
+    captured = await send_message(bot=bot, content=full)
+    assert captured
     objects = setup(bot)
     msg = build_message(
         author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)

@@ -72,7 +72,6 @@ async def test_xalias(bot, command: Optional[str], alias_name):
     }
     full = f"{command} {alias_name}"
     captured = await send_message(bot=bot, content=full)
-    await asyncio.sleep(1)
     assert captured
     objects = setup(bot)
     msg = build_message(

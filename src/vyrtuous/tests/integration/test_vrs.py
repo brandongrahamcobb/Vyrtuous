@@ -20,7 +20,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 GUILD_SNOWFLAKE = 10000000000000500
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
@@ -28,15 +29,15 @@ TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, target",
     [
-        ("!vrs all"),
-        ("!vrs {channel_snowflake}"),
-        ("!vrs <#{channel_snowflake}>"),
-        ("!vrs {guild_snowflake}"),
+        ("!vrs", "all"),
+        ("!vrs", "{channel_snowflake}"),
+        ("!vrs", "<#{channel_snowflake}>"),
+        ("!vrs", "{guild_snowflake}"),
     ],
 )
-async def test_vrs(bot, command: Optional[str]):
+async def test_vrs(bot, command: Optional[str], target):
     """
     List channels which are registered in the PostgresSQL database
     'vyrtuous' in the table 'video_rooms'.
@@ -65,8 +66,16 @@ async def test_vrs(bot, command: Optional[str]):
     >>> !vrs 10000000000000010
     [{emoji} Video Rooms for Channel1]
     """
-    formatted = command.format(
+    t = target.format(
         channel_snowflake=TEXT_CHANNEL_SNOWFLAKE, guild_snowflake=GUILD_SNOWFLAKE
     )
-    captured = await send_message(bot=bot, content=formatted)
+    full = f"{command} {t}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    admin_commands = bot.get_cog("AdminCommands")
+    command = await admin_commands.list_video_rooms_text_command(ctx, target=t)

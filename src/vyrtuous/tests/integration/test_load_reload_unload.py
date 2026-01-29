@@ -20,19 +20,20 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, cog",
     [
-        ("!unload {cog}"),
-        ("!load {cog}"),
-        ("!reload {cog}"),
+        ("!unload", "{cog}"),
+        ("!load", "{cog}"),
+        ("!reload", "{cog}"),
     ],
 )
-async def test_load_reload_unload(bot, command: Optional[str]):
+async def test_load_reload_unload(bot, command: Optional[str], cog):
     """
     Load, reload or unload cogs.
 
@@ -53,6 +54,16 @@ async def test_load_reload_unload(bot, command: Optional[str]):
     [{emoji} Unloaded ScheduledTasks]
 
     """
-    formatted = command.format(cog="vyrtuous.cogs.scheduled_tasks")
-    captured = await send_message(bot=bot, content=formatted)
+    c = cog.format(cog="vyrtuous.cogs.scheduled_tasks")
+    full = f"{command} {c}"
+    captured = await send_message(bot=bot, content=full)
     assert captured
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    dev_commands = bot.get_cog("DevCommands")
+    command = await dev_commands.load_text_command(ctx, module=c)
+    command = await dev_commands.reload_text_command(ctx, module=c)
+    command = await dev_commands.unload_text_command(ctx, module=c)

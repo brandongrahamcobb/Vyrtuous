@@ -571,64 +571,7 @@ class AdminCommands(commands.Cog):
         object_dict = await do.determine_from_target(target=target)
         pages = await Cap.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Cap.PLURAL, pages=pages, state=state)
-
-    # DONE
-    @app_commands.command(
-        name="chown", description="Change the owner of a temporary room."
-    )
-    @app_commands.describe(
-        member="Tag a user or provide their ID",
-        channel="Tag a channel or provide its ID.",
-    )
-    @administrator_predicator()
-    async def change_temp_room_owner_app_command(
-        self, interaction, channel: AppChannelSnowflake, member: AppMemberSnowflake
-    ):
-        state = StateService(source=interaction)
-        do = DiscordObject(interaction=interaction)
-
-        channel_dict = await do.determine_from_target(target=channel)
-        member_dict = await do.determine_from_target(target=member)
-
-        where_kwargs = channel_dict.get("columns", None)
-        set_kwargs = member_dict.get("columns", None)
-        await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-
-        return await state.end(
-            success=f"Temporary room {channel_dict.get('object', None).mention} ownership "
-            f"transferred to {member_dict.get('object', None).mention}."
-        )
-
-    # DONE
-    @commands.command(
-        name="chown", help="Change the owner of a temporary room.", hidden=True
-    )
-    @administrator_predicator()
-    async def change_temp_room_owner_text_command(
-        self,
-        ctx,
-        channel: ChannelSnowflake = commands.parameter(
-            description="Tag a channel or provide its ID."
-        ),
-        member: MemberSnowflake = commands.parameter(
-            description="Tag a user or provide their ID"
-        ),
-    ):
-        state = StateService(source=ctx)
-        do = DiscordObject(ctx=ctx)
-
-        channel_dict = await do.determine_from_target(target=channel)
-        member_dict = await do.determine_from_target(target=member)
-
-        where_kwargs = channel_dict.get("columns", None)
-        set_kwargs = member_dict.get("columns", None)
-        await TemporaryRoom.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-
-        return await state.end(
-            success=f"Temporary room {channel_dict.get('object', None).mention} ownership "
-            f"transferred to {member_dict.get('object', None).mention}."
-        )
-
+        
     # DONE
     @app_commands.command(name="clear", description="Reset database.")
     @app_commands.describe(
@@ -1037,7 +980,7 @@ class AdminCommands(commands.Cog):
         channel="Tag a channel or include its ID.",
     )
     @administrator_predicator()
-    async def create_coordinator_app_command(
+    async def toggle_coordinator_app_command(
         self,
         interaction: discord.Interaction,
         member: AppMemberSnowflake,
@@ -1078,7 +1021,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @commands.command(name="coord", help="Grant/revoke coords.")
     @administrator_predicator()
-    async def create_coordinator_text_command(
+    async def toggle_coordinator_text_command(
         self,
         ctx: commands.Context,
         member: MemberSnowflake = commands.parameter(
@@ -1551,7 +1494,7 @@ class AdminCommands(commands.Cog):
         duration="Duration of the stage (e.g., 1h, 30m)",
     )
     @administrator_predicator()
-    async def stage_app_command(
+    async def toggle_stage_app_command(
         self,
         interaction: discord.Interaction,
         channel: AppChannelSnowflake,
@@ -1565,34 +1508,10 @@ class AdminCommands(commands.Cog):
 
         channel_dict = await do.determine_from_target(target=channel)
 
-        if not isinstance(duration, DurationObject):
-            duration = DurationObject(duration)
-        if duration.is_modification:
-            is_modification = True
-
         kwargs = channel_dict.get("columns", None)
 
         stage = await Stage.select(**kwargs)
-        if is_modification and stage:
-            delta = duration.expires_in - datetime.now(timezone.utc)
-            if delta.total_seconds() < 0:
-                return await state.end(
-                    warning="Member is not authorized to decrease the duration "
-                    "below the current time."
-                )
-            if stage:
-                set_kwargs = {"expires_in": duration.expired_in}
-                await Stage.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
-                description_lines = [
-                    f"**Channel:** {channel_dict.get("mention", None)}",
-                    f"**Expires:** {duration}",
-                ]
-                embed = discord.Embed(
-                    description="\n".join(description_lines),
-                    title=f"{get_random_emoji()} Stage Modified",
-                    color=discord.Color.blurple(),
-                )
-        elif stage:
+        if stage:
             title = f"{get_random_emoji()} Stage Ended in {channel_dict.get("mention", None)}"
             await Stage.delete(**kwargs)
             for member in channel_dict.get("object", None).members:
@@ -1693,7 +1612,7 @@ class AdminCommands(commands.Cog):
     # DONE
     @commands.command(name="stage", help="Start/stop stage")
     @administrator_predicator()
-    async def stage_text_command(
+    async def toggle_stage_text_command(
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(
@@ -1715,31 +1634,8 @@ class AdminCommands(commands.Cog):
         channel_dict = await do.determine_from_target(target=channel)
         kwargs = channel_dict.get("columns", None)
 
-        if not isinstance(duration, DurationObject):
-            duration = DurationObject(duration)
-        if duration.is_modification:
-            is_modification = True
         stage = await Stage.select(**kwargs, singular=True)
-        if is_modification and stage:
-            delta = duration.expires_in - datetime.now(timezone.utc)
-            if delta.total_seconds() < 0:
-                return await state.end(
-                    warning="Member is not authorized to decrease the duration "
-                    "below the current time."
-                )
-            if stage:
-                set_kwargs = {"expires_in": duration.expired_in}
-                await Stage.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
-                description_lines = [
-                    f"**Channel:** {channel_dict.get("mention", None)}",
-                    f"**Expires:** {duration}",
-                ]
-                embed = discord.Embed(
-                    description="\n".join(description_lines),
-                    title=f"{get_random_emoji()} Stage Modified",
-                    color=discord.Color.blurple(),
-                )
-        elif stage:
+        if stage:
             title = f"{get_random_emoji()} Stage Ended in {channel_dict.get("mention", None)}"
             await Stage.delete(**kwargs)
             for member in channel_dict.get("object", None).members:
@@ -1838,6 +1734,39 @@ class AdminCommands(commands.Cog):
 
         await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
 
+# DONE
+    @app_commands.command(name="stages", description="List stages.")
+    @app_commands.describe(
+        target="Specify one of: 'all', channel ID/mention, or server ID."
+    )
+    @administrator_predicator()
+    async def list_stages_app_command(
+        self, interaction: discord.Interaction, target: str = None
+    ):
+        state = StateService(source=interaction)
+        do = DiscordObject(interaction=interaction)
+        is_at_home = at_home(source=interaction)
+        object_dict = await do.determine_from_target(target=target)
+        pages = await Stage.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
+
+    # DONE
+    @commands.command(name="stages", help="List stages.")
+    @administrator_predicator()
+    async def list_stages_text_command(
+        self,
+        ctx: commands.Context,
+        target: str = commands.parameter(
+            description="Specify one of: 'all', channel ID/mention, or server ID.",
+        ),
+    ):
+        state = StateService(source=ctx)
+        do = DiscordObject(ctx=ctx)
+        is_at_home = at_home(source=ctx)
+        object_dict = await do.determine_from_target(target=target)
+        pages = await Stage.build_pages(object_dict=object_dict, is_at_home=is_at_home)
+        await StateService.send_pages(plural=Stage.PLURAL, pages=pages, state=state)
+
     # DONE
     @app_commands.command(
         name="temp", description="Toggle a temporary room and assign an owner."
@@ -1865,16 +1794,9 @@ class AdminCommands(commands.Cog):
 
         temporary_room = await TemporaryRoom.select(**kwargs, singular=True)
         if temporary_room:
-            if temporary_room.member_snowflake:
-                kwargs.update({"member_snowflake": temporary_room.member_snowflake})
-                await Moderator.delete(**kwargs)
             await TemporaryRoom.delete(**kwargs)
             action = "removed"
         else:
-            member_dict = await do.determine_from_target(target=owner)
-            kwargs.update(member_dict.get("columns", None))
-            moderator = Moderator(**kwargs)
-            await moderator.create()
             temporary_room = TemporaryRoom(
                 **kwargs,
                 room_name=channel_dict.get("name", None),
@@ -1897,10 +1819,6 @@ class AdminCommands(commands.Cog):
         channel: ChannelSnowflake = commands.parameter(
             description="Tag a channel or include its ID."
         ),
-        *,
-        owner: MemberSnowflake = commands.parameter(
-            default=None, description="Tag a member or include their Discord ID"
-        ),
     ):
         action = None
 
@@ -1914,23 +1832,15 @@ class AdminCommands(commands.Cog):
 
         temporary_room = await TemporaryRoom.select(**kwargs, singular=True)
         if temporary_room:
-            if temporary_room.member_snowflake:
-                kwargs.update({"member_snowflake": temporary_room.member_snowflake})
-                await Moderator.delete(**kwargs)
             await TemporaryRoom.delete(**kwargs)
             action = "removed"
         else:
-            member_dict = await do.determine_from_target(target=owner)
-            kwargs.update(member_dict.get("columns", None))
-            moderator = Moderator(**kwargs)
-            await moderator.create()
             temporary_room = TemporaryRoom(
                 **kwargs,
                 room_name=channel_dict.get("name", None),
             )
             await temporary_room.create()
             action = "created"
-
         return await state.end(
             success=f"Temporary room {action} in {channel_dict.get("mention", None)}."
         )
@@ -2610,7 +2520,7 @@ class AdminCommands(commands.Cog):
 
     @commands.command(name="vr", help="Start/stop video-only room.")
     @administrator_predicator()
-    async def toggle_video_room_command(
+    async def toggle_video_room_text_command(
         self,
         ctx: commands.Context,
         channel: ChannelSnowflake = commands.parameter(

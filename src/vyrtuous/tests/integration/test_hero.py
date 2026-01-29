@@ -20,20 +20,21 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 DUMMY_MEMBER_SNOWFLAKE = 10000000000000003
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, target",
     [
-        ("!hero {member_snowflake}"),
-        ("!hero <@{member_snowflake}>"),
+        ("!hero", "{member_snowflake}"),
+        ("!hero", "<@{member_snowflake}>"),
     ],
 )
-async def test_hero(bot, command: Optional[str]):
+async def test_hero(bot, command: Optional[str], target):
     """
     Promote or demote member to 'Hero' in memory (lost on reload).
 
@@ -52,8 +53,16 @@ async def test_hero(bot, command: Optional[str]):
     >>> !hero 10000000000000003
     [{emoji} Invincibility granted for Member1]
     """
-    formatted = command.format(
+    t = target.format(
         member_snowflake=DUMMY_MEMBER_SNOWFLAKE,
     )
-    captured = await send_message(bot=bot, content=formatted)
+    full = f"{command} {t}"
+    captured = await send_message(bot=bot, content=full)
     assert captured.content
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    go_commands = bot.get_cog("GuildOwnerCommands")
+    command = await go_commands.invincibility_text_command(ctx, member=t)
