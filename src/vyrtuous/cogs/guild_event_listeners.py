@@ -20,10 +20,9 @@ import discord
 from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
-from vyrtuous.db.actions.ban import Ban, BanRole
-from vyrtuous.db.actions.hide import Hide, HideRole
+from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.actions.role import Role
-from vyrtuous.db.actions.text_mute import TextMute, TextMuteRole
+from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.roles.administrator import AdministratorRole
 from vyrtuous.db.roles.guild_owner import GuildOwner
 
@@ -34,19 +33,6 @@ class GuildEventListeners(commands.Cog):
 
     def __init__(self, bot: DiscordBot):
         self.bot = bot
-
-    async def cog_load(self):
-        for guild in self.bot.guilds:
-            bans = await Ban.select(guild_snowflake=guild.id)
-            text_mutes = await TextMute.select(guild_snowflake=guild.id)
-            items = [*bans, *text_mutes]
-            for item in items:
-                channel = guild.get_channel(item.channel_snowflake)
-                member = guild.get_member(item.member_snowflake)
-                try:
-                    await channel.set_permissions(member, overwrite=None)
-                except discord.Forbidden as e:
-                    logger.warning(e)
 
     @commands.Cog.listener()
     async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
@@ -60,27 +46,6 @@ class GuildEventListeners(commands.Cog):
                 "member_snowflake": after.owner_id,
             }
             await GuildOwner.update(set_kwargs=set_kwargs, where_kwargs=where_kwargs)
-
-    @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member):
-        guild_snowflake = member.guild.id
-        bans = await Ban.select(
-            guild_snowflake=guild_snowflake, member_snowflake=member.id
-        )
-        hides = await Hide.select(
-            guild_snowflake=guild_snowflake, member_snowflake=member.id
-        )
-        text_mutes = await TextMute.select(
-            guild_snowflake=guild_snowflake, member_snowflake=member.id
-        )
-        items = [*bans, *hides, *text_mutes]
-        if items:
-            for item in items:
-                await Role.administer_role(
-                    guild_snowflake=guild_snowflake,
-                    member_snowflake=member.id,
-                    role_snowflake=item.role_snowflake,
-                )
 
     @commands.Cog.listener()
     async def on_member_update(self, before: discord.Member, after: discord.Member):
@@ -97,54 +62,14 @@ class GuildEventListeners(commands.Cog):
                 member_snowflake=before.id,
                 role_snowflake=added_roles[0],
             )
-            await Role.added_role(
-                category_class=Ban,
-                category_role_class=BanRole,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=before.id,
-                role_snowflake=added_roles[0],
-            )
-            await Role.added_role(
-                category_class=Hide,
-                category_role_class=HideRole,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=before.id,
-                role_snowflake=added_roles[0],
-            )
-            await Role.added_role(
-                category_class=TextMute,
-                category_role_class=TextMuteRole,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=before.id,
-                role_snowflake=added_roles[0],
-            )
+            logger.info(f"Added roles: {', '.join(added_roles)}")
         elif removed_roles:
             await AdministratorRole.removed_role(
                 guild_snowflake=guild_snowflake,
                 member_snowflake=before.id,
                 role_snowflake=removed_roles[0],
             )
-            await Role.removed_role(
-                category_class=Ban,
-                category_role_class=BanRole,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=before.id,
-                role_snowflake=removed_roles[0],
-            )
-            await Role.removed_role(
-                category_class=Hide,
-                category_role_class=HideRole,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=before.id,
-                role_snowflake=removed_roles[0],
-            )
-            await Role.removed_role(
-                category_class=TextMute,
-                category_role_class=TextMuteRole,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=before.id,
-                role_snowflake=removed_roles[0],
-            )
+            logger.info(f"Removed roles: {', '.join(removed_roles)}")
 
     @commands.Cog.listener()
     async def on_guild_role_delete(self, role: discord.Role):
@@ -155,20 +80,7 @@ class GuildEventListeners(commands.Cog):
                 member_snowflake=member.id,
                 role_snowflake=role.id,
             )
-            await Role.removed_role(
-                category_class=Hide,
-                category_role_class=HideRole,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member.id,
-                role_snowflake=role.id,
-            )
-            await Role.removed_role(
-                category_class=TextMute,
-                category_role_class=TextMuteRole,
-                guild_snowflake=guild_snowflake,
-                member_snowflake=member.id,
-                role_snowflake=role.id,
-            )
+            logger.info(f"Removed role ({role.id}) from server ({role.guild.name}).")
 
 
 async def setup(bot: DiscordBot):

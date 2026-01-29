@@ -118,20 +118,11 @@ CREATE TABLE guild_owners (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (guild_snowflake, member_snowflake)
 );
-ALTER TABLE active_bans ADD COLUMN role_snowflake BIGINT;
+ALTER TABLE active_bans ADD COLUMN last_kicked TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE active_bans ADD COLUMN reset BOOLEAN DEFAULT FALSE;
+ALTER TABLE active_text_mutes ADD COLUMN last_muted TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE active_text_mutes ADD COLUMN reset BOOLEAN DEFAULT FALSE;
 ALTER TABLE active_bans RENAME CONSTRAINT active_bans_pkey1 TO active_bans_pkey;
-CREATE TABLE active_hides (
-    channel_snowflake BIGINT NOT NULL DEFAULT -1,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    expired BOOLEAN DEFAULT FALSE,
-    expires_in TIMESTAMPTZ,
-    guild_snowflake BIGINT NOT NULL,
-    member_snowflake BIGINT NOT NULL,
-    role_snowflake BIGINT NOT NULL,
-    reason TEXT,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake, member_snowflake, role_snowflake)
-);
 ALTER TABLE bug_tracking RENAME CONSTRAINT developer_logs_pkey TO bug_tracking_pkey;
 ALTER TABLE active_voice_mutes RENAME CONSTRAINT active_voice_mutes_pkey1 TO active_voice_mutes_pkey;
 ALTER TABLE streaming RENAME CONSTRAINT history_pkey TO streaming_pkey;
@@ -139,30 +130,6 @@ ALTER TABLE temporary_rooms RENAME CONSTRAINT temporary_rooms_pkey1 TO temporary
 
 ALTER TABLE active_caps
 RENAME COLUMN moderation_type TO category;
-CREATE TABLE text_mute_roles (
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    channel_snowflake BIGINT NOT NULL,
-    guild_snowflake BIGINT NOT NULL,
-    role_snowflake BIGINT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake, role_snowflake)
-);
-CREATE TABLE ban_roles (
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    channel_snowflake BIGINT NOT NULL,
-    guild_snowflake BIGINT NOT NULL,
-    role_snowflake BIGINT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake, role_snowflake)
-);
-CREATE TABLE hide_roles (
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    channel_snowflake BIGINT NOT NULL,
-    guild_snowflake BIGINT NOT NULL,
-    role_snowflake BIGINT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (channel_snowflake, guild_snowflake, role_snowflake)
-);
 CREATE TABLE roles (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     channel_snowflake BIGINT NOT NULL,
@@ -174,13 +141,13 @@ CREATE TABLE roles (
 
 
 
-INSERT INTO active_hides (channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, updated_at)
+INSERT INTO active_bans (channel_snowflake, created_at, expires_in, guild_snowflake, member_snowflake, reason, updated_at)
 VALUES (1222056499959042108, NOW(), NULL, 801609515391778826, 910422339810914334, 'Stalking', NOW());
-DELETE FROM command_aliases WHERE category = 'unban'
-DELETE FROM command_aliases WHERE category = 'unvmute'
-DELETE FROM command_aliases WHERE category = 'unflag'
-DELETE FROM command_aliases WHERE category = 'unrole'
-DELETE FROM command_aliases WHERE category = 'untmute'
+DELETE FROM command_aliases WHERE category = 'unban';
+DELETE FROM command_aliases WHERE category = 'unvmute';
+DELETE FROM command_aliases WHERE category = 'unflag';
+DELETE FROM command_aliases WHERE category = 'unrole';
+DELETE FROM command_aliases WHERE category = 'untmute';
 DROP TABLE temporary_rooms;
 CREATE TABLE temporary_rooms (
     channel_snowflake BIGINT,

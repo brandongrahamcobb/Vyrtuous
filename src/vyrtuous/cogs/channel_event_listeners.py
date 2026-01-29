@@ -122,45 +122,6 @@ class ChannelEventListeners(commands.Cog):
     ):
         if member.id == self.bot.user.id:
             return
-        if not after.channel:
-            VideoRoom.cancel_task((member.guild.id, member.id))
-            return
-        for video_room in VideoRoom.video_rooms:
-            if after.channel.id != video_room.channel_snowflake:
-                continue
-            if not after.self_video:
-                if after.channel != before.channel:
-                    if after.channel.permissions_for(
-                        after.channel.guild.me
-                    ).send_messages:
-                        await VideoRoom.enforce_video_message(
-                            channel_snowflake=after.channel.id,
-                            member_snowflake=member.id,
-                            message=f"{get_random_emoji()} "
-                            f"Hi {member.mention}, "
-                            f"{after.channel.mention} is a video "
-                            f"only room. You have 5 minutes to turn "
-                            f"on your camera!",
-                        )
-            key = (member.guild.id, member.id)
-            if before.channel != after.channel:
-                VideoRoom.cancel_task(key)
-                if not after.self_video:
-                    task = asyncio.create_task(
-                        VideoRoom.enforce_video(member, after.channel, 300)
-                    )
-                    VideoRoom.video_tasks[key] = task
-                break
-            if before.self_video and not after.self_video:
-                VideoRoom.cancel_task(key)
-                task = asyncio.create_task(
-                    VideoRoom.enforce_video(member, after.channel, 60)
-                )
-                VideoRoom.video_tasks[key] = task
-                break
-            if not before.self_video and after.self_video:
-                VideoRoom.cancel_task(key)
-                break
         allowed = True
         if before.channel == after.channel:
             if before.mute == after.mute:
@@ -170,7 +131,8 @@ class ChannelEventListeners(commands.Cog):
             allowed = False
         if not allowed:
             return
-
+        await VideoRoom.reinforce_video_room(member=member, before=before, after=after)
+        await Ban.ban_overwrites(member=member, after=after)
         # member_role = await role_check_with_specifics(after.channel, member)
 
         target = "user"

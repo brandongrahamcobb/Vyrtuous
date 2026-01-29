@@ -22,6 +22,7 @@ from discord.ext import commands
 
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.mgmt.alias import Alias
+from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.fields.duration import DurationObject
 from vyrtuous.service.discord_object_service import DiscordObjectNotFound
 
@@ -63,6 +64,7 @@ class GenericEventListeners(commands.Cog):
                 return
             if self.config["release_mode"] and message.author.id == self.bot.user.id:
                 return
+            await TextMute.text_mute_overwrite(message=message)
             alias = await Alias.select(
                 alias_name=args[0],
                 guild_snowflake=message.guild.id,
@@ -88,6 +90,8 @@ class GenericEventListeners(commands.Cog):
                 state=state,
             )
         except Exception as e:
+            import traceback
+            logger.info(traceback.format_exc())
             return await state.end(warning=str(e).capitalize())
 
     @commands.Cog.listener()

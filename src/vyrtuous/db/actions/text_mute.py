@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import discord
@@ -34,6 +34,7 @@ from vyrtuous.utils.guild_dictionary import (
     clean_guild_dictionary,
     flush_page,
 )
+from vyrtuous.utils.logger import logger
 
 
 class TextMute(DatabaseFactory):
@@ -49,9 +50,8 @@ class TextMute(DatabaseFactory):
         "channel_snowflake",
         "guild_snowflake",
         "member_snowflake",
-        "role_snowflake",
     ]
-    OPTIONAL_ARGS = ["created_at", "expires_in", "reason", "updated_at"]
+    OPTIONAL_ARGS = ["created_at", "expires_in", "last_muted", "reason", "reset", "updated_at"]
 
     TABLE_NAME = "active_text_mutes"
 
@@ -60,11 +60,12 @@ class TextMute(DatabaseFactory):
         channel_snowflake: int,
         guild_snowflake: int,
         member_snowflake: int,
-        role_snowflake: int,
         created_at: Optional[datetime] = None,
         expired: bool = False,
         expires_in: Optional[datetime] = None,
+        last_muted: Optional[datetime] = None,
         reason: Optional[str] = "No reason provided.",
+        reset: bool = False,
         updated_at: Optional[datetime] = None,
         **kwargs,
     ):
@@ -76,10 +77,11 @@ class TextMute(DatabaseFactory):
         self.expired = expired
         self.expires_in = expires_in
         self.guild_snowflake = guild_snowflake
+        self.last_muted = last_muted
         self.member_snowflake = member_snowflake
         self.member_mention = f"<@{member_snowflake}>" if member_snowflake else None
         self.reason = reason
-        self.role_snowflake = role_snowflake
+        self.reset = reset
         self.updated_at = updated_at
 
     @classmethod
@@ -218,37 +220,32 @@ class TextMute(DatabaseFactory):
                     title="Skipped Members in Server",
                 )
 
-
-class TextMuteRole(DatabaseFactory):
-
-    ACT = "tmrole"
-    CATEGORY = "tmrole"
-    PLURAL = "Text-Mute Roles"
-    SCOPES = ["channel", "guild"]
-    SINGULAR = "Text-Mute Role"
-    UNDO = "tmrole"
-
-    REQUIRED_INSTANTIATION_ARGS = [
-        "channel_snowflake",
-        "guild_snowflake",
-        "role_snowflake",
-    ]
-    OPTIONAL_ARGS = ["created_at", "updated_at"]
-
-    TABLE_NAME = "text_mute_roles"
-
-    def __init__(
-        self,
-        channel_snowflake: int,
-        guild_snowflake: int,
-        role_snowflake: int,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
-        **kwargs,
-    ):
-        super().__init__()
-        self.created_at = created_at
-        self.channel_snowflake = channel_snowflake
-        self.guild_snowflake = guild_snowflake
-        self.role_snowflake = role_snowflake
-        self.updated_at = updated_at
+    @classmethod
+    async def text_mute_overwrite(cls, message):
+        kwargs = {
+            "channel_snowflake": message.channel.id,
+            "guild_snowflake": message.guild.id,
+            "member_snowflake": message.author.id
+        }
+        text_mute = await TextMute.select(**kwargs)
+        if text_mute:
+            targets = []
+            for target, overwrite in message.channel.overwrites.items():
+                if any(v is not None for v in overwrite):
+                    if isinstance(target, discord.Member):
+                        targets.append(target)
+            if message.author not in targets:
+                try:
+                    await message.channel.set_permissions(
+                        target=message.author,
+                        send_messages=False,
+                        add_reactions=False,
+                        reason="Reinstating active text-mute overwrite.",
+                    )
+                    set_kwargs = {
+                        "last_muted": datetime.now(timezone.utc),
+                        "reset": False
+                    }
+                    await TextMute.update(set_kwargs=set_kwargs, where_kwargs=kwargs)
+                except discord.Forbidden as e:
+                    logger.warning(e)

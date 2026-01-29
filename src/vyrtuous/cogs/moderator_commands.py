@@ -28,7 +28,6 @@ from vyrtuous.db.mgmt.alias import Alias
 from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.mgmt.cap import Cap
 from vyrtuous.db.actions.flag import Flag
-from vyrtuous.db.actions.hide import Hide
 from vyrtuous.db.actions.server_mute import ServerMute
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
@@ -350,38 +349,6 @@ class ModeratorCommands(commands.Cog):
         pages = await Flag.build_pages(object_dict=object_dict, is_at_home=is_at_home)
         await StateService.send_pages(plural=Flag.PLURAL, pages=pages, state=state)
 
-    @app_commands.command(name="hides", description="List hides.")
-    @app_commands.describe(
-        target="Specify one of: 'all', channel ID/mention, or server ID."
-    )
-    @moderator_predicator()
-    async def list_hides_app_command(
-        self, interaction: discord.Interaction, target: str = None
-    ):
-        state = StateService(source=interaction)
-        do = DiscordObject(interaction=interaction)
-        is_at_home = at_home(source=interaction)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await Hide.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
-
-    # DONE
-    @commands.command(name="hides", description="List hides.")
-    @moderator_predicator()
-    async def list_hides_text_command(
-        self,
-        ctx: commands.Context,
-        target: str = commands.parameter(
-            description="Specify one of: 'all', channel ID/mention or server ID.",
-        ),
-    ):
-        state = StateService(source=ctx)
-        do = DiscordObject(ctx=ctx)
-        is_at_home = at_home(source=ctx)
-        object_dict = await do.determine_from_target(target=target)
-        pages = await Hide.build_pages(object_dict=object_dict, is_at_home=is_at_home)
-        await StateService.send_pages(plural=Ban.PLURAL, pages=pages, state=state)
-
     # DONE
     @app_commands.command(name="ls", description="List new vegans.")
     @app_commands.describe(
@@ -463,7 +430,6 @@ class ModeratorCommands(commands.Cog):
             await Cap.update(**kwargs)
             await Coordinator.update(**kwargs)
             await Flag.update(**kwargs)
-            await Hide.update(**kwargs)
             await Moderator.update(**kwargs)
             await Stage.update(**kwargs)
             await TextMute.update(**kwargs)
@@ -524,7 +490,6 @@ class ModeratorCommands(commands.Cog):
             await Cap.update(**kwargs)
             await Coordinator.update(**kwargs)
             await Flag.update(**kwargs)
-            await Hide.update(**kwargs)
             await Moderator.update(**kwargs)
             await Stage.update(**kwargs)
             await TextMute.update(**kwargs)

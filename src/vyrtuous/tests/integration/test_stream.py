@@ -20,7 +20,8 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 TEXT_CHANNEL_SNOWFLAKE = 10000000000000010
 VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
@@ -28,22 +29,22 @@ VOICE_CHANNEL_SNOWFLAKE = 10000000000000011
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, source_channel, action, type, target",
     [
-        ("!stream {source_channel_snowflake} create all"),
+        ("!stream", "{source_channel_snowflake}", "create", "all", None),
         (
-            "!stream {source_channel_snowflake} modify channel {target_channel_snowflake}"
+            "!stream", "{source_channel_snowflake}", "modify", "channel", "{target_channel_snowflake}"
         ),
-        ("!stream {source_channel_snowflake} delete"),
-        ("!stream <#{source_channel_snowflake}> create all"),
-        ("!stream <#{source_channel_snowflake}> modify"),
-        ("!stream <#{source_channel_snowflake}> delete"),
+        ("!stream", "{source_channel_snowflake}", "delete", None, None),
+        ("!stream", "<#{source_channel_snowflake}>", "create", "all", None),
+        ("!stream", "<#{source_channel_snowflake}>", "modify", None, None),
+        ("!stream", "<#{source_channel_snowflake}>", "delete", None, None),
         (
-            "!stream {source_channel_snowflake} create channel {target_channel_snowflake}"
+            "!stream", "{source_channel_snowflake}", "create", "channel", "{target_channel_snowflake}"
         ),
     ],
 )
-async def test_stream(bot, command: Optional[str]):
+async def test_stream(bot, command: Optional[str], source_channel, action, target, type):
     """
     Setup, modify or teardown a streaming route, modifying the
     the PostgresSQL database 'vyrtuous' in the table 'streaming'.
@@ -68,9 +69,32 @@ async def test_stream(bot, command: Optional[str]):
     >>> !stream 10000000000000010 modify channel {channel_snowflake}
     [{emoji} Streaming Route modified for Channel1]
     """
-    formatted = command.format(
-        source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE,
-        target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+    snowflakes = None
+    sc = source_channel.format(
+        source_channel_snowflake=TEXT_CHANNEL_SNOWFLAKE
     )
-    captured = await send_message(bot=bot, content=formatted)
+    kwargs = {
+        "channel": sc,
+        "action": action
+    }
+    full = f"{command} {sc} {action}"
+    if type:
+        kwargs.update({
+            "entry_type": type
+        })
+        full = f"{command} {sc} {action} {type}"
+    if target:
+        tc = target.format(
+            target_channel_snowflake=VOICE_CHANNEL_SNOWFLAKE,
+        )
+        snowflakes = [tc]
+        full = f"{command} {sc} {action} {type} {tc}"
+    captured = await send_message(bot=bot, content=full)
     assert captured
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    admin_commands = bot.get_cog("AdminCommands")
+    command = await admin_commands.modify_streaming_text_command(ctx, **kwargs)

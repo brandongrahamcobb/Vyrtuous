@@ -24,7 +24,6 @@ import discord
 from vyrtuous.bot.discord_bot import DiscordBot
 from vyrtuous.db.actions.ban import Ban
 from vyrtuous.db.actions.flag import Flag
-from vyrtuous.db.actions.hide import Hide
 from vyrtuous.db.actions.role import Role
 from vyrtuous.db.actions.text_mute import TextMute
 from vyrtuous.db.actions.voice_mute import VoiceMute
@@ -72,7 +71,6 @@ class Alias(DatabaseFactory):
 
     _ALIAS_CLASS_MAP = {
         "ban": Ban,
-        "hide": Hide,
         "vmute": VoiceMute,
         "tmute": TextMute,
         "role": Role,
@@ -107,8 +105,6 @@ class Alias(DatabaseFactory):
             "carnist": self.alias_cog.handle_carnist_alias,
             "unban": self.alias_cog.handle_unban_alias,
             "flag": self.alias_cog.handle_flag_alias,
-            "hide": self.alias_cog.handle_hide_alias,
-            "unhide": self.alias_cog.handle_unhide_alias,
             "unflag": self.alias_cog.handle_unflag_alias,
             "vmute": self.alias_cog.handle_voice_mute_alias,
             "unvmute": self.alias_cog.handle_unmute_alias,
@@ -247,63 +243,63 @@ class Alias(DatabaseFactory):
                         alias.channel_snowflake
                     ]["aliases"][alias.category][alias.alias_name] = role.mention
 
-            skipped_channels = generate_skipped_channels(guild_dictionary)
-            skipped_guilds = generate_skipped_guilds(guild_dictionary)
-            guild_dictionary = clean_guild_dictionary(
-                guild_dictionary=guild_dictionary,
-                skipped_channels=skipped_channels,
-                skipped_guilds=skipped_guilds,
-            )
+        skipped_channels = generate_skipped_channels(guild_dictionary)
+        skipped_guilds = generate_skipped_guilds(guild_dictionary)
+        guild_dictionary = clean_guild_dictionary(
+            guild_dictionary=guild_dictionary,
+            skipped_channels=skipped_channels,
+            skipped_guilds=skipped_guilds,
+        )
 
-            for guild_snowflake, guild_data in guild_dictionary.items():
-                field_count = 0
-                guild = bot.get_guild(guild_snowflake)
-                embed = discord.Embed(
-                    title=title, description=guild.name, color=discord.Color.blue()
-                )
-                for channel_snowflake, dictionary in guild_data.get(
-                    "channels", {}
-                ).items():
-                    channel = guild.get_channel(channel_snowflake)
-                    lines = []
-                    for category, alias_data in dictionary["aliases"].items():
-                        lines.append(f"{category}")
-                        for name, role_mention in alias_data.items():
-                            if category == "role":
-                                lines.append(f"  ↳ `{name}` -> {role_mention}")
-                            else:
-                                lines.append(f"  ↳ `{name}`")
-                    if len(lines) >= chunk_size:
-                        embed.add_field(
-                            name=f"Channel: {channel.mention}",
-                            value="\n".join(lines),
-                            inline=False,
-                        )
-                        embed, field_count = flush_page(embed, pages, title, guild.name)
-                        lines = []
-                if lines:
+        for guild_snowflake, guild_data in guild_dictionary.items():
+            field_count = 0
+            guild = bot.get_guild(guild_snowflake)
+            embed = discord.Embed(
+                title=title, description=guild.name, color=discord.Color.blue()
+            )
+            for channel_snowflake, dictionary in guild_data.get(
+                "channels", {}
+            ).items():
+                channel = guild.get_channel(channel_snowflake)
+                lines = []
+                for category, alias_data in dictionary["aliases"].items():
+                    lines.append(f"{category}")
+                    for name, role_mention in alias_data.items():
+                        if category == "role":
+                            lines.append(f"  ↳ `{name}` -> {role_mention}")
+                        else:
+                            lines.append(f"  ↳ `{name}`")
+                if len(lines) >= chunk_size:
                     embed.add_field(
                         name=f"Channel: {channel.mention}",
                         value="\n".join(lines),
                         inline=False,
                     )
-                pages.append(embed)
+                    embed, field_count = flush_page(embed, pages, title, guild.name)
+                    lines = []
+            if lines:
+                embed.add_field(
+                    name=f"Channel: {channel.mention}",
+                    value="\n".join(lines),
+                    inline=False,
+                )
+            pages.append(embed)
 
-            if is_at_home:
-                if skipped_guilds:
-                    pages = generate_skipped_set_pages(
-                        chunk_size=chunk_size,
-                        field_count=field_count,
-                        pages=pages,
-                        skipped=skipped_guilds,
-                        title="Skipped Servers",
-                    )
-                if skipped_channels:
-                    pages = generate_skipped_dict_pages(
-                        chunk_size=chunk_size,
-                        field_count=field_count,
-                        pages=pages,
-                        skipped=skipped_channels,
-                        title="Skipped Channels in Server",
-                    )
+        if is_at_home:
+            if skipped_guilds:
+                pages = generate_skipped_set_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_guilds,
+                    title="Skipped Servers",
+                )
+            if skipped_channels:
+                pages = generate_skipped_dict_pages(
+                    chunk_size=chunk_size,
+                    field_count=field_count,
+                    pages=pages,
+                    skipped=skipped_channels,
+                    title="Skipped Channels in Server",
+                )
         return pages

@@ -20,20 +20,21 @@ from typing import Optional
 
 import pytest
 
-from vyrtuous.tests.integration.test_suite import send_message
+from vyrtuous.tests.integration.conftest import context
+from vyrtuous.tests.integration.test_suite import build_message, send_message, setup
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "command",
+    "command, spec",
     [
-        ("!sync"),
-        ("!sync *"),
-        ("!sync ^"),
-        ("!sync ~"),
+        ("!sync", None),
+        ("!sync", "*"),
+        ("!sync", "^"),
+        ("!sync", "~"),
     ],
 )
-async def test_sync(bot, command: Optional[str]):
+async def test_sync(bot, command: Optional[str], spec):
     """
     Syncs app commands.
 
@@ -57,5 +58,16 @@ async def test_sync(bot, command: Optional[str]):
     >>> !sync ^
     [{emoji} Synced 0 commands to the current guild]
     """
-    captured = await send_message(bot=bot, content=command)
+    if spec:
+        full = f"{command} {spec}"
+    else:
+        full = f"{command}"
+    captured = await send_message(bot=bot, content=full)
     assert captured
+    objects = setup(bot)
+    msg = build_message(
+        author=objects.get("author", None), channel=objects.get("channel", None), content=full, guild=objects.get("guild", None), state=objects.get("state", None)
+    )
+    ctx = context(bot=bot, message=msg, prefix="!")
+    dev_commands = bot.get_cog("DevCommands")
+    command = await dev_commands.sync_text_command(ctx, spec=spec)
